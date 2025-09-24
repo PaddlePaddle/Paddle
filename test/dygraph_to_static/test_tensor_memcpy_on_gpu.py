@@ -17,11 +17,12 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
+    BackendMode,
     Dy2StTestBase,
-    IrMode,
     ToStaticMode,
     disable_test_case,
     enable_to_static_guard,
+    test_phi_only,
 )
 
 import paddle
@@ -103,7 +104,9 @@ class TestTensorCopyToCUDAWithWarningOnGPU(Dy2StTestBase):
         )
         return x1.place, x2.place, x2.numpy()
 
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_with_warning_on_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -136,6 +139,7 @@ class TestTensorCopyToCPUWithComputeOnDefaultGPU(Dy2StTestBase):
         x2 = paddle.jit.to_static(tensor_copy_to_cpu_with_compute)(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_phi_only
     def test_tensor_cpu_with_compute_on_default_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -150,6 +154,35 @@ class TestTensorCopyToCPUWithComputeOnDefaultGPU(Dy2StTestBase):
         self.assertTrue(static_x1_place.is_gpu_place())
         self.assertTrue(dygraph_place.is_cpu_place())
         self.assertTrue(static_place.is_cpu_place())
+
+
+class TestMemcpyGrad(Dy2StTestBase):
+    def test_memcpy_grad(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        def fn(x):
+            return x.cpu()
+
+        paddle.seed(2)
+        x_dy = paddle.rand([3, 2])
+        x_dy.stop_gradient = False
+        paddle.seed(2)
+        x_st = paddle.rand([3, 2])
+        x_st.stop_gradient = False
+
+        static_fn = paddle.jit.to_static(fn)
+
+        dy_out = fn(x_dy)
+        st_out = static_fn(x_st)
+        np.testing.assert_allclose(dy_out, st_out)
+
+        st_out.backward()
+        dy_out.backward()
+
+        self.assertIsNone(x_dy.grad)
+        # TODO: The static graph result needs to align with the dynamic graph result.
+        # self.assertIsNone(x_st.grad)
 
 
 if __name__ == '__main__':

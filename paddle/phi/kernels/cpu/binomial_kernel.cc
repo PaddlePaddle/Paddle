@@ -21,17 +21,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BinomialKernel(const Context& ctx,
+void BinomialKernel(const Context& dev_ctx,
                     const DenseTensor& count,
                     const DenseTensor& prob,
                     DenseTensor* out) {
   auto numel = count.numel();
   auto* count_data = count.data<T>();
   auto* prob_data = prob.data<T>();
-  int64_t* out_data = ctx.template Alloc<int64_t>(out);
+  int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
 
   for (int64_t i = 0; i < numel; ++i) {
-    out_data[i] = funcs::BinomialFunctor<T>(ctx, count_data[i], prob_data[i]);
+    out_data[i] =
+        funcs::BinomialFunctor<T>(dev_ctx, count_data[i], prob_data[i]);
   }
 }
 

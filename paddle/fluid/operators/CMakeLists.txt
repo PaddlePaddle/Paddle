@@ -28,10 +28,6 @@ if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
 endif()
 
-if (WITH_PSCORE)
-    add_subdirectory(pscore)
-endif()
-
 add_subdirectory(reader)
 
 if (NOT WIN32)
@@ -50,7 +46,7 @@ if(WITH_IPU)
     add_subdirectory(ipu)
 endif()
 
-SET(OP_HEADER_DEPS xxhash executor)
+SET(OP_HEADER_DEPS xxhash)
 
 if (WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
@@ -142,10 +138,6 @@ if(WITH_UNITY_BUILD)
 endif()
 
 copy_if_different(${pybind_file} ${pybind_file_final})
-
-if (WITH_CUSTOM_DEVICE)
-cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi common type_info)
-endif()
 
 if(NOT "${OP_LIST}" STREQUAL "")
 prune_pybind_h()

@@ -15,9 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
@@ -383,7 +381,6 @@ void WeightDequantize(const Context& dev_ctx,
         k,
         group_size);
   } else if (algo == "weight_only_int4" && group_size == -1) {
-    k *= 2;
     grid.x /= 2;
     int4_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
         reinterpret_cast<const uint8_t*>(x.data<int8_t>()),
@@ -392,7 +389,6 @@ void WeightDequantize(const Context& dev_ctx,
         n,
         k);
   } else if (algo == "weight_only_int4" && group_size > 0) {
-    k *= 2;
     grid.x /= 2;
     int4_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
         reinterpret_cast<const uint8_t*>(x.data<int8_t>()),

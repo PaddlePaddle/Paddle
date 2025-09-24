@@ -35,7 +35,7 @@ def np_eigvals(a):
 
 class TestEigvalsOp(OpTest):
     def setUp(self):
-        np.random.seed(0)
+        np.random.seed(1)
         paddle.enable_static()
         self.python_api = paddle.linalg.eigvals
         self.op_type = "eigvals"
@@ -167,6 +167,31 @@ class TestEigvalsOpBatch2(TestEigvalsOp):
 class TestEigvalsOpBatch3(TestEigvalsOp):
     def set_input_dims(self):
         self.input_dims = (6, 2, 9, 6, 6)
+
+
+class TestEigvalsOp_ZeroSize(TestEigvalsOp):
+    def set_input_dims(self):
+        self.input_dims = (6, 0, 2, 2)
+
+
+class TestEigvalsOp_ZeroSize2(TestEigvalsOp):
+    def set_input_dims(self):
+        self.input_dims = (6, 2, 0, 0)
+
+    def verify_output(self, outs):
+        actual_outs = np.sort(np.array(outs[0]))
+        expect_outs = np.sort(np.array(self.outputs['Out']))
+        self.assertTrue(
+            actual_outs.shape == expect_outs.shape,
+            "Output shape has diff.\n"
+            "Expect shape "
+            + str(expect_outs.shape)
+            + "\n"
+            + "But Got"
+            + str(actual_outs.shape)
+            + " in class "
+            + self.__class__.__name__,
+        )
 
 
 class TestEigvalsAPI(unittest.TestCase):
@@ -318,8 +343,8 @@ class TestEigvalsAPI(unittest.TestCase):
 
     def test_cases(self):
         places = [core.CPUPlace()]
-        # if core.is_compiled_with_cuda():
-        #    places.append(core.CUDAPlace(0))
+        # if (core.is_compiled_with_cuda() or is_custom_device()):
+        #    places.append(get_device_place())
         for place in places:
             self.run_dygraph(place)
             self.run_static(place)

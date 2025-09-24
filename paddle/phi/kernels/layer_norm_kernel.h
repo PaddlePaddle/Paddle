@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LayerNormKernel(const Context& ctx,
+void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& scale,
                      const paddle::optional<DenseTensor>& bias,

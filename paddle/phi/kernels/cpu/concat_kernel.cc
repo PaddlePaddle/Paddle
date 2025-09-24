@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/concat_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -45,7 +43,9 @@ void ConcatKernel(const Context& dev_ctx,
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
-
+  if (out->numel() == 0) {
+    return;
+  }
   // If axis is 0, the lod of the output is not the same as inputs.
   if (axis == 0 && !x[0]->lod().empty()) {
     size_t lod_size_0 = x[0]->lod().size();
@@ -126,7 +126,9 @@ PD_REGISTER_KERNEL(concat,
                    uint8_t,
                    int8_t,
                    int16_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::complex64,
+                   phi::complex128) {}

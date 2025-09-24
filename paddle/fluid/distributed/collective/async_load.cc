@@ -48,9 +48,9 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::CreateTask(const Place& place) {
   return std::make_shared<AsyncLoad::Task>(place);
 }
 
-void AsyncLoad::SyncCalcuStream(const Place& place,
-                                phi::GPUContext* ctx,
-                                platform::DeviceEvent& calc_event) {  // NOLINT
+void AsyncLoad::SyncCalcStream(const Place& place,
+                               phi::GPUContext* ctx,
+                               platform::DeviceEvent& calc_event) {  // NOLINT
   const auto* calc_ctx = static_cast<phi::GPUContext*>(
       phi::DeviceContextPool::Instance().Get(place));
   calc_event.Record(calc_ctx);
@@ -85,7 +85,7 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
         key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
     load_ctx_ = std::make_unique<phi::GPUContext>(place);
   }
-  SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
+  SyncCalcStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
   // 2. copy data from src to dst
   auto stream = load_ctx_->stream();
@@ -156,9 +156,9 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::OffloadWithOffset(
     gpu_place_ = place;
     place_to_calc_event_.emplace(
         key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
-    load_ctx_ = std::move(std::make_unique<phi::GPUContext>(place));
+    load_ctx_ = std::make_unique<phi::GPUContext>(place);
   }
-  SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
+  SyncCalcStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
   // 2. copy data from src to dst
   auto stream = load_ctx_->stream();
@@ -202,7 +202,7 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Reload(
   // 1. wait calc stream to finish
   std::string key = "load";
 
-  SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
+  SyncCalcStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
   // 2. copy data from src to dst
   auto stream = load_ctx_->stream();

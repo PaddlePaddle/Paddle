@@ -133,9 +133,10 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
                 stop_gradient=True,
             )
 
-            with block.program._optimized_guard(
-                [param, grad]
-            ), paddle.static.name_scope('fp16_allreduce'):
+            with (
+                block.program._optimized_guard([param, grad]),
+                paddle.static.name_scope('fp16_allreduce'),
+            ):
                 cast_op = block.append_op(
                     type="cast",
                     inputs={"X": grad},

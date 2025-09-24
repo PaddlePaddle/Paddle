@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 
@@ -194,22 +194,13 @@ def calc_triplet_margin_loss(
 
 
 class TestTripletMarginLoss(unittest.TestCase):
-
     def test_TripletMarginLoss(self):
         shape = (2, 2)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        places = get_places()
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
@@ -275,7 +266,7 @@ class TestTripletMarginLoss(unittest.TestCase):
         self.assertRaises(
             ValueError,
             paddle.nn.loss.TripletMarginLoss,
-            reduction="unsupport reduction",
+            reduction="unsupported reduction",
         )
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         positive = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
@@ -286,7 +277,7 @@ class TestTripletMarginLoss(unittest.TestCase):
             input=input,
             positive=positive,
             negative=negative,
-            reduction="unsupport reduction",
+            reduction="unsupported reduction",
         )
         paddle.enable_static()
 

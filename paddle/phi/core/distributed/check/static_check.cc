@@ -63,6 +63,32 @@ void CommStaticCheck::CheckDataType(const phi::DenseTensor& out_tensor,
           "Input and output tensors should have the same data type."));
 }
 
+void CommStaticCheck::CheckDataType(
+    const std::vector<phi::DenseTensor>& out_tensors,
+    const std::vector<phi::DenseTensor>& in_tensors) {
+  if (in_tensors.empty() && out_tensors.empty()) {
+    return;
+  }
+
+  auto first_dtype =
+      (in_tensors.empty() ? out_tensors[0] : in_tensors[0]).dtype();
+
+  for (const auto& tensor : in_tensors) {
+    PADDLE_ENFORCE_EQ(
+        tensor.dtype(),
+        first_dtype,
+        common::errors::InvalidArgument(
+            "Input and output tensors should have the same data type."));
+  }
+  for (const auto& tensor : out_tensors) {
+    PADDLE_ENFORCE_EQ(
+        tensor.dtype(),
+        first_dtype,
+        common::errors::InvalidArgument(
+            "Input and output tensors should have the same data type."));
+  }
+}
+
 void CommStaticCheck::CheckShape(const phi::DenseTensor& tensor) {
   PADDLE_ENFORCE_GT(tensor.numel(),
                     0,

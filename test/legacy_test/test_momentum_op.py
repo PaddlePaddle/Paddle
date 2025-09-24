@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    get_devices,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -170,7 +176,8 @@ class TestMomentumOp2(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLarsMomentumOpWithMP(OpTest):
     def setUp(self):
@@ -248,8 +255,8 @@ class TestLarsMomentumOpWithMP(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        if core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, check_dygraph=False)
 
@@ -413,16 +420,7 @@ class TestSparseMomentumOp(unittest.TestCase):
         pass
 
     def test_sparse_momentum(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
 
@@ -533,8 +531,8 @@ class TestSparseMomentumOpWithMultiPrecision(unittest.TestCase):
         self.use_nesterov = False
 
     def test_sparse_momentum(self):
-        if core.is_compiled_with_cuda():
-            self.check_with_place(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_with_place(get_device_place())
 
 
 class TestSparseMomentumOpWithMultiPrecision2(
@@ -896,17 +894,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
         )
 
     def test_vs(self, place=base.CPUPlace()):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self.__test_vs(place=place)
 
 
@@ -989,10 +977,10 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 multi_precision=use_amp,
             )
         for idx in range(5):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -1009,18 +997,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 optimizer.clear_grad(set_to_zero=False)
         return output, model.parameters()
 
-    def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def _check_with_place_amp(self, place, use_amp):
         output1, params1 = self._momentum_optimize_dygraph(
             place=place, use_amp=use_amp, use_multi_tensor=True
@@ -1033,7 +1009,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
         for idx in range(len(params1)):
             np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
-    def _check_with_param_arrt(self, place, use_amp):
+    def _check_with_param_attr(self, place, use_amp):
         output1, params1 = self._momentum_optimize_dygraph(
             place=place,
             use_amp=use_amp,
@@ -1068,11 +1044,11 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def test_main(self):
-        for place in self._get_places():
+        for place in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._check_with_place_amp(place, use_amp)
-                self._check_with_param_arrt(place, use_amp)
+                self._check_with_param_attr(place, use_amp)
                 self._check_with_param_group(place, use_amp)
 
 

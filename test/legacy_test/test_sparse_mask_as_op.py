@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 
@@ -35,15 +35,7 @@ def generate_data(shape, dtype):
 class TestMaskAs(unittest.TestCase):
     def setUp(self):
         self.init_format()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def init_format(self):
         self.format = None
@@ -120,8 +112,8 @@ class TestMaskAs(unittest.TestCase):
             # `int16` not registered in `multiply`, so skip check_grad
             self.check(shape, 'int16', place, check_grad=False)
 
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check(shape, 'float16', place)
 
 

@@ -23,11 +23,12 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace ir {
-using attr_t = absl::variant<int, float, bool, std::string>;
+using attr_t = std::variant<int, float, bool, std::string>;
 
 Expr operator<<(Expr a, Expr b) {
   PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
@@ -101,7 +102,9 @@ Expr BitwiseOrCallImpl(common::UnknownArch,
 }
 
 Expr BitwiseOrCallImpl(common::X86Arch, const Target &target, Expr a, Expr b) {
-  return lang::CallExtern("bitwise_or", {a, b}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_or", {a, b}, {{"vectorizable", false}});
+  c->set_type(a.type());
+  return c;
 }
 
 Expr BitwiseOrCallImpl(common::ARMArch, const Target &target, Expr a, Expr b) {
@@ -175,7 +178,9 @@ Expr BitwiseAndCallImpl(common::UnknownArch,
 }
 
 Expr BitwiseAndCallImpl(common::X86Arch, const Target &target, Expr a, Expr b) {
-  return lang::CallExtern("bitwise_and", {a, b}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_and", {a, b}, {{"vectorizable", false}});
+  c->set_type(a.type());
+  return c;
 }
 
 Expr BitwiseAndCallImpl(common::ARMArch, const Target &target, Expr a, Expr b) {
@@ -249,7 +254,9 @@ Expr BitwiseXorCallImpl(common::UnknownArch,
 }
 
 Expr BitwiseXorCallImpl(common::X86Arch, const Target &target, Expr a, Expr b) {
-  return lang::CallExtern("bitwise_xor", {a, b}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_xor", {a, b}, {{"vectorizable", false}});
+  c->set_type(a.type());
+  return c;
 }
 
 Expr BitwiseXorCallImpl(common::ARMArch, const Target &target, Expr a, Expr b) {
@@ -320,7 +327,9 @@ Expr BitwiseNotCallImpl(common::UnknownArch, const Target &target, Expr a) {
 }
 
 Expr BitwiseNotCallImpl(common::X86Arch, const Target &target, Expr a) {
-  return lang::CallExtern("bitwise_not", {a}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_not", {a}, {{"vectorizable", false}});
+  c->set_type(a->type());
+  return c;
 }
 
 Expr BitwiseNotCallImpl(common::ARMArch, const Target &target, Expr a) {
@@ -368,7 +377,7 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 + d0 ===> d0 + 3.
   // d0 + (d1 + d2) ===> (d1 + d2) + d0.
-  if (!ComparePriority(lhs, rhs)) {
+  if (!optim::ComparePriority(lhs, rhs)) {
     return rhs + lhs;
   }
 
@@ -433,13 +442,13 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   if (!rhs.As<IntImm>()) {
     // dynamic branch!
-    if (common::IsSumPartialBySymbol(lhs, rhs))
-      return common::SimplifySymbolicAdd(lhs, rhs);
+    if (optim::IsSumPartialBySymbol(lhs, rhs))
+      return optim::SimplifySymbolicAdd(lhs, rhs);
 
     if (auto rhs_mul = rhs.As<ir::Mul>()) {
       if (rhs_mul->b().as_index().is_constant()) {
-        if (common::IsSumPartialBySymbol(lhs, rhs_mul->a().as_index())) {
-          return common::SimplifySymbolicAdd(
+        if (optim::IsSumPartialBySymbol(lhs, rhs_mul->a().as_index())) {
+          return optim::SimplifySymbolicAdd(
               lhs, rhs_mul->a().as_index(), rhs_mul->b().as_index());
         }
       }
@@ -449,8 +458,8 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
     auto MergeByCommonFactor =
         [](const ir::IndexExpr &lhs,
            const ir::IndexExpr &rhs) -> std::optional<ir::IndexExpr> {
-      auto flatten_mul_lhs = common::GetFlattenExprs<ir::Mul>(lhs);
-      auto flatten_mul_rhs = common::GetFlattenExprs<ir::Mul>(rhs);
+      auto flatten_mul_lhs = optim::GetFlattenExprs<ir::Mul>(lhs);
+      auto flatten_mul_rhs = optim::GetFlattenExprs<ir::Mul>(rhs);
 
       if (flatten_mul_lhs.size() > 1 && flatten_mul_rhs.size() > 1) {
         ir::IndexExpr common_factor(lhs.type(), 1);
@@ -490,7 +499,7 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
       return std::nullopt;
     };
 
-    auto flatten_add_lhs = common::GetFlattenExprs<ir::Add>(lhs);
+    auto flatten_add_lhs = optim::GetFlattenExprs<ir::Add>(lhs);
 
     bool found = false;
     ir::IndexExpr res(lhs.type(), 0);
@@ -516,7 +525,7 @@ static IndexExpr SimplifyMul(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 * d0 ===> d0 * 3.
   // d0 * (d1 + d2) ===> (d1 + d2) * d0.
-  if (!ComparePriority(lhs, rhs)) {
+  if (!optim::ComparePriority(lhs, rhs)) {
     return rhs * lhs;
   }
 
@@ -596,7 +605,7 @@ static IndexExpr SimplifyDiv(const IndexExpr &lhs, const IndexExpr &rhs) {
     }
   } else {
     // dynamic branch!
-    if (auto res = DivByPartMul(lhs, rhs, ir::IrNodeTy::Div)) {
+    if (auto res = optim::DivByPartMul(lhs, rhs, ir::IrNodeTy::Div)) {
       return res.value();
     }
   }
@@ -647,13 +656,13 @@ static IndexExpr SimplifyMod(const IndexExpr &lhs, const IndexExpr &rhs) {
     }
   } else {
     // dynamic branch!
-    if (auto res = DivByPartMul(lhs, rhs, ir::IrNodeTy::Mod)) {
+    if (auto res = optim::DivByPartMul(lhs, rhs, ir::IrNodeTy::Mod)) {
       return IndexExpr(0);
     }
   }
 
   // static and dynamic common branch!
-  if (auto res = SimplifyComplexMod(lhs, rhs)) {
+  if (auto res = optim::SimplifyComplexMod(lhs, rhs)) {
     return res.value();
   }
 

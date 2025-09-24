@@ -27,6 +27,7 @@ import threading
 import traceback
 import warnings
 from collections.abc import Iterable
+from contextlib import contextmanager
 from types import FunctionType, MethodType
 from typing import TYPE_CHECKING, Callable, TypeVar, overload
 
@@ -200,6 +201,16 @@ def get_flags(flags: str | Sequence[str]) -> dict[str, bool | str | float]:
     return flags_value
 
 
+@contextmanager
+def flag_guard(flag_name, flag_value):
+    old_value = paddle.get_flags(flag_name)[flag_name]
+    paddle.set_flags({flag_name: flag_value})
+    try:
+        yield
+    finally:
+        paddle.set_flags({flag_name: old_value})
+
+
 # use thread local to create thread save global variables.
 class GlobalThreadLocal(threading.local):
     def __init__(self):
@@ -209,7 +220,6 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
-        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         env_pir_enabled = os.environ.get("FLAGS_enable_pir_api")
@@ -231,9 +241,6 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
-        strings.append(
-            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
-        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -432,8 +439,19 @@ def in_cinn_mode() -> bool:
         bool: Whether paddle runs in cinn mode.
 
     """
-    flag = str(os.environ.get("FLAGS_use_cinn")).lower()
-    return flag in ("true", "1")
+    CINN_FLAG_NAME = "FLAGS_use_cinn"
+    # NOTE: This flag only available when compiled with CINN
+    if not is_compiled_with_cinn():
+        return False
+    return paddle.get_flags(CINN_FLAG_NAME)[CINN_FLAG_NAME]
+
+
+def in_cinn_debug_mode() -> bool:
+    CINN_DEBUG_FLAG_NAME = "FLAGS_cinn_debug"
+    # NOTE: This flag only available when compiled with CINN
+    if not is_compiled_with_cinn():
+        return False
+    return paddle.get_flags(CINN_DEBUG_FLAG_NAME)[CINN_DEBUG_FLAG_NAME]
 
 
 global_ipu_index = -1
@@ -685,12 +703,12 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
 
 
 def _dygraph_not_support_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        assert (
-            not in_dygraph_mode()
-        ), f"We don't support {func.__name__} in dynamic graph mode"
+        assert not in_dygraph_mode(), (
+            f"We don't support {func.__name__} in dynamic graph mode"
+        )
         return func(*args, **kwargs)
 
     return __impl__
@@ -698,23 +716,23 @@ def _dygraph_not_support_(
 
 def _dygraph_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        assert (
-            in_dygraph_mode()
-        ), f"We only support '{func.__name__}()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
+        assert in_dygraph_mode(), (
+            f"We only support '{func.__name__}()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
+        )
         return func(*args, **kwargs)
 
     return __impl__
 
 
 def _non_static_only_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         from .dygraph.base import in_to_static_mode
 
-        assert (
-            in_dygraph_mode() or in_to_static_mode()
-        ), f"We only support '{func.__name__}()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
+        assert in_dygraph_mode() or in_to_static_mode(), (
+            f"We only support '{func.__name__}()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
+        )
         return func(*args, **kwargs)
 
     return __impl__
@@ -722,9 +740,9 @@ def _non_static_only_(
 
 def _static_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        assert (
-            not in_dygraph_mode()
-        ), f"In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '{func.__name__}()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode."
+        assert not in_dygraph_mode(), (
+            f"In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '{func.__name__}()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode."
+        )
         return func(*args, **kwargs)
 
     return __impl__
@@ -743,7 +761,7 @@ def _set_pipeline_stage(stage):
 # TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheriting
 # same base class.
 def _fake_interface_only_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         raise AssertionError(
@@ -762,7 +780,7 @@ def _fake_interface_only_(
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
 def deprecate_stat_dict(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
@@ -791,8 +809,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None or isinstance(
-        _global_expected_place_, core.Place
+    if (
+        _global_expected_place_ is None
+        or type(_global_expected_place_) is core.Place
     ):
         if core.is_compiled_with_cuda():
             try:
@@ -1161,6 +1180,41 @@ def cuda_pinned_places(
     return [core.CUDAPinnedPlace()] * device_count
 
 
+def xpu_pinned_places(
+    device_count: int | None = None,
+) -> list[core.XPUPinnedPlace]:
+    """
+    This function creates a list of :code:`base.XPUPinnedPlace` objects.
+
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`.
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
+
+    Parameters:
+        device_count (int, optional): device number. Default: None.
+
+    Returns:
+        list of base.XPUPinnedPlace: Created list of XPU pinned places.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.base as base
+            >>> xpu_pinned_places_cpu_num = base.xpu_pinned_places()
+            >>> # or
+            >>> xpu_pinned_places = base.xpu_pinned_places(1)
+
+    """
+    assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
+    if device_count is None:
+        device_count = len(_cuda_ids())
+    return [core.XPUPinnedPlace()] * device_count
+
+
 class NameScope:
     def __init__(self, name="", parent=None):
         self._children = {}
@@ -1368,51 +1422,64 @@ def convert_np_dtype_to_proto_type(
     """
 
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
-        dtype = np.uint16
-    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
-        dtype = 'float8_e4m3fn'
-    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
-        dtype = 'float8_e5m2'
-    else:
-        dtype = np.dtype(np_dtype)
 
-    if dtype == np.float32:
-        return core.VarDesc.VarType.FP32
-    elif dtype == np.float64:
-        return core.VarDesc.VarType.FP64
-    elif dtype == 'float8_e4m3fn':
-        return core.VarDesc.VarType.FP8_E4M3FN
-    elif dtype == 'float8_e5m2':
-        return core.VarDesc.VarType.FP8_E5M2
-    elif dtype == np.float16:
-        return core.VarDesc.VarType.FP16
-    elif dtype == np.int32:
-        return core.VarDesc.VarType.INT32
-    elif dtype == np.int16:
-        return core.VarDesc.VarType.INT16
-    elif dtype == np.int64:
-        return core.VarDesc.VarType.INT64
-    elif dtype == np.bool_:
-        return core.VarDesc.VarType.BOOL
-    elif dtype == np.uint16:
-        # since there is still no support for bfloat16 in NumPy,
-        # uint16 is used for casting bfloat16
-        return core.VarDesc.VarType.BF16
-    elif dtype == np.uint8:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == np.int8:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.complex64:
-        return core.VarDesc.VarType.COMPLEX64
-    elif dtype == np.complex128:
-        return core.VarDesc.VarType.COMPLEX128
+    str_to_var_type = {
+        'float32': core.VarDesc.VarType.FP32,
+        'float64': core.VarDesc.VarType.FP64,
+        'float16': core.VarDesc.VarType.FP16,
+        'int32': core.VarDesc.VarType.INT32,
+        'int16': core.VarDesc.VarType.INT16,
+        'int64': core.VarDesc.VarType.INT64,
+        'bool': core.VarDesc.VarType.BOOL,
+        'uint8': core.VarDesc.VarType.UINT8,
+        'int8': core.VarDesc.VarType.INT8,
+        'complex64': core.VarDesc.VarType.COMPLEX64,
+        'complex128': core.VarDesc.VarType.COMPLEX128,
+        'bfloat16': core.VarDesc.VarType.BF16,
+        'float8_e4m3fn': core.VarDesc.VarType.FP8_E4M3FN,
+        'float8_e5m2': core.VarDesc.VarType.FP8_E5M2,
+    }
+
+    np_dtype_to_var_type = {
+        np.dtype("float32"): core.VarDesc.VarType.FP32,
+        np.dtype("float64"): core.VarDesc.VarType.FP64,
+        np.dtype("float16"): core.VarDesc.VarType.FP16,
+        np.dtype("int32"): core.VarDesc.VarType.INT32,
+        np.dtype("int16"): core.VarDesc.VarType.INT16,
+        np.dtype("int64"): core.VarDesc.VarType.INT64,
+        np.dtype("bool_"): core.VarDesc.VarType.BOOL,
+        np.dtype("uint16"): core.VarDesc.VarType.BF16,
+        np.dtype("uint8"): core.VarDesc.VarType.UINT8,
+        np.dtype("int8"): core.VarDesc.VarType.INT8,
+        np.dtype("complex64"): core.VarDesc.VarType.COMPLEX64,
+        np.dtype("complex128"): core.VarDesc.VarType.COMPLEX128,
+        np.float32: core.VarDesc.VarType.FP32,
+        np.float64: core.VarDesc.VarType.FP64,
+        np.float16: core.VarDesc.VarType.FP16,
+        np.int32: core.VarDesc.VarType.INT32,
+        np.int16: core.VarDesc.VarType.INT16,
+        np.int64: core.VarDesc.VarType.INT64,
+        np.bool_: core.VarDesc.VarType.BOOL,
+        np.uint8: core.VarDesc.VarType.UINT8,
+        np.int8: core.VarDesc.VarType.INT8,
+        np.uint16: core.VarDesc.VarType.BF16,
+        np.complex64: core.VarDesc.VarType.COMPLEX64,
+        np.complex128: core.VarDesc.VarType.COMPLEX128,
+    }
+
+    if isinstance(np_dtype, str):
+        if np_dtype in str_to_var_type:
+            return str_to_var_type[np_dtype]
+    dtype = np.dtype(np_dtype)
+
+    if dtype in np_dtype_to_var_type:
+        return np_dtype_to_var_type[dtype]
     else:
         raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
 def convert_np_dtype_to_dtype_(
-    np_dtype: np.dtype | str,
+    np_dtype: np.dtype | str | core.VarDesc.VarType | core.DataType,
 ) -> core.VarDesc.VarType | core.DataType:
     """
     Convert the data type in numpy to the data type in Paddle.
@@ -1426,8 +1493,12 @@ def convert_np_dtype_to_dtype_(
 
     """
     if use_pir_api():
+        if isinstance(np_dtype, core.DataType):
+            return np_dtype
         return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
+    if isinstance(np_dtype, core.VarDesc.VarType):
+        return np_dtype
     return convert_np_dtype_to_proto_type(np_dtype)
 
 
@@ -1658,7 +1729,7 @@ class Variable(metaclass=VariableMetaClass):
     two variables in different :ref:`api_guide_Block_en` could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_ for details.
+    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_ for details.
 
     Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
@@ -1836,7 +1907,9 @@ class Variable(metaclass=VariableMetaClass):
         assert (
             self.type == core.VarDesc.VarType.SELECTED_ROWS
             or self.type == core.VarDesc.VarType.DENSE_TENSOR
-        ), "only support a variable with SELECTED_ROWS or DENSE_TENSOR to be detached"
+        ), (
+            "only support a variable with SELECTED_ROWS or DENSE_TENSOR to be detached"
+        )
 
         with unique_name.guard(self.block.program._name_generator):
             output = self.block.create_var(
@@ -1912,7 +1985,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle
                 >>> paddle.disable_static()
 
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> inputs = []
                 >>> for _ in range(10):
                 ...     tmp = paddle.to_tensor(x)
@@ -1956,7 +2029,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import numpy as np
 
                 >>> # example1: return ndarray
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
                 ...     inputs2 = []
                 ...     for _ in range(10):
@@ -2005,7 +2078,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> import numpy as np
 
-                >>> x = np.ones([2, 2], np.float32) # type: ignore[var-annotated]
+                >>> x = np.ones([2, 2], np.float32)
                 >>> inputs2 = []
                 >>> for _ in range(10):
                 >>>     tmp = paddle.to_tensor(x)
@@ -2418,7 +2491,7 @@ class Variable(metaclass=VariableMetaClass):
                 LoD Level of current Var is: 0
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
-            raise Exception("SelectedRows DO NOT support lod")
+            raise NotImplementedError("SelectedRows DO NOT support lod")
         if self.type == core.VarDesc.VarType.STRINGS:
             return None
         return self.desc.lod_level()
@@ -2910,6 +2983,8 @@ class Variable(metaclass=VariableMetaClass):
             place = core.CPUPlace()
         elif p.is_cuda_pinned_place():
             place = core.CUDAPinnedPlace()
+        elif p.is_xpu_pinned_place():
+            place = core.XPUPinnedPlace()
         elif p.is_xpu_place():
             p = core.Place()
             p.set_place(t._place())
@@ -3064,9 +3139,9 @@ class OpProtoHolder:
         return cls._instance
 
     def __init__(self):
-        assert not hasattr(
-            self.__class__, "_instance"
-        ), "Please use `instance()` to get OpProtoHolder object!"
+        assert not hasattr(self.__class__, "_instance"), (
+            "Please use `instance()` to get OpProtoHolder object!"
+        )
         op_protos = get_all_op_protos()
         self.op_proto_map = {}
         for proto in op_protos:
@@ -3085,14 +3160,14 @@ class OpProtoHolder:
             raise ValueError(f'Operator "{type}" has not been registered.')
         return self.op_proto_map[type]
 
-    def update_op_proto(self):
+    def update_op_proto(self, new_op_list):
         op_protos = get_all_op_protos()
         custom_op_names = []
         for proto in op_protos:
             if proto.type not in self.op_proto_map:
                 self.op_proto_map[proto.type] = proto
                 custom_op_names.append(proto.type)
-
+        custom_op_names = list(set(custom_op_names).union(set(new_op_list)))
         return custom_op_names
 
     def has_op_proto(self, type):
@@ -3306,9 +3381,9 @@ class Operator:
             if inputs is not None:
                 for in_proto in proto.inputs:
                     found = find_name(inputs, in_proto.name)
-                    assert (
-                        found or in_proto.dispensable
-                    ), f"Input {in_proto.name} not found"
+                    assert found or in_proto.dispensable, (
+                        f"Input {in_proto.name} not found"
+                    )
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, (list, tuple)):
@@ -3499,9 +3574,9 @@ class Operator:
                 ...                              outputs={"Out": [var]})
                 >>> print(new_op._to_readable_code())
         """
-        assert isinstance(
-            skip_op_callstack, bool
-        ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+        assert isinstance(skip_op_callstack, bool), (
+            f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+        )
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
             outputs_str += f"{self.output_names[i]}="
@@ -3883,9 +3958,9 @@ class Operator:
             Variable: the Variable attribute.
         """
         attr_type = self.desc.attr_type(name, True)
-        assert (
-            attr_type == core.AttrType.VAR
-        ), f"Required type attr({name}) is Variable, but received {attr_type}"
+        assert attr_type == core.AttrType.VAR, (
+            f"Required type attr({name}) is Variable, but received {attr_type}"
+        )
         attr_var_name = self.desc.attr(name, True).name()
         return self.block._var_recursive(attr_var_name)
 
@@ -3900,9 +3975,9 @@ class Operator:
             Variables: the Variables attribute.
         """
         attr_type = self.desc.attr_type(name, True)
-        assert (
-            attr_type == core.AttrType.VARS
-        ), f"Required type attr({name}) is list[Variable], but received {attr_type}"
+        assert attr_type == core.AttrType.VARS, (
+            f"Required type attr({name}) is list[Variable], but received {attr_type}"
+        )
         attr_vars = [
             self.block._var_recursive(var.name())
             for var in self.desc.attr(name, True)
@@ -4013,7 +4088,7 @@ def _stride_in_no_check_dy2st_diff():
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
     if op_type in {"while", "conditional_block"}:
-        # Dont' need check while and conditional_block, it is only a wrapper of inner ops
+        # Don't need check while and conditional_block, it is only a wrapper of inner ops
         # we will stuck in inner op.
         return
     if outputs is not None:
@@ -4294,9 +4369,9 @@ class Block:
                 ...                     outputs={"Out": [new_var]})
                 >>> print(cur_block._to_readable_code())
         """
-        assert isinstance(
-            skip_op_callstack, bool
-        ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+        assert isinstance(skip_op_callstack, bool), (
+            f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+        )
         block_str = f"{{ // block_idx:{self.idx}  parent_idx:{self.parent_idx}  forward_idx:{self.forward_block_idx}  backward_idx:{self.backward_block_idx}\n"
         for var in list(self.vars.values()):
             block_str += f"    {var._to_readable_code()}\n"
@@ -4729,7 +4804,7 @@ class Block:
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
         Insert an Operator according to the giving arguments,
-        without sync_with_cpp to meke the compilation faster.
+        without sync_with_cpp to make the compilation faster.
 
         Args:
             index(int): the place that the operator to insert.
@@ -5030,9 +5105,9 @@ class IrNode:
         Args:
             node(core.Node): C++ Node.
         """
-        assert isinstance(
-            node, core.Node
-        ), "node must be the instance of core.Node."
+        assert isinstance(node, core.Node), (
+            "node must be the instance of core.Node."
+        )
         self.node = node
 
     def name(self):
@@ -5208,9 +5283,9 @@ class IrVarNode(IrNode):
         Args:
             node(core.Node): C++ Node.
         """
-        assert (
-            isinstance(node, core.Node) and node.is_var()
-        ), "node must be the instance of core.Node and it must be a variable node."
+        assert isinstance(node, core.Node) and node.is_var(), (
+            "node must be the instance of core.Node and it must be a variable node."
+        )
         super().__init__(node)
         self.node = node
 
@@ -5221,9 +5296,9 @@ class IrVarNode(IrNode):
         Args:
             shape(list): shape to be set.
         """
-        assert (
-            self.node.var() is not None
-        ), "The node variable description can not be None."
+        assert self.node.var() is not None, (
+            "The node variable description can not be None."
+        )
         self.node.var().set_shape(shape)
 
     def persistable(self):
@@ -5233,9 +5308,9 @@ class IrVarNode(IrNode):
         Returns:
             bool: indicate whether the variable is persistable.
         """
-        assert (
-            self.node.var() is not None
-        ), "The node variable description can not be None."
+        assert self.node.var() is not None, (
+            "The node variable description can not be None."
+        )
         return self.node.var().persistable()
 
     def type(self):
@@ -5245,9 +5320,9 @@ class IrVarNode(IrNode):
         Returns:
             core.VarDesc.VarType: the variable type.
         """
-        assert (
-            self.node.var() is not None
-        ), "The node variable description can not be None."
+        assert self.node.var() is not None, (
+            "The node variable description can not be None."
+        )
         return self.node.var().type()
 
     def dtype(self):
@@ -5257,9 +5332,9 @@ class IrVarNode(IrNode):
         Returns:
             core.VarDesc.VarType: the variable data type.
         """
-        assert (
-            self.node.var() is not None
-        ), "The node variable description can not be None."
+        assert self.node.var() is not None, (
+            "The node variable description can not be None."
+        )
         return self.node.var().dtype()
 
     def shape(self):
@@ -5269,9 +5344,9 @@ class IrVarNode(IrNode):
         Returns:
             list: the variable shape.
         """
-        assert (
-            self.node.var() is not None
-        ), "The node variable description can not be None."
+        assert self.node.var() is not None, (
+            "The node variable description can not be None."
+        )
         return self.node.var().shape()
 
     @property
@@ -5307,9 +5382,9 @@ class IrOpNode(IrNode):
         Args:
             node(core.Node): C++ Node.
         """
-        assert (
-            isinstance(node, core.Node) and node.is_op()
-        ), "node must be the instance of core.Node and it must be a operator node."
+        assert isinstance(node, core.Node) and node.is_op(), (
+            "node must be the instance of core.Node and it must be a operator node."
+        )
         super().__init__(node)
         self.node = node
 
@@ -5321,9 +5396,9 @@ class IrOpNode(IrNode):
             old_input_name(str): the old input name.
             new_input_name(str): the new input name.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         self.node.op()._rename_input(old_input_name, new_input_name)
 
     def rename_output(self, old_output_name, new_output_name):
@@ -5334,9 +5409,9 @@ class IrOpNode(IrNode):
             old_output_name(str): the old output name.
             new_output_name(str): the new output name.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
@@ -5349,9 +5424,9 @@ class IrOpNode(IrNode):
         Returns:
             list(str): the argument name list.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         return self.node.op().input(name)
 
     def output(self, name):
@@ -5364,9 +5439,9 @@ class IrOpNode(IrNode):
         Returns:
             list(str): the argument name list.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         return self.node.op().output(name)
 
     def set_type(self, new_type):
@@ -5376,9 +5451,9 @@ class IrOpNode(IrNode):
         Args:
             new_type(str): new operator type to be set.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         return self.node.op().set_type(new_type)
 
     def set_attr(self, name, val):
@@ -5395,9 +5470,9 @@ class IrOpNode(IrNode):
         """
         Update the value of the op desc's attribute by attribute's name.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         desc = self.node.op()
         if isinstance(val, Variable):
             desc.set_var_attr(name, val.desc)
@@ -5419,9 +5494,9 @@ class IrOpNode(IrNode):
         Returns:
             list(str): input arguments' names of this op node.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         return self.node.op().input_arg_names()
 
     def output_arg_names(self):
@@ -5431,9 +5506,9 @@ class IrOpNode(IrNode):
         Returns:
             list(str): output arguments' names of this op node.
         """
-        assert (
-            self.node.op() is not None
-        ), "The node operator description can not be None."
+        assert self.node.op() is not None, (
+            "The node operator description can not be None."
+        )
         return self.node.op().output_arg_names()
 
     @property
@@ -5473,9 +5548,9 @@ class IrGraph:
             graph(core.Graph): C++ Graph.
             for_test(bool): True for the test graph and false for the train graph.
         """
-        assert isinstance(
-            graph, core.Graph
-        ), "graph must be the instance of core.Graph."
+        assert isinstance(graph, core.Graph), (
+            "graph must be the instance of core.Graph."
+        )
         self.graph = graph
         self._for_test = for_test
 
@@ -5663,7 +5738,9 @@ class IrGraph:
             old_input_node.node in self.graph.nodes()
             and new_input_node.node in self.graph.nodes()
             and op_node.node in self.graph.nodes()
-        ), "The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes."
+        ), (
+            "The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes."
+        )
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
         new_input_node.append_output(op_node)
@@ -5683,7 +5760,9 @@ class IrGraph:
             old_output_node.node in self.graph.nodes()
             and new_output_node.node in self.graph.nodes()
             and op_node.node in self.graph.nodes()
-        ), "The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes."
+        ), (
+            "The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes."
+        )
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
         new_output_node.append_input(op_node)
@@ -5698,12 +5777,12 @@ class IrGraph:
             node_in(IrNode): the input node.
             node_out(IrNode): the output node.
         """
-        assert (
-            node_in.node in self.graph.nodes()
-        ), f"node_in({node_in.node.name()}) must be in the graph nodes."
-        assert (
-            node_out.node in self.graph.nodes()
-        ), f"node_out({node_out.node.name()}) must be in the graph nodes."
+        assert node_in.node in self.graph.nodes(), (
+            f"node_in({node_in.node.name()}) must be in the graph nodes."
+        )
+        assert node_out.node in self.graph.nodes(), (
+            f"node_out({node_out.node.name()}) must be in the graph nodes."
+        )
         node_in.append_output(node_out)
         node_out.append_input(node_in)
 
@@ -5864,9 +5943,9 @@ class IrGraph:
         for n in nodes:
             if n.name() == node_name:
                 target_node = n
-        assert (
-            target_node is not None
-        ), f"Cannot find the target node ({node_name})in the giving set."
+        assert target_node is not None, (
+            f"Cannot find the target node ({node_name})in the giving set."
+        )
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
@@ -5894,7 +5973,7 @@ class Program:
     it will contain nested block.
 
     Please reference the
-    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_
+    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_
     for details.
 
     A set of Program usually contains startup program and main program.
@@ -6326,9 +6405,9 @@ class Program:
                 ...                     outputs={"Out": [new_var]})
                 >>> print(cur_program._to_readable_code())
         """
-        assert isinstance(
-            skip_op_callstack, bool
-        ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+        assert isinstance(skip_op_callstack, bool), (
+            f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+        )
         program_str = ""
         for block in self.blocks:
             program_str += block._to_readable_code(skip_op_callstack)
@@ -6367,12 +6446,12 @@ class Program:
                 >>> print("program string without detail: {}".format(prog_string))
                 >>> print("program string with detail: {}".format(prog_string_with_details))
         """
-        assert isinstance(
-            throw_on_error, bool
-        ), f"The type of throw_on_error parameter is wrong, expected bool, but received {type(throw_on_error)}."
-        assert isinstance(
-            with_details, bool
-        ), f"The type of with_details parameter is wrong, expected bool, but received {type(with_details)}."
+        assert isinstance(throw_on_error, bool), (
+            f"The type of throw_on_error parameter is wrong, expected bool, but received {type(throw_on_error)}."
+        )
+        assert isinstance(with_details, bool), (
+            f"The type of with_details parameter is wrong, expected bool, but received {type(with_details)}."
+        )
 
         if with_details:
             res_str = ""
@@ -7758,9 +7837,9 @@ class EagerParamBase(core.eager.Tensor):
 
     @dygraph_only
     def initialize(self):
-        assert (
-            self._init_func is not None
-        ), "Required self._init_func is not None, but received None."
+        assert self._init_func is not None, (
+            "Required self._init_func is not None, but received None."
+        )
         self._init_func(self, None)
         # clear function handle to release resource
         self._init_func = None
@@ -7782,9 +7861,9 @@ class EagerParamBase(core.eager.Tensor):
         """
         Call init_op_creator function to create initializer operation in block.
         """
-        assert (
-            self._init_op_creator is not None
-        ), "Required self._init_op_creator is not None, but received None."
+        assert self._init_op_creator is not None, (
+            "Required self._init_op_creator is not None, but received None."
+        )
         self._init_op_creator(self, block)
 
     def __str__(self):
@@ -7848,6 +7927,18 @@ class EagerParamBase(core.eager.Tensor):
         new_param = EagerParamBase(self.shape, self.dtype, **state)
         core.eager.tensor_copy(self, new_param, device, blocking)
         return new_param
+
+    def __setattr__(self, name, value):
+        if (
+            name == 'color'
+            and hasattr(self, 'color')
+            and self.color is not None
+        ):
+            raise AttributeError(
+                f"Parameter '{self.name}' already has a 'color' attribute (used for distributed sharding parallel grouping) "
+                f"and cannot be reassigned."
+            )
+        super().__setattr__(name, value)
 
     __repr__ = __str__
 
@@ -8181,12 +8272,12 @@ def _cuda_graph_guard(cuda_graph_attr=None):
         cuda_graph_attr(str|None): The cuda graph attr with the format of:
                                    cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
     """
-    assert (
-        not in_dygraph_mode()
-    ), "cuda_graph_guard only works under static graph mode"
-    assert (
-        core.is_compiled_with_cuda()
-    ), "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
+    assert not in_dygraph_mode(), (
+        "cuda_graph_guard only works under static graph mode"
+    )
+    assert core.is_compiled_with_cuda(), (
+        "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
+    )
     pre_mode = _switch_cuda_graph_mode(cuda_graph_attr)
     try:
         yield
@@ -8195,29 +8286,23 @@ def _cuda_graph_guard(cuda_graph_attr=None):
 
 
 def _get_paddle_place(place):
-    "convert the string to paddle Place"
+    """
+    Convert given place to standard paddle Place object
+    """
     if place is None:
         return place
-    if isinstance(
-        place,
-        (
-            core.Place,
-            core.XPUPlace,
-            core.CPUPlace,
-            core.CUDAPinnedPlace,
-            core.CUDAPlace,
-            core.IPUPlace,
-            core.CustomPlace,
-        ),
-    ):
+
+    if isinstance(place, core.Place):
         return place
 
     if not isinstance(place, str):
         raise ValueError(
-            "place only support string which is 'Place' and so on."
+            f"place only support string which is 'Place' and so on, but got {place}"
         )
 
     place = place.lower()
+    if place.startswith("cuda"):
+        place = place.replace("cuda", "gpu")
     if place == "cpu":
         return core.CPUPlace()
 
@@ -8249,7 +8334,7 @@ def _get_paddle_place(place):
 
     # XPU
     available_xpu_place = re.match(r"xpu:\d+", place)
-    if available_xpu_place or place == "xpu":
+    if available_xpu_place or place == "xpu" or place == "xpu_pinned":
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 f"The device should not be {available_xpu_place.group()}, since PaddlePaddle is "
@@ -8257,6 +8342,8 @@ def _get_paddle_place(place):
             )
         if place == "xpu":
             return core.XPUPlace(0)
+        elif place == "xpu_pinned":
+            return core.XPUPinnedPlace()
         else:
             place_info_list = place.split(":", 1)
             device_id = place_info_list[1]
@@ -8284,7 +8371,7 @@ def _get_paddle_place(place):
         return core.CustomPlace(device_type, device_id)
 
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, XPUPinnedPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 
@@ -8484,7 +8571,6 @@ def auto_complete_op_role(program, op_role):
 # there would be always_forward_ops in your region, you should use "auto_complete_op_role"
 @signature_safe_contextmanager
 def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
-
     if paddle.framework.in_pir_mode():
         original_op_rope = pir.get_op_role()
         pir.set_op_role(op_role)
@@ -8497,7 +8583,6 @@ def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
 
 @signature_safe_contextmanager
 def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
-
     if paddle.framework.in_pir_mode():
         original_chunk_id = pir.get_chunk_id()
         pir.set_chunk_id(chunk_id)
@@ -8506,3 +8591,15 @@ def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode():
             pir.set_chunk_id(original_chunk_id)
+
+
+@signature_safe_contextmanager
+def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
+    if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
+        original_comp_op_name = pir.get_comp_op_name()
+        pir.set_comp_op_name(op_name)
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
+            pir.set_comp_op_name(original_comp_op_name)

@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <mutex>
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
@@ -24,10 +25,12 @@ static std::vector<phi::gpuDeviceProp> g_device_props;
 
 namespace phi::backends::gpu {
 
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 int DnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
   return dynload::cudnnGetVersion();  // NOLINT
 }
+#endif
 
 static int GetGPUDeviceCountImpl() {
   int driverVersion = 0;

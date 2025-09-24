@@ -230,7 +230,7 @@ def _download(url, path, md5sum=None, method='get'):
             retry_cnt += 1
         else:
             raise RuntimeError(
-                f"Download from {url} failed. " "Retry limit reached"
+                f"Download from {url} failed. Retry limit reached"
             )
 
         if not _download_methods[method](url, fullname):
@@ -276,7 +276,7 @@ def _decompress(fname):
     elif zipfile.is_zipfile(fname):
         uncompressed_path = _uncompress_file_zip(fname)
     else:
-        raise TypeError(f"Unsupport compress file type {fname}")
+        raise TypeError(f"Unsupported compress file type {fname}")
 
     return uncompressed_path
 
@@ -318,9 +318,9 @@ def _uncompress_file_tar(filepath, mode="r:*"):
         file_list_tmp = files.getnames()
         file_list = []
         for file in file_list_tmp:
-            assert (
-                file[0] != "/"
-            ), f"uncompress file path {file} should not start with /"
+            assert file[0] != "/", (
+                f"uncompress file path {file} should not start with /"
+            )
             file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)
@@ -366,3 +366,17 @@ def _is_a_single_dir(file_list):
         if file_name != new_file_list[i].split(os.sep)[0]:
             return False
     return True
+
+
+def check_and_create_dir(path):
+    if path is None:
+        return
+    assert isinstance(path, str), "path must be string type"
+    if os.path.exists(path):
+        if not os.path.isdir(path):
+            raise NotADirectoryError(f" path:'{path}' must be directory ")
+    else:
+        try:
+            os.makedirs(path)
+        except Exception as e:
+            raise OSError(f"Create '{path}' failed : {e}")

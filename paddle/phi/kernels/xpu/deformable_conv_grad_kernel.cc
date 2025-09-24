@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -36,6 +37,29 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               DenseTensor* offset_grad,
                               DenseTensor* filter_grad,
                               DenseTensor* mask_grad) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    if (dx)
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    if (offset_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(offset_grad->dims())),
+          0,
+          offset_grad);
+    if (filter_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    if (mask_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(mask_grad->dims())),
+                            0,
+                            mask_grad);
+    return;
+  }
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   T* dx_data = nullptr;
   T* dw_data = nullptr;
@@ -74,7 +98,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                         "Filter high and weight should less than 8 on xpu "
                         "in deformable_conv_grad op."));
 
-  const int batch_size = static_cast<int>(x.dims()[0]);
+  const int64_t batch_size = x.dims()[0];
   std::vector<int64_t> output_shape_vec(common::vectorize(out_grad.dims()));
   const T* output_grad_ptr = out_grad.data<T>();
   const T* input_ptr = x.data<T>();
@@ -102,18 +126,17 @@ void DeformableConvGradKernel(const Context& dev_ctx,
         dmask_data, errors::ResourceExhausted("XPU has no enough memory"));
   }
 
-  int input_dim = x.numel() / x.dims()[0];
-  int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask->numel() / mask->dims()[0];
-  int output_dim =
+  int64_t input_dim = x.numel() / x.dims()[0];
+  int64_t input_offset_dim = offset.numel() / offset.dims()[0];
+  int64_t input_mask_dim = mask->numel() / mask->dims()[0];
+  int64_t output_dim =
       output_shape_vec[1] * output_shape_vec[2] * output_shape_vec[3];
-  std::vector<int> ksize{static_cast<int>(filter.dims()[2]),
-                         static_cast<int>(filter.dims()[3])};
-  int n = im2col_step;
-  int c = x.dims()[1];
-  int h = x.dims()[2];
-  int w = x.dims()[3];
-  int f = filter.dims()[0];
+  std::vector<int64_t> ksize{filter.dims()[2], filter.dims()[3]};
+  int64_t n = static_cast<int64_t>(im2col_step);
+  int64_t c = x.dims()[1];
+  int64_t h = x.dims()[2];
+  int64_t w = x.dims()[3];
+  int64_t f = filter.dims()[0];
 
   T* filter_grad_tmp = RAII_GUARD.alloc_l3_or_gm<T>(filter_grad->numel());
   PADDLE_ENFORCE_NOT_NULL(
@@ -136,27 +159,27 @@ void DeformableConvGradKernel(const Context& dev_ctx,
       dev_ctx.x_context(), filter_grad_tmp, filter.numel(), zero);
   PADDLE_ENFORCE_XDNN_SUCCESS(r_filter, "constant");
 
-  for (int i = 0; i < batch_size / im2col_step; ++i) {
+  for (int64_t i = 0; i < batch_size / n; ++i) {
     int r = xpu::deformable_conv_grad<float, float, float, int>(
         dev_ctx.x_context(),
-        input_ptr + i * im2col_step * input_dim,
+        input_ptr + i * n * input_dim,
         filter_ptr,
-        offset_ptr + i * im2col_step * input_offset_dim,
-        mask_ptr + i * im2col_step * input_mask_dim,
-        output_grad_ptr + i * im2col_step * output_dim,
-        dx_data + i * im2col_step * input_dim,
+        offset_ptr + i * n * input_offset_dim,
+        mask_ptr + i * n * input_mask_dim,
+        output_grad_ptr + i * n * output_dim,
+        dx_data + i * n * input_dim,
         filter_grad_tmp,
-        doffset_data + i * im2col_step * input_offset_dim,
-        dmask_data + i * im2col_step * input_mask_dim,
+        doffset_data + i * n * input_offset_dim,
+        dmask_data + i * n * input_mask_dim,
         n,
         c,
         h,
         w,
         f,
         ksize,
-        strides,
-        paddings,
-        dilations,
+        std::vector<int64_t>{strides.begin(), strides.end()},
+        std::vector<int64_t>{paddings.begin(), paddings.end()},
+        std::vector<int64_t>{dilations.begin(), dilations.end()},
         groups,
         deformable_groups,
         nullptr,

@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -142,10 +147,12 @@ class TestSplitOp_AxisTensor(OpTest):
             'X': self.x,
             'AxisTensor': np.array([self.axis]).astype("int32"),
         }
-        self.attrs = {'sections': self.sections, 'num': self.num}
-
+        self.init_attrs()
         out = np.split(self.x, self.indices_or_sections, self.axis)
         self.outputs = {'Out': [(f'out{i}', out[i]) for i in range(len(out))]}
+
+    def init_attrs(self):
+        self.attrs = {'sections': self.sections, 'num': self.num}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -165,6 +172,47 @@ class TestSplitOp_AxisTensor(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
+
+
+class TestSplitOpZeroSize(TestSplitOp_AxisTensor):
+    def init_data(self):
+        self.x = np.random.random((0, 1, 6)).astype(self.dtype)
+        self.axis = 2
+        self.sections = [2, 2, 2]
+        self.indices_or_sections = 3
+
+    def init_attrs(self):
+        self.attrs = {'sections': self.sections, 'axis': self.axis}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
+
+
+class TestSplitOpZeroSize1(TestSplitOpZeroSize):
+    def init_data(self):
+        self.x = np.random.random((8, 0, 9)).astype(self.dtype)
+        self.axis = 2
+        self.sections = [1, 4, 4]
+        self.indices_or_sections = [1, 5]
+
+
+class TestSplitOpZeroSize2(TestSplitOpZeroSize):
+    def init_data(self):
+        self.x = np.random.random((5, 0, 12)).astype(self.dtype)
+        self.axis = 2
+        self.sections = [6, 0, 6]
+        self.indices_or_sections = [6, 6]
+
+
+class TestSplitOpZeroSize3(TestSplitOpZeroSize):
+    def init_data(self):
+        self.x = np.random.random((5, 0, 12)).astype(self.dtype)
+        self.axis = 1
+        self.sections = [6, 0, 6]
+        self.indices_or_sections = [6, 6]
 
 
 # attr(sections) is list containing Tensor
@@ -270,7 +318,8 @@ class TestSplitByrefOp(OpTest):
 
 def create_test_fp16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestSplitFP16Op(parent):
         def get_dtype(self):
@@ -289,8 +338,8 @@ create_test_fp16(TestSplitWithNumOp)
 
 def create_test_bf16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA or not support bfloat16",
     )
     class TestSplitBF16Op(parent):
@@ -298,11 +347,11 @@ def create_test_bf16(parent):
             return np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -322,7 +371,6 @@ create_test_bf16(TestSplitWithNumOp)
 
 
 class TestSplitAPI(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input_1 = np.random.random([4, 5, 6]).astype("int32")
@@ -362,7 +410,6 @@ class TestSplitAPI(unittest.TestCase):
 
 
 class TestSplitOpErrorStatic(unittest.TestCase):
-
     def test_errors_with_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -429,7 +476,6 @@ class TestSplitOpErrorDynamic(unittest.TestCase):
 
 
 class API_TestSplit(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
@@ -455,7 +501,6 @@ class API_TestSplit(unittest.TestCase):
 
 
 class API_TestSplit2(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
@@ -477,7 +522,6 @@ class API_TestSplit2(unittest.TestCase):
 
 
 class API_TestSplit3(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
@@ -492,7 +536,6 @@ class API_TestSplit3(unittest.TestCase):
 
 
 class API_TestSplit4(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
@@ -511,12 +554,13 @@ class API_TestSplit4(unittest.TestCase):
 
 
 class API_TestSplit5(unittest.TestCase):
-
     def test_out(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             with base.program_guard(base.Program(), base.Program()):
                 input_1 = np.random.random([5, 4]).astype("int32")
                 # input is a variable which shape is [5, 4]
@@ -532,7 +576,6 @@ class API_TestSplit5(unittest.TestCase):
 
 
 class API_TestSplit6(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
@@ -739,6 +782,67 @@ class API_TestEmptySplit(unittest.TestCase):
                     5,
                     5,
                 ],
+            )
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+
+class API_TestSplitZeroSize(unittest.TestCase):
+    def test_case1(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([3, 0, 6]).astype("float32")
+            input = paddle.to_tensor(input_1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[3, 0, 3], axis=-1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(
+                input_1,
+                [3, 3],
+                axis=-1,
+            )
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_case2(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([9, 0, 0]).astype("float32")
+            input = paddle.to_tensor(input_1, stop_gradient=False)
+            (
+                x0,
+                x1,
+                x2,
+            ) = paddle.split(input, num_or_sections=3, axis=0)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(
+                input_1,
+                3,
+                axis=0,
+            )
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+    def test_case3(self):
+        with base.dygraph.guard():
+            input_1 = np.random.random([9, 0, 0]).astype("float32")
+            input = paddle.to_tensor(input_1)
+            (
+                x0,
+                x1,
+                x2,
+            ) = paddle.split(input, num_or_sections=3, axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(
+                input_1,
+                3,
+                axis=1,
             )
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)

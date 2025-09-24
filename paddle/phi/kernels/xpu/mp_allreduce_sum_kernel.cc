@@ -31,4 +31,5 @@ PD_REGISTER_KERNEL(mp_allreduce_sum,
                    phi::MpAllReduceSumKernel,
                    float,
                    int,
-                   phi::dtype::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

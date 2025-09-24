@@ -64,10 +64,12 @@ class PassTest(unittest.TestCase):
         raise NotImplementedError
 
     def run_program(self, executor, startup_program, main_program):
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(startup_program, main_program):
-                fetches = executor.run(main_program, feed=self.feeds)
-                return fetches
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(startup_program, main_program),
+        ):
+            fetches = executor.run(main_program, feed=self.feeds)
+            return fetches
 
     def compare_accuracy(
         self, baseline_data, actual_data, atol=1e-5, rtol=1e-5

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -24,30 +24,12 @@ from paddle.base import core
 
 class TestBatchNorm(unittest.TestCase):
     def test_name(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             with base.dygraph.guard(p):
                 batch_norm1d = paddle.nn.BatchNorm1D(1, name="test")
 
     def test_error(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             # paddle.disable_static()
             x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
             x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
@@ -109,16 +91,7 @@ class TestBatchNorm(unittest.TestCase):
                 y.backward()
                 return y.numpy(), x1.gradient()
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             # [N, C]
             shape = [200000, 4]
             x = np.random.randn(*shape).astype("float32")
@@ -136,16 +109,7 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager_api(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
@@ -175,16 +139,7 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_dygraph(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             shape = [4, 10, 4, 4]
 
             def compute_v1(x, is_test, trainable_statistics):
@@ -309,16 +264,7 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(g3_3, g4, rtol=1e-05)
 
     def test_static(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             exe = base.Executor(p)
             shape = [4, 10, 16, 16]
 
@@ -366,15 +312,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
             paddle.set_default_dtype("float32")
         else:
             paddle.set_default_dtype("float64")
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def tearDown(self):
         paddle.set_default_dtype(self.original_dtyep)
@@ -478,15 +416,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
 
 class TestBatchNormUseGlobalStats(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
         self.init_test()
 
     # train mode

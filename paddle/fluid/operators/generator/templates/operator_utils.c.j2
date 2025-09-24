@@ -403,7 +403,7 @@ phi::KernelKey GetKernelTypeForVar(
       }
 {% else %}{# deal complex_promote #}
       if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
         return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
       }
 {% endif %}

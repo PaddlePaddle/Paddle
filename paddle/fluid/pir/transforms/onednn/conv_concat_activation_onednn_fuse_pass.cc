@@ -52,8 +52,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + activation_name_ + "Pattern";
   }
-
-  uint32_t benefit() const override { return benefit_; }
+  uint32_t benefit() const override { return static_cast<uint32_t>(benefit_); }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -89,6 +88,8 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation",
                          pat.Attr("fuse_activation" + std::to_string(i))},
                         {"fuse_residual_connection",
@@ -203,6 +204,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type", res.StrAttr("float32")},
+                        {"onednn_data_type", res.StrAttr("")},
                         {"fuse_activation", res.StrAttr(activation_name_)},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
@@ -227,6 +229,8 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation", res.StrAttr(activation_name_)},
                         {"fuse_residual_connection",
                          pat.Attr("fuse_residual_connection" +
@@ -305,8 +309,9 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "HardSigmoidPattern";
   }
-
-  uint32_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(concat_count_);
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -342,6 +347,8 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation",
                          pat.Attr("fuse_activation" + std::to_string(i))},
                         {"fuse_residual_connection",
@@ -422,6 +429,7 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type", res.StrAttr("float32")},
+                        {"onednn_data_type", res.StrAttr("")},
                         {"fuse_activation", res.StrAttr("hard_sigmoid")},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
@@ -446,6 +454,8 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation", res.StrAttr("hard_sigmoid")},
                         {"fuse_residual_connection",
                          pat.Attr("fuse_residual_connection" +
@@ -524,8 +534,9 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "GeluPattern";
   }
-
-  uint32_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(concat_count_);
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -561,6 +572,8 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation",
                          pat.Attr("fuse_activation" + std::to_string(i))},
                         {"fuse_residual_connection",
@@ -647,6 +660,7 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type", res.StrAttr("float32")},
+                        {"onednn_data_type", res.StrAttr("")},
                         {"fuse_activation", gelu},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
@@ -671,6 +685,8 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation", gelu},
                         {"fuse_residual_connection",
                          pat.Attr("fuse_residual_connection" +
@@ -749,8 +765,9 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "ClipPattern";
   }
-
-  uint32_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(concat_count_);
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -787,6 +804,8 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation",
                          pat.Attr("fuse_activation" + std::to_string(i))},
                         {"fuse_residual_connection",
@@ -883,6 +902,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type", res.StrAttr("float32")},
+                        {"onednn_data_type", res.StrAttr("")},
                         {"fuse_activation", res.StrAttr("clip")},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
@@ -907,6 +927,8 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                          pat.Attr("data_format" + std::to_string(i))},
                         {"mkldnn_data_type",
                          pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"onednn_data_type",
+                         pat.Attr("onednn_data_type" + std::to_string(i))},
                         {"fuse_activation", res.StrAttr("clip")},
                         {"fuse_residual_connection",
                          pat.Attr("fuse_residual_connection" +

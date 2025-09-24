@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-#include "paddle/cinn/runtime/intrinsic.h"
-#include "paddle/common/enforce.h"
+#include "paddle/cinn/lang/compute.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {
@@ -88,6 +86,51 @@ struct CacheReadRewriter : public ir::IRMutator<> {
   std::vector<Expr> parent_loops_;
 };
 
+Tensor MakeCacheTensor(const Tensor& tensor, const std::string& memory_type) {
+  std::string cache_name =
+      common::UniqName(tensor->name + "_" + memory_type + "_temp_buffer");
+  Tensor cache_tensor = lang::Compute(
+      tensor->shape,
+      [=](const std::vector<Expr>& dims) { return tensor(dims); },
+      cache_name);
+  cache_tensor->WithBuffer(memory_type);
+  return cache_tensor;
+}
+
+Expr MakeCacheBlock(const Expr& block,
+                    const std::vector<Expr>& loops,
+                    const Expr& read_expr,
+                    CacheBlockInfo* info,
+                    const std::string& memory_type) {
+  auto* block_realize = block.As<ScheduleBlockRealize>();
+  auto* block_node = block_realize->schedule_block.As<ir::ScheduleBlock>();
+
+  Expr cache_store = ir::Store::Make(
+      info->alloc, read_expr, read_expr.As<ir::Load>()->indices);
+
+  Expr cache_block = ir::ScheduleBlockRealize::Make(
+      block_realize->iter_values,
+      ir::ScheduleBlock::Make(block_node->iter_vars,
+                              {},
+                              {},
+                              info->alloc->name,
+                              ir::Block::Make({cache_store})));
+
+  Expr new_body = cache_block;
+  for (int i = loops.size() - 1; i >= 0; --i) {
+    auto* node = loops[i].As<ir::For>();
+    new_body = ir::For::Make(node->loop_var,
+                             node->min,
+                             node->extent,
+                             node->for_type(),
+                             node->device_api,
+                             ir::Block::Make({new_body}));
+  }
+  info->cache_block = std::move(new_body);
+
+  return cache_block;
+}
+
 }  // namespace
 
 Expr DyScheduleImpl::CacheRead(const Expr& block,
@@ -112,28 +155,14 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
   ChangeBodyToBlock::Change(&root);
   Expr read_expr = GetNthAccessExpr(block, read_buffer_index, false);
 
-  PADDLE_ENFORCE_NOT_NULL(
-      block.As<ScheduleBlockRealize>(),
-      ::common::errors::InvalidArgument([&]() {
-        std::ostringstream os;
-        os << "[IRScheduleError] An error occurred in the schedule primitive <"
-           << primitive << ">.\n"
-           << "[Error info] The read_expr is not a Load!\n"
-           << "[Expr info] The Expr of current schedule is "
-           << module_expr_.GetExprs() << ".";
-        return os.str();
-      }()));
-
-  auto tensor_indices = read_expr.As<ir::Load>()->indices;
   CacheBlockInfo info;
   info.read_tensor = read_expr.As<ir::Load>()->tensor.as_tensor_ref();
   info.write_tensor = MakeCacheTensor(info.read_tensor, memory_type);
   info.alloc = info.write_tensor;
 
-  auto read_ranges =
-      CalculateTensorRegions(block, tensor_indices, info.read_tensor, root);
-  auto new_block =
-      MakeCacheBlock(read_ranges, &info, memory_type, this->GetDeviceAPI());
+  std::vector<Expr> loops = GetLoops(block);
+  Expr new_block = MakeCacheBlock(block, loops, read_expr, &info, memory_type);
+
   FindInsertionPoint(root, &info, false);
 
   Expr target_load = analyzer::CanonicalizeLoopVar(
@@ -313,8 +342,10 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
       }()));
 
   auto& tensor = (*find_tensor.begin()).As<ir::Store>()->tensor;
-  tensor.as_tensor_ref()->WithBuffer(
-      memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+  if (memory_type == "local") {
+    tensor.as_tensor_ref()->WithBuffer(
+        memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+  }
 
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {

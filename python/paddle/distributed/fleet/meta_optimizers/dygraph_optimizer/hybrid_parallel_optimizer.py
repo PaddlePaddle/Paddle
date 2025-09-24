@@ -44,14 +44,17 @@ g_profile_optimizer_details_steps = int(
 
 __all__ = []
 
+SHARED_WEIGHT_SYNC_PREFIX = "@SHARED_WEIGHT"
+
 
 class HybridParallelClipGrad:
-    def __init__(self, clip, hcg, timers=None):
+    def __init__(self, clip, hcg, split_norm_comm=False, timers=None):
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
         self._timers = timers
         self.processed_steps = 0
+        self.split_norm_comm = split_norm_comm
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         if self.processed_steps < g_profile_optimizer_details_steps:
@@ -81,7 +84,7 @@ class HybridParallelClipGrad:
             # dist should reduce among sharding group、mp group、pp group
 
             # the else branch would suffice, but this branch remains here for number precision backward compatibility
-            if not (dp_flag and sharding_flag):
+            if not (dp_flag and sharding_flag) and not self.split_norm_comm:
                 paddle.distributed.all_reduce(
                     global_norm_var_dist,
                     group=self._hcg.get_check_parallel_group(sharding_flag),
@@ -242,13 +245,13 @@ class HybridParallelClipGrad:
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
-        if (
-            not isinstance(
-                paddle.framework._current_expected_place(), paddle.CustomPlace
-            )
-            or paddle.framework._current_expected_place().get_device_type()
-            == 'npu'
-        ):
+        if not isinstance(
+            paddle.framework._current_expected_place(), paddle.CustomPlace
+        ) or paddle.framework._current_expected_place().get_device_type() in [
+            'npu',
+            'iluvatar_gpu',
+            'metax_gpu',
+        ]:
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
             if g is None:
@@ -315,6 +318,8 @@ class HybridParallelOptimizer:
 
         self._sep_enable = self._hcg.get_sep_parallel_world_size() > 1
 
+        split_norm_comm = strategy.hybrid_configs["split_norm_comm"]
+
         if (
             isinstance(self._inner_opt._grad_clip, ClipGradByGlobalNorm)
             and not self._use_dp_mode
@@ -346,11 +351,11 @@ class HybridParallelOptimizer:
                 > 0
             ):
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg, self._timers
+                    inner_opt._grad_clip, hcg, split_norm_comm, self._timers
                 )
             else:
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg, self._timers
+                    inner_opt._grad_clip, hcg, split_norm_comm, self._timers
                 )
                 if inner_opt._parameter_list and isinstance(
                     inner_opt._parameter_list[0], dict
@@ -358,7 +363,10 @@ class HybridParallelOptimizer:
                     for item in inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
-                                inner_opt._grad_clip, hcg, self._timers
+                                inner_opt._grad_clip,
+                                hcg,
+                                split_norm_comm,
+                                self._timers,
                             )
         self.processed_steps = 0
 
@@ -397,7 +405,15 @@ class HybridParallelOptimizer:
                 )
             )
 
-    def _filter_fn(self, param, strategy):
+    def _pp_filter_fn(self, param):
+        color = getattr(param, 'color', -1)
+        if isinstance(color, dict):
+            color_color = color.get('color', -1)
+            if SHARED_WEIGHT_SYNC_PREFIX in str(color_color):
+                return True
+        return False
+
+    def _mp_filter_fn(self, param, strategy):
         p_name = param.name
         tar_param = strategy.sync_param_name
         if param.is_distributed is False:
@@ -406,12 +422,144 @@ class HybridParallelOptimizer:
                     return True
         return False
 
-    def _step(self, parameters_list):
-        if self.processed_steps < g_profile_optimizer_details_steps:
-            get_sync_logger().info("Starting hybridoptimizer step")
+    def syc_grad(self, param, src_rank, group, sync_mode):
+        if hasattr(param, "main_grad") and param.main_grad is not None:
+            assert param.grad is None
+            self._insert_sync(param.main_grad, src_rank, group, sync_mode)
+        elif param.grad is not None:
+            self._insert_sync(param.grad, src_rank, group, sync_mode)
 
+    def syc_param(self, param, src_rank, group, sync_mode):
+        # Param sync after opt
+        self._insert_sync(param, src_rank, group, sync_mode)
+
+    def syc_master_weight(self, param, src_rank, group, sync_mode):
+        # Master param sync after opt
+        if (
+            hasattr(self._inner_opt, "_multi_precision")
+            and self._inner_opt._multi_precision
+            and param.name in self._inner_opt._master_weights
+        ):
+            self._insert_sync(
+                self._inner_opt._master_weights[param.name],
+                src_rank,
+                group,
+                sync_mode,
+            )
+
+    def syc_moment(self, param, src_rank, group, sync_mode):
+        _OPTIMIZER_TYPES = (paddle.optimizer.Adam, paddle.optimizer.AdamW)
+
+        def recursive_isinstance(opt):
+            return isinstance(opt, _OPTIMIZER_TYPES) or (
+                hasattr(opt, "_inner_opt")
+                and recursive_isinstance(opt._inner_opt)
+            )
+
+        if recursive_isinstance(self._inner_opt):
+            if (
+                param.name
+                in self._inner_opt._accumulators[
+                    self._inner_opt._moment1_acc_str
+                ]
+            ):
+                moment1 = self._inner_opt._get_accumulator(
+                    self._inner_opt._moment1_acc_str, param
+                )
+                self._insert_sync(moment1, src_rank, group, sync_mode)
+
+            if (
+                param.name
+                in self._inner_opt._accumulators[
+                    self._inner_opt._moment2_acc_str
+                ]
+            ):
+                moment2 = self._inner_opt._get_accumulator(
+                    self._inner_opt._moment2_acc_str, param
+                )
+                self._insert_sync(moment2, src_rank, group, sync_mode)
+
+    def _sync_mp_grads(self, params, mp_configs):
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
+
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Starting mp grad sync")
+
+        # Grad sync before opt
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
+            for p in params:
+                self.syc_grad(p, src_rank, mp_group, mp_configs.sync_mode)
+
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Finished mp grad sync")
+
+    def _sync_mp_params_and_moments(self, params, mp_configs):
+        mp_group = self._hcg.get_model_parallel_group()
+        src_rank = self._hcg.get_model_parallel_group_src_rank()
+
+        # syc param and master weight after opt
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
+            for p in params:
+                self.syc_param(p, src_rank, mp_group, mp_configs.sync_mode)
+                self.syc_master_weight(
+                    p, src_rank, mp_group, mp_configs.sync_mode
+                )
+
+        # Moment sync after opt
+        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
+            for p in params:
+                self.syc_moment(p, src_rank, mp_group, mp_configs.sync_mode)
+
+    def _get_pp_sync_params(self, parameters_list):
+        pp_group = self._hcg.get_pipe_parallel_group()
+        params = None
+        pp_configs = None
+
+        if pp_group.nranks > 1:
+            pp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+                "pp_configs"
+            ]
+
+        if pp_configs and (pp_configs.sync_param or pp_configs.sync_moment):
+            params = sorted(
+                [p for p in parameters_list if self._pp_filter_fn(p)],
+                key=lambda p: p.name,
+            )
+        return params, pp_configs
+
+    def _sync_pp_params_and_moments(self, params, pp_configs):
+        pp_group = self._hcg.get_pipe_parallel_group()
+
+        # syc param and master weight after opt
+        if pp_group.nranks > 1 and pp_configs and pp_configs.sync_param:
+            for p in params:
+                assert hasattr(p, 'color') and 'broadcast_group' in p.color, (
+                    f"{p.name} has no color"
+                )
+                broadcast_group = p.color["broadcast_group"]
+                src_rank = min(broadcast_group.ranks)
+                self.syc_param(
+                    p, src_rank, broadcast_group, pp_configs.sync_mode
+                )
+                self.syc_master_weight(
+                    p, src_rank, broadcast_group, pp_configs.sync_mode
+                )
+
+        # Moment sync after opt
+        if pp_group.nranks > 1 and pp_configs and pp_configs.sync_moment:
+            for p in params:
+                assert hasattr(p, 'color') and 'broadcast_group' in p.color, (
+                    f"{p.name} has no color"
+                )
+                broadcast_group = p.color["broadcast_group"]
+                src_rank = min(broadcast_group.ranks)
+                self.syc_moment(
+                    p, src_rank, broadcast_group, pp_configs.sync_mode
+                )
+
+    def _get_mp_sync_params(self, parameters_list):
+        mp_group = self._hcg.get_model_parallel_group()
         params = None
         mp_configs = None
 
@@ -429,94 +577,29 @@ class HybridParallelOptimizer:
                 [
                     p
                     for p in parameters_list
-                    if self._filter_fn(p, fleet.fleet._user_defined_strategy)
+                    if self._mp_filter_fn(p, fleet.fleet._user_defined_strategy)
                 ],
                 key=lambda p: p.name,
             )
+        return params, mp_configs
 
-        def syc_grad(p):
-            if hasattr(p, "main_grad") and p.main_grad is not None:
-                assert p.grad is None
-                self._insert_sync(
-                    p.main_grad, src_rank, mp_group, mp_configs.sync_mode
-                )
-            elif p.grad is not None:
-                self._insert_sync(
-                    p.grad, src_rank, mp_group, mp_configs.sync_mode
-                )
-
+    def _step(self, parameters_list):
         if self.processed_steps < g_profile_optimizer_details_steps:
-            get_sync_logger().info("Starting mp grad sync")
+            get_sync_logger().info("Starting hybridoptimizer step")
 
-        # Grad sync before opt
-        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
-            for p in params:
-                syc_grad(p)
+        # Sync non-model-parallel parameters' grads/weights/moments for MP group consistency.
+        mp_params, mp_configs = self._get_mp_sync_params(parameters_list)
+        # Sync PP shared params' weights and moments to ensure consistency within the PP group.
+        # Note: Grads are synced in the pipeline parallel for compatibility.
+        pp_params, pp_configs = self._get_pp_sync_params(parameters_list)
 
-        if self.processed_steps < g_profile_optimizer_details_steps:
-            get_sync_logger().info("Finished mp grad sync")
+        self._sync_mp_grads(mp_params, mp_configs)
 
         self._inner_opt.step()
 
-        def syc_param(p):
-            # Param sync after opt
-            self._insert_sync(p, src_rank, mp_group, mp_configs.sync_mode)
+        self._sync_mp_params_and_moments(mp_params, mp_configs)
+        self._sync_pp_params_and_moments(pp_params, pp_configs)
 
-        def syc_master_weight(p):
-            # Master param sync after opt
-            if (
-                hasattr(self._inner_opt, "_multi_precision")
-                and self._inner_opt._multi_precision
-                and p.name in self._inner_opt._master_weights
-            ):
-                self._insert_sync(
-                    self._inner_opt._master_weights[p.name],
-                    src_rank,
-                    mp_group,
-                    mp_configs.sync_mode,
-                )
-
-        # syc param and master weight after opt
-        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
-            for p in params:
-                syc_param(p)
-                syc_master_weight(p)
-
-        def syc_moment(p):
-            if isinstance(
-                self._inner_opt,
-                (paddle.optimizer.Adam, paddle.optimizer.AdamW),
-            ):
-                if (
-                    p.name
-                    in self._inner_opt._accumulators[
-                        self._inner_opt._moment1_acc_str
-                    ]
-                ):
-                    moment1 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment1_acc_str, p
-                    )
-                    self._insert_sync(
-                        moment1, src_rank, mp_group, mp_configs.sync_mode
-                    )
-
-                if (
-                    p.name
-                    in self._inner_opt._accumulators[
-                        self._inner_opt._moment2_acc_str
-                    ]
-                ):
-                    moment2 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment2_acc_str, p
-                    )
-                    self._insert_sync(
-                        moment2, src_rank, mp_group, mp_configs.sync_mode
-                    )
-
-        # Moment sync after opt
-        if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
-            for p in params:
-                syc_moment(p)
         if self.processed_steps < g_profile_optimizer_details_steps:
             get_sync_logger().info("Finishing hybridoptimizer step")
         self.processed_steps += 1

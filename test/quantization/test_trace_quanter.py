@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """The quantizer layers should be traced by paddle.jit.save function."""
+
 import os
 import tempfile
 import unittest

@@ -106,7 +106,7 @@ template <typename T>
 class CudnnDataType;
 
 // CUDNN_DATA_FLOAT8 is not valid before cudnn8.6
-#if CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11800
+#if CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11080
 template <>
 class CudnnDataType<phi::dtype::float8_e4m3fn> {
  public:

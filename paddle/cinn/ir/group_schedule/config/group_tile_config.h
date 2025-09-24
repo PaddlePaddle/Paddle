@@ -41,10 +41,6 @@ struct ScheduleConfig {
     bool has_dynamic_reduce{false};
     bool can_apply_grid_reduce{false};
     bool can_apply_vectorize{false};
-    bool has_if_else_op{false};
-    bool has_select_op{false};
-    int continuous_arg_nums{0};
-    int fusion_group_arg_nums{0};
     IterSpaceType iter_space_type;
   };
 
@@ -54,6 +50,7 @@ struct ScheduleConfig {
     int64_t grid_reduce_num{1};
     int64_t spatial_inner_num{1};
     int64_t vectorize_factor{1};
+    int64_t reduce_inner_num{1};
     ReduceMethod reduce_method{NoneReduceMethod()};
   };
 
@@ -113,7 +110,7 @@ struct BucketInfoHash {
         bucket_info.space.size(),
         0,
         ::common::errors::InvalidArgument(
-            "Bucketinfo 's dimension number should be more than 0"));
+            "BucketInfo's dimension number should be more than 0"));
 
     std::size_t hash_past_dims = adt::hash_combine(
         std::hash<uint64_t>{}(bucket_info.space[0].lower_bound),

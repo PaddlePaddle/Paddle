@@ -27,8 +27,6 @@ namespace cub = hipcub;
 
 #include "paddle/phi/kernels/funcs/emb_eltwise_layer_norm_functor.h"
 
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {
@@ -200,9 +198,8 @@ void EmbEltwiseLayerNormFunctor<T>::operator()(int batch,
 
 template class EmbEltwiseLayerNormFunctor<float>;
 
-// device function 'operator()' is not supported until cuda 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 template class EmbEltwiseLayerNormFunctor<half>;
 #endif
 

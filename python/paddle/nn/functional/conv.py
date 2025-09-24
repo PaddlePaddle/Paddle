@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
@@ -25,6 +26,7 @@ from paddle.device import (
 )
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -271,9 +273,9 @@ def _conv_nd(
                     attrs={'axis': -1},
                 )
             else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
+                assert len(x_shape) > len(y_shape), (
+                    'The length of pre_bias must greater than the length of bias'
+                )
                 padding = len(x_shape) - len(y_shape) - channel_dim
                 bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding
@@ -290,6 +292,7 @@ def _conv_nd(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv1d(
     x: Tensor,
     weight: Tensor,
@@ -346,9 +349,13 @@ def conv1d(
 
             L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type
             of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel with shape [M, C/g, K], where M is
             the number of output channels, g is the number of groups, K is the kernel's size.
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
@@ -458,6 +465,15 @@ def conv1d(
     dilation = [1, *convert_to_list(dilation, 1, "dilation")]
     from ...tensor.creation import assign as paddle_assign
 
+    # cpu not support float16, need to convert dtype.
+    float16_convert = False
+    if paddle.device.get_device() == "cpu":
+        if weight.dtype == paddle.float16:
+            float16_convert = True
+            weight = weight.astype(x.dtype)
+        if bias is not None and bias.dtype == paddle.float16:
+            float16_convert = True
+            bias = bias.astype(x.dtype)
     weight = paddle_assign(weight)
     weight = unsqueeze(weight, axis=[-2])
 
@@ -475,7 +491,6 @@ def conv1d(
 
     squeeze_axis = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_axis])
-
     if in_dynamic_or_pir_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
@@ -530,9 +545,13 @@ def conv1d(
         if bias is not None:
             out = _add_with_axis(out, bias, axis=channel_dim)
     out = squeeze(out, axis=[squeeze_axis])
+    if float16_convert:
+        # out is float16
+        out = out.astype(paddle.float16)
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv2d(
     x: Tensor,
     weight: Tensor,
@@ -595,9 +614,13 @@ def conv2d(
             H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
@@ -877,7 +900,7 @@ def conv1d_transpose(
            None by default.
 
     Returns:
-        A  tensor representing the result of 1-D transpose convolution, whose
+        A tensor representing the result of 1-D transpose convolution, whose
         data type is the same with input. And its shape is (num_batches, channels, length)
         when data_format is `"NCL"` and (num_batches, length, channels) when data_format is
         `"NLC"`.
@@ -951,8 +974,7 @@ def conv1d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
             output_size = [*convert_to_list(output_size, 1, 'output_size'), 1]
@@ -1224,8 +1246,7 @@ def conv2d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple)):
             if _contain_var(output_size):
@@ -1326,9 +1347,9 @@ def conv2d_transpose(
                     attrs={'axis': -1},
                 )
             else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
+                assert len(x_shape) > len(y_shape), (
+                    'The length of pre_bias must greater than the length of bias'
+                )
                 padding = len(x_shape) - len(y_shape) - channel_dim
                 bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding
@@ -1345,6 +1366,7 @@ def conv2d_transpose(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv3d(
     x: Tensor,
     weight: Tensor,
@@ -1401,9 +1423,13 @@ def conv3d(
             H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\
             W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
@@ -1698,8 +1724,7 @@ def conv3d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
             output_size = convert_to_list(output_size, 3, 'output_size')

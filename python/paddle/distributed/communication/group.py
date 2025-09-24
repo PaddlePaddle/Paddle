@@ -91,6 +91,23 @@ class Group:
         else:
             return -1
 
+    def get_global_rank(self, rank: int) -> int | Literal[-1]:
+        """
+        Get the global rank of a process within a group.
+
+        Args:
+            rank (int): The local rank within the group.
+
+        Returns:
+            If the current process is a member of the group, returns the corresponding global rank;
+            otherwise returns -1.
+
+        """
+        if self.is_member():
+            return self.ranks[rank]
+        else:
+            return -1
+
     def __repr__(self) -> str:
         debug_str = (
             f"rank: {self.rank}, nranks: {self.nranks}, id: {self.id}, ranks: "
@@ -134,9 +151,9 @@ def _warn_cur_rank_not_in_group(group):
 
 def _get_or_throw_group_rank(global_rank, group):
     group_rank = group.get_group_rank(global_rank)
-    assert (
-        group_rank >= 0
-    ), f"The input rank {global_rank} can not be found inside the group {group.name}"
+    assert group_rank >= 0, (
+        f"The input rank {global_rank} can not be found inside the group {group.name}"
+    )
     return group_rank
 
 
@@ -201,9 +218,9 @@ def destroy_process_group(group: Group | None = None) -> None:
 
     """
     group = _get_global_group() if group is None else group
-    assert (
-        group.id in _GroupManager.group_map_by_id
-    ), f"Destroy group with id {group.id} is invalid."
+    assert group.id in _GroupManager.group_map_by_id, (
+        f"Destroy group with id {group.id} is invalid."
+    )
     if _is_global_group(group):
         _GroupManager.group_map_by_id.clear()
     else:
@@ -242,7 +259,7 @@ def get_group(id: int = 0) -> Group:
 
 def _sync_calc_stream(tensor):
     if framework.in_dynamic_mode():
-        return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+        return paddle._C_ops.sync_calc_stream(tensor)
     else:
         op_type = 'c_sync_calc_stream'
         helper = framework.LayerHelper(op_type, **locals())
@@ -345,9 +362,11 @@ def barrier(group: Group | None = None) -> None:
 
     barrier_tensor = paddle.full([1], 1, dtype="int32")
     if framework.in_dynamic_mode():
-        return paddle._legacy_C_ops.barrier(
-            barrier_tensor, barrier_tensor, 'ring_id', ring_id
-        )
+        # barrier is not available in xpu for now
+        if not paddle.framework.core.is_compiled_with_xpu():
+            return paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', ring_id
+            )
     else:
         op_type = 'barrier'
         if not isinstance(ring_id, int):

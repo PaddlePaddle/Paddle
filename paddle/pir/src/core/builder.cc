@@ -32,6 +32,12 @@ Operation *Builder::Build(OperationArgument &&argument) {
   if (chunk_id_ != -1) {
     op->set_attribute("chunk_id", Int32Attribute::get(context_, chunk_id_));
   }
+  if (comp_op_name_ != "") {
+    op->set_attribute("comp_op_name",
+                      StrAttribute::get(context_, comp_op_name_));
+    VLOG(6) << "Add comp_op_name: " << comp_op_name_
+            << " to op: " << op->name();
+  }
   return op;
 }
 
@@ -108,21 +114,27 @@ TensorNameAttribute Builder::tensor_name_attr(const std::string &value) {
 
 BuilderAttrGuard::BuilderAttrGuard(std::shared_ptr<Builder> builder,
                                    int op_role,
-                                   int chunk_id)
+                                   int chunk_id,
+                                   std::string comp_op_name)
     : builder_(builder),
       pre_op_role_(builder_->op_role()),
-      pre_chunk_id_(builder_->chunk_id()) {
+      pre_chunk_id_(builder_->chunk_id()),
+      pre_comp_op_name_(builder_->comp_op_name()) {
   if (pre_op_role_ != op_role) {
     builder_->set_op_role(op_role);
   }
   if (pre_chunk_id_ != chunk_id) {
     builder_->set_chunk_id(chunk_id);
   }
+  if (pre_comp_op_name_ != comp_op_name) {
+    builder_->set_comp_op_name(comp_op_name);
+  }
 }
 
 BuilderAttrGuard::~BuilderAttrGuard() {  // NOLINT
   builder_->set_op_role(pre_op_role_);
   builder_->set_chunk_id(pre_chunk_id_);
+  builder_->set_comp_op_name(pre_comp_op_name_);
 }
 
 }  // namespace pir

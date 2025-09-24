@@ -138,7 +138,7 @@ SpmdInfo UnbindInferSpmdReverse(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
-  // step2.3 get new dist attribute for output. the splitted
+  // step2.3 get new dist attribute for output. the split
   // cannot be sharded, if it is sharded, set it to replicated.
   std::vector<TensorDistAttr> out_dist_attrs_dst;
   for (int i = 0; i < nouts; i++) {

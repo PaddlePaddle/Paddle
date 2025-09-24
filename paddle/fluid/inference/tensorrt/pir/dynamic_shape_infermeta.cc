@@ -171,7 +171,98 @@ nvinfer1::DimsExprs ArgsortInferMeta(
   return output;
 }
 
+nvinfer1::DimsExprs Pad3dInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const ::pir::AttributeMap& op_attributes) {
+  const nvinfer1::DimsExprs x_dim = inputs[0];
+
+  nvinfer1::DimsExprs out_dims = {};
+  out_dims.nbDims = x_dim.nbDims;
+  out_dims.d[0] = x_dim.d[0];
+
+  auto data_format = op_attributes.at("data_format")
+                         .dyn_cast<::pir::StrAttribute>()
+                         .AsString();
+
+  auto paddings_iter = op_attributes.find("paddings");
+  if (paddings_iter != op_attributes.end()) {
+    auto paddings_attr =
+        paddings_iter->second.dyn_cast<::pir::ArrayAttribute>();
+    PADDLE_ENFORCE_NOT_NULL(paddings_attr,
+                            common::errors::InvalidArgument(
+                                "paddings_values must be an array attribute."));
+    PADDLE_ENFORCE_EQ(paddings_attr.size(),
+                      6,
+                      common::errors::InvalidArgument(
+                          "paddings must have 6 elements, but got %d.",
+                          paddings_attr.size()));
+
+    std::vector<int64_t> paddings(6);
+    for (size_t i = 0; i < 6; ++i) {
+      auto int_attr = paddings_attr[i].dyn_cast<::pir::Int64Attribute>();
+      PADDLE_ENFORCE_NOT_NULL(
+          int_attr,
+          common::errors::InvalidArgument(
+              "paddings_values must contain int64 attributes."));
+      paddings[i] = int_attr.data();
+    }
+
+    if (data_format == "NCDHW") {
+      out_dims.d[1] = x_dim.d[1];
+      out_dims.d[2] = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUM,
+          *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                  *x_dim.d[2],
+                                  *expr_builder.constant(paddings[4])),
+          *expr_builder.constant(paddings[5]));
+      out_dims.d[3] = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUM,
+          *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                  *x_dim.d[3],
+                                  *expr_builder.constant(paddings[2])),
+          *expr_builder.constant(paddings[3]));
+      out_dims.d[4] = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUM,
+          *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                  *x_dim.d[4],
+                                  *expr_builder.constant(paddings[0])),
+          *expr_builder.constant(paddings[1]));
+    } else if (data_format == "NDHWC") {
+      out_dims.d[4] = x_dim.d[4];
+      out_dims.d[1] = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUM,
+          *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                  *x_dim.d[1],
+                                  *expr_builder.constant(paddings[4])),
+          *expr_builder.constant(paddings[5]));
+      out_dims.d[2] = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUM,
+          *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                  *x_dim.d[2],
+                                  *expr_builder.constant(paddings[2])),
+          *expr_builder.constant(paddings[3]));
+      out_dims.d[3] = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUM,
+          *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                  *x_dim.d[3],
+                                  *expr_builder.constant(paddings[0])),
+          *expr_builder.constant(paddings[1]));
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported data_format: %s.", data_format));
+    }
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "paddings_values attribute is missing, required for TensorRT."));
+  }
+  return out_dims;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnfoldInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 }  // namespace paddle::inference::tensorrt::pir

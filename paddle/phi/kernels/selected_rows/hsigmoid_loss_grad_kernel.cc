@@ -37,7 +37,7 @@ static std::vector<int64_t> PathToRows(const DenseTensor& path) {
 }
 
 template <typename T, typename Context>
-void HSigmoidLossGradKernel(const Context& ctx,
+void HSigmoidLossGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& w,
                             const DenseTensor& label,
@@ -62,7 +62,7 @@ void HSigmoidLossGradKernel(const Context& ctx,
   phi::DDim temp_dim(w.dims());
   temp_dim[0] = static_cast<int>(real_rows.size());
   w_grad_value->Resize(temp_dim);
-  phi::HSigmoidLossGradKernelImpl<T>(ctx,
+  phi::HSigmoidLossGradKernelImpl<T>(dev_ctx,
                                      x,
                                      w,
                                      label,

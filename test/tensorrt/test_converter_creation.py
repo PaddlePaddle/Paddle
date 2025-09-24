@@ -120,6 +120,23 @@ class TestArangeTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestArangeTRTPatternCase1(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.arange
+        self.api_args = {
+            "start": np.array([0]).astype("float32"),
+            "end": np.array([6]).astype("float32"),
+            "step": np.array([1]).astype("float32"),
+        }
+        self.program_config = {"feed_list": []}
+        self.min_shape = {}
+        self.opt_shape = {}
+        self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestAssignOutTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.assign
@@ -229,6 +246,24 @@ class TestFullWithTensorCase1TRTPattern(TensorRTBaseTest):
         self.min_shape = {}
         self.opt_shape = {}
         self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestMeshgridTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.meshgrid
+        self.api_args = {
+            "x": [
+                np.random.random([20]).astype("float32"),
+                np.random.random([30]).astype("float32"),
+            ],
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [[10], [20]]}
+        self.opt_shape = {"x": [[20], [30]]}
+        self.max_shape = {"x": [[30], [40]]}
 
     def test_trt_result(self):
         self.check_trt_result()

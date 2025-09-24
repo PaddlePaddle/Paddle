@@ -128,7 +128,7 @@ __forceinline__ __device__ int8_t quant_helper(const data_t input,
 }
 
 template <typename data_t>
-__forceinline__ __device__ phi::dtype::float8_e4m3fn fp8_quant_helper(
+__forceinline__ __device__ phi::float8_e4m3fn fp8_quant_helper(
     const data_t input,
     const float scale,
     const int round_type,
@@ -137,7 +137,7 @@ __forceinline__ __device__ phi::dtype::float8_e4m3fn fp8_quant_helper(
   float quant_value = max_bound * scale * static_cast<float>(input);
   quant_value = quant_value > max_bound ? max_bound : quant_value;
   quant_value = quant_value < min_bound ? min_bound : quant_value;
-  return static_cast<phi::dtype::float8_e4m3fn>(quant_value);
+  return static_cast<phi::float8_e4m3fn>(quant_value);
 }
 
 template <typename data_t>
@@ -170,7 +170,7 @@ __global__ void QuantKernel(const data_t* input,
 
 template <typename data_t>
 __global__ void FP8QuantKernel(const data_t* input,
-                               phi::dtype::float8_e4m3fn* output,
+                               phi::float8_e4m3fn* output,
                                const float scale,
                                const int m,
                                const int n,
@@ -329,7 +329,7 @@ void DispatchWithDtype(
   } else if (fmha_out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
     fmha_buf.Resize(fmha_out->dims());
     dev_ctx.template Alloc<T>(&fmha_buf);
-    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(fmha_out);
+    dev_ctx.template Alloc<phi::float8_e4m3fn>(fmha_out);
   } else {
     dev_ctx.template Alloc<T>(fmha_out);
     fmha_buf = *fmha_out;
@@ -624,23 +624,44 @@ void DispatchWithDtype(
           pre_cache_length,
           &qktv_out);
 #elif defined(PADDLE_WITH_HIP)
+      phi::DenseTensor q, k, v, out;
+      q.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
+      k.Resize({{bsz,
+                 max_enc_len_this_time_data + pre_cache_length,
+                 kv_num_head,
+                 dim_head}});
+      v.Resize({{bsz,
+                 max_enc_len_this_time_data + pre_cache_length,
+                 kv_num_head,
+                 dim_head}});
+      out.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
+      dev_ctx.template Alloc<T>(&q, q.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&k, k.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&v, v.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&out, out.numel() * sizeof(T));
+      std::vector<int> axis = {0, 2, 1, 3};
+      funcs::Transpose<Context, T, 4> trans;
+      trans(dev_ctx, q_trans, &q, axis);
+      trans(dev_ctx, k_trans, &k, axis);
+      trans(dev_ctx, v_trans, &v, axis);
       const bool is_precache_infer = true;
       phi::FlashAttnKernel<T>(
           dev_ctx,
-          q_trans,
-          k_trans,
-          v_trans,
+          q,
+          k,
+          v,
           paddle::none /*fixed_seed_offset*/,
           paddle::none /*mask*/,
           0.0,
-          is_precache_infer ? true : causual /*precache_infer_casual*/,
+          is_precache_infer ? false : causual /*precache_infer_casual*/,
           false,
           is_precache_infer /*is_test*/,
           "" /*rng_name*/,
-          &qktv_out,
+          &out,
           &softmax_out,
           &softmax_lse,
           &seed_offset);
+      trans(dev_ctx, out, &qktv_out, axis);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
@@ -800,7 +821,7 @@ void DispatchWithDtype(
       if (fmha_out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
         FP8QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
             fmha_buf.data<T>(),
-            fmha_out->data<phi::dtype::float8_e4m3fn>(),
+            fmha_out->data<phi::float8_e4m3fn>(),
             out_scale,
             m,
             n,
@@ -870,179 +891,181 @@ void BlockMultiheadAttentionKernel(
     VLOG(1) << "qkv.dtype() int32";
     if (compute_dtype == "fp16") {
       VLOG(1) << "compute_dtype fp16";
-      DispatchWithDtype<phi::dtype::float16, Context>(dev_ctx,
-                                                      qkv,
-                                                      key_cache,
-                                                      value_cache,
-                                                      seq_lens_encoder,
-                                                      seq_lens_decoder,
-                                                      seq_lens_this_time,
-                                                      padding_offsets,
-                                                      cum_offsets,
-                                                      cu_seqlens_q,
-                                                      cu_seqlens_k,
-                                                      block_tables,
-                                                      pre_key_cache,
-                                                      pre_value_cache,
-                                                      rope_emb,
-                                                      mask,
-                                                      tgt_mask,
-                                                      cache_k_quant_scales,
-                                                      cache_v_quant_scales,
-                                                      cache_k_dequant_scales,
-                                                      cache_v_dequant_scales,
-                                                      qkv_out_scale,
-                                                      qkv_bias,
-                                                      out_shift,
-                                                      out_smooth,
-                                                      max_enc_len_this_time,
-                                                      max_dec_len_this_time,
-                                                      max_seq_len,
-                                                      block_size,
-                                                      use_neox_style,
-                                                      dynamic_cachekv_quant,
-                                                      quant_round_type,
-                                                      quant_max_bound,
-                                                      quant_min_bound,
-                                                      out_scale,
-                                                      compute_dtype,
-                                                      rope_theta,
-                                                      fmha_out,
-                                                      qkv_out,
-                                                      key_cache_out,
-                                                      value_cache_out);
+      DispatchWithDtype<phi::float16, Context>(dev_ctx,
+                                               qkv,
+                                               key_cache,
+                                               value_cache,
+                                               seq_lens_encoder,
+                                               seq_lens_decoder,
+                                               seq_lens_this_time,
+                                               padding_offsets,
+                                               cum_offsets,
+                                               cu_seqlens_q,
+                                               cu_seqlens_k,
+                                               block_tables,
+                                               pre_key_cache,
+                                               pre_value_cache,
+                                               rope_emb,
+                                               mask,
+                                               tgt_mask,
+                                               cache_k_quant_scales,
+                                               cache_v_quant_scales,
+                                               cache_k_dequant_scales,
+                                               cache_v_dequant_scales,
+                                               qkv_out_scale,
+                                               qkv_bias,
+                                               out_shift,
+                                               out_smooth,
+                                               max_enc_len_this_time,
+                                               max_dec_len_this_time,
+                                               max_seq_len,
+                                               block_size,
+                                               use_neox_style,
+                                               dynamic_cachekv_quant,
+                                               quant_round_type,
+                                               quant_max_bound,
+                                               quant_min_bound,
+                                               out_scale,
+                                               compute_dtype,
+                                               rope_theta,
+                                               fmha_out,
+                                               qkv_out,
+                                               key_cache_out,
+                                               value_cache_out);
     } else if (compute_dtype == "bf16") {
-#ifdef CUDA_BFLOAT16_AVAILABLE
-      DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
-                                                       qkv,
-                                                       key_cache,
-                                                       value_cache,
-                                                       seq_lens_encoder,
-                                                       seq_lens_decoder,
-                                                       seq_lens_this_time,
-                                                       padding_offsets,
-                                                       cum_offsets,
-                                                       cu_seqlens_q,
-                                                       cu_seqlens_k,
-                                                       block_tables,
-                                                       pre_key_cache,
-                                                       pre_value_cache,
-                                                       rope_emb,
-                                                       mask,
-                                                       tgt_mask,
-                                                       cache_k_quant_scales,
-                                                       cache_v_quant_scales,
-                                                       cache_k_dequant_scales,
-                                                       cache_v_dequant_scales,
-                                                       qkv_out_scale,
-                                                       qkv_bias,
-                                                       out_shift,
-                                                       out_smooth,
-                                                       max_enc_len_this_time,
-                                                       max_dec_len_this_time,
-                                                       max_seq_len,
-                                                       block_size,
-                                                       use_neox_style,
-                                                       dynamic_cachekv_quant,
-                                                       quant_round_type,
-                                                       quant_max_bound,
-                                                       quant_min_bound,
-                                                       out_scale,
-                                                       compute_dtype,
-                                                       rope_theta,
-                                                       fmha_out,
-                                                       qkv_out,
-                                                       key_cache_out,
-                                                       value_cache_out);
+#if defined(CUDA_BFLOAT16_AVAILABLE) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
+      DispatchWithDtype<phi::bfloat16, Context>(dev_ctx,
+                                                qkv,
+                                                key_cache,
+                                                value_cache,
+                                                seq_lens_encoder,
+                                                seq_lens_decoder,
+                                                seq_lens_this_time,
+                                                padding_offsets,
+                                                cum_offsets,
+                                                cu_seqlens_q,
+                                                cu_seqlens_k,
+                                                block_tables,
+                                                pre_key_cache,
+                                                pre_value_cache,
+                                                rope_emb,
+                                                mask,
+                                                tgt_mask,
+                                                cache_k_quant_scales,
+                                                cache_v_quant_scales,
+                                                cache_k_dequant_scales,
+                                                cache_v_dequant_scales,
+                                                qkv_out_scale,
+                                                qkv_bias,
+                                                out_shift,
+                                                out_smooth,
+                                                max_enc_len_this_time,
+                                                max_dec_len_this_time,
+                                                max_seq_len,
+                                                block_size,
+                                                use_neox_style,
+                                                dynamic_cachekv_quant,
+                                                quant_round_type,
+                                                quant_max_bound,
+                                                quant_min_bound,
+                                                out_scale,
+                                                compute_dtype,
+                                                rope_theta,
+                                                fmha_out,
+                                                qkv_out,
+                                                key_cache_out,
+                                                value_cache_out);
 #endif
     }
   } else {
     VLOG(1) << "qkv.dtype() NOT int32";
-    if (std::is_same<T, phi::dtype::float16>::value) {
-      DispatchWithDtype<phi::dtype::float16, Context>(dev_ctx,
-                                                      qkv,
-                                                      key_cache,
-                                                      value_cache,
-                                                      seq_lens_encoder,
-                                                      seq_lens_decoder,
-                                                      seq_lens_this_time,
-                                                      padding_offsets,
-                                                      cum_offsets,
-                                                      cu_seqlens_q,
-                                                      cu_seqlens_k,
-                                                      block_tables,
-                                                      pre_key_cache,
-                                                      pre_value_cache,
-                                                      rope_emb,
-                                                      mask,
-                                                      tgt_mask,
-                                                      cache_k_quant_scales,
-                                                      cache_v_quant_scales,
-                                                      cache_k_dequant_scales,
-                                                      cache_v_dequant_scales,
-                                                      qkv_out_scale,
-                                                      qkv_bias,
-                                                      out_shift,
-                                                      out_smooth,
-                                                      max_enc_len_this_time,
-                                                      max_dec_len_this_time,
-                                                      max_seq_len,
-                                                      block_size,
-                                                      use_neox_style,
-                                                      dynamic_cachekv_quant,
-                                                      quant_round_type,
-                                                      quant_max_bound,
-                                                      quant_min_bound,
-                                                      out_scale,
-                                                      compute_dtype,
-                                                      rope_theta,
-                                                      fmha_out,
-                                                      qkv_out,
-                                                      key_cache_out,
-                                                      value_cache_out);
-    } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-#ifdef CUDA_BFLOAT16_AVAILABLE
-      DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
-                                                       qkv,
-                                                       key_cache,
-                                                       value_cache,
-                                                       seq_lens_encoder,
-                                                       seq_lens_decoder,
-                                                       seq_lens_this_time,
-                                                       padding_offsets,
-                                                       cum_offsets,
-                                                       cu_seqlens_q,
-                                                       cu_seqlens_k,
-                                                       block_tables,
-                                                       pre_key_cache,
-                                                       pre_value_cache,
-                                                       rope_emb,
-                                                       mask,
-                                                       tgt_mask,
-                                                       cache_k_quant_scales,
-                                                       cache_v_quant_scales,
-                                                       cache_k_dequant_scales,
-                                                       cache_v_dequant_scales,
-                                                       qkv_out_scale,
-                                                       qkv_bias,
-                                                       out_shift,
-                                                       out_smooth,
-                                                       max_enc_len_this_time,
-                                                       max_dec_len_this_time,
-                                                       max_seq_len,
-                                                       block_size,
-                                                       use_neox_style,
-                                                       dynamic_cachekv_quant,
-                                                       quant_round_type,
-                                                       quant_max_bound,
-                                                       quant_min_bound,
-                                                       out_scale,
-                                                       compute_dtype,
-                                                       rope_theta,
-                                                       fmha_out,
-                                                       qkv_out,
-                                                       key_cache_out,
-                                                       value_cache_out);
+    if (std::is_same<T, phi::float16>::value) {
+      DispatchWithDtype<phi::float16, Context>(dev_ctx,
+                                               qkv,
+                                               key_cache,
+                                               value_cache,
+                                               seq_lens_encoder,
+                                               seq_lens_decoder,
+                                               seq_lens_this_time,
+                                               padding_offsets,
+                                               cum_offsets,
+                                               cu_seqlens_q,
+                                               cu_seqlens_k,
+                                               block_tables,
+                                               pre_key_cache,
+                                               pre_value_cache,
+                                               rope_emb,
+                                               mask,
+                                               tgt_mask,
+                                               cache_k_quant_scales,
+                                               cache_v_quant_scales,
+                                               cache_k_dequant_scales,
+                                               cache_v_dequant_scales,
+                                               qkv_out_scale,
+                                               qkv_bias,
+                                               out_shift,
+                                               out_smooth,
+                                               max_enc_len_this_time,
+                                               max_dec_len_this_time,
+                                               max_seq_len,
+                                               block_size,
+                                               use_neox_style,
+                                               dynamic_cachekv_quant,
+                                               quant_round_type,
+                                               quant_max_bound,
+                                               quant_min_bound,
+                                               out_scale,
+                                               compute_dtype,
+                                               rope_theta,
+                                               fmha_out,
+                                               qkv_out,
+                                               key_cache_out,
+                                               value_cache_out);
+    } else if (std::is_same<T, phi::bfloat16>::value) {
+#if defined(CUDA_BFLOAT16_AVAILABLE) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
+      DispatchWithDtype<phi::bfloat16, Context>(dev_ctx,
+                                                qkv,
+                                                key_cache,
+                                                value_cache,
+                                                seq_lens_encoder,
+                                                seq_lens_decoder,
+                                                seq_lens_this_time,
+                                                padding_offsets,
+                                                cum_offsets,
+                                                cu_seqlens_q,
+                                                cu_seqlens_k,
+                                                block_tables,
+                                                pre_key_cache,
+                                                pre_value_cache,
+                                                rope_emb,
+                                                mask,
+                                                tgt_mask,
+                                                cache_k_quant_scales,
+                                                cache_v_quant_scales,
+                                                cache_k_dequant_scales,
+                                                cache_v_dequant_scales,
+                                                qkv_out_scale,
+                                                qkv_bias,
+                                                out_shift,
+                                                out_smooth,
+                                                max_enc_len_this_time,
+                                                max_dec_len_this_time,
+                                                max_seq_len,
+                                                block_size,
+                                                use_neox_style,
+                                                dynamic_cachekv_quant,
+                                                quant_round_type,
+                                                quant_max_bound,
+                                                quant_min_bound,
+                                                out_scale,
+                                                compute_dtype,
+                                                rope_theta,
+                                                fmha_out,
+                                                qkv_out,
+                                                key_cache_out,
+                                                value_cache_out);
 #endif
     }
   }
@@ -1051,13 +1074,14 @@ void BlockMultiheadAttentionKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#ifdef CUDA_BFLOAT16_AVAILABLE
+#if defined(CUDA_BFLOAT16_AVAILABLE) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t) {
   kernel->InputAt(24).SetBackend(phi::Backend::CPU);
   kernel->InputAt(25).SetBackend(phi::Backend::CPU);
@@ -1067,7 +1091,7 @@ PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    int32_t) {
   kernel->InputAt(24).SetBackend(phi::Backend::CPU);
   kernel->InputAt(25).SetBackend(phi::Backend::CPU);

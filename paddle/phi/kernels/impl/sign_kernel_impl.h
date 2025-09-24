@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {

@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
+from op_test import (
+    get_device,
+    get_device_place,
+    get_devices,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -225,15 +231,7 @@ class TestRmspropOp(TestBase):
             )
 
     def test_rmsprop(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        places = get_places()
 
         size = (128, 320)
         for place in places:
@@ -403,11 +401,11 @@ class TestRMSOpMultiPrecision(unittest.TestCase):
         )
         optimizer._multi_precision = use_amp
         for idx in range(2):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -423,22 +421,8 @@ class TestRMSOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
         paddle.enable_static()
 
-    def _get_places(self):
-        import paddle
-
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
-        for place in self._get_places():
+        for place in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_rms_op_dygraph_place_amp(place, use_amp)
@@ -448,7 +432,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
     def dygraph_rmsprop_mp(self, mp, use_amp):
         paddle.disable_static()
         paddle.seed(100)
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.RMSProp(0.5, parameters=model.parameters())
@@ -479,7 +463,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
 
@@ -534,7 +518,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
                 optimizer.minimize(loss)
                 if mp:
                     optimizer.amp_init(
-                        place=paddle.CUDAPlace(0),
+                        place=get_device_place(),
                         scope=paddle.static.global_scope(),
                     )
                     x = np.random.random(size=(2, 2)).astype('float16')
@@ -543,7 +527,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
 
         if mp:
             optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+                place=get_device_place(), scope=paddle.static.global_scope()
             )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
@@ -567,7 +551,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             paddle.seed(100)
             np.random.seed(100)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             optimizer = paddle.optimizer.RMSProp(0.1)
@@ -599,7 +583,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
 
             if use_amp:
                 optimizer.amp_init(
-                    place=paddle.CUDAPlace(0),
+                    place=get_device_place(),
                     scope=paddle.static.global_scope(),
                 )
                 x = np.random.random(size=(2, 2)).astype('float16')
@@ -614,7 +598,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
             return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_rmsprop_mp(use_amp=True, mp=True)

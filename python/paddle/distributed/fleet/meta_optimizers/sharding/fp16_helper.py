@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import (
     OP_ROLE_KEY,
     OpRole,
@@ -95,10 +96,8 @@ class FP16Utils:
                 continue
             output_name = op.desc.output_arg_names()[0]
             # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-            param_name = (
-                output_name.strip("@GRAD@MERGED")
-                if "@MERGED" in output_name
-                else output_name.strip("@GRAD")
+            param_name = output_name.removesuffix("@MERGED").removesuffix(
+                "@GRAD"
             )
             if param_name not in shard.global_params:
                 raise ValueError(
@@ -124,10 +123,9 @@ class FP16Utils:
                 reversed_x_paramname = []
                 for input_name in op.desc.input('X'):
                     # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-                    if "@MERGED" in input_name:
-                        param_name = input_name.strip("@GRAD@MERGED")
-                    else:
-                        param_name = input_name.strip("@GRAD")
+                    param_name = input_name.removesuffix(
+                        "@MERGED"
+                    ).removesuffix("@GRAD")
                     if param_name not in shard.global_params:
                         raise ValueError(
                             "Input 'X' of check_finite_and_unscale must"
@@ -148,10 +146,10 @@ class FP16Utils:
                         if worker_idx == shard.worker_idx
                     }
                 )
-                assert (
-                    to_check_param == should_check_param
-                ), f"amp \
+                assert to_check_param == should_check_param, (
+                    f"amp \
                     check_finite_and_unscale checking miss [{should_check_param - to_check_param}] and got unexpected [{to_check_param - should_check_param}]"
+                )
 
         if update_loss_scaling_op_idx == -1:
             return
@@ -182,12 +180,12 @@ class FP16Utils:
             # this allreduce communication should not overlap with calc
             block._insert_op_without_sync(
                 update_loss_scaling_op_idx,
-                type='c_allreduce_max',
-                inputs={'X': inf_var_int32},
-                outputs={'Out': inf_var_int32},
+                type='all_reduce',
+                inputs={'x': inf_var_int32},
+                outputs={'out': inf_var_int32},
                 attrs={
                     'ring_id': ring_id,
-                    'use_calc_stream': True,
+                    'op_type': paddle.distributed.ReduceOp.MAX,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
@@ -249,12 +247,12 @@ class FP16Utils:
                 continue
             block._insert_op_without_sync(
                 update_loss_scaling_op_idx,
-                type='c_allreduce_max',
-                inputs={'X': inf_var_int32},
-                outputs={'Out': inf_var_int32},
+                type='all_reduce',
+                inputs={'x': inf_var_int32},
+                outputs={'out': inf_var_int32},
                 attrs={
                     'ring_id': ring_id,
-                    'use_calc_stream': True,
+                    'op_type': paddle.distributed.ReduceOp.MAX,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )

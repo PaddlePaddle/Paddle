@@ -31,7 +31,7 @@
 namespace paddle {
 namespace framework {
 
-class CostData {
+class PADDLE_API CostData {
  public:
   CostData() {}
 
@@ -69,7 +69,7 @@ class CostData {
       NOT_MEASURED};  // communication cost of the whole program or graph
 };
 
-class CostModel {
+class PADDLE_API CostModel {
  public:
   CostModel() {}
   ~CostModel() {}

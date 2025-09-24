@@ -39,6 +39,7 @@ limitations under the License.
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
@@ -202,11 +203,11 @@ struct alignas(sizeof(T) * N) Pack {
 template <typename SRC, typename DST>
 struct DirectLoad {
   using LoadType = DST;
-  DirectLoad(const SRC* src, int32_t row_size) : src(src), row_size(row_size) {}
+  DirectLoad(const SRC* src, int64_t row_size) : src(src), row_size(row_size) {}
   template <int N>
-  __device__ void load(DST* dst, int32_t row, int32_t col) const {
+  __device__ void load(DST* dst, int64_t row, int64_t col) const {
     Pack<SRC, N> pack;
-    const int32_t offset = (row * row_size + col) / N;
+    const int64_t offset = (row * row_size + col) / N;
     pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
 #pragma unroll
     for (int i = 0; i < N; ++i) {
@@ -214,7 +215,7 @@ struct DirectLoad {
     }
   }
   const SRC* src;
-  int32_t row_size;
+  int64_t row_size;
 };
 
 template <typename SRC, typename DST>
@@ -427,8 +428,8 @@ template <typename LOAD,
 __global__ void __launch_bounds__(block_size)
     RmsNormBlockSMemImpl(LOAD load,
                          STORE store,
-                         const int32_t rows,
-                         const int32_t cols,
+                         const int64_t rows,
+                         const int64_t cols,
                          const float epsilon,
                          ComputeType col_divisor,
                          float* inv_var_data) {
@@ -437,10 +438,10 @@ __global__ void __launch_bounds__(block_size)
   auto* buf = reinterpret_cast<LoadType*>(shared_buf);
   const int tid = threadIdx.x;
   assert(cols % kPackSize == 0);
-  const int num_packs = static_cast<int>(cols) / kPackSize;
-  for (int32_t row = blockIdx.x; row < rows; row += gridDim.x) {
+  const int64_t num_packs = cols / kPackSize;
+  for (int64_t row = blockIdx.x; row < rows; row += gridDim.x) {
     ComputeType thread_sum_square = 0;
-    for (int pack_id = tid; pack_id < num_packs; pack_id += block_size) {
+    for (int64_t pack_id = tid; pack_id < num_packs; pack_id += block_size) {
       LoadType pack[kPackSize];
       load.template load<kPackSize>(pack, row, pack_id * kPackSize);
 #pragma unroll
@@ -462,10 +463,10 @@ __global__ void __launch_bounds__(block_size)
     if (inv_var_data != nullptr) {
       inv_var_data[row] = row_inv_rms;
     }
-    for (int pack_id = tid; pack_id < num_packs; pack_id += block_size) {
+    for (int64_t pack_id = tid; pack_id < num_packs; pack_id += block_size) {
       ComputeType pack[kPackSize];
 #pragma unroll
-      for (int i = 0; i < kPackSize; ++i) {
+      for (int64_t i = 0; i < kPackSize; ++i) {
         pack[i] = static_cast<ComputeType>(buf[i * num_packs + pack_id]) *
                   row_inv_rms;
       }
@@ -483,8 +484,8 @@ inline GPU(Error_t) LaunchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
                                                LOAD load,
                                                STORE store,
                                                int smem,
-                                               const int32_t rows,
-                                               const int32_t cols,
+                                               const int64_t rows,
+                                               const int64_t cols,
                                                const float epsilon,
                                                ComputeType col_divisor,
                                                float* inv_var_data) {
@@ -540,8 +541,8 @@ inline GPU(Error_t)
     TryDispatchRmsNormBlockSMemImplBlockSize(GPU(Stream_t) stream,
                                              LOAD load,
                                              STORE store,
-                                             const int32_t rows,
-                                             const int32_t cols,
+                                             const int64_t rows,
+                                             const int64_t cols,
                                              const float epsilon,
                                              ComputeType col_divisor,
                                              bool* success,
@@ -622,7 +623,6 @@ inline GPU(Error_t)
   }();
 
   const size_t smem = cols * sizeof(typename LOAD::LoadType);
-
   int max_active_blocks_conf_1;
   {
     GPU(Error_t)
@@ -729,6 +729,7 @@ inline GPU(Error_t)
       return err;
     }
   }
+
   if (max_active_blocks_conf_2 == max_active_blocks_conf_1 ||
       (max_active_blocks_conf_2 > 0 && rows <= sm_count)) {
     *success = true;
@@ -746,7 +747,6 @@ inline GPU(Error_t)
                                                          col_divisor,
                                                          inv_var_data);
   }
-
   *success = true;
   return LaunchRmsNormBlockSMemImpl<LOAD,
                                     STORE,
@@ -769,8 +769,8 @@ struct TryDispatchRmsNormBlockSMemImplPackSize {
   operator()(GPU(Stream_t) stream,
              LOAD load,
              STORE store,
-             const int32_t rows,
-             const int32_t cols,
+             const int64_t rows,
+             const int64_t cols,
              const float epsilon,
              ComputeType col_divisor,
              bool* success,
@@ -824,8 +824,8 @@ template <typename LOAD, typename STORE, typename ComputeType>
 inline GPU(Error_t) TryDispatchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
                                                     LOAD load,
                                                     STORE store,
-                                                    const int32_t rows,
-                                                    const int32_t cols,
+                                                    const int64_t rows,
+                                                    const int64_t cols,
                                                     const float epsilon,
                                                     ComputeType col_divisor,
                                                     bool* success,
@@ -848,12 +848,12 @@ inline typename std::enable_if<!std::is_same<ComputeType, double>::value,
 DispatchRmsNorm(GPU(Stream_t) stream,
                 LOAD load,
                 STORE store,
-                const int32_t rows,
-                const int32_t cols,
+                const int64_t rows,
+                const int64_t cols,
                 const float epsilon,
                 float* inv_var_data) {
   const ComputeType col_divisor = 1.0f / cols;
-  bool dispatch_smem_impl_success;
+  bool dispatch_smem_impl_success = false;
   {
     GPU(Error_t)
     err = TryDispatchRmsNormBlockSMemImpl<LOAD, STORE, ComputeType>(
@@ -870,6 +870,16 @@ DispatchRmsNorm(GPU(Stream_t) stream,
       return err;
     }
   }
+  PADDLE_ENFORCE_EQ(
+      dispatch_smem_impl_success,
+      true,
+      common::errors::Fatal(
+          "Failed to launch RMSNorm kernel with shared memory implementation!"
+          "This is likely due to large 'cols' value (%ld) requiring too much "
+          "shared memory. "
+          "Consider using smaller 'cols' or switching to global memory "
+          "implementation.",
+          cols));
   return GPU(Success);
 }
 
@@ -924,15 +934,15 @@ struct SkipLoadAndStoreResidual {
 
 template <typename SRC, typename DST>
 struct AffineStore {
-  AffineStore(DST* y, int32_t row_size, const DST* gamma, const DST* beta)
+  AffineStore(DST* y, int64_t row_size, const DST* gamma, const DST* beta)
       : y(y), row_size(row_size), gamma(gamma), beta(beta) {}
   template <int N>
-  __device__ void store(const SRC* src, int32_t row, int32_t col) {
+  __device__ void store(const SRC* src, int64_t row, int64_t col) {
     Pack<DST, N> y_pack;
     Pack<DST, N> gamma_pack;
     Pack<DST, N> beta_pack;
-    const int32_t offset = (row * row_size + col) / N;
-    const int32_t gamma_offset = col / N;
+    const int64_t offset = (row * row_size + col) / N;
+    const int64_t gamma_offset = col / N;
     gamma_pack = *(reinterpret_cast<const Pack<DST, N>*>(gamma) + gamma_offset);
 
     // Author(Zhengzekang): Bias maybe optional.
@@ -956,7 +966,7 @@ struct AffineStore {
     *(reinterpret_cast<Pack<DST, N>*>(y) + offset) = y_pack;
   }
   DST* y;
-  int32_t row_size;
+  int64_t row_size;
   const DST* gamma;
   const DST* beta;
 };
@@ -1048,7 +1058,7 @@ struct AffineQuantStore {
       float normalized_val =
           normalized_i * static_cast<float>(gamma_pack.elem[i]) +
           static_cast<float>(beta_pack.elem[i]);
-      if constexpr (std::is_same_v<OutType, phi::dtype::float8_e4m3fn>) {
+      if constexpr (std::is_same_v<OutType, phi::float8_e4m3fn>) {
         y_pack.elem[i] = FP8QuantHelperFunc<float, OutType>(normalized_val,
                                                             quant_out_scale,
                                                             quant_round_type,
@@ -1093,6 +1103,18 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
+  if (x.numel() == 0) {
+    if (out) dev_ctx.template Alloc<T>(out);
+    if (residual_out) dev_ctx.template Alloc<T>(residual_out);
+    if (inv_var) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(inv_var->dims())),
+          0.f,
+          inv_var);
+    }
+    return;
+  }
   if (out->dtype() == phi::DataType::INT8 ||
       out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
     PADDLE_ENFORCE_EQ(quant_scale != 0.0f,
@@ -1132,8 +1154,8 @@ void RmsNormKernel(const Context& dev_ctx,
     inv_var_data = dev_ctx.template Alloc<float>(inv_var);
   }
 
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }
@@ -1165,17 +1187,17 @@ void RmsNormKernel(const Context& dev_ctx,
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
-      phi::dtype::float8_e4m3fn* out_data =
-          dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
-      AffineQuantStore<phi::dtype::float8_e4m3fn, ComputeType, T, true, true>
-          store(out_data,
-                cols,
-                norm_weight_data,
-                norm_bias_data,
-                quant_scale,
-                quant_round_type,
-                quant_max_bound,
-                quant_min_bound);
+      phi::float8_e4m3fn* out_data =
+          dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
+      AffineQuantStore<phi::float8_e4m3fn, ComputeType, T, true, true> store(
+          out_data,
+          cols,
+          norm_weight_data,
+          norm_bias_data,
+          quant_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else {
@@ -1204,17 +1226,17 @@ void RmsNormKernel(const Context& dev_ctx,
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
-      phi::dtype::float8_e4m3fn* out_data =
-          dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
-      AffineQuantStore<phi::dtype::float8_e4m3fn, ComputeType, T, true, true>
-          store(out_data,
-                cols,
-                norm_weight_data,
-                norm_bias_data,
-                quant_scale,
-                quant_round_type,
-                quant_max_bound,
-                quant_min_bound);
+      phi::float8_e4m3fn* out_data =
+          dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
+      AffineQuantStore<phi::float8_e4m3fn, ComputeType, T, true, true> store(
+          out_data,
+          cols,
+          norm_weight_data,
+          norm_bias_data,
+          quant_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
     } else {
@@ -1229,7 +1251,7 @@ void RmsNormKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ResidualAddRmsNormWrapper(const Context& ctx,
+void ResidualAddRmsNormWrapper(const Context& dev_ctx,
                                const T* x,
                                const T* residual,
                                const T* bias,
@@ -1245,34 +1267,34 @@ void ResidualAddRmsNormWrapper(const Context& ctx,
       x, residual, bias, residual_output, cols);
   AffineStore<ComputeType, T> store(output, cols, norm_weight, norm_bias);
   DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
-      ctx.stream(), load, store, rows, cols, epsilon, nullptr);
+      dev_ctx.stream(), load, store, rows, cols, epsilon, nullptr);
 }
 
-template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
-                                        const phi::dtype::float16* x,
-                                        const phi::dtype::float16* residual,
-                                        const phi::dtype::float16* bias,
-                                        const phi::dtype::float16* norm_weight,
-                                        const phi::dtype::float16* norm_bias,
+template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
+                                        const phi::float16* x,
+                                        const phi::float16* residual,
+                                        const phi::float16* bias,
+                                        const phi::float16* norm_weight,
+                                        const phi::float16* norm_bias,
                                         const float epsilon,
                                         const int rows,
                                         const int cols,
-                                        phi::dtype::float16* residual_output,
-                                        phi::dtype::float16* output);
+                                        phi::float16* residual_output,
+                                        phi::float16* output);
 
-template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
-                                        const phi::dtype::bfloat16* x,
-                                        const phi::dtype::bfloat16* residual,
-                                        const phi::dtype::bfloat16* bias,
-                                        const phi::dtype::bfloat16* norm_weight,
-                                        const phi::dtype::bfloat16* norm_bias,
+template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
+                                        const phi::bfloat16* x,
+                                        const phi::bfloat16* residual,
+                                        const phi::bfloat16* bias,
+                                        const phi::bfloat16* norm_weight,
+                                        const phi::bfloat16* norm_bias,
                                         const float epsilon,
                                         const int rows,
                                         const int cols,
-                                        phi::dtype::bfloat16* residual_output,
-                                        phi::dtype::bfloat16* output);
+                                        phi::bfloat16* residual_output,
+                                        phi::bfloat16* output);
 
-template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
+template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
                                         const float* x,
                                         const float* residual,
                                         const float* bias,
@@ -1285,7 +1307,7 @@ template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
                                         float* output);
 
 template <typename T, typename Context>
-void RmsNormWrapper(const Context& ctx,
+void RmsNormWrapper(const Context& dev_ctx,
                     const T* x,
                     const T* weight,
                     const T* bias,
@@ -1298,28 +1320,28 @@ void RmsNormWrapper(const Context& ctx,
   DirectLoad<T, ComputeType> load(x, cols);
   AffineStore<ComputeType, T> store(output, cols, weight, bias);
   DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
-      ctx.stream(), load, store, rows, cols, epsilon, nullptr);
+      dev_ctx.stream(), load, store, rows, cols, epsilon, nullptr);
 }
 
-template void RmsNormWrapper(const phi::GPUContext& ctx,
-                             const phi::dtype::float16* x,
-                             const phi::dtype::float16* weight,
-                             const phi::dtype::float16* bias,
+template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
+                             const phi::float16* x,
+                             const phi::float16* weight,
+                             const phi::float16* bias,
                              const float epsilon,
                              const int rows,
                              const int cols,
-                             phi::dtype::float16* output);
+                             phi::float16* output);
 
-template void RmsNormWrapper(const phi::GPUContext& ctx,
-                             const phi::dtype::bfloat16* x,
-                             const phi::dtype::bfloat16* weight,
-                             const phi::dtype::bfloat16* bias,
+template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
+                             const phi::bfloat16* x,
+                             const phi::bfloat16* weight,
+                             const phi::bfloat16* bias,
                              const float epsilon,
                              const int rows,
                              const int cols,
-                             phi::dtype::bfloat16* output);
+                             phi::bfloat16* output);
 
-template void RmsNormWrapper(const phi::GPUContext& ctx,
+template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
                              const float* x,
                              const float* weight,
                              const float* bias,
@@ -1335,5 +1357,5 @@ PD_REGISTER_KERNEL(rms_norm,
                    ALL_LAYOUT,
                    phi::RmsNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

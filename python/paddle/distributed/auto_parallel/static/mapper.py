@@ -27,10 +27,6 @@ from .process_group import get_process_group
 
 def is_collective_comm_op(op):
     comm_list = [
-        "c_allreduce_sum",
-        "c_allreduce_min",
-        "c_allreduce_max",
-        "c_allreduce_prod",
         "all_gather",
         "all_reduce",
         "broadcast",
@@ -104,7 +100,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
             new_tensor_shape.append(val)
     tensor_size = functools.reduce(operator.mul, new_tensor_shape, 1)
     tensor_bytes = tensor_size * get_dtype_bytes(tensor.dtype)
-    if "c_allreduce" in comm_op_type:
+    if "c_allreduce" in comm_op_type or "all_reduce" in comm_op_type:
         comm_volume = 2 * tensor_bytes
     elif "all_gather" in comm_op_type:
         comm_volume = tensor_bytes
@@ -146,9 +142,9 @@ def analyze_comm_requirements_from_op(op, rank, g_process_group_map):
             comm_volume = get_comm_volume(op, rank, tgt_rank)
             if comm_volume is not None:
                 comm_requirements_to_ranks[tgt_rank] = {}
-                comm_requirements_to_ranks[tgt_rank][
-                    "comm_volume"
-                ] = comm_volume
+                comm_requirements_to_ranks[tgt_rank]["comm_volume"] = (
+                    comm_volume
+                )
     elif is_p2p_comm_op(op):
         tgt_rank = op.attr("peer")
         comm_volume = get_comm_volume(op, rank, tgt_rank)
@@ -174,9 +170,9 @@ def analyze_requirements_for_program(src_info, rank):
             )
             for tgt_rank, link_info in cur_comm_requirements_to_ranks.items():
                 if tgt_rank in comm_requirements_to_ranks:
-                    comm_requirements_to_ranks[tgt_rank][
-                        "comm_volume"
-                    ] += link_info["comm_volume"]
+                    comm_requirements_to_ranks[tgt_rank]["comm_volume"] += (
+                        link_info["comm_volume"]
+                    )
                 else:
                     comm_requirements_to_ranks[tgt_rank] = {}
                     comm_requirements_to_ranks[tgt_rank]["comm_volume"] = (
@@ -270,9 +266,9 @@ def mapping(distributed_program, cluster):
                     cur_rank_node["device"] = device_node["device"]
                     cur_device_node = device_node
                     break
-            assert (
-                cur_device_node
-            ), "Cannot find a device to satisfy the requirement."
+            assert cur_device_node, (
+                "Cannot find a device to satisfy the requirement."
+            )
 
             nbr_rank_edges = []
             for nbr_rank_node_id, nbr_rank_edge in process_graph.adjs[

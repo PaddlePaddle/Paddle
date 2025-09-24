@@ -24,6 +24,7 @@ import paddle
 from paddle import pir
 from paddle.autograd import backward_utils
 from paddle.base import core
+from paddle.base.framework import in_cinn_debug_mode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -242,13 +243,13 @@ class JudgeFusionLoop:
             return downstream_unrecomputable_ops
 
         for op in self.ops:
-            self.upstream_unrecomputable_ops_map[
-                op
-            ] |= _get_upstream_ops_recursively(op)
+            self.upstream_unrecomputable_ops_map[op] |= (
+                _get_upstream_ops_recursively(op)
+            )
         for op in reversed(self.ops):
-            self.downstream_unrecomputable_ops_map[
-                op
-            ] |= _get_downstream_ops_recursively(op)
+            self.downstream_unrecomputable_ops_map[op] |= (
+                _get_downstream_ops_recursively(op)
+            )
 
     def _has_unfusible_op_on_any_path(self, op1, op2):
         no_unfusible_op_on_path = (
@@ -534,7 +535,7 @@ def auto_recompute(
         | required_bw_value_nodes
         | unclaimed_value_nodes
     ):
-        if value_node in outputs or not value_node.initialized():
+        if not value_node.initialized():
             continue
 
         if value_node.get_defining_op().name() == "builtin.combine":
@@ -677,11 +678,12 @@ def auto_recompute(
     )
     DebugPrint("program after recompute:", program_after_recompute)
     end_time = time.time()
-    logger = logging.getLogger("auto-recompute")
-    logger.setLevel(logging.INFO)
-    logger.info(
-        f"Time of auto recompute program: ***** [ {end_time - start_time} ] ***** seconds."
-    )
+    if in_cinn_debug_mode():
+        logger = logging.getLogger("auto-recompute")
+        logger.setLevel(logging.INFO)
+        logger.info(
+            f"Time of auto recompute program: ***** [ {end_time - start_time} ] ***** seconds."
+        )
     return program_after_recompute, fwd_op_end_idx_after_recompute
 
 
@@ -750,7 +752,6 @@ def partition_joint_graph(
 def replace_mid_values_with_forward_subgraph(
     program, saved_values, mid_values, fwd_op_end_idx, backward_op_start_idx
 ):
-
     def _extract_forward_recompute_subgraph_for_backward(
         saved_values, mid_values
     ):
@@ -978,7 +979,10 @@ def get_real_input_nodes(output_value_node):
     else:
         input_value_nodes = define_op.operands_source()
     for input_value_node in input_value_nodes:
-        if input_value_node.get_defining_op().name() == "builtin.combine":
+        if (
+            input_value_node.get_defining_op()
+            and input_value_node.get_defining_op().name() == "builtin.combine"
+        ):
             real_input_nodes |= backward_utils.ValueSet(
                 input_value_node.get_defining_op().operands_source()
             )

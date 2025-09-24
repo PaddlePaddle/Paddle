@@ -17,7 +17,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
@@ -34,6 +33,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/flags.h"
 
 namespace cinn {
@@ -126,7 +126,7 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(logical_right_shift_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.logical_right_shift.x86",
                     1);
   return strategy;

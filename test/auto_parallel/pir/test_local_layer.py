@@ -30,6 +30,7 @@ class TestLocalLayer(test_base.CommunicationTestDistBase):
         envs_list = test_base.gen_product_envs_list(
             {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
         )
+        # {"DISTRIBUTED_TRAINER_ENDPOINTS", "10.67.188.11:8544"}
         # self._log_dir.name = "./log"
         for envs in envs_list:
             self.run_test_case(

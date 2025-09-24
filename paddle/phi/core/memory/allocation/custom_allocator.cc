@@ -16,6 +16,7 @@
 
 #include "paddle/phi/api/profiler/trace_event.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
 

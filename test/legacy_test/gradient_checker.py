@@ -30,6 +30,17 @@ def _product(t):
     return int(np.prod(t))
 
 
+# data type like int32, int64, bool, that do not requires grad
+DTYPE_REQUIRES_GRAD = [
+    paddle.float16,
+    paddle.float32,
+    paddle.float64,
+    core.DataType.FLOAT16,
+    core.DataType.FLOAT32,
+    core.DataType.FLOAT64,
+]
+
+
 def dtype_to_np_dtype(dtype):
     if dtype == paddle.float32 or dtype == core.DataType.FLOAT32:
         return np.float32
@@ -84,7 +95,7 @@ def var_to_np_array_in_scope(scope, place, name):
 
 def make_jacobian(x, y_size, np_dtype):
     if isinstance(x, (base.framework.Variable, paddle.pir.Value)):
-        return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
+        return np.zeros([_product(x.shape), y_size], dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
             filter(
@@ -198,16 +209,16 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
 
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
-    filted = [(i, dxi) for i, dxi in enumerate(dx) if dxi is not None]
-    filted_idx, filted_dx = zip(*filted)
+    filtered = [(i, dxi) for i, dxi in enumerate(dx) if dxi is not None]
+    filtered_idx, filtered_dx = zip(*filtered)
 
     for i in range(y_size):
         _set_item(dy_t, i, 1, np_type, place)
 
-        dx_res = exe.run(program, scope=scope, fetch_list=filted_dx)
+        dx_res = exe.run(program, scope=scope, fetch_list=filtered_dx)
 
-        for j in range(len(filted_dx)):
-            dx_idx = filted_idx[j]
+        for j in range(len(filtered_dx)):
+            dx_idx = filtered_idx[j]
             if dx_res[j] is not None:
                 jacobian[dx_idx][:, i] = dx_res[j].flatten()
             else:
@@ -249,21 +260,26 @@ def _compute_numerical_jacobian_pir(
 
     # To compute the jacobian, treat x and y as one-dimensional vectors.
     y = _as_list(y)
-    filted_ddx = [dxi for dxi in fetch_list if dxi is not None]
+    filtered_ddx = [dxi for dxi in fetch_list if dxi is not None]
     exe = paddle.static.Executor(place)
 
     def run():
-        res = exe.run(program, feeds, fetch_list=[filted_ddx, y])
-        y_res = res[len(filted_ddx) :]
+        res = exe.run(program, feeds, fetch_list=[filtered_ddx, y])
+        y_res = res[len(filtered_ddx) :]
         return [yi.flatten() for yi in y_res]
 
     x_name = x.get_defining_op().attrs()['name']
     x_shape = x.shape
     x_size = _product(x_shape)
-    np_type = dtype_to_np_dtype(x.dtype)
-    np_t = np.array(feeds[x_name]).astype(np_type)
-    np_t = np_t.flatten()
-    jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
+    if x.dtype in DTYPE_REQUIRES_GRAD:
+        np_type = dtype_to_np_dtype(x.dtype)
+        np_t = np.array(feeds[x_name]).astype(np_type)
+        np_t = np_t.flatten()
+        jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
+    else:
+        np_type = np.float32  # temporarily set to float32
+        jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
+        return jacobian
 
     for i in range(x_size):
         orig = np_t[i]
@@ -320,8 +336,8 @@ def _compute_analytical_jacobian_pir(
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
 
-    filted = [(i, dxi) for i, dxi in enumerate(fetch_list) if dxi is not None]
-    filted_idx, filted_dx = zip(*filted)
+    filtered = [(i, dxi) for i, dxi in enumerate(fetch_list) if dxi is not None]
+    filtered_idx, filtered_dx = zip(*filtered)
 
     # get the name in feeds of dyi
     name = f'dys_{i}'
@@ -332,10 +348,10 @@ def _compute_analytical_jacobian_pir(
         np_t[i] = 1
         np_f = np_t.reshape(shape)
         feeds[name] = np_f
-        res = exe.run(program, feed=feeds, fetch_list=[filted_dx, y])
-        dx_res = res[: len(filted_dx)]
-        for j in range(len(filted_dx)):
-            dx_idx = filted_idx[j]
+        res = exe.run(program, feed=feeds, fetch_list=[filtered_dx, y])
+        dx_res = res[: len(filtered_dx)]
+        for j in range(len(filtered_dx)):
+            dx_idx = filtered_idx[j]
             if dx_res[j] is not None:
                 jacobian[dx_idx][:, i] = dx_res[j].flatten()
             else:
@@ -692,8 +708,8 @@ def get_static_double_grad(
     x_init += y_grads_init
 
     # filter None in dx for DX/DY may be None in kernel
-    filted_dx = [dxi for dxi in dx if dxi is not None]
-    y = filted_dx
+    filtered_dx = [dxi for dxi in dx if dxi is not None]
+    y = filtered_dx
 
     # check input arguments
     x = _as_list(x)
@@ -744,11 +760,11 @@ def get_static_double_grad(
 
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
-    filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
-    filted_idx, filted_ddx = zip(*filted)
-    ddx_res = exe.run(program, feed=feeds, scope=scope, fetch_list=filted_ddx)
+    filtered = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
+    filtered_idx, filtered_ddx = zip(*filtered)
+    ddx_res = exe.run(program, feed=feeds, scope=scope, fetch_list=filtered_ddx)
 
-    return ddx_res, x, filted_dx, program
+    return ddx_res, x, filtered_dx, program
 
 
 def get_pir_static_double_grad(
@@ -813,8 +829,8 @@ def get_pir_static_double_grad(
     x_init += y_grads_init
 
     # filter None in dx for DX/DY may be None in kernel
-    filted_dx = [dxi for dxi in dx if dxi is not None]
-    y = filted_dx
+    filtered_dx = [dxi for dxi in dx if dxi is not None]
+    y = filtered_dx
 
     # check input arguments
     x = _as_list(x)
@@ -864,12 +880,12 @@ def get_pir_static_double_grad(
 
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
-    filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
-    filted_idx, filted_ddx = zip(*filted)
+    filtered = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
+    filtered_idx, filtered_ddx = zip(*filtered)
     ddx_res = exe.run(
-        program=program, feed=feeds, fetch_list=[filted_ddx, filted_dx]
+        program=program, feed=feeds, fetch_list=[filtered_ddx, filtered_dx]
     )
-    res = ddx_res[: len(filted_ddx)]
+    res = ddx_res[: len(filtered_ddx)]
 
     return res, x, y, ddx, feeds, program
 

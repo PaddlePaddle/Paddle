@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -63,7 +63,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
             )
             y = paddle.nn.functional.l1_loss(input, label, name='aaa')
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = paddle.static.Executor(place)
             static_result = exe.run(
                 feed={"input": self.input_np, "label": self.label_np},
@@ -87,10 +87,10 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
@@ -98,7 +98,6 @@ class TestFunctionalL1Loss(unittest.TestCase):
 
     # test case the raise message
     def test_errors(self):
-
         def test_value_error():
             input = paddle.static.data(
                 name='input', shape=[10, 10, 5], dtype='float32'
@@ -158,7 +157,7 @@ class TestClassL1Loss(unittest.TestCase):
             l1_loss = paddle.nn.loss.L1Loss(name='aaa')
             result3 = l1_loss(input, label)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = paddle.static.Executor(place)
             static_result = exe.run(
                 feed={"input": self.input_np, "label": self.label_np},
@@ -183,10 +182,10 @@ class TestClassL1Loss(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
@@ -194,11 +193,48 @@ class TestClassL1Loss(unittest.TestCase):
 
     # test case the raise message
     def test_errors(self):
-
         def test_value_error():
             loss = paddle.nn.loss.L1Loss(reduction="reduce_mean")
 
         self.assertRaises(ValueError, test_value_error)
+
+
+class TestClassL1Loss_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.input_np = np.random.random(size=(0, 10, 5)).astype(np.float32)
+        self.label_np = np.random.random(size=(0, 10, 5)).astype(np.float32)
+
+    def run_imperative(self):
+        input = paddle.to_tensor(self.input_np)
+        label = paddle.to_tensor(self.label_np)
+        input.stop_gradient = False
+        l1_loss = paddle.nn.loss.L1Loss()
+        dy_result = l1_loss(input, label)
+        expected = np.mean(np.abs(self.input_np - self.label_np))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
+        self.assertEqual(dy_result.shape, [])
+
+        l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+        dy_result = l1_loss(input, label)
+        expected = np.sum(np.abs(self.input_np - self.label_np))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
+        self.assertEqual(dy_result.shape, [])
+
+        loss = paddle.sum(dy_result)
+        loss.backward()
+        np.testing.assert_allclose(input.grad.shape, input.shape)
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.base.CPUPlace())
+        self.run_imperative()
+        paddle.enable_static()
+
+    def test_gpu(self):
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
+            return
+        paddle.disable_static(place=get_device_place())
+        self.run_imperative()
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

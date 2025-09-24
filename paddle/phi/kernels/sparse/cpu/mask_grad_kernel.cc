@@ -25,15 +25,15 @@ PD_REGISTER_KERNEL(mask_as_coo_grad,
                    phi::sparse::MaskAsCooGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -43,14 +43,14 @@ PD_REGISTER_KERNEL(mask_as_csr_grad,
                    phi::sparse::MaskAsCsrGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

@@ -18,25 +18,9 @@ from typing import TYPE_CHECKING, Union
 from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
-    from paddle import (
-        CPUPlace,
-        CUDAPinnedPlace,
-        CUDAPlace,
-        CustomPlace,
-        IPUPlace,
-        XPUPlace,
-    )
-
-_Place: TypeAlias = Union[
-    "CPUPlace",
-    "CUDAPlace",
-    "CUDAPinnedPlace",
-    "IPUPlace",
-    "CustomPlace",
-    "XPUPlace",
-]
+    from paddle.base.core import Place
 
 PlaceLike: TypeAlias = Union[
-    _Place,
+    "Place",
     str,  # some string like "cpu", "gpu:0", etc.
 ]

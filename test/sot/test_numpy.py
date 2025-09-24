@@ -15,9 +15,13 @@
 import unittest
 
 import numpy as np
-from test_case_base import TestCaseBase
+from test_case_base import (
+    TestCaseBase,
+    test_instruction_translator_cache_context,
+)
 
 import paddle
+from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
 
@@ -35,7 +39,33 @@ def large_numpy_array_to_tensor(x):
     return paddle.to_tensor(x)
 
 
-class TestNumpy(TestCaseBase):
+def normal_numpy_array_to_tensor(x):
+    return paddle.to_tensor(x)
+
+
+@check_no_breakgraph
+def numpy_api_with_number_calculation(t):
+    a = np.log(2)
+    b = np.exp(3)
+    c = np.sqrt(4)
+    d = np.ceil(5.1)
+    e = np.add(1, 2)
+    f = a + 1
+    g = 1 - b
+    h = c * 2
+    i = int(a)
+    j = float(b)
+    k = c.item()
+    l = t + d
+    return a, b, c, d, e, f, g, h, i, j, k, l
+
+
+@check_no_breakgraph
+def numpy_bool(x: np.number):
+    return bool(x == 1)
+
+
+class TestNumPy(TestCaseBase):
     @strict_mode_guard(False)
     def test_numpy_add(self):
         x = paddle.to_tensor([2])
@@ -60,6 +90,23 @@ class TestNumpy(TestCaseBase):
         # when the size is larger than 1024*1024 in assign API (to_tensor static branch)
         x = np.random.rand(1024, 1024, 2).astype(np.float32)
         self.assert_results(large_numpy_array_to_tensor, x)
+
+    def test_numpy_array_guard(self):
+        x = np.array([1.0, 2.0])
+        with test_instruction_translator_cache_context() as ctx:
+            self.assertEqual(ctx.translate_count, 0)
+            self.assert_results(normal_numpy_array_to_tensor, x)
+            self.assertEqual(ctx.translate_count, 1)
+            self.assert_results(normal_numpy_array_to_tensor, x)
+            self.assertEqual(ctx.translate_count, 1)
+
+    def test_numpy_api_with_number_calculation(self):
+        t = paddle.to_tensor([1.0])
+        self.assert_results(numpy_api_with_number_calculation, t)
+
+    def test_numpy_bool(self):
+        x = np.float32(1.0)
+        self.assert_results(numpy_bool, x)
 
 
 if __name__ == "__main__":

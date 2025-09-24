@@ -29,6 +29,7 @@ COMM_OP_TYPE = [
     "recv_v2",
     "broadcast",
     "all_gather",
+    "all_reduce",
     "c_allreduce_sum",
     "c_identity",
 ]
@@ -311,7 +312,10 @@ def build_comm_desc_from_dist_op(
                 input_list.append((var.dtype, shape))
 
             # NOTE: The input_name of comm ops used usually is X.
-            desc["inputs"] = {"X": input_list}
+            if op_type == "all_reduce":
+                desc["inputs"] = {"x": input_list}
+            else:
+                desc["inputs"] = {"X": input_list}
 
             # Get comm group by parallel_axis or the given group_ranks.
             if parallel_axis is not None:
@@ -349,7 +353,10 @@ def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
     desc = {}
     desc["op"] = op_type
     desc["group_ranks"] = group_ranks
-    desc["inputs"] = {"X": [(dtype, shape)]}
+    if op_type == "all_reduce":
+        desc["inputs"] = {"x": [(dtype, shape)]}
+    else:
+        desc["inputs"] = {"X": [(dtype, shape)]}
     desc["attrs"] = attrs
     return desc
 
@@ -416,8 +423,8 @@ def build_dp_costs(
     if not has_found:
         return
 
-    c_allreduce_sum_descs = build_comm_desc_from_dist_op(
-        "c_allreduce_sum",
+    all_reduce_sum_descs = build_comm_desc_from_dist_op(
+        "all_reduce",
         dist_op,
         ctx,
         var_names,
@@ -425,10 +432,10 @@ def build_dp_costs(
         parallel_axis=parallel_axis,
     )
     comm_cost_list = build_comm_costs_from_descs(
-        _g_op_cost_factory["c_allreduce_sum"],
+        _g_op_cost_factory["all_reduce"],
         ctx,
         processes,
-        c_allreduce_sum_descs,
+        all_reduce_sum_descs,
         cluster,
         is_dp=True,
     )
@@ -622,14 +629,14 @@ class Cost:
         assert val >= 0, "Time must be greater than or equal to 0."
 
     def _check_memory(self, val):
-        assert (
-            isinstance(val, int) and val >= 0
-        ), "Memory must be int and greater than equal to 0."
+        assert isinstance(val, int) and val >= 0, (
+            "Memory must be int and greater than equal to 0."
+        )
 
     def _check_flops(self, val):
-        assert (
-            isinstance(val, int) and val >= 0
-        ), "FLOPs must be int and greater than equal to 0."
+        assert isinstance(val, int) and val >= 0, (
+            "FLOPs must be int and greater than equal to 0."
+        )
 
     @property
     def time(self):
@@ -980,9 +987,9 @@ def calc_time_by_cost_model(op, cluster=None):
         var_name = op.output_arg_names[0]
         dtype = op.block._var_recursive(var_name).dtype
         device = cluster.get_device(0)
-        assert (
-            device.type == DeviceType.GPU
-        ), "Only GPU device is supported currently."
+        assert device.type == DeviceType.GPU, (
+            "Only GPU device is supported currently."
+        )
 
         gflops = 0.0
         if dtype == paddle.float64:

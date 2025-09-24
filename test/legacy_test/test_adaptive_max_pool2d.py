@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import check_out_dtype
+from op_test import check_out_dtype, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -60,6 +60,8 @@ def adaptive_pool2d_forward(
         if data_format == 'NCHW'
         else np.zeros((N, H_out, W_out, C))
     )
+    if x.size == 0:
+        return out
 
     for i in range(H_out):
         in_h_start = adaptive_start_index(i, H, output_size[0])
@@ -117,9 +119,11 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             x = paddle.static.data(
                 name="x", shape=[2, 3, 7, 7], dtype="float32"
@@ -161,9 +165,11 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
     def test_static_graph_return_mask(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             x = paddle.static.data(
                 name="x", shape=[2, 3, 7, 7], dtype="float32"
@@ -216,9 +222,11 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -277,12 +285,14 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
                 paddle.enable_static()
                 x = paddle.static.data(
                     name="x", shape=[2, 3, 7, 7], dtype="float32"
@@ -329,9 +339,11 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -374,6 +386,106 @@ class TestOutDtype(unittest.TestCase):
             expect_dtypes=['float32', 'float64'],
             output_size=16,
         )
+
+
+class TestAdaptiveMaxPool2D_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.random([0, 3, 7, 7]).astype("float32")
+        self.res_1_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=[3, 3], pool_type="max"
+        )
+
+    def test_static_graph(self):
+        for use_cuda in (
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
+        ):
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
+            paddle.enable_static()
+            x = paddle.static.data(
+                name="x", shape=[0, 3, 7, 7], dtype="float32"
+            )
+
+            out_1 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[3, 3]
+            )
+
+            exe = paddle.static.Executor(place=place)
+            [
+                res_1,
+            ] = exe.run(
+                base.default_main_program(),
+                feed={"x": self.x_np},
+                fetch_list=[
+                    out_1,
+                ],
+            )
+
+            np.testing.assert_allclose(res_1, self.res_1_np)
+
+    def test_static_graph_return_mask(self):
+        for use_cuda in (
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
+        ):
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
+            paddle.enable_static()
+            x = paddle.static.data(
+                name="x", shape=[0, 3, 7, 7], dtype="float32"
+            )
+
+            out_1 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[3, 3], return_mask=True
+            )
+
+            exe = paddle.static.Executor(place=place)
+            [
+                res_1,
+                mask_1,
+            ] = exe.run(
+                base.default_main_program(),
+                feed={"x": self.x_np},
+                fetch_list=[
+                    out_1,
+                ],
+            )
+
+            self.assertEqual(res_1.shape, mask_1.shape)
+
+    def test_dynamic_graph(self):
+        for use_cuda in (
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
+        ):
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+
+            out_1 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, return_mask=False, output_size=[3, 3]
+            )
+
+            np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
+
+    def test_grad(self):
+        for use_cuda in (
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
+        ):
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+            x.stop_gradient = False
+            out_1 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, return_mask=False, output_size=[3, 3]
+            )
+            loss = paddle.sum(out_1)
+            loss.backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 if __name__ == '__main__':

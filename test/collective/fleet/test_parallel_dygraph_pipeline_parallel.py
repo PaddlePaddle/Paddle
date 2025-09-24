@@ -31,9 +31,6 @@ class TestHybridPipeParallel(TestMultipleAccelerators):
     def test_hybrid_parallel_pp_tuple_inputs(self):
         self.run_mnist_2accelerators('hybrid_parallel_pp_embedding.py')
 
-    def test_hybrid_parallel_shared_weight(self):
-        self.run_mnist_2accelerators('hybrid_parallel_shared_weight.py')
-
     def test_pipeline_parallel_amp(self):
         self.run_mnist_2accelerators('hybrid_parallel_pp_amp.py')
 

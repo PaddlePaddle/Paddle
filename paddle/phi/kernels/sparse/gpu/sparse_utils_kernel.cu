@@ -29,9 +29,112 @@ limitations under the License. */
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
+#include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
+
+#define BUILD_CUDA_TENSOR(T, vector, tensor)                                \
+  if (vector.size() <= 4) {                                                 \
+    switch (vector.size()) {                                                \
+      case 1:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(tensor.data<T>(), \
+                                                          vector[0]);       \
+        break;                                                              \
+      case 2:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(                  \
+            tensor.data<T>(), vector[0], vector[1]);                        \
+        break;                                                              \
+      case 3:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(                  \
+            tensor.data<T>(), vector[0], vector[1], vector[2]);             \
+        break;                                                              \
+      case 4:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(                  \
+            tensor.data<T>(), vector[0], vector[1], vector[2], vector[3]);  \
+        break;                                                              \
+      default:                                                              \
+        break;                                                              \
+    }                                                                       \
+  } else {                                                                  \
+    phi::backends::gpu::GpuMemcpyAsync(tensor.data<T>(),                    \
+                                       vector.data(),                       \
+                                       vector.size() * sizeof(T),           \
+                                       gpuMemcpyHostToDevice,               \
+                                       dev_ctx.stream());                   \
+  }
 
 namespace phi {
 namespace sparse {
+
+template <typename T>
+__global__ void build_cuda_tensor(T* data, const T elem0) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 1) {
+    data[idx] = elem0;
+  }
+}
+
+template <typename T>
+__global__ void build_cuda_tensor(T* data, const T elem0, const T elem1) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 2) {
+    switch (idx) {
+      case 0:
+        data[idx] = elem0;
+        break;
+      case 1:
+        data[idx] = elem1;
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+template <typename T>
+__global__ void build_cuda_tensor(T* data,
+                                  const T elem0,
+                                  const T elem1,
+                                  const T elem2) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 3) {
+    switch (idx) {
+      case 0:
+        data[idx] = elem0;
+        break;
+      case 1:
+        data[idx] = elem1;
+        break;
+      case 2:
+        data[idx] = elem2;
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+template <typename T>
+__global__ void build_cuda_tensor(
+    T* data, const T elem0, const T elem1, const T elem2, const T elem3) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 4) {
+    switch (idx) {
+      case 0:
+        data[idx] = elem0;
+        break;
+      case 1:
+        data[idx] = elem1;
+        break;
+      case 2:
+        data[idx] = elem2;
+        break;
+      case 3:
+        data[idx] = elem3;
+        break;
+      default:
+        break;
+    }
+  }
+}
 
 template <typename T>
 inline __device__ bool DevIsZero(const T* data, const int64_t cols) {
@@ -543,11 +646,7 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
 
   DenseTensor d_sparse_offsets = Empty<int64_t>(dev_ctx, {sparse_dim});
 
-  phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<int64_t>(),
-                                     sparse_offsets.data(),
-                                     sparse_dim * sizeof(int64_t),
-                                     gpuMemcpyHostToDevice,
-                                     dev_ctx.stream());
+  BUILD_CUDA_TENSOR(int64_t, sparse_offsets, d_sparse_offsets);
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
@@ -563,6 +662,9 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
                              non_zero_num,
                              base_offset,
                              sparse_dim);
+  phi::sparse::ConvHostBuffer& conv_host_buffer =
+      phi::sparse::ConvHostBuffer::getInstance();
+  conv_host_buffer.reset();
 }
 
 template <typename T, typename Context>
@@ -584,14 +686,14 @@ PD_REGISTER_KERNEL(dense_to_coo,
                    phi::sparse::DenseToCooKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(csr_to_coo,
                    GPU,
@@ -599,15 +701,15 @@ PD_REGISTER_KERNEL(csr_to_coo,
                    phi::sparse::CsrToCooKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(coo_to_csr,
                    GPU,
@@ -615,15 +717,15 @@ PD_REGISTER_KERNEL(coo_to_csr,
                    phi::sparse::CooToCsrKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(dense_to_csr,
                    GPU,
@@ -631,14 +733,14 @@ PD_REGISTER_KERNEL(dense_to_csr,
                    phi::sparse::DenseToCsrKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(coo_to_dense,
                    GPU,
@@ -646,15 +748,15 @@ PD_REGISTER_KERNEL(coo_to_dense,
                    phi::sparse::CooToDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(csr_to_dense,
                    GPU,
@@ -662,15 +764,15 @@ PD_REGISTER_KERNEL(csr_to_dense,
                    phi::sparse::CsrToDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(values_coo,
                    GPU,
@@ -678,15 +780,15 @@ PD_REGISTER_KERNEL(values_coo,
                    phi::sparse::ValuesCooKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -696,15 +798,15 @@ PD_REGISTER_KERNEL(values_csr,
                    phi::sparse::ValuesCsrKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
@@ -714,7 +816,7 @@ PD_REGISTER_KERNEL(indices_coo,
                    phi::sparse::IndicesCooKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -729,10 +831,10 @@ PD_REGISTER_KERNEL(sparse_coo_tensor,
                    phi::sparse::SparseCooTensorKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

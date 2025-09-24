@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/backward_api_base.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -27,8 +27,6 @@ namespace phi {
 template <typename T, typename Context>
 void BarrierKernel(const Context& dev_ctx,
                    const DenseTensor& x_in,
-                   int ring_id,
-                   bool use_calc_stream,
                    DenseTensor* out) {
   auto in = &x_in;
 
@@ -36,18 +34,12 @@ void BarrierKernel(const Context& dev_ctx,
   int64_t numel = in->numel();
   const void* sendbuff = in->data();
   void* recvbuff = dev_ctx.template Alloc<T>(out);
-  int rid = ring_id;
 
   auto comm = reinterpret_cast<phi::distributed::XCCLCommContext*>(
-      phi::distributed::CommContextManager::GetInstance().Get(
-          std::to_string(rid)));
+      dev_ctx.GetCommContext());
 
   std::shared_ptr<phi::stream::Stream> stream;
-  if (use_calc_stream) {
-    stream = dev_ctx.GetStream();
-  } else {
-    stream = comm->GetStream();
-  }
+  stream = comm->GetStream();
   phi::DeviceManager::CCLAllReduce(place.GetDeviceType(),
                                    const_cast<void*>(sendbuff),
                                    recvbuff,
@@ -55,7 +47,7 @@ void BarrierKernel(const Context& dev_ctx,
                                    in->dtype(),
                                    phi::ccl::CCLReduceOp::SUM,
                                    comm->GetXcclComm(),
-                                   *stream);
+                                   stream->raw_stream());
 }
 }  // namespace phi
 

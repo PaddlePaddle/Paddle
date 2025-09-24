@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/gather_kernel.h"
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 
@@ -26,6 +25,10 @@ void GatherKernel(const Context& dev_ctx,
                   const DenseTensor& index,
                   const Scalar& axis,
                   DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const auto& index_type = index.dtype();
   auto axis_v = axis.to<int>();
   if (axis_v < 0) {
@@ -70,9 +73,12 @@ PD_REGISTER_KERNEL(gather,
                    phi::GatherKernel,
                    float,
                    double,
-                   int,
                    uint8_t,
+                   int8_t,
+                   int16_t,
+                   int32_t,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   bool,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+
+from op_test import is_custom_device
 
 from paddle.base import core
 
@@ -29,7 +30,7 @@ class TestGPUPackagePaddle(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_import_paddle(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             if core.is_compiled_with_rocm():
                 os.environ['HIP_VISIBLE_DEVICES'] = ''
             else:
@@ -57,12 +58,12 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
             )
             stdout, stderr = ps_proc.communicate()
 
-            assert 'CPU device will be used by default' in str(
-                stderr
-            ), "GPU version Paddle is installed. But CPU device can't be used when CUDA device is not set properly"
-            assert "AssertionError" not in str(
-                stderr
-            ), "There is no CUDA device, but Tensor's place is CUDAPlace"
+            assert 'CPU device will be used by default' in str(stderr), (
+                "GPU version Paddle is installed. But CPU device can't be used when CUDA device is not set properly"
+            )
+            assert "AssertionError" not in str(stderr), (
+                "There is no CUDA device, but Tensor's place is CUDAPlace"
+            )
 
 
 if __name__ == '__main__':

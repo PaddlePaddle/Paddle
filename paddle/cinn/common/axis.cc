@@ -16,9 +16,6 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/poly/dim.h"
-#include "paddle/cinn/poly/domain.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {

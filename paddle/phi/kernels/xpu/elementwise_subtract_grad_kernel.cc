@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
 namespace phi {
@@ -29,17 +30,35 @@ void SubtractGradKernel(const Context& dev_ctx,
                         DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  auto f = [](xpu::Context* ctx,
+  if (dout.numel() == 0) {
+    if (dx) {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
+
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               const XPUType* z,
               const XPUType* dz,
               XPUType* dy,
               XPUType* dx,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_sub_grad<XPUType>(
-        ctx, x, y, z, dz, dy, dx, xshape, yshape);
+        xpu_ctx, x, y, z, dz, dy, dx, xshape, yshape);
   };
 
   phi::XPUElementwiseGrad<T, XPUType>(
@@ -52,6 +71,6 @@ PD_REGISTER_KERNEL(subtract_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::SubtractGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float) {}

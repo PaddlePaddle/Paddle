@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/conv_utils_xpu.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -47,6 +48,18 @@ void ConvGradKernel(const Context& dev_ctx,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.
   if (!input_grad && !filter_grad) return;
+  // 0-size
+  if (input.numel() == 0) {
+    if (input_grad) dev_ctx.template Alloc<T>(input_grad);
+    if (filter_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    }
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       data_format == "NDHWC",
       false,
@@ -238,7 +251,7 @@ void Conv3DGradKernel(const Context& dev_ctx,
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  int batch_size = input.dims()[0];
+  int64_t batch_size = input.dims()[0];
   int64_t img_c = input.dims()[1];
   int64_t img_d = input.dims()[2];
   int64_t img_h = input.dims()[3];
@@ -370,9 +383,9 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    phi::ConvGradKernel,
                    float,
 #ifdef PADDLE_WITH_XPU_XRE5
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
 #endif
-                   phi::dtype::float16) {
+                   phi::float16) {
 }
 
 PD_REGISTER_KERNEL(depthwise_conv2d_grad,
@@ -380,14 +393,14 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    ALL_LAYOUT,
                    phi::DepthwiseConvGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(conv3d_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::Conv3DGradKernel,
                    float,
 #ifdef PADDLE_WITH_XPU_XRE5
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
 #endif
-                   phi::dtype::float16) {
+                   phi::float16) {
 }

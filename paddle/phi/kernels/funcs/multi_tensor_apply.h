@@ -83,13 +83,13 @@ void LaunchMultiTensorApplyKernel(
       0,
       errors::InvalidArgument(
           "input_vector[0].size() is not > 0, please cheack params."));
-  auto ctx_place = dev_ctx.GetPlace();
+  auto dev_ctx_place = dev_ctx.GetPlace();
   PADDLE_ENFORCE_EQ(
-      ctx_place.GetType() == AllocationType::GPU,
+      dev_ctx_place.GetType() == AllocationType::GPU,
       true,
       errors::PreconditionNotMet(
           "Context place error, excepted GPUPlace, but actually %s.",
-          ctx_place));
+          dev_ctx_place));
   auto place = input_vector[0][0]->place();
   for (size_t i = 0; i < input_vector.size(); i++) {
     PADDLE_ENFORCE_EQ(

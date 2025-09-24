@@ -23,6 +23,7 @@
 #include "paddle/cinn/ir/stmt_visitors.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/stmt_converter.h"
+#include "paddle/cinn/utils/string.h"
 #include "paddle/phi/core/enforce.h"
 
 PD_DECLARE_bool(cinn_enable_rearrange_load);
@@ -125,7 +126,7 @@ struct LoadCollector : public ir::IRMutator<> {
   // 2) The value being loaded is not defined locally by a previous store. In
   //    such cases, the value resides in a register rather than in memory,
   //    thus doesn't need rearrangement. This criteria also prevents
-  //    data-dependency harzards.
+  //    data-dependency hazards.
   // 3) It doesn't contains indirect indices (i.e. loads within indices).
   //    Indirect indices are hard to manage and are seldom seem, so we choose
   //    not to handle them.

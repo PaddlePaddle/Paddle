@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -31,8 +31,13 @@ void KLDivLossKernel(const Context& dev_ctx,
   if (out->numel() == 0) {
     return;
   }
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
 
-  int r = XPU_SUCCESS;
+  int r = 0;
 
   if (log_target) {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());

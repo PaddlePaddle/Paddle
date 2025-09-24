@@ -26,6 +26,9 @@ PD_REGISTER_KERNEL(tile_grad,
                    float,
                    double,
                    int,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   int64_t) {}
+                   int64_t,
+                   int8_t,
+                   int16_t,
+                   uint8_t,
+                   phi::complex64,
+                   phi::complex128) {}

@@ -50,7 +50,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                     5,
                     common::errors::InvalidArgument(
                         "The `shape` in InstanceNormOp is invalid: "
-                        "the size of X's dimensions must smaller than"
+                        "the size of X's dimensions must smaller than "
                         "or equal to 5. But received: "
                         "the size of X's dimensions is [%d]",
                         x_dims.size()));
@@ -60,6 +60,20 @@ void InstanceNormKernel(const Context &dev_ctx,
   DenseTensor x_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
   dev_ctx.template Alloc<T>(y);
+  phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
+  phi::funcs::SetConstant<GPUContext, T> functor_y;
+  if (x.numel() == 0) {
+    functor_y(dev_ctx, y, static_cast<T>(0));
+    if (saved_mean) {
+      dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
+      functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
+    }
+    if (saved_variance) {
+      dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
+      functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
+    }
+    return;
+  }
 
 #ifdef PADDLE_WITH_HIP
   miopenTensorDescriptor_t data_desc_;
@@ -144,7 +158,6 @@ void InstanceNormKernel(const Context &dev_ctx,
   auto handle = dev_ctx.cudnn_handle();
 
   DenseTensor saved_mean_tmp, saved_variance_tmp;
-  phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
 
   if (saved_mean) {
     dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
@@ -233,7 +246,7 @@ PD_REGISTER_KERNEL(instance_norm,
                    ALL_LAYOUT,
                    phi::InstanceNormKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
@@ -246,8 +259,8 @@ PD_REGISTER_KERNEL(instance_norm,
                    phi::InstanceNormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -261,7 +274,7 @@ PD_REGISTER_KERNEL(instance_norm,
                    phi::InstanceNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);

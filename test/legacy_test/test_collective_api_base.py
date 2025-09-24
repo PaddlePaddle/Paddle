@@ -24,7 +24,12 @@ from contextlib import closing
 sys.path.append("../legacy_test")
 
 import numpy as np
-from op_test import convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -131,7 +136,7 @@ class TestCollectiveAPIRunnerBase:
             paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = base.CUDAPlace(
+            place = get_device_place(
                 device_id
             )  # if args.use_gpu else base.CPUPlace()
         elif args['backend'] == 'bkcl':
@@ -224,7 +229,7 @@ class TestDistBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             env0 = {
                 "FLAGS_selected_gpus": "0",
                 "PADDLE_TRAINER_ID": "0",
@@ -503,7 +508,7 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
-        elif col_type == "all_to_all":
+        elif col_type == "alltoall":
             need_result1 = np.vstack(
                 (
                     input1[0 : input1.shape[0] // 2, :],
@@ -518,6 +523,31 @@ class TestDistBase(unittest.TestCase):
             )
             tr0_out = np.vstack(tr0_out)
             tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "alltoall_unequal_split":
+            half_dim0 = input1.shape[0] // 2
+            half_dim1 = input1.shape[1] // 2
+            need_result1 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, : half_dim1 - 1].flatten(),
+                    input2[half_dim0 - 1 :, : half_dim1 - 2].flatten(),
+                ],
+                axis=0,
+            )
+            need_result2 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, half_dim1 - 1 :].flatten(),
+                    input2[half_dim0 - 1 :, half_dim1 - 2 :].flatten(),
+                ],
+                axis=0,
+            )
+            tr0_out = np.concat([out.flatten() for out in tr0_out])
+            tr1_out = np.concat([out.flatten() for out in tr1_out])
             np.testing.assert_allclose(
                 tr0_out, need_result1, rtol=1e-05, atol=1e-05
             )
@@ -732,5 +762,9 @@ class TestDistBase(unittest.TestCase):
                 np.testing.assert_allclose(
                     tr1_out[1], 2 * local_input_buf2, rtol=1e-05, atol=1e-05
                 )
-        else:
+        elif col_type == 'barrier':
             pass
+        else:
+            raise NotImplementedError(
+                f"col_type {col_type} check_with_place not implemented"
+            )

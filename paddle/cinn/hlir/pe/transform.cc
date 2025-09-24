@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <utility>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -25,6 +24,7 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
@@ -987,7 +987,7 @@ std::vector<Tensor> MulMKL(const Tensor& A,
 void GetLayoutTransformInfo(
     const ir::Layout& src_layout,
     const ir::Layout& dst_layout,
-    absl::flat_hash_map<int, std::vector<int>>* split_index_map) {
+    paddle::flat_hash_map<int, std::vector<int>>* split_index_map) {
   PADDLE_ENFORCE_GT(
       dst_layout.ndims(),
       src_layout.ndims(),
@@ -1041,7 +1041,7 @@ std::vector<Expr> InferShapeLayoutTransform(
     const std::vector<Expr>& input_shapes,
     const ir::Layout& old_layout,
     const ir::Layout& new_layout,
-    absl::flat_hash_map<int, std::vector<int>>* split_index_map) {
+    paddle::flat_hash_map<int, std::vector<int>>* split_index_map) {
   int src_dim = old_layout.ndims();
   int dst_dim = new_layout.ndims();
   std::vector<Expr> output_shape(dst_dim);
@@ -1132,7 +1132,7 @@ ir::Tensor LayoutTransform(const Tensor& input,
                     4U,
                     ::common::errors::InvalidArgument(
                         "dst_layout size should be larger than 4"));
-  absl::flat_hash_map<int, std::vector<int>> split_index_map;
+  paddle::flat_hash_map<int, std::vector<int>> split_index_map;
   // transform shape
   int offset = 'A' - 'a';
   ir::Layout old_layout(src_layout);

@@ -283,6 +283,8 @@ inline DataType StringToDataType(const std::string& dtype) {
     return DataType::BOOL;
   } else if (dtype == "int8") {
     return DataType::INT8;
+  } else if (dtype == "float8_e4m3fn") {
+    return DataType::FLOAT8_E4M3FN;
   } else if (dtype == "uint8") {
     return DataType::UINT8;
   } else if (dtype == "int16") {

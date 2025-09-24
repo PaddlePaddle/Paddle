@@ -391,8 +391,8 @@ def launch() -> None:
         if nnodes > 1:
             from paddle.distributed.launch.utils.etcd_client import ETCDClient
 
-            assert "etcd://" in ctx.args.master
-            master_ip, port = ctx.args.master.strip("etcd://").split(':')
+            assert ctx.args.master.startswith("etcd://")
+            master_ip, port = ctx.args.master.removeprefix("etcd://").split(':')
             client = ETCDClient(host=master_ip, port=port)
             client.delete("best_cfg")
             client.delete_prefix("auto_tuner")

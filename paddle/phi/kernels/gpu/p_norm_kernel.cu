@@ -16,10 +16,13 @@
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/p_norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+
+#include "paddle/phi/kernels/activation_kernel.h"
 
 namespace phi {
 template <typename T>
@@ -76,82 +79,6 @@ struct FabsCubicFunctor {
 };
 #endif
 
-#ifndef PADDLE_WITH_XPU_KP
-
-inline void GetDims(const phi::DDim& dim,
-                    int axis,
-                    int* pre,
-                    int* n,
-                    int* post,
-                    bool asvector) {
-  *pre = 1;
-  *post = 1;
-  *n = static_cast<int>(dim[axis]);
-  if (asvector) {
-    *n = static_cast<int>(product(dim));
-  } else {
-    for (int i = 0; i < axis; ++i) {
-      (*pre) *= static_cast<int>(dim[i]);
-    }
-    for (int i = axis + 1; i < dim.size(); ++i) {
-      (*post) *= static_cast<int>(dim[i]);
-    }
-  }
-}
-
-template <typename T, typename Context>
-void ReducePNormEigen(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      float porder,
-                      int axis,
-                      float epsilon,
-                      bool keepdim,
-                      bool asvector,
-                      DenseTensor* out) {
-  auto xdim = x.dims();
-  if (axis < 0) axis = xdim.size() + axis;
-  int pre = 0, n = 0, post = 0;
-  GetDims(xdim, axis, &pre, &n, &post, asvector);
-
-  for (int i = 0; i < xdim.size(); i++) {
-    PADDLE_ENFORCE_LT(0,
-                      xdim[i],
-                      errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
-  }
-
-  auto* place = dev_ctx.eigen_device();
-
-  Eigen::DSizes<int, 3> shape(pre, n, post);
-  Eigen::DSizes<int, 2> norm_shape(pre, post);
-
-  auto x_e = phi::EigenVector<T>::Flatten(x);
-  auto norm_e = phi::EigenVector<T>::Flatten(*out);
-
-  auto xr = x_e.reshape(shape);
-  auto norm = norm_e.reshape(norm_shape);
-
-  // p=0 means number of non-zero elements of (xr)
-  // p=inf means the maximum of |xr|
-  // p=-inf means the minimum of |xr|
-  // otherwise, Lp-norm = pow(sum(pow(|xr|, p)), 1/p)
-  Eigen::DSizes<int, 1> rdim(1);
-  if (porder == 0) {
-    norm.device(*place) =
-        (xr != xr.constant(static_cast<T>(0))).template cast<T>().sum(rdim);
-  } else if (porder == INFINITY) {
-    norm.device(*place) = xr.abs().maximum(rdim);
-  } else if (porder == -INFINITY) {
-    norm.device(*place) = xr.abs().minimum(rdim);
-  } else {
-    norm.device(*place) = xr.abs()
-                              .pow(static_cast<T>(porder))
-                              .sum(rdim)
-                              .pow(static_cast<T>(1.0f / porder));
-  }
-}
-#endif
-
 template <typename T, typename Context>
 void PNormKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -169,77 +96,83 @@ void PNormKernel(const Context& dev_ctx,
   std::vector<int> reduce_axis =
       funcs::details::GetReduceDim(axis_dims, xdim.size(), asvector);
 
-  for (int i = 0; i < xdim.size(); i++) {
-    PADDLE_ENFORCE_LT(0,
-                      xdim[i],
-                      errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
+  if (x.numel() == 0) {
+    if (out->numel() > 0) {
+      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+    }
+    return;
   }
 
-  if (x.numel() > std::numeric_limits<int32_t>::max()) {
-#ifndef PADDLE_WITH_XPU_KP
-    ReducePNormEigen<T, Context>(
-        dev_ctx, *in_x, porder, axis, epsilon, keepdim, asvector, out_norm);
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
-        "sum for reduce_sum function. Such case is only supported on GPU "
-        "now."));
-#endif
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  if (porder == 0) {
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+        dev_ctx, *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis);
+  } else if (porder == INFINITY) {
+    phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+        dev_ctx, *in_x, out_norm, AbsFunctor<T>(), reduce_axis);
+  } else if (porder == -INFINITY) {
+    phi::funcs::ReduceKernel<T, T, kps::MinFunctor, AbsFunctor<T>>(
+        dev_ctx, *in_x, out_norm, AbsFunctor<T>(), reduce_axis);
   } else {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
-    if (porder == 0) {
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-          dev_ctx, *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis);
-    } else if (porder == INFINITY) {
-      phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, AbsFunctor<T>>(
-          dev_ctx, *in_x, out_norm, AbsFunctor<T>(), reduce_axis);
-    } else if (porder == -INFINITY) {
-      phi::funcs::ReduceKernel<T, T, kps::MinFunctor, AbsFunctor<T>>(
-          dev_ctx, *in_x, out_norm, AbsFunctor<T>(), reduce_axis);
-    } else {
 #ifdef _WIN32
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
-          dev_ctx, *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis);
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+        dev_ctx, *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis);
 
-      const DenseTensor* tmp_norm = out_norm;
-      std::vector<const DenseTensor*> ins = {tmp_norm};
-      std::vector<DenseTensor*> outs = {out_norm};
-      phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
+    const DenseTensor* tmp_norm = out_norm;
+    std::vector<const DenseTensor*> ins = {tmp_norm};
+    std::vector<DenseTensor*> outs = {out_norm};
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
 #else
-      if (porder == 1.0) {
-        // fast 1-norm
-        phi::funcs::ReduceKernel<T, T, kps::AddFunctor, FabsFunctor<T>>(
-            dev_ctx, *in_x, out_norm, FabsFunctor<T>(), reduce_axis);
-      } else if (porder == 2.0) {
-        // fast 2-norm
-        phi::funcs::ReduceKernel<T, T, kps::AddFunctor, SquareFunctor<T>>(
-            dev_ctx, *in_x, out_norm, SquareFunctor<T>(), reduce_axis);
-      } else if (porder == 3.0) {
-        // fast 3-norm
-        phi::funcs::ReduceKernel<T, T, kps::AddFunctor, FabsCubicFunctor<T>>(
-            dev_ctx, *in_x, out_norm, FabsCubicFunctor<T>(), reduce_axis);
-      } else {
-        // vanilla norm
-        phi::funcs::ReduceKernel<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
-            dev_ctx,
-            *in_x,
-            out_norm,
-            UnsignedPowFunctor<T>(porder),
-            reduce_axis);
-      }
+    DenseTensor out_temp;
+    out_temp.Resize(out_norm->dims());
+    dev_ctx.template Alloc<MT>(&out_temp);
 
-      if (porder != 1.0) {
-        // save computation when porder is 1.0
-        const DenseTensor* tmp_norm = out_norm;
-        std::vector<const DenseTensor*> ins = {tmp_norm};
-        std::vector<DenseTensor*> outs = {out_norm};
-        phi::funcs::ElementwiseKernel<T>(
-            dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
-      }
-#endif
+    if (porder == 1.0) {
+      // fast 1-norm
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, FabsFunctor<T>>(
+          dev_ctx, *in_x, out_norm, FabsFunctor<T>(), reduce_axis);
+      return;
+    } else if (porder == 2.0) {
+      // fast 2-norm
+      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+      phi::DenseTensor temp_sum_of_squares_hp;
+      temp_sum_of_squares_hp.Resize(out_norm->dims());
+      dev_ctx.template Alloc<MT>(&temp_sum_of_squares_hp);
+      phi::funcs::ReduceKernel<T, MT, kps::AddFunctor, SquareFunctor<T>>(
+          dev_ctx,
+          *in_x,
+          &temp_sum_of_squares_hp,
+          SquareFunctor<T>(),
+          reduce_axis);
+
+      phi::DenseTensor temp_norm_hp;
+      temp_norm_hp.Resize(out_norm->dims());
+      dev_ctx.template Alloc<MT>(&temp_norm_hp);
+      phi::SqrtKernel<MT>(dev_ctx, temp_sum_of_squares_hp, &temp_norm_hp);
+      phi::CastKernel<MT>(dev_ctx, temp_norm_hp, out_norm->dtype(), out_norm);
+      return;
+    } else if (porder == 3.0) {
+      // fast 3-norm
+      phi::funcs::ReduceKernel<T, MT, kps::AddFunctor, FabsCubicFunctor<MT>>(
+          dev_ctx, *in_x, &out_temp, FabsCubicFunctor<MT>(), reduce_axis);
+    } else {
+      // vanilla norm
+      phi::funcs::ReduceKernel<T, MT, kps::AddFunctor, UnsignedPowFunctor<MT>>(
+          dev_ctx,
+          *in_x,
+          &out_temp,
+          UnsignedPowFunctor<MT>(porder),
+          reduce_axis);
     }
+    std::vector<const DenseTensor*> ins = {&out_temp};
+    std::vector<DenseTensor*> outs = {out_norm};
+    MT p_order_ = static_cast<MT>(1.f / porder);
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, ins, &outs, UnsignedPowFunctor<MT>(p_order_));
+#endif
   }
 }
 }  // namespace phi
@@ -250,5 +183,5 @@ PD_REGISTER_KERNEL(p_norm,
                    phi::PNormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -34,6 +34,7 @@
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -107,6 +108,27 @@ std::vector<Expr> GetAllBlocks(const std::vector<Expr>& exprs) {
       result.empty(),
       false,
       ::common::errors::InvalidArgument("Didn't find blocks in expr."));
+  return result;
+}
+
+std::vector<stmt::StmtRef> GetAllSchedules(const std::vector<Expr>& exprs) {
+  std::vector<stmt::StmtRef> result;
+  for (auto& it_expr : exprs) {
+    stmt::BlockRef stmt_block;
+    if (it_expr.As<ir::Block>()) {
+      stmt_block = ConvertExprBlockToStmtBlock(it_expr);
+    } else {
+      stmt_block = ConvertExprBlockToStmtBlock(
+          ir::Block::Make(std::vector<ir::Expr>{it_expr}));
+    }
+    FindSchedulesVisitor visitor;
+    auto find_blocks = visitor(stmt_block);
+    result.insert(result.end(), find_blocks.begin(), find_blocks.end());
+  }
+  PADDLE_ENFORCE_EQ(
+      result.empty(),
+      false,
+      ::common::errors::InvalidArgument("Didn't find schedules in expr."));
   return result;
 }
 
@@ -599,7 +621,8 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
     if (e.is_constant()) {
       std::string var_name =
           cinn::UniqName("constant" + static_cast<int>(e.get_constant()));
-      result.emplace_back(e, e, var_name, /* is_reduce = */ false);
+      result.emplace_back(
+          e, NormalizeUpperBound(e, false), var_name, /* is_reduce = */ false);
     } else if (e.As<ir::_Var_>() != nullptr) {
       ir::Expr copy_e = ir::ir_utils::IRCopy(e);
       ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
@@ -613,14 +636,17 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
           ir::Var var = x->as_var_ref();
           var_intervals.insert(
               {var->name,
-               common::CasInterval{var->lower_bound, var->upper_bound}});
+               common::CasInterval{var->lower_bound,
+                                   NormalizeUpperBound(var->upper_bound)}});
           if (var->is_reduce_axis) is_reduce = true;
         }
         return false;
       });
       common::SymbolicExprAnalyzer analyzer(var_intervals);
-      result.emplace_back(
-          analyzer.LowerBound(e), analyzer.UpperBound(e), var_name, is_reduce);
+      result.emplace_back(analyzer.LowerBound(e),
+                          NormalizeUpperBound(analyzer.UpperBound(e), false),
+                          var_name,
+                          is_reduce);
     }
   }
   return result;

@@ -3,6 +3,10 @@ cc_library(
   SRCS host_tracer.cc
   DEPS phi common var_type_traits)
 cc_library(
+  supplement_tracing
+  SRCS supplement_tracing.cc
+  DEPS phi common var_type_traits)
+cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
   DEPS standalone_executor phi glog common)
@@ -35,4 +39,5 @@ cc_library(
        common
        glog
        event_bind
-       custom_tracer)
+       custom_tracer
+       supplement_tracing)

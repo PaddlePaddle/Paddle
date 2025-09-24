@@ -17,12 +17,13 @@
 
 from __future__ import annotations
 
-import builtins
 import inspect
 from collections import namedtuple
+from contextlib import contextmanager
 from copy import deepcopy
-from functools import cached_property, reduce
-from typing import Any, Callable, Tuple, Union
+from enum import Enum
+from functools import reduce
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from typing_extensions import TypeAlias, TypeGuard
 
@@ -34,25 +35,40 @@ from .....utils.layers_utils import NotSupportedTensorArgumentError
 from ...infer_meta import (
     InferMetaCache,
     LayerInferMetaCache,
-    MetaInfo,
+    MetaInfoOrNull,
     ast_infer_meta,
 )
 from ...profiler import EventGuard, event_register
-from ...symbolic.statement_ir import Reference, StatementIR, Symbol
-from ...symbolic.symbolic_context import SymbolicTraceContext
+from ...symbolic.builder import StatementIRBuilder
+from ...symbolic.statement_ir import (
+    ParametersHolder,
+    Reference,
+    StatementContext,
+    StatementContextRegistry,
+    StatementIR,
+    Symbol,
+)
+from ...symbolic_shape.operators import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    NUMPY_API_SUPPORTED_DICT,
     NameGenerator,
+    SIRToCodeMap,
     SotUndefinedVar,
+    already_unified_in_dynamic_and_static_graph,
     inner_error_default_handler,
     is_inplace_api,
-    is_paddle_api,
     log,
     log_do,
     map_if,
     switch_symbol_registry,
 )
-from ...utils.exceptions import BreakGraphError, SotExtraInfo
+from ...utils.exceptions import (
+    BreakGraphError,
+    DygraphInconsistentWithStaticBreak,
+    InferMetaBreak,
+    SotExtraInfo,
+)
 from ..instruction_utils import get_instructions
 from .guard import Guard, StringifiedExpression, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
@@ -67,12 +83,13 @@ from .side_effects import (
     SideEffectRestorer,
     SideEffects,
 )
-from .tracker import BuiltinTracker, DummyTracker, SymbolicOperationTracker
+from .tracker import DummyTracker, SymbolicOperationTracker
 from .variables import (
     DictVariable,
     GlobalVariable,
     ListVariable,
     NullVariable,
+    NumPyArrayVariable,
     PaddleLayerVariable,
     ParameterVariable,
     SymbolicVariable,
@@ -83,14 +100,27 @@ from .variables import (
     map_variables,
 )
 
-CompileGraphResult: TypeAlias = Tuple[
-    Callable[..., Any],
-    Tuple[
-        StatementIR,
-        OrderedSet[Union[TensorVariable, SymbolicVariable]],
-        OrderedSet[Union[TensorVariable, SymbolicVariable]],
-    ],
-]
+if TYPE_CHECKING:
+    import types
+
+    GraphNodeVariableType: TypeAlias = Union[
+        TensorVariable, SymbolicVariable, NumPyArrayVariable
+    ]
+
+    CompileGraphResult: TypeAlias = tuple[
+        Callable[..., Any],
+        tuple[
+            StatementIR,
+            OrderedSet[GraphNodeVariableType],
+            OrderedSet[GraphNodeVariableType],
+            OrderedSet[GraphNodeVariableType],
+        ],
+    ]
+GraphNodeVariableClasses = (
+    TensorVariable,
+    SymbolicVariable,
+    NumPyArrayVariable,
+)
 
 
 def convert_to_meta(inputs: Any):
@@ -99,7 +129,7 @@ def convert_to_meta(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicVariable)):
+        if isinstance(x, GraphNodeVariableClasses):
             return x.meta
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -114,7 +144,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicVariable)):
+        if isinstance(x, GraphNodeVariableClasses):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -138,7 +168,7 @@ def record_symbols(SIR, *args, **kwargs):
     non_params = set()
 
     def fn(value):
-        if isinstance(value, (TensorVariable, SymbolicVariable)):
+        if isinstance(value, GraphNodeVariableClasses):
             symbol_meta_map[value.get_symbol()] = value.meta
             if isinstance(value, ParameterVariable):
                 params.add(value.get_symbol())
@@ -173,6 +203,12 @@ def replace_symbolic_var_with_constant_var(inputs):
     return map_variables(func, inputs, restore_variable=True)
 
 
+class APIType(Enum):
+    PADDLE = 0
+    SYMBOLIC = 1
+    NUMPY = 2
+
+
 class VariableLoader:
     def __init__(self, store_var_info, pycode_gen):
         self._store_var_info = store_var_info
@@ -187,6 +223,11 @@ class VariableLoader:
             # NOTE: One variable may have multiple names, we can
             # use any name to load it.
             self._pycode_gen.gen_load(self._store_var_info[var.id][0])
+
+
+# TODO(SigureMo): Add AMP auto_guard context
+@StatementContextRegistry.register_context(lambda _: paddle.no_grad())
+class NoGradContext(StatementContext): ...
 
 
 class FunctionGraph:
@@ -208,30 +249,24 @@ class FunctionGraph:
             "print_variables",
             "inplace_tensors",
             "need_cache",
+            "parameters_holder",
         ],
     )
 
-    def __init__(self, frame, **kwargs):
-        self.sir_ctx = SymbolicTraceContext()
+    def __init__(
+        self, code: types.CodeType, globals: dict[str, object], **kwargs
+    ):
+        self.sir_builder = StatementIRBuilder()
         self.inner_out = set()
         self.input_variables = []  # Store variables required within a function
-        self.pycode_gen = PyCodeGen(frame, disable_eval_frame=True)
+        self.pycode_gen = PyCodeGen(code, globals, disable_eval_frame=True)
         self.side_effects = SideEffects()
         self.need_cache = True
+        self.parameters_holder = ParametersHolder()
         self._global_guarded_variables: OrderedSet[VariableBase] = OrderedSet()
         self._print_variables = []
         self._inplace_tensors = OrderedSet()
         self._kwargs = kwargs
-
-    @cached_property
-    def _builtins(self):
-        builtins_ = {}
-        # prepare builtins
-        for name, value in builtins.__dict__.items():
-            builtins_[name] = VariableFactory.from_value(
-                value, self, BuiltinTracker(name), debug_name=name
-            )
-        return builtins_
 
     def add_print_variables(self, variable):
         """
@@ -267,7 +302,7 @@ class FunctionGraph:
         NOTE:
             Why don't use __deepcopy__, because memo is not a deepcopy, i.e inner_out is only a shallow copy, SIR is a deepcopy.
         """
-        saved_stmt_ir = deepcopy(self.sir_ctx.TOS)
+        saved_stmt_ir = deepcopy(self.sir_builder.current_sir)
         return FunctionGraph.Memo(
             inner_out=set(self.inner_out),
             input_variables=list(self.input_variables),
@@ -277,6 +312,7 @@ class FunctionGraph:
             print_variables=list(self._print_variables),
             inplace_tensors=OrderedSet(self._inplace_tensors),
             need_cache=self.need_cache,
+            parameters_holder=self.parameters_holder.copy(),
         )
 
     def restore_memo(self, memo: FunctionGraph.Memo):
@@ -289,12 +325,13 @@ class FunctionGraph:
         """
         self.inner_out = memo.inner_out
         self.input_variables = memo.input_variables
-        self.sir_ctx.replace_TOS(memo.stmt_ir)
+        self.sir_builder.replace_current_sir(memo.stmt_ir)
         self._global_guarded_variables = memo.global_guards
         self.side_effects.restore_state(memo.side_effects_state)
         self._print_variables = memo.print_variables
         self._inplace_tensors = memo.inplace_tensors
         self.need_cache = memo.need_cache
+        self.parameters_holder = memo.parameters_holder
 
     def collect_input_variables(self, inputs: list[VariableBase]):
         """
@@ -314,6 +351,18 @@ class FunctionGraph:
         )
 
     @property
+    @event_register("guard_chain")
+    def guard_chain(self) -> list[paddle.framework.core.GuardNodeBase]:
+        guard_chain: list[paddle.framework.core.GuardNodeBase] = []
+
+        with EventGuard("guard_fn: find vars and make faster guard"):
+            for variable in find_traceable_vars(
+                self.input_variables + list(self._global_guarded_variables)
+            ):
+                guard_chain.extend(variable.make_faster_guard())
+        return guard_chain
+
+    @property
     @event_register("guard_fn")
     def guard_fn(self) -> Guard:
         with switch_symbol_registry():
@@ -327,9 +376,9 @@ class FunctionGraph:
             guards = OrderedSet(guards)  # type: ignore
 
             for guard in guards:
-                assert isinstance(
-                    guard, StringifiedExpression
-                ), "guard must be StringifiedExpression."
+                assert isinstance(guard, StringifiedExpression), (
+                    "guard must be StringifiedExpression."
+                )
 
             return make_guard(guards)
 
@@ -365,10 +414,15 @@ class FunctionGraph:
         self.pycode_gen.gen_enable_eval_frame()
 
         name_gen = NameGenerator("___graph_fn_saved_orig_")
+        stored_var_ids = set()
 
         # here is not update changed values, it just give names to stack vars
         # and want keep same interface as _build_compile_fn_with_name_store
         for var in stack_vars[::-1]:
+            if var.id in stored_var_ids:
+                self.pycode_gen.gen_pop_top()
+                continue
+            stored_var_ids.add(var.id)
             if not store_var_info.get(var.id, []):
                 name = name_gen.next()
                 store_var_info.setdefault(var.id, [])
@@ -423,23 +477,31 @@ class FunctionGraph:
         ]
 
         symbolic_outputs = self._find_tensor_outputs(ret_items)
-        statement_ir = self.sir_ctx.return_TOS(
+        statement_ir = self.sir_builder.finalize(
             [Symbol(tensor_var.var_name) for tensor_var in symbolic_outputs]
         )
         if not statement_ir.statements:
-            return self.sir_ctx.compile_do_nothing(), (
+            return self.sir_builder.compile_do_nothing(), (
                 statement_ir,
                 OrderedSet(),
                 OrderedSet(),
+                OrderedSet(),
             )
-        input_names = statement_ir.inputs
-        symbolic_inputs = self._find_tensor_inputs(input_names)
-        compiled_fn = self.sir_ctx.compile_fn(
+        SIRToCodeMap().register(statement_ir, self.pycode_gen._origin_code)
+        symbolic_inputs = self._find_tensor_inputs(statement_ir.inputs)
+        symbolic_params = self._find_tensor_inputs(statement_ir.params)
+        compiled_fn = self.sir_builder.compile_fn(
             statement_ir.name,
+            self.parameters_holder,
             tuple(var.meta.to_input_spec() for var in symbolic_inputs),
             **self._kwargs,
         )
-        return compiled_fn, (statement_ir, symbolic_inputs, symbolic_outputs)
+        return compiled_fn, (
+            statement_ir,
+            symbolic_inputs,
+            symbolic_params,
+            symbolic_outputs,
+        )
 
     @event_register("compile_function", event_level=2)
     def compile_function(
@@ -461,9 +523,15 @@ class FunctionGraph:
         from ..breakpoint import BreakpointManager
 
         BreakpointManager().on_event("compile_function")
-        graph_fn, (statement_ir, symbolic_inputs, symbolic_outputs) = (
-            compile_graph_result
-        )
+        (
+            graph_fn,
+            (
+                statement_ir,
+                symbolic_inputs,
+                _,
+                symbolic_outputs,
+            ),
+        ) = compile_graph_result
         compiled_fn_name = f"___graph_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(graph_fn, compiled_fn_name)
@@ -499,20 +567,65 @@ class FunctionGraph:
         Args:
             func: paddle api
         """
-        assert is_paddle_api(func)
-        # not fallback api, start symbolic trace.
-        # TODO(xiokgun): may have python builtin object inside metas.
-        # TODO(xiokgun): 4 kinds of python arguments. support it !!
+        assert already_unified_in_dynamic_and_static_graph(func)
         log(3, f"call paddle.api : {func.__name__}", "\n")
 
         def message_handler(*args, **kwargs):
-            return f"Call paddle_api error: {func.__name__}, may be not a operator api?"
+            return f"Call paddle_api error: {func.__name__}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
-            self.sir_ctx.call_API,
+            self.sir_builder.call_API,
             func,
-            False,
+            APIType.PADDLE,
+            *args,
+            **kwargs,
+        )
+
+    def call_numpy_api(
+        self,
+        func: Callable[..., Any],
+        *args: VariableBase,
+        **kwargs: VariableBase,
+    ):
+        """
+        Record NumPy API to SIR
+
+        Args:
+            func: numpy api
+        """
+        assert func in NUMPY_API_SUPPORTED_DICT.values()
+        log(3, f"call numpy.api : {func.__name__}", "\n")
+
+        def message_handler(*args, **kwargs):
+            return f"Call numpy api error: {func.__name__}"
+
+        return inner_error_default_handler(self.symbolic_call, message_handler)(
+            InferMetaCache(),
+            self.sir_builder.call_API,
+            func,
+            APIType.NUMPY,
+            *args,
+            **kwargs,
+        )
+
+    def call_symbolic_api(
+        self,
+        op: Callable[..., Any],
+        *args: VariableBase,
+        **kwargs: VariableBase,
+    ):
+        assert op in SYMBOLIC_UNARY_OPS + SYMBOLIC_BINARY_OPS
+        log(3, f"call symbolic api : {op.__name__}", "\n")
+
+        def message_handler(*args, **kwargs):
+            return f"Call operator error: {op.__name__}"
+
+        return inner_error_default_handler(self.symbolic_call, message_handler)(
+            InferMetaCache(),
+            self.sir_builder.call_API,
+            op,
+            APIType.SYMBOLIC,
             *args,
             **kwargs,
         )
@@ -528,35 +641,13 @@ class FunctionGraph:
         """
 
         def message_handler(*args, **kwargs):
-            return f"Call tensor_method error: Tensor.{method_name}, may be not a valid operator api?"
+            return f"Call tensor_method error: Tensor.{method_name}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
-            self.sir_ctx.call_METHOD,
+            self.sir_builder.call_METHOD,
             method_name,
-            False,
-            *args,
-            **kwargs,
-        )
-
-    def call_symbolic_method(
-        self, method_name: str, *args: VariableBase, **kwargs
-    ):
-        """
-        call symbolic method, start symbolic trace.
-
-        Args:
-            method_name: symbolic method name
-        """
-
-        def message_handler(*args, **kwargs):
-            return f"Call symbolic_method error: Symbolic.{method_name}, may be not a valid operator api?"
-
-        return inner_error_default_handler(self.symbolic_call, message_handler)(
-            InferMetaCache(),
-            self.sir_ctx.call_METHOD,
-            method_name,
-            True,
+            APIType.PADDLE,
             *args,
             **kwargs,
         )
@@ -580,7 +671,7 @@ class FunctionGraph:
             return metas
 
         def compute_fn(layer, inputs, outputs, stacks):
-            self.sir_ctx.call_LAYER(
+            self.sir_builder.call_LAYER(
                 Reference(layer.value, weak_ref),
                 inputs=inputs,
                 outputs=outputs,
@@ -588,10 +679,10 @@ class FunctionGraph:
             )
 
         def message_handler(*args, **kwargs):
-            return f"Call paddle layer error: {layer}, may be not a valid paddle layer?"
+            return f"Call paddle layer error: {layer}"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
-            infer_meta_fn, compute_fn, layer, False, *args, **kwargs
+            infer_meta_fn, compute_fn, layer, APIType.PADDLE, *args, **kwargs
         )
 
     def call_ast(
@@ -608,7 +699,7 @@ class FunctionGraph:
         """
 
         def compute_fn(static_function, inputs, outputs, stacks):
-            self.sir_ctx.call_AST(
+            self.sir_builder.call_AST(
                 static_function,
                 inputs=inputs,
                 outputs=outputs,
@@ -625,16 +716,16 @@ class FunctionGraph:
                 ast_infer_meta,
                 compute_fn,
                 static_function,
-                False,
+                APIType.PADDLE,
                 *args,
                 **kwargs,
             )
         except Exception as e:
-            log(3, f"[call AST] {e}")
+            log(3, f"[call AST] {e}\n")
             return None
 
     def symbolic_call(
-        self, infer_meta_fn, compute_fn, func, is_symbolic_var, *args, **kwargs
+        self, infer_meta_fn, compute_fn, func, api_type, *args, **kwargs
     ):
         """
         Using infer_meta_fn and compute_fn convert func to symbolic function.
@@ -645,77 +736,95 @@ class FunctionGraph:
             func         : the logical function which will be represent as a stmt
         """
 
-        def try_infer_meta_fn(args, kwargs) -> Any:
-            try:
-                metas = convert_to_meta(args)
-                kwmetas = convert_to_meta(kwargs)
-                return args, kwargs, infer_meta_fn(func, *metas, **kwmetas)
-            except (NotSupportedTensorArgumentError, TypeError) as e:
-                bound_arguments = inspect.signature(func).bind(*args, **kwargs)
-                bound_arguments.apply_defaults()
-                if (
-                    isinstance(e, NotSupportedTensorArgumentError)
-                    and e.name in bound_arguments.arguments
+        def infer_meta(args, kwargs):
+            metas = convert_to_meta(args)
+            kwmetas = convert_to_meta(kwargs)
+            return infer_meta_fn(func, *metas, **kwmetas)
+
+        def fallback_symbolic_to_constant(args, kwargs, err):
+            bound_arguments = inspect.signature(func).bind(*args, **kwargs)
+            bound_arguments.apply_defaults()
+            if (
+                isinstance(err, NotSupportedTensorArgumentError)
+                and err.name in bound_arguments.arguments
+            ):
+                original_var = bound_arguments.arguments[err.name]
+                flatten_vars = original_var.flatten_inner_vars()
+                if not any(
+                    isinstance(arg, SymbolicVariable) for arg in flatten_vars
                 ):
-                    original_var = bound_arguments.arguments[e.name]
-                    flatten_vars = original_var.flatten_inner_vars()
-                    if not any(
-                        isinstance(arg, SymbolicVariable)
-                        for arg in flatten_vars
-                    ):
-                        # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
-                        raise BreakGraphError(
-                            f"InferMeta encount {type(e)}, but all args are not symbolic."
+                    # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
+                    raise BreakGraphError(
+                        InferMetaBreak(
+                            f"InferMeta encountered {type(err)}, but all args are not symbolic."
                         )
-
-                    args, kwargs = map_if(
-                        (args, kwargs),
-                        pred=lambda x: x is original_var,
-                        true_fn=lambda x: replace_symbolic_var_with_constant_var(
-                            x
-                        ),
-                        false_fn=lambda x: x,
-                    )
-                else:
-                    flatten_vars = reduce(
-                        lambda x, y: (
-                            x + y.flatten_inner_vars()
-                            if isinstance(y, VariableBase)
-                            else x
-                        ),
-                        bound_arguments.arguments.values(),
-                        [],
                     )
 
-                    if not any(
-                        isinstance(arg, SymbolicVariable)
-                        for arg in flatten_vars
-                    ):
-                        raise BreakGraphError(
-                            f"InferMeta encount {type(e)}, but all args are not symbolic."
+                args, kwargs = map_if(
+                    (args, kwargs),
+                    pred=lambda x: x is original_var,
+                    true_fn=lambda x: replace_symbolic_var_with_constant_var(x),
+                    false_fn=lambda x: x,
+                )
+            else:
+                flatten_vars = reduce(
+                    lambda x, y: (
+                        x + y.flatten_inner_vars()
+                        if isinstance(y, VariableBase)
+                        else x
+                    ),
+                    bound_arguments.arguments.values(),
+                    [],
+                )
+
+                if not any(
+                    isinstance(arg, SymbolicVariable) for arg in flatten_vars
+                ):
+                    raise BreakGraphError(
+                        InferMetaBreak(
+                            f"InferMeta encountered {type(err)}, but all args are not symbolic."
                         )
-
-                    args, kwargs = map_structure(
-                        replace_symbolic_var_with_constant_var, (args, kwargs)
                     )
 
-                metas = convert_to_meta(args)
-                kwmetas = convert_to_meta(kwargs)
-                return args, kwargs, infer_meta_fn(func, *metas, **kwmetas)
+                args, kwargs = map_structure(
+                    replace_symbolic_var_with_constant_var, (args, kwargs)
+                )
+            return args, kwargs
 
+        def try_infer_meta_with_fallback_symbolic_to_constant(
+            args, kwargs, max_retry_times=10
+        ):
+            try:
+                return args, kwargs, infer_meta(args, kwargs)
+            except (NotSupportedTensorArgumentError, TypeError) as e:
+                err = e
+                retry_times = 0
+                while True:
+                    retry_times += 1
+                    if retry_times >= max_retry_times:
+                        raise err
+                    try:
+                        args, kwargs = fallback_symbolic_to_constant(
+                            args, kwargs, err
+                        )
+                        return args, kwargs, infer_meta(args, kwargs)
+                    except (NotSupportedTensorArgumentError, TypeError) as e:
+                        err = e
             except Exception as e:
                 if SotExtraInfo.from_exception(e).need_breakgraph:
                     raise BreakGraphError(
-                        f"API {func} encountered a need break graph error {e}"
+                        DygraphInconsistentWithStaticBreak(
+                            f"API {func} encountered a need break graph error {e}"
+                        )
                     )
                 raise e
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-            args, kwargs, out_metas = try_infer_meta_fn(args, kwargs)
+            args, kwargs, out_metas = (
+                try_infer_meta_with_fallback_symbolic_to_constant(args, kwargs)
+            )
         else:
-            metas = convert_to_meta(args)
-            kwmetas = convert_to_meta(kwargs)
-            out_metas = infer_meta_fn(func, *metas, **kwmetas)
+            out_metas = infer_meta(args, kwargs)
 
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))
@@ -725,21 +834,24 @@ class FunctionGraph:
             convert_to_symbol(kwargs),
         )
 
-        record_symbols(self.sir_ctx.TOS, *args, **kwargs)
+        record_symbols(self.sir_builder.current_sir, *args, **kwargs)
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
-        if is_symbolic_var:
+        if api_type == APIType.SYMBOLIC:
             var_cls = SymbolicVariable
             tracker = SymbolicOperationTracker(
                 list(args) + list(kwargs.values()), func
             )
+        elif api_type == APIType.NUMPY:
+            var_cls = NumPyArrayVariable
+            tracker = DummyTracker(list(args) + list(kwargs.values()))
         else:
             var_cls = TensorVariable
             tracker = DummyTracker(list(args) + list(kwargs.values()))
         outputs = map_if(
             out_metas,
-            pred=lambda x: isinstance(x, MetaInfo),
+            pred=lambda x: isinstance(x, MetaInfoOrNull),
             true_fn=lambda x: var_cls(
                 x,
                 self,
@@ -773,7 +885,7 @@ class FunctionGraph:
                 stmt_stacks,
             )  # symbolic only contain symbols.
             self._put_inner(outputs)
-        if is_symbolic_var:
+        if api_type == APIType.SYMBOLIC:
             # compute_fn should be call_method
             tracker = SymbolicOperationTracker(
                 list(args) + list(kwargs.values()), func
@@ -782,6 +894,29 @@ class FunctionGraph:
             tracker = DummyTracker(list(args) + list(kwargs.values()))
 
         return VariableFactory.from_value(outputs, self, tracker)
+
+    def add_alias(
+        self,
+        src: TensorVariable | SymbolicVariable,
+        dst: TensorVariable | SymbolicVariable,
+    ):
+        """
+        Add an alias like `dst = src`
+        """
+        alias_fn = lambda x: x
+        alias_fn.__name__ = "__sir_alias__"
+        inputs_arg_pack = ([src], {})
+        self.sir_builder.call_API(
+            alias_fn,
+            convert_to_symbol(inputs_arg_pack),
+            convert_to_symbol(dst),
+            [],
+        )
+
+    @contextmanager
+    def no_grad(self):
+        with self.sir_builder.attach_statement_context_guard(NoGradContext()):
+            yield
 
     @staticmethod
     def get_opcode_executor_stack():
@@ -794,17 +929,21 @@ class FunctionGraph:
             return []
         current_executor = OpcodeExecutorBase.call_stack[-1]
         current_line = current_executor._current_line
-        filename = current_executor._code.co_filename
-        source_lines, start_line = inspect.getsourcelines(
-            current_executor._code
-        )
+        filename = current_executor.vframe.code.co_filename
+        try:
+            source_lines, start_line = inspect.getsourcelines(
+                current_executor.vframe.code
+            )
+        except OSError:
+            # Skip if the function has not source code
+            return []
         # TODO(SigureMo): In 3.11, lineno maybe changed after multiple breakgraph,
         # We need to find a way to fix this.
         line_idx = max(min(current_line - start_line, len(source_lines) - 1), 0)
         code_line = source_lines[line_idx]
         stack = []
         stack.append(
-            f'  File "{filename}", line {current_line}, in {current_executor._code.co_name}'
+            f'  File "{filename}", line {current_line}, in {current_executor.vframe.code.co_name}'
         )
         stack.append(f'    {code_line}')
         return stack
@@ -835,13 +974,13 @@ class FunctionGraph:
 
     def _find_tensor_inputs(
         self, input_names: list[str]
-    ) -> OrderedSet[TensorVariable | SymbolicVariable]:
-        inputs: OrderedSet[TensorVariable | SymbolicVariable] = OrderedSet()
+    ) -> OrderedSet[GraphNodeVariableType]:
+        inputs: OrderedSet[GraphNodeVariableType] = OrderedSet()
         for name in input_names:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, (TensorVariable, SymbolicVariable))
+                    isinstance(variable, GraphNodeVariableClasses)
                     and variable.get_symbol().name == name
                 ):
                     inputs.add(variable)
@@ -851,26 +990,55 @@ class FunctionGraph:
         assert len(inputs) == len(input_names), "Number of inputs not match."
         return inputs
 
-    def gen_load_inputs(
-        self, inputs: OrderedSet[TensorVariable | SymbolicVariable]
-    ):
+    def gen_load_inputs(self, inputs: OrderedSet[GraphNodeVariableType]):
         for input_var in inputs:
-            # For SymbolicVariable, we use paddle.full([], value, "int64")
-            # to convert it to a Tensor
             if isinstance(input_var, SymbolicVariable):
+                # For SymbolicVariable, we use paddle.full([], value, "int64")
+                # to convert it to a Tensor
                 self.pycode_gen.gen_load_object(
                     paddle.full,
                     "___paddle_full",
                 )
                 self.pycode_gen.gen_build_list(0)
-            input_var.tracker.gen_instructions(self.pycode_gen)
-            if isinstance(input_var, SymbolicVariable):
+                input_var.tracker.gen_instructions(self.pycode_gen)
                 self.pycode_gen.gen_load_const("int64")
                 self.pycode_gen.gen_call_function(3)
+            elif isinstance(input_var, NumPyArrayVariable):
+                # For NumPyArrayVariable, we use paddle.to_tensor(value) to convert it to a Tensor
+                self.pycode_gen.gen_load_object(
+                    paddle.to_tensor,
+                    "___paddle_to_tensor",
+                )
+                input_var.tracker.gen_instructions(self.pycode_gen)
+                self.pycode_gen.gen_call_function(1)
+            else:
+                input_var.tracker.gen_instructions(self.pycode_gen)
+
+    @staticmethod
+    def _is_graph_output(
+        var,
+    ) -> TypeGuard[GraphNodeVariableType]:
+        return isinstance(
+            var.tracker, (DummyTracker, SymbolicOperationTracker)
+        ) and isinstance(var, GraphNodeVariableClasses)
+
+    @staticmethod
+    def _collect_related_dummy_tensor(var):
+        if not isinstance(
+            var.tracker, (DummyTracker, SymbolicOperationTracker)
+        ):
+            return []
+        if FunctionGraph._is_graph_output(var):
+            return [var]
+
+        retval = []
+        for inp in var.tracker.inputs:
+            retval.extend(FunctionGraph._collect_related_dummy_tensor(inp))
+        return retval
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
-    ) -> OrderedSet[TensorVariable | SymbolicVariable]:
+    ) -> OrderedSet[GraphNodeVariableType]:
         """
         Return all TensorVariable. find TensorVariables participating in networking from the output Variables
 
@@ -878,39 +1046,19 @@ class FunctionGraph:
             outputs: output variables
         """
 
-        def is_graph_output(
-            var,
-        ) -> TypeGuard[TensorVariable | SymbolicVariable]:
-            return isinstance(
-                var.tracker, (DummyTracker, SymbolicOperationTracker)
-            ) and isinstance(var, (TensorVariable, SymbolicVariable))
-
-        def collect_related_dummy_tensor(var):
-            if isinstance(
-                var.tracker, (DummyTracker, SymbolicOperationTracker)
-            ):
-                if is_graph_output(var):
-                    return [var]
-                else:
-                    retval = []
-                    for inp in var.tracker.inputs:
-                        retval.extend(collect_related_dummy_tensor(inp))
-                    return retval
-            return []
-
-        output_tensors: OrderedSet[TensorVariable | SymbolicVariable] = (
-            OrderedSet()
-        )
+        output_tensors: OrderedSet[GraphNodeVariableType] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:
             if isinstance(
                 output.tracker, (DummyTracker, SymbolicOperationTracker)
             ):
-                if is_graph_output(output):
+                if FunctionGraph._is_graph_output(output):
                     output_tensors.add(output)
                 else:
                     for inp in output.tracker.inputs:
-                        for _var in collect_related_dummy_tensor(inp):
+                        for _var in FunctionGraph._collect_related_dummy_tensor(
+                            inp
+                        ):
                             output_tensors.add(_var)
                     # Guard output that can not be traced.
                     self.add_global_guarded_variable(output)
@@ -919,7 +1067,7 @@ class FunctionGraph:
             if isinstance(side_effect_var, (ListVariable, DictVariable)):
                 for var in side_effect_var.flatten_inner_vars():
                     if (
-                        is_graph_output(var)
+                        FunctionGraph._is_graph_output(var)
                         and side_effect_var.tracker.is_traceable()
                     ):
                         output_tensors.add(var)
@@ -934,12 +1082,12 @@ class FunctionGraph:
                 for record in proxy_records:
                     if isinstance(record, (MutationSet, MutationNew)):
                         for var in record.value.flatten_inner_vars():
-                            if is_graph_output(var):
+                            if FunctionGraph._is_graph_output(var):
                                 output_tensors.add(var)
         # Find Tensor in print_stmts
         for print_stmt in self._print_variables:
             for var in print_stmt.flatten_inner_vars():
-                if is_graph_output(var):
+                if FunctionGraph._is_graph_output(var):
                     output_tensors.add(var)
 
         # add inplace tensors into output tensors.

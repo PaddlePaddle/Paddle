@@ -21,11 +21,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectKernel(const Context& ctx,
+void IndexSelectKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  if (output && output->numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   auto inputs = x;
   if (dim < 0) {
     dim += inputs.dims().size();
@@ -44,9 +48,9 @@ void IndexSelectKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    IndexSelectInner<Context, T, int>(ctx, &inputs, index, output, dim);
+    IndexSelectInner<Context, T, int>(dev_ctx, &inputs, index, output, dim);
   } else if (index_type == phi::DataType::INT64) {
-    IndexSelectInner<Context, T, int64_t>(ctx, &inputs, index, output, dim);
+    IndexSelectInner<Context, T, int64_t>(dev_ctx, &inputs, index, output, dim);
   }
 }
 
@@ -58,8 +62,9 @@ PD_REGISTER_KERNEL(index_select,
                    phi::IndexSelectKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}

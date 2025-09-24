@@ -17,7 +17,5 @@
 namespace paddle::prim {
 StaticCompositeContext* StaticCompositeContext::static_composite_context_ =
     new StaticCompositeContext();
-thread_local bool StaticCompositeContext::enable_bwd_prim_ = false;
-thread_local bool StaticCompositeContext::enable_fwd_prim_ = false;
 thread_local bool StaticCompositeContext::enable_eager_prim_ = false;
 }  // namespace paddle::prim

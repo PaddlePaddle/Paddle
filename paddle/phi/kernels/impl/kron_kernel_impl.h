@@ -36,7 +36,7 @@ inline DenseTensor UnsqueezeTo(const DenseTensor &src, int ndims) {
       rank,
       ndims,
       errors::InvalidArgument(
-          "The input Tensor's rank should be less than or equal to ndims"
+          "The input Tensor's rank should be less than or equal to ndims. "
           "Received input Tensor's rank = %d, ndims = %d",
           rank,
           ndims));
@@ -153,18 +153,21 @@ struct KronOpFunctor {
 };
 
 template <typename T, typename Context>
-void KronKernel(const Context &ctx,
+void KronKernel(const Context &dev_ctx,
                 const DenseTensor &x,
                 const DenseTensor &y,
                 DenseTensor *out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   int ndims = out->dims().size();
   DenseTensor xx = UnsqueezeTo(x, ndims);
   DenseTensor yy = UnsqueezeTo(y, ndims);
 
   KronOpFunctor<Context, T> func;
-  func(ctx, xx, yy, out);
+  func(dev_ctx, xx, yy, out);
 }
 
 }  // namespace phi

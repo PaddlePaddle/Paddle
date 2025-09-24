@@ -42,6 +42,8 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 WhileInstruction::WhileInstruction(
@@ -212,11 +214,15 @@ void WhileInstruction::CheckGCEarly(const CheckGCEarlyHook& check_gc_early) {
 }
 
 void WhileInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("WhileInstruction begin");
+  }
+
 #ifdef PADDLE_WITH_DNNL
   // Executor on being destroyed clears oneDNN cache and resets
   // registered model data layout. This is unwanted for nested
   // Executors (executors declared inside control ops)
-  paddle::platform::DontClearMKLDNNCache(body_inter_->GetPlace());
+  paddle::platform::DontClearONEDNNCache(body_inter_->GetPlace());
 #endif
   ShareInputsToOutputs();
 
@@ -234,6 +240,10 @@ void WhileInstruction::Run() {
     ShareConditionData();
   }
   VLOG(6) << "while instruction run done";
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("WhileInstruction finish");
+  }
 }
 
 }  // namespace paddle::framework

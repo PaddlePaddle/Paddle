@@ -489,9 +489,25 @@ class DtensorToLocalGradNode : public egr::GradNodeBase {
     input_ = egr::TensorWrapper(input, true);
   }
 
+  void SetGradDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
+    grad_dist_attr_ = dist_attr;
+  }
+
+  void SetGradPlacements(const phi::distributed::Placements& placements) {
+    grad_placements_ = placements;
+  }
+
+  void SetGradProcessMesh(const phi::distributed::ProcessMesh& process_mesh) {
+    grad_process_mesh_ = process_mesh;
+  }
+
  private:
   // TensorWrappers
   egr::TensorWrapper input_;
+
+  phi::distributed::TensorDistAttr grad_dist_attr_;
+  phi::distributed::Placements grad_placements_;
+  phi::distributed::ProcessMesh grad_process_mesh_;
 };
 
 class DtensorFromLocalGradNode : public egr::GradNodeBase {

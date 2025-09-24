@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
@@ -25,6 +26,11 @@ template <typename T, typename Context>
 void MeanAllKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   const T* in_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
   auto numel = x.numel();
@@ -59,6 +65,6 @@ PD_REGISTER_KERNEL(mean_all,
                    phi::MeanAllKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}

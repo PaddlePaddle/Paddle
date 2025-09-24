@@ -1,20 +1,22 @@
-/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "paddle/phi/kernels/strided_copy_kernel.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
-
+#include "paddle/phi/kernels/complex_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -44,207 +46,68 @@ void StridedCopyKernel(const Context& dev_ctx,
                         input.numel(),
                         out->numel()));
 
-  int r = 0;
+  if (input.numel() <= 0) {
+    return;
+  }
 
-  if (std::is_same<T, float>::value) {
-    auto input_data = reinterpret_cast<const float*>(input.data<T>());
-    auto output_data = reinterpret_cast<float*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<float>(dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<float>(dev_ctx.x_context(),
+  PADDLE_ENFORCE_NOT_NULL(out->data<T>(),
+                          common::errors::InvalidArgument(
+                              "StridedCopyKernel's out tensor must complete "
+                              "mutable data before call kernel."));
+
+  // use XPUCopyTypeTrait to deal with double and int16_t copy instead of
+  // XPUTypeTrait
+  using XPUType = typename XPUCopyTypeTrait<T>::Type;
+
+  int r = 0;
+  auto input_data = reinterpret_cast<const XPUType*>(input.data<T>());
+  auto output_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
+  PADDLE_ENFORCE_NOT_NULL(output_data,
+                          common::errors::InvalidArgument(
+                              "StridedCopyKernel's out tensor must complete "
+                              "mutable data before call kernel."));
+  if (input.numel() == 1) {
+    r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+  } else {
+    int64_t data_size_in = input.Holder()->size() - input.meta().offset;
+    int64_t data_size_out = out->Holder()->size() - out->meta().offset;
+    int64_t data_size = std::max(data_size_in, data_size_out);
+    r = xpu::strided_copy<XPUType>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
+                                   data_size,
                                    common::vectorize<int64_t>(input.dims()),
                                    common::vectorize<int64_t>(out->dims()),
                                    common::vectorize<int64_t>(input.strides()),
                                    common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, double>::value) {
-    auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
-    auto output_data = reinterpret_cast<int64_t*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<int64_t>(dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<int64_t>(
-          dev_ctx.x_context(),
-          input_data,
-          output_data,
-          common::vectorize<int64_t>(input.dims()),
-          common::vectorize<int64_t>(out->dims()),
-          common::vectorize<int64_t>(input.strides()),
-          common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, ::phi::dtype::float16>::value) {
-    using XPUFLOAT16 = typename XPUTypeTrait<float16>::Type;
-    auto input_data = reinterpret_cast<const XPUFLOAT16*>(input.data<T>());
-    auto output_data = reinterpret_cast<XPUFLOAT16*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<XPUFLOAT16>(
-          dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<XPUFLOAT16>(
-          dev_ctx.x_context(),
-          input_data,
-          output_data,
-          common::vectorize<int64_t>(input.dims()),
-          common::vectorize<int64_t>(out->dims()),
-          common::vectorize<int64_t>(input.strides()),
-          common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, ::phi::dtype::bfloat16>::value) {
-    using XPUFLOAT16 = typename XPUTypeTrait<float16>::Type;
-    auto input_data = reinterpret_cast<const XPUFLOAT16*>(input.data<T>());
-    auto output_data = reinterpret_cast<XPUFLOAT16*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<XPUFLOAT16>(
-          dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<XPUFLOAT16>(
-          dev_ctx.x_context(),
-          input_data,
-          output_data,
-          common::vectorize<int64_t>(input.dims()),
-          common::vectorize<int64_t>(out->dims()),
-          common::vectorize<int64_t>(input.strides()),
-          common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, int16_t>::value) {
-    using XPUFLOAT16 = typename XPUTypeTrait<float16>::Type;
-    auto input_data = reinterpret_cast<const XPUFLOAT16*>(input.data<T>());
-    auto output_data = reinterpret_cast<XPUFLOAT16*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<XPUFLOAT16>(
-          dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<XPUFLOAT16>(
-          dev_ctx.x_context(),
-          input_data,
-          output_data,
-          common::vectorize<int64_t>(input.dims()),
-          common::vectorize<int64_t>(out->dims()),
-          common::vectorize<int64_t>(input.strides()),
-          common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, uint8_t>::value) {
-    auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
-    auto output_data = reinterpret_cast<int8_t*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<int8_t>(dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<int8_t>(dev_ctx.x_context(),
-                                    input_data,
-                                    output_data,
-                                    common::vectorize<int64_t>(input.dims()),
-                                    common::vectorize<int64_t>(out->dims()),
-                                    common::vectorize<int64_t>(input.strides()),
-                                    common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, int8_t>::value) {
-    auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
-    auto output_data = reinterpret_cast<int8_t*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<int8_t>(dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<int8_t>(dev_ctx.x_context(),
-                                    input_data,
-                                    output_data,
-                                    common::vectorize<int64_t>(input.dims()),
-                                    common::vectorize<int64_t>(out->dims()),
-                                    common::vectorize<int64_t>(input.strides()),
-                                    common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, int32_t>::value) {
-    auto input_data = reinterpret_cast<const int32_t*>(input.data<T>());
-    auto output_data = reinterpret_cast<int32_t*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<int32_t>(dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<int32_t>(
-          dev_ctx.x_context(),
-          input_data,
-          output_data,
-          common::vectorize<int64_t>(input.dims()),
-          common::vectorize<int64_t>(out->dims()),
-          common::vectorize<int64_t>(input.strides()),
-          common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, int64_t>::value) {
-    auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
-    auto output_data = reinterpret_cast<int64_t*>(out->data<T>());
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<int64_t>(dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<int64_t>(
-          dev_ctx.x_context(),
-          input_data,
-          output_data,
-          common::vectorize<int64_t>(input.dims()),
-          common::vectorize<int64_t>(out->dims()),
-          common::vectorize<int64_t>(input.strides()),
-          common::vectorize<int64_t>(out->strides()));
-    }
-  } else if (std::is_same<T, bool>::value) {
-    auto input_data = reinterpret_cast<const bool*>(input.data<T>());
-    auto output_data = reinterpret_cast<bool*>(out->data<T>());
-
-    PADDLE_ENFORCE_NOT_NULL(output_data,
-                            common::errors::InvalidArgument(
-                                "StridedCopyKernel's out tensor must complete "
-                                "mutable data before call kernel."));
-    if (input.numel() == 1) {
-      r = xpu::copy<bool>(dev_ctx.x_context(), input_data, output_data, 1);
-    } else {
-      r = xpu::strided_copy<bool>(dev_ctx.x_context(),
-                                  input_data,
-                                  output_data,
-                                  common::vectorize<int64_t>(input.dims()),
-                                  common::vectorize<int64_t>(out->dims()),
-                                  common::vectorize<int64_t>(input.strides()),
-                                  common::vectorize<int64_t>(out->strides()));
-    }
-  } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Received unsupported dtype : %s.", input.dtype()));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_copy");
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_copy");
 }
+
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void StridedCopyKernel<phi::complex64, XPUContext>(
+    const XPUContext& dev_ctx,
+    const DenseTensor& input,
+    const std::vector<int64_t>& dims,
+    const std::vector<int64_t>& out_stride,
+    int64_t offset,
+    DenseTensor* out) {
+  using T = phi::complex64;
+  dev_ctx.template Alloc<T>(out);
+  const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
+  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
+  DenseTensor real_out, imag_out;
+  real_out.Resize(out->dims());
+  imag_out.Resize(out->dims());
+  StridedCopyKernel<float, XPUContext>(
+      dev_ctx, real, dims, out_stride, offset, &real_out);
+  StridedCopyKernel<float, XPUContext>(
+      dev_ctx, imag, dims, out_stride, offset, &imag_out);
+  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
+}
+#endif
 
 }  // namespace phi
 
@@ -260,5 +123,9 @@ PD_REGISTER_KERNEL(strided_copy,
                    int64_t,
                    float,
                    double,
-                   ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16) {}
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::complex64,
+#endif
+                   ::phi::float16,
+                   ::phi::bfloat16) {
+}

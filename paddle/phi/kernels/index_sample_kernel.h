@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSampleKernel(const Context& ctx,
+void IndexSampleKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        DenseTensor* out);

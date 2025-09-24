@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include "absl/types/optional.h"
+#include <optional>
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
@@ -92,7 +92,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
         2U,
-        ::common::errors::InvalidArgument("the size of pack_args should be"
+        ::common::errors::InvalidArgument("the size of pack_args should be "
                                           "equal to 2, but got %d.",
                                           pack_args.size()));
     PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
@@ -116,10 +116,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(unary_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy." + op_name + ".x86",
-                    1);
+  strategy->AddImpl(unary_compute, "strategy." + op_name + ".x86", 1);
 
   return strategy;
 }
@@ -174,8 +171,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      unary_compute, lang::PackedFunc(), "strategy." + op_name + ".x86", 1);
+  strategy->AddImpl(unary_compute, "strategy." + op_name + ".x86", 1);
 
   return strategy;
 }
@@ -191,11 +187,11 @@ std::shared_ptr<OpStrategy> StrategyForScale(
   bool bias_after_scale = true;
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "scale") {
-      scale = absl::get<float>(iter.second);
+      scale = std::get<float>(iter.second);
     } else if (iter.first == "bias") {
-      bias = absl::get<float>(iter.second);
+      bias = std::get<float>(iter.second);
     } else if (iter.first == "bias_after_scale") {
-      bias_after_scale = absl::get<bool>(iter.second);
+      bias_after_scale = std::get<bool>(iter.second);
     }
   }
   framework::CINNCompute scale_compute([=](lang::Args args,
@@ -260,10 +256,7 @@ std::shared_ptr<OpStrategy> StrategyForScale(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(scale_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.scale.x86",
-                    1);
+  strategy->AddImpl(scale_compute, "strategy.scale.x86", 1);
 
   return strategy;
 }
@@ -279,11 +272,11 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
   bool bias_after_scale = true;
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "scale") {
-      scale = absl::get<float>(iter.second);
+      scale = std::get<float>(iter.second);
     } else if (iter.first == "bias") {
-      bias = absl::get<float>(iter.second);
+      bias = std::get<float>(iter.second);
     } else if (iter.first == "bias_after_scale") {
-      bias_after_scale = absl::get<bool>(iter.second);
+      bias_after_scale = std::get<bool>(iter.second);
     }
   }
   framework::CINNCompute scale_compute(
@@ -333,10 +326,10 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
 
               Expr cast_scale = should_upscale_fp32
                                     ? Expr(scale)
-                                    : ir::Cast::Make(A->type(), Expr(scale));
+                                    : common::cast(Expr(scale), A->type());
               Expr cast_bias = should_upscale_fp32
                                    ? Expr(bias)
-                                   : ir::Cast::Make(A->type(), Expr(bias));
+                                   : common::cast(Expr(bias), A->type());
               Expr add_result;
               if (scale == 1.0f) {
                 if (bias == 0.0f) {
@@ -362,7 +355,7 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(scale_compute, lang::PackedFunc(), "strategy.scale.x86", 1);
+  strategy->AddImpl(scale_compute, "strategy.scale.x86", 1);
 
   return strategy;
 }
@@ -411,7 +404,7 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
           "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
-  absl::visit(Visitor{scalar}, attr);
+  std::visit(Visitor{scalar}, attr);
   return scalar;
 }
 
@@ -463,10 +456,7 @@ std::shared_ptr<OpStrategy> StrategyForConstScalar(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(const_scalar_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.const_scalar.x86",
-                    1);
+  strategy->AddImpl(const_scalar_compute, "strategy.const_scalar.x86", 1);
 
   return strategy;
 }
@@ -501,7 +491,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
                       ::common::errors::InvalidArgument(
                           "The attribute shape of fill_constant is not found! "
                           "Please check."));
-    auto shape = absl::get<std::vector<int>>(attrs.attr_store.at("shape"));
+    auto shape = std::get<std::vector<int>>(attrs.attr_store.at("shape"));
     PADDLE_ENFORCE_EQ(attrs.attr_store.count("value"),
                       true,
                       ::common::errors::InvalidArgument(
@@ -514,7 +504,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         ::common::errors::InvalidArgument(
             "The attribute force_cpu of fill_constant is not found! "
             "Please check."));
-    force_cpu = absl::get<bool>(attrs.attr_store.at("force_cpu"));
+    force_cpu = std::get<bool>(attrs.attr_store.at("force_cpu"));
 
     if (force_cpu && target != cinn::common::DefaultHostTarget()) {
       LOG(WARNING) << "The attribute force_cpu of fill_constant "
@@ -556,10 +546,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(fill_constant_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.fill_constant.x86",
-                    1);
+  strategy->AddImpl(fill_constant_compute, "strategy.fill_constant.x86", 1);
 
   return strategy;
 }
@@ -620,10 +607,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstantSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(fill_constant_compute,
-                    lang::PackedFunc(),
-                    "strategy.fill_constant.x86",
-                    1);
+  strategy->AddImpl(fill_constant_compute, "strategy.fill_constant.x86", 1);
 
   return strategy;
 }
@@ -669,15 +653,15 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
                           "Please check."));
     std::string tensor_name = arg_pack[0].operator std::string();
 
-    absl::optional<ir::Tensor> out;
-#define EXPAND_VALUE_TO_TENSOR(TYPE)                                          \
-  else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/                           \
-    out = pe::AssignValue(                                                    \
-        std::vector<TYPE>{absl::get<TYPE>(value)}, out_type[0], tensor_name); \
-  }                                                                           \
-  else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/              \
-    out = pe::AssignValue(                                                    \
-        absl::get<std::vector<TYPE>>(value), out_type[0], tensor_name);       \
+    std::optional<ir::Tensor> out;
+#define EXPAND_VALUE_TO_TENSOR(TYPE)                                         \
+  else if (std::get_if<TYPE>(&value)) { /*NOLINT*/                           \
+    out = pe::AssignValue(                                                   \
+        std::vector<TYPE>{std::get<TYPE>(value)}, out_type[0], tensor_name); \
+  }                                                                          \
+  else if (std::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/              \
+    out = pe::AssignValue(                                                   \
+        std::get<std::vector<TYPE>>(value), out_type[0], tensor_name);       \
   }
 
     if (false) {  // NOLINT
@@ -699,10 +683,7 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(assign_value_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.assign_value.x86",
-                    1);
+  strategy->AddImpl(assign_value_compute, "strategy.assign_value.x86", 1);
 
   return strategy;
 }
@@ -715,6 +696,7 @@ StrategyForUnary(sqrt, Sqrt);
 StrategyForUnary(log, Log);
 StrategyForUnary(floor, Floor);
 StrategyForUnary(ceil, Ceil);
+StrategyForUnary(rint, Rint);
 StrategyForUnary(round, Round);
 StrategyForUnary(tanh, Tanh);
 StrategyForUnary(log2, Log2);
@@ -758,7 +740,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
     const Target &target) {
   const std::vector<int> &axes =
       attrs.attr_store.count("axes")
-          ? absl::get<std::vector<int>>(attrs.attr_store.at("axes"))
+          ? std::get<std::vector<int>>(attrs.attr_store.at("axes"))
           : std::vector<int>{};
 
   framework::CINNCompute squeeze_compute([=](lang::Args args,
@@ -807,10 +789,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(squeeze_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.squeeze.x86",
-                    1);
+  strategy->AddImpl(squeeze_compute, "strategy.squeeze.x86", 1);
   return strategy;
 }
 
@@ -822,7 +801,7 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
     const Target &target) {
   const std::vector<int> &axes =
       attrs.attr_store.count("axes")
-          ? absl::get<std::vector<int>>(attrs.attr_store.at("axes"))
+          ? std::get<std::vector<int>>(attrs.attr_store.at("axes"))
           : std::vector<int>{};
 
   framework::CINNCompute expand_dims_compute{[=](lang::Args args,
@@ -866,10 +845,7 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
   }};
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(expand_dims_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.expand_dims.x86",
-                    1);
+  strategy->AddImpl(expand_dims_compute, "strategy.expand_dims.x86", 1);
   return strategy;
 }
 
@@ -906,7 +882,7 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
     PADDLE_ENFORCE(attr_store.count("shape"),
                    ::common::errors::InvalidArgument("find no attr of shape"));
     std::vector<int> new_shape =
-        absl::get<std::vector<int>>(attr_store.at("shape"));
+        std::get<std::vector<int>>(attr_store.at("shape"));
     auto tensor_A = A.as_tensor_ref();
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
@@ -936,10 +912,7 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(reshape_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(reshape_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1005,8 +978,7 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      reshape_compute, lang::PackedFunc(), "strategy.reshape.x86", 1);
+  strategy->AddImpl(reshape_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1059,10 +1031,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(cast_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1115,7 +1084,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.cast.x86", 1);
+  strategy->AddImpl(cast_compute, "strategy.cast.x86", 1);
   return strategy;
 }
 
@@ -1169,10 +1138,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(cast_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1225,7 +1191,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.store.x86", 1);
+  strategy->AddImpl(cast_compute, "strategy.store.x86", 1);
   return strategy;
 }
 
@@ -1243,9 +1209,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
       attrs.attr_store.count("symbol_bindings"),
       ::common::errors::InvalidArgument("Expected attribute symbol_bindings "
                                         "in strategy for generate shape op"));
-  auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
+  auto output_dim_exprs = std::get<std::vector<symbol::DimExpr>>(
       attrs.attr_store.at("output_dim_exprs"));
-  auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
+  auto symbol_bindings = std::get<cinn::dialect::SymbolBindings>(
       attrs.attr_store.at("symbol_bindings"));
 
   framework::CINNCompute generate_shape_compute(
@@ -1279,72 +1245,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      generate_shape_compute, lang::PackedFunc(), "strategy.store.x86", 1);
-  return strategy;
-}
-
-std::shared_ptr<framework::OpStrategy> StrategyForArange(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  auto attr_store = attrs.attr_store;
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("start"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No start attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("stop"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No stop attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("step"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No step attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("dtype"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No dtype attribute in attrs.attr_store! Please check."));
-
-  auto start = absl::get<float>(attr_store.at("start"));
-  auto stop = absl::get<float>(attr_store.at("stop"));
-  auto step = absl::get<float>(attr_store.at("step"));
-  auto dtype =
-      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
-
-  framework::CINNCompute arange_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE(!args.empty(),
-                       ::common::errors::InvalidArgument(
-                           "The input argument of arange compute is empty! "
-                           "Please check."));
-        CINNValuePack pack_args = args[0];
-
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            1U,
-            ::common::errors::InvalidArgument("the size of pack_args should be "
-                                              "equal to 1, but got %d.",
-                                              pack_args.size()));
-        std::string tensor_name = pack_args[0].operator std::string();
-
-        auto out = pe::Arange(start, stop, step, dtype, tensor_name);
-        std::vector<cinn::common::CINNValue> res;
-        res.push_back(cinn::common::CINNValue(out));
-        *ret = CINNValuePack{res};
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(arange_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(generate_shape_compute, "strategy.store.x86", 1);
   return strategy;
 }
 
@@ -1354,29 +1255,109 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
+  bool all_static = true;
+  for (int i = 0; i < 3; i++) {
+    if (!inputs[i]->value().has_value()) continue;
+    auto input_val = inputs[i]->value().value();
+    if (input_val.empty()) continue;
+    if (input_val[0].is_constant()) continue;
+    all_static = false;
+    break;
+  }
   auto attr_store = attrs.attr_store;
-  PADDLE_ENFORCE_GT(attr_store.count("start"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No start attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("stop"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No stop attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("step"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No step attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("dtype"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No dtype attribute in arange Op! Please check."));
-
-  auto start = absl::get<float>(attr_store.at("start"));
-  auto stop = absl::get<float>(attr_store.at("stop"));
-  auto step = absl::get<float>(attr_store.at("step"));
   auto dtype =
-      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+      cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
+
+  Expr start, step, arange_size;
+  if (all_static) {
+    PADDLE_ENFORCE_GT(attr_store.count("start"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No start attribute in arange Op! Please check."));
+    PADDLE_ENFORCE_GT(attr_store.count("end"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No stop attribute in arange Op! Please check."));
+    PADDLE_ENFORCE_GT(attr_store.count("step"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No step attribute in arange Op! Please check."));
+    PADDLE_ENFORCE_GT(attr_store.count("dtype"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No dtype attribute in arange Op! Please check."));
+
+    auto GetArangeSize = [](auto start, auto end, auto step) -> Expr {
+      using ElementType = std::decay_t<decltype(start)>;
+      PADDLE_ENFORCE_NE(step,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The step of range op should not be 0."));
+
+      if ((start < end && step < 0) || (start > end && step > 0)) {
+        return Expr(0);
+      } else {
+        int64_t res_size = std::is_integral_v<ElementType>
+                               ? ((std::abs(end - start) + std::abs(step) - 1) /
+                                  std::abs(step))
+                               : std::ceil(std::abs((end - start) / step));
+        return Expr(res_size);
+      }
+    };
+
+#define EXPR_FROM_ATTR(type)                            \
+  type start_ = std::get<type>(attr_store.at("start")); \
+  type end_ = std::get<type>(attr_store.at("end"));     \
+  type step_ = std::get<type>(attr_store.at("step"));   \
+  arange_size = GetArangeSize(start_, end_, step_);     \
+  start = Expr(start_);                                 \
+  step = Expr(step_);
+
+    if (dtype.is_float(32)) {
+      EXPR_FROM_ATTR(float)
+    } else if (dtype.is_float(64)) {
+      EXPR_FROM_ATTR(double)
+    } else if (dtype.is_int(32)) {
+      EXPR_FROM_ATTR(int)
+    } else if (dtype.is_int(64)) {
+      EXPR_FROM_ATTR(int64_t)
+    } else if (dtype.is_bfloat16()) {
+      EXPR_FROM_ATTR(float)
+      start->set_type(cinn::common::BFloat16());
+      step->set_type(cinn::common::BFloat16());
+    } else if (dtype.is_float16()) {
+      EXPR_FROM_ATTR(float)
+      start->set_type(cinn::common::Float16());
+      step->set_type(cinn::common::Float16());
+    } else {
+      PADDLE_ENFORCE_NOT_NULL(
+          nullptr,
+          ::common::errors::InvalidArgument("The dtype of arange op should be "
+                                            "float32, float64, int32, int64, "
+                                            "bfloat16 or float16."));
+    }
+#undef EXPR_FROM_ATTR
+  } else {
+    for (int i = 0; i < 3; i++) {
+      PADDLE_ENFORCE_EQ(
+          inputs[i]->value().has_value(),
+          true,
+          ::common::errors::InvalidArgument(
+              "The input tensor of dynamic arange should have valid values."));
+      PADDLE_ENFORCE_NE(
+          inputs[i]->value().value().empty(),
+          true,
+          ::common::errors::InvalidArgument(
+              "The tensor value of dynamic arange should not be empty."));
+    }
+    start = inputs[0]->value().value()[0];
+    step = inputs[2]->value().value()[0];
+    Expr end = inputs[1]->value().value()[0];
+    auto IrAbs = [=](Expr ir) -> Expr {
+      return ir::Call::Make(step.type(), "abs", {ir}, {}, ir::CallType::Extern);
+    };
+    arange_size = (IrAbs(end - start) + IrAbs(step) - Expr(1)) / IrAbs(step);
+  }
 
   framework::CINNCompute arange_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
@@ -1388,21 +1369,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     CINNValuePack pack_args = args[0];
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
-                      1U,
+                      4U,
                       ::common::errors::InvalidArgument(
-                          "The number of input argument of arange should be at "
-                          "last 1. Please check."));
-    std::string tensor_name = pack_args[0].operator std::string();
-
-    auto out = pe::Arange(start, stop, step, dtype, tensor_name);
+                          "The number of input argument of arange should be 4"
+                          "(start, end, step, result). Please check."));
+    std::string tensor_name = pack_args[3].operator std::string();
+    auto out = pe::Arange(start, step, arange_size, dtype, tensor_name);
     std::vector<cinn::common::CINNValue> res;
     res.push_back(cinn::common::CINNValue(out));
     *ret = CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      arange_compute, lang::PackedFunc(), "strategy.reshape.x86", 1);
+  strategy->AddImpl(arange_compute, "strategy.arange.x86", 1);
   return strategy;
 }
 
@@ -1428,7 +1407,7 @@ std::shared_ptr<OpStrategy> StrategyForTril(
         A.as_tensor(),
         ::common::errors::InvalidArgument(
             "first input argument in tril should be tensor"));
-    int diagonal = absl::get<int>(attrs.attr_store.at("diagonal"));
+    int diagonal = std::get<int>(attrs.attr_store.at("diagonal"));
     auto tensor_A = A.as_tensor_ref();
 
     PADDLE_ENFORCE_NE(output_shapes.size(),
@@ -1460,7 +1439,7 @@ std::shared_ptr<OpStrategy> StrategyForTril(
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(tril_compute, lang::PackedFunc(), "strategy.tril.x86", 1);
+  strategy->AddImpl(tril_compute, "strategy.tril.x86", 1);
 
   return strategy;
 }
@@ -1522,8 +1501,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      assign_out_compute, lang::PackedFunc(), "strategy.default", 1);
+  strategy->AddImpl(assign_out_compute, "strategy.default", 1);
   return strategy;
 }
 
@@ -1538,16 +1516,16 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
   int axis = -1;
 
   if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   if (attrs.attr_store.count("rtol")) {
-    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
+    rtol = std::get<float>(attrs.attr_store.at("rtol"));
   }
   if (attrs.attr_store.count("atol")) {
-    atol = absl::get<float>(attrs.attr_store.at("atol"));
+    atol = std::get<float>(attrs.attr_store.at("atol"));
   }
   if (attrs.attr_store.count("equal_nan")) {
-    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
+    equal_nan = std::get<bool>(attrs.attr_store.at("equal_nan"));
   }
 
   framework::CINNCompute isclose_compute([=](lang::Args args,
@@ -1590,7 +1568,7 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(isclose_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.assertisclose",
                     1);
 
@@ -1608,16 +1586,16 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
   int axis = -1;
 
   if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   if (attrs.attr_store.count("rtol")) {
-    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
+    rtol = std::get<float>(attrs.attr_store.at("rtol"));
   }
   if (attrs.attr_store.count("atol")) {
-    atol = absl::get<float>(attrs.attr_store.at("atol"));
+    atol = std::get<float>(attrs.attr_store.at("atol"));
   }
   if (attrs.attr_store.count("equal_nan")) {
-    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
+    equal_nan = std::get<bool>(attrs.attr_store.at("equal_nan"));
   }
 
   framework::CINNCompute isclose_compute([=](lang::Args args,
@@ -1659,8 +1637,7 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      isclose_compute, lang::PackedFunc(), "strategy.assertisclose", 1);
+  strategy->AddImpl(isclose_compute, "strategy.assertisclose", 1);
   return strategy;
 }
 
@@ -1689,6 +1666,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
   CINN_REGISTER_UNARY(log, Log);
   CINN_REGISTER_UNARY(floor, Floor);
   CINN_REGISTER_UNARY(ceil, Ceil);
+  CINN_REGISTER_UNARY(rint, Rint);
   CINN_REGISTER_UNARY(round, Round);
   CINN_REGISTER_UNARY(tanh, Tanh);
   CINN_REGISTER_UNARY(log2, Log2);
@@ -1863,8 +1841,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .describe("Returns evenly spaced values within a given interval.")
       .set_num_inputs(0)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForArange)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForArangeSymbolic)
       .set_attr<cinn::hlir::framework::OpPatternKind>(

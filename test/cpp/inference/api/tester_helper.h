@@ -214,7 +214,7 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                     all_test_data_size,
                     common::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
-                        "lower or equal to the test data size. But received"
+                        "lower or equal to the test data size. But received "
                         "warmup size is %d and test data size is %d. Please "
                         "use --warmup_batch_size parameter to set smaller "
                         "warmup batch size.",
@@ -381,7 +381,9 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
   return CreatePaddlePredictor<NativeConfig>(native_config);
 }
 
-size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
+size_t GetSize(const PaddleTensor &out) {
+  return static_cast<size_t>(VecReduceToInt(out.shape));
+}
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname,
@@ -389,7 +391,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        std::string model_filename = "model",
                        std::string params_filename = "params",
                        const std::vector<std::string> *feed_names = nullptr,
-                       const int continuous_inuput_index = 0) {
+                       const int continuous_input_index = 0) {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data,
                     0,
@@ -442,7 +444,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     // fill input data, for profile easily, do not use random data here.
     for (size_t j = 0; j < len; ++j) {
       *(input_data + j) =
-          static_cast<float>((j + continuous_inuput_index) % len) / len;
+          static_cast<float>((j + continuous_input_index) % len) / len;
     }
   }
   (*inputs).emplace_back(input_slots);

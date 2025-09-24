@@ -1,0 +1,279 @@
+name: Linux-XPU
+
+on:
+  workflow_call:
+    inputs:
+      docker_xpu_image:
+        type: string
+        required: true
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
+
+env:
+  docker_image: ${{ inputs.docker_xpu_image }}
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  ci_scripts: /paddle/ci
+  ci_scripts_runner: ${{ github.workspace }}/ci
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: xpu
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'xpu'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    env:
+      TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_build
+    runs-on:
+      group: XPU-build
+    steps:
+      - name: Check docker image and run  container
+        env:
+          WITH_SHARED_PHI: "ON"
+          WITH_XPU: "ON"
+          COVERALLS_UPLOAD: "OFF"
+          WITH_AVX: "OFF"
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          PADDLE_VERSION: 0.0.0
+          WITH_TESTING: "ON"
+          WITH_DISTRIBUTE: "ON"
+          PY_VERSION: "3.10"
+          XPU_VISIBLE_DEVICES: "0,1"
+          WITH_XPU_BKCL: "ON"
+          WITH_XPU_FFT: "ON"
+          WITH_XPU_XRE5: "ON"
+          CACHE_DIR: /root/.cache
+          CCACHE_DIR: /root/.ccache
+          CCACHE_MAXSIZE: 150G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          IF_KUNLUN3: "OFF"
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          home_dir: ${{ github.workspace }}/../../../..
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker run --ulimit nofile=102400:102400 -d -t --name ${container_name} \
+            -v $home_dir/.cache:/root/.cache \
+            -v $home_dir/.ccache:/root/.ccache \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e WITH_SHARED_PHI \
+            -e WITH_XPU \
+            -e COVERALLS_UPLOAD \
+            -e GIT_PR_ID \
+            -e PADDLE_VERSION \
+            -e WITH_TESTING \
+            -e WITH_DISTRIBUTE \
+            -e PY_VERSION \
+            -e XPU_VISIBLE_DEVICES \
+            -e WITH_XPU_BKCL \
+            -e WITH_XPU_FFT \
+            -e WITH_XPU_XRE5 \
+            -e WITH_INFERENCE_API_TEST \
+            -e CACHE_DIR \
+            -e CCACHE_DIR \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e ci_scripts \
+            -e WITH_AVX \
+            -e IF_KUNLUN3 \
+            -e no_proxy \
+            -e GITHUB_API_TOKEN \
+            -e CI_name \
+            -w /paddle --network host ${docker_image} /bin/bash
+
+      - name: Download paddle.tar.gz and update test branch
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          ulimit -n 102400
+          rm -rf * .[^.]*
+          set -e
+          echo "Downloading Paddle.tar.gz"
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          git config --global --add safe.directory ${work_dir}
+          tar -xf Paddle.tar.gz  --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          rm Paddle.tar.gz
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          source ${{ github.workspace }}/../../../proxy
+          git config pull.rebase false
+          git checkout test
+          echo "Pull upstream develop or target branch"
+          bash ci/git_pull.sh $BRANCH
+          '
+
+      - name: Run build
+        env:
+          work_dir: ${{ github.workspace }}
+          PADDLE_ROOT: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
+          apt install zstd -y
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
+          EXCODE=$?
+          python -m pip install bce-python-sdk==0.8.74
+          bash ${ci_scripts}/compress_build.sh
+          exit $EXCODE
+          '
+
+      - name: Upload build.tar.gz and paddle_whl to bos
+        env:
+          AK: paddle
+          SK: paddle
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          paddle_whl: paddlepaddle_xpu-0.0.0-cp310-cp310-linux_x86_64.whl
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos
+            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+          fi
+          cd ..
+          tar --use-compress-program="pzstd -5" -cf build.tar.gz paddle
+          # source /home/opt/deck/1.0/etc/bashrc
+          echo "Uploading build.tar.gz"
+          python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          echo "Uploading paddle_whl"
+          cp /paddle/dist/${{ env.paddle_whl }} .
+          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${container_name}
+
+  test:
+    name: Test
+    needs: build
+    env:
+      TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_test
+    runs-on:
+      group: Kunlun
+
+    steps:
+      - name: Determine the runner
+        run: |
+          runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
+          echo $runner_name
+          wget -q https://xly-devops.bj.bcebos.com/utils.sh
+          source utils.sh
+          determine_kunlun_runner ${runner_name}
+
+      - name: Check docker image and run container
+        env:
+          WITH_XPU: "ON"
+          COVERALLS_UPLOAD: "OFF"
+          CMAKE_BUILD_TYPE: Release
+          WITH_AVX: "OFF"
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          PADDLE_VERSION: 0.0.0
+          WITH_TESTING: "ON"
+          WITH_DISTRIBUTE: "ON"
+          PY_VERSION: "3.10"
+          XPU_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
+          CUDA_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
+          WITH_XPU_BKCL: "ON"
+          CACHE_DIR: /root/.cache
+          CCACHE_DIR: /root/.ccache
+          CCACHE_MAXSIZE: 150G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          IF_KUNLUN3: "OFF"
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          home_dir: ${{ github.workspace }}/../../../..
+          FLAGS_use_stride_kernel: "0"
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker run --ulimit nofile=102400 --ulimit core=-1 --shm-size=32g -d -t --name ${container_name} \
+            -v /ssd1/cibuild/.cache:/root/.cache \
+            -v /ssd1/cibuild/.ccache:/root/.ccache \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            --device ${XPU_CODE_1} \
+            --device ${XPU_CODE_2} \
+            --device /dev/xpuctrl \
+            --shm-size=32g \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e WITH_XPU \
+            -e COVERALLS_UPLOAD \
+            -e CMAKE_BUILD_TYPE \
+            -e GIT_PR_ID \
+            -e PADDLE_VERSION \
+            -e WITH_TESTING \
+            -e WITH_DISTRIBUTE \
+            -e PY_VERSION \
+            -e XPU_VISIBLE_DEVICES \
+            -e CUDA_VISIBLE_DEVICES \
+            -e WITH_XPU_BKCL \
+            -e CACHE_DIR \
+            -e CCACHE_DIR \
+            -e WITH_INFERENCE_API_TEST \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e ci_scripts \
+            -e WITH_AVX \
+            -e IF_KUNLUN3 \
+            -e no_proxy \
+            -e GITHUB_API_TOKEN \
+            -e FLAGS_use_stride_kernel \
+            -e CI_name \
+            -w /paddle --network host ${docker_image} /bin/bash
+
+      - name: Download build.tar.gz
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
+          rm build.tar.gz
+          '
+
+      - name: Run test
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/kunlun_test.sh
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${container_name}

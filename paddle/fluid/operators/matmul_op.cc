@@ -82,7 +82,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     // For NHWC execution output shape needs to be
     // computed like instead x*y we are to do y*x
     bool channelwise_onednn =
-        context->IsRunMKLDNNKernel() &&
+        context->IsRunONEDNNKernel() &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
          phi::DataLayout::kNHWC);
     if (channelwise_onednn) {
@@ -189,7 +189,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
 #ifdef PADDLE_WITH_DNNL

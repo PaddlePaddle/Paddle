@@ -20,15 +20,14 @@ from time import time
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
-from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 from paddle.optimizer import Adam
 
@@ -162,7 +161,7 @@ class TestMNISTWithToStatic(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -173,14 +172,14 @@ class TestMNISTWithToStatic(TestMNIST):
             err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_onednn': True})
         try:
             dygraph_loss_mkldnn = self.train_dygraph()
         finally:
-            paddle.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_onednn': False})
         np.testing.assert_allclose(
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,
@@ -257,16 +256,14 @@ class TestMNISTWithToStatic(TestMNIST):
             )
             model_save_dir = os.path.join(self.temp_dir.name, 'inference')
             model_save_prefix = os.path.join(model_save_dir, 'mnist')
-            MODEL_SUFFIX = (
-                PIR_INFER_MODEL_SUFFIX if use_pir_api() else INFER_MODEL_SUFFIX
-            )
+            MODEL_SUFFIX = PIR_INFER_MODEL_SUFFIX
             model_filename = "mnist" + MODEL_SUFFIX
             params_filename = "mnist" + INFER_PARAMS_SUFFIX
             paddle.jit.save(
                 layer=model,
                 path=model_save_prefix,
                 input_spec=input_spec,
-                output_spec=[gt_out_index] if use_pir_api() else [gt_out],
+                output_spec=[gt_out_index],
                 input_names_after_prune=input_names_after_prune,
             )
             # load in static graph mode

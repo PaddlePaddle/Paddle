@@ -12,15 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
+from utils import dygraph_guard
 
 import paddle
 import paddle.static
 from paddle import base
 from paddle.base import core
+
+paddle.enable_static()
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
@@ -188,16 +199,40 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
         return -1 * grad_out * out / y
 
 
+class TestElementwiseDivOp_ZeroSize1(ElementwiseDivOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [3]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestElementwiseDivOp_ZeroSize2(TestElementwiseDivOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 3, 4]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3, 4]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+
+class TestElementwiseDivOp_ZeroSize3(TestElementwiseDivOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 0, 2]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [3, 0, 1]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestElementwiseDivOpBF16(ElementwiseDivOp):
     def init_args(self):
         # In due to output data type inconsistency of bfloat16 paddle op, we disable the dygraph check.
         self.check_dygraph = False
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -438,7 +473,8 @@ class TestElementwiseDivOpInt(ElementwiseDivOp):
 
 def create_test_fp16_class(parent, max_relative_error=2e-3):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestElementwiseDivFP16Op(parent):
         def init_dtype(self):
@@ -507,9 +543,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
-
     def test_shape_with_batch_sizes(self):
-        paddle.enable_static()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x_var = paddle.static.data(
@@ -521,12 +555,10 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
             (out_result,) = exe.run(feed={'x': x}, fetch_list=[out])
             self.assertEqual((out_result == (2 / x)).all(), True)
-        paddle.disable_static()
 
 
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
-        paddle.enable_static()
         with paddle.pir_utils.OldIrGuard():
             main_program = paddle.static.Program()
             with paddle.static.program_guard(main_program):
@@ -536,8 +568,6 @@ class TestDivideOp(unittest.TestCase):
                 y_1 = paddle.divide(x, y, name='div_res')
 
                 self.assertEqual(('div_res' in y_1.name), True)
-
-        paddle.disable_static()
 
     def test_dygraph(self):
         with base.dygraph.guard():
@@ -563,7 +593,7 @@ class TestComplexElementwiseDivOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -671,9 +701,9 @@ class TestElementwiseDivopInt(unittest.TestCase):
         np.testing.assert_allclose(actual_res, expect_res)
         np.testing.assert_allclose(expect_a_grad, actual_a_grad)
         np.testing.assert_allclose(expect_b_grad, actual_b_grad)
+        paddle.enable_static()
 
     def test_pir_div(self):
-        paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             exe = paddle.static.Executor()
             main_program = paddle.static.Program()
@@ -697,6 +727,246 @@ class TestElementwiseDivopInt(unittest.TestCase):
                 np.testing.assert_allclose(actual_res[2], expect_b_grad)
 
 
+class TestDivApiZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 3, 4).astype('float32')
+        self.y_numpy = np.random.rand(0, 3, 4).astype('float32')
+
+    def _executed_api(self, x, y, name=None):
+        return paddle.divide(x, y, name)
+
+    def test_declarative(self):
+        self.init_data()
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(
+                name="x", shape=self.x_numpy.shape, dtype=self.x_numpy.dtype
+            )
+            y = paddle.static.data(
+                name="y", shape=self.y_numpy.shape, dtype=self.y_numpy.dtype
+            )
+            z = self._executed_api(x, y)
+
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            z_value = exe.run(
+                feed={"x": self.x_numpy, "y": self.y_numpy}, fetch_list=[z]
+            )
+            np_z = np.divide(self.x_numpy, self.y_numpy)
+            np.testing.assert_allclose(z_value[0], np_z, rtol=1e-05, atol=1e-05)
+
+    def test_dygraph(self):
+        self.init_data()
+        places = (
+            [paddle.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_numpy)
+                y = paddle.to_tensor(self.y_numpy)
+                z = self._executed_api(x, y)
+                np_z = np.divide(self.x_numpy, self.y_numpy)
+                np.testing.assert_allclose(z, np_z, rtol=1e-05, atol=1e-05)
+
+
+class TestDivApiZeroSize2(TestDivApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3).astype('float32')
+        self.y_numpy = np.random.rand(0, 3).astype('float32')
+
+
+class TestDivApiZeroSize3(TestDivApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 0).astype('float32')
+        self.y_numpy = np.random.rand(1, 0).astype('float32')
+
+
+class TestDivApiZeroSize4(TestDivApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 0, 2).astype('float32')
+        self.y_numpy = np.random.rand(3, 0, 1).astype('float32')
+
+
+class TestDivComplexDtype(unittest.TestCase):
+    def test(self):
+        with dygraph_guard():
+            places = ['cpu']
+            if core.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device())
+            shapes = [[], [1], [1, 1]]
+            values = [
+                -paddle.inf,
+                paddle.inf,
+                paddle.nan,
+                -np.zeros([]),
+                +np.zeros([]),
+                paddle.nan,
+                -paddle.nan,
+                1e-23,
+                -1e-23,
+            ]
+            dtypes = ["float32", "float64", "complex64", "complex128"]
+
+            for place in places:
+                with base.device_guard(place):
+                    for (
+                        shape_x,
+                        shape_y,
+                        x,
+                        y,
+                        dtype_x,
+                        dtype_y,
+                    ) in itertools.product(
+                        shapes, shapes, values, values, dtypes, dtypes
+                    ):
+                        pd_x = paddle.to_tensor(x, dtype=dtype_x).reshape(
+                            shape_x
+                        )
+                        pd_y = paddle.to_tensor(y, dtype=dtype_y).reshape(
+                            shape_y
+                        )
+                        pd_z = paddle.divide(pd_x, pd_y)
+
+                        np_x = np.asarray(x, dtype=dtype_x).reshape(shape_x)
+                        np_y = np.asarray(y, dtype=dtype_y).reshape(shape_y)
+                        np_z = np.divide(np_x, np_y)
+
+                        err_msg = (
+                            f"\n❌ Mismatch detected!\n"
+                            f"Place: {place}\n"
+                            f"x={x}, y={y}, dtype_x={dtype_x}, dtype_y={dtype_y}\n"
+                            f"Shape_x: {shape_x}, Shape_y: {shape_y}\n"
+                            f"np_x={np_x.item()}, np_y={np_y.item()}, np_z={np_z.item()}\n"
+                            f"pd_x={pd_x.item()}, pd_y={pd_y.item()}, pd_z={pd_z.item()}"
+                        )
+                        np.testing.assert_allclose(
+                            pd_z.item(), np_z, 0.0, 0.0, err_msg=err_msg
+                        )
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestElementwiseDivOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.python_api = paddle.divide
+        self.public_python_api = paddle.divide
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestElementwiseDivOp_Stride1(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride2(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride3(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride4(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride5(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = self.x / self.y
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseDivOp_Stride_ZeroDim1(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride_ZeroSize1(TestElementwiseDivOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = self.x / self.y
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

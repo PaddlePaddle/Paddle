@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -45,8 +50,9 @@ class TestChannelShuffleOp(OpTest):
     def setUp(self):
         self.op_type = "channel_shuffle"
         self.init_dtype()
+        self.init_shape()
         self.init_data_format()
-        n, c, h, w = 2, 9, 4, 4
+        n, c, h, w = self.shape
         self.python_api = paddle.nn.functional.channel_shuffle
 
         if self.format == "NCHW":
@@ -62,6 +68,9 @@ class TestChannelShuffleOp(OpTest):
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
         self.attrs = {'groups': groups, "data_format": self.format}
+
+    def init_shape(self):
+        self.shape = [2, 9, 4, 4]
 
     def init_dtype(self):
         self.dtype = 'float64'
@@ -81,6 +90,11 @@ class TestChannelLast(TestChannelShuffleOp):
         self.format = "NHWC"
 
 
+class TestChannelLast_ZeroSize(TestChannelShuffleOp):
+    def init_shape(self):
+        self.shape = [2, 9, 0, 4]
+
+
 class TestChannelShuffleAPI(unittest.TestCase):
     def setUp(self):
         self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float64")
@@ -93,9 +107,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_1 = paddle.static.data(
@@ -120,9 +136,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_1 = paddle.static.data(
@@ -148,9 +166,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_2 = paddle.static.data(
@@ -173,9 +193,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_2 = paddle.static.data(
@@ -210,9 +232,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
         npresult = channel_shuffle_np(x, groups, data_format)
 
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
 
             paddle.disable_static(place=place)
 
@@ -243,7 +267,6 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
 
 class TestChannelShuffleError(unittest.TestCase):
-
     def test_error_functional(self):
         def error_input():
             with paddle.base.dygraph.guard():
@@ -312,8 +335,8 @@ class TestChannelShuffleFP16OP(TestChannelShuffleOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestChannelShuffleBF16OP(OpTest):
@@ -323,7 +346,7 @@ class TestChannelShuffleBF16OP(OpTest):
         n, c, h, w = 2, 9, 4, 4
         self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.uint16
-        self.use_mkldnn = False
+        self.use_onednn = False
 
         if self.format == "NCHW":
             shape = [n, c, h, w]
@@ -342,11 +365,11 @@ class TestChannelShuffleBF16OP(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 

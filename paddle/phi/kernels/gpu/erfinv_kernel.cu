@@ -39,11 +39,16 @@ struct ErfinvFunctor<bfloat16> {
   }
 };
 template <typename T, typename Context>
-void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+void ErfinvKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, ErfinvFunctor<T>());
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, ErfinvFunctor<T>());
 }
 
 }  // namespace phi
@@ -54,5 +59,5 @@ PD_REGISTER_KERNEL(erfinv,
                    phi::ErfinvKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

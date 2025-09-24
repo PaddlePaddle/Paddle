@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from scipy import special
 from utils import static_guard
 
@@ -32,12 +32,15 @@ class TestGammainccOp(OpTest):
         self.op_type = 'gammaincc'
         self.python_api = paddle.gammaincc
         self.init_dtype_type()
-        self.shape = (3, 40)
+        self.init_shape()
         self.x = np.random.random(self.shape).astype(self.dtype) + 1
         self.y = np.random.random(self.shape).astype(self.dtype) + 1
         self.inputs = {'x': self.x, 'y': self.y}
         out = ref_gammaincc(self.x, self.y)
         self.outputs = {'out': out}
+
+    def init_shape(self):
+        self.shape = (3, 40)
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -61,8 +64,8 @@ class TestGammainccOpApi(unittest.TestCase):
         self.x_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.y_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 
@@ -102,29 +105,39 @@ class TestGammainccOpApi(unittest.TestCase):
         self.assertRaises(ValueError, paddle.gammaincc, x, y)
 
     def test_dtype_error(self):
-        with static_guard():
+        with (
+            static_guard(),
             # in static graph mode
-            with self.assertRaises(TypeError):
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(
-                        name="x", shape=self.shape, dtype="int32"
-                    )
-                    y = paddle.static.data(
-                        name="y", shape=self.shape, dtype="int32"
-                    )
-                    out = paddle.gammaincc(x, y)
+            self.assertRaises(TypeError),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="int32")
+            y = paddle.static.data(name="y", shape=self.shape, dtype="int32")
+            out = paddle.gammaincc(x, y)
 
         # in dynamic mode
-        with self.assertRaises(RuntimeError):
-            with paddle.base.dygraph.guard():
-                x = paddle.to_tensor(self.x_np, dtype="int32")
-                y = paddle.to_tensor(self.y_np, dtype="int32")
-                res = paddle.gammaincc(x, y)
+        with (
+            self.assertRaises(RuntimeError),
+            paddle.base.dygraph.guard(),
+        ):
+            x = paddle.to_tensor(self.x_np, dtype="int32")
+            y = paddle.to_tensor(self.y_np, dtype="int32")
+            res = paddle.gammaincc(x, y)
 
 
 class TestGammainccOpFp32Api(TestGammainccOpApi):
     def init_dtype_type(self):
         self.dtype = "float32"
+
+
+class TestGammainccOp_ZeroSize(TestGammainccOp):
+    def init_shape(self):
+        self.shape = (0, 40)
+
+
+class TestGammainccOp_ZeroSize2(TestGammainccOp):
+    def init_shape(self):
+        self.shape = (0, 0)
 
 
 if __name__ == "__main__":

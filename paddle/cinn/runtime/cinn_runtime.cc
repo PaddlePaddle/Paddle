@@ -21,6 +21,7 @@
 
 using cinn::common::bfloat16;
 using cinn::common::float16;
+using cinn::common::float8e4m3;
 
 extern "C" {
 
@@ -160,6 +161,9 @@ cinn_type_t cinn_uint64_t(int num_asterisks) {
 cinn_type_t cinn_bfloat16_t(int num_asterisks) {
   return cinn_type_t(cinn_type_bfloat, 16, num_asterisks);
 }
+cinn_type_t cinn_float8e4m3_t(int num_asterisks) {
+  return cinn_type_t(cinn_type_float8e4m3, 8, num_asterisks);
+}
 cinn_type_t cinn_float16_t(int num_asterisks) {
   return cinn_type_t(cinn_type_float, 16, num_asterisks);
 }
@@ -169,6 +173,62 @@ cinn_type_t cinn_float32_t(int num_asterisks) {
 cinn_type_t cinn_float64_t(int num_asterisks) {
   return cinn_type_t(cinn_type_float, 64, num_asterisks);
 }
+
+int cinn_host_abs_int32(int v) { return abs(v); }
+int64_t cinn_host_abs_int64(int64_t v) { return abs(v); }
+
+#define ARGIDX_FUNC_MACRO_DEF_IMPL(TYPENAME, DTYPE, ITYPE)                    \
+  void min_##TYPENAME(TYPENAME* sret, const TYPENAME* a, const TYPENAME* b) { \
+    *sret = a->value == b->value ? (a->index < b->index ? *a : *b)            \
+                                 : (a->value < b->value ? *a : *b);           \
+  }                                                                           \
+  void max_##TYPENAME(TYPENAME* sret, const TYPENAME* a, const TYPENAME* b) { \
+    *sret = a->value == b->value ? (a->index < b->index ? *a : *b)            \
+                                 : (a->value > b->value ? *a : *b);           \
+  }                                                                           \
+  ITYPE cast_##TYPENAME(const TYPENAME* argidx) { return argidx->index; }     \
+  void create_##TYPENAME(TYPENAME* sret, DTYPE val, ITYPE idx) {              \
+    *sret = TYPENAME{val, idx};                                               \
+  }
+
+#define ARGIDX_FUNC_MACRO_DEF(DNAME, DTYPE)                    \
+  ARGIDX_FUNC_MACRO_DEF_IMPL(argidx_##DNAME##_i32, DTYPE, int) \
+  ARGIDX_FUNC_MACRO_DEF_IMPL(argidx_##DNAME##_i64, DTYPE, int64_t)
+
+ARGIDX_FUNC_MACRO_DEF(fp32, float)
+ARGIDX_FUNC_MACRO_DEF(fp64, double)
+ARGIDX_FUNC_MACRO_DEF(i16, int16_t)
+ARGIDX_FUNC_MACRO_DEF(i32, int)
+ARGIDX_FUNC_MACRO_DEF(i64, int64_t)
+ARGIDX_FUNC_MACRO_DEF(u8, uint8_t)
+
+#undef ARGIDX_FUNC_MACRO_DEF_IMPL
+#undef ARGIDX_FUNC_MACRO_DEF
+
+#define WELFORD_COMBINE_MACRO(TYPE_SUFFIX, DTYPE)                     \
+  void sum_welford_##TYPE_SUFFIX(welford_##TYPE_SUFFIX* sret,         \
+                                 const welford_##TYPE_SUFFIX* a,      \
+                                 const welford_##TYPE_SUFFIX* b) {    \
+    DTYPE delta = b->mean - a->mean;                                  \
+    DTYPE weight = a->weight + b->weight;                             \
+    DTYPE w2_over_w =                                                 \
+        a->weight == b->weight ? (DTYPE)0.5 : b->weight / weight;     \
+    DTYPE mean = a->mean + delta * w2_over_w;                         \
+    DTYPE m2 = a->m2 + b->m2 + delta * delta * a->weight * w2_over_w; \
+    *sret = {mean, m2, weight};                                       \
+  }                                                                   \
+  DTYPE cast_welford_##TYPE_SUFFIX(const welford_##TYPE_SUFFIX* wf) { \
+    return wf->m2 / wf->weight;                                       \
+  }                                                                   \
+  void create_welford_##TYPE_SUFFIX(                                  \
+      welford_##TYPE_SUFFIX* sret, DTYPE m, DTYPE m2, DTYPE w) {      \
+    *sret = welford_##TYPE_SUFFIX{m, m2, w};                          \
+  }
+
+WELFORD_COMBINE_MACRO(fp32, float)
+WELFORD_COMBINE_MACRO(fp64, double)
+
+#undef WELFORD_COMBINE_MACRO
 
 }  // extern "C"
 
@@ -228,6 +288,10 @@ cinn_pod_value_t::operator float() const {
 cinn_pod_value_t::operator cinn::common::bfloat16() const {
   CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::bfloat16>());
   return static_cast<cinn::common::bfloat16>(value_.v_float64);
+}
+cinn_pod_value_t::operator cinn::common::float8e4m3() const {
+  CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float8e4m3>());
+  return static_cast<cinn::common::float8e4m3>(value_.v_float64);
 }
 cinn_pod_value_t::operator cinn::common::float16() const {
   CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float16>());
@@ -339,6 +403,10 @@ cinn_pod_value_t::cinn_pod_value_t(bfloat16 value)
     : type_code_(::cinn_type_code<bfloat16>()) {
   value_.v_float64 = value;
 }
+cinn_pod_value_t::cinn_pod_value_t(float8e4m3 value)
+    : type_code_(::cinn_type_code<float8e4m3>()) {
+  value_.v_float64 = value;
+}
 cinn_pod_value_t::cinn_pod_value_t(float16 value)
     : type_code_(::cinn_type_code<float16>()) {
   value_.v_float64 = value;
@@ -360,6 +428,9 @@ cinn_pod_value_t::cinn_pod_value_t(const char* value)
 float cinn_pod_value_to_float(cinn_pod_value_t* value) { return *value; }
 double cinn_pod_value_to_double(cinn_pod_value_t* value) { return *value; }
 bfloat16 cinn_pod_value_to_bfloat16(cinn_pod_value_t* value) { return *value; }
+float8e4m3 cinn_pod_value_to_float8e4m3(cinn_pod_value_t* value) {
+  return *value;
+}
 float16 cinn_pod_value_to_float16(cinn_pod_value_t* value) { return *value; }
 
 int64_t cinn_pod_value_to_int64(cinn_pod_value_t* value) { return *value; }
@@ -388,6 +459,9 @@ void float_to_cinn_pod_value(float v, cinn_pod_value_t* out) {
   *out = cinn_pod_value_t(v);
 }
 void bfloat16_to_cinn_pod_value(bfloat16 v, cinn_pod_value_t* out) {
+  *out = cinn_pod_value_t(v);
+}
+void float8e4m3_to_cinn_pod_value(float8e4m3 v, cinn_pod_value_t* out) {
   *out = cinn_pod_value_t(v);
 }
 void float16_to_cinn_pod_value(float16 v, cinn_pod_value_t* out) {
@@ -509,6 +583,7 @@ void* cinn_pod_value_t::data_addr() const {
     case ::cinn_type_code<uint64_t>():
       return (void*)&value_.v_int64;  // NOLINT
     case ::cinn_type_code<bfloat16>():
+    case ::cinn_type_code<float8e4m3>():
     case ::cinn_type_code<float16>():
     case ::cinn_type_code<float>():
     case ::cinn_type_code<double>():
@@ -567,6 +642,12 @@ template <>
 cinn_type_t cinn_type_of<bfloat16>() {
   return cinn_bfloat16_t();
 }
+
+template <>
+cinn_type_t cinn_type_of<float8e4m3>() {
+  return cinn_float8e4m3_t();
+}
+
 template <>
 cinn_type_t cinn_type_of<float16>() {
   return cinn_float16_t();
@@ -590,6 +671,10 @@ cinn_type_t cinn_type_of<double*>() {
 }
 template <>
 cinn_type_t cinn_type_of<bfloat16*>() {
+  return cinn_float64_t();
+}
+template <>
+cinn_type_t cinn_type_of<float8e4m3*>() {
   return cinn_float64_t();
 }
 template <>

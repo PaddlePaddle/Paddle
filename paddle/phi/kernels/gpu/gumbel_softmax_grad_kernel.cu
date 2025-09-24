@@ -21,6 +21,6 @@ PD_REGISTER_KERNEL(gumbel_softmax_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::GumbelSoftmaxGradKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double) {}

@@ -40,7 +40,7 @@ def build_program():
         # data -> [memcpy_h2d] -> data' -> [matmul] -> out ->[add] -> add_out
         with paddle.static.device_guard('gpu'):
             weight = paddle.randn([64, 64], name='weight')  # gpu
-            matmul_out = paddle.matmul(data, weight, name='matmul_out')  # gpus
+            matmul_out = data @ weight  # gpus
             bias = paddle.ones([4, 64], dtype='float32', name='bias')
             add_out = paddle.add(matmul_out, bias, name='add_out')
 

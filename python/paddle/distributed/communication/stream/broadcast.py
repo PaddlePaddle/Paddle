@@ -148,9 +148,9 @@ def broadcast(
             tensor, src_rank_in_group, group, sync_op, use_calc_stream
         )
     else:
-        assert (
-            group is None
-        ), "Group can not be used in static graph mode for now."
+        assert group is None, (
+            "Group can not be used in static graph mode for now."
+        )
         return _broadcast_in_static_mode(
             tensor, src, group, sync_op, use_calc_stream
         )

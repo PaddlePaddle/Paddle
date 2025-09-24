@@ -15,9 +15,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/selected_rows/elementwise_multiply_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
@@ -54,9 +51,6 @@ void MultiplyKernel(const Context& dev_ctx,
 
 }  // namespace phi::sr
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 PD_REGISTER_KERNEL(multiply_raw_sr,
                    CPU,
                    ALL_LAYOUT,
@@ -66,9 +60,9 @@ PD_REGISTER_KERNEL(multiply_raw_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(multiply_sr,
                    CPU,
                    ALL_LAYOUT,
@@ -78,9 +72,9 @@ PD_REGISTER_KERNEL(multiply_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(multiply_raw_sr,
@@ -92,10 +86,10 @@ PD_REGISTER_KERNEL(multiply_raw_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(multiply_sr,
                    GPU,
                    ALL_LAYOUT,
@@ -105,8 +99,8 @@ PD_REGISTER_KERNEL(multiply_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif

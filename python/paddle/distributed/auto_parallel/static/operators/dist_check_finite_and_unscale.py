@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import paddle
 from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
@@ -83,9 +84,9 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         backward_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
-        assert (
-            dist_attr is not None
-        ), f"backward op [{backward_op}] don't have dist attribute !"
+        assert dist_attr is not None, (
+            f"backward op [{backward_op}] don't have dist attribute !"
+        )
 
         assert rank_id in dist_attr.process_mesh.process_ids
 
@@ -96,20 +97,20 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
             'FoundInfinite'
         )
 
-        assert (
-            len(kwargs['Scale']) == 1
-        ), "check_finite_and_unscale input Scale take 1 variable but got {}".format(
-            kwargs['Scale']
+        assert len(kwargs['Scale']) == 1, (
+            "check_finite_and_unscale input Scale take 1 variable but got {}".format(
+                kwargs['Scale']
+            )
         )
-        assert (
-            len(kwargs['FoundInfinite']) == 1
-        ), "check_finite_and_unscale input FoundInfinite take 1 variable but got {}".format(
-            kwargs['FoundInfinite']
+        assert len(kwargs['FoundInfinite']) == 1, (
+            "check_finite_and_unscale input FoundInfinite take 1 variable but got {}".format(
+                kwargs['FoundInfinite']
+            )
         )
-        assert len(kwargs['X']) == len(
-            kwargs['Out']
-        ), "check_finite_and_unscale got [{}] X and [{}] Out, which are supposed to be equal".format(
-            len(kwargs['X']), len(kwargs['Out'])
+        assert len(kwargs['X']) == len(kwargs['Out']), (
+            "check_finite_and_unscale got [{}] X and [{}] Out, which are supposed to be equal".format(
+                len(kwargs['X']), len(kwargs['Out'])
+            )
         )
 
         filter_vars = []
@@ -157,12 +158,12 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
             },
         )
         allreduce_op = main_block.append_op(
-            type='c_allreduce_max',
-            inputs={'X': inf_var_int32},
-            outputs={'Out': inf_var_int32},
+            type='all_reduce',
+            inputs={'x': inf_var_int32},
+            outputs={'out': inf_var_int32},
             attrs={
                 'ring_id': group.id,
-                'use_calc_stream': True,
+                'op_type': paddle.distributed.ReduceOp.MAX,
                 OP_ROLE_KEY: OpRole.Optimize,
             },
         )

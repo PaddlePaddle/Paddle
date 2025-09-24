@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import unittest
 
+from paddle.jit.sot.utils import PEP508LikeEnvironmentVariable
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
@@ -177,6 +178,80 @@ class TestIntegerEnvironmentVariable(unittest.TestCase):
 
         with EnvironmentVariableGuard(env_int, 1000):
             self.assertEqual(env_int.get(), 1000)
+
+
+class TestPEP508LikeEnvironmentVariable(unittest.TestCase):
+    def test_PEP508_like_env_get(self):
+        env_name = "___TEST_ENV_PEP508LikeDict_GET"
+        env_PEP508_like = PEP508LikeEnvironmentVariable(env_name, {})
+
+        if env_name in os.environ:
+            del os.environ[env_name]
+
+        self.assertEqual(env_PEP508_like.get(), {})
+
+        os.environ[env_name] = "subgraph_info"
+        self.assertEqual(env_PEP508_like.get(), {"subgraph_info": []})
+
+        os.environ[env_name] = ""
+        self.assertEqual(env_PEP508_like.get(), {})
+
+        os.environ[env_name] = "subgraph_info[ops, data, relationships]"
+        self.assertEqual(
+            env_PEP508_like.get(),
+            {"subgraph_info": ["ops", "data", "relationships"]},
+        )
+
+        os.environ[env_name] = (
+            "subgraph_info[ops, data, relationships], breakgraph_reason[inlinecall, others]"
+        )
+        self.assertEqual(
+            env_PEP508_like.get(),
+            {
+                "subgraph_info": ["ops", "data", "relationships"],
+                "breakgraph_reason": ["inlinecall", "others"],
+            },
+        )
+
+        os.environ[env_name] = "subgraph_info[ops, [[[[[[[[]], relationships], "
+        self.assertEqual(
+            env_PEP508_like.get(),
+            {
+                "subgraph_info": ["ops", "[[[[[[[[]]", "relationships"],
+            },
+        )
+
+        os.environ[env_name] = "subgraph_info[ops, , , relationships], "
+        self.assertEqual(
+            env_PEP508_like.get(),
+            {
+                "subgraph_info": ["ops", "relationships"],
+            },
+        )
+
+    def test_PEP508_like_env_set(self):
+        env_name = "___TEST_ENV_PEP508LikeDict_GET"
+        env_PEP508_like = PEP508LikeEnvironmentVariable(env_name, {})
+
+        env_PEP508_like.set(
+            {
+                "subgraph_info": ["ops", "data", "relationships"],
+                "breakgraph_reason": ["inlinecall", "others"],
+            }
+        )
+        self.assertEqual(
+            os.environ[env_name],
+            "subgraph_info[ops,data,relationships],breakgraph_reason[inlinecall,others]",
+        )
+
+        env_PEP508_like.set({"subgraph_info": []})
+        self.assertEqual(os.environ[env_name], "subgraph_info")
+
+        env_PEP508_like.set({})
+        self.assertEqual(
+            os.environ[env_name],
+            "",
+        )
 
 
 if __name__ == "__main__":

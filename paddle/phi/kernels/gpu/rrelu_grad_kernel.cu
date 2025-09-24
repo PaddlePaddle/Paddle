@@ -62,6 +62,7 @@ void RReluGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad) {
   if (!x_grad) return;
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) return;
 
   const T* x_ptr = x.data<T>();
   const T* n_ptr = noise.data<T>();
@@ -82,6 +83,6 @@ PD_REGISTER_KERNEL(rrelu_grad,
                    ALL_LAYOUT,
                    phi::RReluGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    double) {}

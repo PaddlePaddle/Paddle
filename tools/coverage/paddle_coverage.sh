@@ -44,7 +44,6 @@ function gen_full_html_report_cinn(){
         '/paddle/paddle/cinn/adt/*' \
         '/paddle/paddle/cinn/api/*' \
         '/paddle/paddle/cinn/ast_gen_ius/*' \
-        '/paddle/paddle/cinn/auto_schedule/*' \
         '/paddle/paddle/cinn/backends/*' \
         '/paddle/paddle/cinn/common/*' \
         '/paddle/paddle/cinn/frontend/*' \
@@ -54,7 +53,6 @@ function gen_full_html_report_cinn(){
         '/paddle/paddle/cinn/operator_fusion/*' \
         '/paddle/paddle/cinn/optim/*' \
         '/paddle/paddle/cinn/poly/*' \
-        '/paddle/paddle/cinn/pybind/*' \
         '/paddle/paddle/cinn/runtime/*' \
         '/paddle/paddle/cinn/utils/*' \
         -o coverage-full.tmp \
@@ -69,8 +67,6 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/inference/*' \
         '/paddle/paddle/fluid/memory/*' \
         '/paddle/paddle/fluid/operators/*' \
-        '/paddle/paddle/fluid/recordio/*' \
-        '/paddle/paddle/fluid/string/*' \
         '/paddle/paddle/fluid/eager/*' \
         '/paddle/paddle/fluid/pir/*' \
         '/paddle/paddle/fluid/ir_adaptor/*' \
@@ -88,8 +84,6 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/*/*/*test*' \
         '/paddle/paddle/fluid/inference/tests/*' \
         '/paddle/paddle/fluid/inference/api/demo_ci/*' \
-        '/paddle/paddle/fluid/eager/tests/*' \
-        '/paddle/paddle/phi/tests/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -98,7 +92,6 @@ function gen_full_html_report() {
 
 function gen_full_html_report_xpu() {
     lcov --extract coverage.info \
-        '/paddle/paddle/fluid/operators/*xpu*' \
         '/paddle/paddle/phi/kernels/xpu/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0

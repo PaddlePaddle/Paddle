@@ -186,10 +186,10 @@ C_Status GraphEngineBuild(C_CustomEngineInstruction instruction) {
       instruction_->GetValueExecutionInfo();
   // prepare input tensors
   std::vector<phi::DenseTensor*> tensor_args;
-  PADDLE_ENFORCE_EQ(
-      op->num_operands(),
-      1u,
-      phi::errors::PreconditionNotMet("custom engine op should has 1 operand"));
+  PADDLE_ENFORCE_EQ(op->num_operands(),
+                    1u,
+                    common::errors::PreconditionNotMet(
+                        "custom engine op should has 1 operand"));
   auto vec_in = op->operand_source(0).defining_op()->operands_source();
   for (auto in : vec_in) {
     auto var_name = value_exec_info->GetVarName(in);
@@ -201,14 +201,14 @@ C_Status GraphEngineBuild(C_CustomEngineInstruction instruction) {
 
   // prepare output tensors
   std::vector<phi::DenseTensor*> return_tensor;
-  PADDLE_ENFORCE_EQ(
-      op->num_results(),
-      1u,
-      phi::errors::PreconditionNotMet("custom engine op should has 1 result"));
+  PADDLE_ENFORCE_EQ(op->num_results(),
+                    1u,
+                    common::errors::PreconditionNotMet(
+                        "custom engine op should has 1 result"));
   pir::Value vec_result = op->result(0);
   PADDLE_ENFORCE_EQ(vec_result.type().isa<pir::VectorType>(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "custom engine op result should be vectortype"));
   auto vec_out = op->result(0).first_use().owner()->results();
 
@@ -218,7 +218,7 @@ C_Status GraphEngineBuild(C_CustomEngineInstruction instruction) {
     PADDLE_ENFORCE_EQ(
         check,
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "customEngine instruction only support DenseTensorType"));
     auto var_name = value_exec_info->GetVarName(out);
 
@@ -241,7 +241,8 @@ C_Status GraphEngineBuild(C_CustomEngineInstruction instruction) {
     if (customEngine != nullptr) {
       delete customEngine;
     } else {
-      PADDLE_THROW(phi::errors::PreconditionNotMet("customEngine is nullptr"));
+      PADDLE_THROW(
+          common::errors::PreconditionNotMet("customEngine is nullptr"));
     }
   };
   instruction_->SetCustomEngine(reinterpret_cast<void*>(fake_engine));

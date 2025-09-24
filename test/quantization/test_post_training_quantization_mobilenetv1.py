@@ -821,10 +821,10 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1TensorRT(
         )
 
 
-class TestPostTrainingKLONNXFormatForMobilenetv1MKLDNN(
+class TestPostTrainingKLONNXFormatForMobilenetv1ONEDNN(
     TestPostTrainingQuantization
 ):
-    def test_post_training_onnx_format_mobilenetv1_mkldnn(self):
+    def test_post_training_onnx_format_mobilenetv1_onednn(self):
         model = "MobileNet-V1"
         algo = "ptf"
         round_type = "round"
@@ -843,7 +843,7 @@ class TestPostTrainingKLONNXFormatForMobilenetv1MKLDNN(
         onnx_format = True
         diff_threshold = 0.05
         batch_nums = 12
-        deploy_backend = "mkldnn"
+        deploy_backend = "onednn"
         self.run_test(
             model,
             'inference.pdmodel',

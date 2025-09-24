@@ -14,8 +14,6 @@
 
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -27,7 +25,10 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
-  // allocate memory for out
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
     SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
@@ -47,11 +48,8 @@ void DivideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::phi::dtype::bfloat16;
+// using bfloat16 = ::phi::bfloat16;
 
 PD_REGISTER_KERNEL(divide,
                    CPU,
@@ -65,5 +63,5 @@ PD_REGISTER_KERNEL(divide,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {}
+                   phi::complex64,
+                   phi::complex128) {}

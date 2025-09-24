@@ -37,7 +37,7 @@ struct NormConvolutionArgs {
     compute_type = phi::backends::gpu::CudnnDataType<float>::type;
   }
 
-  void Set(const phi::GPUContext &ctx,
+  void Set(const phi::GPUContext &dev_ctx,
            const std::vector<int> &input_shape,
            const std::vector<int> &filter_shape,
            const std::vector<int> &output_shape,
@@ -46,13 +46,13 @@ struct NormConvolutionArgs {
            int dilation,
            int group) {
     PADDLE_ENFORCE_LT(
-        ctx.GetComputeCapability(),
+        dev_ctx.GetComputeCapability(),
         90,
         common::errors::PreconditionNotMet(
             "Expect compute compatibility to be less than 90, but got %d. "
             "CUDNN FusedOps is no longer available on H100 and later "
             "devices.",
-            ctx.GetComputeCapability()));
+            dev_ctx.GetComputeCapability()));
     PADDLE_ENFORCE_EQ(
         input_shape.size(),
         4U,
@@ -93,7 +93,7 @@ struct NormConvolutionArgs {
             "filter_shape's size is %d, filter_shape is [%s].",
             output_shape.size(),
             common::make_ddim(output_shape)));
-    is_support = IsSupport(ctx, filter_shape, stride, dilation, group);
+    is_support = IsSupport(dev_ctx, filter_shape, stride, dilation, group);
     PADDLE_ENFORCE_EQ(
         is_support,
         true,
@@ -105,7 +105,7 @@ struct NormConvolutionArgs {
             "Besides, the dilation and group must be equal to 1. But received "
             "compatibility is %d, kernel size is %d, stride is %d, "
             "dilation is %d, group is %d",
-            ctx.GetComputeCapability(),
+            dev_ctx.GetComputeCapability(),
             filter_shape[1],
             stride,
             dilation,
@@ -132,7 +132,7 @@ struct NormConvolutionArgs {
     conv_desc.set(dtype, paddings, strides, dilations, false, group);
   }
 
-  bool IsSupport(const phi::GPUContext &ctx,
+  bool IsSupport(const phi::GPUContext &dev_ctx,
                  const std::vector<int> &filter_shape,
                  int stride,
                  int dilation,
@@ -141,11 +141,11 @@ struct NormConvolutionArgs {
     if (dilation != 1 || group != 1) {
       return false;
     }
-    if (ctx.GetComputeCapability() == 70) {
+    if (dev_ctx.GetComputeCapability() == 70) {
       if ((kernel_size == 3) || ((kernel_size == 1) && (stride == 1))) {
         return true;
       }
-    } else if (ctx.GetComputeCapability() > 70) {
+    } else if (dev_ctx.GetComputeCapability() > 70) {
       if ((kernel_size == 3) || (kernel_size == 1)) {
         return true;
       }
@@ -175,7 +175,7 @@ struct NormConvolutionArgs {
 template <typename T>
 class CudnnNormConvolution {
  public:
-  CudnnNormConvolution(const phi::GPUContext &ctx,
+  CudnnNormConvolution(const phi::GPUContext &dev_ctx,
                        const std::vector<int> &input_shape,
                        const std::vector<int> &filter_shape,
                        const std::vector<int> &output_shape,
@@ -183,7 +183,7 @@ class CudnnNormConvolution {
                        const int &stride,
                        const int &dilation,
                        const int &group) {
-    args_.Set(ctx,
+    args_.Set(dev_ctx,
               input_shape,
               filter_shape,
               output_shape,
@@ -194,15 +194,15 @@ class CudnnNormConvolution {
   }
   ~CudnnNormConvolution() {}
 
-  void Forward(const phi::GPUContext &ctx,
+  void Forward(const phi::GPUContext &dev_ctx,
                const phi::DenseTensor &input,
                const phi::DenseTensor &filter,
                phi::DenseTensor *output,
                phi::DenseTensor *sum,
                phi::DenseTensor *sum_of_squares) {
-    auto cudnn_handle = ctx.cudnn_handle();
+    auto cudnn_handle = dev_ctx.cudnn_handle();
 
-    CudnnFusionOp *fwd_op = GetForwardOp(ctx);
+    CudnnFusionOp *fwd_op = GetForwardOp(dev_ctx);
     size_t workspace_size = RoundUp(
         static_cast<int64_t>(fwd_op->GetWorkspaceSizeInBytes(cudnn_handle)),
         512);
@@ -217,16 +217,17 @@ class CudnnNormConvolution {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
 
     // output ptr
-    T *output_ptr = ctx.template Alloc<T>(output, output->numel() * sizeof(T));
+    T *output_ptr =
+        dev_ctx.template Alloc<T>(output, output->numel() * sizeof(T));
     float *sum_ptr =
-        ctx.template Alloc<float>(sum, sum->numel() * sizeof(float));
-    float *sum_of_squares_ptr = ctx.template Alloc<float>(
+        dev_ctx.template Alloc<float>(sum, sum->numel() * sizeof(float));
+    float *sum_of_squares_ptr = dev_ctx.template Alloc<float>(
         sum_of_squares, sum_of_squares->numel() * sizeof(float));
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, output_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
 
-    ctx.cudnn_workspace_handle().RunFunc(
+    dev_ctx.cudnn_workspace_handle().RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
           fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
@@ -237,7 +238,7 @@ class CudnnNormConvolution {
   }
 
  private:
-  CudnnFusionOp *GetForwardOp(const phi::GPUContext &ctx) {
+  CudnnFusionOp *GetForwardOp(const phi::GPUContext &dev_ctx) {
     phi::funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetForward());
 
@@ -280,7 +281,7 @@ class CudnnNormConvolution {
                                       CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
 
           // Make cudnn fused ops plan
-          fwd_op->GetWorkspaceSizeInBytes(ctx.cudnn_handle());
+          fwd_op->GetWorkspaceSizeInBytes(dev_ctx.cudnn_handle());
           return fwd_op;
         });
     return fwd_op;
@@ -293,7 +294,7 @@ class CudnnNormConvolution {
 template <typename T>
 class CudnnNormConvolutionGrad {
  public:
-  CudnnNormConvolutionGrad(const phi::GPUContext &ctx,
+  CudnnNormConvolutionGrad(const phi::GPUContext &dev_ctx,
                            const std::vector<int> &input_shape,
                            const std::vector<int> &filter_shape,
                            const std::vector<int> &output_shape,
@@ -301,7 +302,7 @@ class CudnnNormConvolutionGrad {
                            const int &stride,
                            const int &dilation,
                            const int &group) {
-    args_.Set(ctx,
+    args_.Set(dev_ctx,
               input_shape,
               filter_shape,
               output_shape,
@@ -313,7 +314,7 @@ class CudnnNormConvolutionGrad {
   }
   ~CudnnNormConvolutionGrad() {}
 
-  void Backward(const phi::GPUContext &ctx,
+  void Backward(const phi::GPUContext &dev_ctx,
                 const phi::DenseTensor &input,
                 const phi::DenseTensor &filter,
                 const phi::DenseTensor &output_grad,
@@ -325,25 +326,26 @@ class CudnnNormConvolutionGrad {
     T *output_grad_ptr = const_cast<T *>(output_grad.data<T>());
 
     if (filter_grad) {
-      T *filter_grad_ptr =
-          ctx.template Alloc<T>(filter_grad, filter_grad->numel() * sizeof(T));
-      BackwardFilter(ctx, output_grad_ptr, input_ptr, filter_grad_ptr);
+      T *filter_grad_ptr = dev_ctx.template Alloc<T>(
+          filter_grad, filter_grad->numel() * sizeof(T));
+      BackwardFilter(dev_ctx, output_grad_ptr, input_ptr, filter_grad_ptr);
     }
     if (input_grad) {
-      T *input_grad_ptr =
-          ctx.template Alloc<T>(input_grad, input_grad->numel() * sizeof(T));
-      BackwardData(ctx, output_grad_ptr, filter_ptr, input_grad_ptr, use_addto);
+      T *input_grad_ptr = dev_ctx.template Alloc<T>(
+          input_grad, input_grad->numel() * sizeof(T));
+      BackwardData(
+          dev_ctx, output_grad_ptr, filter_ptr, input_grad_ptr, use_addto);
     }
   }
 
  private:
-  void BackwardFilter(const phi::GPUContext &ctx,
+  void BackwardFilter(const phi::GPUContext &dev_ctx,
                       T *output_grad_ptr,
                       T *input_ptr,
                       T *filter_grad_ptr) {
-    auto cudnn_handle = ctx.cudnn_handle();
+    auto cudnn_handle = dev_ctx.cudnn_handle();
 
-    CudnnFusionOp *wgrad_op = GetBackwardFilterOp(ctx);
+    CudnnFusionOp *wgrad_op = GetBackwardFilterOp(dev_ctx);
     size_t workspace_size = RoundUp(
         static_cast<int64_t>(wgrad_op->GetWorkspaceSizeInBytes(cudnn_handle)),
         512);
@@ -354,7 +356,7 @@ class CudnnNormConvolutionGrad {
     wgrad_op->SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
 
-    ctx.cudnn_workspace_handle().RunFunc(
+    dev_ctx.cudnn_workspace_handle().RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
           wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
@@ -365,18 +367,18 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  void BackwardData(const phi::GPUContext &ctx,
+  void BackwardData(const phi::GPUContext &dev_ctx,
                     T *output_grad_ptr,
                     T *filter_ptr,
                     T *input_grad_ptr,
                     bool use_addto = false) {
-    auto cudnn_handle = ctx.cudnn_handle();
-    size_t workspace_size = GetWorkspaceSizeBwdData(ctx);
+    auto cudnn_handle = dev_ctx.cudnn_handle();
+    size_t workspace_size = GetWorkspaceSizeBwdData(dev_ctx);
 
     // Convolution dgrad followed optionally by batchnorm dgrad
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
-    ctx.cudnn_workspace_handle().RunFunc(
+    dev_ctx.cudnn_workspace_handle().RunFunc(
         [&](void *cudnn_workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionBackwardData(
               cudnn_handle,
@@ -396,7 +398,7 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  CudnnFusionOp *GetBackwardFilterOp(const phi::GPUContext &ctx) {
+  CudnnFusionOp *GetBackwardFilterOp(const phi::GPUContext &dev_ctx) {
     phi::funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetBackward());
 
@@ -433,15 +435,15 @@ class CudnnNormConvolutionGrad {
                                         CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
 
           // Make cudnn fused ops plan
-          wgrad_op->GetWorkspaceSizeInBytes(ctx.cudnn_handle());
+          wgrad_op->GetWorkspaceSizeInBytes(dev_ctx.cudnn_handle());
           return wgrad_op;
         });
     return wgrad_op;
   }
 
-  size_t GetWorkspaceSizeBwdData(const phi::GPUContext &ctx) {
+  size_t GetWorkspaceSizeBwdData(const phi::GPUContext &dev_ctx) {
     size_t workspace_size = 0U;
-    auto handle = ctx.cudnn_handle();
+    auto handle = dev_ctx.cudnn_handle();
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle,

@@ -1,18 +1,20 @@
 # In Windows, c_api test link must link both 2 shared to avoid symbols redefinition,
-# in Linux, c_api test cant do like this or graph_to_program register more than once.
+# in Linux, c_api test can't do like this or graph_to_program register more than once.
 # Both Windows and Linux can only use paddle_inference_c, but this will increase size
 # of build folder by 30G.
 set(inference_api_tester_deps paddle_inference_api analysis_config)
 
-cc_test(
-  test_paddle_inference_api
-  SRCS api_tester.cc
-  DEPS ${inference_api_tester_deps} common)
+if(NOT WIN32)
+  cc_test(
+    test_paddle_inference_api
+    SRCS api_tester.cc
+    DEPS ${inference_api_tester_deps} common)
 
-cc_test(
-  inference_api_helper_test
-  SRCS helper_test.cc
-  DEPS ${inference_api_tester_deps} common)
+  cc_test(
+    inference_api_helper_test
+    SRCS helper_test.cc
+    DEPS ${inference_api_tester_deps} common)
+endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
@@ -237,7 +239,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
            test_binary model_dir disable_fc)
     inference_analysis_test_run(
       ${TARGET_NAME} COMMAND ${test_binary} ARGS
-      --infer_model=${model_dir}/model --disable_mkldnn_fc=${disable_fc})
+      --infer_model=${model_dir}/model --disable_onednn_fc=${disable_fc})
   endfunction()
 
   function(
@@ -847,22 +849,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_inference_shared
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model)
-
-  if(WITH_DISTRIBUTE
-     AND WITH_PSCORE
-     AND WITH_XPU
-     AND WITH_XPU_BKCL)
-    inference_analysis_test(
-      test_analyzer_dist_model_xpu
-      SRCS
-      analyzer_dist_model_xpu_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${OCR_INSTALL_DIR}/model)
-  endif()
-
   # chinese_ner
   set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
   download_model_and_data_without_verify(
@@ -983,10 +969,12 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}/model)
 
-  cc_test(
-    paddle_infer_api_errors_test
-    SRCS paddle_infer_api_errors_tester.cc
-    DEPS ${inference_api_tester_deps} common)
+  if(NOT WIN32)
+    cc_test(
+      paddle_infer_api_errors_test
+      SRCS paddle_infer_api_errors_tester.cc
+      DEPS ${inference_api_tester_deps} common)
+  endif()
 
   if(WITH_GPU)
     inference_analysis_test(

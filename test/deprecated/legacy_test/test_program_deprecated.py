@@ -140,10 +140,12 @@ class TestProgram(unittest.TestCase):
 def build_program():
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            x = paddle.static.data(name='x', shape=[3, 2, 1])
-            out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+    with (
+        paddle.utils.unique_name.guard(),
+        paddle.static.program_guard(main_program, startup_program),
+    ):
+        x = paddle.static.data(name='x', shape=[3, 2, 1])
+        out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
     return main_program
 
 
@@ -151,7 +153,7 @@ class TestProgramProto(unittest.TestCase):
     def test_update_op(self):
         program = build_program()
         a = program.desc.serialize_to_string()
-        program.current_block().ops[0]._set_attr('use_mkldnn', True)
+        program.current_block().ops[0]._set_attr('use_onednn', True)
         self.assertTrue(program.desc.need_update())
         b = program.desc.serialize_to_string()
         self.assertFalse(a == b)
@@ -177,10 +179,12 @@ class TestProgramHash(unittest.TestCase):
     def build_program(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.static.data(name='x', shape=[3, 2, 1])
-                out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
+        with (
+            paddle.utils.unique_name.guard(),
+            paddle.static.program_guard(main_program, startup_program),
+        ):
+            x = paddle.static.data(name='x', shape=[3, 2, 1])
+            out = paddle.static.nn.fc(x=x, size=1, num_flatten_dims=2)
         return main_program
 
     def test_program_need_update(self):
@@ -226,7 +230,7 @@ class TestProgramHash(unittest.TestCase):
         hash1 = program.desc.cached_hash_str()
         id1 = id(program)
         # change mul's attr
-        program.current_block().ops[0]._set_attr('use_mkldnn', True)
+        program.current_block().ops[0]._set_attr('use_onednn', True)
         program.current_block().ops[0]._set_attr('scale_x', 2.0)
         hash2 = program.desc.cached_hash_str()
         id2 = id(program)

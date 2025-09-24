@@ -27,7 +27,7 @@ class Builder;
 class IrPrinter;
 class Block;
 
-class IR_API OpBase {
+class OpBase {
  public:
   explicit OpBase(const Operation *operation = nullptr)
       : operation_(const_cast<pir::Operation *>(operation)) {}

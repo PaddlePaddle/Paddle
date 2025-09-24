@@ -52,6 +52,15 @@ XPUGarbageCollector::XPUGarbageCollector(const phi::XPUPlace &place,
 void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
   callback();
 }
+
+XPUPinnedGarbageCollector::XPUPinnedGarbageCollector(
+    const phi::XPUPinnedPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void XPUPinnedGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
 #endif
 
 #ifdef PADDLE_WITH_IPU

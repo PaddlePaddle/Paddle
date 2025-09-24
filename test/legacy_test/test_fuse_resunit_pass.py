@@ -12,11 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import nn
@@ -24,7 +23,7 @@ from paddle import nn
 
 def skip_unit_test():
     return (
-        not paddle.is_compiled_with_cuda()
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
         or paddle.get_cudnn_version() < 8900
     )
@@ -129,7 +128,7 @@ class TestFuseResUnitBase(unittest.TestCase):
         paddle.seed(10)
         paddle.framework.random._manual_program_seed(10)
 
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.exe = paddle.static.Executor(self.place)
 
         self.feeds = [
@@ -145,34 +144,36 @@ class TestFuseResUnitBase(unittest.TestCase):
     def build_program(
         self, main_program, startup_program, is_shortcut=True, is_training=False
     ):
-        with paddle.static.program_guard(main_program, startup_program):
-            with paddle.utils.unique_name.guard():
-                x1 = paddle.static.data(
-                    name="input",
-                    shape=[-1, self.height, self.width, self.hidden],
-                    dtype='float16',
-                )
-                layer1 = ConvBNActLayer(self.hidden, self.hidden, 3)
-                resunit_layer1 = ResUnit(self.hidden, is_shortcut)
-                resunit_layer2 = ResUnit(self.hidden, is_shortcut)
-                layer2 = ConvBNActLayer(self.hidden, self.hidden, 3)
-                optimizer = None
-                with paddle.static.amp.fp16_guard():
-                    out = layer1(x1)
-                    out = resunit_layer1(out)
-                    out = resunit_layer2(out)
-                    out = layer2(out)
-                    loss = paddle.mean(out)
-                    if is_training:
-                        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-                        optimizer = paddle.static.amp.decorate(
-                            optimizer=optimizer,
-                            init_loss_scaling=128.0,
-                            use_dynamic_loss_scaling=True,
-                            use_pure_fp16=True,
-                            use_fp16_guard=True,
-                        )
-                        optimizer.minimize(loss)
+        with (
+            paddle.static.program_guard(main_program, startup_program),
+            paddle.utils.unique_name.guard(),
+        ):
+            x1 = paddle.static.data(
+                name="input",
+                shape=[-1, self.height, self.width, self.hidden],
+                dtype='float16',
+            )
+            layer1 = ConvBNActLayer(self.hidden, self.hidden, 3)
+            resunit_layer1 = ResUnit(self.hidden, is_shortcut)
+            resunit_layer2 = ResUnit(self.hidden, is_shortcut)
+            layer2 = ConvBNActLayer(self.hidden, self.hidden, 3)
+            optimizer = None
+            with paddle.static.amp.fp16_guard():
+                out = layer1(x1)
+                out = resunit_layer1(out)
+                out = resunit_layer2(out)
+                out = layer2(out)
+                loss = paddle.mean(out)
+                if is_training:
+                    optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer=optimizer,
+                        init_loss_scaling=128.0,
+                        use_dynamic_loss_scaling=True,
+                        use_pure_fp16=True,
+                        use_fp16_guard=True,
+                    )
+                    optimizer.minimize(loss)
         return loss.name, optimizer
 
     def cal_output(self, enable_fusion):

@@ -312,50 +312,46 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     Examples:
         .. code-block:: python
 
-                >>> import paddle
-                >>> import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-                >>> paddle.enable_static()
+            >>> paddle.enable_static()
 
-                >>> def forward_fn(x):
-                ...     return paddle.exp(x)
+            >>> def forward_fn(x):
+            ...     return paddle.exp(x)
 
-                >>> def backward_fn(dy):
-                ...     return 2 * paddle.exp(dy)
+            >>> def backward_fn(dy):
+            ...     return 2 * paddle.exp(dy)
 
-                >>> main_program = paddle.static.Program()
-                >>> start_program = paddle.static.Program()
+            >>> main_program = paddle.static.Program()
+            >>> start_program = paddle.static.Program()
 
-                >>> place = paddle.CPUPlace()
-                >>> exe = paddle.static.Executor(place)
-                >>> with paddle.static.program_guard(main_program, start_program):
-                ...     data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
-                ...     data.stop_gradient = False
-                ...     ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
-                ...     data_grad = paddle.static.gradients([ret], data)[0]
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> with paddle.static.program_guard(main_program, start_program):
+            ...     data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
+            ...     data.stop_gradient = False
+            ...     ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
+            ...     data_grad = paddle.static.gradients([ret], data)[0]
 
-                >>> exe.run(start_program)
-                >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32) # type: ignore[var-annotated]
-                >>> x, x_grad, y = exe.run(
-                ...     main_program,
-                ...     feed={"X": x},
-                ...     fetch_list=[
-                ...         data.name,
-                ...         data_grad.name,
-                ...         ret.name
-                ...     ],
-                ... )
+            >>> exe.run(start_program)
+            >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32)
+            >>> x, x_grad, y = exe.run(
+            ...     main_program,
+            ...     feed={"X": x},
+            ...     fetch_list=[data, data_grad, ret],
+            ... )
 
-                >>> print(x)
-                [[1. 2. 3. 4. 5.]]
-                >>> print(x_grad)
-                [[5.4365635 5.4365635 5.4365635 5.4365635 5.4365635]]
-                >>> print(y)
-                [[  2.7182817   7.389056   20.085537   54.59815   148.41316  ]]
+            >>> print(x)
+            [[1. 2. 3. 4. 5.]]
+            >>> print(x_grad)
+            [[5.4365635 5.4365635 5.4365635 5.4365635 5.4365635]]
+            >>> print(y)
+            [[  2.7182817   7.389056   20.085537   54.59815   148.41316  ]]
     """
-    assert (
-        in_dygraph_mode() is False
-    ), "please use PyLayer instead of static_pylayer in dygraph mode"
+    assert in_dygraph_mode() is False, (
+        "please use PyLayer instead of static_pylayer in dygraph mode"
+    )
 
     assert isinstance(inputs, list)
     if backward_fn is None:
@@ -422,25 +418,27 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     # NOTE: inp_grad will be None if fwd_input.stop_gradients=True
                     if inp_grad is None:
                         continue
-                    assert (
-                        inp_grad.dtype == fwd_input.dtype
-                    ), f"dtype of inp_grad({inp_grad.dtype}) and fwd_input({fwd_input.dtype}) should be the same"
-                    assert (
-                        inp_grad.shape == fwd_input.shape
-                    ), f"shape of inp_grad({inp_grad.shape}) and fwd_input({fwd_input.shape}) should be the same"
+                    assert inp_grad.dtype == fwd_input.dtype, (
+                        f"dtype of inp_grad({inp_grad.dtype}) and fwd_input({fwd_input.dtype}) should be the same"
+                    )
+                    assert inp_grad.shape == fwd_input.shape, (
+                        f"shape of inp_grad({inp_grad.shape}) and fwd_input({fwd_input.shape}) should be the same"
+                    )
                     if fwd_input.is_dist():
                         # NOTE: placements may be not the same, so do not check it.
-                        assert (
-                            inp_grad.is_dist()
-                        ), "fwd_input and inp_grad should both be distributed"
+                        assert inp_grad.is_dist(), (
+                            "fwd_input and inp_grad should both be distributed"
+                        )
                         assert (
                             fwd_input.dist_attr().process_mesh
                             == inp_grad.dist_attr().process_mesh
-                        ), f"process_mesh of fwd_input({fwd_input.dist_attr().process_mesh}) and inp_grad({inp_grad.dist_attr().process_mesh}) should be the same"
+                        ), (
+                            f"process_mesh of fwd_input({fwd_input.dist_attr().process_mesh}) and inp_grad({inp_grad.dist_attr().process_mesh}) should be the same"
+                        )
                     else:
-                        assert (
-                            inp_grad.type() == fwd_input.type()
-                        ), f"type of inp_grad({inp_grad.type()}) and fwd_input({fwd_input.type()}) should be the same"
+                        assert inp_grad.type() == fwd_input.type(), (
+                            f"type of inp_grad({inp_grad.type()}) and fwd_input({fwd_input.type()}) should be the same"
+                        )
 
                 # 2. Verify the number of `Value` outputs to ``forward_fn``
                 # the same as the number of `Value` inputs to ``backward_fn``
@@ -456,25 +454,27 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                 for out_grad, fwd_output in zip(output_grads, forward_outputs):
                     if out_grad is None:
                         continue
-                    assert (
-                        out_grad.dtype == fwd_output.dtype
-                    ), f"dtype of out_grad({out_grad.dtype}) and fwd_output({fwd_output.dtype}) should be the same"
-                    assert (
-                        out_grad.shape == fwd_output.shape
-                    ), f"shape of out_grad({out_grad.shape}) and fwd_output({fwd_output.shape}) should be the same"
+                    assert out_grad.dtype == fwd_output.dtype, (
+                        f"dtype of out_grad({out_grad.dtype}) and fwd_output({fwd_output.dtype}) should be the same"
+                    )
+                    assert out_grad.shape == fwd_output.shape, (
+                        f"shape of out_grad({out_grad.shape}) and fwd_output({fwd_output.shape}) should be the same"
+                    )
                     if fwd_output.is_dist():
                         # NOTE: placements may be not the same, so do not check it.
-                        assert (
-                            out_grad.is_dist()
-                        ), "fwd_output and out_grad should both be distributed"
+                        assert out_grad.is_dist(), (
+                            "fwd_output and out_grad should both be distributed"
+                        )
                         assert (
                             fwd_output.dist_attr().process_mesh
                             == out_grad.dist_attr().process_mesh
-                        ), f"process_mesh of fwd_output({fwd_output.dist_attr().process_mesh}) and out_grad({out_grad.dist_attr().process_mesh}) should be the same"
+                        ), (
+                            f"process_mesh of fwd_output({fwd_output.dist_attr().process_mesh}) and out_grad({out_grad.dist_attr().process_mesh}) should be the same"
+                        )
                     else:
-                        assert (
-                            out_grad.type() == fwd_output.type()
-                        ), f"type of out_grad({out_grad.type}) and fwd_output({fwd_output.type}) should be the same"
+                        assert out_grad.type() == fwd_output.type(), (
+                            f"type of out_grad({out_grad.type}) and fwd_output({fwd_output.type}) should be the same"
+                        )
 
             bwd_fn = PyLayerBackwardFunction(
                 backward_fn, hook_check_func=hook_inputs_outputs_check_function
@@ -557,10 +557,10 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                 forward_input_names = current_block.ops[
                     pylayer_block_manager.fwd_op_index
                 ].desc.input_arg_names()
-                assert len(forward_input_names) == len(
-                    flat_grad_origin
-                ), f"needs to keep the number of inputs to ``forward_fn`` the same as the number of outputs to ``backward_fn``, \
+                assert len(forward_input_names) == len(flat_grad_origin), (
+                    f"needs to keep the number of inputs to ``forward_fn`` the same as the number of outputs to ``backward_fn``, \
                     but got {len(forward_input_names)} and {len(flat_grad_origin)}"
+                )
 
                 # Step4. Rename var name with suffix of "@GRAD"
                 for bwd_output, fwd_input_name in zip(

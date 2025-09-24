@@ -69,18 +69,17 @@ void FullLikeKernel(const Context& dev_ctx,
   // This function has no input, so the inputs.size() == 0. Use kUnary, but the
   // data will not be loaded in the kernel because the number of parameters in
   // the operator is 0
-  int numel = out->numel();
+  int64_t numel = out->numel();
 
-  if (!std::is_same<T, phi::dtype::complex<float>>::value &&
-      !std::is_same<T, phi::dtype::complex<double>>::value) {
+  if (!std::is_same<T, phi::complex64>::value &&
+      !std::is_same<T, phi::complex128>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<
-            std::is_same<T, phi::dtype::float16>::value ||
-                std::is_same<T, phi::dtype::bfloat16>::value,
-            float,
-            T>::type>::type;
+        typename std::conditional<std::is_same<T, phi::float16>::value ||
+                                      std::is_same<T, phi::bfloat16>::value,
+                                  float,
+                                  T>::type>::type;
     auto common_type_value = static_cast<CommonType>(value);
 
     // Check whether the filled value is valid
@@ -119,7 +118,11 @@ void FullLikeKernel(const Context& dev_ctx,
     }
   }
 }
-
+#ifdef _WIN32
+INSTANTIATE_FULL_KERNEL(float, GPUContext)
+INSTANTIATE_FULL_KERNEL(int, GPUContext)
+INSTANTIATE_FULL_KERNEL(int64_t, GPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full,
@@ -134,28 +137,30 @@ PD_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(full_like,
                    GPU,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,
+                   bool,
                    float,
                    double,
-                   uint8_t,
-                   int16_t,
                    int,
+                   int8_t,
                    int64_t,
-                   bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   int16_t,
+                   uint8_t,
+                   phi::float8_e4m3fn,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -171,9 +176,9 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }

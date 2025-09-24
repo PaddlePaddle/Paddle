@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from functools import reduce
 
 import numpy as np
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -45,6 +45,15 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(paddle.bool, convert("bool"))
         self.assertEqual(paddle.int8, convert("int8"))
         self.assertEqual(paddle.uint8, convert("uint8"))
+        self.assertEqual(paddle.float32, convert(paddle.float32))
+        self.assertEqual(paddle.float16, convert(paddle.float16))
+        self.assertEqual(paddle.float64, convert(paddle.float64))
+        self.assertEqual(paddle.int32, convert(paddle.int32))
+        self.assertEqual(paddle.int16, convert(paddle.int16))
+        self.assertEqual(paddle.int64, convert(paddle.int64))
+        self.assertEqual(paddle.bool, convert(paddle.bool))
+        self.assertEqual(paddle.int8, convert(paddle.int8))
+        self.assertEqual(paddle.uint8, convert(paddle.uint8))
 
     def test_var(self):
         b = default_main_program().current_block()
@@ -272,15 +281,7 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[0] == expected[0]).all())
 
     def test_slice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        places = get_places()
 
         for place in places:
             self._test_slice_index_tensor(place)
@@ -294,7 +295,7 @@ class TestVariable(unittest.TestCase):
         w = b.create_var(dtype="float64")
         self.assertTrue(isinstance(str(w), str))
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             wc = b.create_var(dtype="int")
             self.assertTrue(isinstance(str(wc), str))
 
@@ -351,7 +352,9 @@ class TestVariable(unittest.TestCase):
         def _test():
             var.lod_level()
 
-        self.assertRaises(Exception, _test)
+        self.assertRaisesRegex(
+            NotImplementedError, "SelectedRows DO NOT support lod", _test
+        )
 
     def test_size(self):
         prog = paddle.static.Program()
@@ -382,35 +385,37 @@ class TestVariable(unittest.TestCase):
             startup = paddle.static.Program()
             main = paddle.static.Program()
             scope = base.core.Scope()
-            with paddle.static.scope_guard(scope):
-                with paddle.static.program_guard(main, startup):
-                    x = paddle.static.data(
-                        name='x', shape=[3, 2, 1], dtype='float32'
-                    )
-                    x.persistable = True
-                    feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
-                    detach_x = x.detach()
-                    exe = paddle.static.Executor(paddle.CPUPlace())
-                    exe.run(startup)
-                    result = exe.run(
-                        main, feed={'x': feed_data}, fetch_list=[x, detach_x]
-                    )
-                    self.assertTrue((result[1] == feed_data).all())
-                    self.assertTrue((result[0] == result[1]).all())
+            with (
+                paddle.static.scope_guard(scope),
+                paddle.static.program_guard(main, startup),
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[3, 2, 1], dtype='float32'
+                )
+                x.persistable = True
+                feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+                detach_x = x.detach()
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                exe.run(startup)
+                result = exe.run(
+                    main, feed={'x': feed_data}, fetch_list=[x, detach_x]
+                )
+                self.assertTrue((result[1] == feed_data).all())
+                self.assertTrue((result[0] == result[1]).all())
 
-                    modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-                    detach_x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
+                detach_x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
-                    modified_value = np.random.uniform(
-                        -1, 1, size=[3, 2, 1]
-                    ).astype('float32')
-                    x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.random.uniform(
+                    -1, 1, size=[3, 2, 1]
+                ).astype('float32')
+                x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
 
 class TestVariableSlice(unittest.TestCase):
@@ -486,17 +491,7 @@ class TestVariableSlice(unittest.TestCase):
             self.assertTrue((result[i] == expected[i]).all())
 
     def test_slice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self._test_item_none(place)
             self._test_item_none_and_decrease(place)
 
@@ -533,8 +528,11 @@ class TestListIndex(unittest.TestCase):
 
                 place = (
                     paddle.base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else paddle.base.CUDAPlace(0)
+                    if not (
+                        paddle.base.core.is_compiled_with_cuda()
+                        or is_custom_device()
+                    )
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()
@@ -614,8 +612,11 @@ class TestListIndex(unittest.TestCase):
 
             place = (
                 paddle.base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else paddle.base.CUDAPlace(0)
+                if not (
+                    paddle.base.core.is_compiled_with_cuda()
+                    or is_custom_device()
+                )
+                else get_device_place()
             )
 
             prog = paddle.static.default_main_program()
@@ -935,8 +936,11 @@ class TestListIndex(unittest.TestCase):
                 x2_out = paddle.static.setitem(x2, index_1, value)
                 place = (
                     paddle.base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else paddle.base.CUDAPlace(0)
+                    if not (
+                        paddle.base.core.is_compiled_with_cuda()
+                        or is_custom_device()
+                    )
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()
@@ -1014,8 +1018,11 @@ class TestListIndex(unittest.TestCase):
                 y2 = x2_out[index_mod2]
                 place = (
                     paddle.base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else paddle.base.CUDAPlace(0)
+                    if not (
+                        paddle.base.core.is_compiled_with_cuda()
+                        or is_custom_device()
+                    )
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()

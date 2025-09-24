@@ -43,7 +43,7 @@ def _all_reduce_in_dygraph(
     sync_op: bool,
     use_calc_stream: bool,
 ) -> task:
-    op_type = _get_reduce_op(op, "allreduce")
+    op_type = _get_reduce_op(op)
 
     if use_calc_stream:
         return group.process_group.all_reduce_on_calc_stream(tensor, op_type)
@@ -79,7 +79,6 @@ def _all_reduce_in_static_mode(
         'all_reduce',
     )
 
-    op_type = _get_reduce_op(op, "allreduce")
     ring_id = 0 if group is None else group.id
 
     if not isinstance(ring_id, int):
@@ -92,6 +91,7 @@ def _all_reduce_in_static_mode(
 
     # TODO: Support task and use task.wait in static graph mode
     #       Use use_calc_stream rather than sync_op
+    op_type = _get_reduce_op(op)
     helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
@@ -158,9 +158,9 @@ def all_reduce(
             tensor, op, group, sync_op, use_calc_stream
         )
     else:
-        assert (
-            group is None
-        ), "Group can not be used in static graph mode for now."
+        assert group is None, (
+            "Group can not be used in static graph mode for now."
+        )
         return _all_reduce_in_static_mode(
             tensor, op, group, sync_op, use_calc_stream
         )

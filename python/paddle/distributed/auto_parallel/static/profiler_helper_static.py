@@ -33,6 +33,8 @@ color_map = {
     "default": "thread_state_unknown",  # RGB: 199, 155, 125
 }
 
+ignore_job_type = ["recv_forward", "send_backward"]
+
 
 def parse_args():
     parser = ArgumentParser()
@@ -59,6 +61,9 @@ def process_job_log(log_data, device_id, multi_machine_idx=-1):
 
     for i, match in enumerate(matches):
         job_id, job_type, micro_batch_id, job_start_time, job_end_time = match
+
+        if job_type in ignore_job_type:
+            continue
 
         if job_type != "default" and start_job_type == "":
             start_job_type = job_type
@@ -145,6 +150,7 @@ def main():
                     step_infos.append([float("inf"), float("-inf")])
                 step_infos[i][0] = min(step_infos[i][0], info[0])
                 step_infos[i][1] = max(step_infos[i][1], info[1])
+        return start_step
 
     if args.multi_machine:
         multi_machine_dirs = os.listdir(args.log_dir)
@@ -157,9 +163,9 @@ def main():
         machine_num = len(multi_machine_dirs)
         for i, d in enumerate(multi_machine_dirs):
             _logger.info(f"Process machine {i}")
-            process_one_machine_log(d, i)
+            start_step = max(process_one_machine_log(d, i), start_step)
     else:
-        process_one_machine_log(args.log_dir)
+        start_step = process_one_machine_log(args.log_dir)
 
     for i, info in enumerate(step_infos):
         start_time = info[0]

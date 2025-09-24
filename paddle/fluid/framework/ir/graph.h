@@ -64,7 +64,7 @@ namespace ir {
  *   The output/input of operator is variable and the output/input of variable
  *   is operator.
  *
- * The following data harzards in Program are addressed in the Graph:
+ * The following data hazards in Program are addressed in the Graph:
  *
  *   Write-After-Read
  *     a = op1(x)
@@ -375,12 +375,12 @@ class Graph {
     return node;
   }
 
-  void ResolveHazard(
+  PADDLE_API void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
 
   // Create a new and duplicated graph.
   // WARN: The method only clones the graph structure, not its attributes.
-  std::shared_ptr<Graph> Clone();
+  PADDLE_API std::shared_ptr<Graph> Clone();
 
   bool IsMainGraph() const { return main_graph_ == nullptr; }
 

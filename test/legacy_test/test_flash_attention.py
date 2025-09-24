@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 import os
 import re
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -27,6 +27,7 @@ from paddle.nn.functional import sdp_kernel
 from paddle.nn.functional.flash_attention import (
     calc_reduced_attention_scores,
     flash_attention,
+    flash_attention_v3_varlen,
     flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
@@ -77,19 +78,19 @@ def attention_naive_with_mask(q, k, v, attn_bias):
 
 
 is_sm80 = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] == 0
 )
 
 is_sm8x = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
 is_sm90 = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 9
     and paddle.device.cuda.get_device_capability()[1] == 0
 )
@@ -99,7 +100,7 @@ is_sm_supported = is_sm8x or is_sm90
 
 def is_flashattn_supported():
     if (
-        not core.is_compiled_with_cuda()
+        not (core.is_compiled_with_cuda() or is_custom_device())
         or get_cuda_version() < 11040
         or not is_sm_supported
     ):
@@ -114,7 +115,7 @@ def is_flashattn_supported():
 )
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 16)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -149,19 +150,33 @@ class TestFlashAttentionAPI(unittest.TestCase):
         cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
 
         qq = paddle.reshape(q, [bs * ms, nh, hd])
-        out, _ = flash_attn_unpadded(
-            qq,
-            qq,
-            qq,
-            cu_q,
-            cu_q,
-            ms,
-            ms,
-            scale,
-            self.dropout,
-            self.causal,
-            self.return_softmax,
-        )
+        if is_sm90:
+            out, _ = flash_attention_v3_varlen(
+                qq,
+                qq,
+                qq,
+                cu_q,
+                cu_q,
+                self.dropout,
+                self.causal,
+                self.return_softmax,
+                max_seqlen_q=ms,
+                max_seqlen_k=ms,
+            )
+        else:
+            out, _ = flash_attn_unpadded(
+                qq,
+                qq,
+                qq,
+                cu_q,
+                cu_q,
+                ms,
+                ms,
+                scale,
+                self.dropout,
+                self.causal,
+                self.return_softmax,
+            )
         out_ = paddle.reshape(out_, [bs * ms, nh, hd])
 
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
@@ -340,7 +355,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
 )
 class TestFlashAttentionWithMaskAPI(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 32)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -391,7 +406,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
 
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 16)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -402,7 +417,7 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
 
 class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 256, 8, 16)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -413,7 +428,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
 
 class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 512, 8, 16)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -424,7 +439,7 @@ class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
 
 class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -435,7 +450,7 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
 
 class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (
             (8, 1024, 16, 256) if (is_sm80 or is_sm90) else (8, 1024, 16, 192)
         )
@@ -448,7 +463,7 @@ class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
 
 class TestMathAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -463,7 +478,7 @@ class TestMathAttentionAPITest(TestFlashAttentionAPI):
 
 class TestSDPAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -478,7 +493,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
 
 class TestFlashAttentionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -498,7 +513,7 @@ class TestSDPAttentionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
 # fp32 case
 class TestSDPAttentionWithMaskAPITest2(TestFlashAttentionWithMaskAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float32'
         self.dropout = 0.0
@@ -513,7 +528,7 @@ class TestSDPAttentionWithMaskAPITest2(TestFlashAttentionWithMaskAPI):
 )
 class TestSDPAttentionWithMaskAPITest3(TestFlashAttentionWithMaskAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -527,7 +542,7 @@ class TestSDPAttentionWithMaskAPITest3(TestFlashAttentionWithMaskAPI):
 )
 class TestFlashAttentionNoKVGrad(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 16)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -916,7 +931,7 @@ def generate_mask_matrix_from_mask_indices(start_rows):
 )
 class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 32)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -985,7 +1000,7 @@ class TestFlashAttentionWithSparseMaskAPITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -996,7 +1011,7 @@ class TestFlashAttentionWithSparseMaskBF16APITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'bfloat16'
         self.dropout = 0.0
@@ -1427,7 +1442,7 @@ class TestFlashAttentionQKVPackedDeter(TestFlashAttentionQKVPackedGQADeter):
 )
 class TestCalcReducedAttentionScores(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 1
         self.num_head = 8
         self.seqlen_q = 1024
@@ -1544,7 +1559,7 @@ class TestCalcReducedAttentionScores(unittest.TestCase):
 )
 class TestCalcReducedAttentionScoresGQA(TestCalcReducedAttentionScores):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 1
         self.num_head = 8
         self.seqlen_q = 1024
@@ -1561,7 +1576,7 @@ class TestCalcReducedAttentionScoresGQA(TestCalcReducedAttentionScores):
 )
 class TestCalcReducedAttentionScoresFP16(TestCalcReducedAttentionScores):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 1
         self.num_head = 8
         self.seqlen_q = 1024
@@ -1578,7 +1593,7 @@ class TestCalcReducedAttentionScoresFP16(TestCalcReducedAttentionScores):
 )
 class TestCalcReducedAttentionScoresNotEvenMN(TestCalcReducedAttentionScores):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 1
         self.num_head = 8
         self.seqlen_q = 1023

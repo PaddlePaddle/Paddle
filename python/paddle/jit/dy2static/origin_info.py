@@ -155,9 +155,9 @@ def create_and_update_origin_info_map(
     static_node = attach_origin_info(static_node, static_func)
 
     for t_node, s_node in ast_walk(transformed_node, static_node):
-        assert type(t_node) == type(
-            s_node
-        ), f"The node types should be the same, but received type(t_node) is {type(t_node)}, and type(s_node) is {type(s_node)}."
+        assert type(t_node) == type(s_node), (
+            f"The node types should be the same, but received type(t_node) is {type(t_node)}, and type(s_node) is {type(s_node)}."
+        )
         dygraph_info = getattr(t_node, ORIGIN_INFO, None)
         static_info = getattr(s_node, ORIGIN_INFO, None)
 
@@ -232,9 +232,9 @@ def ast_walk(transformed_node, static_node):
             ):
                 continue
 
-        assert type(t_node) == type(
-            s_node
-        ), f"The node types should be the same, but received type(t_node) is {type(t_node)}, and type(s_node) is {type(s_node)}."
+        assert type(t_node) == type(s_node), (
+            f"The node types should be the same, but received type(t_node) is {type(t_node)}, and type(s_node) is {type(s_node)}."
+        )
 
         yield t_node, s_node
 

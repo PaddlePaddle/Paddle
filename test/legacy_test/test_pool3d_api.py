@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import unittest
 
 import numpy as np
 
 sys.path.append("../deprecated/legacy_test")
+from op_test import get_device_place, get_places, is_custom_device
 from test_pool3d_op import (
     avg_pool3D_forward_naive,
     max_pool3D_forward_naive,
@@ -27,22 +27,13 @@ from test_pool3d_op import (
 
 import paddle
 from paddle import base
-from paddle.base import core
 from paddle.nn.functional import avg_pool3d, max_pool3d
 
 
 class TestPool3D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_avg_static_results(self, place):
         with paddle.static.program_guard(
@@ -401,8 +392,8 @@ class TestPool3D_API(unittest.TestCase):
 
     def test_static_fp16_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -428,10 +419,9 @@ class TestPool3D_API(unittest.TestCase):
     def test_static_bf16_gpu(self):
         paddle.enable_static()
         if (
-            paddle.base.core.is_compiled_with_cuda()
-            and paddle.base.core.is_bfloat16_supported(core.CUDAPlace(0))
-        ):
-            place = paddle.CUDAPlace(0)
+            paddle.base.core.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.base.core.is_bfloat16_supported(get_device_place()):
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -672,6 +662,59 @@ class TestPool3DError_API(unittest.TestCase):
                 out = max_pool3d(x, 1, stride=(0, 0, 0), ceil_mode=False)
 
         self.assertRaises(ValueError, run_zero_tuple_stride)
+
+
+class TestPool3D_API_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = get_places()
+
+    def check_avg_dygraph_results(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 0, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            input.stop_gradient = False
+            result = avg_pool3d(input, kernel_size=2, stride=2, padding="SAME")
+
+            result_np = pool3D_forward_naive(
+                input_np,
+                ksize=[2, 2, 2],
+                strides=[2, 2, 2],
+                paddings=[0, 0, 0],
+                pool_type='avg',
+                padding_algorithm="SAME",
+            )
+
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            loss = paddle.sum(result)
+            loss.backward()
+            np.testing.assert_allclose(input.grad.shape, input.shape)
+
+    def check_max_dygraph_results(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 0, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            input.stop_gradient = False
+            result = max_pool3d(input, kernel_size=2, stride=2, padding=0)
+
+            result_np = pool3D_forward_naive(
+                input_np,
+                ksize=[2, 2, 2],
+                strides=[2, 2, 2],
+                paddings=[0, 0, 0],
+                pool_type='max',
+            )
+
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            loss = paddle.sum(result)
+            loss.backward()
+            np.testing.assert_allclose(input.grad.shape, input.shape)
+
+    def test_pool3d(self):
+        paddle.enable_static()
+        for place in self.places:
+            self.check_max_dygraph_results(place)
+            self.check_avg_dygraph_results(place)
 
 
 if __name__ == '__main__':

@@ -41,7 +41,7 @@ void CallbackManager::AddCallback(std::function<void()> callback) const {
 void CallbackManager::Wait() const {
   phi::DeviceGuard guard(stream_->GetPlace());
   phi::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
-      ->SynchronizeStream(stream_);
+      ->SynchronizeStream(stream_->raw_stream());
 
   {
     std::lock_guard<std::mutex> lock(mtx_);

@@ -93,9 +93,9 @@ class GroupShardedStage2(nn.Layer):
             else group
         )
         self._world_size_scaling = 1.0 / self._group.nranks
-        assert (
-            self._group.nranks > 1
-        ), "Training must be distributed, ranks must be greater than 1"
+        assert self._group.nranks > 1, (
+            "Training must be distributed, ranks must be greater than 1"
+        )
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[
             0
@@ -113,9 +113,9 @@ class GroupShardedStage2(nn.Layer):
             if self.use_main_grad is None and hasattr(param, "main_grad"):
                 self.use_main_grad = True
             if self.use_main_grad:
-                assert hasattr(
-                    param, "main_grad"
-                ), "Params have different main grad attributes."
+                assert hasattr(param, "main_grad"), (
+                    "Params have different main grad attributes."
+                )
 
         # sharing stage 2 comm overlap flag
         self._reduce_overlap = False
@@ -146,9 +146,9 @@ class GroupShardedStage2(nn.Layer):
             filter(lambda optim: optim.offload, self._sharding_optimizers)
         )
         if len(self._offload_optims) > 0:
-            assert (
-                len(self._sharding_optimizers) == 1
-            ), "Only support offload strategy for single optimizer"
+            assert len(self._sharding_optimizers) == 1, (
+                "Only support offload strategy for single optimizer"
+            )
 
         self._offload = len(self._offload_optims) > 0
         self._offload_device = "cpu"
@@ -293,9 +293,9 @@ class GroupShardedStage2(nn.Layer):
         Synchronously or asynchronously convert the data type of the layer, the device is not supported now.
         """
         assert isinstance(device, str), "Device must be type str"
-        assert (
-            device == self._default_device
-        ), "New devices are not supported, because of the optimizer state is not sync"
+        assert device == self._default_device, (
+            "New devices are not supported, because of the optimizer state is not sync"
+        )
 
         self._layer.to(device=device, dtype=dtype, blocking=blocking)
 
@@ -321,9 +321,7 @@ class GroupShardedStage2(nn.Layer):
                 optim._update_opt_status()
 
             # Get the parameters split by the optimizer according to rank
-            for (
-                per_rank_params
-            ) in (
+            for per_rank_params in (
                 optim.dtype_rank_params.values()
             ):  # all the params from all ranks
                 for params in per_rank_params:
@@ -383,9 +381,9 @@ class GroupShardedStage2(nn.Layer):
         # model._set_reduce_overlap(True)
         self._reduce_overlap = reduce_overlap
         if self._reduce_overlap:
-            assert (
-                len(self._sharding_optimizers) == 1
-            ), "Only support comm overlap strategy for single optimizer"
+            assert len(self._sharding_optimizers) == 1, (
+                "Only support comm overlap strategy for single optimizer"
+            )
         self._sharding_optimizers[0]._set_reduce_overlap(reduce_overlap)
 
     def _get_scaled_grad_fn(self, param):
@@ -400,9 +398,9 @@ class GroupShardedStage2(nn.Layer):
                     and grad is not None
                     and grad.dtype == Type.fp16.value
                 ):
-                    assert (
-                        grad._is_initialized()
-                    ), "grad should be initialized in stage2"
+                    assert grad._is_initialized(), (
+                        "grad should be initialized in stage2"
+                    )
                     grad.scale_(self._world_size_scaling)
                 else:
                     self.scale_in_opt = True

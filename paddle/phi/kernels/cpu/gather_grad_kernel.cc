@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/gather_grad_kernel.h"
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/scatter.h"
@@ -29,6 +29,13 @@ void GatherGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const Scalar& axis,
                       DenseTensor* x_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    return;
+  }
   const auto& index_type = index.dtype();
   auto axis_v = axis.to<int>();
   if (axis_v < 0) {
@@ -72,9 +79,12 @@ PD_REGISTER_KERNEL(gather_grad,
                    phi::GatherGradKernel,
                    float,
                    double,
-                   int,
                    uint8_t,
+                   int8_t,
+                   int16_t,
+                   int32_t,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   bool,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

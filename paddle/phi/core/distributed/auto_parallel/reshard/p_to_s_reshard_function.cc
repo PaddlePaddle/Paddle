@@ -67,10 +67,6 @@ void ReshardPToSWithPadding(DeviceContext* dev_ctx,
   }
 
   DenseTensor out_reduce_scatter;
-#if defined(PADDLE_WITH_XPU)
-  PADDLE_THROW(::common::errors::Unimplemented(
-      "Not supported Reducescatter on xpu yet."));
-#else
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             ReduceScatter,
                             dtype,
@@ -78,7 +74,7 @@ void ReshardPToSWithPadding(DeviceContext* dev_ctx,
                             in_reduce_scatter,
                             static_cast<int64_t>(process_ids.size()),
                             &out_reduce_scatter);
-#endif
+
   DenseTensor out_result;
   if (split_axis != 0) {
     RESHARD_FUNCTOR(
@@ -125,6 +121,11 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   int out_split_axis =
       GetSplitAxisWithDimsMapping(out_dist_attr.dims_mapping()).begin()->first;
   int64_t num_of_process = in_process_mesh.size();
+  if (num_of_process == 1) {
+    SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
+    return;
+  }
   int64_t num_of_padding = in.dims()[out_split_axis] % num_of_process;
   bool is_balanced_split = (num_of_padding == 0);
 

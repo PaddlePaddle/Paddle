@@ -390,7 +390,7 @@ class PIRPool3DPluginDynamicCreator : public TensorRTPluginCreator {
         assert(false && "Unknown plugin field name.");
       }
     }
-    return new Pool3DPluginDynamic(
+    return new PIRPool3DPluginDynamic(
         ceil_mode, pool3d_type, adaptive, ksize, strides, paddings, is_global);
   }
 };

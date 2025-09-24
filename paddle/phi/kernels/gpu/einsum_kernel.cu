@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/einsum_impl.h"
+#include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
 
 PD_REGISTER_KERNEL(einsum,
                    GPU,
@@ -24,10 +24,10 @@ PD_REGISTER_KERNEL(einsum,
                    phi::EinsumKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(einsum_infer,
                    GPU,
@@ -35,7 +35,7 @@ PD_REGISTER_KERNEL(einsum_infer,
                    phi::EinsumInferKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

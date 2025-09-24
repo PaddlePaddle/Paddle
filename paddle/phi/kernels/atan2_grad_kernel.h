@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void Atan2GradKernel(const Context& ctx,
+void Atan2GradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      const DenseTensor& out_grad,

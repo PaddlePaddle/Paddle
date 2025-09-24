@@ -46,9 +46,9 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
         return local_t, dist_t
 
     def create_local_and_dist_tensor_list_pair(self, np_array_list):
-        assert isinstance(
-            np_array_list, list
-        ), "input should be list of np_array!"
+        assert isinstance(np_array_list, list), (
+            "input should be list of np_array!"
+        )
         local_t_list = []
         dist_t_list = []
         for np_array in np_array_list:

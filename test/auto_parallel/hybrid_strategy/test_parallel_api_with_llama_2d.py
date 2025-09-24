@@ -79,7 +79,7 @@ class TestDPPPAPI(test_base.CommunicationTestDistBase):
             "amp_dtype": ["bfloat16"],
             "amp_master_grad": ["true"],
             "use_lazy_init": ["true"],
-            "num_hidden_layers": ["2", "4"],
+            "num_hidden_layers": ["3", "4"],
             "sharding_stage": ["0"],
             "test_share_embedding": [
                 "1",

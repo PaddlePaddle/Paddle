@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MatrixPowerKernel(const Context& ctx,
+void MatrixPowerKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        int n,
                        DenseTensor* out);

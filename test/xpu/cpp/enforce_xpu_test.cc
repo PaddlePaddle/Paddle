@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 template <typename T>
@@ -29,25 +30,45 @@ bool CheckXPUStatusFailure(T value, const std::string& msg) {
     return false;
   } catch (common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
-    std::cout << ex_msg << std::endl;
+    VLOG(0) << ex_msg << std::endl;
     return ex_msg.find(msg) != std::string::npos;
   }
 }
 
+#ifdef PADDLE_WITH_XPU_BKCL
+template <typename T>
+bool CheckBKCLStatusSuccess(T value, const std::string& msg = "success") {
+  PADDLE_ENFORCE_BKCL_SUCCESS(value);
+  return true;
+}
+
+template <typename T>
+bool CheckBKCLStatusFailure(T value, const std::string& msg) {
+  try {
+    PADDLE_ENFORCE_BKCL_SUCCESS(value);
+    return false;
+  } catch (common::enforce::EnforceNotMet& error) {
+    std::string ex_msg = error.what();
+    VLOG(0) << ex_msg << std::endl;
+    return ex_msg.find(msg) != std::string::npos;
+  }
+}
+#endif
+
 template <typename T>
 bool CheckXDNNStatusSuccess(T value, const std::string& msg = "success") {
-  PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error ");
+  PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error Test");
   return true;
 }
 
 template <typename T>
 bool CheckXDNNStatusFailure(T value, const std::string& msg) {
   try {
-    PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error ");
+    PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error Test");
     return false;
   } catch (common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
-    std::cout << ex_msg << std::endl;
+    VLOG(0) << ex_msg << std::endl;
     return ex_msg.find(msg) != std::string::npos;
   }
 }
@@ -126,13 +147,13 @@ TEST(enforce, xpu_status) {
 
 #ifdef PADDLE_WITH_XPU_BKCL
 TEST(enforce, bkcl_status) {
-  EXPECT_TRUE(CheckXPUStatusSuccess(BKCL_SUCCESS));
+  EXPECT_TRUE(CheckBKCLStatusSuccess(BKCL_SUCCESS));
   EXPECT_TRUE(
-      CheckXPUStatusFailure(BKCL_INVALID_ARGUMENT, "BKCL_INVALID_ARGUMENT"));
-  EXPECT_TRUE(CheckXPUStatusFailure(BKCL_RUNTIME_ERROR, "BKCL_RUNTIME_ERROR"));
-  EXPECT_TRUE(CheckXPUStatusFailure(BKCL_SYSTEM_ERROR, "BKCL_SYSTEM_ERROR"));
+      CheckBKCLStatusFailure(BKCL_INVALID_ARGUMENT, "BKCL_INVALID_ARGUMENT"));
+  EXPECT_TRUE(CheckBKCLStatusFailure(BKCL_RUNTIME_ERROR, "BKCL_RUNTIME_ERROR"));
+  EXPECT_TRUE(CheckBKCLStatusFailure(BKCL_SYSTEM_ERROR, "BKCL_SYSTEM_ERROR"));
   EXPECT_TRUE(
-      CheckXPUStatusFailure(BKCL_INTERNAL_ERROR, "BKCL_INTERNAL_ERROR"));
+      CheckBKCLStatusFailure(BKCL_INTERNAL_ERROR, "BKCL_INTERNAL_ERROR"));
 }
 #endif
 

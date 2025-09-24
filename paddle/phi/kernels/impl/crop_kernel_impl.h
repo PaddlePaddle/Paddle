@@ -142,6 +142,10 @@ void CropKernel(const Context& dev_ctx,
                 const IntArray& shape,
                 const IntArray& offsets,
                 DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   int rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,

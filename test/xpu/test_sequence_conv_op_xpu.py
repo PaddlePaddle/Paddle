@@ -71,10 +71,7 @@ def seqconv(
                 )
                 if padding_trainable:
                     sub_w = padding_data[
-                        begin_pad
-                        + context_start
-                        + j
-                        - pad_size : begin_pad
+                        begin_pad + context_start + j - pad_size : begin_pad
                         + context_start
                         + j,
                         :,

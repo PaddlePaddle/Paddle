@@ -154,7 +154,6 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
-
     def test_ignore_var(self):
         def cond(i, ten, temp, y):
             return i < ten

@@ -24,7 +24,6 @@ from paddle.static.nn.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
-
     def test_forward(self):
         main_program = base.Program()
         startup_program = base.Program()

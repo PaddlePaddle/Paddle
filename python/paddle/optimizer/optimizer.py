@@ -51,7 +51,7 @@ from ..base.backward import (
 )
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
-from .fusion_utils import FusionStorage
+from ..base.log_helper import get_logger
 from .lr import LambdaDecay, LRScheduler
 
 if TYPE_CHECKING:
@@ -68,6 +68,11 @@ if TYPE_CHECKING:
         params: Sequence[Tensor]
         weight_decay: NotRequired[float | WeightDecayRegularizer | None]
         learning_rate: NotRequired[float | Tensor | LRScheduler | None]
+
+
+local_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 __all__ = []
@@ -89,14 +94,14 @@ def append_backward_new(
     from paddle.incubate.autograd.primx import Transform, orig2prim
 
     program = default_main_program()
-    assert (
-        program.num_blocks == 1
-    ), "The append_backward_new interface is designed to process only one block."
+    assert program.num_blocks == 1, (
+        "The append_backward_new interface is designed to process only one block."
+    )
     block = program.current_block()
     for el in loss_list:
-        assert (
-            el.block == block
-        ), 'variable in loss_list should be in current block of main program'
+        assert el.block == block, (
+            'variable in loss_list should be in current block of main program'
+        )
 
     orig2prim(block)
     ad = Transform(block)
@@ -275,9 +280,9 @@ class Optimizer:
         if self._parameter_list:
             if isinstance(self._parameter_list[0], dict):
                 for param_group in self._parameter_list:
-                    assert (
-                        'params' in param_group
-                    ), 'params should be set in parameters if parameter groups are optimized in different options'
+                    assert 'params' in param_group, (
+                        'params should be set in parameters if parameter groups are optimized in different options'
+                    )
                 self._dtype = self._parameter_list[0]['params'][0].dtype
             else:
                 self._dtype = self._parameter_list[0].dtype
@@ -321,7 +326,7 @@ class Optimizer:
 
         # for fusion storage
         self._use_fusion_storage = False
-        self._need_refuse = True
+        self._need_refuse = False
         self.fusion_storage = None
         self._fuse_buffer_version = 0
         self.merged_model_params = None
@@ -340,8 +345,8 @@ class Optimizer:
     def _create_multi_tensor_dict(self):
         n = len(self._param_groups) if self._param_groups is not None else 1
         return {
-            'FP32_LODTensor': [[] for _ in range(n)],
-            'FP16_LODTensor': [[] for _ in range(n)],
+            'FP32_DenseTensor': [[] for _ in range(n)],
+            'FP16_DenseTensor': [[] for _ in range(n)],
         }
 
     def _get_auxiliary_var(self, key):
@@ -353,6 +358,8 @@ class Optimizer:
 
     @imperative_base.no_grad()
     def _maybe_refuse(self):
+        from .fusion_utils import FusionStorage
+
         # only support dygraph mode
         if not framework.in_dygraph_mode():
             return
@@ -361,9 +368,22 @@ class Optimizer:
         if self.__class__.__name__ != "AdamW":
             return
 
+        # add buffer check
+        if self.fused_states_buffer is not None:
+            for _, v in self._accumulators.items():
+                for _, vv in v.items():
+                    if not vv._is_shared_buffer_with(self.fused_states_buffer):
+                        self.need_refuse()
+            for _, v in self._master_weights.items():
+                if not v._is_shared_buffer_with(self.fused_states_buffer):
+                    self.need_refuse()
+
         if not self._need_refuse:
             return
 
+        local_logger.warning(
+            f"refuse optimizer fuse buffer version start: {self._fuse_buffer_version}"
+        )
         self.fusion_storage = FusionStorage(
             self._accumulators,
             self._master_weights,
@@ -371,6 +391,9 @@ class Optimizer:
         )
         self._fuse_buffer_version += 1
         self.reset_need_refuse()
+        local_logger.warning(
+            f"refuse optimizer fuse buffer version end: {self._fuse_buffer_version}"
+        )
 
     @framework.dygraph_only
     def state_dict(self) -> dict[str, Tensor]:
@@ -454,9 +477,9 @@ class Optimizer:
         if isinstance(self._learning_rate, LRScheduler):
             lr_state_dict = state_dict.get("LR_Scheduler", None)
             if not isinstance(self._learning_rate, LambdaDecay):
-                assert (
-                    lr_state_dict is not None
-                ), "LR_Scheduler state must be included in the state dict except LambdaDecay"
+                assert lr_state_dict is not None, (
+                    "LR_Scheduler state must be included in the state dict except LambdaDecay"
+                )
             if lr_state_dict:
                 self._learning_rate.set_state_dict(lr_state_dict)
 
@@ -472,9 +495,9 @@ class Optimizer:
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
-                assert (
-                    var_tmp.name in state_dict
-                ), f"optimizer Tensor {var_tmp.name} not found"
+                assert var_tmp.name in state_dict, (
+                    f"optimizer Tensor {var_tmp.name} not found"
+                )
 
                 var = var_tmp.value()
                 tensor = var.get_tensor()
@@ -860,10 +883,11 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with paddle.static.default_main_program()._lr_schedule_guard(
-                        is_with_opt=True
-                    ), framework.name_scope(
-                        'scale_with_param_lr'
+                    with (
+                        paddle.static.default_main_program()._lr_schedule_guard(
+                            is_with_opt=True
+                        ),
+                        framework.name_scope('scale_with_param_lr'),
                     ):
                         return self._global_learning_rate() * param_lr
         else:
@@ -1088,9 +1112,9 @@ class Optimizer:
 
             if framework.in_dygraph_mode():
                 if len(self._accumulators_holder) > 0:
-                    assert (
-                        var_name in self._accumulators_holder
-                    ), f"Optimizer set error, {var_name} should in state dict"
+                    assert var_name in self._accumulators_holder, (
+                        f"Optimizer set error, {var_name} should in state dict"
+                    )
                     var.set_value(self._accumulators_holder.pop(var_name))
 
                     # load scale value for xpu
@@ -1207,9 +1231,9 @@ class Optimizer:
         target_block = global_block
         current_block = framework.default_main_program().current_block()
         if current_block.idx != global_block.idx:
-            assert (
-                current_block.backward_block_idx != -1
-            ), "current block is not global_block, but it doesn't have backward block."
+            assert current_block.backward_block_idx != -1, (
+                "current block is not global_block, but it doesn't have backward block."
+            )
             target_block = framework.default_main_program().blocks[
                 current_block.backward_block_idx
             ]
@@ -1225,8 +1249,8 @@ class Optimizer:
             'Adam',
         ]:
             if (
-                len(self._param_dict['FP32_LODTensor'][param_group_idx]) == 0
-                and len(self._param_dict['FP16_LODTensor'][param_group_idx])
+                len(self._param_dict['FP32_DenseTensor'][param_group_idx]) == 0
+                and len(self._param_dict['FP16_DenseTensor'][param_group_idx])
                 == 0
             ):
                 if isinstance(parameters_and_grads, list):
@@ -1271,9 +1295,12 @@ class Optimizer:
                     ):
                         param_grad_list.append(param_and_grad[0])
                         param_grad_list.append(param_and_grad[1])
-                with param_grad_list[0].block.program._optimized_guard(
-                    param_grad_list
-                ), name_scope("optimizer"):
+                with (
+                    param_grad_list[0].block.program._optimized_guard(
+                        param_grad_list
+                    ),
+                    name_scope("optimizer"),
+                ):
                     device = self._get_device_for_param(param_grad_list[0].name)
                     with device_guard(device):
                         self._append_optimize_multi_tensor_op(
@@ -1314,6 +1341,12 @@ class Optimizer:
 
             if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
+                if (
+                    "xpu" in paddle.device.get_device()
+                    and found_inf is not None
+                    and found_inf.is_dist()
+                ):
+                    found_inf = found_inf._local_value()
                 if found_inf:
                     if isinstance(found_inf, core.eager.Tensor):
                         self._set_auxiliary_var('found_inf', True)
@@ -1359,9 +1392,12 @@ class Optimizer:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
                         continue
-                    with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad
-                    ), name_scope("optimizer"):
+                    with (
+                        param_and_grad[0].block.program._optimized_guard(
+                            param_and_grad
+                        ),
+                        name_scope("optimizer"),
+                    ):
                         if param_and_grad[0].stop_gradient is False:
                             device = self._get_device_for_param(
                                 param_and_grad[0].name
@@ -1633,6 +1669,12 @@ class Optimizer:
                 paddle.static.default_main_program(),
                 paddle.static.default_startup_program(),
             ):
+                auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
+                if auto_dp:
+                    paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
+                        params_grads
+                    )
+
                 if isinstance(params_grads, list):
                     if self._grad_clip is not None:
                         params_grads = self._grad_clip(params_grads)
@@ -1899,9 +1941,9 @@ class Optimizer:
                 >>> adam.clear_grad()
 
         """
-        assert isinstance(
-            loss, (Variable, paddle.pir.Value)
-        ), "The loss should be an Tensor."
+        assert isinstance(loss, (Variable, paddle.pir.Value)), (
+            "The loss should be an Tensor."
+        )
 
         parameter_list = parameters if parameters else self._parameter_list
 
@@ -1925,9 +1967,9 @@ class Optimizer:
         params = (
             paddle.static.default_main_program().global_block().all_parameters()
         )
-        assert not isinstance(
-            self._parameter_list[0], dict
-        ), "Only list of parameters is supported while using optimizer in @paddle.jit.static."
+        assert not isinstance(self._parameter_list[0], dict), (
+            "Only list of parameters is supported while using optimizer in @paddle.jit.static."
+        )
         selected_params = {param.name for param in self._parameter_list}
         parameters = [param for param in params if param.trainable]
         parameters = list(
@@ -1972,9 +2014,22 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                if param._grad_ivar() is not None:
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+                if getattr(self, 'enable_tensor_fusion', False) or os.getenv(
+                    "FLAGS_enable_main_grad"
+                ) in [
+                    "True",
+                    "true",
+                    "1",
+                ]:
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        params_grads.append((param, param.main_grad))
+                else:
+                    if param._grad_ivar() is not None:
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,
@@ -2084,9 +2139,9 @@ class Optimizer:
         :param dtype: instance of core.VarDesc.VarType
         :return: True if dtype is one of fp16 or bf16, False otherwise
         """
-        assert isinstance(
-            dtype, (core.VarDesc.VarType, core.DataType)
-        ), "The dtype should be an instance of core.VarDesc.VarType or core.DataType."
+        assert isinstance(dtype, (core.VarDesc.VarType, core.DataType)), (
+            "The dtype should be an instance of core.VarDesc.VarType or core.DataType."
+        )
         if isinstance(dtype, core.VarDesc.VarType):
             return (
                 dtype == core.VarDesc.VarType.FP16
@@ -2100,6 +2155,7 @@ class Optimizer:
 
     def use_fusion_storage(self):
         self._use_fusion_storage = True
+        self.need_refuse()
 
     def need_refuse(self):
         self._need_refuse = self._use_fusion_storage

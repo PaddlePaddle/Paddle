@@ -135,12 +135,13 @@ void RewriterBase::ReplaceOp(Operation* op,
 }
 
 void RewriterBase::EraseOp(Operation* op) {
-  PADDLE_ENFORCE_EQ(
-      op->use_empty(),
-      true,
-      common::errors::InvalidArgument("Erase op failed. op(%s) is used, the "
-                                      "expectation is that it is not used",
-                                      op->name()));
+  PADDLE_ENFORCE_EQ(op->use_empty(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Erase op failed. op(%s)[id:%d] is used, the "
+                        "expectation is that it is not used",
+                        op->name(),
+                        op->id()));
   NotifyOperationRemoved(op);
   op->Erase();
 }

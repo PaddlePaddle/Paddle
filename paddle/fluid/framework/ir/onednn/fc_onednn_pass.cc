@@ -29,23 +29,24 @@ namespace ir {
 
 class Graph;
 
-void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+void FCONEDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   Init("fc_onednn_pass", graph);
 
   GraphPatternDetector gpd;
-  patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_onednn_pass");
+  patterns::FCONEDNN fc_pattern(gpd.mutable_pattern(), "fc_onednn_pass");
   // searching for fc+residual  doesn't make sense at this stage
   fc_pattern(false /*with_residual*/);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Handle FC MKL-DNN pass";
-    if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
-      VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_mkldnn "
+    VLOG(4) << "Handle FC ONE-DNN pass";
+    if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn")) &&
+        !(graph->Has("use_onednn") && graph->Get<bool>("use_onednn"))) {
+      VLOG(3) << "do not enable FC ONE-DNN because it doesn't have use_onednn "
                  "attribute.";
       return;
     }
@@ -68,7 +69,7 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
                  "2, 3 & 4, or when width or height is different than one.";
       return;
     }
-    desc->SetAttr("use_mkldnn", true);
+    desc->SetAttr("use_onednn", true);
 
     found_fc_count++;
   };
@@ -89,4 +90,4 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_onednn_pass, paddle::framework::ir::FCMKLDNNPass);
+REGISTER_PASS(fc_onednn_pass, paddle::framework::ir::FCONEDNNPass);

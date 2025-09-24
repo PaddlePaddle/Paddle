@@ -23,7 +23,7 @@ import paddle
 from paddle.distributed.auto_parallel.static.cluster import Cluster
 from paddle.distributed.auto_parallel.static.cost import (
     AllgatherOpCost,
-    AllreduceSumOpCost,
+    AllReduceOpCost,
     BroadcastOpCost,
     CommContext,
     IdentityOpCost,
@@ -58,12 +58,13 @@ class TestCommOpCost(unittest.TestCase):
 
         # Check AllreduceSumCost 128MB ring cost
         allreduce_sum_op_desc = build_comm_desc(
-            "c_allreduce_sum",
+            "all_reduce",
             [0, 1, 2, 3, 4, 5, 6, 7],
             paddle.float32,
             [1, 32 * (10**6)],
+            {"reduce_type": paddle.distributed.ReduceOp.SUM},
         )
-        allreduce_sum_op_cost = AllreduceSumOpCost(
+        allreduce_sum_op_cost = AllReduceOpCost(
             op_desc=allreduce_sum_op_desc, comm_context=comm_context
         )
 
@@ -138,12 +139,13 @@ class TestCommOpCost(unittest.TestCase):
 
         # Check AllreduceSumCost 128MB ring cost
         allreduce_sum_op_desc = build_comm_desc(
-            "c_allreduce_sum",
+            "all_reduce",
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             paddle.float32,
             [1, 32 * (10**6)],
+            {"reduce_type": paddle.distributed.ReduceOp.SUM},
         )
-        allreduce_sum_op_cost = AllreduceSumOpCost(
+        allreduce_sum_op_cost = AllReduceOpCost(
             op_desc=allreduce_sum_op_desc, comm_context=comm_context
         )
 

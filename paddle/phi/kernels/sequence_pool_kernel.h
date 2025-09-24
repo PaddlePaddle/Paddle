@@ -15,7 +15,7 @@ limitations under the License. */
 
 namespace phi {
 template <typename T, typename Context>
-void SequencePoolKernel(const Context& ctx,
+void SequencePoolKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         bool is_test,
                         const std::string& pooltype,

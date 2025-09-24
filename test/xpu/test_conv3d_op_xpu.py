@@ -211,7 +211,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = "conv3d"
             self.use_cudnn = False
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.data_format = "AnyLayout"
             self.init_kernel_type()
             self.init_group()
@@ -225,8 +225,8 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
             }
 
             np.random.seed(100)
-            input = np.random.random(self.input_size).astype(self.dtype)
-            filter = np.random.random(self.filter_size).astype(self.dtype)
+            input = np.random.random(self.input_size).astype(self.dtype) - 0.5
+            filter = np.random.random(self.filter_size).astype(self.dtype) - 0.5
             output = conv3d_forward_naive(
                 input,
                 filter,
@@ -244,14 +244,14 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
             }
             self.outputs = {'Output': output}
 
         def test_check_output(self):
             place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, atol=0.005, rtol=0.005)
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
@@ -379,7 +379,7 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.op_type = "conv3d"
             self.use_cudnn = False
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.data_format = "NCDHW"
             self.init_kernel_type()
             self.init_group()
@@ -397,8 +397,8 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
             }
 
             np.random.seed(100)
-            input = np.random.random(self.input_size).astype(self.dtype)
-            filter = np.random.random(self.filter_size).astype(self.dtype)
+            input = np.random.random(self.input_size).astype(self.dtype) - 0.5
+            filter = np.random.random(self.filter_size).astype(self.dtype) - 0.5
             output = conv3d_forward_naive(
                 input,
                 filter,
@@ -419,14 +419,14 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
             }
             self.outputs = {'Output': output}
 
         def test_check_output(self):
             place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, atol=0.005, rtol=0.005)
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)

@@ -21,12 +21,12 @@ from typing import Any
 
 from typing_extensions import Self
 
+import paddle
+from paddle import Tensor
+
 from ...base.dygraph.base import param_guard
 from ...base.framework import Parameter
 from .layers import Layer
-
-if typing.TYPE_CHECKING:
-    from paddle import Tensor
 
 __all__ = []
 
@@ -490,8 +490,11 @@ class ParameterList(Layer):
             return self._parameters[str(idx)]
 
     def __setitem__(self, idx: int, param: Tensor) -> None:
-        assert isinstance(param, Parameter)
-        setattr(self, str(idx), param)
+        if not isinstance(param, (Parameter, Tensor)):
+            raise TypeError(
+                f"param should be 'Parameter' or 'Tensor', but received {type(param)}"
+            )
+        paddle.assign(param, getattr(self, str(idx)))
 
     def __len__(self) -> int:
         return len(self._parameters)
@@ -514,7 +517,7 @@ class ParameterList(Layer):
 class LayerList(Layer):
     """
     LayerList holds sublayers, and sublayers it contains are properly registered.
-    Holded sublayers can be indexed like a regular python list.
+    held sublayers can be indexed like a regular python list.
 
     Parameters:
         sublayers (iterable of Layer, optional): sublayers to hold
@@ -626,11 +629,14 @@ class LayerList(Layer):
                 >>> print(linears[-2] is another)
                 True
         """
-        assert isinstance(index, int) and -len(self._sub_layers) <= index < len(
+        assert isinstance(index, int) and -len(
             self._sub_layers
-        ), f"index should be an integer in range [{-len(self)}, {len(self)})"
+        ) <= index <= len(self._sub_layers), (
+            f"index should be an integer in range [{-len(self)}, {len(self)}]"
+        )
 
-        index = self._get_abs_idx(index)
+        if index < 0:
+            index += len(self)
         for i in range(len(self._sub_layers), index, -1):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer
@@ -714,9 +720,18 @@ class Sequential(Layer):
             >>> res2 = model2(data)  # [30, 30]
     """
 
-    def __init__(self, *layers: Layer | tuple[str, Layer] | list[Any]) -> None:
+    def __init__(
+        self,
+        *layers: Layer
+        | tuple[str, Layer]
+        | list[Any]
+        | OrderedDict[str, Layer],
+    ) -> None:
         super().__init__()
-        if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
+        if len(layers) == 1 and isinstance(layers[0], OrderedDict):
+            for name, layer in layers[0].items():
+                self.add_sublayer(name, layer)
+        elif len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
         else:

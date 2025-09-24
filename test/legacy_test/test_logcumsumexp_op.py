@@ -18,7 +18,13 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -77,8 +83,13 @@ def np_logcumsumexp_grad(
     exclusive: bool = False,
 ):
     out = np_logcumsumexp(x, axis, flatten, reverse, exclusive)
-    log_grad_positive = np.where(dout > 0, np.log(dout), np.finfo(x.dtype).min)
-    log_grad_negative = np.where(dout < 0, np.log(-dout), np.finfo(x.dtype).min)
+    dout = np.asarray(dout)
+    pos_mask = dout > 0
+    neg_mask = dout < 0
+    log_grad_positive = np.full_like(dout, np.finfo(x.dtype).min)
+    log_grad_negative = np.full_like(dout, np.finfo(x.dtype).min)
+    log_grad_positive[pos_mask] = np.log(dout[pos_mask])
+    log_grad_negative[neg_mask] = np.log(-dout[neg_mask])
 
     output_pos = np.exp(
         np_logcumsumexp(
@@ -157,7 +168,7 @@ class TestLogcumsumexp(unittest.TestCase):
             y4 = paddle.logcumsumexp(x, dtype='float64')
             y5 = paddle.logcumsumexp(x, axis=-2)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             out = exe.run(
                 main,
@@ -189,9 +200,9 @@ class TestLogcumsumexp(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
-        paddle.disable_static(paddle.base.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
@@ -199,25 +210,29 @@ class TestLogcumsumexp(unittest.TestCase):
 
     def test_name(self):
         paddle.enable_static()
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data('x', [3, 4])
-                y = paddle.logcumsumexp(x, name='out')
-                self.assertTrue('out' in y.name)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(base.Program()),
+        ):
+            x = paddle.static.data('x', [3, 4])
+            y = paddle.logcumsumexp(x, name='out')
+            self.assertTrue('out' in y.name)
         paddle.disable_static()
 
     def test_type_error(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            with self.assertRaises(TypeError):
-                data_np = np.random.random((100, 100), dtype=np.int32)
-                x = paddle.static.data('X', [100, 100], dtype='int32')
-                y = paddle.logcumsumexp(x)
+        with (
+            paddle.static.program_guard(main, startup),
+            self.assertRaises(TypeError),
+        ):
+            data_np = np.random.random((100, 100), dtype=np.int32)
+            x = paddle.static.data('X', [100, 100], dtype='int32')
+            y = paddle.logcumsumexp(x)
 
-                place = base.CUDAPlace(0)
-                exe = base.Executor(place)
-                out = exe.run(main, feed={'X': data_np}, fetch_list=[y])
+            place = get_device_place()
+            exe = base.Executor(place)
+            out = exe.run(main, feed={'X': data_np}, fetch_list=[y])
 
 
 def logcumsumexp_wrapper(
@@ -307,7 +322,7 @@ class TestLogcumsumexpFP16(unittest.TestCase):
         return y_np, x_g_np
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         np.random.seed(20)
@@ -325,8 +340,8 @@ class TestLogcumsumexpFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestLogcumsumexpBF16Op(OpTest):
@@ -342,8 +357,8 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        place = core.CUDAPlace(0)
+        place = get_device_place()
+        place = get_device_place()
         self.check_output_with_place_customized(
             checker=self.verify_output, place=place, check_pir=True
         )
@@ -363,7 +378,7 @@ class TestLogcumsumexpBF16Op(OpTest):
         np.testing.assert_allclose(hist, hist2, rtol=0.3)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -374,6 +389,41 @@ class TestLogcumsumexpBF16Op(OpTest):
             check_prim_pir=True,
         )
 
+
+def create_test_class(op_type, dtype, shape, axis):
+    class Cls(unittest.TestCase):
+        def test_zero_size(self):
+            paddle.disable_static()
+            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
+            paddle_x = paddle.to_tensor(numpy_tensor_1)
+            paddle_x.stop_gradient = False
+
+            paddle_api = eval(f"paddle.{op_type}")
+            paddle_out = paddle_api(paddle_x, axis=axis)
+            numpy_out = np.log(
+                np.cumsum(np.exp(numpy_tensor_1), axis=axis)
+            )  # Numpy does not have logcumsumexp
+
+            np.testing.assert_allclose(
+                paddle_out.numpy(),
+                numpy_out,
+                1e-2,
+                1e-2,
+            )
+            np.testing.assert_allclose(
+                paddle_out.shape,
+                numpy_out.shape,
+            )
+
+    cls_name = f"{op_type}{dtype}_0SizeTest"
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
+
+
+create_test_class("logcumsumexp", "float32", [3, 4, 0], 0)
+create_test_class("logcumsumexp", "float64", [3, 4, 0, 3, 4], -2)
+create_test_class("logcumsumexp", "int32", [3, 4, 0], 0)
+create_test_class("logcumsumexp", "int64", [3, 4, 0, 3, 4], -1)
 
 if __name__ == '__main__':
     unittest.main()

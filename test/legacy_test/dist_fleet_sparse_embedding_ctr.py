@@ -68,11 +68,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dtype="int64",
         )
 
-        datas = [dnn_data, lr_data, label]
+        data = [dnn_data, lr_data, label]
 
         if args.reader == "pyreader":
             self.reader = base.io.PyReader(
-                feed_list=datas,
+                feed_list=data,
                 capacity=64,
                 iterable=False,
                 use_double_buffer=False,
@@ -144,7 +144,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         )
         avg_cost = paddle.mean(x=cost)
 
-        self.feeds = datas
+        self.feeds = data
         self.train_file_path = ["fake1", "fake2"]
         self.avg_cost = avg_cost
         self.predict = predict

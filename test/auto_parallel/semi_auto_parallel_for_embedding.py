@@ -57,6 +57,14 @@ class TestEmbeddingApiForSemiAutoParallel:
         dist_out.backward()
         self.check_tensor_eq(w.grad, dist_w.grad)
 
+        out = paddle.nn.functional.embedding(input=x, weight=w)
+        dist_out = paddle.nn.functional.embedding(input=dist_x, weight=dist_w)
+        self.check_tensor_eq(out, dist_out)
+
+        out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(w.grad, dist_w.grad)
+
         return dist_out, dist_w.grad
 
     def test_non_shard(self):

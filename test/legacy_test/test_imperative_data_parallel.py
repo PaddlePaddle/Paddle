@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
-from paddle.base import core
 from paddle.nn import Linear
 
 
@@ -46,11 +46,7 @@ class TestDataParallelStateDict(unittest.TestCase):
             parallel_state = parallel_mlp.state_dict()
 
             base_para = {}
-            place = (
-                base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
+            place = get_device_place()
             for k, v in single_state.items():
                 self.assertTrue(k in parallel_state)
 

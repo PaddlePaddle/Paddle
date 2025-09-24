@@ -75,9 +75,9 @@ def set_auto_cast_attr(cast_op, block):
     out_name = cast_op.output('Out')[0]
     in_var = block._find_var_recursive(in_name)
     out_var = block._find_var_recursive(out_name)
-    assert (
-        in_var is not None and out_var is not None
-    ), f"in_var {in_name} or out_var {out_name} is None of cast op"
+    assert in_var is not None and out_var is not None, (
+        f"in_var {in_name} or out_var {out_name} is None of cast op"
+    )
     if is_forward_op(cast_op):
         cast_op._set_attr('in_dtype', in_var.dtype)
         out_var.desc.set_dtype(paddle.dtype(cast_op.attr('out_dtype')))
@@ -172,9 +172,7 @@ class FP16State:
             self.input_data_var_names = input_data_var_names
         else:
             self.input_data_var_names = []
-        self._op_fp16_dict = (
-            {}
-        )  # op_id --> True/False. 'True' means that the op is should run in fp16 mode.
+        self._op_fp16_dict = {}  # op_id --> True/False. 'True' means that the op is should run in fp16 mode.
         # a trick to determine leaf tensor node in program {varname: generator_op_id}
         self.forward_non_leaf_tensors = {}
         # record the cast ops that are inserted for a forward
@@ -431,9 +429,9 @@ class FP16State:
                     out_var = block.var(out_var_name)
                     in_var = block._find_var_recursive(in_var_name)
                     for in_var_name in op.input_arg_names:
-                        assert (
-                            in_var.dtype == block.var(in_var_name).dtype
-                        ), f"{in_var}, {block.var(in_var_name)}, {op}"
+                        assert in_var.dtype == block.var(in_var_name).dtype, (
+                            f"{in_var}, {block.var(in_var_name)}, {op}"
+                        )
                     out_var.desc.set_dtype(in_var.dtype)
 
             idx += num_cast_ops + 1
@@ -560,9 +558,9 @@ class FP16State:
             # rename input
             # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
             if slot_name in op.input_names:
-                assert src_name in op.input(
-                    slot_name
-                ), f"var: {src_name} not in op's {slot_name}. {op}"
+                assert src_name in op.input(slot_name), (
+                    f"var: {src_name} not in op's {slot_name}. {op}"
+                )
                 src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
                 assert src_var_dist_attr is not None
                 op._rename_input(src_name, cast_name)
@@ -574,9 +572,9 @@ class FP16State:
                 # some forward input maybe stop_gradient=True, e.g. input_mask
                 if len(op.output(grad_slot_name)) == 0:
                     continue
-                assert (
-                    len(op.output(grad_slot_name)) == 1
-                ), f"[{grad_slot_name}], Current Op: {op}"
+                assert len(op.output(grad_slot_name)) == 1, (
+                    f"[{grad_slot_name}], Current Op: {op}"
+                )
                 grad_name = op.output(grad_slot_name)[0]
                 grad = block.var(grad_name)
                 grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
@@ -692,9 +690,9 @@ def _split_grads(params_grads):
     grads = [g for _, g in params_grads]
     fp32_grads = [g for g in grads if g.dtype == paddle.float32]
     fp16_grads = [g for g in grads if g.dtype == __target_dtype__]
-    assert len(fp32_grads) + len(fp16_grads) == len(
-        grads
-    ), "Data types of all grads must be either fp16 or fp32."
+    assert len(fp32_grads) + len(fp16_grads) == len(grads), (
+        "Data types of all grads must be either fp16 or fp32."
+    )
     return grads, fp32_grads, fp16_grads
 
 
@@ -803,9 +801,9 @@ def cast_startup_program():
         if is_initialization_op(op):
             output_name = op.output_arg_names[0]
             if param_to_dtype.get(output_name, None) == __target_dtype__:
-                assert op.has_attr(
-                    'dtype'
-                ), f"initialization op is supported to has dtype attribute but got {op}."
+                assert op.has_attr('dtype'), (
+                    f"initialization op is supported to has dtype attribute but got {op}."
+                )
                 out_var = startup_program.global_block().var(output_name)
                 if out_var.dtype == paddle.float32:
                     out_var.desc.set_dtype(__target_dtype__)

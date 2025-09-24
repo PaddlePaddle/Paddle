@@ -22,6 +22,7 @@ from get_test_cover_info import (
 )
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -36,7 +37,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
 
     class ElementwiseModOp(XPUOpTest):
         def init_kernel_type(self):
-            self.use_mkldnn = False
+            self.use_onednn = False
 
         def init_input_output(self):
             self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -47,7 +48,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 'Y': OpTest.np_dtype_to_base_dtype(self.y),
             }
             self.outputs = {'Out': self.out}
-            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+            self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
         def init_dtype(self):
             pass
@@ -69,6 +70,18 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place)
+
+    class ElementwiseModOpZeroSize(ElementwiseModOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(0, 10000, [0, 10]).astype(self.dtype)
+            self.y = np.random.uniform(0, 1000, [0, 10]).astype(self.dtype)
+            self.out = np.mod(self.x, self.y)
+            self.inputs = {
+                'X': OpTest.np_dtype_to_base_dtype(self.x),
+                'Y': OpTest.np_dtype_to_base_dtype(self.y),
+            }
+            self.outputs = {'Out': self.out}
+            self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     class TestRemainderOp(unittest.TestCase):
         def test_dygraph(self):
@@ -109,8 +122,41 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('elementwise_mod')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestElementwiseModOp, stype)
+
+if 'complex64' in support_types:
+
+    class TestElementwiseModOpComplex64(unittest.TestCase):
+        def test_check_output(self):
+            with dygraph_guard():
+                dtype = "complex64"
+                a = np.array([6 + 4j]).astype(dtype)
+                b = np.array([3 + 5j]).astype(dtype)
+                res = np.array([-2 + 2j]).astype(dtype)
+
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+                np.testing.assert_allclose(res, res_pd.numpy())
+
+                dtype = "complex64"
+                a = np.array([6 + 4j]).astype(dtype)
+                b = np.array([3 + 5j]).astype(dtype)
+                res = np.array([-2 + 2j]).astype(dtype)
+
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+                np.testing.assert_allclose(res, res_pd.numpy())
+
+                with base.device_guard("xpu"):
+                    res_pd = paddle.remainder(
+                        paddle.to_tensor(a), paddle.to_tensor(b)
+                    )
+                np.testing.assert_allclose(res, res_pd.numpy())
+
 
 if __name__ == '__main__':
     unittest.main()

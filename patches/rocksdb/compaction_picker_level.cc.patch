@@ -1,0 +1,14 @@
+diff --git a/db/compaction/compaction_picker_level.cc b/db/compaction/compaction_picker_level.cc
+index 3778d6d8d..225edf5f9 100644
+--- a/db/compaction/compaction_picker_level.cc
++++ b/db/compaction/compaction_picker_level.cc
+@@ -152,7 +152,8 @@ void LevelCompactionBuilder::PickFileToCompact(
+     } else {
+       output_level_ = start_level_;
+     }
+-    start_level_inputs_.files = {level_file.second};
++    start_level_inputs_.files.clear();
++    start_level_inputs_.files.push_back(level_file.second);
+     start_level_inputs_.level = start_level_;
+     if (compaction_picker_->ExpandInputsToCleanCut(cf_name_, vstorage_,
+                                                    &start_level_inputs_)) {

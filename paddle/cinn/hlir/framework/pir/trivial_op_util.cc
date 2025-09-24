@@ -128,6 +128,14 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Reduce* reduce,
   }
 }
 
+void MappingTargetExprToDestExprMutator::Visit(const ir::_Var_* var, Expr* op) {
+  if (source_.is_var() && source_.as_var_ref()->name == var->name) {
+    *op = dest_;
+  } else {
+    IRMutator::Visit(var, op);
+  }
+}
+
 bool CheckIterEq(const std::vector<ir::Var>& up_iter,
                  const std::vector<ir::Var>& down_iter) {
   if (up_iter.size() != down_iter.size()) return false;
@@ -212,14 +220,15 @@ ExprSet ExprSetFinder::operator()(const ir::Expr& x) const { return f_(x); }
 ir::Expr ExprSetFinder::GetSingle(const ir::Expr& x) const {
   ExprSetFinder call = (*this) * ExprSetFinder::GetIdentity();
   const auto& o = call.operator()(x);
-  PADDLE_ENFORCE_EQ(
-      o.size(),
-      1,
-      ::common::errors::InvalidArgument(
-          "Try to get single result, but we get %d. \nRoot:\n%s \nResult:\n%s",
-          o.size(),
-          x,
-          cinn::utils::Join(o, "\n")));
+  PADDLE_ENFORCE_EQ(o.size(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "Try to get single result, but we get %d. \nFinder: "
+                        "%s. \nRoot:\n%s \nResult:\n%s",
+                        o.size(),
+                        call.name,
+                        x,
+                        cinn::utils::Join(o, "\n")));
   return *o.begin();
 }
 
@@ -238,7 +247,7 @@ ExprSetFinder ExprSetFinder::operator*(ExprSetFinder x) const {
     }
     return res;
   };
-  return ExprSetFinder(std::function(new_f), x.name + "*" + this->name);
+  return ExprSetFinder(std::function(new_f), x.name + " * " + this->name);
 }
 
 ExprSetFinder ExprSetFinder::GetIdentity() {
@@ -385,6 +394,9 @@ ExprSetFinder ChildFors =
 ExprSetFinder ChildIfThenElses =
     Collector([](const ir::Expr* e) { return e->As<ir::IfThenElse>(); },
               "ChildIfThenElses");
+
+ExprSetFinder ChildVars =
+    Collector([](const ir::Expr* e) { return e->as_var(); }, "ChildVars");
 
 ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [root](const auto& child) -> ExprSet {
@@ -660,18 +672,18 @@ ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
   return ExprTransformer(f);
 }
 
-ExprTransformer RemoveOneTransformer(int one) {
+ExprTransformer RemoveForTransformer(int axis) {
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
     ir::Expr copied = ir::ir_utils::IRCopy(root);
     const auto& iters = GetAllLoopVars(copied);
     // Find target expr and replace with for->body.
     const ir::Expr& target_for = (ExprSetFinderUtils::ChildFors *
-                                  ExprSetFinderUtils::IsForIterVar(iters[one]))
+                                  ExprSetFinderUtils::IsForIterVar(iters[axis]))
                                      .GetSingle(copied);
     const ir::Expr& target_block =
         ExprSetFinderUtils::DirectlyFather(copied).GetSingle(target_for);
     if (target_block.As<ir::ScheduleBlockRealize>() != nullptr) {
-      VLOG(4) << "RemoveOneTransformer: father block is root realize";
+      VLOG(4) << "RemoveForsTransformer: father block is root realize";
       ir::Expr schedule_block =
           target_block.As<ir::ScheduleBlockRealize>()->schedule_block;
       PADDLE_ENFORCE_EQ(
@@ -704,7 +716,7 @@ ExprTransformer RemoveOneTransformer(int one) {
           target_block, to_replace_block)(&copied);
     } else {
       PADDLE_THROW(::common::errors::InvalidArgument(
-          "RemoveOneTransformer: target for father should be a ir::Block or "
+          "RemoveForsTransformer: target for father should be a ir::Block or "
           "ir::ScheduleBlockRealize."));
     }
     // Remove var to 0 in ScheduleBlockRealizer
@@ -712,21 +724,29 @@ ExprTransformer RemoveOneTransformer(int one) {
         &copied,
         (ExprSetFinderUtils::ChildScheduleBlockRealizes *
          ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit),
-        RemoveVarInScheduleBlockRealize(iters[one], ir::Expr(0)));
+        RemoveVarInScheduleBlockRealize(iters[axis], ir::Expr(0)));
     InplaceMutateSingleExpr(
         &copied,
         (ExprSetFinderUtils::ChildScheduleBlockRealizes *
          ExprSetFinderUtils::ScheduleBlockRealizeIsInit),
-        RemoveVarInScheduleBlockRealize(iters[one], ir::Expr(0)));
+        RemoveVarInScheduleBlockRealize(iters[axis], ir::Expr(0)));
+    // Remove var in append if
+    auto loop_var = target_for.As<ir::For>()->loop_var;
+    auto realizes = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                     ExprSetFinderUtils::ScheduleBlockRealizeNotRoot)(copied);
+    for (auto& realize : realizes) {
+      ComposeUtils::MappingTargetExprToDestExprMutator(loop_var,
+                                                       ir::Expr(0))(&realize);
+    }
     return copied;
   };
   return ExprTransformer(f);
 }
 
-ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones) {
+ExprTransformer RemoveForsTransformer(const std::vector<int32_t>& axes) {
   ExprTransformer f = Identity;
-  for (const auto& one : ones) {
-    f = RemoveOneTransformer(one) * f;
+  for (const auto& axis : axes) {
+    f = RemoveForTransformer(axis) * f;
   }
   return ExprTransformer(f);
 }
@@ -734,7 +754,7 @@ ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones) {
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm) {
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
     const auto& iters = GetAllLoopVars(root);
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_GE(
         iters.size(),
         perm.size(),
         ::common::errors::InvalidArgument(
@@ -766,33 +786,28 @@ ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
         vars.size(),
         ::common::errors::InvalidArgument(
             "The number of axis to insert and vars should be equal."));
-    const size_t reduce_size =
-        std::count_if(iters.begin(), iters.end(), [](const ir::Var& v) {
-          return v->is_reduce_axis;
-        });
     for (size_t i = 0; i < axis.size(); ++i) {
-      PADDLE_ENFORCE_LE(axis[i],
-                        iters.size() - reduce_size,
-                        ::common::errors::OutOfRange(
-                            "Insert axis should not be behind reduce axis."));
       iters.insert(iters.begin() + axis[i], vars[i]);
     }
-    const auto non_reduce_iters =
-        cinn::fusion::SliceVector(iters, 0, iters.size() - reduce_size);
     const auto body_block = GetBodyBlock(root);
-    return ir::Block::Make({(WrapForsTransformer(non_reduce_iters) *
+    return ir::Block::Make({(WrapForsTransformer(iters) *
                              WrapScheduleRealizer({}, "root"))(body_block)});
   };
   return ExprTransformer(f);
 }
 
-ExprTransformer InsertIfForAppendVarsTransformer() {
+ExprTransformer InsertIfForAppendVarsTransformer(
+    const std::vector<ir::Var>& append_vars) {
   const auto& f = [=](const ir::Expr& root) -> ir::Expr {
+    std::function<std::string(ir::Var)> var2name =
+        [](const ir::Var& v) -> std::string { return v->name; };
+    std::set<std::string> var_names =
+        cinn::fusion::ToSet(cinn::fusion::MapVector(append_vars, var2name));
     const auto vars = GetNonReduceLoopVars(root);
     std::vector<std::vector<ir::Var>> neighbor_append_vars;
     bool last_var_is_append = false;
     for (const auto& var : vars) {
-      if (var->name.find("append") != std::string::npos &&
+      if (var_names.count(var->name) != 0 &&
           !(var->upper_bound.is_constant() &&
             var->upper_bound.as_int64() == 1)) {
         if (last_var_is_append) {
@@ -831,10 +846,66 @@ ExprTransformer InsertIfForAppendVarsTransformer() {
       }
       schedule_block.As<ir::ScheduleBlock>()->body = new_body;
     }
-
     return root;
   };
   return ExprTransformer(f);
+}
+
+ExprTransformer RemoveTargetIfTransformer(
+    const std::function<bool(const ir::Expr&)>& filter) {
+  const auto& f = [=](const ir::Expr& root) -> ir::Expr {
+    auto copied = root;
+    const auto& iters = GetAllLoopVars(copied);
+    // Find target if and replace with if body.
+    const std::vector<ir::Expr>& all_if =
+        ExprSetFinderUtils::ChildIfThenElses(copied);
+    const auto all_target_if = cinn::fusion::FilterVector(all_if, filter);
+    for (const auto& target_if : all_target_if) {
+      const ir::Expr& target_block =
+          ExprSetFinderUtils::DirectlyFather(copied).GetSingle(target_if);
+      const auto if_body = target_if.As<ir::IfThenElse>()->true_case;
+      const auto if_body_stmts = if_body.As<ir::Block>()->stmts;
+      if (target_block.As<ir::ScheduleBlockRealize>()) {
+        ir::Expr schedule_block =
+            target_block.As<ir::ScheduleBlockRealize>()->schedule_block;
+        if (if_body_stmts.size() == 1) {
+          schedule_block.As<ir::ScheduleBlock>()->body = if_body_stmts[0];
+        } else {
+          schedule_block.As<ir::ScheduleBlock>()->body = if_body;
+        }
+      } else {
+        ir::Expr to_replace_block = ir::Block::Make(if_body_stmts);
+        ComposeUtils::MappingTargetExprToDestExprMutator(
+            target_block, to_replace_block)(&copied);
+      }
+    }
+    return copied;
+  };
+  return ExprTransformer(f);
+}
+
+ExprTransformer RemoveAllAppendIfTransformer() {
+  const auto is_appeend_var_in_cond = [](const ir::Expr& if_expr) {
+    auto cond = if_expr.As<ir::IfThenElse>()->condition.As<ir::EQ>();
+    if (!cond) return false;
+    for (const auto& var : ExprSetFinderUtils::ChildVars(cond->a())) {
+      if (var.as_var()->name.find("append") != std::string::npos) return true;
+    }
+    return false;
+  };
+  return RemoveTargetIfTransformer(is_appeend_var_in_cond);
+}
+
+ExprTransformer EliminateUselessIfTransformer() {
+  const auto has_useless_cond = [](const ir::Expr& if_expr) {
+    auto cond = if_expr.As<ir::IfThenElse>()->condition.As<ir::EQ>();
+    if (!cond) return false;
+    for (const auto& var : ExprSetFinderUtils::ChildVars(cond->a())) {
+      if (!var.as_var()->is_symbolic_constant) return false;
+    }
+    return true;
+  };
+  return RemoveTargetIfTransformer(has_useless_cond);
 }
 
 int InplaceMutateSingleExpr(ir::Expr* root,
@@ -899,21 +970,16 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
           "The number of op_compute_bodies and op_patterns should be equal."));
 }
 
+bool IsReducePattern(const ir::Expr& root) {
+  return !(ExprSetFinderUtils::ChildScheduleBlockRealizes *
+           ExprSetFinderUtils::ScheduleBlockRealizeIsInit)(root)
+              .empty();
+}
+
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root) {
   return ExprSetFinderUtils::MapVector<ir::Var>(
       vars, [&](const auto& v) -> ir::Var {
-        VLOG(4) << "Start Append Bound for " << v;
-        VLOG(4) << "AppendBound for " << v << ", lower: "
-                << (ExprSetFinderUtils::ChildFors *
-                    ExprSetFinderUtils::IsForIterVar(v) *
-                    ExprSetFinderUtils::For2Min)
-                       .GetSingle(root)
-                << ", upper: "
-                << (ExprSetFinderUtils::ChildFors *
-                    ExprSetFinderUtils::IsForIterVar(v) *
-                    ExprSetFinderUtils::For2Max)
-                       .GetSingle(root);
         return ir::Var(
             (ExprSetFinderUtils::ChildFors *
              ExprSetFinderUtils::IsForIterVar(v) * ExprSetFinderUtils::For2Min)
@@ -932,8 +998,11 @@ std::vector<ir::Var> GetNonReduceLoopVars(const ir::Expr& root) {
   for (const auto& for_expr : fors_expr) {
     loop_vars.push_back(for_expr.As<ir::For>()->loop_var);
   }
-  const auto non_reduce_loop_vars = cinn::fusion::FilterVector(
-      loop_vars, [](const ir::Var& v) { return !v->is_reduce_axis; });
+  const auto non_reduce_loop_vars =
+      IsReducePattern(root)
+          ? cinn::fusion::FilterVector(
+                loop_vars, [](const ir::Var& v) { return !v->is_reduce_axis; })
+          : loop_vars;
   return AppendBound(non_reduce_loop_vars, root);
 }
 
@@ -964,29 +1033,14 @@ std::vector<ir::Var> GetReduceLoopVars(const ir::Expr& root) {
 
 ir::Expr GetBodyBlock(const ir::Expr& root) {
   const auto& iters = GetNonReduceLoopVars(root);
-  if (iters.empty()) {
-    return ir::Block::Make(
-        {ExprSetFinderUtils::ChildScheduleBlockRealizes.GetSingle(root)});
-  }
-  const size_t reduce_size =
-      std::count_if(iters.begin(), iters.end(), [](const ir::Var& v) {
-        return v->is_reduce_axis;
-      });
-  PADDLE_ENFORCE_LT(reduce_size,
-                    iters.size(),
-                    ::common::errors::InvalidArgument(
-                        "The reduce size should be less than the total size."));
-  return (ExprSetFinderUtils::ChildFors *
-          ExprSetFinderUtils::IsForIterVar(
-              iters[iters.size() - reduce_size - 1]))
-      .GetSingle(root)
-      .As<ir::For>()
-      ->body;
+  auto block_realize =
+      ExprSetFinderUtils::ChildScheduleBlockRealizes(root).front();
+  return ExprSetFinderUtils::DirectlyFather(root).GetSingle(block_realize);
 }
 
 ir::Expr ReshapeLoop(const ir::Expr& root,
-                     const std::vector<symbol::DimExpr>& in_shape,
-                     const std::vector<symbol::DimExpr>& out_shape) {
+                     const std::vector<symbol::DimExpr>& input_shape,
+                     const std::vector<symbol::DimExpr>& output_shape) {
   auto copied = ir::ir_utils::IRCopy(root);
 
   ir::ModuleExpr mod_expr({copied});
@@ -994,10 +1048,19 @@ ir::Expr ReshapeLoop(const ir::Expr& root,
       mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
 
   const auto block_realize =
-      (ExprSetFinderUtils::ChildScheduleBlockRealizes).GetSingle(copied);
+      (ExprSetFinderUtils::ChildScheduleBlockRealizes)(copied)[0];
   const auto block_name = block_realize.As<ir::ScheduleBlockRealize>()
                               ->schedule_block.As<ir::ScheduleBlock>()
                               ->name;
+  auto non_reduce_num = GetNonReduceLoopVars(copied).size();
+  bool is_reduce = non_reduce_num < input_shape.size();
+  auto in_shape =
+      is_reduce ? cinn::fusion::SliceVector(input_shape, 0, non_reduce_num)
+                : input_shape;
+  auto out_shape =
+      is_reduce ? cinn::fusion::SliceVector(output_shape, 0, non_reduce_num)
+                : output_shape;
+
   const auto shape_partition =
       fusion::PartitionReshapeAxes(in_shape, out_shape);
 
@@ -1015,7 +1078,7 @@ ir::Expr ReshapeLoop(const ir::Expr& root,
         VLOG(4) << "Remove index[" << i << "]: " << in_shape[i]
                 << " for expr: \n"
                 << copied;
-        copied = ExprTransformerUtils::RemoveOneTransformer(i)(copied);
+        copied = ExprTransformerUtils::RemoveForTransformer(i)(copied);
         ir_sch.SetExprs({copied});
         for (auto& index : fuse_indices) {
           index--;
@@ -1078,7 +1141,7 @@ void CheckLoopAlignment(const std::vector<ir::Expr>& roots) {
     }
     PADDLE_ENFORCE(fusion::VectorEqual(base_loop_vars, loop_vars, var_equal),
                    ::common::errors::PreconditionNotMet(
-                       "CheckLoopAlignment Failed, The loop vars are not euqal "
+                       "CheckLoopAlignment Failed, The loop vars are not equal "
                        "between FusionOps: \n%s\n%s",
                        roots[base_loop_idx],
                        roots[i]));
@@ -1093,10 +1156,70 @@ void CheckLoopAlignment(const std::vector<ir::Expr>& roots) {
       PADDLE_ENFORCE(
           fusion::VectorEqual(base_reduce_vars, reduce_vars, var_equal),
           ::common::errors::PreconditionNotMet(
-              "CheckLoopAlignment Failed, The reduce vars are not euqal "
+              "CheckLoopAlignment Failed, The reduce vars are not equal "
               "between FusionOps: \n%s\n%s",
               roots[base_reduce_idx],
               roots[i]));
+    }
+  }
+}
+
+ir::Tensor GetOutputTensor(const ir::Expr& root) {
+  return (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+          ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+          ExprSetFinderUtils::ChildStores)
+      .GetSingle(root)
+      .As<ir::Store>()
+      ->tensor.as_tensor_ref();
+}
+
+void InlineGlobalVarComputeImpl(const ir::Expr& global_root,
+                                const std::vector<ir::Expr>& roots) {
+  PADDLE_ENFORCE(!IsReducePattern(global_root),
+                 ::common::errors::InvalidArgument(
+                     "Can not inline global var compute for reduce pattern."));
+  auto store = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+                ExprSetFinderUtils::ChildStores)
+                   .GetSingle(global_root);
+  auto store_indices = store.As<ir::Store>()->indices;
+  std::vector<int> var_indices_pos;
+  std::vector<ir::Var> target_indices;
+  for (int i = 0; i < store_indices.size(); ++i) {
+    if (store_indices[i].is_var()) {
+      target_indices.push_back(store_indices[i].as_var_ref());
+      var_indices_pos.push_back(i);
+    }
+  }
+  auto target_tensor = store.As<ir::Store>()->tensor.as_tensor_ref();
+  auto target_compute_body = (ExprSetFinderUtils::Store2Value).GetSingle(store);
+
+  for (auto root : roots) {
+    if (root == global_root) continue;
+    SequenceMutator(
+        ComposeUtils::GetEachTensorLoadExpr(root, target_tensor),
+        &root,
+        [&](const ir::Expr& load_expr, ir::Expr* compute_body) {
+          ComposeUtils::SubstituteTargetExprWithDestExpr(
+              load_expr,
+              ComposeUtils::SubstituteIndexVector(
+                  target_compute_body,
+                  target_indices,
+                  cinn::fusion::GatherVector(load_expr.As<ir::Load>()->indices,
+                                             var_indices_pos)),
+              compute_body);
+        });
+  }
+}
+
+void InlineGlobalVarCompute(const std::vector<ir::Expr>& roots,
+                            const std::set<std::string>& global_var_names) {
+  for (int i = 0; i < roots.size(); ++i) {
+    if (IsReducePattern(roots[i])) continue;
+    auto output_tensor_name = GetOutputTensor(roots[i])->name;
+    if (global_var_names.count(output_tensor_name)) {
+      VLOG(4) << "Inline compute of global var: " << output_tensor_name;
+      InlineGlobalVarComputeImpl(roots[i], roots);
     }
   }
 }

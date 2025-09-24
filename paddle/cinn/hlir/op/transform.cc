@@ -16,7 +16,6 @@
 
 #include <algorithm>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -25,6 +24,7 @@
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
@@ -143,21 +143,8 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule matmul_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE_EQ(!args.empty(),
-                          true,
-                          ::common::errors::InvalidArgument(
-                              "The input argument of matmul schedule is empty! "
-                              "Please check.\n"));
-        CINNValuePack arg_pack = args[0];
-        std::vector<CINNValue> results =
-            pe::IRGpuScheduleMatMul(arg_pack, output_shape, target);
-        *ret = CINNValuePack({results});
-      });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(matmul_compute, matmul_schedule, "strategy.matmul.x86", 1);
+  strategy->AddImpl(matmul_compute, "strategy.matmul.x86", 1);
 
   return strategy;
 }
@@ -173,10 +160,10 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
   int axis = 0;
   if (attrs.attr_store.find("num_or_sections") != attrs.attr_store.end()) {
     sections =
-        absl::get<std::vector<int>>(attrs.attr_store.at("num_or_sections"));
+        std::get<std::vector<int>>(attrs.attr_store.at("num_or_sections"));
   }
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   if (axis < 0) axis += static_cast<int>(output_shapes[0].size());
 
@@ -243,35 +230,8 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule split_schedule([=](lang::Args args,
-                                             lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(!args.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The input argument of split schedule is empty! "
-                          "Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(!vec_ast.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The ast vector is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    pe::IRCudaSplitSchedule(ir_sch, output_shapes, axis, target);
-    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(split_compute, split_schedule, "strategy.split.x86", 1);
+  strategy->AddImpl(split_compute, "strategy.split.x86", 1);
 
   return strategy;
 }
@@ -308,7 +268,7 @@ std::shared_ptr<OpStrategy> StrategyForConcat(
             "The output_shapes of Concat is empty! Please check.\n"));
     int axis = 0;
     if (attrs.attr_store.count("axis")) {
-      axis = absl::get<int>(attrs.attr_store.at("axis"));
+      axis = std::get<int>(attrs.attr_store.at("axis"));
     }
 
     std::vector<ir::Tensor> input_tensors;
@@ -337,7 +297,7 @@ std::shared_ptr<OpStrategy> StrategyForConcat(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(concat_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target, false),
+
                     "strategy.concat.x86",
                     1);
   return strategy;
@@ -376,7 +336,7 @@ std::shared_ptr<OpStrategy> StrategyForConcatSymbolic(
             "The output_shapes of Concat is empty! Please check."));
     int axis = 0;
     if (attrs.attr_store.count("axis")) {
-      axis = absl::get<int>(attrs.attr_store.at("axis"));
+      axis = std::get<int>(attrs.attr_store.at("axis"));
     }
 
     std::vector<ir::Tensor> input_tensors;
@@ -402,8 +362,7 @@ std::shared_ptr<OpStrategy> StrategyForConcatSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      concat_compute, lang::PackedFunc(), "strategy.concat.x86", 1);
+  strategy->AddImpl(concat_compute, "strategy.concat.x86", 1);
   return strategy;
 }
 
@@ -496,21 +455,8 @@ std::shared_ptr<OpStrategy> StrategyForMul(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule mul_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE_EQ(!args.empty(),
-                          true,
-                          ::common::errors::InvalidArgument(
-                              "The input argument of matmul schedule is "
-                              "empty! Please check.\n"));
-        CINNValuePack arg_pack = args[0];
-        std::vector<CINNValue> results =
-            pe::IRGpuScheduleMatMul(arg_pack, output_shape, target);
-        *ret = CINNValuePack({results});
-      });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(mul_compute, mul_schedule, "strategy.mul.x86", 1);
+  strategy->AddImpl(mul_compute, "strategy.mul.x86", 1);
 
   return strategy;
 }
@@ -524,12 +470,12 @@ std::shared_ptr<OpStrategy> StrategyForCublasGemm(
   framework::CINNCompute gemm_compute([attrs](lang::Args args,
                                               lang::RetValue *ret) {
     auto &attr_store = attrs.attr_store;
-    PADDLE_ENFORCE_EQ(attr_store.contains("trans_a"),
+    PADDLE_ENFORCE_EQ(attr_store.count("trans_a"),
                       true,
                       ::common::errors::InvalidArgument(
                           "The cublas_gemm should have an attr named "
                           "`trans_a`."));
-    PADDLE_ENFORCE_EQ(attr_store.contains("trans_b"),
+    PADDLE_ENFORCE_EQ(attr_store.count("trans_b"),
                       true,
                       ::common::errors::InvalidArgument(
                           "The cublas_gemm should have an attr named "
@@ -582,7 +528,7 @@ std::shared_ptr<OpStrategy> StrategyForCublasGemm(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(gemm_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.cublas.gemm",
                     1);
 
@@ -600,10 +546,10 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
     std::string src_layout;
     std::string dst_layout;
     if (attrs.attr_store.find("src_layout") != attrs.attr_store.end()) {
-      src_layout = absl::get<std::string>(attrs.attr_store.at("src_layout"));
+      src_layout = std::get<std::string>(attrs.attr_store.at("src_layout"));
     }
     if (attrs.attr_store.find("dst_layout") != attrs.attr_store.end()) {
-      dst_layout = absl::get<std::string>(attrs.attr_store.at("dst_layout"));
+      dst_layout = std::get<std::string>(attrs.attr_store.at("dst_layout"));
     }
     PADDLE_ENFORCE_EQ(!src_layout.empty(),
                       true,
@@ -641,48 +587,14 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule layout_transform_schedule([=](lang::Args args,
-                                                        lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(!args.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The input argument of layout_transform schedule is "
-                          "empty! Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(!vec_ast.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The vec_ast is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-
-    if (std::holds_alternative<common::X86Arch>(target.arch)) {
-      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target);
-    } else {
-      CINN_NOT_IMPLEMENTED
-    }
-    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE_EQ(out_type.size(),
                     true,
                     ::common::errors::InvalidArgument(
                         "Out_type of layout_transform op is empty! Please "
                         "check."));
-  strategy->AddImpl(layout_transform_compute,
-                    layout_transform_schedule,
-                    "strategy.layout_transform.x86",
-                    1);
+  strategy->AddImpl(
+      layout_transform_compute, "strategy.layout_transform.x86", 1);
   return strategy;
 }
 
@@ -700,7 +612,7 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
   // get axis[0, n_dim)
   std::vector<int> axis;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     for (auto &e : axis) {
       if (e >= static_cast<int>(output_shapes[0].size()) ||
           e < -1 * static_cast<int>(output_shapes[0].size())) {
@@ -753,7 +665,7 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
                     ::common::errors::InvalidArgument(
                         "Out_type of reverse op is empty! Please check."));
   strategy->AddImpl(reverse_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.reverse.x86",
                     1);
   return strategy;
@@ -773,7 +685,7 @@ std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
   // get axis[0, n_dim)
   std::vector<int> axis;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     for (auto &e : axis) {
       if (e >= static_cast<int>(output_shapes[0].size()) ||
           e < -1 * static_cast<int>(output_shapes[0].size())) {
@@ -825,8 +737,7 @@ std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
                     true,
                     ::common::errors::InvalidArgument(
                         "Out_type of reverse op is empty! Please check."));
-  strategy->AddImpl(
-      reverse_compute, lang::PackedFunc(), "strategy.reverse.x86", 1);
+  strategy->AddImpl(reverse_compute, "strategy.reverse.x86", 1);
   return strategy;
 }
 
@@ -845,7 +756,7 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
   std::vector<int> axis;
   auto input_shape = inputs[0]->shape;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     PADDLE_ENFORCE_EQ(
         axis.size(),
         output_shapes[0].size(),
@@ -920,7 +831,7 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(transpose_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.transpose.x86",
                     1);
   return strategy;
@@ -945,7 +856,7 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
   std::vector<int> axis;
   auto input_shape = inputs[0]->shape;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    axis = std::get<std::vector<int>>(attrs.attr_store.at("axis"));
     PADDLE_ENFORCE_LE(axis.size(),
                       output_shapes[0].size(),
                       ::common::errors::InvalidArgument(
@@ -998,8 +909,7 @@ std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      transpose_compute, lang::PackedFunc(), "strategy.transpose.x86", 1);
+  strategy->AddImpl(transpose_compute, "strategy.transpose.x86", 1);
   return strategy;
 }
 
@@ -1022,8 +932,8 @@ std::shared_ptr<OpStrategy> StrategyForGather(
                         "again."));
 
   int axis = 0;
-  if (attrs.attr_store.contains("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+  if (attrs.attr_store.count("axis")) {
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
 
@@ -1085,7 +995,7 @@ std::shared_ptr<OpStrategy> StrategyForGather(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(gather_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.gather.x86",
                     1);
   return strategy;
@@ -1114,8 +1024,8 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
           "The output type of Gather is empty! Please check again."));
 
   int axis = 0;
-  if (attrs.attr_store.contains("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+  if (attrs.attr_store.count("axis")) {
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
 
@@ -1158,8 +1068,7 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
       }};
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      gather_compute, lang::PackedFunc(), "strategy.gather.x86", 1);
+  strategy->AddImpl(gather_compute, "strategy.gather.x86", 1);
   return strategy;
 }
 
@@ -1171,7 +1080,7 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
     const Target &target) {
   int axis = 0;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
 
   framework::CINNCompute scatter_assign_compute([=](lang::Args args,
@@ -1242,7 +1151,7 @@ std::shared_ptr<OpStrategy> StrategyForScatterAssign(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(scatter_assign_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target, false),
+
                     "strategy.scatter_assign.x86",
                     1);
   return strategy;
@@ -1256,7 +1165,7 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
     const Target &target) {
   int axis = 0;
   if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
 
   framework::CINNCompute scatter_add_compute([=](lang::Args args,
@@ -1325,7 +1234,7 @@ std::shared_ptr<OpStrategy> StrategyForScatterAdd(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(scatter_add_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target, false),
+
                     "strategy.scatter_add.x86",
                     1);
   return strategy;
@@ -1339,20 +1248,20 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
     const Target &target) {
   std::vector<int> starts, ends, axes, strides, decrease_axis;
   if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
-    starts = absl::get<std::vector<int>>(attrs.attr_store.at("starts"));
+    starts = std::get<std::vector<int>>(attrs.attr_store.at("starts"));
   }
   if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
-    ends = absl::get<std::vector<int>>(attrs.attr_store.at("ends"));
+    ends = std::get<std::vector<int>>(attrs.attr_store.at("ends"));
   }
   if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
-    axes = absl::get<std::vector<int>>(attrs.attr_store.at("axes"));
+    axes = std::get<std::vector<int>>(attrs.attr_store.at("axes"));
   }
   if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
-    strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
+    strides = std::get<std::vector<int>>(attrs.attr_store.at("strides"));
   }
   if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
     decrease_axis =
-        absl::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
+        std::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
   }
 
   PADDLE_ENFORCE_EQ(!starts.empty(),
@@ -1446,7 +1355,7 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(slice_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.slice.x86",
                     1);
 
@@ -1455,13 +1364,13 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
 
 template <typename T = int>
 std::vector<T> GetIntVectorFromAttr(const utils::Attribute &attr) {
-  if (absl::holds_alternative<std::vector<int64_t>>(attr)) {
-    const auto &attr_data = absl::get<std::vector<int64_t>>(attr);
+  if (std::holds_alternative<std::vector<int64_t>>(attr)) {
+    const auto &attr_data = std::get<std::vector<int64_t>>(attr);
     return std::vector<T>(attr_data.begin(), attr_data.end());
-  } else if (absl::holds_alternative<std::vector<int>>(attr)) {
-    const auto &attr_data = absl::get<std::vector<int>>(attr);
+  } else if (std::holds_alternative<std::vector<int>>(attr)) {
+    const auto &attr_data = std::get<std::vector<int>>(attr);
     return std::vector<T>(attr_data.begin(), attr_data.end());
-  } else if (absl::holds_alternative<bool>(attr)) {
+  } else if (std::holds_alternative<bool>(attr)) {
     return std::vector<T>{};
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument(
@@ -1633,7 +1542,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(slice_compute, lang::PackedFunc(), "strategy.slice.x86", 1);
+  strategy->AddImpl(slice_compute, "strategy.slice.x86", 1);
 
   return strategy;
 }
@@ -1664,16 +1573,16 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
 
   std::vector<int> starts, ends, axes, strides;
   if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
-    starts = absl::get<std::vector<int>>(attrs.attr_store.at("starts"));
+    starts = std::get<std::vector<int>>(attrs.attr_store.at("starts"));
   }
   if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
-    ends = absl::get<std::vector<int>>(attrs.attr_store.at("ends"));
+    ends = std::get<std::vector<int>>(attrs.attr_store.at("ends"));
   }
   if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
-    axes = absl::get<std::vector<int>>(attrs.attr_store.at("axes"));
+    axes = std::get<std::vector<int>>(attrs.attr_store.at("axes"));
   }
   if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
-    strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
+    strides = std::get<std::vector<int>>(attrs.attr_store.at("strides"));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1774,7 +1683,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(slice_assign_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.slice_assign.x86",
                     1);
   return strategy;

@@ -124,7 +124,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
                                             OpCompatibleType::possible};
   op_compatible_map_["crf_decoding"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["ctc_align"] = {"1.6.0", OpCompatibleType::possible};
-  op_compatible_map_["data_norm"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["depthwise_conv2d"] = {"1.6.0",
                                             OpCompatibleType::possible};
   op_compatible_map_["depthwise_conv2d_transpose"] = {

@@ -27,7 +27,7 @@ template <typename T_X,
           typename T_OUT,
           typename T_GEMM,
           typename Context>
-void Conv2dXPUKernelImpl(const Context& ctx,
+void Conv2dXPUKernelImpl(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& x_max,
                          const DenseTensor& filter,
@@ -37,9 +37,9 @@ void Conv2dXPUKernelImpl(const Context& ctx,
                          const paddle::optional<DenseTensor>& branch_max,
                          const paddle::optional<DenseTensor>& scale_max,
                          const paddle::optional<DenseTensor>& out_max_in,
-                         const std::vector<int>& paddings,
-                         const std::vector<int>& dilations,
-                         const std::vector<int>& strides,
+                         const std::vector<int>& paddings_,
+                         const std::vector<int>& dilations_,
+                         const std::vector<int>& strides_,
                          const std::string& padding_algorithm,
                          int groups,
                          int act_type,
@@ -52,26 +52,23 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   auto input_dims = x.dims();
   auto filter_dims = filter.dims();
   // update paddings and dilations according to padding_algorithm
-  std::vector<int> paddings_vec = paddings;
-  std::vector<int> dilations_vec = dilations;
+  std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
+  std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());
+  std::vector<int64_t> strides(strides_.begin(), strides_.end());
   DDim in_data_dims = common::slice_ddim(input_dims, 2, input_dims.size());
   DDim filter_data_dims =
       common::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
-  phi::UpdatePaddingAndDilation(&paddings_vec,
-                                &dilations_vec,
-                                padding_algorithm,
-                                in_data_dims,
-                                strides,
-                                ksize);
+  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  phi::UpdatePaddingAndDilation(
+      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  int batch = static_cast<int>(input_dims[0]);
-  int in_c = static_cast<int>(input_dims[1]);
-  int in_h = static_cast<int>(input_dims[2]);
-  int in_w = static_cast<int>(input_dims[3]);
-  int out_c = static_cast<int>(filter_dims[0]);
-  int win_h = static_cast<int>(filter_dims[2]);
-  int win_w = static_cast<int>(filter_dims[3]);
+  int64_t batch = input_dims[0];
+  int64_t in_c = input_dims[1];
+  int64_t in_h = input_dims[2];
+  int64_t in_w = input_dims[3];
+  int64_t out_c = filter_dims[0];
+  int64_t win_h = filter_dims[2];
+  int64_t win_w = filter_dims[3];
   auto* input_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
   const float* input_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
@@ -86,7 +83,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
                                      ? nullptr
                                      : branch_max.get_ptr()->data<float>();
   auto* branch_tensor = branch.get_ptr();
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   if (branch_tensor != nullptr) {
     if (branch_tensor->dtype() == out->dtype()) {
       branch_data =
@@ -95,7 +92,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
       auto branch_data_temp =
           RAII_GUARD.alloc_l3_or_gm<XPUTypeOut>(branch_tensor->numel());
       int r = xpu::cast<XPUTypeX, XPUTypeOut>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUTypeX*>(branch_tensor->data<T_X>()),
           branch_data_temp,
           branch_tensor->numel());
@@ -107,8 +104,8 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto* out_data =
-      reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_OUT>(out));
-  auto* out_max_data = ctx.template Alloc<float>(out_max);
+      reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_OUT>(out));
+  auto* out_max_data = dev_ctx.template Alloc<float>(out_max);
   out_max_data = out_max_in.get_ptr() != nullptr
                      ? const_cast<float*>(out_max_in.get_ptr()->data<float>())
                      : out_max_data;
@@ -121,7 +118,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
 
   int r = xpu::
       conv2d_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
-          /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+          /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
           /* const TX* input */ input_data,
           /* const TW* filter */ filter_data,
           /* TY* output */ out_data,
@@ -130,10 +127,11 @@ void Conv2dXPUKernelImpl(const Context& ctx,
           /* int64_t h */ in_h,
           /* int64_t w */ in_w,
           /* int64_t oc */ out_c,
-          /* const std::vector<int>& ksize */ std::vector<int>{win_h, win_w},
-          /* const std::vector<int>& strides */ strides,
-          /* const std::vector<int>& paddings */ paddings_vec,
-          /* const std::vector<int>& dilations */ dilations_vec,
+          /* const std::vector<int64_t>& ksize */
+          std::vector<int64_t>{win_h, win_w},
+          /* const std::vector<int64_t>& strides */ strides,
+          /* const std::vector<int64_t>& paddings */ paddings,
+          /* const std::vector<int64_t>& dilations */ dilations,
           /* int64_t groups */ groups,
           /* const float* in_maxptr */ input_max_data,
           /* const float* filter_maxptr */ filter_max_data,
@@ -149,7 +147,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
 
 #define CONV2D_XPU_KERNEL_IMPL(x_dtype_, w_dtype_, out_dtype_, gemm_dtype_)  \
   Conv2dXPUKernelImpl<x_dtype_, w_dtype_, out_dtype_, gemm_dtype_, Context>( \
-      ctx,                                                                   \
+      dev_ctx,                                                               \
       x,                                                                     \
       x_max,                                                                 \
       filter,                                                                \
@@ -170,7 +168,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
       out_max);
 
 template <typename T, typename Context>
-void Conv2dXPUKernel(const Context& ctx,
+void Conv2dXPUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& x_max,
                      const DenseTensor& filter,
@@ -237,10 +235,9 @@ void Conv2dXPUKernel(const Context& ctx,
     // float16 kernel
     if (filter.dtype() == DataType::INT16) {
       if (out_dtype == DataType::FLOAT32) {
-        CONV2D_XPU_KERNEL_IMPL(phi::dtype::float16, int16_t, float, int16_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int16_t, float, int16_t);
       } else if (out_dtype == DataType::FLOAT16) {
-        CONV2D_XPU_KERNEL_IMPL(
-            phi::dtype::float16, int16_t, dtype::float16, int16_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int16_t, dtype::float16, int16_t);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
@@ -251,10 +248,9 @@ void Conv2dXPUKernel(const Context& ctx,
       }
     } else if (filter.dtype() == DataType::INT8) {
       if (out_dtype == DataType::FLOAT16) {
-        CONV2D_XPU_KERNEL_IMPL(
-            phi::dtype::float16, int8_t, dtype::float16, int8_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int8_t, dtype::float16, int8_t);
       } else if (out_dtype == DataType::INT8) {
-        CONV2D_XPU_KERNEL_IMPL(phi::dtype::float16, int8_t, int8_t, int8_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int8_t, int8_t, int8_t);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
@@ -314,5 +310,5 @@ PD_REGISTER_KERNEL(conv2d_xpu,
                    ALL_LAYOUT,
                    phi::fusion::Conv2dXPUKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int8_t) {}

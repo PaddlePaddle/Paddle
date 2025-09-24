@@ -67,7 +67,7 @@ class IR_API Pattern {
     OperationInfo,
     // The pattern root is matched using an interface id.
     InterfaceId,
-    // The patter root is matched using a trait id.
+    // The pattern root is matched using a trait id.
     TraitId
   };
 

@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import _legacy_C_ops, base
 from paddle.tensor import random
 
-if base.is_compiled_with_cuda():
+if base.is_compiled_with_cuda() or is_custom_device():
     base.core.globals()['FLAGS_cudnn_deterministic'] = True
 
 
@@ -579,37 +579,41 @@ class StaticGraphTrainModel:
         self.gen_program = base.Program()
         gen_startup_program = base.Program()
 
-        with base.program_guard(self.gen_program, gen_startup_program):
-            with base.unique_name.guard():
-                image_real, label_org, label_trg = create_data_layer()
-                generator = Generator(cfg)
-                discriminator = Discriminator(cfg)
-                g_loss = get_generator_loss(
-                    image_real,
-                    label_org,
-                    label_trg,
-                    generator,
-                    discriminator,
-                    cfg,
-                )
-                build_optimizer(generator, cfg, loss=g_loss)
+        with (
+            base.program_guard(self.gen_program, gen_startup_program),
+            base.unique_name.guard(),
+        ):
+            image_real, label_org, label_trg = create_data_layer()
+            generator = Generator(cfg)
+            discriminator = Discriminator(cfg)
+            g_loss = get_generator_loss(
+                image_real,
+                label_org,
+                label_trg,
+                generator,
+                discriminator,
+                cfg,
+            )
+            build_optimizer(generator, cfg, loss=g_loss)
 
         self.dis_program = base.Program()
         dis_startup_program = base.Program()
-        with base.program_guard(self.dis_program, dis_startup_program):
-            with base.unique_name.guard():
-                image_real, label_org, label_trg = create_data_layer()
-                generator = Generator(cfg)
-                discriminator = Discriminator(cfg)
-                d_loss = get_discriminator_loss(
-                    image_real,
-                    label_org,
-                    label_trg,
-                    generator,
-                    discriminator,
-                    cfg,
-                )
-                build_optimizer(discriminator, cfg, loss=d_loss)
+        with (
+            base.program_guard(self.dis_program, dis_startup_program),
+            base.unique_name.guard(),
+        ):
+            image_real, label_org, label_trg = create_data_layer()
+            generator = Generator(cfg)
+            discriminator = Discriminator(cfg)
+            d_loss = get_discriminator_loss(
+                image_real,
+                label_org,
+                label_trg,
+                generator,
+                discriminator,
+                cfg,
+            )
+            build_optimizer(discriminator, cfg, loss=d_loss)
 
         self.executor = base.Executor(cfg.place)
         self.scope = base.Scope()
@@ -641,8 +645,8 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
     def func_main(self):
         self.place_test(base.CPUPlace())
 
-        if base.is_compiled_with_cuda():
-            self.place_test(base.CUDAPlace(0))
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.place_test(get_device_place())
 
     def place_test(self, place):
         cfg = Config(place, False)

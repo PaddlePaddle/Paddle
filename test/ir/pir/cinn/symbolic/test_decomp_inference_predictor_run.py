@@ -58,6 +58,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
                 ),
             ],
             full_graph=True,
+            backend=None,
         )
         paddle.jit.save(
             model,

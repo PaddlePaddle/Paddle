@@ -19,7 +19,6 @@
 #include <string>
 
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace optim {}  // namespace optim

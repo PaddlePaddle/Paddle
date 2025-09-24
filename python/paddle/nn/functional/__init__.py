@@ -59,6 +59,7 @@ from .common import (
     class_center_sample,
     cosine_similarity,
     dropout,
+    dropout1d,
     dropout2d,
     dropout3d,
     feature_alpha_dropout,
@@ -87,6 +88,7 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
+    flash_attention_v3_varlen,
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
     flashmask_attention,
@@ -115,6 +117,7 @@ from .loss import (
     margin_cross_entropy,
     margin_ranking_loss,
     mse_loss,
+    multi_label_margin_loss,
     multi_label_soft_margin_loss,
     multi_margin_loss,
     nll_loss,
@@ -129,6 +132,8 @@ from .loss import (
     triplet_margin_loss,
     triplet_margin_with_distance_loss,
 )
+from .moe_permute import moe_permute
+from .moe_unpermute import moe_unpermute
 from .norm import (
     batch_norm,
     group_norm,
@@ -212,6 +217,7 @@ __all__ = [
     'gumbel_softmax',
     'sequence_mask',
     'dropout',
+    'dropout1d',
     'dropout2d',
     'dropout3d',
     'alpha_dropout',
@@ -236,6 +242,8 @@ __all__ = [
     'max_unpool1d',
     'max_unpool2d',
     'max_unpool3d',
+    'moe_permute',
+    'moe_unpermute',
     'adaptive_avg_pool1d',
     'adaptive_avg_pool2d',
     'adaptive_avg_pool3d',
@@ -289,11 +297,13 @@ __all__ = [
     'triplet_margin_loss',
     'adaptive_log_softmax_with_loss',
     'multi_margin_loss',
+    'multi_label_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
     'flashmask_attention',
     'flash_attn_qkvpacked',
+    "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
 ]

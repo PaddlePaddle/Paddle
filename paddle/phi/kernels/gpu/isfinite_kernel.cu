@@ -24,13 +24,15 @@ PD_REGISTER_KERNEL(isinf,
                    phi::IsinfKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t,
                    int16_t,
                    int8_t,
-                   uint8_t) {
+                   uint8_t,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -40,10 +42,12 @@ PD_REGISTER_KERNEL(isnan,
                    phi::IsnanKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -53,9 +57,29 @@ PD_REGISTER_KERNEL(isfinite,
                    phi::IsfiniteKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
+
+#ifdef _WIN32
+namespace phi {
+INSTANTIATE_ISFINITE_KERNEL_Isnan(float, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(double, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(int, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(int64_t, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::float16, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::bfloat16, GPUContext);
+
+INSTANTIATE_ISFINITE_KERNEL_Isinf(float, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(double, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(int, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(int64_t, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::float16, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::bfloat16, GPUContext);
+}  // namespace phi
+#endif

@@ -44,7 +44,7 @@ GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
   PADDLE_ENFORCE_EQ(
       !rhs_dims->empty(),
       true,
-      ::common::errors::InvalidArgument("Sory,but rhs_dims is empty"));
+      ::common::errors::InvalidArgument("Sorry,but rhs_dims is empty"));
   std::vector<std::pair<int, int>> lhs_ranges{};
   std::vector<std::pair<int, int>> rhs_ranges{};
   int lhs_start = 0;

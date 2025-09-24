@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FillDiagonalTensorKernel(const Context& ctx,
+void FillDiagonalTensorKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               int64_t offset,
@@ -29,7 +29,7 @@ void FillDiagonalTensorKernel(const Context& ctx,
                               DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor FillDiagonalTensor(const Context& ctx,
+DenseTensor FillDiagonalTensor(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                int64_t offset,
@@ -39,7 +39,7 @@ DenseTensor FillDiagonalTensor(const Context& ctx,
   MetaTensor meta_out(&dense_out);
   FillDiagonalTensorInferMeta(x, y, offset, dim1, dim2, &meta_out);
   FillDiagonalTensorKernel<T, Context>(
-      ctx, x, y, offset, dim1, dim2, &dense_out);
+      dev_ctx, x, y, offset, dim1, dim2, &dense_out);
   return dense_out;
 }
 

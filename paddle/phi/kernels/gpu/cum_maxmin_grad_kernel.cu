@@ -30,6 +30,10 @@ void CummaxGradKernel(const Context& dev_ctx,
                       int axis,
                       DataType dtype,
                       DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));
@@ -54,6 +58,10 @@ void CumminGradKernel(const Context& dev_ctx,
                       int axis,
                       DataType dtype,
                       DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));

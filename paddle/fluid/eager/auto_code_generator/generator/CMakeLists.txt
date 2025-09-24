@@ -11,6 +11,12 @@ set(tmp_forwards_cc_path
 set(tmp_forwards_h_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_functions.h"
 )
+set(tmp_backwards_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_grad_functions.cc"
+)
+set(tmp_backwards_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/tmp_dygraph_grad_functions.h"
+)
 set(tmp_nodes_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/backwards/tmp_nodes.cc"
 )
@@ -23,6 +29,12 @@ set(forwards_cc_path
 set(forwards_h_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 )
+set(backwards_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_grad_functions.cc"
+)
+set(backwards_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_grad_functions.h"
+)
 set(nodes_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.cc"
 )
@@ -32,6 +44,9 @@ set(nodes_h_path
 # StringTensor only needs forward api
 set(fwd_api_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/strings_ops.yaml")
+# The yaml file which include the python api info for ops
+set(python_api_info_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/python_api_info.yaml")
 
 message("Final State Eager CodeGen")
 add_custom_target(
@@ -43,11 +58,17 @@ add_custom_target(
     "--backward_yaml_path=${backward_yaml_path}"
     "--forwards_cc_path=${tmp_forwards_cc_path}"
     "--forwards_h_path=${tmp_forwards_h_path}"
+    "--backwards_cc_path=${tmp_backwards_cc_path}"
+    "--backwards_h_path=${tmp_backwards_h_path}"
     "--nodes_cc_path=${tmp_nodes_cc_path}" "--nodes_h_path=${tmp_nodes_h_path}"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_forwards_cc_path}
           ${forwards_cc_path}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_forwards_h_path}
           ${forwards_h_path}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_backwards_cc_path}
+          ${backwards_cc_path}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_backwards_h_path}
+          ${backwards_h_path}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_nodes_cc_path}
           ${nodes_cc_path}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_nodes_h_path}
@@ -69,10 +90,32 @@ add_custom_target(
     "${PYTHON_EXECUTABLE}"
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generator/python_c_gen.py"
     "--api_yaml_path=${api_yaml_path},${fwd_api_yaml_path},${backward_yaml_path}"
+    "--python_api_info_yaml_path=${python_api_info_yaml_path}"
     "--source_path=${tmp_python_c_source_path}"
     "--header_path=${tmp_python_c_header_path}"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_python_c_source_path}
           ${python_c_source_path}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_python_c_header_path}
           ${python_c_header_path}
+  VERBATIM)
+
+set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml")
+set(monkey_patch_tensor_methods_path
+    "${PADDLE_SOURCE_DIR}/python/paddle/base/dygraph/generated_tensor_methods_patch.py"
+)
+set(tmp_monkey_patch_tensor_methods_path
+    "${PADDLE_SOURCE_DIR}/python/paddle/base/dygraph/generated_tensor_methods_patch.py.tmp"
+)
+message("Eager monkey path tensor methods CodeGen")
+add_custom_target(
+  eager_monkey_patch_codegen
+  COMMAND
+    "${PYTHON_EXECUTABLE}"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generator/monkey_patch_gen.py"
+    "--api_yaml_path=${ops_yaml_path}"
+    "--python_api_info_yaml_path=${python_api_info_yaml_path}"
+    "--output_path=${tmp_monkey_patch_tensor_methods_path}"
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different
+    ${tmp_monkey_patch_tensor_methods_path} ${monkey_patch_tensor_methods_path}
   VERBATIM)

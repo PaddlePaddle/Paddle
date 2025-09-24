@@ -15,8 +15,8 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/float16.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 
 using cinn::common::float16;
@@ -41,6 +41,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_float16) {
 
   REGISTER_EXTERN_FUNC_1_IN_1_FP16(ceil)
   REGISTER_EXTERN_FUNC_1_IN_1_FP16(floor)
+  REGISTER_EXTERN_FUNC_1_IN_1_FP16(rint)
   REGISTER_EXTERN_FUNC_1_IN_1_FP16(round)
   REGISTER_EXTERN_FUNC_1_IN_1_FP16(trunc)
   REGISTER_EXTERN_FUNC_1_IN_1_FP16(sin)

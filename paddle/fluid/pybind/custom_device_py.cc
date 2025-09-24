@@ -328,6 +328,34 @@ void BindCustomDevicePy(py::module *m_ptr) {
           )DOC",
           py::arg("event") = nullptr)
       .def_property_readonly(
+          "cuda_stream",
+          [](const phi::stream::Stream &self) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+            VLOG(10) << self.raw_stream();
+            return reinterpret_cast<std::uintptr_t>(self.raw_stream());
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle is not compiled with CustomDevice. "
+            "Cannot visit CustomDeviceStream."));
+#endif
+          },
+          R"DOC(
+          return the cuda stream of type CustomDeviceStream as type int.
+
+          Examples:
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+                >>> import paddle
+                >>> import ctypes
+                >>> stream  = paddle.device.custom.current_stream().cuda_stream
+                >>> print(stream)
+
+                >>> ptr = ctypes.c_void_p(stream)  # convert back to void*
+                >>> print(ptr)
+
+          )DOC")
+      .def_property_readonly(
           "raw_stream",
           [](const phi::stream::Stream &self) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

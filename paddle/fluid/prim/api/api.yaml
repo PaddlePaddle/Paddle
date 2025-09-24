@@ -56,3 +56,5 @@
 - isnan
 - isfinite
 - take_along_axis
+- variance
+- masked_fill

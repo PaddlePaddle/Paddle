@@ -57,11 +57,13 @@ class TestExponentialFamily(unittest.TestCase):
             )
 
     def test_entropy_exception(self):
-        with paddle.static.program_guard(self.program):
-            with self.assertRaises(NotImplementedError):
-                paddle.distribution.ExponentialFamily.entropy(
-                    mock.DummyExpFamily(0.5, 0.5)
-                )
+        with (
+            paddle.static.program_guard(self.program),
+            self.assertRaises(NotImplementedError),
+        ):
+            paddle.distribution.ExponentialFamily.entropy(
+                mock.DummyExpFamily(0.5, 0.5)
+            )
 
 
 if __name__ == '__main__':

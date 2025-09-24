@@ -15,6 +15,7 @@
 
 #include <iostream>
 
+#include "paddle/fluid/eager/to_static/run_program_func.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -35,7 +36,7 @@ static PyObject *eager_api_linear(PyObject *self,
 
     tstate = PyEval_SaveThread();
 
-    if (bias.is_dist_tensor() || bias.initialized()) {
+    if (bias.is_dist_tensor() || bias.has_allocation()) {
       const phi::distributed::ProcessMesh *mesh = nullptr;
       if (InputsContainDistTensor(&mesh, x, weight, bias)) {
         ConvertAllInputsToDistTensor(mesh, x, weight, bias);
@@ -76,9 +77,93 @@ static PyObject *eager_api_linear(PyObject *self,
   }
 }
 
+static PyObject *eager_api_run_program(PyObject *self,
+                                       PyObject *args,
+                                       PyObject *kwargs) {
+  PyThreadState *tstate = nullptr;
+  try {
+    auto X_info = GetPyArgumentInfo("run_program", "X", args, 0, true);
+    TensorListBufferAllocator X_allocator(X_info.second);
+    auto &X = GetTensorListFromArgsWithBuffer("run_program",
+                                              "X",
+                                              0,
+                                              nullptr,
+                                              X_info.first,
+                                              X_info.second,
+                                              X_allocator);
+
+    auto Params_info =
+        GetPyArgumentInfo("run_program", "Params", args, 1, true);
+    TensorListBufferAllocator Params_allocator(Params_info.second);
+    auto &Params = GetTensorListFromArgsWithBuffer("run_program",
+                                                   "Params",
+                                                   0,
+                                                   nullptr,
+                                                   Params_info.first,
+                                                   Params_info.second,
+                                                   Params_allocator);
+
+    auto OutScope =
+        GetScopePtrListFromArgs("run_program", "OutScope", args, 2, false);
+    const phi::distributed::ProcessMesh *mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, X, Params)) {
+      X = GetTensorListFromArgsWithBuffer("run_program",
+                                          "X",
+                                          0,
+                                          nullptr,
+                                          X_info.first,
+                                          X_info.second,
+                                          X_allocator);
+      Params = GetTensorListFromArgsWithBuffer("run_program",
+                                               "Params",
+                                               0,
+                                               nullptr,
+                                               Params_info.first,
+                                               Params_info.second,
+                                               Params_allocator);
+    }
+    VLOG(6) << "Start PIR GetProgramAttributesMapPtrFromPyArgs";
+    auto prog_attrs_ptr =
+        GetProgramAttributesMapPtrFromPyArgs("run_program", args, 3);
+    VLOG(6) << "Finish PIR GetProgramAttributesMapPtrFromPyArgs";
+
+    VLOG(6) << "Start PIR ConstructCudaGraphAttrMapForRunProgram";
+    paddle::framework::AttributeMap cuda_graph_attrs;
+    ConstructCudaGraphAttrMapForRunProgram(
+        "run_program", args, 4, cuda_graph_attrs);
+    VLOG(6) << "Finish PIR ConstructCudaGraphAttrMapForRunProgram";
+    tstate = PyEval_SaveThread();
+    auto out = egr::to_static::run_program_ad_func(
+        X, Params, OutScope, *prog_attrs_ptr, cuda_graph_attrs);
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    return ToPyObject(out);
+  } catch (paddle::platform::EnforceNotMet &exception) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    std::ostringstream sout;
+    sout << exception.what();
+    sout << "  [operator < run_program > error]";
+    exception.set_error_str(sout.str());
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef CustomEagerFinalStateMethods[] = {
     {"linear",
      (PyCFunction)(void (*)(void))eager_api_linear,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for linear."},
+    {"run_program",
+     (PyCFunction)(void (*)(void))eager_api_run_program,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {nullptr, nullptr, 0, nullptr}};

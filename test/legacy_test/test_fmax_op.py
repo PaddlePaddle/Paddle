@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -26,8 +31,8 @@ class ApiFMaxTest(unittest.TestCase):
 
     def setUp(self):
         """setUp"""
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -139,11 +144,15 @@ class TestElementwiseFmaxOp(OpTest):
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
-        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
-        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.init_shape()
+        x = np.random.uniform(0.1, 1, self.shape).astype("float64")
+        sgn = np.random.choice([-1, 1], self.shape).astype("float64")
+        y = x + sgn * np.random.uniform(0.1, 1, self.shape).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.fmax(self.inputs['X'], self.inputs['Y'])}
+
+    def init_shape(self):
+        self.shape = [13, 17]
 
     def test_check_output(self):
         """test_check_output"""
@@ -252,8 +261,8 @@ class TestElementwiseFmax3Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFmaxBF16OP(OpTest):
@@ -274,16 +283,172 @@ class TestFmaxBF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
         )
+
+
+class TestElementwiseFmaxOpZeroSize(TestElementwiseFmaxOp):
+    def init_shape(self):
+        self.shape = [0, 15]
+
+
+class TestElementwiseFmaxOpZeroSize1(TestElementwiseFmaxOp):
+    def init_shape(self):
+        self.shape = [0, 15, 0]
+
+
+class ApiFMaxTestZeroSize(unittest.TestCase):
+    """ApiFMaxTest"""
+
+    def setUp(self):
+        """setUp"""
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
+        else:
+            self.place = core.CPUPlace()
+
+        self.input_x = np.random.rand(0, 15).astype("float32")
+        self.input_y = np.random.rand(0, 15).astype("float32")
+        self.input_z = np.random.rand(1, 15).astype("float32")
+        self.input_a = np.random.rand(15, 0).astype('int64')
+        self.input_b = np.random.rand(15, 0, 1).astype('int64')
+        self.input_c = np.random.rand(15, 0, 2).astype('int64')
+
+        self.np_expected1 = np.fmax(self.input_x, self.input_y)
+        self.np_expected2 = np.fmax(self.input_x, self.input_z)
+        self.np_expected3 = np.fmax(self.input_a, self.input_c)
+        self.np_expected4 = np.fmax(self.input_b, self.input_c)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestElementwiseFmaxOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "elementwise_fmax"
+        self.python_api = paddle.fmax
+        self.public_python_api = paddle.fmax
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.fmax(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestElementwiseFmaxOp_Stride1(TestElementwiseFmaxOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.fmax(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseFmaxOp_Stride2(TestElementwiseFmaxOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.fmax(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseFmaxOp_Stride3(TestElementwiseFmaxOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.fmax(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseFmaxOp_Stride4(TestElementwiseFmaxOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.fmax(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseFmaxOp_Stride5(TestElementwiseFmaxOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.fmax(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseFmaxOp_Stride_ZeroDim1(TestElementwiseFmaxOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.fmax(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseFmaxOp_Stride_ZeroSize1(TestElementwiseFmaxOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.fmax(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 if __name__ == "__main__":

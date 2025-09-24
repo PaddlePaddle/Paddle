@@ -224,6 +224,43 @@ class TestPriorBoxOpWithSpecifiedOutOrder(TestPriorBoxOp):
         self.min_max_aspect_ratios_order = True
 
 
+class TestPriorBoxOp_ZeroSize(TestPriorBoxOp):
+    def init_test_params(self):
+        self.__class__.op_type = "prior_box"
+        self.layer_w = 0
+        self.layer_h = 0
+
+        self.image_w = 40
+        self.image_h = 40
+
+        self.step_w = (
+            float(self.image_w) / float(self.layer_w) if self.layer_w > 0 else 0
+        )
+        self.step_h = (
+            float(self.image_h) / float(self.layer_h) if self.layer_h > 0 else 0
+        )
+
+        self.input_channels = 2
+        self.image_channels = 3
+        self.batch_size = 10
+
+        self.min_sizes = [2, 4]
+        self.min_sizes = np.array(self.min_sizes).astype('float32').tolist()
+        self.set_max_sizes()
+        self.aspect_ratios = [2.0, 3.0]
+        self.flip = True
+        self.set_min_max_aspect_ratios_order()
+        self.real_aspect_ratios = [1, 2.0, 1.0 / 2.0, 3.0, 1.0 / 3.0]
+        self.variances = [0.1, 0.1, 0.2, 0.2]
+        self.variances = np.array(self.variances, dtype=np.float64).flatten()
+
+        self.clip = True
+        self.num_priors = len(self.real_aspect_ratios) * len(self.min_sizes)
+        if len(self.max_sizes) > 0:
+            self.num_priors += len(self.max_sizes)
+        self.offset = 0.5
+
+
 class TestPriorBoxAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(678)

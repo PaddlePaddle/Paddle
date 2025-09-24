@@ -32,7 +32,7 @@ namespace paddle::framework::ir {
   GET_IR_NODE(act_op);               \
   GET_IR_NODE(act_out);
 
-// Inherient the basic information from `base_desc`, and modify some fields.
+// Inherit the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc,
     const std::string& bias,
@@ -183,7 +183,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     all_act_set.insert(custom_act_set.begin(), custom_act_set.end());
   }
 
-  patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
+  patterns::ConvElementwiseAddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, all_act_set);
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,

@@ -14,57 +14,57 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <string>
 #include <vector>
+
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {
 namespace pe {
 
 void InputX86Param(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data,
     const std::string &key,
-    const absl::flat_hash_map<std::string, std::vector<int>> &schedule_data);
+    const paddle::flat_hash_map<std::string, std::vector<int>> &schedule_data);
 
-absl::flat_hash_map<std::string,
-                    absl::flat_hash_map<std::string, std::vector<int>>>
+paddle::flat_hash_map<std::string,
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateX86Params();
 void LoadResNet18Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadResNet50Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadMobileNetV1Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadMobileNetV2Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadFaceDetParams(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadEfficientNetParams(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadSqueezeNetParams(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 
 void CreateX86Params(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 
 }  // namespace pe

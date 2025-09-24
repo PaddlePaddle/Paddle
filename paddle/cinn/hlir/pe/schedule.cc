@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/pe/schedule.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <isl/cpp.h>
 #include <math.h>
 
@@ -25,20 +24,19 @@
 #include <numeric>
 #include <utility>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/pe/load_x86_params.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 namespace cinn {
 namespace hlir {
 namespace pe {
 
 using ParamsT =
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>;
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>;
 
 ParamsT CreateParamsImpl(common::UnknownArch) {
   PADDLE_THROW(::common::errors::InvalidArgument(
@@ -128,84 +126,6 @@ int GetVectorizeFactor(int shape, int split_factor) {
   return better_factor;
 }
 
-void ScheduleInjectiveCPU(poly::Stage *stage,
-                          const std::vector<int> &output_shape,
-                          const cinn::common::Target &target,
-                          bool vectorizable) {
-  int dims = stage->n_out_dims();
-  int factor = GetBasicFactor(stage->tensor()->type(), target);
-  poly::Iterator fused = stage->axis(0);
-  if (dims >= 5) {
-    fused = stage->Fuse({0, 1, 2});
-  } else if (dims >= 3) {
-    fused = stage->Fuse({0, 1});
-  }
-  stage->Parallel(fused);
-  dims = stage->n_out_dims();
-
-  if (vectorizable) {
-    poly::Iterator lo;
-    poly::Iterator li;
-    int last_shape = stage->GetDimRange(dims - 1);
-    factor = GetVectorizeFactor(last_shape, factor);
-    std::tie(lo, li) = stage->Split(stage->axis(dims - 1), factor);
-    stage->Vectorize(li, factor);
-    if (dims == 1) {
-      stage->Parallel(0);
-    }
-  }
-}
-
-void ScheduleInjectiveCPU1(poly::Stage *stage,
-                           const std::vector<int> &output_shape,
-                           const cinn::common::Target &target,
-                           bool vectorizable) {
-  int dims = stage->n_out_dims();
-  if (dims > 1) {
-    PADDLE_ENFORCE_EQ(stage->n_out_dims(),
-                      stage->n_in_dims(),
-                      ::common::errors::InvalidArgument(
-                          "The dims of stage in and out are not equal"));
-    PADDLE_ENFORCE_EQ(
-        stage->n_out_dims(),
-        output_shape.size(),
-        ::common::errors::InvalidArgument(
-            "The dims of stage out and output_shape's size are not equal"));
-    poly::Iterator fused = stage->axis(dims - 1);
-    int target_native_vector_bits = target.get_target_bits() * 8;
-    int type_bits = stage->tensor()->type().bits();
-    int prod_size = output_shape.back();
-    // fuse conservatively for the complex index from poly and may not benefit a
-    // lot compared with llvm optimization, only fuse the last two dims when the
-    // last dimension is too small and can split and vectorize Todo: try reorder
-    if (output_shape.back() * type_bits < target_native_vector_bits) {
-      int last_two_dim_bits =
-          output_shape[dims - 2] * output_shape[dims - 1] * type_bits;
-      if (last_two_dim_bits % target_native_vector_bits == 0) {
-        fused = stage->Fuse(dims - 2, dims - 1);
-        prod_size *= output_shape[dims - 2];
-      }
-    }
-    int split_factor = target_native_vector_bits / type_bits;
-    if (vectorizable) {
-      if (prod_size <= split_factor) {
-        split_factor = GetBetterSplitFactor(prod_size, split_factor);
-        if (split_factor >= 8) {
-          stage->Vectorize(fused, split_factor);
-        }
-      } else {
-        auto ssplit = stage->Split(fused, split_factor);
-        auto &j_outer = std::get<0>(ssplit);
-        auto &j_inner = std::get<1>(ssplit);
-        stage->Vectorize(j_inner, split_factor);
-      }
-    }
-  }
-  if (stage->n_out_dims() > 1) {
-    stage->Parallel(0);
-  }
-}
-
 int GetArrayPackingFactor(int shape,
                           const Type &type,
                           const cinn::common::Target &target) {
@@ -251,7 +171,7 @@ int GetBlockBindAxis(const std::vector<ir::Expr> &shape,
   return block_axis;
 }
 
-void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
+void GetConv2dFactors(paddle::flat_hash_map<std::string, int> *factors,
                       int oc,
                       int ic,
                       int fc,
@@ -366,7 +286,7 @@ void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
   }
 }
 
-void GetConv2d1x1Factors(absl::flat_hash_map<std::string, int> *factors,
+void GetConv2d1x1Factors(paddle::flat_hash_map<std::string, int> *factors,
                          int oc,
                          int ic,
                          int oh,
@@ -495,8 +415,8 @@ void CreateX86SerialData(const std::string &file_name) {
 }
 
 inline void InputDirectConvCudaParam(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
@@ -504,7 +424,7 @@ inline void InputDirectConvCudaParam(
       int_data.size(),
       6UL,
       ::common::errors::InvalidArgument("int_data size should be 6"));
-  absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
+  paddle::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["ry"] = int_data[1];
   schedule_data["rx"] = int_data[2];
@@ -519,8 +439,8 @@ inline void InputDirectConvCudaParam(
 }
 
 inline void InputWinogradConvCudaParam(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
@@ -528,7 +448,7 @@ inline void InputWinogradConvCudaParam(
       int_data.size(),
       4UL,
       ::common::errors::InvalidArgument("int_data size should be 4"));
-  absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
+  paddle::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["x"] = int_data[1];
   schedule_data["y"] = int_data[2];
@@ -536,11 +456,11 @@ inline void InputWinogradConvCudaParam(
   model_data[key] = schedule_data;
 }
 
-absl::flat_hash_map<std::string,
-                    absl::flat_hash_map<std::string, std::vector<int>>>
+paddle::flat_hash_map<std::string,
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateCudaParams() {
-  absl::flat_hash_map<std::string,
-                      absl::flat_hash_map<std::string, std::vector<int>>>
+  paddle::flat_hash_map<std::string,
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       model_data;
   // The format of serial data is:
   // hash_key: string = name of schedule + shape of input_pad + shape of weights
@@ -1253,8 +1173,8 @@ int GetMaxSplitter(int a, int b) {
 }
 
 void LoadSerialData(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *params,
     const std::string &file_name) {
   proto::ModelData read_model_data;
@@ -1269,7 +1189,7 @@ void LoadSerialData(
   auto read_model_map = read_model_data.data();
   for (auto &i : read_model_map) {
     auto read_schedule_map = i.second.data();
-    absl::flat_hash_map<std::string, std::vector<int>> param_data;
+    paddle::flat_hash_map<std::string, std::vector<int>> param_data;
     for (auto &j : read_schedule_map) {
       std::vector<int> temp_data;
       for (int k = 0; k < j.second.data_size(); k++) {
@@ -1282,9 +1202,9 @@ void LoadSerialData(
 }
 
 void SaveSerialData(
-    const absl::flat_hash_map<
+    const paddle::flat_hash_map<
         std::string,
-        absl::flat_hash_map<std::string, std::vector<int>>> &model_data,
+        paddle::flat_hash_map<std::string, std::vector<int>>> &model_data,
     const std::string &file_name) {
   proto::ModelData write_model_data;
   for (auto &i : model_data) {
@@ -1337,120 +1257,6 @@ int MaxFactorLessThan(int a, int b) {
     }
   }
   return res;
-}
-
-void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
-                                        const std::vector<int> &output_shape,
-                                        const cinn::common::Target &target) {
-  int dims = stage->n_out_dims();
-  int prod_size = std::accumulate(
-      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
-  int num_thread = target.max_num_threads();
-  int last_shape = stage->GetDimRange(stage->n_out_dims() - 1);
-  // determine the factor of vectorize
-  int vector_width = 1;
-  if (last_shape % 4 == 0) {
-    vector_width = 4;
-  } else if (last_shape % 2 == 0) {
-    vector_width = 2;
-  }
-
-  // print range of stage for debug
-  auto range_str_fn = [stage]() {
-    std::vector<int> dim_ranges;
-    for (int i = 0; i < stage->n_out_dims(); ++i) {
-      dim_ranges.push_back(stage->GetDimRange(i));
-    }
-    std::string res = "[" + utils::Join(dim_ranges, ",") + "]";
-    return res;
-  };
-
-  // the first bind position from tail
-  int bind_idx = stage->n_out_dims() - 1;
-  // it will add a new dim by split before vectorize, but the new dim will
-  // be eliminated when vectorizing, so the bind_idx doesn't need to increase
-  if (vector_width > 1) {
-    stage->Split(bind_idx, vector_width);
-  }
-  VLOG(5) << "vectorize result:" << range_str_fn();
-
-  // revise dim for binding threadIdx.x, here only use the x of threadIdx
-  if (stage->GetDimRange(bind_idx) > num_thread) {
-    stage->Split(bind_idx, gcd(stage->GetDimRange(bind_idx), num_thread));
-    ++bind_idx;
-  }
-  while (bind_idx > 0 &&
-         stage->GetDimRange(bind_idx - 1) * stage->GetDimRange(bind_idx) <
-             num_thread) {
-    stage->Fuse(bind_idx - 1, bind_idx);
-    --bind_idx;
-  }
-  // call vectorize on the last dim
-  if (vector_width > 1) {
-    stage->Vectorize(stage->n_out_dims() - 1, vector_width);
-  }
-  stage->Bind(bind_idx, "threadIdx.x");
-  --bind_idx;
-  VLOG(5) << "bind threadIdx.x result:" << range_str_fn();
-
-  // revise dim for binding blockIdx, at most 3 indexes can be used
-  while (bind_idx > 2) {
-    stage->Fuse(bind_idx - 1, bind_idx);
-    --bind_idx;
-  }
-  std::string block_idx = "blockIdx.x";
-  for (int j = 0; bind_idx >= 0; ++j) {
-    block_idx.back() = 'x' + j;
-    stage->Bind(bind_idx, block_idx);
-    --bind_idx;
-  }
-  VLOG(5) << "CudaScheduleInjectiveWithVectorize tensor:"
-          << stage->tensor()->name << ", vector_width:" << vector_width
-          << ", prod_size:" << prod_size << ", shape:["
-          << utils::Join(output_shape, ",") << "]"
-          << ", range:" << range_str_fn();
-}
-
-void CudaScheduleInjective(poly::Stage *stage,
-                           const std::vector<int> &output_shape,
-                           const cinn::common::Target &target) {
-  PADDLE_ENFORCE_EQ(
-      stage->n_out_dims(),
-      stage->n_in_dims(),
-      ::common::errors::InvalidArgument("The dims of op are not equal"));
-  if (FLAGS_cinn_use_cuda_vectorize) {
-    CudaScheduleInjectiveWithVectorize(stage, output_shape, target);
-    return;
-  }
-  int dims = stage->n_out_dims();
-  for (int i = 1; i < dims; i++) {
-    stage->Fuse(0, 1);
-  }
-
-  int num_thread = target.max_num_threads();
-  int prod_size = std::accumulate(
-      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
-  if (prod_size <= num_thread) {
-    stage->Bind(0, "threadIdx.x");
-    return;
-  }
-  int new_num_thread = gcd(prod_size, num_thread);
-  if (new_num_thread % 32 != 0) {
-    new_num_thread = MaxFactorLessThan(prod_size, num_thread);
-  }
-  if (new_num_thread == 1) {
-    std::stringstream ss;
-    ss << "prod_size out of range: " << prod_size;
-    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
-  }
-
-  PADDLE_ENFORCE_GT(prod_size,
-                    new_num_thread,
-                    ::common::errors::InvalidArgument(
-                        "The prod_size should be greater than new_num_thread"));
-  stage->Split(0, new_num_thread);
-  stage->Bind(0, "blockIdx.x");
-  stage->Bind(1, "threadIdx.x");
 }
 
 }  // namespace pe

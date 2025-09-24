@@ -32,51 +32,30 @@ if(WITH_ROCM)
   set(FLASHATTN_LIBRARIES
       "${FLASHATTN_INSTALL_DIR}/lib/libflashattn${CMAKE_SHARED_LIBRARY_SUFFIX}"
       CACHE FILEPATH "flash-attn Library" FORCE)
-
-  set(FLASHATTN_C_FLAGS ${CMAKE_C_FLAGS})
-  set(FLASHATTN_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
-  set(FLASHATTN_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
-  set(FLASHATTN_CXX_FLAGS
-      "${CMAKE_CXX_FLAGS} -w -Wno-deprecated-builtins -Wno-deprecated -DNDEBUG -U__HIP_NO_HALF_OPERATORS__ -U__HIP_NO_HALF_CONVERSIONS__ -fPIC -O3 -std=c++17 -D__HIP_PLATFORM_HCC__=1 --offload-arch=gfx928 -D__gfx940__ -mllvm -enable-num-vgprs-512=true"
-  )
-  set(FLASHATTN_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-  set(FLASHATTN_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+  set(FA_BUILD_DIR "${FLASHATTN_PREFIX_DIR}/src/extern_flashattn-build/")
 
   ExternalProject_Add(
     extern_flashattn
     GIT_REPOSITORY ${FA_REPOSITORY}
     GIT_TAG ${FA_TAG}
     SOURCE_DIR ${SOURCE_DIR}
-    PREFIX ${FLASHATTN_PREFIX_DIR}
-    UPDATE_COMMAND ""
-    PATCH_COMMAND ""
-    #BUILD_ALWAYS    1
-    CMAKE_ARGS -DCMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc
-               -DAMDGPU_TARGETS=gfx928
-               -DCMAKE_CXX_COMPILER_LAUNCHER=${CCACHE_PATH}
-               -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-               -DCMAKE_C_FLAGS=${FLASHATTN_C_FLAGS}
-               -DCMAKE_C_FLAGS_DEBUG=${FLASHATTN_C_FLAGS_DEBUG}
-               -DCMAKE_C_FLAGS_RELEASE=${FLASHATTN_C_FLAGS_RELEASE}
-               -DCMAKE_CXX_FLAGS=${FLASHATTN_CXX_FLAGS}
-               -DCMAKE_CXX_FLAGS_RELEASE=${FLASHATTN_CXX_FLAGS_RELEASE}
-               -DCMAKE_CXX_FLAGS_DEBUG=${FLASHATTN_CXX_FLAGS_DEBUG}
-               -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
-               -DWITH_GPU=${WITH_GPU}
-               -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
-               -DWITH_ROCM=${WITH_ROCM}
-               -DWITH_OMP=${USE_OMP}
-               -DBUILD_SHARED=ON
-               -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-               -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-               -DCMAKE_JOB_POOL_COMPILE:STRING=compile
-               -DCMAKE_JOB_POOLS:STRING=compile=4
-               ${EXTERNAL_OPTIONAL_ARGS}
-    CMAKE_CACHE_ARGS
-      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-      -DCMAKE_INSTALL_PREFIX:PATH=${FLASHATTN_INSTALL_DIR}
-    BUILD_BYPRODUCTS ${FLASHATTN_LIBRARIES})
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    LOG_DOWNLOAD ON)
+
+  add_custom_command(
+    TARGET extern_flashattn
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FLASHATTN_INCLUDE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SOURCE_DIR}/flash_attn.h"
+            ${FLASHATTN_INCLUDE_DIR}/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FA_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SOURCE_DIR}/libflashattn.so" ${FA_BUILD_DIR}/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FLASHATTN_LIB_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SOURCE_DIR}/libflashattn.so" ${FLASHATTN_LIB_DIR}/)
 else()
 
   add_definitions(-DPADDLE_WITH_FLASHATTN)
@@ -110,6 +89,9 @@ else()
       set(FLASHATTN_V3_LIBRARIES
           "${FLASHATTN_INSTALL_DIR}/bin/libflashattnv3${CMAKE_SHARED_LIBRARY_SUFFIX}"
           CACHE FILEPATH "flash-attn Library" FORCE)
+      set(FLASHMASK_V2_LIBRARIES
+          "${FLASHATTN_INSTALL_DIR}/bin/libflashmaskv2${CMAKE_SHARED_LIBRARY_SUFFIX}"
+          CACHE FILEPATH "flash-attn Library" FORCE)
     endif()
   else()
     set(FLASHATTN_LIBRARIES
@@ -119,6 +101,9 @@ else()
       set(FLASHATTN_V3_LIBRARIES
           "${FLASHATTN_INSTALL_DIR}/lib/libflashattnv3${CMAKE_SHARED_LIBRARY_SUFFIX}"
           CACHE FILEPATH "flash-attn Library" FORCE)
+      set(FLASHMASK_V2_LIBRARIES
+          "${FLASHATTN_INSTALL_DIR}/lib/libflashmaskv2${CMAKE_SHARED_LIBRARY_SUFFIX}"
+          CACHE FILEPATH "flash-attn Library" FORCE)
     endif()
   endif()
 
@@ -126,6 +111,7 @@ else()
   if(WITH_FLASHATTN_V3)
     add_definitions(-DPADDLE_WITH_FLASHATTN_V3)
     list(APPEND BUILD_BYPRODUCTS_LIST ${FLASHATTN_V3_LIBRARIES})
+    list(APPEND BUILD_BYPRODUCTS_LIST ${FLASHMASK_V2_LIBRARIES})
   endif()
 
   if(NOT DEFINED FA_JOB_POOLS_COMPILE)
@@ -160,6 +146,7 @@ else()
     set(FLASHATTN_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
   endif()
 
+  set(FLASHATTN_CMAKE_CUDA_FLAGS "-Xfatbin -compress-all")
   set(FA_NVCC_ARCH_BIN "")
   foreach(arch ${NVCC_ARCH_BIN})
     string(STRIP ${arch} arch)
@@ -184,7 +171,7 @@ else()
   set(CACHE_TAR_DIR "${FA_BUILD_DIR}/flashattn_libs_${FLASHATTN_TAG}")
 
   set(SKIP_BUILD_FA OFF)
-  if(FA_BUILD_WITH_CACHE)
+  if(WITH_FA_BUILD_WITH_CACHE)
 
     message(STATUS "Downloading ${TAR_FILE_URL} to ${CACHE_TAR_PATH}")
     file(
@@ -288,6 +275,7 @@ else()
                -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
                -DWITH_GPU=${WITH_GPU}
                -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
+               -DCMAKE_CUDA_FLAGS=${FLASHATTN_CMAKE_CUDA_FLAGS}
                -DWITH_ROCM=${WITH_ROCM}
                -DWITH_OMP=${USE_OMP}
                -DBUILD_SHARED=ON
@@ -297,6 +285,9 @@ else()
                -DCMAKE_JOB_POOLS:STRING=compile=${FA_JOB_POOLS_COMPILE}
                -DNVCC_ARCH_BIN=${FA_NVCC_ARCH_BIN}
                -DWITH_FLASHATTN_V3=${WITH_FLASHATTN_V3}
+               -DDISABLE_FP8=ON # umiswing: disable FP8, SM8x and PACKGQA on FA3
+               -DDISABLE_SM8X=ON
+               -DDISABLE_PACKGQA=ON
                -DSKIP_BUILD_FA=${SKIP_BUILD_FA}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS
@@ -309,6 +300,7 @@ endif()
 message(STATUS "flash-attn library: ${FLASHATTN_LIBRARIES}")
 if(WITH_FLASHATTN_V3)
   message(STATUS "flash-attn-v3 library: ${FLASHATTN_V3_LIBRARIES}")
+  message(STATUS "flash-mask-v2 library: ${FLASHMASK_V2_LIBRARIES}")
 endif()
 get_filename_component(FLASHATTN_LIBRARY_PATH ${FLASHATTN_LIBRARIES} DIRECTORY)
 include_directories(${FLASHATTN_INCLUDE_DIR})

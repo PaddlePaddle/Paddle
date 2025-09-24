@@ -19,7 +19,7 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 import paddle.inference as paddle_infer
@@ -42,8 +42,8 @@ class TestBincountOpAPI(unittest.TestCase):
             )
             output = paddle.bincount(inputs, weights=weights)
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
@@ -62,6 +62,18 @@ class TestBincountOpAPI(unittest.TestCase):
 
     def test_dygraph(self):
         with base.dygraph.guard():
+            inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
+            inputs = paddle.to_tensor(inputs_np)
+            actual = paddle.bincount(inputs)
+            expected = np.bincount(inputs)
+            self.assertTrue(
+                (actual.numpy() == expected).all(),
+                msg='bincount output is wrong, out =' + str(actual.numpy()),
+            )
+
+    def test_dygraph_cpu(self):
+        with base.dygraph.guard():
+            paddle.device.set_device('cpu')
             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
             inputs = paddle.to_tensor(inputs_np)
             actual = paddle.bincount(inputs)
@@ -239,11 +251,7 @@ class TestTensorMinlength(unittest.TestCase):
         self.save_path = os.path.join(
             self.temp_dir.name, 'tensor_minlength_bincount'
         )
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -288,7 +296,7 @@ class TestTensorMinlength(unittest.TestCase):
                     self.save_path + '.pdmodel', self.save_path + '.pdiparams'
                 )
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 config.enable_use_gpu(100, 0)
             else:
                 config.disable_gpu()
@@ -304,6 +312,13 @@ class TestTensorMinlength(unittest.TestCase):
             output_handle = predictor.get_output_handle(output_names[0])
             infer_out = output_handle.copy_to_cpu()
             np.testing.assert_allclose(static_out[0], infer_out)
+
+
+class TestBincountOp_ZeroSize(TestBincountOp):
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(low=0, high=20, size=0)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
 if __name__ == "__main__":

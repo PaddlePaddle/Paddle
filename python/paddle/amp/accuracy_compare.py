@@ -149,9 +149,9 @@ class MixedPrecisionTensorInfo:
         if fp32_tensor_info is not None and fp16_tensor_info is not None:
             # Check whether the op name and data are equal
             assert fp32_tensor_info.op_type == fp16_tensor_info.op_type
-            assert (
-                fp32_tensor_info.numel == fp16_tensor_info.numel
-            ), f"Error:\n\tFP32 Tensor Info:{fp32_tensor_info}\n\tFP16 Tensor Info:{fp16_tensor_info}"
+            assert fp32_tensor_info.numel == fp16_tensor_info.numel, (
+                f"Error:\n\tFP32 Tensor Info:{fp32_tensor_info}\n\tFP16 Tensor Info:{fp16_tensor_info}"
+            )
             # Fp16 divided by fp32
             self.fp32_div_fp16_max_value = self._div(
                 self.fp16_max_value, self.fp32_max_value

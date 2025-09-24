@@ -13,18 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/prim/utils/utils.h"
-#include "paddle/common/flags.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
-
-PHI_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
-PHI_DEFINE_EXPORTED_bool(prim_all, false, "enable prim_all or not");
-PHI_DEFINE_EXPORTED_bool(prim_forward, false, "enable prim_forward or not");
-PHI_DEFINE_EXPORTED_bool(prim_backward, false, "enable prim_backward not");
 
 namespace paddle::prim {
 bool PrimCommonUtils::IsBwdPrimEnabled() {
-  bool res = StaticCompositeContext::Instance().IsBwdPrimEnabled();
-  return res || FLAGS_prim_all || FLAGS_prim_backward;
+  return StaticCompositeContext::Instance().IsBwdPrimEnabled();
 }
 
 void PrimCommonUtils::SetBwdPrimEnabled(bool enable_prim) {
@@ -40,12 +33,15 @@ void PrimCommonUtils::SetEagerPrimEnabled(bool enable_prim) {
 }
 
 bool PrimCommonUtils::IsFwdPrimEnabled() {
-  bool res = StaticCompositeContext::Instance().IsFwdPrimEnabled();
-  return res || FLAGS_prim_all || FLAGS_prim_forward;
+  return StaticCompositeContext::Instance().IsFwdPrimEnabled();
 }
 
 void PrimCommonUtils::SetFwdPrimEnabled(bool enable_prim) {
   StaticCompositeContext::Instance().SetFwdPrimEnabled(enable_prim);
+}
+
+bool PrimCommonUtils::IsAllPrimEnabled() {
+  return StaticCompositeContext::Instance().IsAllPrimEnabled();
 }
 
 void PrimCommonUtils::SetAllPrimEnabled(bool enable_prim) {

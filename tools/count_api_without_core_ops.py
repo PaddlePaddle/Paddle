@@ -27,7 +27,6 @@ omitted_list = [
     "paddle.base.LoDTensor.set",  # Do not know why it should be omitted
     "paddle.base.io.ComposeNotAligned",
     "paddle.base.io.ComposeNotAligned.__init__",
-    "paddle.distributed.passes.pass_utils.shadow_var_between_sub_programs",  # append shadow_output and data op in this function
 ]
 
 
@@ -116,8 +115,8 @@ def visit_member(parent_name, member, func):
 
 def is_primitive(instance):
     int_types = (int,)
-    pritimitive_types = (*int_types, float, str)
-    if isinstance(instance, pritimitive_types):
+    primitive_types = (*int_types, float, str)
+    if isinstance(instance, primitive_types):
         return True
     elif isinstance(instance, (list, tuple, set)):
         for obj in instance:

@@ -348,6 +348,40 @@ void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
   }
 }
 
+void FlashAttnV3GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv) {
+  if (dq) {
+    dq->share_meta(q);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dv) {
+    dv->share_meta(v);
+  }
+}
+
+void FlashAttnV3VarlenGradInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& v,
+                                    MetaTensor* dq,
+                                    MetaTensor* dk,
+                                    MetaTensor* dv) {
+  if (dq) {
+    dq->share_meta(q);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dv) {
+    dv->share_meta(v);
+  }
+}
+
 void Flatten2GradInferMeta(const MetaTensor& x,
                            const MetaTensor& x_shape,
                            const MetaTensor& out_grad,
@@ -904,6 +938,7 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
 
 void InstanceNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
+                               const MetaTensor& bias,
                                const MetaTensor& saved_mean,
                                const MetaTensor& saved_variance,
                                const MetaTensor& y_grad,
@@ -922,10 +957,18 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
   x_grad->set_dtype(x.dtype());
   x_grad->set_layout(x.layout());
   if (scale_grad) {
-    scale_grad->set_dims({C});
+    if (C == 0) {
+      scale_grad->set_dims({scale.dims()[0]});
+    } else {
+      scale_grad->set_dims({C});
+    }
   }
   if (bias_grad) {
-    bias_grad->set_dims({C});
+    if (C == 0) {
+      bias_grad->set_dims({bias.dims()[0]});
+    } else {
+      bias_grad->set_dims({C});
+    }
   }
 }
 void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
@@ -1092,6 +1135,19 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
+void MedianGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& median_data,
+                         const MetaTensor& median_index,
+                         const MetaTensor& out_grad,
+                         const IntArray& axes,
+                         bool keep_dim,
+                         const std::string& mode,
+                         MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+  x_grad->set_dims(x_dims);
+  x_grad->set_dtype(x.dtype());
+}
+
 void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
                                            const MetaTensor& key,
                                            const MetaTensor& value,
@@ -1114,13 +1170,13 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   PADDLE_ENFORCE_EQ(
       output_grad.dims().size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%s)",
                                       output_grad.dims().size()));
   PADDLE_ENFORCE_EQ(
       output.dims().size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%s)",
                                       output_grad.dims().size()));
 
@@ -1200,6 +1256,145 @@ void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
   }
 }
 
+void MoeCombineGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& combine_weights,
+                             const MetaTensor& scatter_index,
+                             const MetaTensor& y,
+                             MetaTensor* grad_x,
+                             MetaTensor* grad_combine_weights_helper) {
+  auto x_dim = x.dims();
+  auto combine_weights_shape = combine_weights.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      errors::InvalidArgument("The input X should have 2 dimensions. "
+                              "But received X's dimension = %d",
+                              x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      (scatter_index.dtype() == phi::DataType::INT32),
+      true,
+      errors::InvalidArgument("The input scatter_index type should be int32. "
+                              "But received scatter_index type = %s",
+                              scatter_index.dtype()));
+  grad_x->set_dims(common::make_ddim({x_dim[0], x_dim[1]}));
+  grad_x->set_dtype(x.dtype());
+  grad_combine_weights_helper->set_dims(common::make_ddim(
+      {combine_weights_shape[0], combine_weights_shape[1], x_dim[1]}));
+  grad_combine_weights_helper->set_dtype(x.dtype());
+}
+
+void MoeCombineAutoGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& combine_weights,
+                                 const MetaTensor& scatter_index,
+                                 const MetaTensor& y,
+                                 MetaTensor* grad_x,
+                                 MetaTensor* grad_combine_weights_helper,
+                                 MetaTensor* grad_scatter_index) {
+  auto x_dim = x.dims();
+  auto combine_weights_shape = combine_weights.dims();
+  auto scatter_index_dim = scatter_index.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      errors::InvalidArgument("The input X should have 2 dimensions."
+                              "But received X's dimension = %d",
+                              x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      (scatter_index.dtype() == phi::DataType::INT32),
+      true,
+      errors::InvalidArgument("The input scatter_index type should be int32."
+                              "But received scatter_index type = %s",
+                              scatter_index.dtype()));
+  grad_x->set_dims(common::make_ddim({x_dim[0], x_dim[1]}));
+  grad_x->set_dtype(x.dtype());
+
+  grad_combine_weights_helper->set_dims(
+      common::make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
+  grad_combine_weights_helper->set_dtype(x.dtype());
+  PADDLE_ENFORCE_NE(
+      grad_scatter_index,
+      nullptr,
+      common::errors::InvalidArgument(
+          "The scatter_index need grad in auto parallel version moe_combine, "
+          "set scatter_index.stop_gradient = False."));
+
+  grad_scatter_index->set_dims(scatter_index_dim);
+  grad_scatter_index->set_dtype(phi::DataType::INT32);
+}
+
+void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
+    const MetaTensor& combine_weights_out,
+    const MetaTensor& scatter_index,
+    const MetaTensor& scatter_index_rev,
+    const MetaTensor& expert_offset,
+    const MetaTensor& expert_offset_local,
+    const MetaTensor& y_grad,
+    const MetaTensor& combine_weights_out_grad,
+    int64_t k,
+    int64_t capacity,
+    bool use_pad,
+    int64_t expert_start_index,
+    int64_t expert_end_index,
+    MetaTensor* x_grad,
+    MetaTensor* combine_weights_grad) {
+  int64_t num_experts = expert_offset.dims()[0];
+  int64_t hidden_size = y_grad.dims()[1];
+  int64_t num_rows = scatter_index.dims()[1];
+  PADDLE_ENFORCE_GT(num_experts,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Input num_experts should be greater than 0"));
+  PADDLE_ENFORCE_EQ((expert_offset.dtype() == phi::DataType::INT64),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input expert_offset type should be int64"));
+  if (use_pad) {
+    PADDLE_ENFORCE_GE(num_experts,
+                      y_grad.dims()[0] / capacity,
+                      common::errors::InvalidArgument(
+                          "Number of experts should be greater than or equal "
+                          "to y_grad.dims()[0]/capacity"));
+  } else {
+    PADDLE_ENFORCE_GT(y_grad.dims()[0],
+                      0,
+                      common::errors::InvalidArgument(
+                          "Input y_grad.dims()[0] should be greater than 0"));
+  }
+  combine_weights_grad->set_dims(combine_weights_out_grad.dims());
+  combine_weights_grad->set_dtype(phi::DataType::FLOAT32);
+  x_grad->set_dims({num_rows, hidden_size});
+  x_grad->set_dtype(y_grad.dtype());
+}
+
+void MoeGateDispatchPermuteGradInferMeta(const MetaTensor& combine_weights,
+                                         const MetaTensor& scatter_index,
+                                         const MetaTensor& expert_id,
+                                         const MetaTensor& y_grad,
+                                         const MetaTensor& combine_weights_grad,
+                                         int64_t k,
+                                         int64_t capacity,
+                                         int64_t world_size,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* gate_logits_grad) {
+  auto y_grad_dims = y_grad.dims();
+  PADDLE_ENFORCE_EQ(
+      y_grad_dims[1],
+      world_size,
+      common::errors::InvalidArgument(
+          "The second dimension of y_grad should be equal to world_size, but "
+          "received y_grad_dims[1] = %d, world_size = %d",
+          y_grad_dims[1],
+          world_size));
+  int64_t num_local_experts = y_grad_dims[0];
+  int64_t num_experts = world_size * num_local_experts;
+  int64_t hidden_size = y_grad_dims[y_grad_dims.size() - 1];
+  int64_t num_rows = scatter_index.dims()[1];
+  x_grad->set_dims({num_rows, hidden_size});
+  x_grad->set_dtype(y_grad.dtype());
+  gate_logits_grad->set_dims({num_rows, num_experts});
+  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
+}
+
 void MultiDotGradInferMeta(const std::vector<const MetaTensor*>& x,
                            const MetaTensor& out_grad,
                            std::vector<MetaTensor*> x_grad) {
@@ -1235,6 +1430,7 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
 }
 
 void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_data,
                             const MetaTensor& median_index,
                             const MetaTensor& out_grad,
                             const IntArray& axes,
@@ -1371,6 +1567,11 @@ void OverlapAddGradInferMeta(const MetaTensor& x,
   }
 }
 
+inline int64_t HandleDynamicDim(int64_t maybe_dynamic_dim,
+                                int64_t static_result) {
+  return maybe_dynamic_dim == -1 ? -1 : static_result;
+}
+
 void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
                                  int downscale_factor,
                                  const std::string& data_format,
@@ -1389,13 +1590,15 @@ void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
   dx_dims[0] = do_dims[0];
 
   if (!channel_last) {
-    dx_dims[1] = do_dims[1] / (downscale_factor * downscale_factor);
-    dx_dims[2] = do_dims[2] * downscale_factor;
-    dx_dims[3] = do_dims[3] * downscale_factor;
+    dx_dims[1] = HandleDynamicDim(
+        do_dims[1], do_dims[1] / (downscale_factor * downscale_factor));
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] * downscale_factor);
+    dx_dims[3] = HandleDynamicDim(do_dims[3], do_dims[3] * downscale_factor);
   } else {
-    dx_dims[1] = do_dims[1] * downscale_factor;
-    dx_dims[2] = do_dims[2] * downscale_factor;
-    dx_dims[3] = do_dims[3] / (downscale_factor * downscale_factor);
+    dx_dims[1] = HandleDynamicDim(do_dims[1], do_dims[1] * downscale_factor);
+    dx_dims[2] = HandleDynamicDim(do_dims[2], do_dims[2] * downscale_factor);
+    dx_dims[3] = HandleDynamicDim(
+        do_dims[3], do_dims[3] / (downscale_factor * downscale_factor));
   }
   x_grad->set_dims(dx_dims);
   x_grad->set_dtype(out_grad.dtype());
@@ -1626,7 +1829,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
           x_grad.size(),
           static_cast<size_t>(dy_dim[axis])));
 
-  auto vec = common::vectorize<int>(dy_dim);
+  auto vec = common::vectorize<int64_t>(dy_dim);
   vec.erase(vec.begin() + axis);
 
   for (auto& grad : x_grad) {
@@ -1694,6 +1897,16 @@ void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+void RandomGradInferMeta(const MetaTensor& out_grad, MetaTensor* x_grad) {
+  PADDLE_ENFORCE_NE(x_grad,
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "The X@GRAD in RandomGradInferMeta can't be nullptr."));
+  auto dims = out_grad.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {
@@ -1730,8 +1943,8 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                         rank));
   if (axis < 0) axis += (rank + 1);
 
-  auto vec = common::vectorize<int>(input_dims[0]);
-  vec.insert(vec.begin() + axis, static_cast<int>(input_dims.size()));
+  auto vec = common::vectorize<int64_t>(input_dims[0]);
+  vec.insert(vec.begin() + axis, static_cast<int64_t>(input_dims.size()));
   x_grad->set_dims(common::make_ddim(vec));
   x_grad->set_dtype(out_grad[0]->dtype());
 }
@@ -1821,6 +2034,41 @@ void IndexPutGradInferMeta(const MetaTensor& x,
   }
 }
 
+void IndexElementwisePutGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    MetaTensor* x_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+}
+
+void IndexElementwisePutWithTensorGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& value,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    MetaTensor* x_grad,
+    MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (value_grad) {
+    value_grad->share_meta(value);
+  }
+}
+
 void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& cos,
                             const MetaTensor& position_ids,
@@ -1856,7 +2104,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
 }
 
 void SetValueGradInferMeta(const MetaTensor& out_grad,
-                           const MetaTensor& values,
+                           const MetaTensor& value,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad) {
   if (x_grad) {
@@ -1865,9 +2113,181 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     x_grad->share_lod(out_grad);
   }
   if (value_grad) {
-    value_grad->set_dims(values.dims());
-    value_grad->set_dtype(values.dtype());
-    value_grad->share_lod(values);
+    value_grad->set_dims(value.dims());
+    value_grad->set_dtype(value.dtype());
+    value_grad->share_lod(value);
+  }
+}
+
+void CalAuxLossGradInferMeta(const MetaTensor& gate_prob,
+                             const MetaTensor& seqlen_float,
+                             const MetaTensor& ce,
+                             const MetaTensor& l_aux_loss_grad,
+                             const int64_t num_experts,
+                             const bool use_group,
+                             const int64_t moe_k,
+                             MetaTensor* gate_prob_grad) {
+  auto gate_prob_dims = gate_prob.dims();
+
+  PADDLE_ENFORCE_EQ(
+      gate_prob.dtype(),
+      l_aux_loss_grad.dtype(),
+      errors::InvalidArgument(
+          "The input out_grad type should be equal to gate_prob type"));
+
+  gate_prob_grad->set_dims({gate_prob_dims});
+  gate_prob_grad->set_dtype(gate_prob.dtype());
+}
+
+void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
+                                  const MetaTensor& scatter_index,
+                                  const MetaTensor& expert_id,
+                                  const MetaTensor& y_grad,
+                                  const MetaTensor& combine_weights_grad,
+                                  const int64_t k,
+                                  const int64_t capacity,
+                                  const bool use_pad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* gate_logits_grad) {
+  auto combine_weights_dims = combine_weights.dims();
+  auto scatter_index_dims = scatter_index.dims();
+  auto expert_id_dims = expert_id.dims();
+  auto y_grad_dims = y_grad.dims();
+  auto combine_weights_grad_dims = combine_weights_grad.dims();
+
+  PADDLE_ENFORCE_EQ(combine_weights_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input combine_weights should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      scatter_index_dims.size(),
+      2,
+      errors::InvalidArgument("Input scatter_index should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      expert_id_dims.size(),
+      2,
+      errors::InvalidArgument("Input expert_id should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      y_grad_dims.size(),
+      2,
+      errors::InvalidArgument("Input y_grad should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(combine_weights_grad_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input combine_weights_grad should have 2 dimensions"));
+
+  int64_t num_experts = y_grad_dims[0] / capacity;
+  int64_t hidden_size = y_grad_dims[1];
+
+  int64_t num_rows = scatter_index_dims[1];
+
+  x_grad->set_dims(common::make_ddim({num_rows, hidden_size}));
+  x_grad->set_dtype(y_grad.dtype());
+
+  gate_logits_grad->set_dims(common::make_ddim({num_rows, num_experts}));
+  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
+}
+
+void MoeGateDispatchAutoGradInferMeta(const MetaTensor& combine_weights,
+                                      const MetaTensor& scatter_index,
+                                      const MetaTensor& expert_id,
+                                      const MetaTensor& y_grad,
+                                      const MetaTensor& combine_weights_grad,
+                                      const int64_t k,
+                                      const int64_t capacity,
+                                      const bool use_pad,
+                                      MetaTensor* x_grad,
+                                      MetaTensor* gate_logits_grad) {
+  auto combine_weights_dims = combine_weights.dims();
+  auto scatter_index_dims = scatter_index.dims();
+  auto expert_id_dims = expert_id.dims();
+  auto y_grad_dims = y_grad.dims();
+  auto combine_weights_grad_dims = combine_weights_grad.dims();
+
+  PADDLE_ENFORCE_EQ(combine_weights_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input combine_weights should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      scatter_index_dims.size(),
+      2,
+      errors::InvalidArgument("Input scatter_index should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      expert_id_dims.size(),
+      2,
+      errors::InvalidArgument("Input expert_id should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      y_grad_dims.size(),
+      3,
+      errors::InvalidArgument("Input y_grad should have 3 dimensions"));
+
+  PADDLE_ENFORCE_EQ(combine_weights_grad_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input combine_weights_grad should have 2 dimensions"));
+
+  int64_t num_experts = y_grad_dims[0];
+  int64_t hidden_size = y_grad_dims[2];
+
+  int64_t num_rows = scatter_index_dims[1];
+
+  x_grad->set_dims(common::make_ddim({num_rows, hidden_size}));
+  x_grad->set_dtype(y_grad.dtype());
+
+  gate_logits_grad->set_dims(common::make_ddim({num_rows, num_experts}));
+  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
+}
+void FusedRMSNormGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& invvar,
+                               const MetaTensor& dy,
+                               float epsilon,
+                               MetaTensor* x_grad,
+                               MetaTensor* scale_grad) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
+          x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of x must be FLOAT32, FLOAT16 or BFLOAT16, but got [%s]",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      scale.dtype() == DataType::FLOAT32 ||
+          scale.dtype() == DataType::FLOAT16 ||
+          scale.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "
+                                      "FLOAT16 or BFLOAT16, but got [%s]",
+                                      scale.dtype()));
+  if (x_grad && x) {
+    x_grad->share_meta(x);
+  }
+  if (scale_grad && scale) {
+    scale_grad->share_meta(scale);
+  }
+}
+
+void IndexElementwiseGetGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    const bool accumulate,
+    const bool is_combined,
+    MetaTensor* x_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
   }
 }
 }  // namespace phi

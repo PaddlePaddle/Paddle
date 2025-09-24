@@ -19,3 +19,4 @@ test_pool2d_op
 test_pool3d_op
 test_sgd_op
 test_trilinear_interp_v2_op
+test_repeat_interleave_op

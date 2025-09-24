@@ -102,6 +102,20 @@ struct uniform_int_transform {
   int min_;
 };
 
+template <typename T, typename R>
+struct uniform_int_from_to_distribution {
+  explicit uniform_int_from_to_distribution(uint64_t range, int64_t base)
+      : range_(range), base_(base) {}
+
+  HOSTDEVICE inline T operator()(R rand) const {
+    return static_cast<T>(static_cast<int64_t>(rand % range_) + base_);
+  }
+
+ private:
+  uint64_t range_;
+  int64_t base_;
+};
+
 template <typename T>
 struct normal_transform {
   explicit normal_transform(T mean, T std) : mean_(mean), std_(std) {}
@@ -288,19 +302,19 @@ __global__ void DistributionKernel(size_t size,
 }
 
 template <typename T, typename DistOp, typename TransformOp>
-void distribution_and_transform(const GPUContext &ctx,
+void distribution_and_transform(const GPUContext &dev_ctx,
                                 DenseTensor *out,
                                 DistOp dist,
                                 TransformOp trans) {
-  T *out_data = ctx.template Alloc<T>(out);
+  T *out_data = dev_ctx.template Alloc<T>(out);
   auto size = out->numel();
   if (size == 0) return;
-  auto gen_cuda = ctx.GetGenerator();
+  auto gen_cuda = dev_ctx.GetGenerator();
 
   size_t block_size = 256;
   size_t expect_grid_size = (size + block_size - 1) / block_size;
 
-  int64_t device_id = ctx.GetPlace().GetDeviceId();
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   const auto &prop = phi::backends::gpu::GetDeviceProperties(device_id);
 
   size_t max_grid_size = (prop.maxThreadsPerMultiProcessor / block_size) *
@@ -311,7 +325,7 @@ void distribution_and_transform(const GPUContext &ctx,
   size_t total_thread = block_size * grid_size;
   size_t curand4_loop_times =
       (size + 4 * total_thread - 1) / (4 * total_thread);
-  // 'increment' shoulde be multiple of 4
+  // 'increment' should be multiple of 4
   uint64_t increment = curand4_loop_times * 4;
 
   auto seed_offset = gen_cuda->IncrementOffset(increment);
@@ -319,7 +333,7 @@ void distribution_and_transform(const GPUContext &ctx,
   uint64_t offset = seed_offset.second;
 
   DistributionKernel<T, DistOp, TransformOp>
-      <<<grid_size, block_size, 0, ctx.stream()>>>(
+      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
           size, seed, offset, dist, trans, out_data, total_thread);
 }
 

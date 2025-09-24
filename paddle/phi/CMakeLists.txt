@@ -25,8 +25,6 @@ add_subdirectory(backends)
 add_subdirectory(kernels)
 # phi infermeta
 add_subdirectory(infermeta)
-# phi tools
-add_subdirectory(tools)
 # phi capi
 if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
@@ -44,6 +42,7 @@ set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
     glog
+    libuv
     warpctc
     warprnnt
     eigen3
@@ -51,6 +50,9 @@ set(PHI_DEPS
     cblas
     utf8proc
     common)
+if(WITH_CINN)
+  list(APPEND PHI_DEPS ap_phi)
+endif()
 
 list(
   APPEND
@@ -85,6 +87,10 @@ endif()
 
 if(WITH_GLOO)
   list(APPEND PHI_DEPS gloo)
+endif()
+
+if(WITH_FLAGCX)
+  list(APPEND PHI_DEPS flagcx)
 endif()
 
 if(WITH_CUDNN_FRONTEND)
@@ -139,11 +145,14 @@ if(WITH_AVX
    AND WITH_MKL)
   set_source_files_properties(
     kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
-    kernels/fusion/cpu/self_dp_attention_kernel.cc
     kernels/fusion/cpu/rms_norm_avx_kernel.cc
     PROPERTIES
       COMPILE_FLAGS
       "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG} ${NO_INLINE}")
+  set_source_files_properties(
+    kernels/fusion/cpu/self_dp_attention_kernel.cc
+    PROPERTIES COMPILE_FLAGS
+               "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()
 
 if(WITH_GPU)
@@ -151,14 +160,21 @@ if(WITH_GPU)
     backends/gpu/gpu_resources.cc
     PROPERTIES COMPILE_FLAGS
                "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
-  nv_library(
-    phi_core ${PHI_BUILD_TYPE}
-    SRCS ${PHI_CORE_SRCS}
-    DEPS ${PHI_DEPS})
-  nv_library(
-    phi_gpu ${PHI_BUILD_TYPE}
-    SRCS ${PHI_GPU_SRCS}
-    DEPS ${PHI_DEPS} phi_core)
+  if(WIN32)
+    nv_library(
+      phi ${PHI_BUILD_TYPE}
+      SRCS ${PHI_CORE_SRCS} ${PHI_GPU_SRCS}
+      DEPS ${PHI_DEPS} cuda_graph_lib dynload_cudnn dynload_cublas)
+  else()
+    nv_library(
+      phi_core ${PHI_BUILD_TYPE}
+      SRCS ${PHI_CORE_SRCS}
+      DEPS ${PHI_DEPS})
+    nv_library(
+      phi_gpu ${PHI_BUILD_TYPE}
+      SRCS ${PHI_GPU_SRCS}
+      DEPS ${PHI_DEPS} phi_core)
+  endif()
 elseif(WITH_ROCM)
   hip_library(
     phi_core ${PHI_BUILD_TYPE}
@@ -174,10 +190,28 @@ elseif(WITH_XPU_KP)
     SRCS ${PHI_CORE_SRCS}
     DEPS ${PHI_DEPS})
 else()
-  cc_library(
-    phi_core ${PHI_BUILD_TYPE}
-    SRCS ${PHI_CORE_SRCS}
-    DEPS ${PHI_DEPS})
+  if(WIN32)
+    cc_library(
+      phi ${PHI_BUILD_TYPE}
+      SRCS ${PHI_CORE_SRCS}
+      DEPS ${PHI_DEPS} dynload_common)
+  else()
+    cc_library(
+      phi_core ${PHI_BUILD_TYPE}
+      SRCS ${PHI_CORE_SRCS}
+      DEPS ${PHI_DEPS})
+  endif()
+endif()
+
+set(NVTX3_PATH "${CUDA_INCLUDE_DIRS}/../targets/x86_64-linux/include/nvtx3/")
+get_filename_component(NVTX3_PATH "${NVTX3_PATH}" ABSOLUTE)
+
+if(EXISTS "${NVTX3_PATH}")
+  if(WIN32)
+    target_include_directories(phi PUBLIC "${NVTX3_PATH}")
+  else()
+    target_include_directories(phi_core PUBLIC "${NVTX3_PATH}")
+  endif()
 endif()
 
 # core/memory/allocation uses shm_unlink and requires the rt library
@@ -195,12 +229,18 @@ else()
 endif()
 file(WRITE ${PHI_DUMMY_FILE} ${PHI_DUMMY_FILE_CONTENT})
 
-add_library(phi ${PHI_BUILD_TYPE} ${PHI_DUMMY_FILE})
-target_link_libraries(phi phi_core)
-if(WITH_GPU OR WITH_ROCM)
-  target_link_libraries(phi phi_gpu)
-  target_link_libraries(phi_gpu ${ROCM_HIPRTC_LIB})
-  target_link_libraries(phi_core ${ROCM_HIPRTC_LIB})
+if(WIN32)
+  if(WITH_GPU OR WITH_ROCM)
+    target_link_libraries(phi ${ROCM_HIPRTC_LIB})
+  endif()
+else()
+  add_library(phi ${PHI_BUILD_TYPE} ${PHI_DUMMY_FILE})
+  target_link_libraries(phi phi_core)
+  if(WITH_GPU OR WITH_ROCM)
+    target_link_libraries(phi phi_gpu)
+    target_link_libraries(phi_gpu ${ROCM_HIPRTC_LIB})
+    target_link_libraries(phi_core ${ROCM_HIPRTC_LIB})
+  endif()
 endif()
 
 # Note(silverling): some functions in phi_core depend on phi_gpu,
@@ -211,15 +251,19 @@ if((WITH_GPU OR WITH_ROCM) AND NOT WITH_SHARED_PHI)
   target_link_libraries(phi_core phi_gpu)
 endif()
 
-target_compile_definitions(phi_core PUBLIC PHI_INNER)
+if(WIN32)
+  target_compile_definitions(phi PUBLIC PHI_INNER)
+else()
+  target_compile_definitions(phi_core PUBLIC PHI_INNER)
+endif()
 
 if(WIN32)
-  target_link_libraries(phi_core shlwapi.lib)
+  target_link_libraries(phi shlwapi.lib)
 endif()
 
 if(WIN32)
   if(WITH_SHARED_PHI)
-    set_property(TARGET phi_core PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS OFF)
     set(PHI_NAME
         phi.dll
         CACHE INTERNAL "" FORCE)
@@ -273,12 +317,15 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)
-  target_include_directories(phi_core PRIVATE ${MKL_INCLUDE})
+  if(win32)
+    target_include_directories(phi PRIVATE ${MKL_INCLUDE})
+  else()
+    target_include_directories(phi_core PRIVATE ${MKL_INCLUDE})
+  endif()
 endif()
 
 add_dependencies(phi extern_lapack)
 if(WITH_CUTLASS)
-  add_dependencies(phi cutlass_codegen)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h
 endif()

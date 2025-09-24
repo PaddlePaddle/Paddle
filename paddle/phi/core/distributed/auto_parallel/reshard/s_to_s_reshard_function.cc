@@ -31,8 +31,8 @@ bool SToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
-  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() !=
-                            out_dist_attr.dims_mapping());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.multi_dims_mapping() !=
+                            out_dist_attr.multi_dims_mapping());
 
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
@@ -54,6 +54,11 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   VLOG(3) << "Call " << Name();
   const auto& in_process_mesh = in.dist_attr().process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
+  if (in_process_ids.size() == 1) {
+    SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
+    return;
+  }
   auto dtype = in.dtype();
   const auto& logical_ddim = in.dims();
   int64_t nranks = static_cast<int64_t>(in_process_ids.size());
@@ -97,17 +102,12 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   }
 
   // 2. use all to all to switch data to other ranks
-#if defined(PADDLE_WITH_XPU)
-  PADDLE_THROW(
-      ::common::errors::Unimplemented("Not supported AllToAll on xpu yet."));
-#else
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             AllToAll,
                             dtype,
                             in_process_ids,
                             in_all_to_all,
                             GetMutableTensor(out));
-#endif
 
   // 3. postprocess, reshape and transpose the output tensor
   if (in_split_axis != 0) {
@@ -149,8 +149,8 @@ bool SToSReshardFunctionCrossMesh::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
-  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() !=
-                            out_dist_attr.dims_mapping());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.multi_dims_mapping() !=
+                            out_dist_attr.multi_dims_mapping());
 
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());

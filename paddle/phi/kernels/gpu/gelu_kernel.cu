@@ -61,6 +61,9 @@ void GeluKernel(const Context& dev_ctx,
                 bool approximate,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   if (approximate) {
@@ -93,5 +96,5 @@ PD_REGISTER_KERNEL(gelu,
                    phi::GeluKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

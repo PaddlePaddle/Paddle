@@ -87,7 +87,7 @@ class TestElementwiseDivGradGradWithDout : public TestElementwiseOpGradGrad<T> {
          {"DDY", {"DDY"}},
          {"DX", {"DX"}}},
         {{"Y@GRAD", {"Y@GRAD"}}, {"DDOut", {"DDOut"}}, {"DOut", {"DOut"}}},
-        {{"use_mkldnn", false}, {"axis", 0}});
+        {{"use_onednn", false}, {"axis", 0}});
     return op;
   }
 };

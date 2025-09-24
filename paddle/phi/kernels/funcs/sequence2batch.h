@@ -36,7 +36,7 @@ class CopyMatrixRowsFunctor {
   // If is_src_index is false,
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& src,
                   phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
@@ -60,7 +60,7 @@ class DenseTensor2BatchFunctor {
   };
 
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& lod_tensor,
                   phi::DenseTensor* batch,
                   bool is_cal_batch_lod,
@@ -84,7 +84,7 @@ class DenseTensor2BatchFunctor {
               lods[1].size(),
               static_cast<size_t>(lod_tensor.dims()[0])));
       CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
-      to_batch(context, lod_tensor, lods[1], batch, true);
+      to_batch(dev_ctx, lod_tensor, lods[1], batch, true);
       return;
     }
 
@@ -169,14 +169,14 @@ class DenseTensor2BatchFunctor {
     batch->set_lod(batch_lods);
 
     CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
-    to_batch(context, lod_tensor, batch_lods[1], batch, true);
+    to_batch(dev_ctx, lod_tensor, batch_lods[1], batch, true);
   }
 };
 
 template <typename DeviceContext, typename T>
 class Batch2DenseTensorFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& batch,
                   phi::DenseTensor* lod_tensor) const {
     auto in_lod = batch.lod();
@@ -197,7 +197,7 @@ class Batch2DenseTensorFunctor {
             in_lod[1].size(),
             static_cast<size_t>(lod_tensor->dims()[0])));
     CopyMatrixRowsFunctor<DeviceContext, T> to_seq;
-    to_seq(context, batch, in_lod[1], lod_tensor, false);
+    to_seq(dev_ctx, batch, in_lod[1], lod_tensor, false);
   }
 };
 

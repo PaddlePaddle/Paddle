@@ -42,10 +42,6 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
                         "dimension size is 1. Segment_ids's shape is: [%s].",
                         segment_ids.dims()));
 
-  if (x.numel() == 0 || segment_ids.numel() == 0) {
-    return;
-  }
-
   bool cpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU;
   if (cpu_place) {
     auto dims = x.dims();
@@ -112,6 +108,10 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     }
   }
 #endif
+  // return after allocation, if x or segment_ids is empty tensor.
+  if (x.numel() == 0 || segment_ids.numel() == 0) {
+    return;
+  }
 
   phi::funcs::SegmentPoolFunctor<Context, T, IndexT> pool;
 

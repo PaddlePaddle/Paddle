@@ -92,6 +92,7 @@ void InterpreterCoreNoEventGarbageCollector::Add(
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), ctx);
     }
+    tensor_arr->clear();
   } else if (var->IsType<std::vector<Scope*>>()) {
     // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
     // refer to executor.cc to see what old garbage collector does.

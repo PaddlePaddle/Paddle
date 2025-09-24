@@ -35,14 +35,26 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def gene_return_code(self):
         return "return;"
 
-    def gene_api_declaration(self):
-        return SparseAPI.gene_api_declaration(self)
+    def gene_api_declaration(
+        self, grad_flag=False, append_predefined_out=False
+    ):
+        return SparseAPI.gene_api_declaration(
+            self, grad_flag=grad_flag, append_predefined_out=False
+        )
 
-    def get_declare_args(self, inplace_flag=False):
-        return BackwardAPI.get_declare_args(self)
+    def get_declare_args(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=False
+    ):
+        return BackwardAPI.get_declare_args(
+            self, grad_flag=grad_flag, append_predefined_out=False
+        )
 
-    def get_define_args(self, inplace_flag=False):
-        return BackwardAPI.get_define_args(self)
+    def get_define_args(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=False
+    ):
+        return BackwardAPI.get_define_args(
+            self, grad_flag=grad_flag, append_predefined_out=False
+        )
 
     def gene_output(
         self,
@@ -157,7 +169,9 @@ namespace sparse {
     )
 
 
-def generate_api(api_yaml_path, header_file_path, source_file_path):
+def generate_api(
+    api_yaml_path, header_file_path, source_file_path, grad_flag=False
+):
     with open(api_yaml_path, 'r') as f:
         apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
@@ -169,14 +183,22 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/phi/api/backward/sparse_bw_api.h"
+    include_header_file = "paddle/phi/api/backward/sparse_backward_api_base.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
     for api in apis:
         sparse_bw_api = SparseBackwardAPI(api)
-        header_file.write(sparse_bw_api.gene_api_declaration())
-        source_file.write(sparse_bw_api.gene_api_code())
+        header_file.write(
+            sparse_bw_api.gene_api_declaration(
+                grad_flag=grad_flag, append_predefined_out=False
+            )
+        )
+        source_file.write(
+            sparse_bw_api.gene_api_code(
+                grad_flag=grad_flag, append_predefined_out=False
+            )
+        )
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
@@ -198,13 +220,13 @@ def main():
     parser.add_argument(
         '--api_header_path',
         help='output of generated api header code file',
-        default='paddle/phi/api/backward/sparse_bw_api.h',
+        default='paddle/phi/api/backward/sparse_backward_api_base.h',
     )
 
     parser.add_argument(
         '--api_source_path',
         help='output of generated api source code file',
-        default='paddle/phi/api/lib/sparse_bw_api.cc',
+        default='paddle/phi/api/lib/sparse_backward_api_base.cc',
     )
 
     options = parser.parse_args()
@@ -213,7 +235,9 @@ def main():
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
 
-    generate_api(api_yaml_path, header_file_path, source_file_path)
+    generate_api(
+        api_yaml_path, header_file_path, source_file_path, grad_flag=True
+    )
 
 
 if __name__ == '__main__':

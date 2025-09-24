@@ -46,14 +46,18 @@ from .impls.stat import *  # noqa: F403
 from .impls.vision import *  # noqa: F403
 from .register import converter_registry
 from .util import (
+    RefitManager,
+    RefitRole,
     TensorRTConfigManager,
     TensorRTConstantManager,
+    all_ops_into_trt,
     get_cache_path,
     get_trt_version,
     get_trt_version_list,
     is_shape_tensor,
     map_dtype,
     remove_duplicate_value,
+    set_dynamic_range,
     weight_to_tensor,
     zero_dims_to_one_dims,
 )
@@ -70,14 +74,15 @@ class PaddleToTensorRTConverter:
         self.scope = scope
         self.program = paddle_program
         self.trt_config = trt_config
-        constant_manager = TensorRTConstantManager()
+        self.constant_manager = TensorRTConstantManager()
+        self.refit_manager = RefitManager()
         params = paddle_program.global_block().all_parameters()
         param_dict = {}
         # save parameters
         for v in params:
             name = v.get_defining_op().attrs()["parameter_name"]
             weight_tensor = self.scope.var(name).get_tensor()
-            constant_manager.set_constant_value(name, weight_tensor, v)
+            self.constant_manager.set_constant_value(name, weight_tensor, v)
 
         self.input_info = {}
         self.trt_output_value_map = {}
@@ -130,7 +135,8 @@ class PaddleToTensorRTConverter:
         if self.trt_config is not None and self.trt_config.ops_run_float:
             _logger.info(f"force_fp32_ops: {trt_manager.get_force_fp32_ops()}")
 
-        _logger.info(f"start process {group_op}")
+        if not self.trt_config.disable_loggling:
+            _logger.info(f"start process {group_op}")
 
         operations = next(iter(group_op.blocks())).ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
@@ -150,8 +156,10 @@ class PaddleToTensorRTConverter:
         max_value_map = {}
         input_names = []
         new_input_values = []
-        constant_manager = TensorRTConstantManager()
-
+        refit_param_name = []
+        precision_mode = PrecisionMode.FP32
+        if self.trt_config is not None:
+            precision_mode = self.trt_config.precision_mode
         # Because one of the inputs to pd_op.concat is builtin.combine,
         # during the conversion process using the converter,
         # it is necessary to obtain the input of builtin.combine.
@@ -171,22 +179,50 @@ class PaddleToTensorRTConverter:
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.parameter":
                 param_name = defining_op.attrs()["parameter_name"]
+                refit_param_name.append(param_name)
                 weight = trt.Weights(
-                    constant_manager.get_constant_value(param_name)
+                    self.constant_manager.get_constant_value(param_name)
                 )
-                value_to_trt_tensor[value.id] = weight
+                if self.trt_config.refit_params_path:
+                    paddle_shape = value.shape
+                    trt_shape = trt.Dims(paddle_shape)
+                    constant_layer = network.add_constant(trt_shape, weight)
+                    constant_layer.name = param_name
+                    value_to_trt_tensor[value.id] = constant_layer.get_output(0)
+                    self.refit_manager.set_trt_weight_tensor(
+                        constant_layer.get_output(0).name, weight
+                    )
+                    self.refit_manager.set_mapping(
+                        param_name, param_name, RefitRole.CONSTANT
+                    )
+                else:
+                    value_to_trt_tensor[value.id] = weight
             elif defining_op.name() == "builtin.constant":
                 constant_value_name = defining_op.attrs()["value"]
                 constant_tensor = self.scope.var(
                     constant_value_name
                 ).get_tensor()
-                constant_manager.set_constant_value(
+                self.constant_manager.set_constant_value(
                     constant_value_name, constant_tensor, value
                 )
                 constant_tensor = trt.Weights(
-                    constant_manager.get_constant_value(constant_value_name)
+                    self.constant_manager.get_constant_value(
+                        constant_value_name
+                    )
                 )
-                value_to_trt_tensor[value.id] = constant_tensor
+                if self.trt_config.refit_params_path:
+                    paddle_shape = value.shape
+                    trt_shape = trt.Dims(paddle_shape)
+                    constant_layer = network.add_constant(
+                        trt_shape, constant_tensor
+                    )
+                    constant_layer.name = constant_value_name
+                    value_to_trt_tensor[value.id] = constant_layer.get_output(0)
+                    self.refit_manager.set_trt_weight_tensor(
+                        constant_layer.get_output(0).name, constant_tensor
+                    )
+                else:
+                    value_to_trt_tensor[value.id] = constant_tensor
             else:
                 shape = value.shape
                 dtype = map_dtype(value.dtype.name)
@@ -254,6 +290,8 @@ class PaddleToTensorRTConverter:
                             f'{source_id} not found in value_to_trt_tensor'
                         )
 
+            if precision_mode.value == PrecisionMode.INT8.value:
+                set_dynamic_range(op, operands)
             trt_outs = self.convert(network, op, operands)
 
             results = []
@@ -289,9 +327,10 @@ class PaddleToTensorRTConverter:
                 # constant/parameter condition, needn't get min/opt/max shape
                 continue
             input_name = trt_input.name
-            _logger.info(
-                f"set shape of {value}, op is: {value.get_defining_op()}"
-            )
+            if not self.trt_config.disable_loggling:
+                _logger.info(
+                    f"set shape of {value}, op is: {value.get_defining_op()}"
+                )
             min_shape = []
             opt_shape = []
             max_shape = []
@@ -335,22 +374,24 @@ class PaddleToTensorRTConverter:
                         value, True, paddle.base.core.ShapeMode.kMAX
                     )
             if not trt_input.is_shape_tensor:
-                _logger.info(f"set min_shape of {value} as {min_shape}")
-                _logger.info(f"set opt_shape of {value} as {opt_shape}")
-                _logger.info(f"set max_shape of {value} as {max_shape}")
+                if not self.trt_config.disable_loggling:
+                    _logger.info(f"set min_shape of {value} as {min_shape}")
+                    _logger.info(f"set opt_shape of {value} as {opt_shape}")
+                    _logger.info(f"set max_shape of {value} as {max_shape}")
                 profile.set_shape(
                     input_name, min=min_shape, opt=opt_shape, max=max_shape
                 )
             else:
-                _logger.info(
-                    f"set min_value of shape input: {value} as {min_value}"
-                )
-                _logger.info(
-                    f"set max_value of shape input: {value} as {opt_value}"
-                )
-                _logger.info(
-                    f"set opt_value of shape input: {value} as {max_value}"
-                )
+                if not self.trt_config.disable_loggling:
+                    _logger.info(
+                        f"set min_value of shape input: {value} as {min_value}"
+                    )
+                    _logger.info(
+                        f"set opt_value of shape input: {value} as {opt_value}"
+                    )
+                    _logger.info(
+                        f"set max_value of shape input: {value} as {max_value}"
+                    )
                 profile.set_shape_input(
                     input_name, min=min_value, opt=opt_value, max=max_value
                 )
@@ -380,15 +421,20 @@ class PaddleToTensorRTConverter:
             if group_op.result(out_index).use_empty():
                 # if result value is not used, it doesn't need get shape, continue
                 continue
-            min_shape = get_value_shape_range_info(
-                result_value, False, paddle.base.core.ShapeMode.kMIN
-            )
-            opt_shape = get_value_shape_range_info(
-                result_value, False, paddle.base.core.ShapeMode.kOPT
-            )
-            max_shape = get_value_shape_range_info(
-                result_value, False, paddle.base.core.ShapeMode.kMAX
-            )
+            min_shape = []
+            opt_shape = []
+            max_shape = []
+            if len(result_value.shape) != 0:
+                min_shape = get_value_shape_range_info(
+                    result_value, False, paddle.base.core.ShapeMode.kMIN
+                )
+                opt_shape = get_value_shape_range_info(
+                    result_value, False, paddle.base.core.ShapeMode.kOPT
+                )
+                max_shape = get_value_shape_range_info(
+                    result_value, False, paddle.base.core.ShapeMode.kMAX
+                )
+
             min_value = []
             opt_value = []
             max_value = []
@@ -413,6 +459,8 @@ class PaddleToTensorRTConverter:
             }
 
         config = builder.create_builder_config()
+        if self.trt_config and self.trt_config.refit_params_path:
+            config.set_flag(trt.BuilderFlag.REFIT)
         config.add_optimization_profile(profile)
         if version_list[0] > 8 or (
             version_list[0] == 8 and version_list[1] >= 6
@@ -424,9 +472,7 @@ class PaddleToTensorRTConverter:
             trt.MemoryPoolType.WORKSPACE, self.trt_config.workspace_size
         )
 
-        if self.trt_config is not None:
-            precision_mode = self.trt_config.precision_mode
-        if self.trt_config is not None and precision_mode == PrecisionMode.FP16:
+        if precision_mode.value == PrecisionMode.FP16.value:
             if builder.platform_has_fast_fp16:
                 config.set_flag(trt.BuilderFlag.FP16)
                 _logger.info("Run Paddle-TRT FP16 mode")
@@ -434,9 +480,7 @@ class PaddleToTensorRTConverter:
                 _logger.warning(
                     "Hardware does not support FP16. Continuing in FP32 mode."
                 )
-        elif (
-            self.trt_config is not None and precision_mode == PrecisionMode.BF16
-        ):
+        elif precision_mode.value == PrecisionMode.BF16.value:
             if version_list[0] >= 9:
                 if builder.platform_has_fast_bfp16 and hasattr(
                     builder, 'plateform_has_fast_bf16'
@@ -457,6 +501,9 @@ class PaddleToTensorRTConverter:
                     _logger.warning(
                         "Hardware does not support FP16. Continuing in FP32 mode."
                     )
+        elif precision_mode.value == PrecisionMode.INT8.value:
+            config.set_flag(trt.BuilderFlag.INT8)
+            _logger.info("Run Paddle-TRT INT8 mode")
         elif self.trt_config is not None:
             _logger.info(
                 f"Default precision mode {self.trt_config.precision_mode}"
@@ -472,9 +519,9 @@ class PaddleToTensorRTConverter:
                 config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
 
         trt_engine = builder.build_serialized_network(network, config)
-        assert (
-            trt_engine is not None
-        ), 'Failed to build engine. please see ERROR log from trt.Logger'
+        assert trt_engine is not None, (
+            'Failed to build engine. please see ERROR log from trt.Logger'
+        )
         trt_params = paddle.base.libpaddle.TRTEngineParams()
         trt_params.min_input_shape = min_shape_map
         trt_params.max_input_shape = max_shape_map
@@ -482,12 +529,26 @@ class PaddleToTensorRTConverter:
         trt_params.min_shape_tensor = min_value_map
         trt_params.max_shape_tensor = max_value_map
         trt_params.optim_shape_tensor = opt_value_map
+        trt_params.use_cuda_graph = self.trt_config.use_cuda_graph
+        all_nodes_offload_to_trt = all_ops_into_trt(self.program)
+        if self.trt_config.use_cuda_graph and not all_nodes_offload_to_trt:
+            _logger.info(
+                "You have enabled CudaGraph, but not the entire graph offload to "
+                "trt, now return to normal mode."
+            )
+            trt_params.use_cuda_graph = False
+        if self.trt_config.refit_params_path:
+            trt_params.refit_params_path = self.trt_config.refit_params_path
+            trt_params.refit_param_name = refit_param_name
+            trt_params.refit_param_names2trt_names = (
+                self.refit_manager.get_all_mappings()
+            )
         group_str = str(group_op)
         engine_name = (
             int(hashlib.sha256(group_str.encode('utf-8')).hexdigest(), 16)
             % 10**8
         )
-        CACHE_ROOT = get_cache_path()
+        CACHE_ROOT = get_cache_path(self.trt_config.save_model_dir)
         CACHE_FILE = f"{CACHE_ROOT}/engine_{engine_name}_{self.engine_num}.trt"
         with open(CACHE_FILE, "wb") as f:
             f.write(trt_engine)
@@ -553,7 +614,8 @@ class PaddleToTensorRTConverter:
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
             if op.name() == "cinn_op.group" or op.name() == "builtin.group":
-                _logger.info(f"start process {op.name()}")
+                if not self.trt_config.disable_loggling:
+                    _logger.info(f"start process {op.name()}")
                 self.engine_num += 1
                 new_out = self.convert_subgraph_to_trt(self.program, op)
                 orin_out_values = op.results()
@@ -577,7 +639,44 @@ class PaddleToTensorRTConverter:
                 if op.results()[0].use_empty():
                     self.program.global_block().remove_op(op)
             if op.name() == "builtin.constant":
+                # builtin.constant can't be saved/loaded, we need del it
                 if op.results()[0].use_empty():
+                    self.program.global_block().remove_op(op)
+                else:
+                    constant_result = op.results()[0]
+                    constant_value_name = op.attrs()["value"]
+                    out_dtype = np.dtype(
+                        paddle.pir.core._PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[
+                            constant_result.dtype
+                        ]
+                    )
+                    tensor_data = self.scope.var(
+                        constant_value_name
+                    ).get_tensor()
+                    constant_array = np.array(
+                        tensor_data, dtype=out_dtype
+                    ).tolist()
+
+                    if isinstance(constant_array, (int, float)):
+                        constant_array = [constant_array]
+
+                    # convert builtin.constant to pd_op.full_int_array/full and then delete it
+                    with paddle.pir.core.program_guard(self.program):
+                        paddle.base.libpaddle.pir.reset_insertion_point_to_start()
+                        if len(constant_array) == 1:
+                            full_value = paddle._C_ops.full(
+                                [1],
+                                constant_array[0],
+                                constant_result.dtype,
+                                paddle.CUDAPlace(0),
+                            )
+                        else:
+                            full_value = paddle._C_ops.full_int_array(
+                                constant_array,
+                                constant_result.dtype,
+                                paddle.CUDAPlace(0),
+                            )
+                    op.replace_all_uses_with([full_value])
                     self.program.global_block().remove_op(op)
 
         # Call clear_shape_info to clear the previous shape information

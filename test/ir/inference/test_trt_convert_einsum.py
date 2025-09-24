@@ -90,32 +90,32 @@ class TrtConvertEinsumTest_SingleOperand(TrtLayerAutoScanTest):
 
                     yield program_config
 
+    def generate_dynamic_shape(self, attrs):
+        if self.dims == 1:
+            self.dynamic_shape.min_input_shape = {
+                "operands_data0": [1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "operands_data0": [3],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "operands_data0": [2],
+            }
+        elif self.dims == 3:
+            self.dynamic_shape.min_input_shape = {
+                "operands_data0": [1, 2, 3],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "operands_data0": [4, 2, 3],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "operands_data0": [2, 2, 3],
+            }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.dims == 1:
-                self.dynamic_shape.min_input_shape = {
-                    "operands_data0": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "operands_data0": [3],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "operands_data0": [2],
-                }
-
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "operands_data0": [1, 2, 3],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "operands_data0": [4, 2, 3],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "operands_data0": [2, 2, 3],
-                }
-
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -132,32 +132,41 @@ class TrtConvertEinsumTest_SingleOperand(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertEinsumTest_DoubuleOperand_Vector_Matrix(TrtLayerAutoScanTest):
@@ -250,37 +259,38 @@ class TrtConvertEinsumTest_DoubuleOperand_Vector_Matrix(TrtLayerAutoScanTest):
 
                         yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.dims == 1:
-                self.dynamic_shape.min_input_shape = {
-                    "operands_data0": [1],
-                    "operands_data1": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "operands_data0": [4],
-                    "operands_data1": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "operands_data0": [2],
-                    "operands_data1": [2],
-                }
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "operands_data0": [1, 2, 3],
-                    "operands_data1": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "operands_data0": [4, 2, 3],
-                    "operands_data1": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "operands_data0": [2, 2, 3],
-                    "operands_data1": [3],
-                }
+    def generate_dynamic_shape(self, attrs):
+        if self.dims == 1:
+            self.dynamic_shape.min_input_shape = {
+                "operands_data0": [1],
+                "operands_data1": [1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "operands_data0": [4],
+                "operands_data1": [4],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "operands_data0": [2],
+                "operands_data1": [2],
+            }
+        elif self.dims == 3:
+            self.dynamic_shape.min_input_shape = {
+                "operands_data0": [1, 2, 3],
+                "operands_data1": [1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "operands_data0": [4, 2, 3],
+                "operands_data1": [4],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "operands_data0": [2, 2, 3],
+                "operands_data1": [3],
+            }
+        return self.dynamic_shape
 
+    def sample_predictor_configs(
+        self, program_config, run_pir=False
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -297,32 +307,41 @@ class TrtConvertEinsumTest_DoubuleOperand_Vector_Matrix(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertEinsumTest_DoubuleOperand_Matrix_Matrix(TrtLayerAutoScanTest):
@@ -370,44 +389,45 @@ class TrtConvertEinsumTest_DoubuleOperand_Matrix_Matrix(TrtLayerAutoScanTest):
                 ops=ops,
                 weights={},
                 inputs={
-                    "operands_data0": TensorConfig(
-                        data_gen=partial(generate_input_matrix, self.x_shape)
-                    ),
                     "operands_data1": TensorConfig(
                         data_gen=partial(generate_input_matrix, self.y_shape)
+                    ),
+                    "operands_data0": TensorConfig(
+                        data_gen=partial(generate_input_matrix, self.x_shape)
                     ),
                 },
                 outputs=["einsum_output_data"],
             )
 
-            yield program_config
+        yield program_config
+
+    def generate_dynamic_shape(self, attrs):
+        min_xshape = self.x_shape[:]
+        max_xshape = self.x_shape[:]
+        min_yshape = self.y_shape[:]
+        max_yshape = self.y_shape[:]
+        if "b" in self.equation:
+            min_xshape[0] = 1
+            max_xshape[0] = 4
+            min_yshape[0] = 1
+            max_yshape[0] = 4
+        self.dynamic_shape.min_input_shape = {
+            "operands_data0": min_xshape,
+            "operands_data1": min_yshape,
+        }
+        self.dynamic_shape.max_input_shape = {
+            "operands_data0": max_xshape,
+            "operands_data1": max_yshape,
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "operands_data0": self.x_shape,
+            "operands_data1": self.y_shape,
+        }
+        return self.dynamic_shape
 
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            min_xshape = self.x_shape[:]
-            max_xshape = self.x_shape[:]
-            min_yshape = self.y_shape[:]
-            max_yshape = self.y_shape[:]
-            if "b" in self.equation:
-                min_xshape[0] = 1
-                max_xshape[0] = 4
-                min_yshape[0] = 1
-                max_yshape[0] = 4
-            self.dynamic_shape.min_input_shape = {
-                "operands_data0": min_xshape,
-                "operands_data1": min_yshape,
-            }
-            self.dynamic_shape.max_input_shape = {
-                "operands_data0": max_xshape,
-                "operands_data1": max_yshape,
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "operands_data0": self.x_shape,
-                "operands_data1": self.y_shape,
-            }
-
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -424,32 +444,41 @@ class TrtConvertEinsumTest_DoubuleOperand_Matrix_Matrix(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

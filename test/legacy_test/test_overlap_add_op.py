@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -35,9 +40,9 @@ def overlap_add(x, hop_length, axis=-1):
     frame_length = x.shape[1] if axis == 0 else x.shape[-2]
 
     # Assure no gaps between frames.
-    assert (
-        0 < hop_length <= frame_length
-    ), f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+    assert 0 < hop_length <= frame_length, (
+        f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+    )
 
     seq_length = (n_frames - 1) * hop_length + frame_length
 
@@ -114,8 +119,8 @@ class TestOverlapAddFP16Op(TestOverlapAddOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestOverlapAddBF16Op(OpTest):
@@ -132,7 +137,7 @@ class TestOverlapAddBF16Op(OpTest):
 
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def initTestCase(self):
         input_shape = (50, 3)

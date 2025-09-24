@@ -60,6 +60,10 @@ class ProcessGroupWithStream : public ProcessGroup {
   ProcessGroupWithStream(int rank, int size, int gid)
       : ProcessGroup(rank, size, gid) {}
 
+  virtual void EraseStream(const phi::DenseTensor& tensor) const {
+    PADDLE_THROW(phi::errors::Unimplemented("EraseStream is not implemented."));
+  }
+
   virtual ~ProcessGroupWithStream() = default;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
@@ -158,6 +162,27 @@ class ProcessGroupWithStream : public ProcessGroup {
       bool use_calc_stream UNUSED) override {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support all_to_all.",
+        GetBackendName()));
+  }
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors,
+      const std::vector<phi::DenseTensor>& in_tensors,
+      bool sync_op) {
+    return AllToAll(out_tensors,
+                    in_tensors,
+                    sync_op,
+                    /*use_calc_stream*/ false);
+  }
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors UNUSED,
+      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "ProcessGroup%s does not support all_to_all "
+        "with sync_op and use_calc_stream flag.",
         GetBackendName()));
   }
 

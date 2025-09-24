@@ -26,6 +26,10 @@ void LogLossGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        float epsilon,
                        DenseTensor* in_grad) {
+  if (in_grad && in_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(in_grad);
+    return;
+  }
   auto prediction = EigenVector<T>::Flatten(input);
   auto label_out = EigenVector<T>::Flatten(label);
 

@@ -107,9 +107,9 @@ class DistributedOperatorImplContainer(abc.ABC):
         return self._impls
 
     def register_impl(self, dist_impl):
-        assert (
-            self.type == dist_impl.type
-        ), "Op type of container must be same as that of the implementation."
+        assert self.type == dist_impl.type, (
+            "Op type of container must be same as that of the implementation."
+        )
         impl_idx = len(self.impls)
         dist_impl.idx = impl_idx
         self._impls.append(dist_impl)
@@ -353,9 +353,9 @@ def is_parameter_related(varname, block, dist_context=None):
         varname = varname[: varname.index(".cast_bf")]
     if ".quantized" in varname:
         varname = varname[: varname.index(".quantized")]
-    assert block._find_var_recursive(
-        varname
-    ), f"cannot find var {varname} in cur block"
+    assert block._find_var_recursive(varname), (
+        f"cannot find var {varname} in cur block"
+    )
     var = block._var_recursive(varname)
     # NOTE(hack method): to find the param which is resharded
     if dist_context and "@RESHARD" in varname:
@@ -511,18 +511,8 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     dist_op_context = dist_ctx.dist_op_context
     main_block = dist_op_context.work_block
 
-    allreduce_type = "c_allreduce_sum"
+    reduce_type = dist.ReduceOp.SUM
     need_scale = dist_ctx.gradient_scale
-    scale_using_allreduce_avg = dist_ctx.gradient_scale_using_allreduce_avg
-
-    # With nccl_version > 2.10.00, we can use c_allreduce_avg to replace c_allreduce_sum and eliminate the scale op.
-    if (
-        need_scale
-        and scale_using_allreduce_avg
-        and int(paddle.version.nccl()) > 21000
-    ):
-        allreduce_type = "c_allreduce_avg"
-        need_scale = False
 
     for group in groups:
         group_size = len(group.ranks)
@@ -531,12 +521,12 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
             added_ops = []
             grad_var = main_block.var(var_name)
             allreduce_op = main_block.append_op(
-                type=allreduce_type,
-                inputs={'X': [grad_var]},
-                outputs={'Out': [grad_var]},
+                type='all_reduce',
+                inputs={'x': [grad_var]},
+                outputs={'out': [grad_var]},
                 attrs={
                     'ring_id': group.id,
-                    'use_calc_stream': True,
+                    'reduce_type': reduce_type,
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
@@ -561,9 +551,9 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
                 added_ops.append(scale_op)
 
             dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)
-            assert (
-                dims_mapping is not None
-            ), f"Unexpected: dims_mapping of output [{grad_var.name}] of op [{op_dist_attr.op_type}] is None"
+            assert dims_mapping is not None, (
+                f"Unexpected: dims_mapping of output [{grad_var.name}] of op [{op_dist_attr.op_type}] is None"
+            )
             # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
             for new_op in added_ops:
                 new_op_attr = OperatorDistAttr()
@@ -596,9 +586,9 @@ def get_partial_groups(dist_ctx, op, out_grad_names, rank):
         if partial_dims is None:
             partial_dims = var_dist_attr._partial_dims()
         else:
-            assert (
-                partial_dims == var_dist_attr._partial_dims()
-            ), f"Partial dims of outputs {out_grad_names} of op [{op.type}] is not consistent"
+            assert partial_dims == var_dist_attr._partial_dims(), (
+                f"Partial dims of outputs {out_grad_names} of op [{op.type}] is not consistent"
+            )
 
     partial_dims = list(partial_dims)
     partial_dims.sort()
@@ -674,12 +664,18 @@ def is_data_parallel_reduce_op(op):
         "c_allreduce_sum",
         "c_allreduce_avg",
     ]
+    is_all_reduce_op = op.type == "all_reduce" and op.desc.attr(
+        "reduce_type"
+    ) in [
+        dist.ReduceOp.SUM,
+        dist.ReduceOp.AVG,
+    ]
     is_reduce_op = op.type == "reduce" and op.desc.attr("reduce_type") in [
         dist.ReduceOp.SUM,
         dist.ReduceOp.AVG,
     ]
     return (
-        (is_allreduce_op or is_reduce_op)
+        (is_allreduce_op or is_all_reduce_op or is_reduce_op)
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
@@ -687,7 +683,8 @@ def is_data_parallel_reduce_op(op):
 
 def is_amp_flag_sync_op(op):
     return (
-        op.type == "c_allreduce_max"
+        op.type == "all_reduce"
+        and op.desc.attr("op_type") == paddle.distributed.ReduceOp.MAX
         and op.desc.has_attr("op_namescope")
         and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
     )
@@ -695,7 +692,8 @@ def is_amp_flag_sync_op(op):
 
 def is_global_norm_sync_op(op):
     return (
-        op.type == "c_allreduce_sum"
+        op.type == "all_reduce"
+        and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
         and op.desc.has_attr("op_namescope")
         and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )

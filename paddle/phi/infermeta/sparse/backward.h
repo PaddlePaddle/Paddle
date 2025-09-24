@@ -20,14 +20,14 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-void FusedAttentionGradInferMeta(const MetaTensor& query,
-                                 const MetaTensor& key,
-                                 const MetaTensor& value,
-                                 const MetaTensor& softmax,
-                                 const MetaTensor& out_grad,
-                                 MetaTensor* query_grad,
-                                 MetaTensor* key_grad,
-                                 MetaTensor* value_grad);
+PADDLE_API void FusedAttentionGradInferMeta(const MetaTensor& query,
+                                            const MetaTensor& key,
+                                            const MetaTensor& value,
+                                            const MetaTensor& softmax,
+                                            const MetaTensor& out_grad,
+                                            MetaTensor* query_grad,
+                                            MetaTensor* key_grad,
+                                            MetaTensor* value_grad);
 
 }  // namespace sparse
 }  // namespace phi

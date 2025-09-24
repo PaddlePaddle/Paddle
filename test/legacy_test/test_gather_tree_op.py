@@ -55,7 +55,6 @@ class TestGatherTreeOp(OpTest):
 
 
 class TestGatherTreeOpAPI(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         ids = paddle.static.data(name='ids', shape=[5, 2, 2], dtype='int64')
@@ -78,7 +77,6 @@ class TestGatherTreeOpAPI(unittest.TestCase):
 
 
 class TestGatherTreeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -148,6 +146,33 @@ class TestGatherTreeOpErrorForOthers(unittest.TestCase):
             self.assertRaises(ValueError, test_parents_ndim)
 
         paddle.disable_static()
+
+
+class TestGatherTreeOp_ZeroSize(OpTest):
+    def init_shape(self):
+        self.ids_shape = (0, 2, 2)
+        self.parents_shape = (0, 2, 2)
+
+    def setUp(self):
+        self.op_type = "gather_tree"
+        self.python_api = paddle.nn.functional.gather_tree
+        self.init_shape()
+        ids_shape = self.ids_shape
+        parents_shape = self.parents_shape
+        max_length, batch_size, beam_size = ids_shape
+        ids = np.random.randint(0, high=10, size=ids_shape)
+        parents = np.random.randint(0, high=beam_size, size=parents_shape)
+        self.inputs = {"Ids": ids, "Parents": parents}
+        self.outputs = {'Out': ids}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+
+class TestGatherTreeOp_ZeroSize2(TestGatherTreeOp_ZeroSize):
+    def init_shape(self):
+        self.ids_shape = (0, 2, 2)
+        self.parents_shape = (1, 2, 2)
 
 
 if __name__ == "__main__":

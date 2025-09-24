@@ -563,9 +563,9 @@ class PretrainedTokenizer:
                 # reload from save_directory
                 tokenizer = BertTokenizer.from_pretrained('trained_model')
         """
-        assert not os.path.isfile(
-            save_directory
-        ), f"Saving directory ({save_directory}) should be a directory, not a file"
+        assert not os.path.isfile(save_directory), (
+            f"Saving directory ({save_directory}) should be a directory, not a file"
+        )
         os.makedirs(save_directory, exist_ok=True)
 
         tokenizer_config_file = os.path.join(

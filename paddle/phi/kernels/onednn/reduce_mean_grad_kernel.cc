@@ -26,6 +26,11 @@ void MeanGradKernel(const Context& dev_ctx,
                     bool keep_dim,
                     bool reduce_all,
                     DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto input_dims = common::vectorize(x.dims());
   std::vector<int64_t> reduce_dims = dims.GetData();
@@ -55,11 +60,7 @@ void MeanGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(mean_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::MeanGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    mean_grad, OneDNN, ONEDNN, phi::MeanGradKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
 }

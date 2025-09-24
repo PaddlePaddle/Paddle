@@ -85,9 +85,9 @@ def parse_process_groups():
 
 
 def get_metric(results):
-    assert isinstance(
-        results, dict
-    ), f"results should be type of dictionary, but got {type(results)}."
+    assert isinstance(results, dict), (
+        f"results should be type of dictionary, but got {type(results)}."
+    )
     if 'Throughput' in results and isinstance(results['Throughput'], float):
         return float(results['Throughput'])
     else:
@@ -342,11 +342,13 @@ class OptimizationTuner:
 
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
-        with program_guard(dist_main_prog, dist_startup_prog):
-            with dist_main_prog.switch_name_generator_guard("opt_"):
-                optimizer_ops = dist_context.serial_optimizer.apply_gradients(
-                    dist_params_grads
-                )
+        with (
+            program_guard(dist_main_prog, dist_startup_prog),
+            dist_main_prog.switch_name_generator_guard("opt_"),
+        ):
+            optimizer_ops = dist_context.serial_optimizer.apply_gradients(
+                dist_params_grads
+            )
         completer.complete_update_annotation(dist_main_prog)
 
         resharder = Resharder(
@@ -469,11 +471,14 @@ class OptimizationTuner:
         # TODO if any rank hang or fail, kill all processes
         self._logger.debug("Executing cmd:\n{} .".format(" ".join(cmd)))
         # new_process = subprocess.Popen(cmd, env=new_env)
-        with open(
-            os.path.join(trial_dir, "stdout.log" + str(self.rank)), "wb"
-        ) as out, open(
-            os.path.join(trial_dir, "stderr.log" + str(self.rank)), "wb"
-        ) as err:
+        with (
+            open(
+                os.path.join(trial_dir, "stdout.log" + str(self.rank)), "wb"
+            ) as out,
+            open(
+                os.path.join(trial_dir, "stderr.log" + str(self.rank)), "wb"
+            ) as err,
+        ):
             result = subprocess.Popen(cmd, stdout=out, stderr=err, env=new_env)
             result.wait()
             out.flush()
@@ -572,8 +577,7 @@ The best trial is: [{best_trial.name}], whose configuration is following:
         summary_ += "\n" + best_trial.summary() + "\n"
         self._logger.info(summary_)
         with open(os.path.join(self.project_dir, "summary.txt"), "w+") as fw:
-            for line in summary_.split("\n"):
-                fw.write(line + "\n")
+            fw.writelines(line + "\n" for line in summary_.split("\n"))
 
         # full_strategy = self.get_best_config()
         # path = os.path.join(self.project_dir, "tuned_dist_strategy.yaml")

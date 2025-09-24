@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -66,8 +71,8 @@ class TestFloat16ArangeOp(TestArangeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestBFloat16ArangeOp(OpTest):
@@ -95,7 +100,7 @@ class TestBFloat16ArangeOp(OpTest):
         self.step = np.array([self.case[2]]).astype(np.float32)
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
@@ -130,15 +135,99 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
-
     def test_static_errors(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
+    def test_unisfinite_start_errors(self):
+        paddle.disable_static()
+        start = paddle.to_tensor(np.array([np.nan], 'float32'))
+        end = paddle.to_tensor(np.array([100], 'float32'))
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
+        start = float('nan')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        start = float('nan')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
+    def test_unisfinite_end_errors(self):
+        paddle.disable_static()
+        start = paddle.to_tensor(np.array([0.0], 'float32'))
+        end = paddle.to_tensor(np.array([np.inf], 'float32'))
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
+        end = float('inf')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        end = float('inf')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
 
 class TestArangeAPI(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -146,11 +235,7 @@ class TestArangeAPI(unittest.TestCase):
         ):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
-            place = (
-                paddle.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
@@ -162,11 +247,7 @@ class TestArangeAPI(unittest.TestCase):
 
 class TestArangeImperative(unittest.TestCase):
     def test_out(self):
-        place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         paddle.disable_static(place)
         x1 = paddle.arange(0, 5, 1)
         x2 = paddle.tensor.arange(5)
@@ -239,6 +320,18 @@ class TestArangeImperative(unittest.TestCase):
 
         np.testing.assert_array_equal(x12.numpy(), x12_expected_data)
         self.assertEqual(x12.numpy().dtype, np.int64)
+
+        # [start<end step<0]
+        x13 = paddle.arange(start=0, end=10, step=-1)
+
+        x13_expected_data = np.array([])
+        np.testing.assert_array_equal(x13.numpy(), x13_expected_data)
+
+        # [start>end step>0]
+        x14 = paddle.arange(start=10, end=0, step=1)
+
+        x14_expected_data = np.array([])
+        np.testing.assert_array_equal(x14.numpy(), x14_expected_data)
 
         paddle.enable_static()
 

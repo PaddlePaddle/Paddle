@@ -1,0 +1,54 @@
+name: Slice-baseline-paddle
+
+on:
+  workflow_dispatch:
+    inputs:
+      PR_ID:
+        required: false
+        type: string
+      COMMIT_ID:
+        required: false
+        type: string
+        # schedule:
+        #   - cron: '0 20 * * 0'
+
+permissions: read-all
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  clone:
+    name: Slice-base clone
+    uses: ./.github/workflows/_Clone-linux.yml
+    with:
+      clone_dir: Paddle-build
+      is_pr: 'false'
+
+  build-docker:
+    name: Slice build docker
+    needs: clone
+    uses: ./.github/workflows/docker.yml
+    with:
+      clone_dir: Paddle-build
+      task: build
+
+  build:
+    name: Slice build
+    needs: [clone, build-docker]
+    uses: ./.github/workflows/_Linux-build.yml
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      is_pr: 'false'
+
+  slice-test:
+    name: Slice test
+    uses: ./.github/workflows/_Slice.yml
+    needs: [clone, build-docker, build]
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      slice-check: 'true'
+      SLICE_TEST_MODE: insert_baseline
+      MANUALLY_PR_ID: ${{ inputs.PR_ID }}
+      MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}

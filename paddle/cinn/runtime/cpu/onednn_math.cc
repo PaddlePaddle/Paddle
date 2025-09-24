@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
-#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 
 using dnnl::algorithm;

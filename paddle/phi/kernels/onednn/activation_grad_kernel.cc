@@ -17,7 +17,6 @@
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -116,6 +115,10 @@ struct OneDNNActivationGradFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* dx) const {
+    if (dx && dx->numel() == 0) {
+      dev_ctx.template Alloc<T>(dx);
+      return;
+    }
     eltwise_grad<T>(dev_ctx, x, dout, alpha, beta, dx, algorithm);
   }
 };
@@ -128,6 +131,10 @@ struct OneDNNActivationGradUseOutFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* dx) const {
+    if (dx && dx->numel() == 0) {
+      dev_ctx.template Alloc<T>(dx);
+      return;
+    }
     eltwise_grad_use_out<T>(dev_ctx, out, dout, alpha, beta, dx, algorithm);
   }
 };
@@ -266,16 +273,11 @@ void Relu6GradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(relu_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ReluGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    relu_grad, OneDNN, ONEDNN, phi::ReluGradKernel, float, phi::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(                                  \
-      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
+  PD_REGISTER_KERNEL(name, OneDNN, ONEDNN, phi::func, float, phi::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(abs_grad, AbsGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)

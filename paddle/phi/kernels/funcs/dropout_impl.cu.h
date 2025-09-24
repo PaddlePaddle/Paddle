@@ -357,11 +357,8 @@ void DropoutFwGPUKernelDriver(
           parameterSetter = [offset, dev_ctx_p, state_index, is_fix_seed](
                                 phi::backends::gpu::gpuKernelParams& params) {
             if (!is_fix_seed) {
-          // we assume seed is null pointer
-          // seed copy to cpu is meaningless here
-#ifndef PADDLE_WITH_HIP
-              assert(seed_tensor_ptr == nullptr);
-#endif
+              // we assume seed is null pointer
+              // seed copy to cpu is meaningless here
               auto gen_cuda = dev_ctx_p->GetGenerator();
               // ensure the generator use correct state index
               gen_cuda->SetStateIndex(state_index);

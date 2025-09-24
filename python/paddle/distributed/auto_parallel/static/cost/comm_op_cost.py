@@ -84,6 +84,100 @@ class AllreduceSumOpCost(CommOpCost):
 
 
 @register_op_cost
+class AllReduceOpCost(CommOpCost):
+    OP_TYPE = "all_reduce"
+
+    def __init__(self, op=None, op_desc=None, comm_context=None):
+        super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
+
+    def calc_time(self):
+        # use tree if cross machine and use ring if in a single machine
+        time = None
+        cluster = self.comm_context.cluster
+        if not cluster.cross_machine(self.group_ranks):
+            time = self.calc_time_ring()
+        else:
+            time = self.calc_time_tree()
+
+        return time
+
+    def calc_time_ring(self):
+        alpha = self.comm_context.base_ring
+        alpha += (
+            2
+            * (self.rank_count - self.machine_count)
+            * self.comm_context.intra_ring
+        )
+        alpha += (
+            2
+            * (self.machine_count - 1)
+            * (
+                self.comm_context.inter_ring
+                + self.hops * self.comm_context.switch
+            )
+        )
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+        time = (
+            alpha
+            + 2
+            * (self.rank_count - 1)
+            / self.rank_count
+            * self.comm_count
+            * beta
+        )
+
+        return time
+
+    def calc_time_tree(self):
+        alpha = self.comm_context.base_tree
+        alpha += (
+            2
+            * (self.rank_count / self.machine_count - 1)
+            * self.comm_context.intra_tree
+        )
+        alpha += math.log2(self.machine_count) * (
+            self.comm_context.inter_tree + self.hops * self.comm_context.switch
+        )
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+
+        time = alpha + 2 * self.comm_count * beta
+
+        return time
+
+    @property
+    def comm_count(self):
+        from ..reshard import get_var_with_recursion
+
+        if self._comm_count is None:
+            dtype = None
+            shape = None
+            if self.op is not None:
+                vars = self.op.block.vars
+                try:
+                    var_name = self.op.input("x")[0]
+                except:
+                    var_name = self.op.output("out")[0]
+                var = get_var_with_recursion(
+                    var_name, self.op.block, self.op.block.program
+                )
+                dtype = var.dtype
+                shape = var.shape
+            elif self.op_desc is not None:
+                dtype = self.op_desc["inputs"]["x"][0][0]
+                shape = self.op_desc["inputs"]["x"][0][1]
+
+            factor = None
+            if dtype == paddle.float32 or dtype == paddle.int32:
+                factor = 4
+            else:
+                raise ValueError(f"Unsupported comm dtype {dtype}")
+            comm_count = int(np.prod(shape)) * factor
+            self._comm_count = comm_count
+
+        return self._comm_count
+
+
+@register_op_cost
 class AllgatherOpCost(CommOpCost):
     OP_TYPE = "all_gather"
 

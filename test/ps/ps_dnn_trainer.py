@@ -152,7 +152,7 @@ class YamlHelper:
 
 def get_user_defined_strategy(config):
     if not is_distributed_env():
-        logger.warn(
+        logger.warning(
             "Not Find Distributed env, Change To local train mode. If you want train with fleet, please use [fleetrun] command."
         )
         # return None

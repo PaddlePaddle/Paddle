@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import itertools
 import sys
 import unittest
 
 import numpy as np
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -35,7 +35,9 @@ DTYPE_ALL = [
 DTYPE_COLUMN_STACK = DTYPE_ALL
 
 PLACES = [('cpu', paddle.CPUPlace())] + (
-    [('gpu', paddle.CUDAPlace(0))] if core.is_compiled_with_cuda() else []
+    [(get_device(), get_device_place())]
+    if (core.is_compiled_with_cuda() or is_custom_device())
+    else []
 )
 
 
@@ -95,50 +97,48 @@ class BaseTest(unittest.TestCase):
             exe = paddle.static.Executor(place)
             new_scope = paddle.static.Scope()
             main_program = paddle.static.Program()
-            with paddle.static.scope_guard(new_scope):
-                with paddle.static.program_guard(main_program):
-                    x = []
-                    feed = {}
-                    for i in range(len(inputs)):
-                        input = inputs[i]
-                        shape = shapes[i]
-                        dtype = dtypes[i]
-                        name = names[i]
+            with (
+                paddle.static.scope_guard(new_scope),
+                paddle.static.program_guard(main_program),
+            ):
+                x = []
+                feed = {}
+                for i in range(len(inputs)):
+                    input = inputs[i]
+                    shape = shapes[i]
+                    dtype = dtypes[i]
+                    name = names[i]
 
-                        _x = paddle.static.data(name, shape, dtype)
-                        _x.stop_gradient = False
-                        x.append(_x)
+                    _x = paddle.static.data(name, shape, dtype)
+                    _x.stop_gradient = False
+                    x.append(_x)
 
-                        # the data feeded should NOT be a Tensor
-                        feed[name] = input
+                    # the data feeded should NOT be a Tensor
+                    feed[name] = input
 
-                    out = func_paddle(x)
-                    out.stop_gradient = False
+                out = func_paddle(x)
+                out.stop_gradient = False
 
-                    y = out * 123
+                y = out * 123
 
-                    # not check old ir
-                    if paddle.framework.in_pir_mode():
-                        fetch_list = [out]
-                        grads = paddle.autograd.ir_backward.grad(y, x)
-                        fetch_list.append(grads)
+                # not check old ir
+                if paddle.framework.in_pir_mode():
+                    fetch_list = [out]
+                    grads = paddle.autograd.ir_backward.grad(y, x)
+                    fetch_list.append(grads)
 
-                        exe = paddle.static.Executor(place)
-                        res, *res_grad = exe.run(
-                            feed=feed, fetch_list=fetch_list
-                        )
+                    exe = paddle.static.Executor(place)
+                    res, *res_grad = exe.run(feed=feed, fetch_list=fetch_list)
 
-                        # convert grad value to bool if dtype is bool
-                        grad_value = 123.0 if dtypes[0] != 'bool' else True
-                        np.testing.assert_allclose(
-                            res_grad[0], np.ones(x[0].shape) * grad_value
-                        )
+                    # convert grad value to bool if dtype is bool
+                    grad_value = 123.0 if dtypes[0] != 'bool' else True
+                    np.testing.assert_allclose(
+                        res_grad[0], np.ones(x[0].shape) * grad_value
+                    )
 
-                        out_ref = func_numpy(inputs)
-                        for n, p in zip(out_ref, res):
-                            np.testing.assert_allclose(
-                                n, p, rtol=RTOL, atol=ATOL
-                            )
+                    out_ref = func_numpy(inputs)
+                    for n, p in zip(out_ref, res):
+                        np.testing.assert_allclose(n, p, rtol=RTOL, atol=ATOL)
 
     def _test_dygraph_api(
         self,
@@ -235,18 +235,18 @@ class TestHStack(BaseTest, BaseCases):
     def test_dtype(self):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    not core.is_float16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    not core.is_bfloat16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
@@ -256,6 +256,18 @@ class TestHStack(BaseTest, BaseCases):
                 generate_data([], count=1, dtype=dtype),
                 dtype,
             )
+
+
+class TestHStackZeroDim1(TestHStack):
+    def test_mix_ndim(self):
+        d0 = generate_data([0, 1, 1], count=1, dtype='float64')
+        self._test_all(d0)
+
+
+class TestHStackZeroDim2(TestHStack):
+    def test_mix_ndim(self):
+        d0 = generate_data([1, 0, 1, 1], count=1, dtype='float64')
+        self._test_all(d0)
 
 
 class TestVStack(BaseTest, BaseCases):
@@ -271,18 +283,18 @@ class TestVStack(BaseTest, BaseCases):
     def test_dtype(self):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    not core.is_float16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    not core.is_bfloat16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
@@ -311,18 +323,18 @@ class TestDStack(BaseTest, BaseCases):
     def test_dtype(self):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    not core.is_float16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    not core.is_bfloat16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
@@ -347,18 +359,18 @@ class TestColumnStack(BaseTest, BaseCases):
     def test_dtype(self):
         for dtype in DTYPE_COLUMN_STACK:
             if dtype == 'float16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    not core.is_float16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    not core.is_bfloat16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
@@ -383,18 +395,18 @@ class TestRowStack(BaseTest, BaseCases):
     def test_dtype(self):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    not core.is_float16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 or (
-                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    not core.is_bfloat16_supported(get_device_place())
                     or sys.platform == 'win32'
                 )
             ):

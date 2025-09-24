@@ -63,6 +63,6 @@ PD_REGISTER_KERNEL(scale,
                    ONEDNN,
                    phi::ScaleKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {}

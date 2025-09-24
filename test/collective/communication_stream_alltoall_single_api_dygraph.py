@@ -29,7 +29,7 @@ class StreamAllToAllSingleTestCase:
         self._shape = eval(os.getenv("shape"))
         self._dtype = os.getenv("dtype")
         self._seeds = eval(os.getenv("seeds"))
-        if self._backend not in ["nccl", "gloo"]:
+        if self._backend not in ["nccl", "gloo", "flagcx"]:
             raise NotImplementedError(
                 "Only support nccl and gloo as the backend for now."
             )

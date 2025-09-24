@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from copy import deepcopy
 
 import numpy as np
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    get_devices,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -191,12 +197,13 @@ class TestNAdamOpWithDefault(TestNAdamOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNAdamOpGPU(TestNAdamOp):
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), check_pir=True, rtol=RTOL, atol=ATOL
+            get_device_place(), check_pir=True, rtol=RTOL, atol=ATOL
         )
 
 
@@ -283,22 +290,24 @@ class TestNAdamAPI(unittest.TestCase):
         exe = base.Executor(place)
         train_prog = base.Program()
         startup = base.Program()
-        with base.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(name="data", shape=shape)
-                hidden = paddle.static.nn.fc(x=data, size=10)
-                loss = paddle.mean(hidden)
+        with (
+            base.program_guard(train_prog, startup),
+            base.unique_name.guard(),
+        ):
+            data = paddle.static.data(name="data", shape=shape)
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
 
-                beta1 = 0.85
-                beta2 = 0.95
-                opt = paddle.optimizer.NAdam(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
-                )
-                opt.minimize(loss)
+            beta1 = 0.85
+            beta2 = 0.95
+            opt = paddle.optimizer.NAdam(
+                learning_rate=1e-5,
+                beta1=beta1,
+                beta2=beta2,
+                weight_decay=0.01,
+                epsilon=1e-8,
+            )
+            opt.minimize(loss)
 
         exe.run(startup)
         data_np = np.random.random(shape).astype('float32')
@@ -313,22 +322,24 @@ class TestNAdamAPI(unittest.TestCase):
             exe = base.Executor(place)
             train_prog = paddle.static.Program()
             startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    data = paddle.static.data(name="data", shape=shape)
-                    hidden = paddle.static.nn.fc(x=data, size=10)
-                    loss = paddle.mean(hidden)
+            with (
+                paddle.static.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                data = paddle.static.data(name="data", shape=shape)
+                hidden = paddle.static.nn.fc(x=data, size=10)
+                loss = paddle.mean(hidden)
 
-                    beta1 = 0.85
-                    beta2 = 0.95
-                    opt = paddle.optimizer.NAdam(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
-                    )
-                    opt.minimize(loss)
+                beta1 = 0.85
+                beta2 = 0.95
+                opt = paddle.optimizer.NAdam(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                )
+                opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype('float32')
@@ -437,11 +448,11 @@ class TestNAdamMultiPrecision(unittest.TestCase):
         optimizer._multi_precision = use_amp
 
         for _ in range(2):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -456,20 +467,8 @@ class TestNAdamMultiPrecision(unittest.TestCase):
                 optimizer.step()
                 optimizer.clear_grad()
 
-    def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
-        for place in self._get_places():
+        for place in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_nadam_dygraph_place_amp(place, use_amp)
@@ -479,7 +478,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
     def dygraph_nadam_mp(self, mp, use_amp):
         paddle.disable_static()
         paddle.seed(100)
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.NAdam(0.1, parameters=model.parameters())
@@ -510,7 +509,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(2024)
         with paddle.pir_utils.OldIrGuard():
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             optimizer = paddle.optimizer.NAdam(0.1)
@@ -540,7 +539,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
             np.random.seed(2024)
             if use_amp:
                 optimizer.amp_init(
-                    place=paddle.CUDAPlace(0),
+                    place=get_device_place(),
                     scope=paddle.static.global_scope(),
                 )
                 x = np.random.random(size=(2, 2)).astype('float16')
@@ -559,7 +558,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             paddle.seed(2024)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -616,7 +615,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(train_program, startup_program):
-                exe = paddle.static.Executor('gpu')
+                exe = paddle.static.Executor(get_device_place())
                 linear = paddle.nn.Linear(2, 10)
                 optimizer = paddle.optimizer.NAdam(
                     0.1, parameters=linear.parameters()
@@ -650,7 +649,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
                 return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_nadam_mp(use_amp=True, mp=True)
@@ -731,48 +730,35 @@ class TestNAdamGroupWithLR(TestNAdamAPI):
             nadam.clear_gradients()
 
 
-def get_places():
-    places = []
-    if (
-        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-        in ['1', 'true', 'on']
-        or not base.is_compiled_with_cuda()
-    ):
-        places.append(base.CPUPlace())
-    if base.is_compiled_with_cuda():
-        places.append(base.CUDAPlace(0))
-    return places
-
-
 def main_test_func(place, dtype):
     paddle.enable_static()
     main = base.Program()
     startup = base.Program()
-    with base.program_guard(main, startup):
-        with base.scope_guard(base.Scope()):
-            x = paddle.static.data(name='x', shape=[None, 13], dtype=dtype)
-            y = paddle.static.data(name='y', shape=[None, 1], dtype=dtype)
-            y_predict = paddle.static.nn.fc(x, size=1)
-            cost = paddle.nn.functional.square_error_cost(
-                input=y_predict, label=y
-            )
-            avg_cost = paddle.mean(cost)
+    with (
+        base.program_guard(main, startup),
+        base.scope_guard(base.Scope()),
+    ):
+        x = paddle.static.data(name='x', shape=[None, 13], dtype=dtype)
+        y = paddle.static.data(name='y', shape=[None, 1], dtype=dtype)
+        y_predict = paddle.static.nn.fc(x, size=1)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+        avg_cost = paddle.mean(cost)
 
-            nadam_optimizer = paddle.optimizer.NAdam(0.01)
-            nadam_optimizer.minimize(avg_cost)
+        nadam_optimizer = paddle.optimizer.NAdam(0.01)
+        nadam_optimizer.minimize(avg_cost)
 
-            fetch_list = [avg_cost]
-            train_reader = list(
-                zip(
-                    np.random.rand(101, 13),
-                    np.random.randint(12, size=(101, 1)),
-                )
+        fetch_list = [avg_cost]
+        train_reader = list(
+            zip(
+                np.random.rand(101, 13),
+                np.random.randint(12, size=(101, 1)),
             )
-            feeder = base.DataFeeder(place=place, feed_list=[x, y])
-            exe = base.Executor(place)
-            exe.run(base.default_startup_program())
-            for data in train_reader:
-                exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
+        )
+        feeder = base.DataFeeder(place=place, feed_list=[x, y])
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
+        for data in train_reader:
+            exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
 
     paddle.disable_static()
 

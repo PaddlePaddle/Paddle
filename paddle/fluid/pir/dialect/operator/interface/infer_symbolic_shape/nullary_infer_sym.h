@@ -17,6 +17,7 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(RangeV2)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Arange)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(AssignValue)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(AssignValue_)

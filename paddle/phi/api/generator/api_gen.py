@@ -15,13 +15,10 @@ import argparse
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME, BaseAPI
+from api_base import PREFIX_TENSOR_NAME, BaseAPI, IsUsePredefinedOut
 
 backward_api_black_list = [
-    "embedding_grad",  # tensor = embedding_grad_impl() is not implemented in api_custom_impl.cc
-    "pull_sparse_v2_grad",  # tensor = pull_sparse_v2() is not implemented in api_custom_impl.cc
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
-    "cudnn_lstm_grad",  # weight_list.size() should be weight_list.get_ptr()->size() but can't modify yaml file
 ]
 
 inplace_out_type_map = {
@@ -108,12 +105,12 @@ class ForwardAPI(BaseAPI):
                     result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
                     in_val = result.group('in')
                     out_val = result.group('out')
-                    assert (
-                        in_val in self.inputs['names']
-                    ), f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                    assert (
-                        out_val in self.outputs['names']
-                    ), f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+                    assert in_val in self.inputs['names'], (
+                        f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                    )
+                    assert out_val in self.outputs['names'], (
+                        f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+                    )
 
                     if mode == 'inplace':
                         inplace_map[out_val] = in_val
@@ -123,7 +120,6 @@ class ForwardAPI(BaseAPI):
         return inplace_map, view_map
 
     def get_return_type_with_intermediate(self, inplace_flag=False):
-
         out_type_list = []
         for i, out_type in enumerate(self.outputs['types']):
             out_name = self.outputs['names'][i].split('@')[0]
@@ -220,8 +216,23 @@ class ForwardAPI(BaseAPI):
                 if inplace_flag and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
-            output_create = f"""
+
+            if (
+                len(self.outputs['names']) == 1
+                and self.outputs['types'][0] == "Tensor"
+                and not (
+                    inplace_flag
+                    and self.outputs['names'][0].split('@')[0]
+                    in self.inplace_map
+                )
+                and self.api != "empty_like"
+            ):
+                output_create = f"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
+            else:
+                output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
+
             set_out_func = (
                 'SetKernelOutput'
                 if out_tensor_type_list is None
@@ -233,9 +244,9 @@ class ForwardAPI(BaseAPI):
                 return_type == 'std::vector<Tensor>'
                 or return_type == 'std::vector<Tensor>&'
             ):
-                assert (
-                    self.outputs['out_size_expr'][0] is not None
-                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                assert self.outputs['out_size_expr'][0] is not None, (
+                    f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                )
                 output_create = (
                     output_create
                     + f"""
@@ -245,9 +256,9 @@ class ForwardAPI(BaseAPI):
                 return_type == 'paddle::optional<std::vector<Tensor>>'
                 or return_type == 'paddle::optional<std::vector<Tensor>>&'
             ):
-                assert (
-                    self.outputs['out_size_expr'][0] is not None
-                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                assert self.outputs['out_size_expr'][0] is not None, (
+                    f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                )
                 output_create = (
                     output_create
                     + f"""
@@ -279,11 +290,38 @@ class ForwardAPI(BaseAPI):
                     + f"""
 {code_indent}  kernel_out->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
 {code_indent}  kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
-{code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
+{code_indent}  VLOG(5) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
                 )
 
         elif len(out_dtype_list) > 1:
-            output_create = f"""
+            if not (
+                inplace_flag
+                and any(
+                    name.split('@')[0] in self.inplace_map
+                    for name in self.outputs['names']
+                )
+            ):
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_create = f"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_indices = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_create = f"""
+{code_indent}  std::tuple<{tuple_types}> out_tmp;
+{code_indent}  paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;
+{code_indent}  if(predefined_out) {{ predefined_out_value = std::make_tuple({get_indices}); }}
+{code_indent}  std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"""
+                else:
+                    output_create = f"""
+{code_indent}  {return_type} api_output;"""
+            else:
+                output_create = f"""
 {code_indent}  {return_type} api_output;"""
 
             if inplace_flag:
@@ -317,9 +355,9 @@ class ForwardAPI(BaseAPI):
                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
 
                 if out_dtype_list[i] == 'std::vector<Tensor>':
-                    assert (
-                        self.outputs['out_size_expr'][i] is not None
-                    ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    assert self.outputs['out_size_expr'][i] is not None, (
+                        f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    )
                     # Special case for inplace vector and inplace optional<vector>
                     if self.outputs['names'][i] in self.inplace_map:
                         set_out_func = "SetInplaceVectorKernelOutput"
@@ -373,7 +411,7 @@ class ForwardAPI(BaseAPI):
                             + f"""
     {code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
     {code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
-    {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
+    {code_indent}  VLOG(5) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
                         )
                     else:
                         raise ValueError(
@@ -417,6 +455,77 @@ class ForwardAPI(BaseAPI):
         return remap_code
 
 
+class BackwardAPI(ForwardAPI):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
+    ):
+        api_func_name = self.get_api_func_name()
+        if inplace_flag and api_func_name[-1] != '_':
+            inplace_name = api_func_name + '_'
+        else:
+            inplace_name = api_func_name
+        api_code = f"""
+PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_predefined_out=append_predefined_out)}) {{
+{self.get_grad_outputs_define(inplace_flag)}
+{self.get_optional_inputs_change(inplace_flag)}
+    {api_func_name}({self.get_grad_api_call_args(inplace_flag)});
+    return {self.get_grad_output(inplace_flag)};
+}}
+"""
+        return api_code
+
+    def gene_api_code(self, grad_flag=False, append_predefined_out=False):
+        if not self.is_base_api and not self.is_only_composite_api:
+            invoke_func_name = self.invoke.split('(')[0]
+            if (not invoke_func_name.endswith("_grad")) and (
+                not invoke_func_name.endswith('_impl')
+            ):
+                return ""
+
+        if self.is_only_composite_api:
+            return ""
+
+        api_code = self.gene_base_api_code(
+            grad_flag=grad_flag, append_predefined_out=append_predefined_out
+        )
+        if self.is_base_api and len(self.inplace_map) > 0:
+            if self.api[-1] == '_':
+                api_code = ""
+            api_code = api_code + self.gene_base_api_code_for_inplace()
+
+        return api_code
+
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
+        if not self.is_base_api and not self.is_only_composite_api:
+            invoke_func_name = self.invoke.split('(')[0]
+            if (not invoke_func_name.endswith("_grad")) and (
+                not invoke_func_name.endswith('_impl')
+            ):
+                return ""
+
+        if self.is_only_composite_api:
+            return ""
+
+        api_declaration = ""
+        api_func_name = self.get_api_func_name()
+        if api_func_name[-1] != '_':
+            api_declaration = f"""
+PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_predefined_out=append_predefined_out)});
+"""
+
+        if self.is_base_api and len(self.inplace_map) > 0:
+            if api_func_name[-1] != '_':
+                api_func_name += '_'
+            api_declaration = (
+                api_declaration
+                + f"""
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_predefined_out=append_predefined_out)});
+"""
+            )
+
+        return api_declaration
+
+
 def header_include():
     return """
 #include <tuple>
@@ -430,12 +539,13 @@ def header_include():
 
 def source_include(header_file_path):
     return f"""
-#include "{header_file_path}"
+
 #include <memory>
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 
+{header_file_path}
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/api_registry.h"
@@ -458,6 +568,12 @@ def source_include(header_file_path):
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#elif PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -499,7 +615,11 @@ PD_DECLARE_API(reshard);
 
 
 def generate_api(
-    api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+    api_yaml_path,
+    is_fused_ops_yaml,
+    header_file_path,
+    source_file_path,
+    grad_flag,
 ):
     apis = []
 
@@ -518,11 +638,20 @@ def generate_api(
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = (
-        "paddle/phi/api/include/fused_api.h"
-        if is_fused_ops_yaml is True
-        else "paddle/phi/api/include/api.h"
-    )
+    if not grad_flag:
+        include_header_file = (
+            '#include "paddle/phi/api/include/fused_api.h"'
+            if is_fused_ops_yaml is True
+            else '#include "paddle/phi/api/include/api.h"'
+        )
+    else:
+        include_header_file = (
+            '#include "paddle/phi/api/backward/fused_backward_api.h" \n'
+            '#include "paddle/phi/api/backward/fused_backward_api_base.h" '
+            if is_fused_ops_yaml is True
+            else '#include "paddle/phi/api/backward/backward_api.h" \n'
+            '#include "paddle/phi/api/backward/backward_api_base.h" '
+        )
     # not all fused ops support dygraph
     if is_fused_ops_yaml is True:
         new_apis = [
@@ -537,8 +666,11 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
+        if not grad_flag:
+            forward_api = ForwardAPI(api)
+        else:
+            forward_api = BackwardAPI(api)
 
-        forward_api = ForwardAPI(api)
         if forward_api.api in backward_api_black_list:
             continue
         if forward_api.is_dygraph_api and not is_fused_ops_yaml:
@@ -546,12 +678,20 @@ def generate_api(
 
         if forward_api.is_dygraph_api and is_fused_ops_yaml:
             forward_api.is_dygraph_api = False
-            header_file.write(forward_api.gene_api_declaration())
-            source_file.write(forward_api.gene_api_code())
+            header_file.write(
+                forward_api.gene_api_declaration(
+                    grad_flag=grad_flag, append_predefined_out=not grad_flag
+                )
+            )
+            source_file.write(forward_api.gene_api_code(grad_flag=grad_flag))
             forward_api.is_dygraph_api = True
 
-        header_file.write(forward_api.gene_api_declaration())
-        source_file.write(forward_api.gene_api_code())
+        header_file.write(
+            forward_api.gene_api_declaration(
+                grad_flag=grad_flag, append_predefined_out=not grad_flag
+            )
+        )
+        source_file.write(forward_api.gene_api_code(grad_flag=grad_flag))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
@@ -574,6 +714,13 @@ def main():
     )
 
     parser.add_argument(
+        '--backward_api_yaml_path',
+        help='path to api yaml file',
+        nargs='+',
+        default=['paddle/phi/ops/yaml/backward.yaml'],
+    )
+
+    parser.add_argument(
         '--is_fused_ops_yaml',
         help='flag of fused ops yaml',
         action='store_true',
@@ -591,15 +738,42 @@ def main():
         default='paddle/phi/api/lib/api.cc',
     )
 
+    parser.add_argument(
+        '--backward_api_header_path',
+        help='output of generated api header code file',
+        default='paddle/phi/api/backward/backward_api.h',
+    )
+
+    parser.add_argument(
+        '--backward_api_source_path',
+        help='output of generated api source code file',
+        default='paddle/phi/api/lib/backward_api.cc',
+    )
+
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
+    backward_api_yaml_path = options.backward_api_yaml_path
     is_fused_ops_yaml = options.is_fused_ops_yaml
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
+    backward_header_file_path = options.backward_api_header_path
+    backward_source_file_path = options.backward_api_source_path
 
     generate_api(
-        api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+        api_yaml_path,
+        is_fused_ops_yaml,
+        header_file_path,
+        source_file_path,
+        False,
+    )
+
+    generate_api(
+        backward_api_yaml_path,
+        is_fused_ops_yaml,
+        backward_header_file_path,
+        backward_source_file_path,
+        True,
     )
 
 

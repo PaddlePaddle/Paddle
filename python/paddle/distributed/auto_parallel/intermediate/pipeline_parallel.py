@@ -60,7 +60,7 @@ class SplitPoint(Enum):
 
 
 class PipelineParallel(ParallelModel):
-    def __init__(self, model, split_spec, global_spec, pipeline_layers):
+    def __init__(self, model, split_spec, global_spec, pipeline_layers=None):
         super().__init__(model)
         self.split_spec = split_spec
         self.global_spec = global_spec
@@ -71,19 +71,15 @@ class PipelineParallel(ParallelModel):
             self.name_to_layer[layer_name] = layer
 
     def get_layer_by_name(self, name):
-        assert (
-            name in self.name_to_layer
-        ), f"layer name:{name} not in the model, please check the split_spec"
+        assert name in self.name_to_layer, (
+            f"layer name:{name} not in the model, please check the split_spec"
+        )
         return self.name_to_layer[name]
 
     def pipeline_parallel_fn(self, model):
         mesh = fleet.auto.get_mesh()
         pipeline_stage_num = mesh.get_dim_size("pp")
         assert len(self.split_spec) == pipeline_stage_num - 1
-
-        name_to_layer = {}
-        for layer_name, layer in model.named_sublayers():
-            name_to_layer[layer_name] = layer
 
         def forward_post_hook(layer, input, output):
             pipeline_stage_index = layer.pipeline_stage_index
@@ -98,7 +94,7 @@ class PipelineParallel(ParallelModel):
                         self.get_mesh(pipeline_stage_index + 1),
                         tensor.placements,
                     )
-            elif isinstance(output, (list, tuple)):
+            elif isinstance(output, list):
                 for i in range(len(output)):
                     assert is_tensor(output[i])
                     output[i] = dist.reshard(
@@ -106,6 +102,16 @@ class PipelineParallel(ParallelModel):
                         self.get_mesh(pipeline_stage_index + 1),
                         output[i].placements,
                     )
+            elif isinstance(output, tuple):
+                output = list(output)
+                for i in range(len(output)):
+                    assert is_tensor(output[i])
+                    output[i] = dist.reshard(
+                        output[i],
+                        self.get_mesh(pipeline_stage_index + 1),
+                        output[i].placements,
+                    )
+                output = tuple(output)
             elif is_tensor(output):
                 output = dist.reshard(
                     output,
@@ -114,7 +120,7 @@ class PipelineParallel(ParallelModel):
                 )
             else:
                 raise ValueError(
-                    f"output should be a dict of tensors or list of tensors or tensor, but {type(output)}"
+                    f"output between pp stages should be a dict of tensors or list of tensors or tuple of tensors or tensor, but {type(output)}"
                 )
             return output
 
@@ -139,9 +145,9 @@ class PipelineParallel(ParallelModel):
                         pipeline_layer_mark[i] = 1
                         is_valid = True
                         break
-                assert (
-                    is_valid
-                ), f"the last layer:{split_layer_name} must not be SplitPoint.END, please check the split_spec"
+                assert is_valid, (
+                    f"the last layer:{split_layer_name} must not be SplitPoint.END, please check the split_spec"
+                )
             else:
                 raise NotImplementedError(
                     "SplitPoint.BEGINNING is not supported currently"
@@ -164,8 +170,10 @@ class PipelineParallel(ParallelModel):
                     "SplitPoint.BEGINNING is not supported currently"
                 )
                 layer.register_forward_pre_hook(forward_pre_hook)
+
         if self.global_spec:
             self.process_global_mesh_layers()
+
         return model
 
     def process_global_mesh_layers(self):
@@ -176,52 +184,92 @@ class PipelineParallel(ParallelModel):
             if isinstance(output, (list, tuple)):
                 global_output = list(output)
                 for ind in range(len(global_output)):
-                    if is_tensor(global_output[ind]):
-                        global_output[ind] = dist.shard_tensor(
-                            global_output[ind],
-                            g_mesh,
-                            [
-                                dist.Replicate()
-                                for _ in range(len(g_mesh._shape))
-                            ],
-                        )
+                    output_i = global_output[ind]
+                    if is_tensor(output_i):
+                        if output_i.is_dist():
+                            global_output[ind] = dist.reshard(
+                                output_i,
+                                g_mesh,
+                                [
+                                    dist.Replicate()
+                                    for _ in range(len(g_mesh._shape))
+                                ],
+                            )
+                        else:
+                            global_output[ind] = dist.shard_tensor(
+                                output_i,
+                                g_mesh,
+                                [
+                                    dist.Replicate()
+                                    for _ in range(len(g_mesh._shape))
+                                ],
+                            )
+
                 if isinstance(output, tuple):
                     global_output = tuple(global_output)
                 return global_output
             elif is_tensor(output):
-                return dist.shard_tensor(
-                    output,
-                    g_mesh,
-                    [dist.Replicate() for _ in range(len(g_mesh._shape))],
-                )
+                if output.is_dist():
+                    return dist.reshard(
+                        output,
+                        g_mesh,
+                        [dist.Replicate() for _ in range(len(g_mesh._shape))],
+                    )
+                else:
+                    return dist.shard_tensor(
+                        output,
+                        g_mesh,
+                        [dist.Replicate() for _ in range(len(g_mesh._shape))],
+                    )
             else:
                 raise TypeError(
                     "layer output can only be tensor or list/tuple of tensor"
                 )
 
-        def forward_pre_hook(layer, input):
+        def forward_pre_hook(layer, args, kwargs):
             pp_idx = getattr(layer, "pipeline_stage_index", 0)
-            new_input = []
-            for t in input:
-                if is_tensor(t) and t.is_dist() and t.process_mesh == g_mesh:
-                    new_input.append(
-                        dist.reshard(
-                            t,
-                            self.get_mesh(pp_idx),
-                            [dist.Replicate(), dist.Replicate()],
-                        )
-                    )
-                else:
-                    new_input.append(t)
-            return tuple(new_input)
+            new_args = []
+            new_kwargs = {}
 
+            def reshard_not_mesh_match_tensor(arg):
+                cur_pp_mesh = self.get_mesh(pp_idx)
+                if (
+                    arg is not None
+                    and is_tensor(arg)
+                    and arg.is_dist()
+                    and arg.process_mesh != cur_pp_mesh
+                ):
+                    return dist.reshard(
+                        arg,
+                        cur_pp_mesh,
+                        [dist.Replicate(), dist.Replicate()],
+                    )
+                return arg
+
+            for arg in args:
+                new_args.append(reshard_not_mesh_match_tensor(arg))
+
+            for key, arg in kwargs.items():
+                new_kwargs[key] = reshard_not_mesh_match_tensor(arg)
+
+            return (tuple(new_args), new_kwargs)
+
+        # wa because of pir in vpp mode send receive bug
         for layer_name in self.global_spec:
             layer = self.get_layer_by_name(layer_name)
             layer.register_forward_post_hook(forward_post_hook)
 
-        for layer_name in self.pipeline_layers:
-            layer = self.get_layer_by_name(layer_name)
-            layer.register_forward_pre_hook(forward_pre_hook)
+        if self.pipeline_layers is not None:
+            for layer_name in self.pipeline_layers:
+                layer = self.get_layer_by_name(layer_name)
+                layer.register_forward_pre_hook(
+                    forward_pre_hook, with_kwargs=True
+                )
+        else:
+            for layer in self.name_to_layer.values():
+                layer.register_forward_pre_hook(
+                    forward_pre_hook, with_kwargs=True
+                )
 
 
 def pipeline_parallel(model, optimizer=None, config=None):
@@ -250,12 +298,12 @@ def pipeline_parallel(model, optimizer=None, config=None):
         return model, optimizer
 
     mesh = fleet.auto.get_mesh()
-    assert (
-        mesh is not None
-    ), "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
-    assert (
-        "pp" in mesh.dim_names
-    ), "pp must in the mesh dim_names when use pipeline_parallel"
+    assert mesh is not None, (
+        "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
+    )
+    assert "pp" in mesh.dim_names, (
+        "pp must in the mesh dim_names when use pipeline_parallel"
+    )
 
     global_spec = config.get("global_spec")
     if isinstance(split_spec, str):
@@ -269,48 +317,97 @@ def pipeline_parallel(model, optimizer=None, config=None):
 
         def is_match(layer_name):
             for pattern in patterns:
-                if re.match(pattern, layer_name):
+                if re.match(pattern, layer_name) or layer_name in split_spec:
                     return True
             return False
+
+        def filter_matched_layer(matched_layer_name):
+            # remove the base name if it has a numbered suffix
+            string_set = set(matched_layer_name)
+            to_remove = set()
+
+            numbered_pattern = re.compile(r'^(.+)\.\d+$')
+            for s in matched_layer_name:
+                match = numbered_pattern.match(s)
+                if match:
+                    base_name = match.group(1)
+                    if base_name in string_set:
+                        to_remove.add(base_name)
+
+            res = []
+            for s in matched_layer_name:
+                if s not in to_remove:
+                    res.append(s)
+            return res
 
         matched_layer_name = [
             name for name, _ in model.named_sublayers() if is_match(name)
         ]
-
+        matched_layer_name = filter_matched_layer(matched_layer_name)
         pp_size = mesh.get_dim_size("pp")
         layer_num = len(matched_layer_name)
-        assert (
-            layer_num > 0
-        ), "No layer match the split_spec, please check its correctness"
-        assert (
-            layer_num % pp_size == 0
-        ), f"The number of layers must be divisible by the pp size, but got {layer_num} and {pp_size}"
-        layers_per_rank = layer_num // pp_size
-        split_spec_dict = OrderedDict(
-            [
-                (
-                    matched_layer_name[i * layers_per_rank - 1],
-                    SplitPoint.END,
-                )
-                for i in range(1, pp_size)
-            ]
+        assert layer_num > 0, (
+            "No layer match the split_spec, please check its correctness"
         )
-    else:
-        split_spec_dict = split_spec
-        if global_spec:
-            raise NotImplementedError(
-                "global_spec should be None if split_spec is a dict"
+        assert layer_num >= pp_size, (
+            "The number of layers must not be less than the pp size"
+        )
+        if layer_num % pp_size != 0:
+            logger.warning(
+                f"The number of layers({layer_num}) must be divisible by the pp size({pp_size}), but got {layer_num} and {pp_size}"
             )
+
+            def divide_list_indices(n, k):
+                base_size = n // k
+                extra = n % k
+
+                indices = []
+                current_index = -1
+
+                for i in range(k - 1):
+                    current_index += base_size
+                    if i < extra:
+                        current_index += 1
+                    indices.append(current_index)
+                return indices
+
+            indices = divide_list_indices(layer_num, pp_size)
+            split_spec_dict = OrderedDict(
+                [
+                    (matched_layer_name[indices[i]], SplitPoint.END)
+                    for i in range(pp_size - 1)
+                ]
+            )
+        else:
+            layers_per_rank = layer_num // pp_size
+            split_spec_dict = OrderedDict(
+                [
+                    (
+                        matched_layer_name[i * layers_per_rank - 1],
+                        SplitPoint.END,
+                    )
+                    for i in range(1, pp_size)
+                ]
+            )
+    else:
+        sublayer_names = [name for name, _ in model.named_sublayers()]
+        split_spec_dict = split_spec
+        for key, value in split_spec_dict.items():
+            assert key in sublayer_names, (
+                f"wrong split layer, expected one of {sublayer_names}"
+            )
+            assert value is SplitPoint.END, "not supported split point at now."
+
     if global_spec:
         if isinstance(global_spec, str):
             global_spec = [global_spec]
         else:
-            assert isinstance(
-                global_spec, (list, tuple)
-            ), f"global_spec can only be list or list(str), but got:{type(global_spec)}"
+            assert isinstance(global_spec, (list, tuple)), (
+                f"global_spec can only be list or list(str), but got:{type(global_spec)}"
+            )
 
     logger.info(
-        f"split_spec_dict: {split_spec_dict}, global_spec: {global_spec}"
+        f"split_spec_dict: {split_spec_dict}, global_spec: {global_spec}, matched_layer_name: {matched_layer_name}"
     )
 
     model = PipelineParallel(

@@ -29,10 +29,97 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+// To determine use cudnn or not.
+struct DWConvParams {
+  bool has_fuse_relu_;
+  std::string data_format_;
+  std::vector<int> strides_;
+  std::vector<int> dilations_;
+
+  DWConvParams(const bool has_fuse_relu,
+               const std::string& data_format,
+               const std::vector<int>& strides,
+               const std::vector<int>& dilations)
+      : has_fuse_relu_(has_fuse_relu),
+        data_format_(data_format),
+        strides_(strides),
+        dilations_(dilations) {}
+
+  bool is_strided() const {
+    for (const auto& stride : strides_) {
+      if (stride != 1) return true;
+    }
+    return false;
+  }
+
+  bool is_dilated() const {
+    for (const auto& dilation : dilations_) {
+      if (dilation != 1) return true;
+    }
+    return false;
+  }
+
+  // Check if use cudnn for NHWC and NCHW FP16.
+  template <typename Context>
+  bool UseCudnnDepthwise(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& filter) const {
+    // No fuse supported yet.
+    if (has_fuse_relu_) {
+      return false;
+    }
+    // Tensor Core introduced from Volta GPUs.
+    if (!IsVoltaOrLater(dev_ctx)) {
+      return false;
+    }
+    // Cudnn enable
+    if (!dynload::HasCUDNN()) {
+      return false;
+    }
+    // Only support FP16.
+    if (input.type() != phi::DataType::FLOAT16 &&
+        filter.type() != phi::DataType::FLOAT16) {
+      return false;
+    }
+    // Only support depthwise 2D.
+    if (input.dims().size() != 4) {
+      return false;
+    }
+    // No dilation and stride.
+    if (is_dilated() || is_strided()) {
+      return false;
+    }
+    // Make sure square filter.
+    const int ksize_height = filter.dims()[2];
+    const int ksize_width = filter.dims()[3];
+    if (ksize_height != ksize_width) {
+      return false;
+    }
+    // For 1/3/5/7 filter。
+    if (ksize_height != 1 && ksize_height != 3 && ksize_height != 5 &&
+        ksize_height != 7) {
+      return false;
+    }
+    // Use cudnn for nhwc fp16.
+    if (data_format_ == "NHWC") {
+      return true;
+    }
+    // TODO(Dmovic): Data format here is NCHW, enable when channel
+    // greater than 32, need benchmarks.
+    if (input.dims()[1] < 32) {
+      return false;
+    }
+    return true;
+  }
+};
+
+}  // namespace phi
+
+namespace phi::math {
 
 /*
  * \brief Compute the depthwise convolution which include
@@ -44,7 +131,7 @@ template <typename DeviceContext,
           bool fuse_relu_before_conv = false>
 class DepthwiseConvFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
@@ -59,7 +146,7 @@ template <typename DeviceContext,
           bool fuse_relu_before_conv = false>
 class DepthwiseConvInputGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const phi::DenseTensor& output_grad,
@@ -75,7 +162,7 @@ template <typename DeviceContext,
           bool fuse_relu_before_conv = false>
 class DepthwiseConvFilterGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
@@ -88,6 +175,7 @@ class DepthwiseConvFilterGradFunctor {
 #define FINAL_MASK 0xffffffff
 #define HALF_WARP 16
 #define WARP_SIZE 32
+#define SMALL_THRESHOLD 64
 
 template <typename T>
 __forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
@@ -181,39 +269,41 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
 
 // A Cuda kernel to compute the depthwise convolution forward pass
 // in NHWC format.
-template <typename T, bool fuse_relu_before_conv>
+template <typename T, int c_filter, bool fuse_relu_before_conv>
 __device__ __inline__ void KernelDepthwiseConvNHWC(
     ARG_DEFINE_KernelDepthwiseConv) {
+  const int fw_size = c_filter != -1 ? c_filter : filter_width;
+  const int fh_size = c_filter != -1 ? c_filter : filter_height;
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if (idx >= (output_channels * batch_size * output_height * output_width))
+  if (idx >= (output_channels * batch_size * output_height * output_width)) {
     return;
+  }
 
-  const int c_out = idx % output_channels;
-  const int w_out = (idx / output_channels) % output_width;
-  const int h_out = (idx / output_channels / output_width) % output_height;
-  const int batch = idx / output_width / output_height / output_channels;
+  int tmp_1 = idx / output_channels;
+  const int c_out = idx - tmp_1 * output_channels;
+  int tmp_2 = tmp_1 / output_width;
+  const int w_out = tmp_1 - tmp_2 * output_width;
+  tmp_1 = tmp_2;
+  tmp_2 = tmp_1 / output_height;
+  const int h_out = tmp_1 - tmp_2 * output_height;
+  const int batch = tmp_2;
 
   const int c_in = c_out / filter_multiplier;
   T value(0);
+  const int in_offset =
+      batch * input_height * input_width * input_channels + c_in;
   const int h_in_start = -padding_height + h_out * stride_height;
   const int w_in_start = -padding_width + w_out * stride_width;
-  const int h_in_end = h_in_start + filter_height * dilate_height;
-  const int w_in_end = w_in_start + filter_width * dilate_width;
-
-  const int h_end = h_in_end < input_height ? h_in_end : input_height;
-  const int w_end = w_in_end < input_width ? w_in_end : input_width;
-  const int h_start = h_in_start > 0 ? h_in_start : 0;
-  const int w_start = w_in_start > 0 ? w_in_start : 0;
   int weight_offset = 0;
 
 #pragma unroll
-  for (int h_in = h_in_start; h_in < h_in_end; h_in += dilate_height) {
+  for (int fh = 0, h_in = h_in_start; fh < fh_size;
+       ++fh, h_in += dilate_height) {
 #pragma unroll
-    for (int w_in = w_in_start; w_in < w_in_end; w_in += dilate_width) {
-      if (h_in >= h_start && h_in < h_end && w_in >= w_start && w_in < w_end) {
-        int offset = ((batch * input_height + h_in) * input_width + w_in) *
-                         input_channels +
-                     c_in;
+    for (int fw = 0, w_in = w_in_start; fw < fw_size;
+         ++fw, w_in += dilate_width) {
+      if (h_in >= 0 && h_in < input_height && w_in >= 0 && w_in < input_width) {
+        int offset = in_offset + (h_in * input_width + w_in) * input_channels;
         T in_data = input_data[offset];
         const T* weight = filter_data + weight_offset * output_channels + c_out;
         if (fuse_relu_before_conv) {
@@ -226,10 +316,7 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
       weight_offset++;
     }
   }
-  int index = batch * output_channels * output_height * output_width +
-              h_out * output_width * output_channels + w_out * output_channels +
-              c_out;
-  output_data[index] = value;
+  output_data[idx] = value;
 }
 
 template <typename T, int c_filter, bool fuse_relu_before_conv>
@@ -251,16 +338,9 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNCHW(
       T value(0);
       const int h_in_start = -padding_height + h_out * stride_height;
       const int w_in_start = -padding_width + w_out * stride_width;
-      const int h_in_end = h_in_start + c_filter * dilate_height;
-      const int w_in_end = w_in_start + c_filter * dilate_width;
 
       int in_offset =
           ((batch * input_channels + c_in) * input_height) * input_width;
-
-      const int h_end = h_in_end < input_height ? h_in_end : input_height;
-      const int w_end = w_in_end < input_width ? w_in_end : input_width;
-      const int h_start = h_in_start > 0 ? h_in_start : 0;
-      const int w_start = w_in_start > 0 ? w_in_start : 0;
 
       for (int h_in = h_in_start, h_f = 0; h_f < c_filter;
            h_in += dilate_height, h_f++) {
@@ -380,25 +460,26 @@ __global__ void KernelDepthwiseConvSp(ARG_DEFINE_KernelDepthwiseConv) {
           dilate_width,
           output_data);
     } else {
-      KernelDepthwiseConvNHWC<T, fuse_relu_before_conv>(input_data,
-                                                        filter_data,
-                                                        batch_size,
-                                                        output_channels,
-                                                        output_height,
-                                                        output_width,
-                                                        input_channels,
-                                                        input_height,
-                                                        input_width,
-                                                        final_filter_multiplier,
-                                                        filter_height,
-                                                        filter_width,
-                                                        h_stride,
-                                                        w_stride,
-                                                        padding_height,
-                                                        padding_width,
-                                                        dilate_height,
-                                                        dilate_width,
-                                                        output_data);
+      KernelDepthwiseConvNHWC<T, c_filter, fuse_relu_before_conv>(
+          input_data,
+          filter_data,
+          batch_size,
+          output_channels,
+          output_height,
+          output_width,
+          input_channels,
+          input_height,
+          input_width,
+          final_filter_multiplier,
+          filter_height,
+          filter_width,
+          h_stride,
+          w_stride,
+          padding_height,
+          padding_width,
+          dilate_height,
+          dilate_width,
+          output_data);
     }
   } else {
     if (data_layout != DataLayout::kNHWC) {
@@ -926,6 +1007,85 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
   }
 }
 
+template <typename T,
+          typename index_t,
+          typename std::enable_if_t<std::is_same_v<phi::float16, T>>* = nullptr>
+__device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
+                                                  index_t index,
+                                                  const index_t numel,
+                                                  T value) {
+#if (defined(PADDLE_WITH_HIP) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  phi::CudaAtomicAdd(tensor + index, value);
+#else
+  // Check if 32 bit aligned
+  __half* target_addr = reinterpret_cast<__half*>(tensor + index);
+  bool low_byte =
+      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(__half2) == 0);
+
+  if (low_byte && index < (numel - 1)) {
+    __half2 value2;
+    value2.x = value.to_half();
+    value2.y = __int2half_rz(0);
+    atomicAdd(reinterpret_cast<__half2*>(target_addr), value2);
+  } else if (!low_byte && index > 0) {
+    __half2 value2;
+    value2.x = __int2half_rz(0);
+    value2.y = value.to_half();
+    atomicAdd(reinterpret_cast<__half2*>(target_addr - 1), value2);
+  } else {
+    atomicAdd(reinterpret_cast<__half*>(tensor) + index, value.to_half());
+  }
+#endif
+}
+
+template <
+    typename T,
+    typename index_t,
+    typename std::enable_if_t<std::is_same_v<phi::bfloat16, T>>* = nullptr>
+__device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
+                                                  index_t index,
+                                                  const index_t numel,
+                                                  T value) {
+#if (defined(PADDLE_WITH_HIP) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 800)))
+  phi::CudaAtomicAdd(tensor + index, value);
+#else
+  // Check if 32 bit aligned
+  __nv_bfloat16* target_addr = reinterpret_cast<__nv_bfloat16*>(tensor + index);
+  bool low_byte =
+      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(__nv_bfloat16) ==
+       0);
+
+  if (low_byte && index < (numel - 1)) {
+    __nv_bfloat162 value2;
+    value2.x = value.to_nv_bfloat16();
+    value2.y = __int2bfloat16_rz(0);
+    atomicAdd(reinterpret_cast<__nv_bfloat162*>(target_addr), value2);
+  } else if (!low_byte && index > 0) {
+    __nv_bfloat162 value2;
+    value2.x = __int2bfloat16_rz(0);
+    value2.y = value.to_nv_bfloat16();
+    atomicAdd(reinterpret_cast<__nv_bfloat162*>(target_addr - 1), value2);
+  } else {
+    atomicAdd(reinterpret_cast<__nv_bfloat16*>(tensor) + index,
+              value.to_nv_bfloat16());
+  }
+#endif
+}
+
+template <
+    typename T,
+    typename index_t,
+    typename std::enable_if_t<!std::is_same_v<phi::float16, T> &&
+                              !std::is_same_v<phi::bfloat16, T>>* = nullptr>
+__device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
+                                                  index_t index,
+                                                  const index_t numel,
+                                                  T value) {
+  phi::CudaAtomicAdd(tensor + index, value);
+}
+
 template <typename T, bool fuse_relu_before_conv>
 __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
     const T* output_grad_data,
@@ -965,23 +1125,24 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
       int image_wk = image_w * stride_width + kernel_w;
       if (image_hk < 0 || image_hk >= input_height) continue;
       if (image_wk < 0 || image_wk >= input_width) continue;
-#define gaid(N, H, W, C) \
-  ((((N)*output_height + (H)) * output_width + (W)) * output_channels + (C))
       int input_id =
           ((bid * input_height + image_hk) * input_width + image_wk) *
               input_channels +
           kernel_id / filter_multiplier;
+      int output_id =
+          ((bid * output_height + image_h) * output_width + image_w) *
+              output_channels +
+          kernel_id;
       if (fuse_relu_before_conv) {
-        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
+        s += output_grad_data[output_id] *
              static_cast<T>(
                  max(0.0f, static_cast<double>(input_data[input_id])));
       } else {
-        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-             input_data[input_id];
+        s += output_grad_data[output_id] * input_data[input_id];
       }
-#undef gaid
     }
-    phi::CudaAtomicAdd(&filter_grad_data[gbid], s);
+    const int numel = output_channels * filter_width * filter_height;
+    NoReturnAtomicAdd(filter_grad_data, gbid, numel, s);
   }
 }
 
@@ -1011,13 +1172,13 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
   if (image_h >= output_height) {
     return;
   }
-  const int kWeightSize = c_filter * c_filter;
+  constexpr int kWeightSize = c_filter * c_filter;
   T r_weight[kWeightSize];
   const int wi_size = (output_width + dilate_width - 1) / dilate_width;
 
   for (int kernel_id = threadIdx.x; kernel_id < output_channels;
        kernel_id += blockDim.x) {
-    for (int i = 0; i < c_filter * c_filter; ++i) {
+    for (int i = 0; i < kWeightSize; ++i) {
       r_weight[i] = 0;
     }
     for (int i = threadIdx.y; i < wi_size * dilate_width; i += blockDim.y) {
@@ -1055,11 +1216,76 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
         }
       }
     }
-    for (int i = 0; i < c_filter * c_filter; ++i) {
-      T* weight = filter_grad_data + i * output_channels + kernel_id;
-      phi::CudaAtomicAdd(&weight[0], r_weight[i]);
+    const int numel = output_channels * kWeightSize;
+    for (int i = 0; i < kWeightSize; ++i) {
+      NoReturnAtomicAdd(filter_grad_data,
+                        i * output_channels + kernel_id,
+                        numel,
+                        r_weight[i]);
     }
   }
+}
+
+template <typename T, int c_filter, bool fuse_relu_before_conv>
+__device__ __inline__ void KernelDepthwiseConvFilterGradCFilterSmallChannelNHWC(
+    const T* output_grad_data,
+    const T* input_data,
+    const int num,
+    const int output_channels,
+    const int output_height,
+    const int output_width,
+    const int input_channels,
+    const int input_height,
+    const int input_width,
+    const int filter_multiplier,
+    const int filter_height,
+    const int filter_width,
+    const int stride_height,
+    const int stride_width,
+    const int padding_height,
+    const int padding_width,
+    const int dilate_height,
+    const int dilate_width,
+    T* filter_grad_data) {
+  const int bid = blockIdx.y;
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int numel = output_channels * c_filter * c_filter;
+  if (idx >= numel) {
+    return;
+  }
+  const int tmp = idx / output_channels;
+  const int kernel_id = idx - tmp * output_channels;
+  const int kernel_ih = tmp / c_filter;
+  const int kernel_iw = tmp - kernel_ih * c_filter;
+
+  const int h_offset = kernel_ih * dilate_height - padding_height;
+  const int w_offset = kernel_iw * dilate_width - padding_width;
+
+  T s(0);
+  for (int og_h = 0; og_h < output_height; ++og_h) {
+    for (int og_w = 0; og_w < output_width; ++og_w) {
+      int image_hk = og_h * stride_height + h_offset;
+      int image_wk = og_w * stride_width + w_offset;
+      if (image_hk >= 0 && image_hk < input_height && image_wk >= 0 &&
+          image_wk < input_width) {
+        int input_id =
+            ((bid * input_height + image_hk) * input_width + image_wk) *
+                input_channels +
+            kernel_id / filter_multiplier;
+        int output_id = ((bid * output_height + og_h) * output_width + og_w) *
+                            output_channels +
+                        kernel_id;
+        if (fuse_relu_before_conv) {
+          s += output_grad_data[output_id] *
+               static_cast<T>(
+                   max(0.0f, static_cast<double>(input_data[input_id])));
+        } else {
+          s += output_grad_data[output_id] * input_data[input_id];
+        }
+      }
+    }
+  }
+  NoReturnAtomicAdd(filter_grad_data, idx, numel, s);
 }
 
 template <typename T,
@@ -1162,28 +1388,53 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
           dilate_width,
           filter_grad_data);
     } else {
-      KernelDepthwiseConvFilterGradCFilterNHWC<T,
-                                               c_filter,
-                                               fuse_relu_before_conv>(
-          output_grad_data,
-          input_data,
-          num,
-          output_channels,
-          output_height,
-          output_width,
-          input_channels,
-          input_height,
-          input_width,
-          final_filter_multiplier,
-          filter_height,
-          filter_width,
-          h_stride,
-          w_stride,
-          padding_height,
-          padding_width,
-          dilate_height,
-          dilate_width,
-          filter_grad_data);
+      if (output_channels < SMALL_THRESHOLD) {
+        KernelDepthwiseConvFilterGradCFilterSmallChannelNHWC<
+            T,
+            c_filter,
+            fuse_relu_before_conv>(output_grad_data,
+                                   input_data,
+                                   num,
+                                   output_channels,
+                                   output_height,
+                                   output_width,
+                                   input_channels,
+                                   input_height,
+                                   input_width,
+                                   final_filter_multiplier,
+                                   filter_height,
+                                   filter_width,
+                                   h_stride,
+                                   w_stride,
+                                   padding_height,
+                                   padding_width,
+                                   dilate_height,
+                                   dilate_width,
+                                   filter_grad_data);
+      } else {
+        KernelDepthwiseConvFilterGradCFilterNHWC<T,
+                                                 c_filter,
+                                                 fuse_relu_before_conv>(
+            output_grad_data,
+            input_data,
+            num,
+            output_channels,
+            output_height,
+            output_width,
+            input_channels,
+            input_height,
+            input_width,
+            final_filter_multiplier,
+            filter_height,
+            filter_width,
+            h_stride,
+            w_stride,
+            padding_height,
+            padding_width,
+            dilate_height,
+            dilate_width,
+            filter_grad_data);
+      }
     }
   }
 }
@@ -1196,7 +1447,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
 template <class T, bool fuse_relu_before_conv>
 class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
@@ -1231,7 +1482,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
-    T* output_data = context.template Alloc<T>(output);
+    T* output_data = dev_ctx.template Alloc<T>(output);
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
@@ -1240,10 +1491,10 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                  filter.dims()[0],
                                  filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
-      context.template Alloc<T>(&filter_hwc);
+      dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
-      trans(context, filter, &filter_hwc, perm_axis);
+      trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
 
@@ -1292,7 +1543,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                             c_filter,                                   \
                             DataLayout::kNCHW,                          \
                             fuse_relu_before_conv>                      \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    filter_data,         \
                                                    batch_size,          \
                                                    output_channels,     \
@@ -1318,7 +1569,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                             c_filter,                                   \
                             DataLayout::kNHWC,                          \
                             fuse_relu_before_conv>                      \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    filter_data,         \
                                                    batch_size,          \
                                                    output_channels,     \
@@ -1362,7 +1613,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 template <typename T, bool fuse_relu_before_conv>
 class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const phi::DenseTensor& output_grad,
@@ -1399,7 +1650,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
@@ -1408,10 +1659,10 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                  filter.dims()[0],
                                  filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
-      context.template Alloc<T>(&filter_hwc);
+      dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
-      trans(context, filter, &filter_hwc, perm_axis);
+      trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
 
@@ -1461,7 +1712,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                      c_filter,                          \
                                      DataLayout::kNCHW,                 \
                                      fuse_relu_before_conv>             \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    output_grad_data,    \
                                                    filter_data,         \
                                                    batch_size,          \
@@ -1488,7 +1739,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                      c_filter,                          \
                                      DataLayout::kNHWC,                 \
                                      fuse_relu_before_conv>             \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    output_grad_data,    \
                                                    filter_data,         \
                                                    batch_size,          \
@@ -1535,7 +1786,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                      T,
                                      fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
@@ -1570,7 +1821,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
 
     const T* input_data = input.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* filter_grad_data = context.template Alloc<T>(filter_grad);
+    T* filter_grad_data = dev_ctx.template Alloc<T>(filter_grad);
 
     int block_size = 512;
     int blocks;
@@ -1590,6 +1841,8 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
             std::min(block_size, batch_size * output_height * output_width));
       }
     } else {
+      // Large block size may cause atomic dependence, reduce block size here.
+      block_size = 256;
       blocks = std::min(
           std::max(block_size / output_channels, 1),
           ((output_width + dilate_width - 1) / dilate_width) * dilate_width);
@@ -1597,6 +1850,12 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                   dilate_height,
                   batch_size);
       threads = dim3(std::min(output_channels, block_size), blocks, 1);
+
+      if (output_channels < SMALL_THRESHOLD) {
+        const int hwc_size = ksize_height * ksize_width * output_channels;
+        grid = dim3((hwc_size + block_size - 1) / block_size, batch_size, 1);
+        threads = dim3(std::min(hwc_size, block_size));
+      }
     }
     int filter_multiplier = output_channels / input_channels;
 
@@ -1613,7 +1872,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                       c_filter,                                \
                                       DataLayout::kNCHW,                       \
                                       fuse_relu_before_conv>                   \
-          <<<grid, threads, 0, context.stream()>>>(output_grad_data,           \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(output_grad_data,           \
                                                    input_data,                 \
                                                    batch_size,                 \
                                                    output_channels,            \
@@ -1640,9 +1899,9 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                         filter_grad->dims()[0],                \
                                         filter_grad->dims()[1]});              \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
-        context.template Alloc<T>(&filter_grad_hwc);                           \
+        dev_ctx.template Alloc<T>(&filter_grad_hwc);                           \
         phi::funcs::SetConstant<phi::GPUContext, T> set_zero;                  \
-        set_zero(context, &filter_grad_hwc, static_cast<T>(0));                \
+        set_zero(dev_ctx, &filter_grad_hwc, static_cast<T>(0));                \
         filter_grad_data = filter_grad_hwc.data<T>();                          \
       } else {                                                                 \
         block_size = 512;                                                      \
@@ -1662,7 +1921,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                       c_filter,                                \
                                       DataLayout::kNHWC,                       \
                                       fuse_relu_before_conv>                   \
-          <<<grid, threads, 0, context.stream()>>>(output_grad_data,           \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(output_grad_data,           \
                                                    input_data,                 \
                                                    batch_size,                 \
                                                    output_channels,            \
@@ -1684,7 +1943,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
       if (c_filter != -1) {                                                    \
         std::vector<int> perm_axis({2, 3, 0, 1});                              \
         phi::funcs::TransposeNormal<phi::GPUContext, T> trans;                 \
-        trans(context, filter_grad_hwc, filter_grad, perm_axis);               \
+        trans(dev_ctx, filter_grad_hwc, filter_grad, perm_axis);               \
       }                                                                        \
     }                                                                          \
     return;                                                                    \
@@ -1708,38 +1967,34 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
 
 template class DepthwiseConvFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvFunctor<phi::GPUContext, double, false>;
-template class DepthwiseConvFunctor<phi::GPUContext,
-                                    phi::dtype::float16,
-                                    false>;
+template class DepthwiseConvFunctor<phi::GPUContext, phi::float16, false>;
 
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, false>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext,
-                                             phi::dtype::float16,
+                                             phi::float16,
                                              false>;
 
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, false>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                              phi::dtype::float16,
+                                              phi::float16,
                                               false>;
 
 template class DepthwiseConvFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFunctor<phi::GPUContext, double, true>;
-template class DepthwiseConvFunctor<phi::GPUContext, phi::dtype::float16, true>;
+template class DepthwiseConvFunctor<phi::GPUContext, phi::float16, true>;
 
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, true>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext,
-                                             phi::dtype::float16,
+                                             phi::float16,
                                              true>;
 
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, true>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                              phi::dtype::float16,
+                                              phi::float16,
                                               true>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi::math

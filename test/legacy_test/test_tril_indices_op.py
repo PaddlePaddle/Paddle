@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -58,11 +58,10 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
 
 
 class TestTrilIndicesAPICaseStatic(unittest.TestCase):
-
     def test_static(self):
         places = (
-            [paddle.CPUPlace(), paddle.base.CUDAPlace(0)]
-            if base.core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         paddle.enable_static()
@@ -80,8 +79,8 @@ class TestTrilIndicesAPICaseStatic(unittest.TestCase):
 class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
     def test_dygraph(self):
         places = (
-            [paddle.CPUPlace(), paddle.base.CUDAPlace(0)]
-            if base.core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         for place in places:
@@ -110,7 +109,6 @@ class TestTrilIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseDefault(unittest.TestCase):
-
     def test_default_CPU(self):
         paddle.enable_static()
         with paddle.static.program_guard(

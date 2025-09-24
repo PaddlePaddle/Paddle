@@ -23,81 +23,6 @@
 
 namespace cinn {
 namespace hlir {
-
-CINNSchedule GetElementwiseScheduleFunc(
-    const std::vector<std::vector<int>>& output_shapes,
-    const Target& target,
-    bool vectorizable) {
-  return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    PADDLE_ENFORCE_NE(args.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The input argument of ElementwiseSchedule is "
-                          "invalid! Please check.\n"));
-    cinn::common::CINNValuePack arg_pack = args[0];
-    PADDLE_ENFORCE_GT(arg_pack.size(),
-                      0U,
-                      ::common::errors::InvalidArgument(
-                          "arg_pack.size() must contain at least "
-                          "one element. Current size: %d",
-                          arg_pack.size()));
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_NE(vec_ast.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The vector of AbstractSyntaxTree is empty!"
-                          "Please ensure that the argument pack "
-                          "contains at least one valid expression."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    pe::IRElementwiseSchedule(ir_sch, output_shapes.front(), target);
-    std::vector<cinn::common::CINNValue> res{
-        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = cinn::common::CINNValuePack{res};
-  });
-}
-
-CINNSchedule GetInjectiveScheduleFunc(
-    const std::vector<std::vector<int>>& output_shapes,
-    const Target& target,
-    bool vectorizable) {
-  return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    PADDLE_ENFORCE_NE(args.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The input argument of InjectiveSchedule is "
-                          "invalid! Please check.\n"));
-    cinn::common::CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_NE(vec_ast.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The vector of AbstractSyntaxTree is empty!"
-                          "Please ensure that the argument pack "
-                          "contains at least one valid expression."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
-    std::vector<cinn::common::CINNValue> res{
-        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = cinn::common::CINNValuePack{res};
-  });
-}
-
 std::string GetExternFuncNameArchPrefixImpl(common::UnknownArch,
                                             const std::string& func_name) {
   std::stringstream ss;
@@ -162,8 +87,8 @@ std::string GetExternFuncName(const cinn::common::Target& target,
   func_proto_name.append("_");
   if (type.is_bool()) {
     func_proto_name.append("bool");
-  } else if (type.is_float(8)) {
-    func_proto_name.append("fp8");
+  } else if (type.is_float8e4m3()) {
+    func_proto_name.append("fp8e4m3");
   } else if (type.is_float16()) {
     func_proto_name.append("fp16");
   } else if (type.is_bfloat16()) {

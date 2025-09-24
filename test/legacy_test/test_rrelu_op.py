@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -50,13 +55,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.upper_0 = 0.25
         self.upper_1 = 0.33
 
-        self.places = [
-            (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
-        ]
+        self.places = [get_device_place()]
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -431,8 +430,8 @@ class RReluTestFP16OP(RReluTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class RReluTestBF16OP(RReluTest):
@@ -448,13 +447,13 @@ class RReluTestBF16OP(RReluTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, no_check_set=['Noise'], check_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
@@ -464,8 +463,8 @@ class RReluTrainingTestFP16OP(RReluTrainingTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class RReluTrainingTestBF16OP(RReluTrainingTest):
@@ -481,14 +480,34 @@ class RReluTrainingTestBF16OP(RReluTrainingTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, no_check_set=['Noise'], check_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
+
+
+class RReluTest_ZeroSize(RReluTest):
+    def init_params(self):
+        self.init_dtype()
+        self.x_shape = [2, 0, 4, 5]
+
+        x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        out_np = ref_rrelu(x_np, self.lower, self.upper)
+        noise_np = np.ones(self.x_shape).astype(self.dtype)
+        noise_np[x_np < 0] = (self.lower + self.upper) / 2.0
+
+        self.inputs = {'X': x_np}
+        self.outputs = {'Out': out_np, 'Noise': noise_np}
+        self.convert_input_output()
+        self.attrs = {
+            'lower': self.lower,
+            "upper": self.upper,
+            "is_test": self.is_test,
+        }
 
 
 if __name__ == "__main__":

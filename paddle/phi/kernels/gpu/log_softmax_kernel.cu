@@ -29,6 +29,7 @@ void LogSoftmaxKernel(const Context &dev_ctx,
   const int rank = x.dims().size();
 
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) return;
   // For 0D Tensor
   if (rank == 0) {
     phi::funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
@@ -45,8 +46,8 @@ PD_REGISTER_KERNEL(log_softmax,
                    ALL_LAYOUT,
                    phi::LogSoftmaxKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(log_softmax,
                    GPU,
@@ -54,6 +55,6 @@ PD_REGISTER_KERNEL(log_softmax,
                    phi::LogSoftmaxKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

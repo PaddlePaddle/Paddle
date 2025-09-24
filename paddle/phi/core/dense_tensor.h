@@ -34,8 +34,8 @@ class DistTensor;
 /// arrays are used in math operators.
 /// During the entire life cycle of a DenseTensor, its device type and key
 /// metadata are set unchanged.
-class TEST_API DenseTensor : public TensorBase,
-                             public TypeInfoTraits<TensorBase, DenseTensor> {
+class PADDLE_API DenseTensor : public TensorBase,
+                               public TypeInfoTraits<TensorBase, DenseTensor> {
  public:
   /// \brief Construct a dense tensor and allocate space.
   /// \param a The allocator used to allocate space.

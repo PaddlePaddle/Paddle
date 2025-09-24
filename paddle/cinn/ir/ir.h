@@ -17,12 +17,12 @@
  */
 #pragma once
 
-#include <absl/types/variant.h>
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <variant>
 #include <vector>
 #include "paddle/common/enforce.h"
 
@@ -35,10 +35,6 @@
 
 namespace cinn {
 
-namespace poly {
-class Stage;
-}  // namespace poly
-
 namespace ir {
 class Buffer;
 class BufferRange;
@@ -49,7 +45,7 @@ using cinn::common::Object;
 using cinn::common::Shared;
 // NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the
 // IRVisitor or IRCopy on PrimitiveNode will result in undefined behavior.
-using attr_t = absl::variant<int, float, bool, std::string>;
+using attr_t = std::variant<int, float, bool, std::string>;
 
 /**
  * Cast a node to another type, can't change the width.
@@ -83,7 +79,7 @@ struct Cast : public ExprNode<Cast> {
  * The sum of two expressions.
  */
 struct Add : public BinaryOpNode<Add> {
-  Add(Expr a, Expr b) : BinaryOpNode<Add>(a.type(), a, b) { Verify(); }
+  Add(Expr a, Expr b) : BinaryOpNode<Add>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
   static IndexExpr Make(IndexExpr a, IndexExpr b);
@@ -97,7 +93,7 @@ struct Add : public BinaryOpNode<Add> {
  * The difference of two expressions.
  */
 struct Sub : public BinaryOpNode<Sub> {
-  Sub(Expr a, Expr b) : BinaryOpNode<Sub>(a.type(), a, b) { Verify(); }
+  Sub(Expr a, Expr b) : BinaryOpNode<Sub>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
   static IndexExpr Make(IndexExpr a, IndexExpr b);
@@ -111,7 +107,7 @@ struct Sub : public BinaryOpNode<Sub> {
  * The product of two expressions.
  */
 struct Mul : public BinaryOpNode<Mul> {
-  Mul(Expr a, Expr b) : BinaryOpNode<Mul>(a.type(), a, b) { Verify(); }
+  Mul(Expr a, Expr b) : BinaryOpNode<Mul>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
   static IndexExpr Make(IndexExpr a, IndexExpr b);
@@ -125,7 +121,7 @@ struct Mul : public BinaryOpNode<Mul> {
  * The ratio of two expressions.
  */
 struct Div : public BinaryOpNode<Div> {
-  Div(Expr a, Expr b) : BinaryOpNode<Div>(a.type(), a, b) { Verify(); }
+  Div(Expr a, Expr b) : BinaryOpNode<Div>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
   static IndexExpr Make(IndexExpr a, IndexExpr b);
@@ -138,7 +134,7 @@ struct Div : public BinaryOpNode<Div> {
  * The mod of two expressions.
  */
 struct Mod : public BinaryOpNode<Mod> {
-  Mod(Expr a, Expr b) : BinaryOpNode<Mod>(a.type(), a, b) { Verify(); }
+  Mod(Expr a, Expr b) : BinaryOpNode<Mod>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
   static IndexExpr Make(IndexExpr a, IndexExpr b);
@@ -150,7 +146,7 @@ struct Mod : public BinaryOpNode<Mod> {
  * The lesser of two expressions.
  */
 struct Min : public BinaryOpNode<Min> {
-  Min(Expr a, Expr b) : BinaryOpNode<Min>(a.type(), a, b) { Verify(); }
+  Min(Expr a, Expr b) : BinaryOpNode<Min>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
   // TODO(liiujinnan): simplify Min and Max.
@@ -164,7 +160,7 @@ struct Min : public BinaryOpNode<Min> {
  * The larger of two expressions.
  */
 struct Max : public BinaryOpNode<Max> {
-  Max(Expr a, Expr b) : BinaryOpNode<Max>(a.type(), a, b) { Verify(); }
+  Max(Expr a, Expr b) : BinaryOpNode<Max>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
   // TODO(liiujinnan): simplify Min and Max.
@@ -179,9 +175,9 @@ struct Max : public BinaryOpNode<Max> {
  * Tell whether the first expression equals to the second expression.
  */
 struct EQ : public BinaryOpNode<EQ> {
-  EQ(Expr a, Expr b) : BinaryOpNode<EQ>(a.type(), a, b) { Verify(); }
+  EQ(Expr a, Expr b) : BinaryOpNode<EQ>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -192,9 +188,9 @@ struct EQ : public BinaryOpNode<EQ> {
  * Tell whether the first expression not equals to the second expression.
  */
 struct NE : public BinaryOpNode<NE> {
-  NE(Expr a, Expr b) : BinaryOpNode<NE>(a.type(), a, b) { Verify(); }
+  NE(Expr a, Expr b) : BinaryOpNode<NE>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -205,9 +201,9 @@ struct NE : public BinaryOpNode<NE> {
  * Tell whether the first expression is lower than the second expression.
  */
 struct LT : public BinaryOpNode<LT> {
-  LT(Expr a, Expr b) : BinaryOpNode<LT>(a.type(), a, b) { Verify(); }
+  LT(Expr a, Expr b) : BinaryOpNode<LT>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -218,9 +214,9 @@ struct LT : public BinaryOpNode<LT> {
  * Tell whether the first expression is no larger than the second expression.
  */
 struct LE : public BinaryOpNode<LE> {
-  LE(Expr a, Expr b) : BinaryOpNode<LE>(a.type(), a, b) { Verify(); }
+  LE(Expr a, Expr b) : BinaryOpNode<LE>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -231,9 +227,9 @@ struct LE : public BinaryOpNode<LE> {
  * Tell whether the first expression is larger than the second expression.
  */
 struct GT : public BinaryOpNode<GT> {
-  GT(Expr a, Expr b) : BinaryOpNode<GT>(a.type(), a, b) { Verify(); }
+  GT(Expr a, Expr b) : BinaryOpNode<GT>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -244,9 +240,9 @@ struct GT : public BinaryOpNode<GT> {
  * Tell whether the first expression is not less than the second expression.
  */
 struct GE : public BinaryOpNode<GE> {
-  GE(Expr a, Expr b) : BinaryOpNode<GE>(a.type(), a, b) { Verify(); }
+  GE(Expr a, Expr b) : BinaryOpNode<GE>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -257,18 +253,9 @@ struct GE : public BinaryOpNode<GE> {
  * Logical and.
  */
 struct And : public BinaryOpNode<And> {
-  And(Expr a, Expr b) : BinaryOpNode<And>(a.type(), a, b) {
-    PADDLE_ENFORCE_EQ(
-        a->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
-    PADDLE_ENFORCE_EQ(
-        b->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
-  }
+  And(Expr a, Expr b) : BinaryOpNode<And>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -290,20 +277,11 @@ struct Minus : public UnaryOpNode<Minus> {
  * Logical or.
  */
 struct Or : public BinaryOpNode<Or> {
-  Or(Expr a, Expr b) : BinaryOpNode<Or>(Bool(), a, b) {
-    PADDLE_ENFORCE_EQ(
-        a->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
-    PADDLE_ENFORCE_EQ(
-        b->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
-  }
+  Or(Expr a, Expr b) : BinaryOpNode<Or>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
 
-  Type type() const override;
+  Type type() const { return Bool(this->a()->type().lanes()); }
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Or;
@@ -317,7 +295,7 @@ struct Not : public UnaryOpNode<Not> {
 
   static Expr Make(Expr v);
 
-  Type type() const override;
+  Type type() const { return Bool(this->v()->type().lanes()); }
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Not;
@@ -411,6 +389,7 @@ struct _Var_ : public ExprNode<_Var_> {
   bool is_reduce_axis{false};
   bool is_keepdim{false};
   bool is_symbolic_constant{false};
+  bool is_let_symbol{false};
   //! Lower bound and upper bound of a axis.
   // @{
   Expr lower_bound;
@@ -431,7 +410,8 @@ struct _Var_ : public ExprNode<_Var_> {
                    const std::string& name,
                    bool is_reduce,
                    bool is_symbolic_constant = false,
-                   bool is_keepdim = false);
+                   bool is_keepdim = false,
+                   bool is_let_symbol = false);
 
   void Verify() const override;
 
@@ -441,6 +421,7 @@ struct _Var_ : public ExprNode<_Var_> {
 };
 
 //! A named variable.
+// i ∈ [lower_bound, upper_bound)
 struct Var : public IrNodeRef {
   Var() = default;
   explicit Var(IrNode* n) : IrNodeRef(n) {}
@@ -494,6 +475,10 @@ struct Reduce : public ExprNode<Reduce> {
     kMin,
     kAll,
     kAny,
+    kVariance,
+    kArgmax,
+    kArgmin,
+    kNone
   };
 
   //! The initial value.
@@ -862,6 +847,7 @@ struct For : public ExprNode<For>, public ForBase {
   //! The minimum value of the iteration.
   Expr min;
   //! The extent of the iteration.
+  // loop_var ∈ [min, min + extent)
   Expr extent;
 
   Expr body;
@@ -958,7 +944,9 @@ struct FracOp : public BinaryOpNode<FracOp> {
 
   static Expr Make(Expr n, Expr d);
 
-  bool is_constant() const { return a().is_constant() && b().is_constant(); }
+  bool is_constant() const {
+    return this->a().is_constant() && this->b().is_constant();
+  }
 
   double get_constant() const {
     PADDLE_ENFORCE_EQ(is_constant(),

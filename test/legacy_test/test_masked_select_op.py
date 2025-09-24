@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -24,9 +30,10 @@ from paddle.base import core
 def np_masked_select(x, mask):
     result = np.empty(shape=(0), dtype=x.dtype)
     x, mask = np.broadcast_arrays(x, mask)
-    for ele, ma in zip(np.nditer(x), np.nditer(mask)):
-        if ma:
-            result = np.append(result, ele)
+    if x.size != 0:
+        for ele, ma in zip(np.nditer(x), np.nditer(mask)):
+            if ma:
+                result = np.append(result, ele)
     return result.flatten()
 
 
@@ -101,8 +108,8 @@ class TestMaskedSelectFP16Op2(TestMaskedSelectFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedSelectBF16Op(OpTest):
@@ -121,12 +128,12 @@ class TestMaskedSelectBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            get_device_place(), check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ['X'], 'Y', check_pir=True, check_prim_pir=True
+            get_device_place(), ['X'], 'Y', check_pir=True, check_prim_pir=True
         )
 
     def init(self):
@@ -278,6 +285,93 @@ class TestMaskedSelectOpBroadcast4(TestMaskedSelectOp):
     def init(self):
         self.shape = (300, 40)
         self.mask_shape = 40
+
+
+class TestMaskedSelectOpBroadcast_ZeroSize(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (0, 40)
+        self.mask_shape = 40
+
+
+class TestMaskedSelectOpBroadcast_ZeroSize2(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (0, 0)
+        self.mask_shape = 0
+
+
+class TestMaskedSelectOp_ZeroSize3(unittest.TestCase):
+    def setUp(self):
+        self.place = get_places()
+
+    def _test_out_0size(self, place):
+        paddle.disable_static(place)
+        x = paddle.to_tensor([1, 2], dtype='float32')
+        x.stop_gradient = False
+        y = paddle.to_tensor([False, False], dtype='bool')
+        z = x.masked_select(y)
+        np.testing.assert_allclose(z.shape, [0])
+        z.sum().backward()
+        np.testing.assert_allclose(x.grad.numpy(), [0, 0])
+        paddle.enable_static()
+
+    def test_out_0size(self):
+        for place in self.place:
+            self._test_out_0size(place)
+
+
+class TestMaskedSelectAPI_Compatibility(unittest.TestCase):
+    def test_imperative_mode(self):
+        paddle.disable_static()
+        shape = (88, 6, 8)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
+        np_out = np_masked_select(np_x, np_mask)
+
+        paddle_dygraph_out = []
+        x = paddle.to_tensor(np_x)
+        mask = paddle.to_tensor(np_mask)
+
+        out1 = paddle.masked_select(x, mask)
+        paddle_dygraph_out.append(out1)
+
+        out2 = paddle.masked_select(x=x, mask=mask)
+        paddle_dygraph_out.append(out2)
+
+        out3 = paddle.masked_select(input=x, mask=mask)
+        paddle_dygraph_out.append(out3)
+
+        # test out
+        out4 = paddle.empty(np_out.shape, dtype=paddle.float32)
+        out5 = paddle.masked_select(x, mask, out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
+
+        paddle.enable_static()
+
+    def test_static_mode(self):
+        shape = [8, 9, 6]
+        x = paddle.static.data(shape=shape, dtype='float32', name='x')
+        mask = paddle.static.data(shape=shape, dtype='bool', name='mask')
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
+        np_out = np_masked_select(np_x, np_mask)
+
+        out1 = paddle.masked_select(x, mask)
+        out2 = paddle.masked_select(x=x, mask=mask)
+        out3 = paddle.masked_select(input=x, mask=mask)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        fetches = exe.run(
+            paddle.static.default_main_program(),
+            feed={"x": np_x, "mask": np_mask},
+            fetch_list=[out1, out2, out3],
+        )
+
+        for out in fetches:
+            np.testing.assert_allclose(out, np_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

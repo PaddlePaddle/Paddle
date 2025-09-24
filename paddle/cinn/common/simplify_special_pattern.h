@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/cinn/common/integer_set.h"
-#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"

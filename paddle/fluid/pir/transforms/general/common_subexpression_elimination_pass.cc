@@ -284,6 +284,11 @@ struct Expression {
               << " has side effect";
       return false;
     }
+    if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
+      VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+              << " is an inplace op";
+      return false;
+    }
     for (auto& value : op->results()) {
       if (!IsDenseTensorOrVectorOfDenseTensorType(value)) {
         VLOG(7)

@@ -24,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnfoldKernel(const Context& ctx,
+void UnfoldKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int>& kernel_sizes,
                   const std::vector<int>& strides,
@@ -32,18 +32,21 @@ void UnfoldKernel(const Context& ctx,
                   const std::vector<int>& dilations,
                   DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
 
   phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
   const auto& x_dims = x.dims();
 
-  int out_height = phi::funcs::CalcOutputSize(x_dims[2],
+  int out_height = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[2]),
                                               kernel_sizes[0],
                                               dilations[0],
                                               paddings[0],
                                               paddings[2],
                                               strides[0]);
-  int out_width = phi::funcs::CalcOutputSize(x_dims[3],
+  int out_width = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[3]),
                                              kernel_sizes[1],
                                              dilations[1],
                                              paddings[1],
@@ -57,7 +60,7 @@ void UnfoldKernel(const Context& ctx,
   for (int i = 0; i < batch_size; i++) {
     DenseTensor in_batch = x.Slice(i, i + 1).Resize(x_shape);
     DenseTensor out_batch = out->Slice(i, i + 1).Resize(out_matrix_shape);
-    im2col(ctx, in_batch, dilations, strides, paddings, &out_batch);
+    im2col(dev_ctx, in_batch, dilations, strides, paddings, &out_batch);
   }
 }
 

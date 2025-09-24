@@ -14,6 +14,7 @@
 
 import ssl
 import sys
+import time
 
 import httpx
 
@@ -24,7 +25,20 @@ from paddle.device import cuda
 
 def get_disable_ut_by_url(url):
     ssl._create_default_https_context = ssl._create_unverified_context
-    f = httpx.get(url, timeout=None, follow_redirects=True)
+    max_retries = 5
+    delay = 5
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            f = httpx.get(url, timeout=20.0, follow_redirects=True)
+            break
+        except httpx.RequestError as e:
+            print(
+                f"Failed to get the disabled unit test list (attempt {attempt}): {e}"
+            )
+            if attempt == max_retries:
+                raise
+            time.sleep(delay)
     data = f.text
     status_code = f.status_code
     if len(data.strip()) == 0 or status_code != 200:
@@ -41,7 +55,15 @@ def download_file():
     if sysstr == 'win32':
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
     else:
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+        import os
+
+        branch = os.getenv('BRANCH')
+        if branch.startswith('release/'):
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_release'
+            )
+        else:
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
 
     if paddle.is_compiled_with_rocm():
         if cuda.get_device_name() == 'K100_AI':

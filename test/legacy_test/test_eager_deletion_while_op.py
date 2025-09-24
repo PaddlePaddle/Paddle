@@ -19,6 +19,11 @@ os.environ['CPU_NUM'] = '2'
 import unittest
 
 import numpy
+from op_test import (
+    get_device_class,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -30,29 +35,20 @@ base.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
-
     def test_main(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for p in places:
-            with base.program_guard(base.Program(), base.Program()):
-                with base.scope_guard(base.Scope()):
-                    self.run_main(p)
+        for p in get_places():
+            with (
+                base.program_guard(base.Program(), base.Program()),
+                base.scope_guard(base.Scope()),
+            ):
+                self.run_main(p)
 
     def run_main(self, place):
         self.place = place
 
-        if not core.is_compiled_with_cuda() and isinstance(
-            self.place, core.CUDAPlace
-        ):
+        if not (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and isinstance(self.place, get_device_class()):
             return
 
         device_cnt = 1

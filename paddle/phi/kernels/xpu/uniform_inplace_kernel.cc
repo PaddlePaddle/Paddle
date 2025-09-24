@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void XPUUniformRandomInplaceKernel(const Context& ctx,
+void XPUUniformRandomInplaceKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
                                    float min,
                                    float max,
@@ -28,7 +28,7 @@ void XPUUniformRandomInplaceKernel(const Context& ctx,
                                    int diag_step_in,
                                    float diag_val,
                                    DenseTensor* out) {
-  T* data = ctx.template Alloc<T>(out);
+  T* data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
   std::unique_ptr<T[]> data_cpu(new T[size]);
   std::uniform_real_distribution<T> dist(static_cast<T>(min),
@@ -58,7 +58,7 @@ void XPUUniformRandomInplaceKernel(const Context& ctx,
       data_cpu[pos] = diag_val;
     }
   }
-  phi::memory_utils::Copy(ctx.GetPlace(),
+  phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           data,
                           phi::CPUPlace(),
                           reinterpret_cast<void*>(data_cpu.get()),

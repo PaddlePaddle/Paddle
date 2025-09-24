@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -132,7 +137,7 @@ class TestSegmentOps(OpTest):
         if self.dtype == np.uint16:
             self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
             self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-            self.place = core.CUDAPlace(0)
+            self.place = get_device_place()
 
 
 class TestSegmentSum2(TestSegmentOps):
@@ -221,9 +226,9 @@ class TestSegmentMean(TestSegmentOps):
         self.convert_bf16()
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_output_with_place(
-                core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+                get_device_place(), check_pir=True, check_symbol_infer=False
             )
         # due to CPU kernel not implement calculate 'SummedIds'
         # so cannot check 'SummedIds'
@@ -266,8 +271,8 @@ class TestSegmentMeanFP16Op(TestSegmentMean):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentSumBF16Op(TestSegmentOps):
@@ -286,8 +291,8 @@ class TestSegmentSumBF16Op(TestSegmentOps):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentMaxBF16Op(TestSegmentMax):
@@ -312,8 +317,8 @@ class TestSegmentMaxBF16Op(TestSegmentMax):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentMinBF16Op(TestSegmentMin):
@@ -338,8 +343,8 @@ class TestSegmentMinBF16Op(TestSegmentMin):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentMeanBF16Op(TestSegmentMean):
@@ -357,8 +362,80 @@ class TestSegmentMeanBF16Op(TestSegmentMean):
         self.check_grad_with_place(self.place, ["X"], "Out", check_pir=True)
 
 
-class API_SegmentOpsTest(unittest.TestCase):
+# default SUM
+class TestSegmentOps_ZeroSize(OpTest):
+    def set_data(self):
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        segment_ids = self.set_segment(self.shape[0])
+        return x, segment_ids
 
+    def set_segment(self, len):
+        segment = np.random.randint(0, len, size=[len])
+        segment = np.sort(segment)
+        return segment.astype('int64')
+
+    def compute(self, x, segment_ids):
+        return compute_segment_sum(x, segment_ids)
+
+    def prepare(self):
+        self.op_type = "segment_pool"
+        self.python_api = segment_pool_split
+        self.python_out_sig = ["Out"]
+        self.dtype = np.float64
+        self.shape = [30, 0]
+        self.attrs = {"pooltype": "SUM"}
+
+    def setUp(self):
+        self.prepare()
+        x, segment_ids = self.set_data()
+        result = self.compute(x, segment_ids)
+        self.inputs = {
+            'X': x,
+            'SegmentIds': segment_ids.astype(np.int64),
+        }
+        self.outputs = {'Out': result.astype(self.dtype)}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", check_pir=True)
+
+
+class TestSegmentOps_Min_ZeroSize(TestSegmentOps_ZeroSize):
+    def compute(self, x, segment_ids):
+        result, self.gradient = compute_segment_min_max(
+            x, segment_ids, pooltype="MIN"
+        )
+        return result
+
+    def prepare(self):
+        super().prepare()
+        self.attrs = {'pooltype': "MIN"}
+
+
+class TestSegmentOps_Max_ZeroSize(TestSegmentOps_ZeroSize):
+    def compute(self, x, segment_ids):
+        result, self.gradient = compute_segment_min_max(
+            x, segment_ids, pooltype="MAX"
+        )
+        return result
+
+    def prepare(self):
+        super().prepare()
+        self.attrs = {'pooltype': "MAX"}
+
+
+class TestSegmentOps_Mean_ZeroSize(TestSegmentOps_ZeroSize):
+    def compute(self, x, segment_ids):
+        return compute_segment_mean(x, segment_ids)
+
+    def prepare(self):
+        super().prepare()
+        self.attrs = {'pooltype': "MEAN"}
+
+
+class API_SegmentOpsTest(unittest.TestCase):
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
@@ -412,7 +489,6 @@ class API_SegmentOpsTest(unittest.TestCase):
 
 
 class API_GeometricSegmentOpsTest(unittest.TestCase):
-
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
@@ -488,8 +564,8 @@ class API_GeometricSegmentOpsTest(unittest.TestCase):
             )
 
     def test_dygraph_cuda_float16(self):
-        if core.is_compiled_with_cuda():
-            device = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            device = get_device_place()
             with paddle.base.dygraph.guard(device):
                 x = paddle.to_tensor(
                     [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float16'

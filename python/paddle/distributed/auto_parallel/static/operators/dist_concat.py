@@ -32,9 +32,9 @@ class DistributedConcat(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
 
         axis_tensor = op_desc.input('AxisTensor')
-        assert (
-            len(axis_tensor) == 0
-        ), "Please use axis attr instead of AxisTensor"
+        assert len(axis_tensor) == 0, (
+            "Please use axis attr instead of AxisTensor"
+        )
 
         input_arg_names = op_desc.input_arg_names()
         output_arg_names = op_desc.output_arg_names()

@@ -667,13 +667,17 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 assert (
                     trainers_num
                     > self.config.hierarchical_allreduce_inter_nranks
-                ), f"trainers_num:{trainers_num} < hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks}"
+                ), (
+                    f"trainers_num:{trainers_num} < hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks}"
+                )
 
                 assert (
                     trainers_num
                     % self.config.hierarchical_allreduce_inter_nranks
                     == 0
-                ), f"trainers_num:{trainers_num} mod hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks} != 0"
+                ), (
+                    f"trainers_num:{trainers_num} mod hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks} != 0"
+                )
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = int(
                     self.config.hierarchical_allreduce_inter_nranks
@@ -781,7 +785,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     index += 1
             else:
                 AssertionError(
-                    "Can not insert the send op by original " "variable name :",
+                    "Can not insert the send op by original variable name :",
                     splited_grad_varname,
                 )
 
@@ -842,10 +846,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             name=framework.generate_control_dev_var_name()
         )
         if self.has_distributed_lookup_table:
-            self.grad_name_to_send_dummy_out[
-                self.table_name
-            ] = program.global_block().create_var(
-                name=framework.generate_control_dev_var_name()
+            self.grad_name_to_send_dummy_out[self.table_name] = (
+                program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name()
+                )
             )
         input_deps = list(self.grad_name_to_send_dummy_out.values())
 
@@ -1529,7 +1533,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             )
 
         if len(optimize_blocks) == 0:
-            logging.warn(
+            logging.warning(
                 "pserver [" + str(endpoint) + "] has no optimize block!!"
             )
             pre_block_idx = pserver_program.num_blocks - 1
@@ -2216,7 +2220,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         }
         outputs = {"ParamOut": [param_var]}
         # only support sgd now
-        logging.warn(
+        logging.warning(
             "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
             + table_opt_op.type
         )
@@ -2370,8 +2374,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             )
         else:
             AssertionError(
-                "Variable type should be in set "
-                "[DENSE_TENSOR, SELECTED_ROWS]"
+                "Variable type should be in set [DENSE_TENSOR, SELECTED_ROWS]"
             )
 
     def _get_optimizer_input_shape(

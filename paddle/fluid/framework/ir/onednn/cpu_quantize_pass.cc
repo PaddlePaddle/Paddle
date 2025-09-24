@@ -563,7 +563,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
 void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
+  patterns::FCONEDNN fc_pattern{pattern, name_scope_};
   fc_pattern(with_residual_data);
 
   int quantize_fc_count = 0;
@@ -579,8 +579,10 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
       return;
     }
 
-    if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn")) {
-      MarkAndLogCannotQuantizeOp(fc, "use_mkldnn attribute set to false");
+    if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn") &&
+        !fc->Op()->GetAttrIfExists<bool>("use_onednn")) {
+      MarkAndLogCannotQuantizeOp(
+          fc, "use_mkldnn and use_onednn attribute set to false");
       return;
     }
 

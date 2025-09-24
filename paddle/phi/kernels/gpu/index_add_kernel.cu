@@ -50,12 +50,24 @@ __global__ void index_add_cuda_kernel(const T* input,
 }
 
 template <typename T, typename Context>
-void IndexAddKernel(const Context& ctx,
+void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& index,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
+  if (x.numel() == 0) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    return;
+  }
+  if (index.numel() == 0) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    return;
+  }
+  if (add_value.numel() == 0) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    return;
+  }
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
@@ -68,22 +80,19 @@ void IndexAddKernel(const Context& ctx,
   int64_t delta = input_dim[dim] - size;
 
   auto* in_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(output);
+  T* out_data = dev_ctx.template Alloc<T>(output);
   auto* add_value_data = add_value.data<T>();
 
   int64_t numel = add_value.numel();
-  if (numel == 0) {
-    return;
-  }
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   // copy input to output.
   // todo(@limin29): inplace do not need copy.
-  phi::Copy(ctx, x, ctx.GetPlace(), false, output);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
 
   if (FLAGS_cudnn_deterministic) {
     VLOG(2) << "Run grad kernel of index_add with single thread.";
@@ -126,7 +135,7 @@ PD_REGISTER_KERNEL(index_add,
                    phi::IndexAddKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t) {}

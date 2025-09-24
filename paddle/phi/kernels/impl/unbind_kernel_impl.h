@@ -24,6 +24,13 @@ void UnbindKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   std::vector<DenseTensor*> outs) {
+  int64_t unbind_numel = x.numel();
+  PADDLE_ENFORCE_LE(unbind_numel,
+                    std::numeric_limits<int>::max(),
+                    ::common::errors::PreconditionNotMet(
+                        "The number of proposals in unbind should be less than "
+                        "2^31, but got %lld. Please check the input tensor. ",
+                        unbind_numel));
   auto x_dims = x.dims();
   axis = axis < 0 ? x_dims.size() + axis : axis;
 

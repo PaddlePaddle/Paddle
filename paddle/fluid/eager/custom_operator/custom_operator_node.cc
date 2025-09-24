@@ -21,6 +21,7 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
+COMMON_DECLARE_bool(check_cuda_error);
 
 namespace egr {
 
@@ -166,6 +167,9 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                                  kSlotSmallVectorSize>& grads,
                             bool create_graph,
                             bool is_new_grad) {  // NOLINT
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpNode begin");
+  }
   paddle::CustomOpKernelContext ctx;
   const auto& meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   const auto& vec_map = meta_info_map.at(op_type_);
@@ -204,7 +208,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   VLOG(6) << "Prepare Grad inputs";
   for (auto& in : tmp_ins) {
     for (auto& tensor : in) {
-      if (tensor.initialized() && tensor.is_dense_tensor() &&
+      if (tensor.has_allocation() && tensor.is_dense_tensor() &&
           !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                ->meta()
                .is_contiguous()) {
@@ -234,7 +238,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
               << " to tmp_outputs: " << grad_output_idx;
       for (size_t j = 0; j < OutputMeta()[grad_output_idx].size(); j++) {
         outs[grad_output_idx]
-            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+            .emplace_back(/* init it in case of copy nullptr of shared_ptr */
                           std::make_shared<phi::DenseTensor>(
                               phi::DataType::UNDEFINED),
                           egr::Controller::Instance().GenerateUniqueName(
@@ -262,7 +266,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
       paddle::Tensor* out_tensor =
           ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
-      if (!out_tensor->initialized()) {
+      if (!out_tensor->has_allocation()) {
         PADDLE_ENFORCE(
             paddle::framework::detail::IsOptionalVar(
                 grad_outputs_names.at(i)) ||
@@ -373,6 +377,14 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     grad_node->SetAttrs(attrs);
   }
 
+  if (HasNodePostHook()) {
+    outs = ApplyNodePostHooks(outs, hooked_grads);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpNode finish");
+  }
+
   return outs;
 }
 
@@ -382,6 +394,9 @@ RunCustomOpDoubleGradNode::operator()(
         grads,
     bool create_graph,
     bool is_new_grad) {  // NOLINT
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpDoubleGradNode begin");
+  }
   paddle::CustomOpKernelContext ctx;
   const auto& meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   const auto& vec_map = meta_info_map.at(op_type_);
@@ -457,6 +472,14 @@ RunCustomOpDoubleGradNode::operator()(
   for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
     auto output_pair = ctx.OutputRangeAt(i);
     outs[i] = ctx.OutputsBetween(output_pair.first, output_pair.second);
+  }
+
+  if (HasNodePostHook()) {
+    outs = ApplyNodePostHooks(outs, hooked_grads);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpDoubleGradNode finish");
   }
 
   return outs;

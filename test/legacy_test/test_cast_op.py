@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import Program, program_guard
 
 
 def cast_wrapper(x, out_dtype=None):
@@ -120,7 +125,11 @@ class TestCastOpFp32ToFp16(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (
+        (paddle.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+        or paddle.is_compiled_with_rocm()
+    ),
     "BFP16 test runs only on CUDA",
 )
 class TestCastOpBf16ToFp32(OpTest):
@@ -155,7 +164,11 @@ class TestCastOpBf16ToFp32(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (
+        (paddle.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+        or paddle.is_compiled_with_rocm()
+    ),
     "BFP16 test runs only on CUDA",
 )
 class TestCastOpFp32ToBf16(OpTest):
@@ -190,7 +203,6 @@ class TestCastOpFp32ToBf16(OpTest):
 
 
 class TestCastOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -240,16 +252,7 @@ class TestCastDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
         paddle.disable_static()
 
@@ -278,16 +281,7 @@ class TestCastTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
         paddle.disable_static()
 

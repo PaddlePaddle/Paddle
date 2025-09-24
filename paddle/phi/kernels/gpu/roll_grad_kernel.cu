@@ -14,9 +14,6 @@
 
 #include "paddle/phi/kernels/roll_grad_kernel.h"
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/roll_kernel_impl.h"
 
@@ -30,6 +27,10 @@ void RollGradKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
   auto* out_grad_data = out_grad.data<T>();
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
   auto shifts_data = shifts.GetData();
@@ -72,11 +73,11 @@ PD_REGISTER_KERNEL(roll_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::RollGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

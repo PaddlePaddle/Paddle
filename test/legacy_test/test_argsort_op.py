@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -82,8 +88,8 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
 
 class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
     def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -97,8 +103,8 @@ class TestArgsort(unittest.TestCase):
         self.data = np.random.rand(*self.input_shape)
 
     def test_api_static1(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -117,8 +123,8 @@ class TestArgsort(unittest.TestCase):
             self.assertEqual((result == np_result).all(), True)
 
     def test_api_static2(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -155,6 +161,30 @@ class TestArgsort4(TestArgsort):
         self.axis = 1
 
 
+class TestArgsortZeroSize(TestArgsort):
+    def init(self):
+        self.input_shape = [0, 3]
+        self.axis = 0
+
+
+class TestArgsortZeroSize2(TestArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 4]
+        self.axis = 0
+
+
+class TestArgsortZeroSize3(TestArgsort):
+    def init(self):
+        self.input_shape = [0, 3]
+        self.axis = 1
+
+
+class TestArgsortZeroSize4(TestArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 4]
+        self.axis = 1
+
+
 class TestStableArgsort(unittest.TestCase):
     def init(self):
         self.input_shape = [
@@ -170,8 +200,8 @@ class TestStableArgsort(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def gpu_place(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -283,6 +313,34 @@ class TestStableArgsort4(TestStableArgsort):
         )
 
 
+class TestStableArgsortZeroSize(TestStableArgsort):
+    def init(self):
+        self.input_shape = [0, 30]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 0
+
+
+class TestStableArgsortZeroSize2(TestStableArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 40]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 0
+
+
+class TestStableArgsortZeroSize3(TestStableArgsort):
+    def init(self):
+        self.input_shape = [0, 30]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 1
+
+
+class TestStableArgsortZeroSize4(TestStableArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 40]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 1
+
+
 class TestArgsortImperative(unittest.TestCase):
     def init(self):
         self.input_shape = [
@@ -293,8 +351,8 @@ class TestArgsortImperative(unittest.TestCase):
     def setUp(self):
         self.init()
         self.input_data = np.random.rand(*self.input_shape)
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -345,8 +403,8 @@ class TestStableArgsortImperative(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def gpu_place(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -429,8 +487,8 @@ class TestArgsortWithInputNaN(unittest.TestCase):
     def setUp(self):
         self.init()
         self.input_data = np.array([1.0, np.nan, 3.0, 2.0])
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -446,9 +504,8 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 
 class TestArgsortOpFp16(unittest.TestCase):
-
     def test_fp16(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
             x_np = np.random.random((2, 8)).astype('float16')
             with paddle.static.program_guard(
@@ -456,7 +513,7 @@ class TestArgsortOpFp16(unittest.TestCase):
             ):
                 x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
                 out = paddle.argsort(x)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
@@ -512,8 +569,8 @@ class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestArgsortBF16Op(OpTest):
@@ -548,11 +605,11 @@ class TestArgsortBF16Op(OpTest):
         self.descending = False
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -566,6 +623,111 @@ class TestArgsortBF16Op(OpTest):
 class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
     def init_direction(self):
         self.descending = True
+
+
+class TestArgsortCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
+        self.func = paddle.argsort
+        self.init_data()
+        self.init_case()
+
+    def init_data(self):
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.axis = 1
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_out = np.argsort(self.np_input, self.axis)
+
+    def init_case(self):
+        params = [['x', 'input'], ['axis', 'dim']]  # param1  # param2
+
+        # Generate all valid combinations
+        def generate_cases(param_groups, case_list):
+            from itertools import product
+
+            for combo in product(*[[None, *names] for names in param_groups]):
+                args = ['pos' if p is None else 'kw' for p in combo]
+                if args == sorted(args, key=lambda x: x != 'pos'):
+                    case_list.append(combo)
+
+        # paddle.chunk()
+        self.test_cases = []
+        generate_cases(params, self.test_cases)
+        # x.chunk()
+        self.tensor_test_cases = []
+        generate_cases(params[1:], self.tensor_test_cases)
+
+    def _build_args_kwargs(self, param_names, params):
+        args = []
+        kwargs = {}
+        for name, param in zip(param_names, params):
+            if name is None:
+                args.append(param)
+            else:
+                kwargs[name] = param
+        return args, kwargs
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                # paddle.
+                for param_names in self.test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (x, self.axis)
+                    )
+                    out = self.func(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+                # paddle.Tensor.
+                for param_names in self.tensor_test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (self.axis,)
+                    )
+                    out = x.argsort(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    # paddle.
+                    for param_names in self.test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (x, self.axis)
+                        )
+                        out = self.func(*args, **kwargs)
+
+                        exe = base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
+                    # paddle.Tensor.
+                    for param_names in self.tensor_test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (self.axis,)
+                        )
+
+                        out = x.argsort(*args, **kwargs)
+
+                        exe = base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
 
 
 if __name__ == "__main__":

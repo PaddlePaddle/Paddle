@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from get_test_cover_info import xpu_matmul_quant_type_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -73,16 +74,27 @@ class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
         self.shape = (1, 128, 2, 32)
+        self.shape_v = (1, 128, 2, 18)
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False
 
     def test_all(self):
-        self.run_case(dtype="float32", tolerance=5e-4, tolerance_dv=5e-4)
-        self.run_case(dtype="float16", tolerance=5e-4, tolerance_dv=1e-3)
-        self.run_case(dtype="bfloat16", tolerance=6e-3, tolerance_dv=1e-2)
-        self.run_unpadded_case(dtype="float16", rtol=5e-3, atol=1e-3)
-        self.run_unpadded_case(dtype="bfloat16", rtol=5e-3, atol=1e-3)
+        with xpu_matmul_quant_type_guard("float"):
+            self.run_case(dtype="float32", tolerance=5e-4, tolerance_dv=5e-4)
+            self.run_case(dtype="float16", tolerance=5e-4, tolerance_dv=1e-3)
+            self.run_case(dtype="bfloat16", tolerance=6e-3, tolerance_dv=1e-2)
+            self.run_case(
+                dtype="float32", tolerance=1e-3, tolerance_dv=1e-3, is_mla=True
+            )
+            self.run_case(
+                dtype="float16", tolerance=5e-4, tolerance_dv=1e-3, is_mla=True
+            )
+            self.run_case(
+                dtype="bfloat16", tolerance=6e-3, tolerance_dv=1e-2, is_mla=True
+            )
+            self.run_unpadded_case(dtype="float16", rtol=5e-3, atol=1e-3)
+            self.run_unpadded_case(dtype="bfloat16", rtol=5e-3, atol=1e-3)
 
     def run_unpadded_case(self, dtype, rtol, atol):
         self.dtype = dtype
@@ -131,7 +143,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
             q.grad.numpy(), q_.grad.numpy(), rtol=rtol, atol=atol
         )
 
-    def run_case(self, dtype, tolerance, tolerance_dv):
+    def run_case(self, dtype, tolerance, tolerance_dv, is_mla=False):
         # TODO(houj04) remove debug codes after correctness check
         print(f"Test case shape {self.shape} dtype {dtype}")
 
@@ -141,7 +153,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
         np.random.seed(2023)
         query = np.random.uniform(-1.0, 1.0, self.shape)
         key = np.random.uniform(-1.0, 1.0, self.shape)
-        value = np.random.uniform(-1.0, 1.0, self.shape)
+        value = np.random.uniform(
+            -1.0, 1.0, self.shape_v if is_mla else self.shape
+        )
 
         q = paddle.to_tensor(
             query, place=self.place, dtype=dtype, stop_gradient=False
@@ -249,6 +263,7 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
         self.shape = (2, 128, 1, 32)
+        self.shape_v = (2, 128, 1, 18)
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False

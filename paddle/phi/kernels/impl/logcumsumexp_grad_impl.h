@@ -50,6 +50,10 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
                             bool exclusive,
                             bool reverse,
                             DenseTensor* d_x) {
+  if (d_x && d_x->numel() == 0) {
+    dev_ctx.template Alloc<T>(d_x);
+    return;
+  }
   reverse = !reverse;
   dev_ctx.template Alloc<T>(d_x);
 

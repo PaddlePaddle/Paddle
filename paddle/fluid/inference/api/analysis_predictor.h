@@ -162,6 +162,12 @@ class AnalysisPredictor : public PaddlePredictor {
   std::vector<std::string> GetOutputNames() override;
 
   ///
+  /// \brief Get the value really need place, only for pir
+  ///
+  /// \return phi::place
+  ///
+  phi::Place GetTensorPlace(const pir::Value &value);
+  ///
   /// \brief Get the Input Tensor object
   ///
   /// \param[in] name input name

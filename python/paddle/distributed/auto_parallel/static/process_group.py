@@ -89,9 +89,9 @@ def new_process_group(
 class ProcessGroup:
     def __init__(self, group_id, ranks, group_type=None):
         if group_id == 0 and get_process_group(0) is not None:
-            assert (
-                group_id != 0
-            ), "Process group id 0 is reserved for all ranks."
+            assert group_id != 0, (
+                "Process group id 0 is reserved for all ranks."
+            )
         self._group_id = group_id
         self._ranks = ranks
         # Add the current ranks into group 0
@@ -121,9 +121,9 @@ class ProcessGroup:
         if set(new_ranks) <= set(self.ranks):
             return
         else:
-            assert (
-                not self.is_instantiate()
-            ), "Cannot add new ranks after instantiating the process group"
+            assert not self.is_instantiate(), (
+                "Cannot add new ranks after instantiating the process group"
+            )
         self._ranks.extend(new_ranks)
         self._ranks = list(set(self.ranks))
 
@@ -220,9 +220,11 @@ class ProcessGroup:
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', ring_id
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', ring_id
+                )
 
             # NOTE(zhiqiu): to avoid send/recv hang in lazy init
             if self._group_type == 'p2p':
@@ -236,9 +238,11 @@ class ProcessGroup:
 
         if self.nranks > 1:
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', 0
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', 0
+                )
 
         self._is_instantiate = True
 

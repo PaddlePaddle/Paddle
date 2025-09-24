@@ -44,8 +44,8 @@ OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE = """
 
 OP_COMPLEX_PROMOTE_CHECK_TEMPLATE = """
   // deal complex_promote
-  if (framework::IsComplexType(expected_kernel_dtype)) {{
-    // only promote inputs’s types when contains complex input
+  if (phi::IsComplexType(expected_kernel_dtype)) {{
+    // only promote inputs's types when contains complex input
     return tensor_dtype;
   }}
 """

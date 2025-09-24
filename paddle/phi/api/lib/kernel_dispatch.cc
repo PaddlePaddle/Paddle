@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include <glog/logging.h>
+#include "paddle/phi/core/tensor_array.h"
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
@@ -29,7 +30,7 @@ limitations under the License. */
 namespace paddle::experimental::detail {
 
 // We need judge whether the allocation is nullptr,
-// whether the allocation is initialized, wo we need GetHolder method
+// whether the allocation is initialized, so we need GetHolder method
 bool HasAllocation(const phi::TensorBase& t) {
   if (phi::DenseTensor::classof(&t)) {
     return phi::DenseTensorUtils::GetHolder(
@@ -50,6 +51,8 @@ bool HasAllocation(const phi::TensorBase& t) {
                static_cast<const phi::StringTensor&>(t)) != nullptr;
   } else if (phi::distributed::DistTensor::classof(&t)) {
     return static_cast<const phi::distributed::DistTensor&>(t).defined();
+  } else if (phi::TensorArray::classof(&t)) {
+    return t.has_allocation();
   } else {
     return false;
   }
@@ -66,10 +69,12 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
     VLOG(10) << "update BackendSet by tensor: add [" << backend_key << "]";
-    if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
+    if ((backend_key == Backend::GPU || backend_key == Backend::CUSTOM) &&
+        phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
-    } else if (backend_key == Backend::GPU &&
+    } else if ((backend_key == Backend::GPU ||
+                backend_key == Backend::CUSTOM) &&
                phi::distributed::DistTensor::classof(&t) &&
                static_cast<const phi::distributed::DistTensor&>(t)
                    .value()
@@ -159,7 +164,7 @@ Backend ParseBackend(const Place& place) {
 }
 Backend ParseBackend(const Tensor& tensor) {
   Backend backend_key = phi::TransToPhiBackend(tensor.place());
-  if (backend_key == Backend::GPU &&
+  if ((backend_key == Backend::GPU || backend_key == Backend::CUSTOM) &&
       phi::DenseTensor::classof(tensor.impl().get()) &&
       static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
     return Backend::GPUDNN;

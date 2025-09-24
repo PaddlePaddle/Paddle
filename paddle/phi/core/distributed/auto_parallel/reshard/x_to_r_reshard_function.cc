@@ -66,10 +66,6 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   if (!in_dist_attr.is_replicated()) {
     if (cur_global_rank != root_rank) {
       // send dense tensor to root
-#if defined(PADDLE_WITH_XPU)
-      PADDLE_THROW(::common::errors::Unimplemented(
-          "Not supported PSendKernel  on xpu yet."));
-#else
       RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                 PSendKernel,
                                 dtype,
@@ -77,15 +73,10 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                 in.value(),
                                 root_rank,
                                 /*dynamic_shape=*/true);
-#endif
     } else {
       for (size_t i = 0; i < all_process_ids.size(); ++i) {
         if (all_process_ids[i] != root_rank) {
           rank_to_result.emplace(all_process_ids[i], DenseTensor());
-#if defined(PADDLE_WITH_XPU)
-          PADDLE_THROW(::common::errors::Unimplemented(
-              "Not supported PRecv on xpu yet."));
-#else
           RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                     PRecv,
                                     dtype,
@@ -94,7 +85,6 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                     {} /*out_shape*/,
                                     /*dynamic_shape=*/true,
                                     &rank_to_result[all_process_ids[i]]);
-#endif
         }
       }
     }

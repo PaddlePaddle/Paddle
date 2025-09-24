@@ -22,15 +22,7 @@ def is_inplace_api(func):
     return func in inplace_apis
 
 
-def get_variable_methods():
-    return [
-        member_name
-        for member_name, member in inspect.getmembers(paddle.static.Variable)
-        if inspect.isfunction(member)
-    ]
-
-
-def get_value_methods():
+def get_tensor_methods():
     return [
         member_name
         for member_name, member in inspect.getmembers(paddle.pir.Value)
@@ -42,6 +34,7 @@ def get_paddle_api():
     modules = [
         paddle,
         paddle.nn.functional,
+        paddle.nn.quant,
         paddle.incubate.nn.functional,
         paddle.linalg,
         paddle.signal,
@@ -51,15 +44,25 @@ def get_paddle_api():
         paddle.geometric,
     ]
     distributed_apis = [
+        paddle.distributed.all_reduce,
         paddle.distributed.shard_tensor,
         paddle.distributed.reshard,
+        paddle.distributed.all_gather,
+        paddle.distributed.alltoall,
+        paddle.distributed.barrier,
+        paddle.distributed.recv,
+        paddle.distributed.send,
+        paddle.distributed.broadcast,
         paddle.distributed.unshard_dtensor,
         paddle.distributed.auto_parallel.api.dtensor_to_local,
         paddle.distributed.auto_parallel.api.dtensor_from_local,
         paddle.distributed.auto_parallel.api.moe_global_mesh_tensor,
         paddle.distributed.auto_parallel.api.moe_sub_mesh_tensors,
     ]
-    special_paddle_apis = [paddle.tensor.fill_constant]
+    special_paddle_apis = [
+        paddle.tensor.fill_constant,
+        paddle.tensor.top_p_sampling,
+    ]
     non_operator_related_apis = [
         paddle.in_dynamic_mode,
         paddle.save,
@@ -93,20 +96,6 @@ def get_paddle_api():
     )
 
 
-def create_tensor_methods_getter():
-    value_methods = get_value_methods()
-    variable_methods = get_variable_methods()
-
-    def _get_tensor_methods():
-        if paddle.framework.use_pir_api():
-            return value_methods
-        else:
-            return variable_methods
-
-    return _get_tensor_methods
-
-
-get_tensor_methods = create_tensor_methods_getter()
 paddle_api_list = get_paddle_api()
 
 # TODO(Aurelius84): It seems that we use it to judge 'in_paddle_module()'.
@@ -116,13 +105,14 @@ paddle_api_module_prefix = {
     "paddle.nn.functional",
 }
 
-break_graph_set = set()
-
-
+break_graph_functions = set()
+break_graph_layer_classes = set()
 break_graph_tensor_method = {
     'register_hook',
     'numpy',
     'clear_gradient',
+    'tolist',
+    'item',
     # TODO: Browse all possible functions and make prior judgments.
 }
 
@@ -137,8 +127,12 @@ def is_break_graph_tensor_methods(method_name):
     return method_name in break_graph_tensor_method
 
 
-def add_break_graph_apis(apis: list):
-    break_graph_set.update(apis)
+def add_break_graph_function(fn):
+    break_graph_functions.add(fn)
+
+
+def add_break_graph_layer_class(layer_class: type[paddle.nn.Layer]):
+    break_graph_layer_classes.add(layer_class)
 
 
 def is_directly_run_api(api):
@@ -162,5 +156,6 @@ def is_directly_run_api(api):
         paddle.base.libpaddle.is_compiled_with_distribute,
         paddle.base.libpaddle.is_compiled_with_brpc,
         paddle.base.libpaddle.is_compiled_with_dist,
+        paddle.base.libpaddle.is_compiled_with_flagcx,
     }
     return api in NATIVE_CODE_PURE_FUNCTIONS

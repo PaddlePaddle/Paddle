@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_kernel.h"
-
 #include "glog/logging.h"
+#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -28,8 +29,6 @@
 #endif
 
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/padding.h"
@@ -52,7 +51,7 @@ namespace phi {
 template <typename T, typename Context>
 void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                            const DenseTensor* transformed_filter_channel,
-                           const Context& ctx,
+                           const Context& dev_ctx,
                            const std::vector<int>& strides,
                            const std::vector<int>& padding_common,
                            const std::vector<int>& dilations,
@@ -66,8 +65,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   const T* filter_data = transformed_filter_channel->data<T>();
   T* output_data = transformed_output->data<T>();
 
-  auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto handle = dev_ctx.cudnn_handle();
+  auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
   auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
@@ -154,11 +153,11 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   using search = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
   workspace_size = search::GetWorkspaceSize(args);
   fwd_result.algo = search::Find<T>(
-      args, exhaustive_search, deterministic, workspace_size, ctx);
+      args, exhaustive_search, deterministic, workspace_size, dev_ctx);
 #else
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search = SearchAlgorithm<ConvKind::kForward>;
-  fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
+  fwd_result = search::Find<T>(dev_ctx, args, exhaustive_search, deterministic);
   workspace_size = fwd_result.workspace_size;
 #endif
 
@@ -177,8 +176,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   ScalingParamType<T> beta = 0.0f;
 
   // NOTE(zhiqiu): inplace addto is not supported in double grad yet.
-  // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-  // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+  // ScalingParamType<T> beta = dev_ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+  // VLOG(4) << "Conv: use_addto = " << dev_ctx.Attr<bool>("use_addto");
 
 #ifdef PADDLE_WITH_HIP
   workspace_handle.RunFunc(
@@ -200,7 +199,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
       },
       workspace_size);
 #else
-  ConvRunner<T, ConvKind::kForward>::Apply(ctx,
+  ConvRunner<T, ConvKind::kForward>::Apply(dev_ctx,
                                            args,
                                            fwd_result,
                                            input_data,
@@ -220,7 +219,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
 template <typename T, typename Context>
 void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                            const DenseTensor* filter_channel_tensor,
-                           const Context& ctx,
+                           const Context& dev_ctx,
                            const std::vector<int>& strides,
                            const std::vector<int>& padding_common,
                            const std::vector<int>& dilations,
@@ -241,8 +240,8 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   T* input_data = const_cast<T*>(input_tensor->data<T>());
   T* filter_data = const_cast<T*>(filter_channel_tensor->data<T>());
   T* output_data = output_tensor->data<T>();
-  cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  cudnnHandle_t handle = const_cast<cudnnHandle_t>(dev_ctx.cudnn_handle());
+  auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
   auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
@@ -302,7 +301,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
 #endif
 
 template <typename T, typename Context>
-void ConvCudnnKernel(const Context& ctx,
+void ConvCudnnKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const DenseTensor& filter,
                      const std::vector<int>& strides,
@@ -312,16 +311,21 @@ void ConvCudnnKernel(const Context& ctx,
                      int groups,
                      const std::string& data_format,
                      DenseTensor* output) {
-  ctx.template Alloc<T>(output);
+  if (input.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    return;
+  }
+  dev_ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
-  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  bool has_exhaustive_search = dev_ctx.HasDnnAttr("exhaustive_search");
   VLOG(4) << "GPUContext contains `exhaustive_search`: "
           << has_exhaustive_search;
   bool exhaustive_search_attr =
       has_exhaustive_search
-          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("exhaustive_search"))
           : false;
   bool exhaustive_search =
       FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
@@ -344,11 +348,12 @@ void ConvCudnnKernel(const Context& ctx,
   // with FP16 or BF16 in NHWC data format.
   const bool compute_in_nhwc =
       (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
-      IsVoltaOrLater(ctx);
+      IsVoltaOrLater(dev_ctx);
 #else
   // Tensor Core introduced from Volta GPUs supports more faster conv op
   // with FP16 in NHWC data format. (BF16 require cudnn >= 8.1.0)
-  const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
+  const bool compute_in_nhwc =
+      dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
 #endif
   // We will only do data format conversion from NHWC to NCHW.
   // cudnn will convert NCHW to NHWC automatically on Tensor Core.
@@ -368,10 +373,12 @@ void ConvCudnnKernel(const Context& ctx,
 
   if (channel_last && compute_format == phi::backends::gpu::DataLayout::kNCHW) {
     VLOG(3) << "Transform input tensor from NHWC to NCHW.";
-    ResizeToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
-    TransToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
+    ResizeToChannelFirst<Context, T>(
+        dev_ctx, &input, &transformed_input_channel);
+    TransToChannelFirst<Context, T>(
+        dev_ctx, &input, &transformed_input_channel);
 
-    ResizeToChannelFirst<Context, T>(ctx, output, &transformed_output);
+    ResizeToChannelFirst<Context, T>(dev_ctx, output, &transformed_output);
 
   } else {
     transformed_input_channel.ShareDataWith(input);
@@ -380,8 +387,10 @@ void ConvCudnnKernel(const Context& ctx,
   if (compute_format == phi::backends::gpu::DataLayout::kNHWC &&
       !FLAGS_manually_trans_conv_filter) {
     VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
-    ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
-    TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
+    ResizeToChannelLast<Context, T>(
+        dev_ctx, &filter, &transformed_filter_channel);
+    TransToChannelLast<Context, T>(
+        dev_ctx, &filter, &transformed_filter_channel);
   } else {
     transformed_filter_channel.ShareDataWith(filter);
   }
@@ -442,20 +451,20 @@ void ConvCudnnKernel(const Context& ctx,
     }
     DDim new_input_shape(common::make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
-    ctx.template Alloc<T>(&transformed_input);
+    dev_ctx.template Alloc<T>(&transformed_input);
 
     const int rank = transformed_input_channel.dims().size();
     T pad_value(0.0);
     switch (rank) {
       case 4: {
-        funcs::PadFunction<Context, T, 4>(ctx,
+        funcs::PadFunction<Context, T, 4>(dev_ctx,
                                           input_pad,
                                           transformed_input_channel,
                                           pad_value,
                                           &transformed_input);
       } break;
       case 5: {
-        funcs::PadFunction<Context, T, 5>(ctx,
+        funcs::PadFunction<Context, T, 5>(dev_ctx,
                                           input_pad,
                                           transformed_input_channel,
                                           pad_value,
@@ -489,11 +498,14 @@ void ConvCudnnKernel(const Context& ctx,
                  : phi::backends::gpu::DataLayout::kNCDHW;
   }
 
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_input);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_filter_channel);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_output);
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
     ConvCudnnKernelImplV8<T>(&transformed_input,
                              &transformed_filter_channel,
-                             ctx,
+                             dev_ctx,
                              strides,
                              padding_common,
                              dilations,
@@ -505,7 +517,7 @@ void ConvCudnnKernel(const Context& ctx,
   else
     ConvCudnnKernelImplV7<T>(&transformed_input,
                              &transformed_filter_channel,
-                             ctx,
+                             dev_ctx,
                              strides,
                              padding_common,
                              dilations,
@@ -518,7 +530,7 @@ void ConvCudnnKernel(const Context& ctx,
 #else
   ConvCudnnKernelImplV7<T>(&transformed_input,
                            &transformed_filter_channel,
-                           ctx,
+                           dev_ctx,
                            strides,
                            padding_common,
                            dilations,
@@ -531,7 +543,7 @@ void ConvCudnnKernel(const Context& ctx,
 #endif
 
   if (channel_last && compute_format == phi::backends::gpu::DataLayout::kNCHW) {
-    TransToChannelLast<Context, T>(ctx, &transformed_output, output);
+    TransToChannelLast<Context, T>(dev_ctx, &transformed_output, output);
   }
 }
 
@@ -557,53 +569,21 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                      data_format,
                      out);
 }
-
-template <typename T, typename Context>
-void DepthwiseConvCudnnKernel(const Context& dev_ctx,
-                              const DenseTensor& input,
-                              const DenseTensor& filter,
-                              const std::vector<int>& strides,
-                              const std::vector<int>& paddings,
-                              const std::string& padding_algorithm,
-                              int groups,
-                              const std::vector<int>& dilations,
-                              const std::string& data_format,
-                              DenseTensor* out) {
-  ConvCudnnKernel<T>(dev_ctx,
-                     input,
-                     filter,
-                     strides,
-                     paddings,
-                     padding_algorithm,
-                     dilations,
-                     groups,
-                     data_format,
-                     out);
-}
-
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(conv2d,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::ConvCudnnKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    conv2d, GPUDNN, ALL_LAYOUT, phi::ConvCudnnKernel, float, phi::float16) {}
 
-PD_REGISTER_KERNEL(conv3d,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::Conv3DCudnnKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    conv3d, GPUDNN, ALL_LAYOUT, phi::Conv3DCudnnKernel, float, phi::float16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::DepthwiseConvCudnnKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
@@ -613,8 +593,8 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(conv3d,
                    GPUDNN,
@@ -622,8 +602,8 @@ PD_REGISTER_KERNEL(conv3d,
                    phi::Conv3DCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #elif CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11800 && \
     defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 890
 PD_REGISTER_KERNEL(conv2d,
@@ -632,9 +612,9 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float8_e4m3fn,
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
@@ -642,7 +622,7 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(conv3d,
                    GPUDNN,
@@ -650,7 +630,7 @@ PD_REGISTER_KERNEL(conv3d,
                    phi::Conv3DCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 
 #endif

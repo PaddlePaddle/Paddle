@@ -154,7 +154,8 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
   --rdc=true compile flag, then L2_norm kernel can be set with __device__ and
   cooperative_groups::grid_group also can be involved. Otherwise, adding this
   flag may affect much, L2_norm kernel shall be set with __global__.*/
-// TODO(limingshu): declaration of cooperative_groups wapper is invalid in host.
+// TODO(limingshu): declaration of cooperative_groups wrapper is invalid in
+// host.
 template <typename T, typename MT>
 __forceinline__ __device__ void L2NormKernel(
     const cooperative_groups::grid_group* cg,
@@ -193,7 +194,7 @@ __global__ void L2NormKernel(
     g_buffer[blockIdx.x] = g_tmp;
   }
 #if CUDA_VERSION >= 11000
-  cg->sync();  // Grid sync for writring partial result to global memory
+  cg->sync();  // Grid sync for writing partial result to global memory
   MT p_part_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_part_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
   MT tmp0 = phi::funcs::BlockReduceSum<MT>(p_part_sum, FINAL_MASK);
@@ -492,7 +493,8 @@ void LarsMomentumKernel(
   using MT = MultiPrecisionType<T>;
   int num_blocks_per_sm = 0;
   int sm_num = dev_ctx.GetSMCount();
-  // phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+  // phi::DenseTensor tmp_buffer_t = dev_ctx.AllocateTmpTensor<MT,
+  // phi::GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
   phi::DenseTensor tmp_buffer_t;
   tmp_buffer_t.Resize({LARS_BLOCK_SIZE << 1});
@@ -512,7 +514,7 @@ void LarsMomentumKernel(
         op_num,
         LARS_MAX_MERGED_OPS,
         errors::InvalidArgument(
-            "The maximum number of merged-ops supported is (%d), but"
+            "The maximum number of merged-ops supported is (%d), but "
             "lars op required for training this model is (%d)\n",
             LARS_MAX_MERGED_OPS,
             op_num));
@@ -676,7 +678,7 @@ PD_REGISTER_KERNEL(lars_momentum,
                    phi::LarsMomentumKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

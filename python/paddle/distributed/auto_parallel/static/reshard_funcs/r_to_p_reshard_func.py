@@ -60,11 +60,13 @@ class RToPReshardFunction(ReshardFunction):
         else:
             dst_value = paddle.assign(src_value)
 
-        src_chunk_id = src_value.get_defining_op().dist_attr.chunk_id
+        chunk_id = -1
+        if src_value.get_defining_op().dist_attr:
+            chunk_id = src_value.get_defining_op().dist_attr.chunk_id
         dst_value.set_type(dst_type)
         dst_value.get_defining_op().dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
-                dst_mesh, [src_dist_attr], [dst_dist_attr], src_chunk_id
+                dst_mesh, [src_dist_attr], [dst_dist_attr], chunk_id
             )
         )
 

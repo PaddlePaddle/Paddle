@@ -29,7 +29,19 @@ void ClipKernel(const Context& dev_ctx,
                 const Scalar& min,
                 const Scalar& max,
                 DenseTensor* out) {
+  auto max_ = max.to<T>();
+  auto min_ = min.to<T>();
+
+  PADDLE_ENFORCE_LE(
+      min_,
+      max_,
+      errors::InvalidArgument("max should be greater than or equal to min. "
+                              "But received min = %f, max = %f",
+                              static_cast<float>(min_),
+                              static_cast<float>(max_)));
+
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
   using XPUDataType = typename XPUTypeTrait<T>::Type;
   auto x_data = reinterpret_cast<const XPUDataType*>(x.data<T>());
   auto out_data = reinterpret_cast<XPUDataType*>(out->data<T>());
@@ -37,8 +49,8 @@ void ClipKernel(const Context& dev_ctx,
                      x_data,
                      out_data,
                      x.numel(),
-                     static_cast<XPUDataType>(min.to<T>()),
-                     static_cast<XPUDataType>(max.to<T>()));
+                     static_cast<XPUDataType>(min_),
+                     static_cast<XPUDataType>(max_));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "clamp");
 }
 
@@ -49,7 +61,7 @@ PD_REGISTER_KERNEL(clip,
                    ALL_LAYOUT,
                    phi::ClipKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t,
                    int) {}

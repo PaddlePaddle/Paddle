@@ -33,6 +33,20 @@ def parse_plain_list(s: str, sep=",") -> list[str]:
         return [item.strip() for item in s.strip().split(sep)]
 
 
+def IsUsePredefinedOut(position_list: list) -> bool:
+    """
+    Determine whether all forwards are Tensors, including outputs and positions, And the length is between [1,7].
+    The number 7 represents that the multi out mechanism currently supports a maximum of 7 output tensors.
+    """
+    if not position_list:
+        return False
+
+    is_all_tensor = all(pos == "Tensor" for pos in position_list)
+    length = len(position_list)
+
+    return is_all_tensor and 1 <= length <= 7
+
+
 class BaseAPI:
     def __init__(self, api_item_yaml):
         self.api = self.get_api_name(api_item_yaml)
@@ -127,7 +141,120 @@ class BaseAPI:
                 input_args.append(self.inputs['input_info'][name] + ' ' + name)
         return input_args
 
-    def get_declare_args(self, inplace_flag=False):
+    # funcs backward_api.h will use
+    def get_grad_outputs_define(self, inplace_flag=False):
+        define_string = ""
+        for i, out_type in enumerate(self.outputs['types']):
+            out_name = self.outputs['names'][i].split('@')[0]
+            if out_type == "std::vector<Tensor>":
+                if inplace_flag and out_name in self.inplace_map:
+                    out_name = self.inplace_map[out_name]
+                    define_string = " "
+                else:
+                    define_string += "    " + out_type + " " + out_name + ";\n"
+
+                vec_tensor_string = f"""    std::vector<Tensor*> {out_name}_x;
+    for (size_t i = 0; i < {out_name}.size(); i++){{
+        {out_name}_x.push_back(&({out_name}[i]));
+    }}"""
+                define_string += vec_tensor_string
+            else:
+                if inplace_flag and out_name in self.inplace_map:
+                    continue
+                define_string += "    " + out_type + " " + out_name + ";\n"
+                define_string += (
+                    "    "
+                    + out_type
+                    + "* "
+                    + out_name
+                    + "_ptr = &"
+                    + out_name
+                    + ";\n"
+                )
+        return define_string
+
+    def get_optional_inputs_change(self, inplace_flag=False):
+        branch_string = ""
+        input_name = []
+        output_type = []
+        output_name = []
+
+        if len(self.optional_vars) == 0 or inplace_flag:
+            return branch_string
+
+        for name, type in zip(self.outputs['names'], self.outputs['types']):
+            name = name.split('@')[0]
+            output_name.append(name)
+            output_type.append(type)
+
+        for name in self.inputs['names']:
+            name = name.split('@')[0]
+            input_name.append(name)
+
+        for out_name, type in zip(output_name, output_type):
+            if out_name.endswith("_grad"):
+                name = out_name[:-5]
+            else:
+                continue
+
+            if (
+                name in input_name
+                and name in self.optional_vars
+                and type != "std::vector<Tensor>"
+            ):
+                branch_string += (
+                    f"    if (!{name}) {{ {name}_grad_ptr = nullptr; }} \n"
+                )
+
+        return branch_string
+
+    def get_grad_api_call_args(self, inplace_flag):
+        args = []
+        for name in self.inputs['names']:
+            name = name.split('@')[0]
+            args.append(name)
+
+        for name in self.attrs['names']:
+            args.append(name)
+
+        for i, name in enumerate(self.outputs['names']):
+            name = name.split('@')[0]
+            out_type = self.outputs['types'][i]
+            if out_type == "std::vector<Tensor>":
+                if inplace_flag and name in self.inplace_map:
+                    name = self.inplace_map[name]
+
+                out_string = name + "_x"
+            else:
+                if inplace_flag and name in self.inplace_map:
+                    name = self.inplace_map[name]
+                    if name in self.optional_vars:
+                        out_string = name + ".get_ptr()"
+                    else:
+                        out_string = "&" + name
+                else:
+                    out_string = name + "_ptr"
+
+            args.append(out_string)
+        return ", ".join(args)
+
+    def get_grad_output(self, inplace_flag):
+        args = []
+        for i, name in enumerate(self.outputs['names']):
+            name = name.split('@')[0]
+            if inplace_flag and name in self.inplace_map:
+                args.append("std::ref(" + self.inplace_map[name] + ")")
+            else:
+                args.append(name)
+
+        if len(args) == 1:
+            return args[0]
+        else:
+            return f"""std::make_tuple({", ".join(args)})"""
+
+    def get_declare_args(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=False
+    ):
         declare_args = self.get_input_tensor_args(inplace_flag)
         for name in self.attrs['names']:
             default_value = ''
@@ -137,12 +264,50 @@ class BaseAPI:
                 self.attrs['attr_info'][name][0] + ' ' + name + default_value
             )
 
+        if (
+            not grad_flag
+            and not inplace_flag
+            and append_predefined_out
+            and self.api != "empty_like"
+        ):
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                declare_args.append(
+                    f"paddle::optional<{type_str}> predefined_out = paddle::none"
+                )
+
         return ", ".join(declare_args)
 
-    def get_define_args(self, inplace_flag=False):
+    def get_define_args(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
+    ):
         define_args = self.get_input_tensor_args(inplace_flag)
         for name in self.attrs['names']:
             define_args.append(self.attrs['attr_info'][name][0] + ' ' + name)
+
+        if (
+            not grad_flag
+            and not inplace_flag
+            and append_predefined_out
+            and self.api != "empty_like"
+        ):
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                define_args.append(
+                    f"paddle::optional<{type_str}> predefined_out"
+                )
 
         return ", ".join(define_args)
 
@@ -173,9 +338,9 @@ class BaseAPI:
         inputs = {'names': [], 'input_info': {}}
         attrs = {'names': [], 'attr_info': {}}
         args_str = args_config.strip()
-        assert args_str.startswith('(') and args_str.endswith(
-            ')'
-        ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
+        assert args_str.startswith('(') and args_str.endswith(')'), (
+            f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
+        )
         args_str = args_str[1:-1]
         pattern = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
         args_list = re.split(pattern, args_str.strip())
@@ -232,12 +397,12 @@ class BaseAPI:
             for in_type_symbol, in_type in input_types_map.items():
                 if type_and_name[0] == in_type_symbol:
                     input_name = type_and_name[1].strip()
-                    assert (
-                        len(input_name) > 0
-                    ), f"The input tensor name should not be empty. Please check the args of {api_name} in yaml."
-                    assert (
-                        len(attrs['names']) == 0
-                    ), f"The input Tensor should appear before attributes. please check the position of {api_name}:input({input_name}) in yaml"
+                    assert len(input_name) > 0, (
+                        f"The input tensor name should not be empty. Please check the args of {api_name} in yaml."
+                    )
+                    assert len(attrs['names']) == 0, (
+                        f"The input Tensor should appear before attributes. please check the position of {api_name}:input({input_name}) in yaml"
+                    )
 
                     if input_name in optional_vars:
                         in_type = optional_types_trans[in_type_symbol]
@@ -253,9 +418,9 @@ class BaseAPI:
             for attr_type_symbol, attr_type in attr_types_map.items():
                 if type_and_name[0] == attr_type_symbol:
                     attr_name = item[len(attr_type_symbol) :].strip()
-                    assert (
-                        len(attr_name) > 0
-                    ), f"The attribute name should not be empty. Please check the args of {api_name} in yaml."
+                    assert len(attr_name) > 0, (
+                        f"The attribute name should not be empty. Please check the args of {api_name} in yaml."
+                    )
                     default_value = None
                     if '=' in attr_name:
                         attr_infos = attr_name.split('=')
@@ -284,14 +449,14 @@ class BaseAPI:
                 r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*(?P<name>\([a-zA-Z0-9_@]+\))?\s*(?P<expr>\{[^\}]+\})?",
                 output_item,
             )
-            assert (
-                result is not None
-            ), f"{api_name} : the output config parse error."
+            assert result is not None, (
+                f"{api_name} : the output config parse error."
+            )
             out_type = result.group('out_type')
-            assert (
-                out_type in output_type_map
-            ), f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
+            assert out_type in output_type_map, (
+                f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                   but now is {out_type}."
+            )
 
             out_name = (
                 'out'
@@ -371,14 +536,18 @@ class BaseAPI:
                     'selected_rows',
                     'sparse_coo',
                     'sparse_csr',
-                ], f"{self.api} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+                ], (
+                    f"{self.api} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+                )
             for item in outputs:
                 assert item in [
                     'dense',
                     'selected_rows',
                     'sparse_coo',
                     'sparse_csr',
-                ], f"{self.api} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+                ], (
+                    f"{self.api} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+                )
 
             return (inputs, outputs)
 
@@ -407,12 +576,12 @@ class BaseAPI:
     def get_return_type(self, inplace_flag=False):
         return None
 
-    def gene_api_declaration(self):
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
         api_declaration = ""
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             api_declaration = f"""
-PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args()});
+PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(grad_flag=grad_flag, append_predefined_out=append_predefined_out)});
 """
 
         if self.is_base_api and len(self.inplace_map) > 0:
@@ -421,7 +590,7 @@ PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args()});
             api_declaration = (
                 api_declaration
                 + f"""
-PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True)});
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, grad_flag=grad_flag, append_predefined_out=append_predefined_out)});
 """
             )
 
@@ -433,13 +602,15 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         if self.kernel['backend'] is not None:
             if '>' in self.kernel['backend']:
                 vars_list = self.kernel['backend'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (vars_list[0].strip() in self.attrs['names']) and (
                     self.attrs['attr_info'][vars_list[0].strip()][0]
                     == 'const Place&'
-                ), f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                ), (
+                    f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                )
                 backend_select_code = f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
 """
@@ -471,19 +642,19 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         attr_data_type_count = 0
         for attr_name in attrs['names']:
             if attrs['attr_info'][attr_name][0] == 'const Place&':
-                assert (
-                    kernel['backend'] is not None
-                ), f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
+                assert kernel['backend'] is not None, (
+                    f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
+                )
                 attr_backend_count = attr_backend_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataLayout':
-                assert (
-                    kernel['layout'] is not None
-                ), f"{api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                assert kernel['layout'] is not None, (
+                    f"{api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                )
                 attr_layout_count = attr_layout_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataType':
-                assert (
-                    kernel['data_type'] is not None
-                ), f"{api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
+                assert kernel['data_type'] is not None, (
+                    f"{api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
+                )
                 attr_data_type_count = attr_data_type_count + 1
 
         # preprocess kernel configures
@@ -492,14 +663,16 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         if kernel['layout'] is not None:
             if '>' in kernel['layout']:
                 vars_list = kernel['layout'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (
                     vars_list[0].strip() in attrs['names']
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataLayout'
-                ), f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                ), (
+                    f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -509,9 +682,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
             else:
                 vars_list = kernel['layout'].split(',')
-                assert (
-                    len(vars_list) == 1
-                ), f"{api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                assert len(vars_list) == 1, (
+                    f"{api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -533,14 +706,16 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
             if '>' in kernel['data_type']:
                 vars_list = kernel['data_type'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (
                     vars_list[0].strip() in attrs['names']
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataType'
-                ), f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                ), (
+                    f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -550,9 +725,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
             else:
                 vars_list = kernel['data_type'].split(',')
-                assert (
-                    len(vars_list) == 1
-                ), f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
+                assert len(vars_list) == 1, (
+                    f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -561,9 +736,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 )
 
         if len(input_names) == 0:
-            assert (
-                attr_backend_count > 0 and attr_data_type_count > 0
-            ), f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
+            assert attr_backend_count > 0 and attr_data_type_count > 0, (
+                f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
+            )
 
         kernel_select_args = ""
         for input_name in input_names:
@@ -1338,14 +1513,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}      *target_ptr = *{kernel_out}.at(i);
 {code_indent}    }}"""
         return f"""
-{code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+{code_indent}  VLOG(4) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  if (FLAGS_low_precision_op_list) {{
 {code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
 {code_indent}  }}
-{code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
+{code_indent}  VLOG(4) << "{kernel_name} kernel: " << kernel;
 {code_indent}  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
 {code_indent}  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
@@ -1378,14 +1553,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {fallback_kernel_output_trans}
 {self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
 {code_indent}  }}
-{code_indent}  dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{code_indent}{'  dev_ctx = GetDeviceContextByBackend(kernel_backend);' if transdata2strided != '' else ''}
 {transdata2strided}
 {code_indent}  {self.gene_return_code()}"""
 
     def get_condition_code(self, kernel_name):
-        assert self.kernel['dispatch'][
-            kernel_name
-        ], f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'scale' in ops.yaml."
+        assert self.kernel['dispatch'][kernel_name], (
+            f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'scale' in ops.yaml."
+        )
         input_types = self.kernel['dispatch'][kernel_name][0]
         condition_list = []
         for i, in_type in enumerate(input_types):
@@ -1461,7 +1636,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   return {invoke_code};
 }}"""
 
-    def gene_api_code(self):
+    def gene_api_code(self, grad_flag=False, append_predefined_out=True):
         if self.is_base_api:
             api_code = self.gene_base_api_code()
             if len(self.inplace_map) > 0:
@@ -1474,5 +1649,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             return ''
         else:
             invoke_code = self.invoke
-            params_code = self.get_define_args()
+            params_code = self.get_define_args(
+                grad_flag=grad_flag, append_predefined_out=append_predefined_out
+            )
             return self.gene_invoke_code(invoke_code, params_code)

@@ -14,6 +14,9 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <ATen/core/TensorBody.h>
+#endif
 #include "paddle/phi/api/include/tensor.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
@@ -92,6 +95,76 @@ struct type_caster<paddle::Tensor> {
   }
 };
 
+template <>
+struct optional_caster<paddle::optional<paddle::Tensor>> {
+  using value_conv = make_caster<paddle::Tensor>;
+
+  template <typename T>
+  static handle cast(T&& src, return_value_policy policy, handle parent) {
+    if (!src) {
+      return none().release();
+    }
+    if (!std::is_lvalue_reference<T>::value) {
+      policy = return_value_policy_override<paddle::Tensor>::policy(policy);
+    }
+    return value_conv::cast(*std::forward<T>(src), policy, parent);
+  }
+
+  bool load(handle src, bool convert) {
+    if (!src) {
+      return false;
+    }
+    if (src.is_none()) {
+      return true;  // default-constructed value is already empty
+    }
+    value_conv inner_caster;
+    if (!inner_caster.load(src, convert)) {
+      return false;
+    }
+
+    value = paddle::make_optional(
+        cast_op<paddle::Tensor&&>(std::move(inner_caster)));
+    return true;
+  }
+
+  PYBIND11_TYPE_CASTER(paddle::optional<paddle::Tensor>,
+                       const_name("Optional[paddle::Tensor]"));
+};
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+struct type_caster<at::Tensor> {
+ public:
+  PYBIND11_TYPE_CASTER(at::Tensor, _("at::Tensor"));
+
+  bool load(handle src, bool) {
+    paddle::pybind::EnableTensorOperantsToPhiMode();
+    PyObject* obj = src.ptr();
+    if (paddle::pybind::PyCheckTensor(obj)) {
+      value = paddle::pybind::CastPyArg2Tensor(obj, 0);
+      return true;
+    }
+    return false;
+  }
+
+  static handle cast(const at::Tensor& src,
+                     return_value_policy /* policy */,
+                     handle /* parent */) {
+    const auto& src_pd_tensor = src._PD_GetInner();
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+    bool return_none =
+        phi::distributed::DistTensor::classof(src_pd_tensor.impl().get())
+            ? false
+            : true;
+#else
+    bool return_none = true;
+#endif
+    return handle(paddle::pybind::ToPyObject(
+        src_pd_tensor, return_none /* return_py_none_if_not_initialize */));
+  }
+};
+#endif
 // Pybind11 bindings for optional types.
 // http://pybind11.readthedocs.io/en/stable/advanced/cast/stl.html#c-17-library-containers
 template <typename T>

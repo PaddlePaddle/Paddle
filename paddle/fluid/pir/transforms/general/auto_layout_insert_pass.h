@@ -23,8 +23,8 @@ namespace pir {
 
 class Pass;
 
-// ops_in_NHWC: the op that should be in NHWC layout.
+// kOpsNhwc: the op that should be in NHWC layout.
 IR_API std::unique_ptr<Pass> CreateAutoLayoutInsertPass(
-    const std::set<std::string>& ops_in_NHWC);
+    const std::set<std::string>& kOpsNhwc);
 
 }  // namespace pir

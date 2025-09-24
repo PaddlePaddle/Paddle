@@ -190,8 +190,11 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
                    dropout_param2,
                    bsz_seq * d_model);
   // linear_grad2
-  r = xpu::reduce_sum(
-      xpu_ctx, d_dropout2_out_ptr, d_linear2_bias_ptr, {bsz_seq, d_model}, {0});
+  r = xpu::reduce_sum(xpu_ctx,
+                      d_dropout2_out_ptr,
+                      d_linear2_bias_ptr,
+                      {(int64_t)bsz_seq, (int64_t)d_model},
+                      {0LL});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
 
   phi::XpuFcInfo linear2_fc_info;
@@ -271,7 +274,6 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
   } else if (act_method == "relu") {
     r = xpu::relu_grad(xpu_ctx,
                        linear1_out_ptr,
-                       linear1_out_ptr,
                        d_dropout1_out_ptr,
                        d_act_out_ptr,
                        bsz_seq * dim_feedforward);
@@ -285,8 +287,8 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
   r = xpu::reduce_sum(xpu_ctx,
                       d_act_out_ptr,
                       d_linear1_bias_ptr,
-                      {bsz_seq, dim_feedforward},
-                      {0});
+                      {(int64_t)bsz_seq, (int64_t)dim_feedforward},
+                      {0LL});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
 
   phi::XpuFcInfo linear1_fc_info;
@@ -535,7 +537,7 @@ PD_REGISTER_KERNEL(fused_feedforward_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedFeedForwardGradKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);

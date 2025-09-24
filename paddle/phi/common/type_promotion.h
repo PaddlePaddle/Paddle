@@ -13,8 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/imperative/amp_utils.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/common/data_type.h"
 namespace phi {
 
@@ -92,6 +90,7 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "divide",    "elementwise_div", "truediv",         "floor_divide",
     "pow",       "elementwise_pow", "equal",           "not_equal",
     "less_than", "less_equal",      "greater_than",    "greater_equal",
+    "copysign",  "cross",           "trunc_divide",
 };
 
 static std::unordered_set<std::string> support_autocast_ops = {

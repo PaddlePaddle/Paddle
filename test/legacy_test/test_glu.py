@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
@@ -48,8 +48,8 @@ class TestGLUV2(unittest.TestCase):
 
     def test_case(self):
         self.check_identity(base.CPUPlace())
-        if base.is_compiled_with_cuda():
-            self.check_identity(base.CUDAPlace(0))
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.check_identity(get_device_place())
 
 
 class TestGlu(unittest.TestCase):
@@ -79,8 +79,8 @@ class TestnnGLU(unittest.TestCase):
 
     def test_case(self):
         self.check_identity(base.CPUPlace())
-        if base.is_compiled_with_cuda():
-            self.check_identity(base.CUDAPlace(0))
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.check_identity(get_device_place())
         act = nn.GLU(axis=0, name="test")
         self.assertTrue(act.extra_repr() == 'axis=0, name=test')
 
@@ -101,6 +101,30 @@ class TestnnGLUerror(unittest.TestCase):
             name='x_int32', shape=[10, 18], dtype='int32'
         )
         self.assertRaises(TypeError, act, x_int32)
+
+
+class TestGLU_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(5, 0, 20)
+        self.dim = -1
+        self.out = glu(self.x, self.dim)
+
+    def check_dygraph(self, place):
+        with dg.guard(place):
+            x_var = paddle.to_tensor(self.x)
+            x_var.stop_gradient = False
+            y_var = F.glu(x_var, self.dim)
+            y_np = y_var.numpy()
+            np.testing.assert_allclose(y_np, self.out)
+
+            loss = paddle.sum(y_var)
+            loss.backward()
+            np.testing.assert_allclose(x_var.grad.shape, x_var.shape)
+
+    def test_case(self):
+        self.check_dygraph(base.CPUPlace())
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.check_dygraph(get_device_place())
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 import sys
 from contextlib import ContextDecorator, contextmanager
 from typing import TYPE_CHECKING
@@ -127,9 +128,7 @@ class RecordEvent(ContextDecorator):
         if self.event_type not in _AllowedEventTypeList:
             warn(
                 "Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
-                  can be recorded.".format(
-                    *_AllowedEventTypeList
-                )
+                  can be recorded.".format(*_AllowedEventTypeList)
             )
             self.event = None
         else:
@@ -271,6 +270,9 @@ def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
 def switch_job_schedule_profiler(
     model, iter_id, start, end, exit_after_prof=True
 ):
+    logging.info(
+        f"Schedule Profiler start at step {start} and end at step {end}"
+    )
     with job_schedule_profiler_range(
         iter_id, start, end, exit_after_prof
     ) as status:

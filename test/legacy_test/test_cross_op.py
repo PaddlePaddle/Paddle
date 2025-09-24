@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -77,7 +82,8 @@ class TestCrossOpCase1(TestCrossOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCrossFP16Op(TestCrossOp):
     def initTestCase(self):
@@ -117,7 +123,7 @@ class TestCrossComplex128Op(TestCrossOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestCrossBF16Op(OpTest):
@@ -149,13 +155,13 @@ class TestCrossBF16Op(OpTest):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place, ['X', 'Y'], 'Out', check_pir=True
@@ -291,6 +297,92 @@ class TestCrossAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.empty((0, 3))
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+
+class TestCrossOpZeroSizeTest(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (0, 3, 3)
+        self.dtype = np.float64
+        self.attr = {'dim': -1}
+
+    def init_output(self):
+        z_list = []
+        for i in range(0):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossOpZeroSizeTest1(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (3, 0, 3)
+        self.dtype = np.float64
+        self.attr = {'dim': -1}
+
+    def init_output(self):
+        z_list = []
+        for i in range(3):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossOpZeroSizeTest2(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (0, 0, 3)
+        self.dtype = np.float64
+        self.attr = {'dim': -1}
+
+    def init_output(self):
+        z_list = []
+        for i in range(0):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossOpZeroSizeCPUTest(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (0, 0, 3)
+        self.dtype = np.float64
+        self.attr = {'dim': -1}
+
+    def init_output(self):
+        z_list = []
+        for i in range(0):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+    def test_check_output(self):
+        place = paddle.CPUPlace()
+        self.check_output_with_place(place, check_pir=True)
+
+    def test_check_grad_normal(self):
+        place = paddle.CPUPlace()
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_pir=True)
+
+
+class TestCrossOpZeroSizeCPUTest1(TestCrossOpZeroSizeCPUTest):
+    def initTestCase(self):
+        self.shape = (3, 0, 3)
+        self.dtype = np.float64
+        self.attr = {'dim': -1}
+
+    def init_output(self):
+        z_list = []
+        for i in range(3):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossOpZeroSizeCPUTest2(TestCrossOpZeroSizeCPUTest):
+    def initTestCase(self):
+        self.shape = (0, 0, 3)
+        self.dtype = np.float64
+        self.attr = {'dim': -1}
+
+    def init_output(self):
+        z_list = []
+        for i in range(0):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
 if __name__ == '__main__':

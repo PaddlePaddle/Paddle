@@ -125,6 +125,8 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
 void UpdateGroupShapeOrDataExprs(OpLoweringGroupPtr group) {
   auto& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(group->GetParentProgram());
+  group->set_substitute_dimexpr_map(
+      CollectSubstituteDimExprMap(group, shape_analysis));
   group->set_value_to_shape_or_data_exprs(
       CreateGroupShapeOrDataExprs(group, shape_analysis));
 }

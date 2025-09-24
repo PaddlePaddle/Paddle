@@ -26,33 +26,27 @@ namespace phi {
 static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
 
 template <typename Context>
-void MemcpyH2DKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     int dst_place_type,
-                     DenseTensor* out) {
+PADDLE_API void MemcpyH2DKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                int dst_place_type,
+                                DenseTensor* out) {
   if (!x.initialized()) {
     out->set_meta(x.meta());
     return;
   }
 
-  PADDLE_ENFORCE_GE(
-      dst_place_type,
-      0,
-      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
-                         dst_place_type));
-  PADDLE_ENFORCE_LE(
-      dst_place_type,
-      3,
-      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
+  PADDLE_ENFORCE(
+      (dst_place_type >= 0 && dst_place_type <= 3) || (dst_place_type == 6),
+      errors::OutOfRange("dst_place_type only supports 0-3 or 6, but got: %d",
                          dst_place_type));
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
 
 template <typename Context>
-void MemcpyD2HKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     int dst_place_type,
-                     DenseTensor* out) {
+PADDLE_API void MemcpyD2HKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                int dst_place_type,
+                                DenseTensor* out) {
   switch (dst_place_type) {
     case 0:
       Copy(dev_ctx, x, CPUPlace(), false, out);
@@ -131,6 +125,10 @@ void MemcpyKernel(const Context& dev_ctx,
     case 3:  // XPUPlace
       dev_ctx.Alloc(out, x.dtype());
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      break;
+    case 5: /* XPUPinnedPlace */
+      dev_ctx.Alloc(out, x.dtype(), 0, true);
+      Copy(dev_ctx, x, XPUPinnedPlace(), false, out);
       break;
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
     case 4:  // CustomPlace

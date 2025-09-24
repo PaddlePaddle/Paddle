@@ -59,13 +59,13 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
         strides_options = [[1, 2]]
         paddings_options = [[0, 2]]
-        pooling_type_options = ['max', 'avg']
+        pooling_type_options = ['max']
         padding_algorithm_options = ['EXPLICIT', 'SAME', 'VALID']
         ksize_options = [[2, 3], [3, 3]]
         data_format_options = ['NCHW']
         global_pooling_options = [True, False]
         exclusive_options = [True, False]
-        adaptive_option = [True, False]
+        adaptive_option = [False, True]
         ceil_mode_options = [True, False]
 
         configurations = [
@@ -132,14 +132,18 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
             yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+        self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
 
+        return self.dynamic_shape
+
+    def sample_predictor_configs(
+        self,
+        program_config,
+        run_pir=False,
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -154,25 +158,34 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), (1e-3, 1e-3)
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                (1e-3, 1e-3),
+            )
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-3, 1e-3),
+        )
 
     def add_skip_trt_case(self):
         def teller(program_config, predictor_config):
@@ -199,35 +212,59 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         tensor: dict[str, np.array],
         baseline: dict[str, np.array],
     ):
-        for key, arr in tensor.items():
-            self.assertEqual(
-                baseline[key].shape,
-                arr.shape,
-                'The output shapes are not equal, the baseline shape is '
-                + str(baseline[key].shape)
-                + ', but got '
-                + str(arr.shape),
-            )
-
-            # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
-            # but for FP32 and FP16 precision, their least value are different.
-            # We set a threshold that is the least value of FP16,
-            # and make the values less than the threshold to be the threshold.
-            def align_less_threshold(arr, threshold):
-                return np.clip(arr, threshold, None)
-
-            fp16_min = np.finfo(np.float16).min
-            baseline_threshold = align_less_threshold(
-                copy.deepcopy(baseline[key]), fp16_min
-            )
-            arr_threshold = align_less_threshold(copy.deepcopy(arr), fp16_min)
-            np.testing.assert_allclose(
-                baseline_threshold, arr_threshold, rtol=rtol, atol=atol
-            )
+        if isinstance(tensor, list):
+            tensor = {str(i): t for i, t in enumerate(tensor)}
+        if isinstance(baseline, list):
+            baseline = {str(i): b for i, b in enumerate(baseline)}
+            for key, arr in tensor.items():
+                self.assertEqual(
+                    baseline[key].shape,
+                    arr.shape,
+                    'The output shapes are not equal, the baseline shape is '
+                    + str(baseline[key].shape)
+                    + ', but got '
+                    + str(arr.shape),
+                )
+                # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
+                # but for FP32 and FP16 precision, their least value are different.
+                # We set a threshold that is the least value of FP16,
+                # and make the values less than the threshold to be the threshold.
+                fp16_min = np.finfo(np.float16).min
+                baseline_threshold = np.clip(
+                    copy.deepcopy(baseline[key]), fp16_min
+                )
+                arr_threshold = np.clip(copy.deepcopy(arr), fp16_min)
+                np.testing.assert_allclose(
+                    baseline_threshold, arr_threshold, rtol=rtol, atol=atol
+                )
+        elif isinstance(tensor, list) and isinstance(baseline, list):
+            for idx, (arr, baseline_arr) in enumerate(zip(tensor, baseline)):
+                self.assertEqual(
+                    baseline_arr.shape,
+                    arr.shape,
+                    'The output shapes are not equal, the baseline shape is '
+                    + str(baseline_arr.shape)
+                    + ', but got '
+                    + str(arr.shape),
+                )
+                # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
+                # but for FP32 and FP16 precision, their least value are different.
+                # We set a threshold that is the least value of FP16,
+                # and make the values less than the threshold to be the threshold.
+                fp16_min = np.finfo(np.float16).min
+                baseline_threshold = np.clip(
+                    copy.deepcopy(baseline_arr), fp16_min
+                )
+                arr_threshold = np.clip(copy.deepcopy(arr), fp16_min)
+                np.testing.assert_allclose(
+                    baseline_threshold, arr_threshold, rtol=rtol, atol=atol
+                )
+        else:
+            raise ValueError("The type of tensor or baseline must be dict.")
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

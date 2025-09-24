@@ -26,6 +26,8 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
+#define SEPARATOR "=========================="
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 AddNGradNodeFinal::operator()(
@@ -33,6 +35,12 @@ AddNGradNodeFinal::operator()(
         &grads,
     bool create_graph,
     bool is_new_grad) {
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API_GRAD: "
+          << "add_n_grad" << SEPARATOR;
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("AddNGradNodeFinal begin");
+  }
   // Fill Zero For GradIn Tensors
 
   // This 'Local_XXXGradNode' record event is different with
@@ -72,8 +80,9 @@ AddNGradNodeFinal::operator()(
     }
   }
   // Call grad_api function
-  VLOG(3) << "Final State Running: AddNGradNodeFinal";
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "add_n_grad" << SEPARATOR;
   // dygraph function
   for (auto &item : returns[0]) {
     item = ::scale_ad_func(out_grad, phi::Scalar(1.0), 0.0, true);
@@ -109,6 +118,16 @@ AddNGradNodeFinal::operator()(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
+  if (HasNodePostHook()) {
+    returns = ApplyNodePostHooks(returns, hooked_grads);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("AddNGradNodeFinal finish");
+  }
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API_GRAD: "
+          << "add_n_grad" << SEPARATOR;
   return returns;
 }

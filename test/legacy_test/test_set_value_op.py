@@ -14,11 +14,17 @@
 
 # Test set_value op in static graph mode
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    get_devices,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -1223,9 +1229,7 @@ class TestSetValueValueShape4(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
-        ).astype(
-            self.dtype
-        )  # shape is (3,4)
+        ).astype(self.dtype)  # shape is (3,4)
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor
@@ -1278,16 +1282,7 @@ class TestSetValueValueShape6(TestSetValueApi):
         return x
 
     def test_api(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_devices():
             paddle.set_device(place)
 
             static_out = self._run_static()
@@ -1719,14 +1714,14 @@ class TestSetValueIsSamePlace(unittest.TestCase):
         origin_place = a.place
         a[[0, 1], 1] = 10
         self.assertEqual(origin_place._type(), a.place._type())
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.set_device(get_device())
         paddle.enable_static()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSetValueBFloat16(OpTest):
@@ -1753,13 +1748,13 @@ class TestSetValueBFloat16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(expected_out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         # NOTE(zoooo0820) Here we set check_dygraph=False since set_value OP has no corresponding python api
         # to set self.python_api
         self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['Input'], 'Out', check_dygraph=False)
 
 

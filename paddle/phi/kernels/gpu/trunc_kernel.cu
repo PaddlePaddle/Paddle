@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/trunc_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -59,7 +59,7 @@ class TruncFunctor<int64_t> {
 
 template <typename T>
 __global__ void Trunc(const T* x, T* out, int64_t N) {
-  CUDA_KERNEL_LOOP(index, N) {
+  CUDA_KERNEL_LOOP_TYPE(index, N, int64_t) {
     TruncFunctor<T> functor(x[index]);
     out[index] = functor();
   }
@@ -71,13 +71,15 @@ void TruncKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   const auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    return;
+  }
 
   int64_t numel = x.numel();
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
 
-  int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + threads - 1) / threads;
-
-  Trunc<<<blocks, threads>>>(x_data, out_data, numel);
+  Trunc<<<config.block_per_grid, config.thread_per_block>>>(
+      x_data, out_data, numel);
 }
 
 }  // namespace phi
@@ -90,5 +92,5 @@ PD_REGISTER_KERNEL(trunc,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

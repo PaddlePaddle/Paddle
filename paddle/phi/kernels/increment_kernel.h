@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void IncrementKernel(const Context& ctx,
+void IncrementKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      float value,
                      DenseTensor* out);

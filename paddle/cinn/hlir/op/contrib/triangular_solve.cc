@@ -67,7 +67,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(triangular_solve_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.triangular_solve.x86",
                     1);
   return strategy;

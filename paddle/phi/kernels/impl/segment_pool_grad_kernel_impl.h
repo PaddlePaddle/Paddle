@@ -34,6 +34,10 @@ void SegmentPoolGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
+  // return after allocation if x_grad is empty.
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
 
   auto index_type = segment_ids.type();
   if (index_type == DataType::INT32) {

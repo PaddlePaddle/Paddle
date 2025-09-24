@@ -39,8 +39,7 @@ def filter_by(list_file, max_rate):
 
             name = split[0].strip()
 
-            if name.startswith('/paddle/'):
-                name = name[len('/paddle/') :]
+            name = name.removeprefix('/paddle/')
 
             # rate
 

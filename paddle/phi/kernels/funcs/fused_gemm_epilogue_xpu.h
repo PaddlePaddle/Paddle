@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/scope_guard.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
@@ -63,20 +62,18 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
   // 1. act_grad  2. fc_grad 3. dbias
   int r = 0;
   if (activation_grad == "relu") {
-    r = xpu::relu_grad(xpu_ctx,
-                       reserve_space_ptr,
-                       reserve_space_ptr,
-                       dout_ptr,
-                       d_act_input_ptr,
-                       dout->numel());
+    r = xpu::relu_grad(
+        xpu_ctx, reserve_space_ptr, dout_ptr, d_act_input_ptr, dout->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
   } else if (activation_grad == "gelu") {
+    // int gelu_grad(Context* dev_ctx, const T* x, const T* dy, T* dx, int64_t
+    // len, bool approximate);
     r = xpu::gelu_grad(xpu_ctx,
-                       reserve_space_ptr,
                        reserve_space_ptr,
                        dout_ptr,
                        d_act_input_ptr,
-                       dout->numel());
+                       dout->numel(),
+                       false);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
   } else if (activation_grad == "none") {
     // pass
@@ -143,8 +140,11 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
     XPUType* dbias_ptr;
     auto* dbias_tmp_ptr = dev_ctx.template Alloc<T>(dbias);
     dbias_ptr = reinterpret_cast<XPUType*>(dbias_tmp_ptr);
-    r = xpu::reduce_sum(
-        xpu_ctx, dout_fc_ptr, dbias_ptr, {info_forward.m, info_forward.n}, {0});
+    r = xpu::reduce_sum(xpu_ctx,
+                        dout_fc_ptr,
+                        dbias_ptr,
+                        {(int64_t)info_forward.m, (int64_t)info_forward.n},
+                        {0LL});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
   }
 }

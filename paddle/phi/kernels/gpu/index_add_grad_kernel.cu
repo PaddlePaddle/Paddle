@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/index_select_impl.h"
 
@@ -27,13 +28,48 @@ namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
-void IndexAddGradKernel(const Context& ctx,
+void IndexAddGradKernel(const Context& dev_ctx,
                         const DenseTensor& index,
                         const DenseTensor& add_value,
                         const DenseTensor& out_grad,
                         int dim,
                         DenseTensor* x_grad,
                         DenseTensor* add_value_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (add_value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(add_value_grad->dims())),
+          0,
+          add_value_grad);
+    }
+    return;
+  }
+  if (index.numel() == 0) {
+    if (x_grad) {
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (add_value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(add_value_grad->dims())),
+          0,
+          add_value_grad);
+    }
+    return;
+  }
+  if (add_value.numel() == 0) {
+    if (x_grad) {
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (add_value_grad) {
+      dev_ctx.template Alloc<T>(add_value_grad);
+    }
+    return;
+  }
   // x.shape == out.shape in index_grad op
   auto input_dim = out_grad.dims();
   auto add_value_dim = add_value.dims();
@@ -59,20 +95,20 @@ void IndexAddGradKernel(const Context& ctx,
   if (numel == 0) {
     return;
   }
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   // get x_grad: copy out_grad to x_grad.
   if (x_grad) {
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
 
   // get add_value_grad: index_select(out_grad, index, axis)
   if (add_value_grad) {
     auto* output_grad_data = out_grad.data<T>();
-    auto* add_value_grad_data = ctx.template Alloc<T>(add_value_grad);
+    auto* add_value_grad_data = dev_ctx.template Alloc<T>(add_value_grad);
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
     dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
     if (index_type == phi::DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
@@ -108,7 +144,7 @@ PD_REGISTER_KERNEL(index_add_grad,
                    phi::IndexAddGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t) {}

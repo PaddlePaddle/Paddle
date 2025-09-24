@@ -16,7 +16,12 @@ import unittest
 
 import numpy as np
 from numpy.linalg import multi_dot
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -31,14 +36,19 @@ class TestMultiDotOp(OpTest):
         self.op_type = "multi_dot"
         self.python_api = paddle.linalg.multi_dot
         self.dtype = self.get_dtype()
+        self.init_shape()
         self.get_inputs_and_outputs()
+
+    def init_shape(self):
+        self.A_shape = (2, 8)
+        self.B_shape = (8, 4)
 
     def get_dtype(self):
         return "float64"
 
     def get_inputs_and_outputs(self):
-        self.A = np.random.random((2, 8)).astype(self.dtype)
-        self.B = np.random.random((8, 4)).astype(self.dtype)
+        self.A = np.random.random(self.A_shape).astype(self.dtype)
+        self.B = np.random.random(self.B_shape).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B)]}
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
@@ -55,9 +65,39 @@ class TestMultiDotFP16Op(TestMultiDotOp):
         return "float16"
 
 
+class TestMultiDotOp_ZeroSize1(TestMultiDotOp):
+    def get_inputs_and_outputs(self):
+        # result shape: [2, 3]
+        self.A = np.random.random((2, 10)).astype(self.dtype)
+        self.B = np.random.random((10, 0)).astype(self.dtype)
+        self.C = np.random.random((0, 3)).astype(self.dtype)
+        self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
+        self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
+
+
+class TestMultiDotOp_ZeroSize2(TestMultiDotOp):
+    def get_inputs_and_outputs(self):
+        # result shape: [0, 3]
+        self.A = np.random.random((0, 10)).astype(self.dtype)
+        self.B = np.random.random((10, 4)).astype(self.dtype)
+        self.C = np.random.random((4, 3)).astype(self.dtype)
+        self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
+        self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_pir=True)
+        self.check_grad(['x1'], 'Out', check_pir=True)
+        self.check_grad(['x2'], 'Out', check_pir=True)
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMultiDotBF16Op(OpTest):
@@ -66,7 +106,7 @@ class TestMultiDotBF16Op(OpTest):
         self.python_api = paddle.linalg.multi_dot
         self.dtype = self.get_dtype()
         self.get_inputs_and_outputs()
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def get_dtype(self):
         self.np_dtype = "float32"
@@ -259,7 +299,6 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
 
 # python API test
 class TestMultiDotOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -300,7 +339,6 @@ class TestMultiDotOpError(unittest.TestCase):
 
 
 class APITestMultiDot(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -325,7 +363,6 @@ class APITestMultiDot(unittest.TestCase):
 
     def test_dygraph_without_out(self):
         paddle.disable_static()
-        device = paddle.CPUPlace()
         input_array1 = np.random.rand(3, 4).astype("float64")
         input_array2 = np.random.rand(4, 3).astype("float64")
         data1 = paddle.to_tensor(input_array1)

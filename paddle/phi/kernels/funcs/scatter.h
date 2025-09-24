@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <cstring>
 #include <string>
 #include <unordered_set>
@@ -32,13 +33,13 @@ namespace funcs {
  */
 template <typename T, typename IndexT = int>
 typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& ctx,
+elementwise_inner_add(const phi::CPUContext& dev_ctx,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
                       IndexT dst_index,
                       size_t slice_size) {
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
   blas.VADD(slice_size,
             src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,
@@ -47,7 +48,7 @@ elementwise_inner_add(const phi::CPUContext& ctx,
 
 template <typename T, typename IndexT = int>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
+elementwise_inner_add(const phi::CPUContext& dev_ctx UNUSED,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
@@ -72,10 +73,14 @@ elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void ScatterAssign(const phi::CPUContext& ctx UNUSED,
+void ScatterAssign(const phi::CPUContext& dev_ctx UNUSED,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6) << "Do nothing for CPUGather since inputs has 0-size tensor.";
+    return;
+  }
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -160,10 +165,16 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterAssignAdd(const phi::CPUContext& ctx,
+void ScatterAssignAdd(const phi::CPUContext& dev_ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for ScatterAssignAdd since inputs has 0-size tensor.";
+    return;
+  }
+
   PADDLE_ENFORCE_EQ(
       index.dims().size() == 1 || index.dims().size() == 0 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
@@ -240,16 +251,21 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
     const IndexT& index_val =
         (p_index[i] < 0 ? p_index[i] + max_index : p_index[i]);
     elementwise_inner_add<T, IndexT>(
-        ctx, p_src, p_output, i, index_val, slice_size);
+        dev_ctx, p_src, p_output, i, index_val, slice_size);
   }
 }
 
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
+void CPUScatterGradForX(const phi::CPUContext& dev_ctx UNUSED,
                         const DenseTensor& index,
                         DenseTensor* output) {
+  if (index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for CPUScatterGradForX since inputs has 0-size tensor.";
+    return;
+  }
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   const IndexT* p_index = index.data<IndexT>();
@@ -266,7 +282,7 @@ void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterNdAdd(const phi::CPUContext& ctx,
+void ScatterNdAdd(const phi::CPUContext& dev_ctx,
                   const DenseTensor& update,
                   const DenseTensor& index,
                   DenseTensor* output) {
@@ -317,7 +333,7 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
       temp *= output_dims[j];
     }
     elementwise_inner_add<T, IndexT>(
-        ctx, p_update, p_output, i, index_val, slice_size);
+        dev_ctx, p_update, p_output, i, index_val, slice_size);
   }
 }
 

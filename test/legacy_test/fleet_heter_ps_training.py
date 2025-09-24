@@ -57,7 +57,7 @@ def net(batch_size=4, lr=0.01):
             dtype="float32",
         )
 
-        datas = [dnn_data, lr_data, label]
+        data = [dnn_data, lr_data, label]
 
         # build dnn model
         dnn_layer_dims = [2, 1]
@@ -114,7 +114,7 @@ def net(batch_size=4, lr=0.01):
             input=predict, label=label, reduction='none', use_softmax=False
         )
         avg_cost = paddle.mean(x=cost)
-    return datas, avg_cost
+    return data, avg_cost
 
 
 '''

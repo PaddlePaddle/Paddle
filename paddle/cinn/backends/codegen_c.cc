@@ -117,6 +117,7 @@ std::string CodeGenC::GetTypeName(Type type) {
   GET_SCALAR_TYPE(type.is_uint(32), "uint32_t");
   GET_SCALAR_TYPE(type.is_uint(64), "uint64_t");
 
+  GET_SCALAR_TYPE(type.is_float8e4m3(), "float8e4m3");
   GET_SCALAR_TYPE(type.is_bfloat16(), "bfloat16");
   GET_SCALAR_TYPE(type.is_float16(), "float16");
   GET_SCALAR_TYPE(type.is_float(32), "float")
@@ -170,7 +171,7 @@ void CodeGenC::Visit(const ir::Mul *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Div *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Mod *op) {
   auto copied = op->b();
-  optim::Simplify(&copied);
+  copied = optim::ArithSimplify(copied);
   if (copied.is_constant()) {
     int temp = static_cast<int>(copied.get_constant());
     if ((temp & (temp - 1)) == 0) {
@@ -891,7 +892,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   Expr func_body = ir::Block::Make(new_body);
 
-  optim::SimplifyBlocks(&func_body);
+  optim::SimplifyUnitBlock(&func_body);
 
   IrPrinter::Visit(func_body);
 }
@@ -987,6 +988,8 @@ void CodeGenC::PrintRuntimeType(const cinn_type_t &type) {
     str_ += "cinn_uint64_t()";
   } else if (type == cinn_bfloat16_t()) {
     str_ += "cinn_bfloat16_t()";
+  } else if (type == cinn_float8e4m3_t()) {
+    str_ += "cinn_float8e4m3_t()";
   } else if (type == cinn_float16_t()) {
     str_ += "cinn_float16_t()";
   } else if (type == cinn_float32_t()) {

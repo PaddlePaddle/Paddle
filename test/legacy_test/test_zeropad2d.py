@@ -28,16 +28,16 @@ class TestZeroPad2dAPIError(unittest.TestCase):
 
     def setUp(self):
         """
-        unsupport dtypes
+        unsupported dtypes
         """
         self.shape = [4, 3, 224, 224]
-        self.unsupport_dtypes = ['bool', 'int8']
+        self.unsupported_dtypes = ['bool', 'int8']
 
-    def test_unsupport_dtypes(self):
+    def test_unsupported_dtypes(self):
         """
-        test unsupport dtypes.
+        test unsupported dtypes.
         """
-        for dtype in self.unsupport_dtypes:
+        for dtype in self.unsupported_dtypes:
             pad = 2
             x = np.random.randint(-255, 255, size=self.shape)
             x_tensor = to_tensor(x).astype(dtype)
@@ -111,6 +111,19 @@ class TestZeroPad2dAPI(unittest.TestCase):
         pad_tensor = to_tensor(pad, dtype='int32')
         ret_res = zeropad2d(x_tensor, pad_tensor).numpy()
         np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+
+    def test_support_pad5(self):
+        """
+        test the zero size Tensor.
+        """
+        pad = (1, 2, 3, 4)
+        x = np.random.randint(-255, 255, size=[0, 2, 3])
+        x_tensor = to_tensor(x, stop_gradient=False)
+        ret_res = zeropad2d(x_tensor, pad)
+        ret_res.backward()
+        np.testing.assert_allclose(
+            x_tensor.shape, x_tensor.grad.shape, rtol=1e-05
+        )
 
 
 class TestZeroPad2DLayer(unittest.TestCase):

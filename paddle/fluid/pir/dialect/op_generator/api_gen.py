@@ -32,6 +32,7 @@ type_promote_white_list = {
     "subtract": ["x", "y"],
     "divide": ["x", "y"],
     "floor_divide": ["x", "y"],
+    "trunc_divide": ["x", "y"],
     "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
     "equal": ["x", "y"],
@@ -52,6 +53,8 @@ type_promote_white_list = {
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
     "multiply": ["x", "y"],
+    "copysign": ["x", "y"],
+    "cross": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {
@@ -59,6 +62,7 @@ type_promote_inplace_white_list = {
     "subtract_": ["x", "y"],
     "divide_": ["x", "y"],
     "floor_divide_": ["x", "y"],
+    "trunc_divide_": ["x", "y"],
     "where_": ["x", "y"],
     "equal_": ["x", "y"],
     "not_equal_": ["x", "y"],
@@ -70,6 +74,7 @@ type_promote_inplace_white_list = {
     "logical_or_": ["x", "y"],
     "logical_xor_": ["x", "y"],
     "remainder_": ["x", "y"],
+    "copysign_": ["x", "y"],
 }
 
 # ops support casting int tensor into float32 to do forward calculation
@@ -80,13 +85,11 @@ type_autocast_op_list = {
     "asinh": ["x"],
     "atan": ["x"],
     "atanh": ["x"],
-    "ceil": ["x"],
     "cos": ["x"],
     "cosh": ["x"],
     "digamma": ["x"],
     "erf": ["x"],
     "erfinv": ["x"],
-    "floor": ["x"],
     "i0": ["x"],
     "i0e": ["x"],
     "i1": ["x"],
@@ -109,10 +112,7 @@ type_autocast_op_list = {
 
 # ops support casting int tensor into float32 to do forward calculation,
 # and it is valid to cast float32 gradient back to int tensor.
-type_autocast_valid_grad_op_list = {
-    "ceil",
-    "floor",
-}
+type_autocast_valid_grad_op_list = {}
 
 PD_MANUAL_API_LIST = {
     'embedding_grad',

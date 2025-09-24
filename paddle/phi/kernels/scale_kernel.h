@@ -41,5 +41,13 @@ DenseTensor Scale(const Context& dev_ctx,
       dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
   return dense_out;
 }
-
+#ifdef _WIN32
+#define INSTANCE_SCALAR_KERNEL(type, context)                                 \
+  template PADDLE_API void ScaleKernel<type, context>(const context& dev_ctx, \
+                                                      const DenseTensor&,     \
+                                                      const Scalar&,          \
+                                                      const Scalar&,          \
+                                                      bool,                   \
+                                                      DenseTensor*);
+#endif
 }  // namespace phi

@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -45,9 +51,7 @@ class TestGatherOp(OpTest):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
-        )
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
     def config(self):
         """
@@ -98,7 +102,7 @@ class TestGatherOpFP16(TestGatherOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or core.cudnn_version() < 8100
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
@@ -123,15 +127,14 @@ class TestGatherOpBFP16(TestGatherOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=paddle.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            place=get_device_place(), check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -445,15 +448,15 @@ class TestGatherNegativeAxis(OpTest):
 
     def test_check_output(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             self.check_output_with_place(place)
 
     def test_check_grad(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             self.check_grad_with_place(
                 place, ['X'], 'Out', numeric_grad_delta=0.5
@@ -703,13 +706,11 @@ class TestGatherOp5(TestGatherOp):
             ['X'],
             'Out',
             check_pir=True,
-            check_prim=True,
             check_prim_pir=True,
         )
 
 
 class API_TestGather(unittest.TestCase):
-
     def test_out1(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
@@ -783,7 +784,7 @@ class API_TestDygraphGather(unittest.TestCase):
         paddle.enable_static()
 
     def test_large_data(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         x = np.random.rand(226862, 256).astype("float32")
@@ -809,7 +810,7 @@ class API_TestDygraphGather(unittest.TestCase):
                 feed = {x_t.name: x, index_t.name: index}
                 fetch = [out_t]
 
-                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_exe = paddle.static.Executor(get_device_place())
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return gpu_value
 
@@ -817,7 +818,6 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
-
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -891,7 +891,6 @@ class TestGathertError(unittest.TestCase):
 
 
 class TestCheckOutType(unittest.TestCase):
-
     def test_out_type(self):
         data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
@@ -906,6 +905,77 @@ class TestCheckOutType(unittest.TestCase):
             index = paddle.static.data(shape=[4], dtype='int64', name='index')
             out = paddle.gather(data, index)
             self.assertTrue(out.dtype == core.DataType.INT64)
+
+
+class TestGatherBackward(unittest.TestCase):
+    def setUp(self):
+        self.shape = [10, 20]
+        self.dtype = 'float32'
+        self.index = (1, 3, 5)
+        self.index_dtype = 'int64'
+        self.places = get_places()
+
+    def test_gather_backward(self):
+        if len(self.places) != 2:
+            return
+        res_list = []
+        x_np = np.random.random(self.shape).astype(self.dtype)
+        index_np = np.array(self.index, dtype=self.index_dtype)
+        grad_out_np = np.random.random(self.shape).astype(self.dtype)
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(x_np, dtype=self.dtype)
+                x.stop_gradient = False
+                index = paddle.to_tensor(index_np, dtype=self.index_dtype)
+                out = paddle.gather(x, index, -1)
+                grad_out = paddle.to_tensor(grad_out_np, dtype=self.dtype)
+                (re,) = paddle.grad(
+                    outputs=out,
+                    inputs=x,
+                    grad_outputs=grad_out,
+                )
+                res_list.append(re.numpy())
+        np.testing.assert_allclose(res_list[0], res_list[1])
+
+
+class TestGatherOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.python_api = paddle.gather
+        self.public_python_api = paddle.gather
+        self.config()
+        self.init_inputs_and_outputs()
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def config(self):
+        self.x_shape = (3, 0, 4)
+        self.config_dtype()
+        self.index = [2]
+        self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+    def init_inputs_and_outputs(self):
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.inputs = {
+            'X': xnp,
+            'Index': np.array(self.index).astype(self.index_type),
+        }
+        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+
+
+class TestGatherOp_ZeroSize2(TestGatherOp_ZeroSize):
+    def config(self):
+        self.x_shape = (10, 20)
+        self.config_dtype()
+        self.index = [2, 0]
+        self.index_type = "int32"
 
 
 if __name__ == "__main__":

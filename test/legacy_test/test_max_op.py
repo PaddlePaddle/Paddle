@@ -17,23 +17,27 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import check_out_dtype
+from op_test import (
+    check_out_dtype,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 sys.path.append("../../legacy_test")
-import os
 
+from op_test import OpTest
 from test_sum_op import TestReduceOPTensorAxisBase
 from utils import dygraph_guard, static_guard
 
 import paddle
-from paddle import base
 from paddle.base import core
 
 
 class ApiMaxTest(unittest.TestCase):
     def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -145,33 +149,131 @@ class TestMaxWithTensorAxis2(TestReduceOPTensorAxisBase):
         ]
 
 
+class TestMaxZeroSize1(unittest.TestCase):
+    def init_data(self):
+        self.shape = [0, 1, 2, 3]
+        self.axis = [1, 2, 3]
+        self.keepdims = False
+
+    def setUp(self):
+        self.init_data()
+        self.data = np.random.random(self.shape).astype(np.float64)
+        self.expect_res = np.max(
+            self.data, axis=tuple(self.axis), keepdims=self.keepdims
+        )
+        self.places = get_places()
+
+    def test_static(self):
+        with static_guard():
+            for place in self.places:
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        "x", shape=self.shape, dtype="float64"
+                    )
+                    res = paddle.max(x, axis=self.axis, keepdim=self.keepdims)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(feed={"x": self.data}, fetch_list=[res])
+                np.testing.assert_equal(res, self.expect_res)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x = paddle.to_tensor(self.data)
+            res = paddle.max(x, axis=self.axis, keepdim=self.keepdims)
+        np.testing.assert_equal(res, self.expect_res)
+
+
+class TestMaxZeroSize2(TestMaxZeroSize1):
+    def init_data(self):
+        self.shape = [0, 0, 2]
+        self.axis = [2]
+        self.keepdims = False
+
+
+class TestMaxZeroSize3(TestMaxZeroSize1):
+    def init_data(self):
+        self.shape = [0, 0, 2]
+        self.axis = [2]
+        self.keepdims = True
+
+
+class TestMaxOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.python_api = paddle.max
+        self.init_data()
+        self.prepare_data()
+
+    def init_data(self):
+        self.shape = [0, 1, 2]
+        self.axis = [1]
+        self.dtype = np.float64
+        self.keepdims = False
+
+    def prepare_data(self):
+        self._input_data = np.random.random(self.shape).astype(self.dtype)
+        self._output_data = np.max(
+            self._input_data, keepdims=self.keepdims, axis=tuple(self.axis)
+        )
+        self.inputs = {'X': self._input_data}
+        self.outputs = {'Out': self._output_data}
+        self.attrs = {"dim": self.axis, "keep_dim": self.keepdims}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_pir=True,
+        )
+
+
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
+class TestMaxBfloat16(unittest.TestCase):
+    def init_data(self):
+        self.shape = [0, 1, 2]
+        self.axis = [1]
+        self.keepdims = False
+
+    def setUp(self):
+        self.init_data()
+        data = np.random.random(self.shape).astype(np.float64)
+        res = np.max(data, axis=tuple(self.axis), keepdims=self.keepdims)
+        self.expect_shape = res.shape
+
+    def test_shape(self):
+        with dygraph_guard():
+            x = paddle.zeros(self.shape, dtype=paddle.bfloat16)
+            res = paddle.max(x, axis=self.axis, keepdim=self.keepdims)
+            res = res.numpy()
+            np.testing.assert_equal(res.shape, self.expect_shape)
+
+
 class TestMaxWithNan(unittest.TestCase):
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        return places
+        return get_places()
 
     def _test_with_nan_static(
         self, func, shape, dtype=np.float32, place=paddle.CPUPlace()
     ):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x_np = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
-                x_np[0, 0] = np.nan
-                x = paddle.static.data(name='x', shape=shape, dtype=dtype)
-                out = func(x)
-                exe = paddle.static.Executor(place)
-                res = exe.run(feed={'x': x_np}, fetch_list=[out])
-                self.assertTrue(np.isnan(res[0]), "Result should be NaN")
+            ),
+        ):
+            x_np = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
+            x_np[0, 0] = np.nan
+            x = paddle.static.data(name='x', shape=shape, dtype=dtype)
+            out = func(x)
+            exe = paddle.static.Executor(place)
+            res = exe.run(feed={'x': x_np}, fetch_list=[out])
+            self.assertTrue(np.isnan(res[0]), "Result should be NaN")
 
     def _test_with_nan_dynamic(
         self, func, shape, dtype=np.float32, place=paddle.CPUPlace()

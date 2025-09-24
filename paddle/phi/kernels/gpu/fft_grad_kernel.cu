@@ -21,8 +21,8 @@ PD_REGISTER_KERNEL(fft_c2c_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FFTC2CGradKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(
     fft_c2r_grad, GPU, ALL_LAYOUT, phi::FFTC2RGradKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
@@ -31,7 +31,7 @@ PD_REGISTER_KERNEL(fft_r2c_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FFTR2CGradKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }

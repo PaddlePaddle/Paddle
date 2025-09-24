@@ -798,33 +798,33 @@ class TestRecomputeOptimizer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with program_guard(main_program, startup_program):
-                input_x = paddle.static.data(
-                    name="x", shape=[-1, 3], dtype='float32'
-                )
-                input_y = paddle.static.data(
-                    name="y", shape=[-1, 1], dtype='int64'
-                )
-                drop_res, prediction, cost = mlp(input_x, input_y)
-                sgd = paddle.optimizer.Adam(learning_rate=0.01)
-                sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
-                sgd._set_checkpoints([prediction])
-                sgd.minimize(cost)
+        with (
+            base.scope_guard(scope),
+            program_guard(main_program, startup_program),
+        ):
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 3], dtype='float32'
+            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            drop_res, prediction, cost = mlp(input_x, input_y)
+            sgd = paddle.optimizer.Adam(learning_rate=0.01)
+            sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
+            sgd._set_checkpoints([prediction])
+            sgd.minimize(cost)
 
-                place = base.CPUPlace()
-                exe = base.Executor(place)
-                exe.run(base.default_startup_program())
-                feed_data = gen_data()
-                drop_vec = exe.run(
-                    feed=feed_data,
-                    program=base.default_main_program(),
-                    fetch_list=[
-                        "dropout_with_seed_cpu.tmp_1",
-                        "dropout_with_seed_cpu.tmp_1.subprog_0",
-                    ],
-                )
-                self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+            feed_data = gen_data()
+            drop_vec = exe.run(
+                feed=feed_data,
+                program=base.default_main_program(),
+                fetch_list=[
+                    "dropout_with_seed_cpu.tmp_1",
+                    "dropout_with_seed_cpu.tmp_1.subprog_0",
+                ],
+            )
+            self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
 
 
 @unittest.skipIf(
@@ -863,33 +863,33 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with program_guard(main_program, startup_program):
-                input_x = paddle.static.data(
-                    name="x", shape=[-1, 3], dtype='float32'
-                )
-                input_y = paddle.static.data(
-                    name="y", shape=[-1, 1], dtype='int64'
-                )
-                drop_res, prediction, cost = mlp(input_x, input_y)
-                sgd = paddle.optimizer.Adam(learning_rate=0.01)
-                sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
-                sgd._set_checkpoints([prediction])
-                sgd.minimize(cost)
+        with (
+            base.scope_guard(scope),
+            program_guard(main_program, startup_program),
+        ):
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 3], dtype='float32'
+            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            drop_res, prediction, cost = mlp(input_x, input_y)
+            sgd = paddle.optimizer.Adam(learning_rate=0.01)
+            sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
+            sgd._set_checkpoints([prediction])
+            sgd.minimize(cost)
 
-                place = base.CUDAPlace(0)
-                exe = base.Executor(place)
-                exe.run(base.default_startup_program())
-                feed_data = gen_data()
-                drop_vec = exe.run(
-                    feed=feed_data,
-                    program=base.default_main_program(),
-                    fetch_list=[
-                        "dropout_with_seed_gpu.tmp_1",
-                        "dropout_with_seed_gpu.tmp_1.subprog_0",
-                    ],
-                )
-                self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
+            place = base.CUDAPlace(0)
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+            feed_data = gen_data()
+            drop_vec = exe.run(
+                feed=feed_data,
+                program=base.default_main_program(),
+                fetch_list=[
+                    "dropout_with_seed_gpu.tmp_1",
+                    "dropout_with_seed_gpu.tmp_1.subprog_0",
+                ],
+            )
+            self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
 
 
 class TestGradientMergeOptimizer(unittest.TestCase):

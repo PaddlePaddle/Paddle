@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 
@@ -207,6 +207,34 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             [(paddle.nanquantile, None)],
         )
 
+    def test_nanquantile_ZeroSize(self):
+        input_data = np.full(shape=[2, 0, 3], fill_value=np.nan)
+        x = paddle.to_tensor(input_data)
+        x.stop_gradient = False
+        paddle_res = paddle.nanquantile(x, q=0.35, axis=0)
+        np_res = np.nanquantile(input_data, q=0.35, axis=0)
+        np.testing.assert_allclose(
+            paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+        )
+
+        loss = paddle.sum(paddle_res)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+    def test_quantile_ZeroSize(self):
+        input_data = np.full(shape=[2, 0, 3], fill_value=np.nan)
+        x = paddle.to_tensor(input_data)
+        x.stop_gradient = False
+        paddle_res = paddle.quantile(x, q=0.35, axis=0)
+        np_res = np.quantile(input_data, q=0.35, axis=0)
+        np.testing.assert_allclose(
+            paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+        )
+
+        loss = paddle.sum(paddle_res)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
 
 class TestMuitlpleQ(unittest.TestCase):
     """
@@ -347,8 +375,8 @@ class TestQuantileRuntime(unittest.TestCase):
         self.input_data = np.random.rand(4, 7)
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
-        if paddle.device.is_compiled_with_cuda():
-            self.devices.append('gpu')
+        if paddle.device.is_compiled_with_cuda() or is_custom_device():
+            self.devices.append(get_device())
 
     def test_dygraph(self):
         paddle.disable_static()

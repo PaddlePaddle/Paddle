@@ -17,9 +17,9 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -32,6 +32,23 @@ void SubtractGradKernel(const Context& dev_ctx,
                         DenseTensor* dy) {
   // skip out
   auto* out = &dout;
+  if (dout.numel() == 0) {
+    if (dx) {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   ElementwiseSubGrad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
 }
 
@@ -57,9 +74,9 @@ PD_REGISTER_KERNEL(subtract_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(subtract_double_grad,
                    CPU,
@@ -70,6 +87,6 @@ PD_REGISTER_KERNEL(subtract_double_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

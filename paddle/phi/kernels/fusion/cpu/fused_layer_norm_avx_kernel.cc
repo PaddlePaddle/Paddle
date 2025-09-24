@@ -30,22 +30,22 @@ void ResidualBiasSumFunc(const T* x_data,
                          const T* residual_data,
                          const T* bias_data,
                          const float residual_alpha,
-                         const int rows,
-                         const int cols,
-                         const int iStride,
-                         const int oStride,
+                         const int64_t rows,
+                         const int64_t cols,
+                         const int64_t iStride,
+                         const int64_t oStride,
                          T* out_data) {
   __m512 vresidual_alpha = _mm512_set1_ps(residual_alpha);
   const T* pb = bias_data;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int r = 0; r < rows; ++r) {
+  for (int64_t r = 0; r < rows; ++r) {
     const T* px = x_data + r * iStride;
     const T* pr = residual_data ? residual_data + r * iStride : nullptr;
     T* py = out_data + r * oStride;
-    for (int col = 0; col < cols; col += 16) {
-      int remain = cols - col;
+    for (int64_t col = 0; col < cols; col += 16) {
+      int64_t remain = cols - col;
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
 
       // residual*alpha + bias + x
@@ -72,10 +72,10 @@ void LayerNormFunc(const T* x_data,
                    const T* norm_bias_data,
                    const float epsilon,
                    const float residual_alpha,
-                   const int rows,
-                   const int cols,
-                   const int iStride,
-                   const int oStride,
+                   const int64_t rows,
+                   const int64_t cols,
+                   const int64_t iStride,
+                   const int64_t oStride,
                    T* out_data,
                    T* residual_out_data,
                    T* mean_out,
@@ -88,7 +88,7 @@ void LayerNormFunc(const T* x_data,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int r = 0; r < rows; ++r) {
+  for (int64_t r = 0; r < rows; ++r) {
     const T* px = x_data + r * iStride;
     const T* pr = residual_data ? residual_data + r * iStride : nullptr;
     T* pr_out = residual_out_data ? residual_out_data + r * oStride : nullptr;
@@ -99,8 +99,8 @@ void LayerNormFunc(const T* x_data,
 
     __m512 vsum = _mm512_set1_ps(0);
     __m512 vsqare = _mm512_set1_ps(0);
-    for (int col = 0; col < size; col += 16) {
-      int remain = size - col;
+    for (int64_t col = 0; col < size; col += 16) {
+      int64_t remain = size - col;
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
 
       // SUM(x)
@@ -135,8 +135,8 @@ void LayerNormFunc(const T* x_data,
     var_out[r] = var;
     __m512 vvar = _mm512_set1_ps(var);
 
-    for (int col = 0; col < size; col += 16) {
-      int remain = size - col;
+    for (int64_t col = 0; col < size; col += 16) {
+      int64_t remain = size - col;
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
 
       __m512 vx = _mm512_maskz_loadu_ps(mask, px + col);
@@ -201,8 +201,8 @@ void FusedLayerNormAvxKernel(const Context& dev_ctx,
   T* residual_out_data =
       residual ? dev_ctx.template Alloc<T>(residual_out) : nullptr;
 
-  int32_t rows = static_cast<int32_t>(matrix_dim[0]);
-  int32_t cols = static_cast<int32_t>(matrix_dim[1]);
+  int64_t rows = matrix_dim[0];
+  int64_t cols = matrix_dim[1];
 
   auto iStride = cols;
   auto oStride = cols;

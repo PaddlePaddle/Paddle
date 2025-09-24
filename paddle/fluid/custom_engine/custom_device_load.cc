@@ -14,7 +14,6 @@
 
 #include <glog/logging.h>
 
-#
 #include "paddle/fluid/custom_engine/custom_device_load.h"
 namespace paddle {
 

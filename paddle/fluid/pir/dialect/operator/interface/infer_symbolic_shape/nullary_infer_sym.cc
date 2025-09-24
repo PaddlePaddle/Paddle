@@ -32,7 +32,7 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
                  result.type().isa<paddle::dialect::DenseTensorType>();
     PADDLE_ENFORCE_EQ(check,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "result for arange must be DenseTensorType"));
     const auto dims =
         result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
@@ -56,9 +56,60 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
     const auto &end = end_shape_or_data.data()->at(0);
     const auto &step = step_shape_or_data.data()->at(0);
     std::vector<symbol::DimExpr> out_dims;
-    // TODO(lanxianghit, jiahy0825): here should be ceil((end - start) / step),
-    // but DimExpr doesn't support ceil and float now
-    out_dims.emplace_back((end - start) / step);
+    // Use ceiling div to avoid incorrect shape calculation
+    // introduced by rounded division
+    out_dims.emplace_back((end - start + step - 1) / step);
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+
+  return true;
+}
+
+bool RangeV2OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &start_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &end_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &step_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  const auto result = op->result(0);
+  bool contain_unknown_dim = [&]() {
+    bool check = result && result.type() &&
+                 result.type().isa<paddle::dialect::DenseTensorType>();
+    PADDLE_ENFORCE_EQ(check,
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "result for arange must be DenseTensorType"));
+    const auto dims =
+        result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    return ::common::contain_unknown_dim(dims);
+  }();
+
+  if (!contain_unknown_dim) {
+    infer_context->SetSymbolForValueByStaticShape(result);
+    return true;
+  }
+
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    if (!start_shape_or_data.data().has_value() ||
+        !end_shape_or_data.data().has_value() ||
+        !step_shape_or_data.data().has_value()) {
+      return symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{
+              symbol::DimExpr(infer_context->GetNextSymName())})};
+    }
+    const auto &start = start_shape_or_data.data()->at(0);
+    const auto &end = end_shape_or_data.data()->at(0);
+    const auto &step = step_shape_or_data.data()->at(0);
+    std::vector<symbol::DimExpr> out_dims;
+    // Use ceiling div to avoid incorrect shape calculation
+    // introduced by rounded division
+    out_dims.emplace_back((end - start) / step + 1);
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
   }();
@@ -193,11 +244,23 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
         value.type().dyn_cast<pir::DenseTensorType>();
     const auto &dims = tensor_type.dims();
     if (dims.size() == 0) return true;
-    if (dims.size() != 1) return false;
-    if (dims[0] >= 1 && dims[0] <= ::common::DDim::kMaxRank) {
-      return true;
+    if (dims.size() == 1) {
+      if (dims[0] >= 1 && dims[0] <= ::common::DDim::kMaxRank) {
+        return true;
+      }
+      return false;
     }
-    return false;
+    if (common::contain_unknown_dim(dims)) return false;
+    if (common::product(dims) > ::common::DDim::kMaxRank) return false;
+
+    // only one dim is greater than one, and the other dims are 1
+    int gt_one_dim_count = 0;
+    for (int i = 0; i < dims.size(); ++i) {
+      if (dims[i] > 1) {
+        gt_one_dim_count++;
+      }
+    }
+    return gt_one_dim_count <= 1;
   };
 
   auto IsIntType = [&](pir::Value value) {

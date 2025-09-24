@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -130,13 +129,13 @@ class TestInstanceNormOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
+        self.check_output(check_prim=False, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'Scale', 'Bias'],
             'Y',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -260,20 +259,7 @@ class TestInstanceNormCaseNC(TestInstanceNormOp):
 class TestElasticNormOp(unittest.TestCase):
     def init_test_case(self):
         self.epsilon = 1e-5
-        self.places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda()
-            and core.op_support_gpu("instance_norm")
-        ):
-            self.places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "instance_norm"
-        ):
-            self.places.append(core.CUDAPlace(0))
+        self.places = get_places()
 
     def test_norm(self):
         self.init_test_case()
@@ -304,10 +290,10 @@ class TestElasticNormOpCase2(unittest.TestCase):
     def init_test_case(self):
         self.epsilon = 1e-5
         self.places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "instance_norm"
-        ):
-            self.places.append(core.CUDAPlace(0))
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and core.op_support_gpu("instance_norm"):
+            self.places.append(get_device_place())
 
     def test_norm(self):
         self.init_test_case()

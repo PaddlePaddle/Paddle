@@ -14,6 +14,8 @@
 
 import logging
 
+import paddle
+
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter(
     fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
@@ -82,10 +84,10 @@ def resolute_tensor_parallel_ring_id(program):
             if ring_id is None:
                 ring_id = int(op.attr("ring_id"))
             else:
-                assert ring_id == int(
-                    op.attr("ring_id")
-                ), "Found two different ring_id for Tensor Parallel: ring_id={} and ring_id={}.".format(
-                    ring_id, int(op.attr("ring_id"))
+                assert ring_id == int(op.attr("ring_id")), (
+                    "Found two different ring_id for Tensor Parallel: ring_id={} and ring_id={}.".format(
+                        ring_id, int(op.attr("ring_id"))
+                    )
                 )
     assert ring_id is not None, "Could NOT found ring_id for Tensor Parallel."
 
@@ -111,9 +113,9 @@ def copy_parameters(block_, params):
             error_clip=param.error_clip,
             name=param.name,
         )
-        assert (
-            param.is_distributed is False
-        ), f"Try to sync Distributed Parameter: {param}"
+        assert param.is_distributed is False, (
+            f"Try to sync Distributed Parameter: {param}"
+        )
         new_p.is_distributed = False
 
     block_.vars[new_p.name] = new_p
@@ -145,12 +147,12 @@ def insert_sync_op(
         )
         block._insert_op_without_sync(
             idx,
-            type='c_allreduce_sum',
-            inputs={'X': varname},
-            outputs={'Out': varname},
+            type='all_reduce',
+            inputs={'x': varname},
+            outputs={'out': varname},
             attrs={
                 'ring_id': sync_ring_id,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 OP_ROLE_KEY: op_role,
             },
         )
@@ -267,9 +269,9 @@ def insert_synchronization(
                         op_role,
                     )
 
-    assert (
-        len(unsync_param_names) == 0
-    ), f"The following param is unsync by some error: {unsync_param_names}"
+    assert len(unsync_param_names) == 0, (
+        f"The following param is unsync by some error: {unsync_param_names}"
+    )
 
 
 def add_extra_synchronization(
@@ -312,9 +314,9 @@ def add_extra_synchronization(
 
     # adopt for pipeline opt
     if program._pipeline_opt is not None:
-        assert (
-            program._pipeline_opt['section_program'] is not None
-        ), "Pipeline is enable but section_program is None"
+        assert program._pipeline_opt['section_program'] is not None, (
+            "Pipeline is enable but section_program is None"
+        )
         program = program._pipeline_opt['section_program']
 
     # step1: collect the param that need to be sync

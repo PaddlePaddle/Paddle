@@ -16,10 +16,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <unordered_map>
@@ -74,6 +70,7 @@ typedef SSIZE_T ssize_t;
 #endif
 
 COMMON_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_bool(check_cuda_error);
 
 using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
@@ -153,6 +150,8 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  std::string dump_backward_graph_path =
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 3), 3);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
     tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
@@ -161,7 +160,8 @@ static PyObject* eager_api_run_backward(PyObject* self,
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
-    egr::Backward(tensors, grad_tensors, retain_graph);
+    egr::Backward(
+        tensors, grad_tensors, retain_graph, dump_backward_graph_path);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -179,6 +179,8 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
+  auto dump_backward_graph_path =
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 8), 8);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(
           &mesh, tensors, inputs, grad_tensors, no_grad_vars)) {
@@ -199,7 +201,8 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        create_graph,
                        only_inputs,
                        allow_unused,
-                       no_grad_vars);
+                       no_grad_vars,
+                       dump_backward_graph_path);
     VLOG(4) << " in eager_api_run_partial_grad, after running egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
@@ -244,7 +247,7 @@ PyObject* eager_api_get_all_grads(PyObject* self,
       ret.emplace_back(paddle::Tensor());
       continue;
     }
-    if (meta && meta->Grad().initialized()) {
+    if (meta && meta->Grad().has_allocation()) {
       ret.emplace_back(meta->Grad());
     } else {
       ret.emplace_back(paddle::Tensor());
@@ -265,7 +268,7 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
-    if (meta && meta->Grad().initialized()) {
+    if (meta && meta->Grad().has_allocation()) {
       auto& grad = meta->Grad();
       switch (grad.dtype()) {
         case phi::DataType::FLOAT16:
@@ -547,6 +550,9 @@ PyObject* eager_api_run_custom_op(PyObject* self,
 
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   VLOG(7) << "Get things from python for Custom Op: " << op_type;
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " begin");
+  }
   paddle::CustomOpKernelContext ctx;
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
@@ -727,7 +733,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
         paddle::Tensor* out_tensor =
             ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
-        if (!out_tensor->initialized()) {
+        if (!out_tensor->has_allocation()) {
           PADDLE_ENFORCE(
               paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
                   out_tensor->is_dist_tensor(),
@@ -863,6 +869,9 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       }
       grad_node->SetAttrs(attrs);
     }
+  }
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " finish");
   }
   return ToPyObject(*ctx.AllMutableOutput());
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1350,10 +1359,10 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
     PADDLE_ENFORCE_NE(
         grad,
         nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
-    if (((*grad).initialized() || (*grad).is_dist_tensor()) &&
+    if (((*grad).has_allocation() || (*grad).is_dist_tensor()) &&
         ((*grad).dtype() == phi::DataType::FLOAT16 ||
          (*grad).dtype() == phi::DataType::BFLOAT16)) {
       auto master_grad =
@@ -1375,6 +1384,53 @@ PyObject* eager__is_run_in_backward(PyObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
+  EAGER_TRY
+  static std::vector<std::string> all_docs;
+  PyObject* func_obj = nullptr;
+  PyObject* doc_obj = nullptr;
+  PyObject* sig_obj = nullptr;
+  PyObject* annotatio_obj = nullptr;
+  if (!PyArg_ParseTuple(
+          args, "OOOO", &func_obj, &doc_obj, &sig_obj, &annotatio_obj)) {
+    return nullptr;
+  }
+  if (PyDict_Check(annotatio_obj) == false) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The 4th arg which be used to init __annotations__  must be dict in "
+        "python!"));
+    return nullptr;
+  }
+  std::string doc_string = CastPyArg2AttrString(doc_obj, 1);
+
+  if (Py_TYPE(func_obj) == &PyCFunction_Type) {
+    PyCFunctionObject* f = reinterpret_cast<PyCFunctionObject*>(func_obj);
+    if (f->m_ml->ml_doc) {
+      VLOG(6)
+          << "eager__add_doc_str will update doc for PyCFunction, original doc "
+          << f->m_ml->ml_doc;
+    }
+    all_docs.emplace_back(doc_string);
+    f->m_ml->ml_doc = all_docs.back().c_str();
+    if (func_obj->ob_type->tp_dict == nullptr) {
+      func_obj->ob_type->tp_dict = PyDict_New();
+    }
+    // if (PyDict_SetItemString(
+    //         func_obj->ob_type->tp_dict, "__text_signature__", sig_obj) < 0) {
+    //   VLOG(6) << "eager__add_doc_str add __text_signature__ failed";
+    //   return nullptr;
+    // }
+    // Py_INCREF(sig_obj);
+    if (PyDict_SetItemString(
+            func_obj->ob_type->tp_dict, "__annotations__", annotatio_obj) < 0) {
+      VLOG(6) << "eager__add_doc_str add __annotations__ failed";
+      return nullptr;
+    }
+    Py_INCREF(annotatio_obj);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyObject* eager__for_test_check_cuda_error(PyObject* self,
                                            PyObject* args,
@@ -1393,7 +1449,7 @@ PyObject* eager__for_test_check_cuda_error(PyObject* self,
   char* cpu_mem = new char[bytes + 1];
 
   cudaMalloc(&cuda_mem, bytes + 1);
-  cudaMemset(&cuda_mem, 0, bytes + 1);
+  cudaMemset(cuda_mem, 0, bytes + 1);
   cudaMemcpyAsync(cpu_mem, cuda_mem, bytes, cudaMemcpyDeviceToHost);
 
   cudaFree(cuda_mem);
@@ -1484,6 +1540,11 @@ PyMethodDef variable_functions[] = {  // NOLINT
     {"_for_test_check_cuda_error",
      (PyCFunction)(void (*)())eager__for_test_check_cuda_error,
      METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+
+    {"_add_docstr",
+     (PyCFunction)(void (*)())eager__add_doc_str,
+     METH_VARARGS,
      nullptr},
 /**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)

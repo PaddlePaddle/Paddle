@@ -197,7 +197,7 @@ def infer(
     inference_scope = base.core.Scope()
     with base.scope_guard(inference_scope):
         # Use paddle.static.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
+        # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [
@@ -267,9 +267,11 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                main(use_cuda, parallel, nn_type, combine)
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            main(use_cuda, parallel, nn_type, combine)
 
     fn = 'test_{}_{}_{}_{}'.format(
         nn_type,

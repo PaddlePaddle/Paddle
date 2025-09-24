@@ -359,7 +359,7 @@ class TensorRTEngine {
     }
   }
 
-  // NOTE: The func bellow was modified to adapt the dynamic shape.
+  // NOTE: The func below was modified to adapt the dynamic shape.
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
   void InitNetwork();
@@ -630,7 +630,7 @@ class TensorRTEngine {
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ...) \
   engine__->network()->add##layer__(__VA_ARGS__)
 
-class TRTEngineManager {
+class PADDLE_API TRTEngineManager {
   using PredictorID = int;
   using AllocationPtr = phi::Allocator::AllocationPtr;
 

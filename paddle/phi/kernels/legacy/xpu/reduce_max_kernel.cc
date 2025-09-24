@@ -30,12 +30,12 @@ void MaxRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const T* x,
               T* y,
-              const std::vector<int>& xdims,
-              const std::vector<int>& reduce_dims) {
-    return xpu::reduce_max<XPUType>(ctx,
+              const std::vector<int64_t>& xdims,
+              const std::vector<int64_t>& reduce_dims) {
+    return xpu::reduce_max<XPUType>(xpu_ctx,
                                     reinterpret_cast<const XPUType*>(x),
                                     reinterpret_cast<XPUType*>(y),
                                     xdims,
@@ -55,5 +55,5 @@ PD_REGISTER_KERNEL(max_raw,
                    phi::MaxRawKernel,
                    float,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

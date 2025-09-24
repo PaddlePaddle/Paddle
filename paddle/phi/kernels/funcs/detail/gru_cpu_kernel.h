@@ -285,10 +285,10 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
 }
 
 template <typename T, typename Context>
-inline void forward_reset_outputV2(const Context &context,
+inline void forward_reset_outputV2(const Context &dev_ctx,
                                    phi::funcs::GRUMetaValue<T> value,
                                    int frame_size) {
-  auto &place = *context.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
   auto value_reset_gate =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
   auto value_update_gate = typename EigenVector<T>::Type(
@@ -310,11 +310,11 @@ inline void forward_reset_output(OpResetOutput op_reset_output,
                                  int batch_size,
                                  ActivationType active_gate,
                                  bool old_version = true,
-                                 const Context *context = nullptr) {
+                                 const Context *dev_ctx = nullptr) {
   for (int b = 0; b < batch_size; b++) {
     if (!old_version) {
       // use eigen
-      forward_reset_outputV2(*context, value, frame_size);
+      forward_reset_outputV2(*dev_ctx, value, frame_size);
     } else {
       if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
@@ -346,10 +346,10 @@ inline void forward_reset_output(OpResetOutput op_reset_output,
 }
 
 template <typename T, typename Context>
-inline void forward_final_outputV2(const Context &context,
+inline void forward_final_outputV2(const Context &dev_ctx,
                                    phi::funcs::GRUMetaValue<T> value,
                                    int frame_size) {
-  auto &place = *context.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
   auto value_update_gate = typename EigenVector<T>::Type(
       value.gate_value + frame_size, Array1(frame_size));
   auto value_frame_state = typename EigenVector<T>::Type(
@@ -375,11 +375,11 @@ inline void forward_final_output(OpFinalOutput op_final_output,
                                  ActivationType active_node,
                                  bool origin_mode,
                                  bool old_version = true,
-                                 const Context *context = nullptr) {
+                                 const Context *dev_ctx = nullptr) {
   for (int b = 0; b < batch_size; b++) {
     if (!old_version) {
       // eigen
-      forward_final_outputV2(*context, value, frame_size);
+      forward_final_outputV2(*dev_ctx, value, frame_size);
     } else {
       if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
@@ -866,11 +866,11 @@ inline void backward_reset_grad(OpResetGrad op_reset_grad,
 }
 
 template <typename T, typename Context>
-inline void gru_backward(const Context &context,
+inline void gru_backward(const Context &dev_ctx,
                          phi::funcs::GRUMetaValue<T> value,
                          phi::funcs::GRUMetaGrad<T> grad,
                          int frame_size) {
-  auto &place = *context.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
 
   auto value_reset_gate =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
@@ -931,7 +931,7 @@ inline void gru_backward(const Context &context,
 }
 
 template <class OpGruGrad, typename T, typename Context>
-inline void cpu_gru_backward(const Context &context,
+inline void cpu_gru_backward(const Context &dev_ctx,
                              OpGruGrad op_gru_grad UNUSED,
                              phi::funcs::GRUMetaValue<T> value,
                              phi::funcs::GRUMetaGrad<T> grad,
@@ -941,7 +941,7 @@ inline void cpu_gru_backward(const Context &context,
                              ActivationType active_gate UNUSED) {
   for (int b = 0; b < batch_size; ++b) {
     // eigen
-    gru_backward(context, value, grad, frame_size);
+    gru_backward(dev_ctx, value, grad, frame_size);
 
     value.gate_value += frame_size * 3;
     value.reset_output_value += frame_size;

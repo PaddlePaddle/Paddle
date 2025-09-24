@@ -40,9 +40,9 @@ using DDim = phi::DDim;
 inline void GetMidDims(const DDim &x_dims,
                        const DDim &y_dims,
                        const int axis,
-                       int *pre,
-                       int *n,
-                       int *post,
+                       size_t *pre,
+                       size_t *n,
+                       size_t *post,
                        int *is_run_common_broadcast) {
   *pre = 1;
   *n = 1;
@@ -82,7 +82,7 @@ inline DDim TrimTrailingSingularDims(const DDim &dims) {
     if (dims[actual_dims_size - 1] != 1) break;
   }
   if (actual_dims_size == dims.size()) return dims;
-  std::vector<int> trim_dims;
+  std::vector<int64_t> trim_dims;
   trim_dims.resize(actual_dims_size);
   for (int i = 0; i < actual_dims_size; ++i) {
     trim_dims[i] = dims[i];
@@ -94,10 +94,11 @@ inline DDim TrimTrailingSingularDims(const DDim &dims) {
   return actual_dims;
 }
 
-inline int GetElementwiseIndex(const int *x_dims_array,
-                               const int max_dim,
-                               const int *index_array) {
-  int index_ = 0;
+template <typename ShapeT = int64_t>
+inline ShapeT GetElementwiseIndex(const ShapeT *x_dims_array,
+                                  const int max_dim,
+                                  const ShapeT *index_array) {
+  ShapeT index_ = 0;
   for (int i = 0; i < max_dim; i++) {
     if (x_dims_array[i] > 1) {
       index_ = index_ * x_dims_array[i] + index_array[i];
@@ -106,9 +107,10 @@ inline int GetElementwiseIndex(const int *x_dims_array,
   return index_;
 }
 
-inline void UpdateElementwiseIndexArray(const int *out_dims_array,
+template <typename ShapeT = int>
+inline void UpdateElementwiseIndexArray(const ShapeT *out_dims_array,
                                         const int max_dim,
-                                        int *index_array) {
+                                        ShapeT *index_array) {
   for (int i = max_dim - 1; i >= 0; --i) {
     ++index_array[i];
     if (index_array[i] >= out_dims_array[i]) {

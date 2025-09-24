@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import inspect
 import sys
 import warnings
@@ -25,16 +26,21 @@ from typing import (
     overload,
 )
 
-import decorator
 from typing_extensions import ParamSpec
 
 import paddle
 from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
+from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.download import check_and_create_dir
 
 from ..framework import _get_paddle_place
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from ..wrapped_decorator import (
+    copy_signature,
+    signature_safe_contextmanager,
+    wrap_decorator,
+)
 from .tracer import Tracer
 
 if TYPE_CHECKING:
@@ -66,17 +72,24 @@ def in_to_static_mode() -> bool:
 
 def in_sot_simulation_mode() -> bool:
     """
-    Return a bool value that indicates whether running code under SOT simulation context.
+    Returns whether the code is running under the SOT simulation context.
 
+    NOTE: Always returns False because if this function is called directly from native Python,
+    it is not within the SOT simulation process. In that case, returning False is correct.
+    If the code is running within the SOT simulation process, the function will be represented
+    by UserDefinedFunctionVariable, which is specially handled in its `call_function` method
+    to return True when this function is called.
+
+    This design avoids introducing `global_var` into the guard logic.
     """
-    return global_var._in_sot_simulation_mode_
+    return False
 
 
 # TODO(Aurelius84): Need to remove this alias after clean usage in PaddleX
 in_declarative_mode = in_to_static_mode
 
 
-def to_static_unsupport_argument_warning(
+def to_static_unsupported_argument_warning(
     func_name, input_names, inputs, support_values
 ):
     """
@@ -94,7 +107,7 @@ def to_static_unsupport_argument_warning(
 
 
 def _switch_to_static_graph_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         with framework._dygraph_guard(None):
@@ -120,21 +133,8 @@ def to_static_mode_guard(
 
 
 @signature_safe_contextmanager
-def sot_simulation_mode_guard(
-    is_sot_simulation: bool = True,
-) -> Generator[None, None, None]:
-    global global_var
-    original_val = global_var._in_sot_simulation_mode_
-    global_var._in_sot_simulation_mode_ = is_sot_simulation
-    try:
-        yield
-    finally:
-        global_var._in_sot_simulation_mode_ = original_val
-
-
-@signature_safe_contextmanager
 def param_guard(
-    parameters: OrderedDict[str, Tensor]
+    parameters: OrderedDict[str, Tensor],
 ) -> Generator[None, None, None]:
     # Note: parameters is a reference of self._parameters or self._buffers
     if in_to_static_mode() and not paddle.in_dynamic_mode() and parameters:
@@ -325,6 +325,7 @@ def no_grad(func: None = ...) -> AbstractContextManager: ...
 def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]: ...
 
 
+@ParamAliasDecorator({"func": ["orig_func"]})
 def no_grad(func=None):
     """
     :api_attr: imperative
@@ -333,6 +334,9 @@ def no_grad(func=None):
     In this mode, the result of every computation will have `stop_gradient=True`.
 
     Also functions as a decorator. (Make sure to instantiate without parenthesis.)
+
+    .. note::
+        Alias Support: The parameter name ``orig_func`` can be used as an alias for ``func``.
 
     Examples:
 
@@ -376,39 +380,50 @@ def no_grad(func=None):
         return _switch_tracer_mode_guard_(is_train=False)
     else:
 
-        @decorator.decorator
+        @functools.wraps(func)
         def __impl__(
-            func: Callable[_InputT, _RetT],
             *args: _InputT.args,
             **kwargs: _InputT.kwargs,
         ) -> _RetT:
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
 
-        return __impl__(func)
+        copy_signature(func, __impl__)
+        return __impl__
 
 
 class _DecoratorContextManager:
     """Allow a context manager to be used as a decorator"""
 
+    DECORATED_BY_MARKER_ATTR = "__decorated_by__"
+
     def __call__(
         self, func: Callable[_InputT, _RetT]
     ) -> Callable[_InputT, _RetT]:
-        @decorator.decorator
-        def _decorate_function(func, *args, **kwargs):
+        @functools.wraps(func)
+        def _decorate_function(*args, **kwargs):
             with self:
                 return func(*args, **kwargs)
 
-        @decorator.decorator
-        def _decorate_generator(func, *args, **kwargs):
+        @functools.wraps(func)
+        def _decorate_generator(*args, **kwargs):
             gen = func(*args, **kwargs)
             with self:
                 yield from gen
 
         if inspect.isgeneratorfunction(func):
-            return _decorate_generator(func)
+            decorated_fn = _decorate_generator
         else:
-            return _decorate_function(func)
+            decorated_fn = _decorate_function
+
+        copy_signature(func, decorated_fn)
+
+        setattr(
+            decorated_fn,
+            _DecoratorContextManager.DECORATED_BY_MARKER_ATTR,
+            self,
+        )
+        return decorated_fn
 
     def __enter__(self) -> Any:
         raise NotImplementedError
@@ -648,11 +663,13 @@ def guard(place: PlaceLike | None = None) -> Generator[None, None, None]:
     else:
         expected_place = framework._current_expected_place_()
 
-    with framework.program_guard(train, startup):
-        with framework.unique_name.guard():
-            with framework._dygraph_guard(tracer):
-                with framework._dygraph_place_guard(expected_place):
-                    yield
+    with (
+        framework.program_guard(train, startup),
+        framework.unique_name.guard(),
+        framework._dygraph_guard(tracer),
+        framework._dygraph_place_guard(expected_place),
+    ):
+        yield
 
 
 @framework.non_static_only
@@ -665,6 +682,8 @@ def grad(
     only_inputs: bool = True,
     allow_unused: bool = False,
     no_grad_vars: Tensor | Sequence[Tensor] | set[Tensor] | None = None,
+    *,
+    dump_backward_graph_path: str | None = None,
 ) -> list[Tensor]:
     '''
     .. note::
@@ -708,7 +727,9 @@ def grad(
             their gradients if allow_unused=True. Default False.
         no_grad_vars (Tensor|list[Tensor]|tuple[Tensor]|set[Tensor], optional):
             the Tensors whose gradients are not needed to compute. Default None.
-
+        dump_backward_graph_path (str, optional): specifies the directory path for storing the debug file.
+            If this parameter is specified, the backward-related graph (in dot format)
+            and the debugging call stack information will be generated in this directory.
     Returns:
         list: a list of Tensors, whose length is the same as the Tensor number
         inside `inputs`, and the i-th returned Tensor is the sum of gradients of
@@ -804,9 +825,9 @@ def grad(
         # to calculate grads.
         from paddle.static import gradients
 
-        to_static_unsupport_argument_warning(
+        to_static_unsupported_argument_warning(
             "paddle.grad",
-            ["retain_graph", "create_grad", "only_inputs", "allow_unused"],
+            ["retain_graph", "create_graph", "only_inputs", "allow_unused"],
             [retain_graph, create_graph, only_inputs, allow_unused],
             [None, False, True, False],
         )
@@ -818,14 +839,14 @@ def grad(
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
-                assert isinstance(
-                    each_var, core.eager.Tensor
-                ), f"Elements of {name} must be Tensor"
+                assert isinstance(each_var, core.eager.Tensor), (
+                    f"Elements of {name} must be Tensor"
+                )
             return in_out_list
         else:
-            assert isinstance(
-                in_out_list, core.eager.Tensor
-            ), f"{name} must be Tensor or list of Tensor"
+            assert isinstance(in_out_list, core.eager.Tensor), (
+                f"{name} must be Tensor or list of Tensor"
+            )
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -837,16 +858,16 @@ def grad(
 
         for each_var in grad_outputs:
             if each_var is not None:
-                assert isinstance(
-                    each_var, core.eager.Tensor
-                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                assert isinstance(each_var, core.eager.Tensor), (
+                    "grad_outputs must be None, a Variable or a list containing None or Variables"
+                )
     else:
         grad_outputs = []
 
     if len(grad_outputs) > 0:
-        assert len(grad_outputs) == len(
-            outputs
-        ), "The length of grad_outputs must be equal to outputs"
+        assert len(grad_outputs) == len(outputs), (
+            "The length of grad_outputs must be equal to outputs"
+        )
 
     if no_grad_vars is None:
         no_grad_vars = []
@@ -855,9 +876,9 @@ def grad(
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            assert isinstance(
-                var, core.eager.Tensor
-            ), "no_grad_vars can only contains Tensor"
+            assert isinstance(var, core.eager.Tensor), (
+                "no_grad_vars can only contains Tensor"
+            )
     else:
         raise AssertionError(
             "no_grad_vars must be None, Tensor or list/tuple/set of Tensors"
@@ -868,15 +889,15 @@ def grad(
     if retain_graph is None:
         retain_graph = create_graph
 
-    assert isinstance(
-        retain_graph, bool
-    ), "retain_graph must be None, True or False"
+    assert isinstance(retain_graph, bool), (
+        "retain_graph must be None, True or False"
+    )
 
     assert isinstance(allow_unused, bool), "allow_unused must be True or False"
 
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
-
+    check_and_create_dir(dump_backward_graph_path)
     return core.eager.run_partial_grad(
         outputs,
         inputs,
@@ -886,4 +907,5 @@ def grad(
         only_inputs,
         allow_unused,
         no_grad_vars,
+        dump_backward_graph_path,
     )

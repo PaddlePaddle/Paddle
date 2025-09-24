@@ -61,7 +61,6 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
             self.outputs = {'Result': self.target}
 
         def init_config(self):
-            self.in_type = np.float32
             self.x_shape = (1, 4, 10)
             self.index_type = np.int32
             self.index = np.array([[[0, 1, 3, 5, 6]]]).astype(self.index_type)
@@ -77,7 +76,6 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
 
     class TestCase1(TestXPUTakeAlongAxisOp):
         def init_config(self):
-            self.in_type = np.float32
             self.x_shape = (1, 10, 100)
             self.index_type = np.int32
             self.index = np.array([[[0, 1, 3, 5, 13]]]).astype(self.index_type)
@@ -85,7 +83,6 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
 
     class TestCase2(TestXPUTakeAlongAxisOp):
         def init_config(self):
-            self.in_type = np.float32
             self.x_shape = (1, 10, 100)
             self.index_type = np.int64
             self.index = np.array([[[0, 1, 3, 5, 13]]]).astype(self.index_type)
@@ -93,23 +90,24 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
 
     class TestCase3(TestXPUTakeAlongAxisOp):
         def init_config(self):
-            self.in_type = np.float16
             self.x_shape = (1, 10, 100)
             self.index_type = np.int32
-            self.index = np.array([[[0, 1, 3, 5, 13]]]).astype(self.index_type)
-            self.axis = 2
+            self.index = np.array([[[0], [1], [3], [5]]]).astype(
+                self.index_type
+            )
+            self.axis = 1
 
     class TestCase4(TestXPUTakeAlongAxisOp):
         def init_config(self):
-            self.in_type = np.float16
             self.x_shape = (1, 10, 100)
             self.index_type = np.int64
-            self.index = np.array([[[0, 1, 3, 5, 13]]]).astype(self.index_type)
-            self.axis = 2
+            self.index = np.array([[[0], [1], [3], [5]]]).astype(
+                self.index_type
+            )
+            self.axis = 1
 
     class TestCase5(TestXPUTakeAlongAxisOp):
         def init_config(self):
-            self.in_type = np.float32
             self.x_shape = (1, 10, 100)
             self.index_type = np.int32
             self.index = np.array([[[0], [1], [3], [5], [8]]]).astype(
@@ -119,8 +117,7 @@ class XPUTestTakeAlongAxis(XPUOpTestWrapper):
 
     class TestCase6(TestXPUTakeAlongAxisOp):
         def init_config(self):
-            self.in_type = np.uint16
-            self.x_shape = (1, 10, 100)
+            self.x_shape = (2, 30, 50)
             self.index_type = np.int64
             self.index = np.array([[[0, 1, 3, 5, 13]]]).astype(self.index_type)
             self.axis = 2

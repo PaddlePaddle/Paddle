@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle.base import core
@@ -379,16 +384,29 @@ class TestGridSamplerOp(OpTest):
             }
 
     def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
         self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(
+        self.check_grad_with_place(
+            core.CPUPlace(),
             ['X', 'Grid'],
             'Output',
             max_relative_error=0.01,
             numeric_grad_delta=self.numeric_grad_delta,
             check_pir=True,
         )
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_grad_with_place(
+                get_device_place(),
+                ['X', 'Grid'],
+                'Output',
+                max_relative_error=0.01,
+                numeric_grad_delta=self.numeric_grad_delta,
+                check_pir=True,
+            )
 
     def initTestCase(self):
         self.x_shape = (2, 3, 8, 8)
@@ -451,6 +469,16 @@ class Case4(TestGridSamplerOp):
         self.numeric_grad_delta = 0.0001
 
 
+class Case_ZeroSize(TestGridSamplerOp):
+    def initTestCase(self):
+        self.x_shape = (2, 0, 5, 6)
+        self.grid_shape = (2, 8, 9, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = False
+        self.padding_mode = "zeros"
+        self.mode = "bilinear"
+
+
 @skip_check_grad_ci(
     reason="'check_grad' on large inputs is too slow, "
     + "however it is desirable to cover the forward pass"
@@ -458,8 +486,8 @@ class Case4(TestGridSamplerOp):
 class LargeInputCase(TestGridSamplerOp):
     def get_places(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def initTestCase(self):
@@ -553,8 +581,8 @@ class Case9(TestGridSamplerOp):
 class LargeInput3DCase(TestGridSamplerOp):
     def get_places(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def initTestCase(self):

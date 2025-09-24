@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
@@ -45,16 +45,18 @@ class LabelSmoothTestCase(unittest.TestCase):
         paddle.enable_static()
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                label_var = paddle.static.data(
-                    "input", self.label_shape, dtype=self.dtype
-                )
-                y_var = F.label_smooth(
-                    label_var,
-                    prior_dist=self.prior_dist,
-                    epsilon=self.epsilon,
-                )
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            label_var = paddle.static.data(
+                "input", self.label_shape, dtype=self.dtype
+            )
+            y_var = F.label_smooth(
+                label_var,
+                prior_dist=self.prior_dist,
+                epsilon=self.epsilon,
+            )
         feed_dict = {"input": self.label}
         exe = base.Executor(place)
         exe.run(start)
@@ -65,14 +67,13 @@ class LabelSmoothTestCase(unittest.TestCase):
         paddle.enable_static()
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                label_var = paddle.static.data(
-                    "input", self.label_shape, dtype=self.dtype
-                )
-                y_var = F.label_smooth(
-                    label_var, prior_dist=self.prior_dist, epsilon=self.epsilon
-                )
+        with base.unique_name.guard(), base.program_guard(main, start):
+            label_var = paddle.static.data(
+                "input", self.label_shape, dtype=self.dtype
+            )
+            y_var = F.label_smooth(
+                label_var, prior_dist=self.prior_dist, epsilon=self.epsilon
+            )
         feed_dict = {"input": self.label}
         exe = base.Executor(place)
         exe.run(start)
@@ -99,17 +100,16 @@ class LabelSmoothTestCase(unittest.TestCase):
     def runTest(self):
         place = base.CPUPlace()
         self._test_equivalence(place)
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self._test_equivalence(place)
 
 
 class LabelSmoothErrorTestCase(LabelSmoothTestCase):
     def runTest(self):
         place = base.CPUPlace()
-        with dg.guard(place):
-            with self.assertRaises(ValueError):
-                self.paddle_dygraph_layer()
+        with dg.guard(place), self.assertRaises(ValueError):
+            self.paddle_dygraph_layer()
 
 
 def add_cases(suite):

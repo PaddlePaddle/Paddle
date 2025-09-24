@@ -24,6 +24,11 @@ void MeanAllGradKernel(const Context& dev_ctx,
                        const DenseTensor& x UNUSED,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
   PADDLE_ENFORCE_EQ(out_grad.numel(),
                     1UL,
                     common::errors::InvalidArgument(
@@ -48,6 +53,6 @@ PD_REGISTER_KERNEL(mean_all_grad,
                    phi::MeanAllGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context, int Rank>
-void MeshgridForward(const Context& ctx,
+void MeshgridForward(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& ins,
                      std::vector<DenseTensor*> outs) {
   PADDLE_ENFORCE_GT(
@@ -57,7 +57,7 @@ void MeshgridForward(const Context& ctx,
     view_shape[i] = shape[i];
 
     DenseTensor reshape_ins_tensor;
-    phi::Copy(ctx, *ins[i], ctx.GetPlace(), false, &reshape_ins_tensor);
+    phi::Copy(dev_ctx, *ins[i], dev_ctx.GetPlace(), false, &reshape_ins_tensor);
     DDim out_dims_reshape = common::make_ddim(view_shape);
     reshape_ins_tensor.Resize(out_dims_reshape);
     DDim out_dims = common::make_ddim(shape);
@@ -71,37 +71,37 @@ void MeshgridForward(const Context& ctx,
     outs[i]->Resize(out_dims);
     auto x = EigenTensor<T, Rank>::From(
         static_cast<const DenseTensor>(reshape_ins_tensor));
-    ctx.template Alloc<T>(outs[i]);
+    dev_ctx.template Alloc<T>(outs[i]);
     auto y = EigenTensor<T, Rank>::From(*outs[i]);
-    auto& place = *ctx.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, y, x, bcast_dims);
   }
 }
 
 template <typename T, typename Context>
-void MeshgridKernel(const Context& ctx,
+void MeshgridKernel(const Context& dev_ctx,
                     const std::vector<const DenseTensor*>& inputs,
                     std::vector<DenseTensor*> outputs) {
   int rank = inputs.size();
   switch (rank) {
     case 1:
-      MeshgridForward<T, Context, 1>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 1>(dev_ctx, inputs, outputs);
       break;
     case 2:
-      MeshgridForward<T, Context, 2>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 2>(dev_ctx, inputs, outputs);
       break;
     case 3:
-      MeshgridForward<T, Context, 3>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 3>(dev_ctx, inputs, outputs);
       break;
     case 4:
-      MeshgridForward<T, Context, 4>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 4>(dev_ctx, inputs, outputs);
       break;
     case 5:
-      MeshgridForward<T, Context, 5>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 5>(dev_ctx, inputs, outputs);
       break;
     case 6:
-      MeshgridForward<T, Context, 6>(ctx, inputs, outputs);
+      MeshgridForward<T, Context, 6>(dev_ctx, inputs, outputs);
       break;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(

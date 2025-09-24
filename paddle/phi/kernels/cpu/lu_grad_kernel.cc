@@ -18,5 +18,11 @@
 #include "paddle/phi/kernels/impl/lu_grad_kernel_impl.h"
 #include "paddle/phi/kernels/lu_grad_kernel.h"
 
-PD_REGISTER_KERNEL(lu_grad, CPU, ALL_LAYOUT, phi::LUGradKernel, float, double) {
-}
+PD_REGISTER_KERNEL(lu_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LUGradKernel,
+                   float,
+                   double,
+                   phi::complex64,
+                   phi::complex128) {}

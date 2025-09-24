@@ -53,6 +53,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("padding_weights", pat.Attr("padding_weights"));
       op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
       op_attrs.emplace("scale_in", pat.Attr("scale_in"));
       op_attrs.emplace("scale_weights", pat.Attr("scale_weights"));
       op_attrs.emplace("scale_out", pat.Attr("scale_out"));
@@ -81,6 +82,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("fused_reshape_out", pat.Attr("fused_reshape_out"));
       op_attrs.emplace("fused_transpose_out", pat.Attr("fused_transpose_out"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
       op_attrs.emplace("scale_x", pat.Attr("scale_x"));
       op_attrs.emplace("scale_y", pat.Attr("scale_y"));
       op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
@@ -167,6 +169,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("padding_weights", pat.Attr("padding_weights"));
       fused_op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
       fused_op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      fused_op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
       fused_op_attrs.emplace("scale_in", pat.Attr("scale_in"));
       fused_op_attrs.emplace("scale_weights", pat.Attr("scale_weights"));
       fused_op_attrs.emplace("scale_out", pat.Attr("scale_out"));
@@ -196,6 +199,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("fused_transpose_out",
                              pat.Attr("fused_transpose_out"));
       fused_op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      fused_op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
       fused_op_attrs.emplace("scale_x", pat.Attr("scale_x"));
       fused_op_attrs.emplace("scale_y", pat.Attr("scale_y"));
       fused_op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
@@ -220,6 +224,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("fused_reshape_out", res.VectorInt32Attr({}));
       fused_op_attrs.emplace("fused_transpose_out", res.VectorInt32Attr({}));
       fused_op_attrs.emplace("mkldnn_data_type", res.StrAttr("float32"));
+      fused_op_attrs.emplace("onednn_data_type", res.StrAttr(""));
       fused_op_attrs.emplace("scale_x", res.Float32Attr(1.0f));
       fused_op_attrs.emplace("scale_y", res.Float32Attr(1.0f));
       fused_op_attrs.emplace("scale_in_eltwise", res.Float32Attr(0.0f));

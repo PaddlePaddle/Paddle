@@ -537,9 +537,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 assert self._training_role == "TRAINER"
                 self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
                 self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-                assert (
-                    self._worker_endpoints is not None
-                ), "can't find PADDLE_TRAINER_ENDPOINTS"
+                assert self._worker_endpoints is not None, (
+                    "can't find PADDLE_TRAINER_ENDPOINTS"
+                )
                 self._worker_endpoints = self._worker_endpoints.split(",")
                 self._trainers_num = len(self._worker_endpoints)
 

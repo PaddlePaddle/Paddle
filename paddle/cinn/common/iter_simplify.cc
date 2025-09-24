@@ -20,12 +20,13 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 
 namespace cinn {
 namespace common {
-
+using cinn::optim::ProveDivisible;
 /*! \brief Override VisitExpr for iter expr type processing */
 void IterMapToExprNormalizer::Visit(const Expr* expr, Expr* op) {
   if (auto op_ = op->As<ir::IterSplit>()) {
@@ -442,7 +443,7 @@ int32_t IterMapRewriter::FindBaseSplit(const ir::IterSum& expr,
   // Found! return the base index.
   if (base_index != -1) return base_index;
 
-  // If not found const scale, compare the symbole length in scale.
+  // If not found const scale, compare the symbol length in scale.
   int32_t min_reduce_size = 0;
   for (int32_t i = rbegin; i >= 0; --i) {
     if (skip_flag[i]) continue;
@@ -450,7 +451,7 @@ int32_t IterMapRewriter::FindBaseSplit(const ir::IterSum& expr,
     if (match_source.defined() && match_source != split->source) continue;
     int32_t reduce_size = 0;
     auto fcollect = [&](const ir::IndexExpr&) { ++reduce_size; };
-    UnpackReduction<ir::Mul>(split->scale, fcollect);
+    optim::UnpackReduction<ir::Mul>(split->scale, fcollect);
     if (base_index == -1 || reduce_size < min_reduce_size) {
       min_reduce_size = reduce_size;
       base_index = i;

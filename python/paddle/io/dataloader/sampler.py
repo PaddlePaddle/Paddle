@@ -295,9 +295,9 @@ def _weighted_sample(weights, num_samples, replacement=True):
         weights = weights.numpy()
     if isinstance(weights, (list, tuple)):
         weights = np.array(weights)
-    assert isinstance(
-        weights, np.ndarray
-    ), "weights should be paddle.Tensor, numpy.ndarray, list or tuple"
+    assert isinstance(weights, np.ndarray), (
+        "weights should be paddle.Tensor, numpy.ndarray, list or tuple"
+    )
     assert len(weights.shape) <= 2, "weights should be a 1-D or 2-D array"
     weights = weights.reshape((-1, weights.shape[-1]))
     assert np.all(weights >= 0.0), "weights should be positive value"

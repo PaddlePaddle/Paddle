@@ -50,6 +50,7 @@
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta:
     func : BatchNormInferMeta
+    spmd_rule : BatchNormInferSpmd
   kernel :
     func : batch_norm
     data_type : x
@@ -98,6 +99,7 @@
   infer_meta :
     func : EinsumRawInferMeta
     param : [x, equation]
+    spmd_rule : EinsumInferSpmd
   kernel :
     func : einsum
   backward : einsum_grad
@@ -257,7 +259,8 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : StrictReduceIntArrayAxisInferMeta
+    spmd_rule : ReductionMinInferSpmdDynamic
   kernel :
     func : min
   backward : min_grad
@@ -277,7 +280,7 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
-    spmd_rule : ElementwiseBinaryInferSpmd
+    spmd_rule : ElementwiseBinaryWithPartialInferSpmd
   kernel :
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
@@ -294,6 +297,21 @@
   kernel :
     func : not_equal
   inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : range_v2
+  args : (Tensor start, Tensor end, Tensor step, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : RangeTensorInferMeta
+    param : [start, end, step]
+  kernel :
+    func : range_tensor
+    param : [start, end, step]
+    data_type : dtype
+    backend : place
+  data_transform :
+    support_trans_dtype : start, end, step
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : remainder
@@ -380,8 +398,18 @@
   output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
   infer_meta :
     func : UniqueInferMeta
+    spmd_rule : UniqueInferSpmd
   kernel :
     func : unique
     data_type : x
   optional : indices, inverse, counts
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : view_shape
+  args : (Tensor input, int64_t[] dims = {})
+  output : Tensor(out)
+  infer_meta :
+    func : ViewShapeInferMeta
+  kernel :
+    func : view_shape
+  backward : view_shape_grad

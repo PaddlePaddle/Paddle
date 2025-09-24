@@ -36,14 +36,15 @@ static inline Box<T> GetGtBox(const T* gt, int batch, int max_boxes, int idx) {
   return b;
 }
 
-static inline int GetEntryIndex(int batch,
-                                int an_idx,
-                                int hw_idx,
-                                int an_num,
-                                int an_stride,
-                                int stride,
-                                int entry) {
-  return (batch * an_num + an_idx) * an_stride + entry * stride + hw_idx;
+static inline int64_t GetEntryIndex(int batch,
+                                    int an_idx,
+                                    int hw_idx,
+                                    int an_num,
+                                    int an_stride,
+                                    int stride,
+                                    int entry) {
+  return (static_cast<int64_t>(batch) * an_num + an_idx) * an_stride +
+         entry * stride + hw_idx;
 }
 
 }  // namespace phi

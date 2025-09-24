@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from simple_nets import simple_fc_net, simple_fc_net_with_inputs
 
 import paddle
@@ -23,27 +23,29 @@ from paddle import base
 
 class TestFetchDenseTensorArray(unittest.TestCase):
     def build_program(self, main_program, startup_program):
-        with base.unique_name.guard():
-            with base.program_guard(main_program, startup_program):
-                i = paddle.zeros(shape=[1], dtype='int64')
-                img = paddle.static.data(
-                    name='image', shape=[-1, 784], dtype='float32'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[-1, 1], dtype='int64'
-                )
-                loss = simple_fc_net_with_inputs(img, label, class_num=10)
-                loss = simple_fc_net()
-                opt = paddle.optimizer.SGD(learning_rate=0.001)
-                opt.minimize(loss)
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main_program, startup_program),
+        ):
+            i = paddle.zeros(shape=[1], dtype='int64')
+            img = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            loss = simple_fc_net_with_inputs(img, label, class_num=10)
+            loss = simple_fc_net()
+            opt = paddle.optimizer.SGD(learning_rate=0.001)
+            opt.minimize(loss)
 
-                array = paddle.tensor.array_write(x=img, i=i)
-                i = paddle.increment(i)
-                paddle.tensor.array_write(x=label, i=i, array=array)
-                i = paddle.increment(i)
-                paddle.tensor.array_write(x=loss, i=i, array=array)
+            array = paddle.tensor.array_write(x=img, i=i)
+            i = paddle.increment(i)
+            paddle.tensor.array_write(x=label, i=i, array=array)
+            i = paddle.increment(i)
+            paddle.tensor.array_write(x=loss, i=i, array=array)
 
-                return loss, array
+            return loss, array
 
     def check_network(self, use_cuda=True):
         main_program = base.Program()
@@ -55,7 +57,7 @@ class TestFetchDenseTensorArray(unittest.TestCase):
         image = np.random.normal(size=(batch_size, 784)).astype('float32')
         label = np.random.randint(0, 10, (batch_size, 1), dtype="int64")
 
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        place = get_device_place() if use_cuda else base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup_program)
         feed_dict = {'image': image, 'label': label}
@@ -79,7 +81,7 @@ class TestFetchDenseTensorArray(unittest.TestCase):
             np.testing.assert_allclose(loss_v, array_v[2], rtol=1e-05)
 
     def test_fetch_dense_tensor_array(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             self.check_network(use_cuda=True)
         self.check_network(use_cuda=False)
 

@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/backward.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 namespace paddle::operators {
 
@@ -53,7 +54,7 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     if ((static_cast<int>(kDepValue) &
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
-        FLAGS_use_mkldnn ||
+        (FLAGS_use_mkldnn || FLAGS_use_onednn) ||
         (op->HasAttr("use_mkldnn") &&
          PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", this->Input("X"));  // x
@@ -309,8 +310,6 @@ namespace ops = paddle::operators;
   REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                     \
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
-
-FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 

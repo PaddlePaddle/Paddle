@@ -14,9 +14,7 @@
 
 #include "paddle/cinn/backends/extern_func_emitter.h"
 
-#include <absl/hash/hash.h>
 #include <glog/raw_logging.h>
-
 #include <functional>
 #include <iostream>
 #include <string>
@@ -85,8 +83,8 @@ namespace std {
 
 size_t hash<cinn::backends::ExternFuncID>::operator()(
     const cinn::backends::ExternFuncID& x) const {
-  return absl::Hash<absl::string_view>{}(x.name) ^
-         absl::Hash<absl::string_view>{}(x.backend_id);
+  return std::hash<std::string_view>{}(x.name) ^
+         std::hash<std::string_view>{}(x.backend_id);
 }
 
 }  // namespace std

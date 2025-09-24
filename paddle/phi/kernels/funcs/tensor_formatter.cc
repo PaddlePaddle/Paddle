@@ -20,8 +20,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-namespace paddle {
-namespace funcs {
+namespace phi::funcs {
 
 void TensorFormatter::SetPrintTensorType(bool print_tensor_type) {
   print_tensor_type_ = print_tensor_type;
@@ -108,13 +107,17 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
   } else if (dtype == phi::DataType::BOOL) {
     FormatData<bool>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::FLOAT16) {
-    FormatData<phi::dtype::float16>(print_tensor, log_stream);
+    FormatData<phi::float16>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::BFLOAT16) {
-    FormatData<phi::dtype::bfloat16>(print_tensor, log_stream);
+    FormatData<phi::bfloat16>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
-    FormatData<phi::dtype::float8_e4m3fn>(print_tensor, log_stream);
+    FormatData<phi::float8_e4m3fn>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::FLOAT8_E5M2) {
-    FormatData<phi::dtype::float8_e5m2>(print_tensor, log_stream);
+    FormatData<phi::float8_e5m2>(print_tensor, log_stream);
+  } else if (dtype == phi::DataType::COMPLEX64) {
+    FormatData<phi::complex64>(print_tensor, log_stream);
+  } else if (dtype == phi::DataType::COMPLEX128) {
+    FormatData<phi::complex128>(print_tensor, log_stream);
   } else {
     log_stream << "  - data: unprintable type: " << dtype << std::endl;
   }
@@ -143,9 +146,20 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
 
   log_stream << "  - data: [";
   if (print_size > 0) {
-    log_stream << data[0];
+    auto print_element = [&log_stream](const auto& elem) {
+      if constexpr (std::is_same_v<T, phi::complex64> ||
+                    std::is_same_v<T, phi::complex128>) {
+        log_stream << static_cast<float>(elem.real) << "+"
+                   << static_cast<float>(elem.imag) << "j";
+      } else {
+        log_stream << static_cast<float>(elem);
+      }
+    };
+
+    print_element(data[0]);
     for (int64_t i = 1; i < print_size; ++i) {
-      log_stream << " " << static_cast<float>(data[i]);
+      log_stream << " ";
+      print_element(data[i]);
     }
   }
   log_stream << "]" << std::endl;
@@ -161,10 +175,13 @@ template void TensorFormatter::FormatData<int>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 template void TensorFormatter::FormatData<int64_t>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
-template void TensorFormatter::FormatData<phi::dtype::float16>(
+template void TensorFormatter::FormatData<phi::float16>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
-template void TensorFormatter::FormatData<phi::dtype::bfloat16>(
+template void TensorFormatter::FormatData<phi::bfloat16>(
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
+template void TensorFormatter::FormatData<phi::complex64>(
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
+template void TensorFormatter::FormatData<phi::complex128>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 
-}  // namespace funcs
-}  // namespace paddle
+}  // namespace phi::funcs

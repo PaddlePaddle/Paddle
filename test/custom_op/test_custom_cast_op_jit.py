@@ -65,33 +65,32 @@ def custom_cast_static(device, dtype, np_x):
     paddle.enable_static()
     paddle.set_device(device)
 
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name='X', shape=[None, 8], dtype="float32")
-            x.stop_gradient = False
-            out = custom_module.custom_cast(x, dtype)
-            static.append_backward(out)
-            if paddle.framework.in_pir_mode():
-                fetch_list = [
-                    out,
-                    static.default_main_program()
-                    .global_block()
-                    .ops[-1]
-                    .result(0),
-                ]
-            else:
-                fetch_list = [out, x.name + "@GRAD"]
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
-            # in static graph mode, x data has been covered by out
-            out_v, x_grad_v = exe.run(
-                static.default_main_program(),
-                feed={'X': np_x},
-                fetch_list=fetch_list,
-            )
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x = static.data(name='X', shape=[None, 8], dtype="float32")
+        x.stop_gradient = False
+        out = custom_module.custom_cast(x, dtype)
+        static.append_backward(out)
+        if paddle.framework.in_pir_mode():
+            fetch_list = [
+                out,
+                static.default_main_program().global_block().ops[-1].result(0),
+            ]
+        else:
+            fetch_list = [out, x.name + "@GRAD"]
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
+        # in static graph mode, x data has been covered by out
+        out_v, x_grad_v = exe.run(
+            static.default_main_program(),
+            feed={'X': np_x},
+            fetch_list=fetch_list,
+        )
 
-            assert x_grad_v[0].dtype == dtype
-            assert out_v[0].dtype == dtype
+        assert x_grad_v[0].dtype == dtype
+        assert out_v[0].dtype == dtype
 
     paddle.disable_static()
     return out_v

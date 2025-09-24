@@ -18,7 +18,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.auto_parallel.placement_type import to_placements
+from paddle.distributed.auto_parallel.placement_type import (
+    dims_mapping_to_placements,
+)
 
 
 class SemiAutoParallelTestBase:
@@ -104,7 +106,9 @@ class SemiAutoParallelTestBase:
                 mesh=self._mesh, sharding_specs=spec
             )
             # for dygraph auto_parallel, get placements by using to_placements
-            placements = to_placements(input_dist_attr.dims_mapping, self._mesh)
+            placements = dims_mapping_to_placements(
+                input_dist_attr.multi_dims_mapping, self._mesh
+            )
             dist_input = dist.shard_tensor(input, self._mesh, placements)
             dist_input.stop_gradient = not with_backward
             flat_inputs.append(input)

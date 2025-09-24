@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 # import torch
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.base import core
 
 np.random.seed(10)
 
@@ -34,15 +33,7 @@ class TestPolarAPI(unittest.TestCase):
     def setUp(self):
         self.abs = np.array([1, 2]).astype("float64")
         self.angle = np.array([np.pi / 2, 5 * np.pi / 4]).astype("float64")
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -104,6 +95,78 @@ class TestPolarAPI(unittest.TestCase):
             angle = paddle.to_tensor(self.angle)
             self.assertRaises(AttributeError, paddle.polar, None, angle)
             self.assertRaises(AttributeError, paddle.polar, abs, None)
+
+
+class TestPolarAPI_ZeroSize(unittest.TestCase):
+    def init_input(self):
+        self.abs = np.random.random([0, 2])
+        self.angle = np.array([np.pi / 2, 5 * np.pi / 4]).astype("float64")
+
+    def setUp(self):
+        self.init_input()
+        self.place = get_places()
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            abs = paddle.to_tensor(self.abs)
+            abs.stop_gradient = False
+            angle = paddle.to_tensor(self.angle)
+            out1 = paddle.polar(abs, angle)
+
+            out_ref1 = numpy_polar(self.abs, self.angle)
+            np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
+            loss = paddle.sum(out1)
+            loss.backward()
+            np.testing.assert_allclose(abs.grad.shape, abs.shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+class TestPolarAPI_ZeroSize2(TestPolarAPI_ZeroSize):
+    def init_input(self):
+        self.abs = np.random.random([0, 0])
+        self.angle = np.random.random([0, 1])
+
+
+class TestPolarOut(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = [3, 4]
+        self.abs_np = np.random.rand(*self.shape).astype(np.float32)
+        self.angle_np = np.random.rand(*self.shape).astype(np.float32)
+        self.test_types = ["out"]
+
+    def do_test(self, test_type):
+        abs_t = paddle.to_tensor(self.abs_np, stop_gradient=False)
+        angle_t = paddle.to_tensor(self.angle_np, stop_gradient=False)
+
+        if test_type == 'raw':
+            result = paddle.polar(abs_t, angle_t)
+            result.real().mean().backward()
+            return result, abs_t.grad, angle_t.grad
+        elif test_type == 'out':
+            out = paddle.empty(self.shape, dtype='complex64')
+            out.stop_gradient = False
+            paddle.polar(abs_t, angle_t, out=out)
+            out.real().mean().backward()
+            return out, abs_t.grad, angle_t.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_out(self):
+        out_std, abs_grad_std, angle_grad_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, abs_grad, angle_grad = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-6)
+            np.testing.assert_allclose(
+                abs_grad.numpy(), abs_grad_std.numpy(), rtol=1e-6
+            )
+            np.testing.assert_allclose(
+                angle_grad.numpy(), angle_grad_std.numpy(), rtol=1e-6
+            )
 
 
 if __name__ == "__main__":

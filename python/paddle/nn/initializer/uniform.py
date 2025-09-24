@@ -86,7 +86,9 @@ class UniformInitializer(Initializer):
         """
         assert not (
             isinstance(var, framework.EagerParamBase) and var.is_dist()
-        ), "Currently, uniform initializer not support lazy init for dist param."
+        ), (
+            "Currently, uniform initializer not support lazy init for dist param."
+        )
         block = self._check_block(block)
 
         assert isinstance(block, (framework.Block, pir.Block))

@@ -25,42 +25,42 @@ from paddle.base import Program, program_guard
 
 class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle_static_guard():
-            with program_guard(Program(), Program()):
-                input_data = np.random.randint(0, 10, (4, 1)).astype("int64")
+        with (
+            paddle_static_guard(),
+            program_guard(Program(), Program()),
+        ):
+            input_data = np.random.randint(0, 10, (4, 1)).astype("int64")
 
-                def test_Variable():
-                    # the input type must be Variable
-                    paddle.static.nn.embedding(input=input_data, size=(10, 64))
+            def test_Variable():
+                # the input type must be Variable
+                paddle.static.nn.embedding(input=input_data, size=(10, 64))
 
-                self.assertRaises(TypeError, test_Variable)
+            self.assertRaises(TypeError, test_Variable)
 
-                def test_input_dtype():
-                    # the input dtype must be int64
-                    input = paddle.static.data(
-                        name='x', shape=[4, 1], dtype='float32'
-                    )
-                    paddle.static.nn.embedding(input=input, size=(10, 64))
+            def test_input_dtype():
+                # the input dtype must be int64
+                input = paddle.static.data(
+                    name='x', shape=[4, 1], dtype='float32'
+                )
+                paddle.static.nn.embedding(input=input, size=(10, 64))
 
-                self.assertRaises(TypeError, test_input_dtype)
+            self.assertRaises(TypeError, test_input_dtype)
 
-                def test_param_dtype():
-                    # dtype must be float32 or float64
-                    input2 = paddle.static.data(
-                        name='x2', shape=[4, 1], dtype='int64'
-                    )
-                    paddle.static.nn.embedding(
-                        input=input2, size=(10, 64), dtype='int64'
-                    )
-
-                self.assertRaises(TypeError, test_param_dtype)
-
-                input3 = paddle.static.data(
-                    name='x3', shape=[4, 1], dtype='int64'
+            def test_param_dtype():
+                # dtype must be float32 or float64
+                input2 = paddle.static.data(
+                    name='x2', shape=[4, 1], dtype='int64'
                 )
                 paddle.static.nn.embedding(
-                    input=input3, size=(10, 64), dtype='float16'
+                    input=input2, size=(10, 64), dtype='int64'
                 )
+
+            self.assertRaises(TypeError, test_param_dtype)
+
+            input3 = paddle.static.data(name='x3', shape=[4, 1], dtype='int64')
+            paddle.static.nn.embedding(
+                input=input3, size=(10, 64), dtype='float16'
+            )
 
 
 if __name__ == "__main__":

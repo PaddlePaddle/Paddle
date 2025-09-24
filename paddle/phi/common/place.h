@@ -32,19 +32,22 @@ enum class AllocationType : int8_t {
   UNDEFINED = 0,
   CPU = 1,
   GPU = 2,
+  CUDA = GPU,
   GPUPINNED = 3,
   XPU = 4,
+  XPUPINNED = 5,
   IPU = 7,
   CUSTOM = 9,
 };
 
-class TEST_API CustomRegisteredDeviceMap {
+class CustomRegisteredDeviceMap {
  public:
-  static CustomRegisteredDeviceMap& Instance();
+  PADDLE_API static CustomRegisteredDeviceMap& Instance();
 
-  size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
+  PADDLE_API size_t
+  GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
 
-  std::string GetGlobalDeviceType(size_t device_type_id_);
+  PADDLE_API std::string GetGlobalDeviceType(size_t device_type_id_);
 
  private:
   CustomRegisteredDeviceMap() = default;
@@ -52,10 +55,10 @@ class TEST_API CustomRegisteredDeviceMap {
   std::unordered_map<size_t, std::string> registered_device_type_;
 };
 
-const char* AllocationTypeStr(AllocationType type);
+PADDLE_API const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class TEST_API Place {
+class PADDLE_API Place {
  public:
   Place()
       : device(0), alloc_type_(AllocationType::UNDEFINED), device_type_id_(0) {}
@@ -95,11 +98,11 @@ class TEST_API Place {
 
   std::string DebugString() const;
 
-  struct TEST_API Hash {
+  struct Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
-    // but now we don’t over-design.
-    uint32_t operator()(const Place& place) const;
+    // but now we don't over-design.
+    PADDLE_API uint32_t operator()(const Place& place) const;
   };
 
   uint32_t HashValue() const { return Hash()(*this); }
@@ -160,6 +163,20 @@ class XPUPlace : public Place {
       : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
+class XPUPinnedPlace : public Place {
+ public:
+  // Default constructor: no device id is needed, as with XPU pinned memory.
+  XPUPinnedPlace() : Place(AllocationType::XPUPINNED) {}
+
+  // Use the default copy-constructor.
+  XPUPinnedPlace(const XPUPinnedPlace&) = default;
+
+  // Allow construction from a generic Place.
+  // (Typically the passed Place should be an XPUPlace.)
+  XPUPinnedPlace(const Place& place)         // NOLINT
+      : Place(AllocationType::XPUPINNED) {}  // NOLINT
+};
+
 class IPUPlace : public Place {
  public:
   IPUPlace() : Place(AllocationType::IPU, 0) {}
@@ -187,9 +204,9 @@ class CustomPlace : public Place {
   }
 };
 
-TEST_API std::ostream& operator<<(std::ostream&, const Place&);
+PADDLE_API std::ostream& operator<<(std::ostream&, const Place&);
 
-Place GetPinnedPlace(const Place& place);
+PADDLE_API Place GetPinnedPlace(const Place& place);
 
 using PlaceList = std::vector<Place>;
 
@@ -202,16 +219,17 @@ class PlaceHelper {
 };
 #endif
 
-TEST_API bool is_gpu_place(const Place&);
-bool is_xpu_place(const Place&);
-bool is_ipu_place(const Place&);
-TEST_API bool is_cpu_place(const Place&);
-bool is_cuda_pinned_place(const Place&);
-bool is_custom_place(const Place& p);
-bool is_accelerat_place(const Place& p);
-bool places_are_same_class(const Place&, const Place&);
-bool is_same_place(const Place&, const Place&);
-bool is_accelerat_allocation_type(AllocationType type);
+PADDLE_API bool is_gpu_place(const Place&);
+PADDLE_API bool is_xpu_place(const Place&);
+PADDLE_API bool is_ipu_place(const Place&);
+PADDLE_API bool is_cpu_place(const Place&);
+PADDLE_API bool is_cuda_pinned_place(const Place&);
+PADDLE_API bool is_xpu_pinned_place(const Place&);
+PADDLE_API bool is_custom_place(const Place& p);
+PADDLE_API bool is_accelerat_place(const Place& p);
+PADDLE_API bool places_are_same_class(const Place&, const Place&);
+PADDLE_API bool is_same_place(const Place&, const Place&);
+PADDLE_API bool is_accelerat_allocation_type(AllocationType type);
 }  // namespace phi
 
 namespace paddle {
@@ -219,6 +237,7 @@ namespace experimental {
 using AllocationType = phi::AllocationType;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
+using XPUPinnedPlace = phi::XPUPinnedPlace;
 }  // namespace experimental
 
 using AllocationType = phi::AllocationType;
@@ -260,5 +279,9 @@ PADDLE_API bool operator==(const Place& place, PlaceType place_type);
 PADDLE_API bool operator==(PlaceType place_type, const Place& place);
 
 PADDLE_API GPUPlace DefaultGPUPlace();
+
+PADDLE_API phi::XPUPlace DefaultXPUPlace();
+
+PADDLE_API phi::CustomPlace DefaultCustomPlace();
 
 }  // namespace paddle

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -52,7 +52,12 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         y = F.normalize(x, axis=0)
         np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
-        self.assertRaises(BaseException, F.normalize, x)
+        self.assertRaisesRegex(
+            ValueError,
+            r"Attr\(axis\) value should be in range \[-R, R-1\]",
+            F.normalize,
+            x,
+        )
 
     def run_static(self, use_gpu=False):
         x = paddle.static.data(name='input', shape=[10, 10], dtype='float32')
@@ -63,7 +68,7 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         result3 = F.normalize(x, name='aaa')
         result4 = F.normalize(x2, axis=0)
 
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        place = get_device_place() if use_gpu else base.CPUPlace()
         exe = base.Executor(place)
         exe.run(paddle.static.default_startup_program())
         static_result = exe.run(
@@ -86,27 +91,15 @@ class TestNNFunctionalNormalize(unittest.TestCase):
             self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
         with paddle.static.program_guard(paddle.static.Program()):
             self.run_static(use_gpu=True)
-
-    def test_errors(self):
-        with base.dygraph.guard():
-            # The size of input in Normalize should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(
-                    np.reshape(array, [1, 1, 0]), dtype='float32'
-                )
-                paddle.nn.functional.normalize(x)
-
-            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == "__main__":

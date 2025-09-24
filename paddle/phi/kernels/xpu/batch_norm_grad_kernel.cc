@@ -22,51 +22,51 @@
 namespace phi {
 
 template <typename T>
-static int CalculateInvBNY(xpu::Context *ctx,
+static int CalculateInvBNY(xpu::Context *xpu_ctx,
                            T *x,
                            const T *scale,
                            const T *bias,
                            const T *mean,
                            const T *variance,
-                           const int N,
-                           const int C,
-                           const int M,
+                           const int64_t N,
+                           const int64_t C,
+                           const int64_t M,
                            const T *y) {
   PADDLE_ENFORCE_EQ(x,
                     y,
                     common::errors::InvalidArgument(
                         "X and Y should be inplaced in inplace mode"));
-  std::vector<int> tensor_shape_vec({N, C, M});
-  std::vector<int> array_shape_vec({1, C, 1});
+  std::vector<int64_t> tensor_shape_vec({N, C, M});
+  std::vector<int64_t> array_shape_vec({1, C, 1});
   // y - bias
-  int r1 =
-      xpu::broadcast_sub<T>(ctx, bias, y, x, array_shape_vec, tensor_shape_vec);
+  int r1 = xpu::broadcast_sub<T>(
+      xpu_ctx, bias, y, x, array_shape_vec, tensor_shape_vec);
   // (y - bias) / scale
   int r2 = xpu::broadcast_div<T>(
-      ctx, scale, x, x, array_shape_vec, tensor_shape_vec);
+      xpu_ctx, scale, x, x, array_shape_vec, tensor_shape_vec);
   // (y - bias) / scale / variance
   int r3 = xpu::broadcast_div<T>(
-      ctx, variance, x, x, array_shape_vec, tensor_shape_vec);
+      xpu_ctx, variance, x, x, array_shape_vec, tensor_shape_vec);
   // (y - bias) / scale / variance + mean
-  int r4 =
-      xpu::broadcast_add<T>(ctx, mean, x, x, array_shape_vec, tensor_shape_vec);
+  int r4 = xpu::broadcast_add<T>(
+      xpu_ctx, mean, x, x, array_shape_vec, tensor_shape_vec);
 
   return r1 + r2 + r3 + r4;
 }
 
 template <typename T>
-static int CalculateInvVar(xpu::Context *ctx,
+static int CalculateInvVar(xpu::Context *xpu_ctx,
                            const T *var,
                            const T epsilon,
-                           const int C,
+                           const int64_t C,
                            T *epsilon_data,
                            T *inv_var) {
-  int r1 = constant(ctx, epsilon_data, 1, epsilon);
-  std::vector<int> tensor_shape_vec({C});
-  std::vector<int> array_shape_vec({1});
+  int r1 = constant(xpu_ctx, epsilon_data, 1, epsilon);
+  std::vector<int64_t> tensor_shape_vec({C});
+  std::vector<int64_t> array_shape_vec({1});
   int r2 = xpu::broadcast_add<T>(
-      ctx, epsilon_data, var, inv_var, array_shape_vec, tensor_shape_vec);
-  int r3 = xpu::rsqrt<T>(ctx, inv_var, inv_var, C);
+      xpu_ctx, epsilon_data, var, inv_var, array_shape_vec, tensor_shape_vec);
+  int r3 = xpu::rsqrt<T>(xpu_ctx, inv_var, inv_var, C);
   return r1 + r2 + r3;
 }
 
@@ -90,6 +90,21 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (scale_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(scale_grad->dims())),
+          0,
+          scale_grad);
+    if (bias_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto *d_y = &y_grad;
   PADDLE_ENFORCE_EQ(data_layout == "NCHW" || data_layout == "NHWC",
@@ -124,7 +139,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
 
-  int N = -1, C = -1, H = -1, W = -1, D = -1;
+  int64_t N = -1, C = -1, H = -1, W = -1, D = -1;
   funcs::ExtractNCWHD(x_dims, data_layout_val, &N, &C, &H, &W, &D);
   N = (N == 0) ? 1 : N;
   C = (C == 0) ? 1 : C;
@@ -191,35 +206,41 @@ void BatchNormGradKernel(const Context &dev_ctx,
 
   const auto *global_mean = mean.get_ptr();
   const auto *global_var = variance.get_ptr();
+  float *global_inv_std_data = nullptr;
+  int r = 0;
+  if (use_global_stats) {
+    PADDLE_ENFORCE_NOT_NULL(
+        global_mean,
+        errors::InvalidArgument(
+            "global_mean cannot be nullptr when use_global_stats is True"));
+    PADDLE_ENFORCE_NOT_NULL(
+        global_var,
+        errors::InvalidArgument(
+            "global_var cannot be nullptr when use_global_stats is True"));
+
+    global_inv_std_data = RAII_GUARD.alloc_l3_or_gm<float>(global_var->numel());
+    float *epsilon_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
+    r = CalculateInvVar(dev_ctx.x_context(),
+                        global_var->data<float>(),
+                        epsilon,
+                        C,
+                        epsilon_data,
+                        global_inv_std_data);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_grad CalculateInvVar function");
+  }
+  auto *inv_std_data =
+      use_global_stats ? global_inv_std_data : saved_variance.data<float>();
+  auto *mean_data =
+      use_global_stats ? global_mean->data<float>() : saved_mean.data<float>();
 
   // TODO(guozibin): handle the situation case of N * H * W = 1
-  int r = 0;
   if (is_inplace) {
-    float *global_inv_std_data = nullptr;
-    if (use_global_stats) {
-      global_inv_std_data =
-          RAII_GUARD.alloc_l3_or_gm<float>(global_var->numel());
-      float *epsilon_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
-      r = CalculateInvVar(dev_ctx.x_context(),
-                          global_var->data<float>(),
-                          epsilon,
-                          C,
-                          epsilon_data,
-                          global_inv_std_data);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r,
-                                  "batch_norm_grad CalculateInvVar function");
-    }
-
     // Here is a trick, x is a const input,
     // but trans to a non-const var, is it risky?
     float *x_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
     r = xpu::cast<XPUType, float>(
         dev_ctx.x_context(), x_data, x_fp32_data, x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    auto *inv_std_data =
-        use_global_stats ? global_inv_std_data : saved_variance.data<float>();
-    auto *mean_data = use_global_stats ? global_mean->data<float>()
-                                       : saved_mean.data<float>();
     r = CalculateInvBNY(dev_ctx.x_context(),
                         x_fp32_data,
                         new_scale.data<float>(),
@@ -234,49 +255,29 @@ void BatchNormGradKernel(const Context &dev_ctx,
   }
 
   bool is_nchw = data_layout == "NCHW";
-  if (use_global_stats) {
-    r = xpu::batch_norm_grad<XPUType>(dev_ctx.x_context(),
-                                      x_data,
-                                      d_y_data,
-                                      x_grad_data,
-                                      N,
-                                      C,
-                                      H,
-                                      W,
-                                      scale_data,
-                                      nullptr,
-                                      nullptr,
-                                      scale_grad_data,
-                                      bias_grad_data,
-                                      is_nchw,
-                                      global_mean->data<float>(),
-                                      global_var->data<float>(),
-                                      epsilon);
-  } else {
-    if (!x_grad) {
-      x_grad_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
-    }
-    if (!scale_grad) {
-      scale_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
-    }
-    if (!bias_grad_data) {
-      bias_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
-    }
-    r = xpu::batch_norm_grad<XPUType>(dev_ctx.x_context(),
-                                      x_data,
-                                      d_y_data,
-                                      x_grad_data,
-                                      N,
-                                      C,
-                                      H,
-                                      W,
-                                      scale_data,
-                                      saved_mean.data<float>(),
-                                      saved_variance.data<float>(),
-                                      scale_grad_data,
-                                      bias_grad_data,
-                                      is_nchw);
+  if (!x_grad) {
+    x_grad_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
   }
+  if (!scale_grad) {
+    scale_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
+  }
+  if (!bias_grad_data) {
+    bias_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
+  }
+  r = xpu::batch_norm_grad<XPUType>(dev_ctx.x_context(),
+                                    x_data,
+                                    d_y_data,
+                                    x_grad_data,
+                                    N,
+                                    C,
+                                    H,
+                                    W,
+                                    scale_data,
+                                    mean_data,
+                                    inv_std_data,
+                                    scale_grad_data,
+                                    bias_grad_data,
+                                    is_nchw);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_grad");
 }
 
@@ -287,4 +288,4 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

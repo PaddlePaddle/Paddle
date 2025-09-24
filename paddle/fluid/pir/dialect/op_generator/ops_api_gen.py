@@ -90,7 +90,6 @@ SPARSE_OPS_API_TEMPLATE = """
 {{"sparse_{name}", (PyCFunction)(void (*)(void))sparse_{name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for sparse_{name}."}},"""
 
 NEED_GEN_STATIC_ONLY_APIS = [
-    'c_softmax_with_cross_entropy',
     'c_softmax_with_multi_label_cross_entropy',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',
@@ -159,8 +158,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_split',
     'comm_init_all',
     'decayed_adagrad',
-    'distributed_push_sparse',
-    'distributed_lookup_table',
     'dgc_momentum',
     'dgc',
     'dpsgd',
@@ -198,10 +195,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'lod_reset_',
     'max_pool2d_v2',
     'partial_sum',
-    'pull_gpups_sparse',
-    'pull_gpups_sparse_',
-    'push_gpups_sparse',
-    'push_gpups_sparse_',
     'random_routing',
     'rnn_',
     'row_conv',
@@ -215,31 +208,19 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'match_matrix_tensor',
     'c_scatter',
     "cross_entropy_grad2",
-    'push_sparse_v2',
-    'push_sparse_v2_',
-    'pull_sparse_v2',
     'partial_concat',
     'partial_send',
     'partial_recv',
     'partial_allgather',
     'partial_allgather_',
     'gemm_epilogue',
-    'push_dense',
     'legacy_matmul',
     'legacy_matmul_grad',
     'legacy_matmul_double_grad',
     'global_scatter',
     'global_gather',
-    'pull_box_sparse',
-    'pull_box_sparse_',
-    'push_box_sparse',
-    'push_box_sparse_',
-    'send_and_recv',
-    'send_and_recv_',
-    'cudnn_lstm_grad',
     'straight_through_estimator',
     "multiply_grad",
-    "embedding_grad",
     "scale_grad",
     "conv2d_grad",
 ]
@@ -256,8 +237,10 @@ class OpsAPIGen(CodeGen):
             if op_name[:-5] in NO_NEED_GEN_STATIC_ONLY_APIS:
                 return True
         if op_name.endswith("_grad_"):
-            return True
-
+            if op_name.endswith(
+                ("double_grad_", "_grad_grad_", "triple_grad_")
+            ):
+                return True
         return (
             super()._need_skip(op_info, op_name)
             or op_name.endswith('xpu')

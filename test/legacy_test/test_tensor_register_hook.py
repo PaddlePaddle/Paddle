@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle import base, nn
@@ -62,8 +62,8 @@ class TestTensorRegisterHook(unittest.TestCase):
         self.out_size = 10
         self.batch_size = 4
         self.devices = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.devices.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.devices.append(get_device())
 
     def test_hook_for_interior_var(self):
         def run_double_hook_for_interior_var(double_hook, removed=False):
@@ -506,14 +506,16 @@ class TestTensorRegisterHook(unittest.TestCase):
 
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
-        with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.static.data(
-                    name='x', shape=[None, self.in_size], dtype='float32'
-                )
+        with (
+            paddle.static.scope_guard(paddle.static.Scope()),
+            paddle.static.program_guard(main_program, startup_program),
+        ):
+            x = paddle.static.data(
+                name='x', shape=[None, self.in_size], dtype='float32'
+            )
 
-                net = SimpleNetForStatic(self.in_size, self.out_size)
-                out = net(x)
+            net = SimpleNetForStatic(self.in_size, self.out_size)
+            out = net(x)
 
         paddle.disable_static()
 
@@ -555,8 +557,8 @@ def global_void_hook():
 class TestTensorRegisterBackwardHook(unittest.TestCase):
     def setUp(self):
         self.devices = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.devices.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.devices.append(get_device())
 
     def test_register_backward_hook(self):
         global HOOK_INIT_VALUE
@@ -593,8 +595,8 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
 class TestRegisterBackwardFinalHook(unittest.TestCase):
     def setUp(self):
         self.devices = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.devices.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.devices.append(get_device())
 
     def test_register_backward_hook(self):
         global HOOK_INIT_VALUE

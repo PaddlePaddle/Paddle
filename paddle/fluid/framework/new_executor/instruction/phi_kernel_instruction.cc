@@ -37,7 +37,7 @@
 PHI_DEFINE_EXPORTED_bool(print_kernel_run_info,
                          false,
                          "Whether print kernel run info.");
-
+COMMON_DECLARE_bool(check_cuda_error);
 namespace paddle::framework {
 
 PhiKernelInstruction::PhiKernelInstruction(
@@ -184,10 +184,14 @@ PhiKernelInstruction::PhiKernelInstruction(
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("PhiKernelInstruction " + phi_op_name_ + " begin");
+  }
+
+  auto place =
+      kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
   if (FLAGS_print_kernel_run_info) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto place =
-        kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
     if (phi::is_gpu_place(place)) {
       std::string use_cudnn =
           op_->attributes()
@@ -221,7 +225,7 @@ void PhiKernelInstruction::Run() {
   for (auto& pair : this->InplaceInfo()) {
     ShareVarBuffer(pair.first, pair.second);
   }
-  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
+  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel in " << place;
   {
     phi::RecordEvent record_event(kernel_name_ + " kernel launch",
                                   phi::TracerEventType::StaticKernelLaunch,
@@ -230,6 +234,10 @@ void PhiKernelInstruction::Run() {
   }
 
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("PhiKernelInstruction " + phi_op_name_ + " finish");
+  }
 }
 
 }  // namespace paddle::framework

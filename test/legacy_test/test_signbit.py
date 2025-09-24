@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -45,20 +45,12 @@ class TestSignbitAPI(unittest.TestCase):
             'int32',
             'int64',
         ]
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_dtype(self):
         def run(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes
@@ -75,7 +67,7 @@ class TestSignbitAPI(unittest.TestCase):
     def test_float(self):
         def run(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes
@@ -101,7 +93,7 @@ class TestSignbitAPI(unittest.TestCase):
     def test_Tensor_dtype(self):
         def run(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes

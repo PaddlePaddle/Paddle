@@ -404,7 +404,7 @@ TEST(MultiDevicesFusedMultiTransformerDecoderFuseQKVPass, basic) {
   // (matmul_qkv)                     transpose        -> transpose_qkv
   // (transpose_qkv)                  reshape          -> reshape_qkv
   // (reshape_qkv)                    matmul_v2        -> matmul_linear
-  // (matmul_linear)                  c_allreduce_sum  -> c_all_reduce_out
+  // (matmul_linear)                  all_reduce_sum   -> c_all_reduce_out
   // (matmul_linear)                  elementwise_add  -> eltadd_linear
   // (eltadd_out)                     elementwise_add  -> attention_out
   //
@@ -414,7 +414,7 @@ TEST(MultiDevicesFusedMultiTransformerDecoderFuseQKVPass, basic) {
   // (ffn_matmul0, ffn_bias0)         elementwise_add  -> ffn_eltadd0
   // (ffn_eltadd0)                    gelu             -> ffn_gelu
   // (ffn_gelu)                       matmul_v2        -> ffn_matmul1
-  // (ffn_matmul1)                    c_allreduce_sum  -> c_allreduce_out
+  // (ffn_matmul1)                    all_reduce_sum   -> c_allreduce_out
   // (ffn_matmul1, ffn_bias1)         elementwise_add  -> ffn_eltadd1
   // (attention_out, ffn_eltadd1)     elementwise_add  -> ffn_output
   //

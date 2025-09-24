@@ -14,6 +14,7 @@
 
 import os
 
+import paddle
 from paddle.base import core
 from paddle.incubate.optimizer import PipelineOptimizer
 from paddle.static import (
@@ -119,14 +120,14 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         if segment_strategy == "segment_broadcast_MB":
             self._broadcast_MB = sharding_configs["segment_broadcast_MB"]
-            assert (
-                self._broadcast_MB > 0
-            ), "segment size should larger than zero !"
+            assert self._broadcast_MB > 0, (
+                "segment size should larger than zero !"
+            )
         elif segment_strategy == "segment_anchors":
             self._sharding_segment_anchors = sharding_configs["segment_anchors"]
-            assert (
-                len(self._sharding_segment_anchors) > 0
-            ), "you should set the sharding segment anchors !"
+            assert len(self._sharding_segment_anchors) > 0, (
+                "you should set the sharding segment anchors !"
+            )
             self._backward_remain_anchors = self._sharding_segment_anchors[:]
             self._forward_remain_anchors = []
         else:
@@ -161,16 +162,20 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
             assert pp_degree == 2, (
-                "For manually set pipeline, only " "pp_degree = 2 is supported."
+                "For manually set pipeline, only pp_degree = 2 is supported."
             )
             assert (
                 global_world_size == mp_degree * sharding_degree * dp_degree
-            ), f"global work size [{global_world_size}], mp_degree [{mp_degree}], sharding_degree [{sharding_degree}], dp_degree [{dp_degree}]."
+            ), (
+                f"global work size [{global_world_size}], mp_degree [{mp_degree}], sharding_degree [{sharding_degree}], dp_degree [{dp_degree}]."
+            )
         else:
             assert (
                 global_world_size
                 == mp_degree * sharding_degree * pp_degree * dp_degree
-            ), f"global work size [{global_world_size}], mp_degree [{mp_degree}], sharding_degree [{sharding_degree}], pp_degree [{pp_degree}], dp_degree [{dp_degree}]."
+            ), (
+                f"global work size [{global_world_size}], mp_degree [{mp_degree}], sharding_degree [{sharding_degree}], pp_degree [{pp_degree}], dp_degree [{dp_degree}]."
+            )
 
         # FIXME (JZ-LIANG) deprecated hybrid_dp
         if sharding_configs["hybrid_dp"]:
@@ -554,9 +559,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if is_optimizer_op(op) and op.type != 'c_sync_comm_stream':
                     tmp_first_opt_idx = idx
                     break
-            assert (
-                tmp_first_opt_idx is not None
-            ), 'Occurs some errors, no optimize ops'
+            assert tmp_first_opt_idx is not None, (
+                'Occurs some errors, no optimize ops'
+            )
             for grad in accumulated_grad_names:
                 main_block._insert_op_without_sync(
                     tmp_first_opt_idx,
@@ -932,12 +937,12 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._segments.insert(0, segment)
 
         if self._sharding_segment_strategy == "segment_anchors":
-            assert (
-                len(self._forward_remain_anchors) == 0
-            ), f"remain anchors {self._forward_remain_anchors}"
-            assert (
-                len(self._backward_remain_anchors) == 0
-            ), f"remain anchors {self._backward_remain_anchors}"
+            assert len(self._forward_remain_anchors) == 0, (
+                f"remain anchors {self._forward_remain_anchors}"
+            )
+            assert len(self._backward_remain_anchors) == 0, (
+                f"remain anchors {self._backward_remain_anchors}"
+            )
 
         if self._verbose:
             for varname in sorted(
@@ -971,7 +976,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         remove ops and vars not needed in this worker
 
         1. prune regularization (weight decay)
-        2. prune cast_fp32_to_fp16; update amp_infine_checking
+        2. prune cast_fp32_to_fp16; update amp_inline_checking
         3. prune gradient_clip related; update global_norm_sum
         4. prune optimizer op + param + gradient
 
@@ -996,8 +1001,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             output_names = op.desc.output_arg_names()
             # FIXME(wangxi): need use grads, pipeline grad is @GRAD@MERGE
             if (
-                op.type == "c_allreduce_sum"
-                and op.attr('use_model_parallel') is False
+                op.type == "all_reduce"
+                and op.attr('reduce_type') == paddle.distributed.ReduceOp.SUM
             ):
                 assert len(output_names) == 1
                 output_name = output_names[0]
@@ -1017,7 +1022,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # Prune
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
-                "c_allreduce_sum",
+                "all_reduce",
                 "c_sync_comm_stream",
                 "c_calc_comm_stream",
                 "c_gen_nccl_id",
@@ -1454,18 +1459,18 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._collective_helper = CollectiveHelper(
             self.role_maker, nrings=self._nrings_sharding
         )
-        assert (
-            self.global_word_size % self.mp_degree == 0
-        ), f"global_word_size: {self.global_word_size} should be divisible to the mp_degree: {self.mp_degree}"
-        assert (
-            self.global_word_size % self.sharding_degree == 0
-        ), f"global_word_size: {self.global_word_size} should be divisible to the sharding_degree: {self.sharding_degree}"
-        assert (
-            self.global_word_size % self.pp_degree == 0
-        ), f"global_word_size: {self.global_word_size} should be divisible to the pp_degree: {self.pp_degree}"
-        assert (
-            self.global_word_size % self.dp_degree == 0
-        ), f"global_word_size: {self.global_word_size} should be divisible to the dp_degree: {self.dp_degree}"
+        assert self.global_word_size % self.mp_degree == 0, (
+            f"global_word_size: {self.global_word_size} should be divisible to the mp_degree: {self.mp_degree}"
+        )
+        assert self.global_word_size % self.sharding_degree == 0, (
+            f"global_word_size: {self.global_word_size} should be divisible to the sharding_degree: {self.sharding_degree}"
+        )
+        assert self.global_word_size % self.pp_degree == 0, (
+            f"global_word_size: {self.global_word_size} should be divisible to the pp_degree: {self.pp_degree}"
+        )
+        assert self.global_word_size % self.dp_degree == 0, (
+            f"global_word_size: {self.global_word_size} should be divisible to the dp_degree: {self.dp_degree}"
+        )
 
         # mp group
         if self.mp_degree > 1:
@@ -1478,9 +1483,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if idx // self.mp_degree == self.mp_group_id
             ]
             assert self.current_endpoint in self.mp_group_endpoints
-            assert (
-                len(self.mp_group_endpoints) == self.mp_degree
-            ), f"num of mp worker in group is [{len(self.mp_group_endpoints)}], but mp group size is [{self.mp_degree}]"
+            assert len(self.mp_group_endpoints) == self.mp_degree, (
+                f"num of mp worker in group is [{len(self.mp_group_endpoints)}], but mp group size is [{self.mp_degree}]"
+            )
         else:
             self.mp_degree = 1
             self.mp_ring_id = -1
@@ -1565,12 +1570,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         local_pp_degree = self.pp_degree
         if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
             assert self.pp_degree == 2, (
-                "For manually set pipeline, only " "pp_degree = 2 is supported."
+                "For manually set pipeline, only pp_degree = 2 is supported."
             )
             assert (
                 self.global_word_size
                 == self.mp_degree * self.sharding_degree * self.dp_degree
-            ), f"global work size [{self.global_word_size}], mp_degree [{self.mp_degree}], sharding_degree [{self.sharding_degree}], dp_degree [{self.dp_degree}]."
+            ), (
+                f"global work size [{self.global_word_size}], mp_degree [{self.mp_degree}], sharding_degree [{self.sharding_degree}], dp_degree [{self.dp_degree}]."
+            )
             local_pp_degree = 1
         else:
             assert (
@@ -1579,7 +1586,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                 * self.sharding_degree
                 * self.pp_degree
                 * self.dp_degree
-            ), f"mp_degree: [{self.mp_degree}], sharding_degree: [{self.sharding_degree}], pp_degree: [{self.pp_degree}], dp_degree: [{self.dp_degree}]; BUT global nrank: [{self.global_word_size}]"
+            ), (
+                f"mp_degree: [{self.mp_degree}], sharding_degree: [{self.sharding_degree}], pp_degree: [{self.pp_degree}], dp_degree: [{self.dp_degree}]; BUT global nrank: [{self.global_word_size}]"
+            )
 
         if self.dp_degree > 1:
             self.dp_ring_id = 2
@@ -1740,13 +1749,13 @@ class ShardingOptimizer(MetaOptimizerBase):
         self, main_block, startup_block, insert_idx, grad_names, shard
     ):
         for grad_name in grad_names:
-            assert (
-                get_grad_device(grad_name, shard) == shard.worker_idx
-            ), f"try to merge gradient not belong to current shard: [{grad_name}]"
+            assert get_grad_device(grad_name, shard) == shard.worker_idx, (
+                f"try to merge gradient not belong to current shard: [{grad_name}]"
+            )
             persistable_grad_name = grad_name + '@GradientMerge'
-            assert (
-                grad_name not in self._grad2merged_grad
-            ), f"grad [{grad_name}] already in grad2merged_grad, maybe you meet sharing weight case !"
+            assert grad_name not in self._grad2merged_grad, (
+                f"grad [{grad_name}] already in grad2merged_grad, maybe you meet sharing weight case !"
+            )
             self._grad2merged_grad[grad_name] = persistable_grad_name
             grad_var = main_block.var(grad_name)
             # create var
@@ -1875,18 +1884,18 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # allreduce grad@gradientmerge
         if self.hybrid_dp:
-            assert (
-                self.dp_ring_id >= 0
-            ), "dp_ring_id should larger than 0 when in sharding&DP mode"
+            assert self.dp_ring_id >= 0, (
+                "dp_ring_id should larger than 0 when in sharding&DP mode"
+            )
             for grad, merged_grad in self._grad2merged_grad.items():
                 merged_grad_var = main_block.var(merged_grad)
                 cur_block.append_op(
-                    type='c_allreduce_sum',
+                    type='all_reduce',
                     inputs={'X': merged_grad_var},
                     outputs={'Out': merged_grad_var},
                     attrs={
                         'ring_id': self.dp_ring_id,
-                        'use_calc_stream': True,
+                        'reduce_type': paddle.distributed.ReduceOp.SUM,
                         OP_ROLE_KEY: OpRole.Optimize,
                     },
                 )

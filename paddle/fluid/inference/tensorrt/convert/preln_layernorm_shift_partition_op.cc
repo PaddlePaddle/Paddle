@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/inference/tensorrt/plugin/preln_layernorm_shift_partition_op.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/prelnlayernorm_shift_partition_op.h"
 
 namespace paddle {
 namespace inference {

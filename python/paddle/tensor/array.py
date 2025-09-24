@@ -66,9 +66,9 @@ def array_length(array):
             1
     """
     if in_dynamic_mode():
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_write must be a list in dygraph mode"
+        assert isinstance(array, list), (
+            "The 'array' in array_write must be a list in dygraph mode"
+        )
         return len(array)
     elif in_pir_mode():
         if (
@@ -148,15 +148,15 @@ def array_read(array, i):
             [[5. 5. 5.]]
     """
     if in_dynamic_mode():
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_read must be list in dygraph mode"
-        assert isinstance(
-            i, Variable
-        ), "The index 'i' in array_read must be Variable in dygraph mode"
-        assert i.shape == [
-            1
-        ], "The shape of index 'i' should be [1] in dygraph mode"
+        assert isinstance(array, list), (
+            "The 'array' in array_read must be list in dygraph mode"
+        )
+        assert isinstance(i, Variable), (
+            "The index 'i' in array_read must be Variable in dygraph mode"
+        )
+        assert i.shape == [1], (
+            "The shape of index 'i' should be [1] in dygraph mode"
+        )
         i = i.item(0)
         return array[i]
     elif in_pir_mode():
@@ -240,24 +240,24 @@ def array_write(
             [[5. 5. 5.]]
     """
     if in_dynamic_mode():
-        assert isinstance(
-            x, Variable
-        ), "The input data 'x' in array_write must be Variable in dygraph mode"
-        assert isinstance(
-            i, Variable
-        ), "The index 'i' in array_write must be Variable in dygraph mode"
-        assert i.shape == [
-            1
-        ], "The shape of index 'i' should be [1] in dygraph mode"
+        assert isinstance(x, Variable), (
+            "The input data 'x' in array_write must be Variable in dygraph mode"
+        )
+        assert isinstance(i, Variable), (
+            "The index 'i' in array_write must be Variable in dygraph mode"
+        )
+        assert i.shape == [1], (
+            "The shape of index 'i' should be [1] in dygraph mode"
+        )
         i = i.item(0)
         if array is None:
             array = create_array(x.dtype)
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_write must be a list in dygraph mode"
-        assert i <= len(
-            array
-        ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
+        assert isinstance(array, list), (
+            "The 'array' in array_write must be a list in dygraph mode"
+        )
+        assert i <= len(array), (
+            "The index 'i' should not be greater than the length of 'array' in dygraph mode"
+        )
         if i < len(array):
             array[i] = x
         else:

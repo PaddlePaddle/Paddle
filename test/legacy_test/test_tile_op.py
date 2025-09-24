@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -90,6 +95,40 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
     def if_enable_cinn(self):
         self.check_cinn = False
         self.enable_cinn = False
+
+
+class TestTileOpRank_ZeroSize(TestTileOpRank1):
+    def setUp(self):
+        self.op_type = "tile"
+        self.python_api = paddle.tile
+        self.public_python_api = paddle.tile
+        self.init_data()
+
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.attrs = {'repeat_times': self.repeat_times}
+        output = np.tile(self.inputs['X'], self.repeat_times)
+        self.outputs = {'Out': output}
+
+    def init_data(self):
+        self.ori_shape = [2, 0]
+        self.repeat_times = [1]
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[np.zeros(self.ori_shape)],
+            check_pir=True,
+        )
+
+
+class TestTileOpRank_ZeroSize2(TestTileOpRank_ZeroSize):
+    def init_data(self):
+        self.ori_shape = [2, 100]
+        self.repeat_times = [0]
 
 
 # with dimension expanding
@@ -316,8 +355,8 @@ class TestTileFP16OP(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTileBF16OP(OpTest):
@@ -339,7 +378,7 @@ class TestTileBF16OP(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_cinn=self.check_cinn,
@@ -353,7 +392,7 @@ class TestTileBF16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -403,7 +442,6 @@ class TestTileOpInt64_t(OpTest):
 
 
 class TestTileError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -421,7 +459,6 @@ class TestTileError(unittest.TestCase):
 
 
 class TestTileAPIStatic(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -463,6 +500,38 @@ class TestTileAPI(unittest.TestCase):
             np.testing.assert_array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
 
 
+class TestTileAPI7D(unittest.TestCase):
+    def init_data(self):
+        self.ori_shape = [1, 2, 3, 4, 5]
+        self.repeat_times = [1, 1, 1, 2, 1, 2, 1]
+
+    def _test_api(self, place):
+        with base.dygraph.guard():
+            np_x = np.random.random(self.ori_shape).astype("float32")
+            x = paddle.to_tensor(np_x, place=place)
+            x.stop_gradient = False
+            repeat_times = self.repeat_times
+            out = paddle.tile(x, repeat_times)
+            np.testing.assert_array_equal(
+                out.numpy(), np.tile(np_x, repeat_times)
+            )
+            loss = out.sum()
+            loss.backward()
+            np.testing.assert_array_equal(x.grad.shape, x.shape)
+
+    def test_tile7d(self):
+        places = get_places()
+        for place in places:
+            self.init_data()
+            self._test_api(place)
+
+
+class TestTileAPI7Dcase2(TestTileAPI7D):
+    def init_data(self):
+        self.ori_shape = [1, 2, 3, 4, 5, 1, 2]
+        self.repeat_times = [3, 2, 2, 1, 1, 2, 1]
+
+
 class TestTileDoubleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
@@ -487,16 +556,7 @@ class TestTileDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -524,16 +584,7 @@ class TestTileTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -569,16 +620,15 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 
 
 class Testfp16TileOp(unittest.TestCase):
-
     def testfp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         input_x = (np.random.random([1, 2, 3])).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
             repeat_times = [2, 2]
             out = paddle.tile(x, repeat_times=repeat_times)
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(feed={'x': input_x}, fetch_list=[out])

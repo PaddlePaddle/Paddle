@@ -22,8 +22,11 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+SpmdInfo CreateLikeInferSpmd(const DistMetaTensor& x);
+
 SpmdInfo FullLikeInferSpmd(const DistMetaTensor& x,
                            const Scalar& y,
                            phi::DataType dtype);
-}
+SpmdInfo EmptyLikeInferSpmd(const DistMetaTensor& x, phi::DataType dtype);
+}  // namespace distributed
 }  // namespace phi

@@ -18,7 +18,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FillDiagonalKernel(const Context& ctx,
+void FillDiagonalKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         float value,
                         int offset,

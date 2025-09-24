@@ -3,8 +3,15 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
-             STRICT_MODE=False)
+set(SOT_ENVS SOT_LOG_LEVEL=0 MIN_GRAPH_SIZE=0 STRICT_MODE=False
+             SOT_ENABLE_STRICT_GUARD_CHECK=True)
+
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_for_enumerate)
+  # CUDAGraph is temporarily not supported on Windows platform
+  list(REMOVE_ITEM TEST_OPS test_cudagraph)
+endif()
 
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout
@@ -14,10 +21,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_build_strategy)
 
 if(NOT WITH_GPU)
-  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
-  # We should remove this after fix the performance issue.
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
   # disable some model test on CPU to avoid timeout
   list(REMOVE_ITEM TEST_OPS test_resnet)
   list(REMOVE_ITEM TEST_OPS test_bert)
@@ -41,7 +44,8 @@ set_tests_properties(test_loop PROPERTIES TIMEOUT 180)
 set_tests_properties(test_mnist_amp PROPERTIES TIMEOUT 240)
 set_tests_properties(test_sentiment PROPERTIES TIMEOUT 150)
 set_tests_properties(test_incubate_jit_inference PROPERTIES TIMEOUT 150)
-
+set_tests_properties(test_partial_program_hook
+                     PROPERTIES ENVIRONMENT "FLAGS_comp_skip_default_ops=False")
 if(TEST test_resnet_amp)
   set_tests_properties(test_resnet_amp PROPERTIES TIMEOUT 360)
 endif()
@@ -55,8 +59,6 @@ if(APPLE)
 endif()
 
 if(WITH_GPU)
-  set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
   set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
   set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)

@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
+COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::small_vector<std::vector<paddle::Tensor>,
                      egr::kSlotSmallVectorSize>  // NOLINT
@@ -30,6 +31,19 @@ DtensorFromLocalGradNode::operator()(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API GRAD: "
           << "dtensor_from_local";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("DtensorFromLocalGradNode begin");
+  }
+
+  bool rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(
+      static_cast<phi::distributed::DistTensor*>(grads[0][0].impl().get())
+          ->process_mesh());
+
+  if (!rank_is_in_current_mesh) {
+    VLOG(3) << "Current rank is not in the process mesh, returning the input "
+               "grads directly.";
+    return grads;
+  }
 
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
@@ -83,13 +97,13 @@ DtensorFromLocalGradNode::operator()(
 
   PADDLE_ENFORCE_NE(local_dense,
                     nullptr,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The local DenseTensor inside DistTensor is null."));
 
   PADDLE_ENFORCE_EQ(
       local_dense->initialized(),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The local DenseTensor inside DistTensor is not initialized."));
 
   grad_input.set_impl(local_dense);
@@ -111,6 +125,10 @@ DtensorFromLocalGradNode::operator()(
     output_str += output_x_grad_str;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("DtensorFromLocalGradNode finish");
   }
 
   return returns;

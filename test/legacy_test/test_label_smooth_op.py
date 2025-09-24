@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -52,7 +57,8 @@ class TestLabelSmoothOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not core.supports_bfloat16(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.supports_bfloat16(),
     "core is not compiled with CUDA or place do not support bfloat16",
 )
 class TestLabelSmoothOpBF16(OpTest):
@@ -76,13 +82,13 @@ class TestLabelSmoothOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(smoothed_label)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ["X"], "Out", check_pir=True)
 
 
@@ -171,6 +177,18 @@ class TestLabelSmoothBF16OpWithPriorDist3D(TestLabelSmoothBF16OPWithPriorDist):
         self.outputs['Out'] = self.outputs['Out'].reshape(
             self.inputs['X'].shape
         )
+
+
+class TestLabelSmoothOp_ZeroSize(TestLabelSmoothOp):
+    def config(self):
+        self.op_type = "label_smooth"
+        self.python_api = paddle.nn.functional.label_smooth
+        self.init_dtype()
+        self.epsilon = 0.1
+        batch_size, self.label_dim = 0, 12
+        self.label = np.zeros((batch_size, self.label_dim)).astype(self.dtype)
+        nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
+        self.label[np.arange(batch_size), nonzero_index] = 1
 
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -167,7 +167,6 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
-
     def test_api(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -252,6 +251,100 @@ class BadInputTestOnehotV2(unittest.TestCase):
                 )
 
             self.assertRaises(TypeError, test_bad_x)
+
+
+class TestOneHotOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot_v2'
+        self.python_api = one_hot_wrapper
+        self.public_python_api = one_hot_wrapper
+        self.python_out_sig = ['Out']
+        depth = 10
+        depth_np = np.array(10).astype('int32')
+        x_shape = [0, 10, 7, 3]
+        x = [np.random.randint(0, depth - 1) for i in range(np.prod(x_shape))]
+        x = np.array(x).astype('int32').reshape(x_shape)
+
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
+
+        r_x = np.reshape(x, np.prod(x.shape))
+        for i in range(np.prod(x.shape)):
+            out[i, r_x[i]] = 1.0
+
+        shape_np = list(x.shape)
+        shape_np.append(depth)
+        out = np.reshape(out, shape_np)
+
+        self.inputs = {'X': x, 'depth_tensor': depth_np}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestOneHotAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = get_places()
+        self.shape = [5]
+        self.dtype = 'int32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.num_classes = self.np_input.max() + 1
+        self.np_out = np.eye(self.num_classes)[self.np_input]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.nn.functional.one_hot(x, self.num_classes)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.nn.functional.one_hot(x=x, num_classes=self.num_classes)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.nn.functional.one_hot(
+            input=x, num_classes=self.num_classes
+        )
+        paddle_dygraph_out.append(out3)
+        # default args
+        out4 = paddle.nn.functional.one_hot(x, -1)
+        paddle_dygraph_out.append(out4)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(self.np_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.nn.functional.one_hot(x, self.num_classes)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.nn.functional.one_hot(
+                x=x, num_classes=self.num_classes
+            )
+            # Key words args for torch
+            out3 = paddle.nn.functional.one_hot(
+                input=x, num_classes=self.num_classes
+            )
+            # default args
+            out4 = paddle.nn.functional.one_hot(x, -1)
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3],
+            )
+            for out in fetches:
+                np.testing.assert_allclose(out, self.np_out)
 
 
 if __name__ == '__main__':

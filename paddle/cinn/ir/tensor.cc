@@ -18,9 +18,7 @@
 
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/axis.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/buffer.h"
@@ -30,8 +28,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/poly/isl_utils.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {
@@ -516,7 +513,7 @@ bool _Tensor_::is_tuple_get() const {
          operation->as<ir::CallOp>()->is_tuple_get;
 }
 
-bool _Tensor_::IsDependOnStatement(absl::string_view statement) {
+bool _Tensor_::IsDependOnStatement(std::string_view statement) {
   if (!is_compute_node()) {
     return false;
   }
@@ -608,18 +605,6 @@ ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape) const {
       Context::Global().NewName(this->name + "_copied"));
   auto res = copied->Reshape(shape);
   return res;
-}
-
-Shared<poly::Stage> CreateStage(Tensor tensor) {
-  isl::set isl_domain;
-  // We will remove isl, and the subsequent compilation process will no longer
-  // use it. But it has not been completely removed in the process. it cannot be
-  // supported here under dynamic shape. Therefore, we temporarily use fake
-  // domain.
-  poly::Domain fake_domain(Context::isl_ctx(), "fake_domain", {});
-  isl_domain = fake_domain.to_isl();
-
-  return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 
 static constexpr char kReduceInitSuffix[] = "__reduce_init";

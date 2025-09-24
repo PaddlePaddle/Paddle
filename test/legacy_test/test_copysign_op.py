@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -61,8 +66,8 @@ class TestCopySignOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestCopySignBF16(OpTest):
@@ -79,13 +84,13 @@ class TestCopySignBF16(OpTest):
             'y': convert_float_to_uint16(y),
         }
         self.outputs = {'out': convert_float_to_uint16(out)}
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype(self):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
@@ -116,11 +121,7 @@ class TestCopySignAPI(unittest.TestCase):
         self.y = np.random.randn(20, 6).astype('float64')
 
     def place_init(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         paddle.enable_static()
@@ -132,7 +133,7 @@ class TestCopySignAPI(unittest.TestCase):
                 y = self.y
             else:
                 y = paddle.static.data(
-                    name='y', shape=self.y.shape, dtype=self.x.dtype
+                    name='y', shape=self.y.shape, dtype=self.y.dtype
                 )
             out = paddle.copysign(x, y)
             exe = paddle.static.Executor(self.place)
@@ -298,6 +299,237 @@ class TestCopySignBroadcastCase3(TestCopySignAPI):
         dtype = np.float16
         self.x = (np.random.randn(4, 5) * 10).astype(dtype)
         self.y = (np.random.randn(3, 4, 5) * 10).astype(dtype)
+
+
+class TestCopySignZeroSize1(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(0, 5)
+        self.y = np.random.randn(0, 5)
+
+    def place_init(self):
+        self.place = paddle.CPUPlace()
+
+
+class TestCopySignZeroSize2(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(0, 5)
+        self.y = np.random.randn(3, 0, 5)
+
+    def place_init(self):
+        self.place = paddle.CPUPlace()
+
+
+class TestCopySignZeroSize3(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(3, 0, 5)
+        self.y = np.random.randn(0, 5)
+
+
+class TestCopySignZeroSize4(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(5, 0)
+        self.y = np.random.randn(3, 5, 0)
+
+
+class TestCopySignZeroSize5(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(2, 5)
+        self.y = np.random.randn(0, 2, 5)
+
+
+class TestCopySignZeroSize6(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(0)
+        self.y = np.random.randn(0)
+
+
+class TestCopySignTypePromotion(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.random.randn(2, 5).astype(np.float64)
+        self.y = np.random.randn(2, 5).astype(np.float32)
+
+
+class TestCopySignNan1(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
+        self.y.view('uint64')[0, 0] |= np.uint64(0x8000000000000000)
+
+
+class TestCopySignNan2(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
+        self.y.view('uint64')[0, 0] &= ~np.uint64(0x8000000000000000)
+
+
+class TestCopySignNan3(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]])
+        self.y = np.array([[-1.0, np.nan], [np.nan, np.nan]])
+
+
+class TestCopySignNan4(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]])
+        self.y = np.array([[-0.0, np.nan], [np.nan, np.nan]])
+
+
+class TestCopySignNan5(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]])
+        self.y = np.array([[0.0, np.nan], [np.nan, np.nan]])
+
+
+class TestCopySignNan6(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]])
+        self.y = np.array([[1.0, np.nan], [np.nan, np.nan]])
+
+
+class TestCopySignNan7(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
+        self.y.view('uint64')[0, 0] |= np.uint64(0x8000000000000000)
+
+
+class TestCopySignNan8(TestCopySignAPI):
+    def input_init(self):
+        self.x = np.array([[np.nan, 2.0], [3.0, 4.0]], dtype=np.float64)
+        self.y = np.array(
+            [[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64
+        )
+        self.y.view('uint64')[0, 0] &= ~np.uint64(0x8000000000000000)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestCopySignOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "copysign"
+        self.python_api = paddle.copysign
+        self.public_python_api = paddle.copysign
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'x': OpTest.np_dtype_to_base_dtype(self.x),
+            'y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'x': OpTest.np_dtype_to_base_dtype(self.x),
+            'y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestCopySignOp_Stride1(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride2(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride3(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride4(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride5(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = ref_copysign(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestCopySignOp_Stride_ZeroDim1(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride_ZeroSize1(TestCopySignOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 if __name__ == "__main__":

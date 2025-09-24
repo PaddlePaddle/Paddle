@@ -37,6 +37,8 @@ class TestReshardAPI:
         self.test_case_p_to_r()
         self.test_case_r_to_s()
         self.test_case_forward_and_backward()
+        self.test_case_p_to_s_reshard_grad()
+        self.test_case_p_to_r_reshard_grad()
 
     def test_case_p_to_r(self):
         a = paddle.ones(self._shape)
@@ -125,6 +127,64 @@ class TestReshardAPI:
             rtol=1e-5,
             atol=1e-5,
         )
+
+    def test_case_p_to_s_reshard_grad(self):
+        if self._backend == "cpu":
+            return
+
+        np.random.seed(1901)
+        input_numpy = np.random.random(self._shape).astype("float32")
+        label_numpy = np.random.random(self._shape).astype('float32')
+
+        dist_input = dist.shard_tensor(
+            paddle.to_tensor(input_numpy),
+            dist.ProcessMesh([0, 1], dim_names=["x"]),
+            [Partial()],
+        )
+        dist_input.stop_gradient = False
+        dist_output = dist.reshard(
+            dist_input, dist.ProcessMesh([0, 1], dim_names=["x"]), [Shard(0)]
+        )
+        dist_label = dist.shard_tensor(
+            paddle.to_tensor(label_numpy),
+            dist.ProcessMesh([0, 1], dim_names=["x"]),
+            [Shard(0)],
+        )
+
+        dist_loss_fn = nn.MSELoss()
+        dist_loss = dist_loss_fn(dist_output, dist_label)
+        dist_loss.backward()
+
+        np.testing.assert_equal(dist_input.grad.placements, [dist.Replicate()])
+
+    def test_case_p_to_r_reshard_grad(self):
+        if self._backend == "cpu":
+            return
+
+        np.random.seed(1901)
+        input_numpy = np.random.random(self._shape).astype("float32")
+        label_numpy = np.random.random(self._shape).astype('float32')
+
+        dist_input = dist.shard_tensor(
+            paddle.to_tensor(input_numpy),
+            dist.ProcessMesh([0, 1], dim_names=["x"]),
+            [Partial()],
+        )
+        dist_input.stop_gradient = False
+        dist_output = dist.reshard(
+            dist_input, dist.ProcessMesh([0, 1], dim_names=["x"]), [Replicate()]
+        )
+        dist_label = dist.shard_tensor(
+            paddle.to_tensor(label_numpy),
+            dist.ProcessMesh([0, 1], dim_names=["x"]),
+            [Replicate()],
+        )
+
+        dist_loss_fn = nn.MSELoss()
+        dist_loss = dist_loss_fn(dist_output, dist_label)
+        dist_loss.backward()
+
+        np.testing.assert_equal(dist_input.grad.placements, [dist.Replicate()])
 
 
 if __name__ == '__main__':

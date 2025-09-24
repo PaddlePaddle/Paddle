@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -46,7 +45,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                              DenseTensor* out_good_steps,
                              DenseTensor* out_bad_steps) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(found_infinite.numel(),
                     1,
@@ -67,14 +66,14 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   for (size_t i = 0; i < xs.size(); ++i) {
     auto* out = outs[i];
     T* out_data = dev_ctx.template Alloc<T>(out);
-    int num = out->numel();
+    int64_t num = out->numel();
     if (cpu_found_inf_data) {
       VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
       int r = 0;
       r = xpu::constant(dev_ctx.x_context(),
-                        reinterpret_cast<XPUTyp*>(out_data),
+                        reinterpret_cast<XPUType*>(out_data),
                         num,
-                        XPUTyp(0.0));
+                        XPUType(0.0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     }
   }
@@ -175,7 +174,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  DenseTensor* found_infinite) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
 
   const MPDType* scale_data = scale.data<MPDType>();
   bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);
@@ -264,7 +263,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
 
       DenseTensor float_x;
       DenseTensor float_out;
-      if (std::is_same<T, phi::dtype::float16>::value &&
+      if (std::is_same<T, phi::float16>::value &&
           (version == phi::backends::xpu::XPUVersion::XPU1)) {
         dev_ctx.template Alloc<MPDType>(&float_x, x->numel() * sizeof(MPDType));
         dev_ctx.template Alloc<MPDType>(&float_out,
@@ -282,7 +281,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                        x->numel(),
                        false,
                        inverse_scale,
-                       0.0);
+                       0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
         r = xpu::cast(dev_ctx.x_context(),
@@ -297,7 +296,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                            x->numel(),
                            false,
                            inverse_scale,
-                           0.0);
+                           0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       }
     }
@@ -316,7 +315,7 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    ALL_LAYOUT,
                    phi::UpdateLossScalingKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
   }
@@ -329,7 +328,7 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    ALL_LAYOUT,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::BOOL);
 }

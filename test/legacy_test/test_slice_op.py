@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -155,7 +161,7 @@ class TestSliceZerosShapeTensor(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
-            'use_mkldnn': True,
+            'use_onednn': True,
         }
 
     def config(self):
@@ -168,6 +174,16 @@ class TestSliceZerosShapeTensor(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(paddle.CPUPlace(), check_pir=True)
+
+
+class TestCase_ZeroSize(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([0, 0, 5, 6]).astype("float64")
+        self.starts = [-3, 0, 2]
+        self.ends = [3, 100, -1]
+        self.axes = [0, 1, 3]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[-3:3, 0:100, :, 2:-1]
 
 
 # 1.2 with attr(decrease)
@@ -520,7 +536,8 @@ class TestSliceOp_ZeroDim(OpTest):
 
 # Test CUDA float16
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16(OpTest):
     def setUp(self):
@@ -548,14 +565,14 @@ class TestFP16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         print("core:", core.is_float16_supported(place))
         if core.is_float16_supported(place):
             self.check_grad_with_place(
@@ -569,7 +586,8 @@ class TestFP16(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16_2(OpTest):
     def setUp(self):
@@ -597,14 +615,14 @@ class TestFP16_2(OpTest):
         self.infer_flags = [1]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -728,8 +746,9 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
     def test_pir(self):
-        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-            paddle.static.Program()
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(paddle.static.Program()),
         ):
             input = np.random.random([3, 4, 5, 6]).astype("float64")
             minus_1 = paddle.tensor.fill_constant([], "int32", -1)
@@ -797,8 +816,9 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res, input[:, :, 2:3, :])
 
     def test_negative_axis_static(self):
-        with paddle_static_guard(), paddle.static.program_guard(
-            paddle.static.Program()
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
         ):
             input = np.random.random([3, 4, 5, 6]).astype("float64")
             x = paddle.static.data(
@@ -825,8 +845,9 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res, input[:, :, 2:3, :])
 
     def test_negative_axis_pir(self):
-        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-            paddle.static.Program()
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(paddle.static.Program()),
         ):
             input = np.random.random([3, 4, 5, 6]).astype("float64")
             x = paddle.static.data(
@@ -924,78 +945,72 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
         self.end = 2
         self.axis = 1
 
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
         self.exe = base.Executor(self.place)
 
     def set_program_and_run(self, main_program, case_num):
-        with paddle.pir_utils.OldIrGuard():
-            with paddle_static_guard():
-                with paddle.static.program_guard(main_program):
-                    x = [
-                        paddle.static.data(
-                            name='x0', shape=self.shape, dtype="float32"
-                        ),
-                        paddle.static.data(
-                            name='x1', shape=self.shape, dtype="float32"
-                        ),
-                        paddle.static.data(
-                            name='x2', shape=self.shape, dtype="float32"
-                        ),
-                    ]
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            paddle_static_guard(),
+            paddle.static.program_guard(main_program),
+        ):
+            x = [
+                paddle.static.data(
+                    name='x0', shape=self.shape, dtype="float32"
+                ),
+                paddle.static.data(
+                    name='x1', shape=self.shape, dtype="float32"
+                ),
+                paddle.static.data(
+                    name='x2', shape=self.shape, dtype="float32"
+                ),
+            ]
 
-                    for each_x in x:
-                        each_x.stop_gradient = False
+            for each_x in x:
+                each_x.stop_gradient = False
 
-                    arr = paddle.tensor.create_array(dtype="float32")
-                    for i in range(3):
-                        idx = paddle.tensor.array_length(arr)
-                        arr = paddle.tensor.array_write(
-                            x=x[i], i=idx, array=arr
-                        )
+            arr = paddle.tensor.create_array(dtype="float32")
+            for i in range(3):
+                idx = paddle.tensor.array_length(arr)
+                arr = paddle.tensor.array_write(x=x[i], i=idx, array=arr)
 
-                    if case_num == 1:
-                        self.sliced_arr = output = arr[0]
+            if case_num == 1:
+                self.sliced_arr = output = arr[0]
 
-                    elif case_num == 2:
-                        end = (
-                            paddle.tensor.array_length(arr) - 1
-                        )  # dtype of end is int64
-                        self.sliced_arr = slice_arr = arr[self.start : end]
-                        output, _ = tensor_array_to_tensor(
-                            slice_arr, axis=self.axis, use_stack=True
-                        )
-                    elif case_num == 3:
-                        value_int64 = paddle.tensor.fill_constant(
-                            [1], "int64", 2147483648
-                        )
-                        self.sliced_arr = slice_arr = arr[
-                            self.start : value_int64
-                        ]
-                        output, _ = tensor_array_to_tensor(
-                            slice_arr, axis=self.axis, use_stack=True
-                        )
+            elif case_num == 2:
+                end = (
+                    paddle.tensor.array_length(arr) - 1
+                )  # dtype of end is int64
+                self.sliced_arr = slice_arr = arr[self.start : end]
+                output, _ = tensor_array_to_tensor(
+                    slice_arr, axis=self.axis, use_stack=True
+                )
+            elif case_num == 3:
+                value_int64 = paddle.tensor.fill_constant(
+                    [1], "int64", 2147483648
+                )
+                self.sliced_arr = slice_arr = arr[self.start : value_int64]
+                output, _ = tensor_array_to_tensor(
+                    slice_arr, axis=self.axis, use_stack=True
+                )
 
-                    loss = paddle.sum(output)
-                    base.backward.append_backward(loss)
-                    g_vars = list(
-                        map(
-                            main_program.global_block().var,
-                            [each_x.name + "@GRAD" for each_x in x],
-                        )
-                    )
-                    self.out, self.g_x0, self.g_x1, self.g_x2 = self.exe.run(
-                        main_program,
-                        feed={
-                            'x0': self.data,
-                            'x1': self.data,
-                            'x2': self.data,
-                        },
-                        fetch_list=[output, *g_vars],
-                    )
+            loss = paddle.sum(output)
+            base.backward.append_backward(loss)
+            g_vars = list(
+                map(
+                    main_program.global_block().var,
+                    [each_x.name + "@GRAD" for each_x in x],
+                )
+            )
+            self.out, self.g_x0, self.g_x1, self.g_x2 = self.exe.run(
+                main_program,
+                feed={
+                    'x0': self.data,
+                    'x1': self.data,
+                    'x2': self.data,
+                },
+                fetch_list=[output, *g_vars],
+            )
 
         def test_case_1(self):
             main_program = paddle.static.Program()
@@ -1075,7 +1090,11 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
                     var = paddle.to_tensor(data)
                     sliced = var[:, 1.1:, : var.shape[1]]
 
-            self.assertRaises(Exception, test_float_in_slice_item)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) Currently, slice indices only allows None",
+                test_float_in_slice_item,
+            )
 
             def test_float_in_index():
                 with base.dygraph.guard():
@@ -1083,7 +1102,11 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
                     var = paddle.to_tensor(data)
                     sliced = var[1.1]
 
-            self.assertRaises(Exception, test_float_in_index)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) Currently, Tensor.__indices__\(\) only allows indexing by Boolean",
+                test_float_in_index,
+            )
 
     class TestInferShape(unittest.TestCase):
         def test_pir(self):
@@ -1159,7 +1182,8 @@ class TestSliceOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestImperativeCUDAPinnedInput(unittest.TestCase):
     def test_input_cuda_pinned_var(self):
@@ -1204,16 +1228,7 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         with paddle_static_guard():
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for p in places:
+            for p in get_places():
                 self.func(p)
 
 
@@ -1245,16 +1260,7 @@ class TestSliceTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         with paddle_static_guard():
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for p in places:
+            for p in get_places():
                 self.func(p)
 
 

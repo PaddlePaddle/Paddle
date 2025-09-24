@@ -17,11 +17,12 @@ using cinn::backends::GlobalSymbolRegistry;
 using cinn::runtime::hip::HIPBackendAPI;
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/runtime/hip/hip_util.h"
-using cinn::runtime::hip::cinn_call_hip_kernel;
 
 CINN_REGISTER_HELPER(cinn_hip_host_api) {
   GlobalSymbolRegistry::Global().RegisterFn(
       "backend_api.hip", reinterpret_cast<void *>(HIPBackendAPI::Global()));
+
+  using cinn::runtime::hip::cinn_call_hip_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_hip_kernel,
                               cinn::common::DefaultHostTarget())
       .SetRetType<void>()
@@ -38,6 +39,7 @@ CINN_REGISTER_HELPER(cinn_hip_host_api) {
       .AddInputType<void *>()  // stream
       .End();
   using cinn::runtime::hip::infer_shape_set_value;
+
   REGISTER_EXTERN_FUNC_HELPER(infer_shape_set_value,
                               cinn::common::DefaultHostTarget())
       .SetRetType<void>()

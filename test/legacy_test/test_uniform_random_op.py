@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_uint16_to_float,
+    get_device,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -188,7 +194,8 @@ class TestUniformRandomOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestUniformRandomFP16Op(TestUniformRandomOp):
     def init_dtype(self):
@@ -201,7 +208,6 @@ class TestUniformRandomBF16Op(TestUniformRandomOp):
 
 
 class TestUniformRandomOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -253,20 +259,8 @@ class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
 
 
 class TestUniformRandomOpSelectedRows(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -312,7 +306,6 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         paddle.seed(10)
@@ -350,7 +343,6 @@ class TestUniformRandomOpApi(unittest.TestCase):
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         paddle.enable_static()
         startup_program = base.Program()
@@ -361,7 +353,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
             place = base.CPUPlace()
             if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+                place = get_device_place()
             exe = base.Executor(place)
 
             exe.run(startup_program)
@@ -379,7 +371,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
             place = base.CPUPlace()
             if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+                place = get_device_place()
             exe = base.Executor(place)
 
             exe.run(startup_program)
@@ -398,7 +390,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
             place = base.CPUPlace()
             if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+                place = get_device_place()
             exe = base.Executor(place)
             Shape = np.array([2, 3]).astype('int32')
             exe.run(startup_program)
@@ -409,7 +401,6 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         paddle.enable_static()
         _seed = 10
@@ -425,7 +416,7 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
             res = paddle.equal(ret, ret_2)
             place = base.CPUPlace()
             if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+                place = get_device_place()
             exe = base.Executor(place)
 
             exe.run(startup_program)
@@ -438,20 +429,8 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
 
 
 class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -475,20 +454,8 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
 
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -523,7 +490,6 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
 
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -557,7 +523,6 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
 
 class TestUniformAlias(unittest.TestCase):
-
     def test_alias(self):
         paddle.uniform([2, 3], min=-5.0, max=5.0)
         paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
@@ -570,7 +535,6 @@ class TestUniformAlias(unittest.TestCase):
 
 
 class TestUniformOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -643,15 +607,15 @@ class TestUniformDtype(unittest.TestCase):
             self.assertEqual(out.dtype, paddle.float64)
 
         def test_dygraph_fp16():
-            if not paddle.is_compiled_with_cuda():
+            if not (paddle.is_compiled_with_cuda() or is_custom_device()):
                 paddle.enable_static()
                 return
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             out = paddle.uniform([2, 3], dtype=paddle.float16)
             self.assertEqual(out.dtype, paddle.float16)
 
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.set_device(get_device())
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
@@ -663,7 +627,7 @@ class TestUniformDtype(unittest.TestCase):
 class TestRandomValue(unittest.TestCase):
     def test_fixed_random_number(self):
         # Test GPU Fixed random number, which is generated by 'curandStatePhilox4_32_10_t'
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         # Different GPU generate different random value. Only test V100 here.
@@ -673,7 +637,7 @@ class TestRandomValue(unittest.TestCase):
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
 
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(2021)
 
         expect_mean = 0.50000454338820143895816272561205551028251647949218750

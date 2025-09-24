@@ -25,7 +25,7 @@
 #include <cuda.h>
 #endif
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 11800
+#if defined(__CUDACC__) && CUDA_VERSION >= 11080
 #define PADDLE_CUDA_FP8
 #include <cuda_fp8.h>
 #endif
@@ -451,5 +451,9 @@ struct numeric_limits<phi::dtype::float8_e4m3fn> {
     return phi::dtype::raw_uint8_to_float8_e4m3fn(0x01);
   }
 };
-
+// 新增特化：定义 float 和 float8_e4m3fn 的公共类型为 float
+template <>
+struct common_type<float, phi::dtype::float8_e4m3fn> {
+  using type = float;
+};
 }  // namespace std

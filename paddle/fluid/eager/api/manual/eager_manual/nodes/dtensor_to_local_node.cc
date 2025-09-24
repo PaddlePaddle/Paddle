@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
+COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::small_vector<std::vector<paddle::Tensor>,
                      egr::kSlotSmallVectorSize>  // NOLINT
@@ -30,6 +31,14 @@ DtensorToLocalGradNode::operator()(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API GRAD: "
           << "dtensor_to_local";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("DtensorToLocalGradNode begin");
+  }
+
+  if (grads[0][0].is_dist_tensor()) {
+    VLOG(3) << "Input grads is a distributed tensor, no need to convert.";
+    return grads;
+  }
 
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
@@ -47,9 +56,7 @@ DtensorToLocalGradNode::operator()(
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
   auto input = egr::EagerUtils::RecoverTensorWrapper(&this->input_);
-  const auto& dist_attr =
-      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl())
-          ->dist_attr();
+
   auto& grad_out = hooked_grad[0][0];
   // Prepare Grad function call
 
@@ -80,12 +87,15 @@ DtensorToLocalGradNode::operator()(
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
 
+  std::shared_ptr<phi::DenseTensor> grad_out_ptr =
+      std::static_pointer_cast<phi::DenseTensor>(grad_out.impl());
   // Backward call dtensor_to_local_func function
   auto dist_grad_ptr = std::make_shared<phi::distributed::DistTensor>(
-      grad_out.dims(), dist_attr);
+      grad_out_ptr,
+      out_metas[0][0].DistTensorGlobalDims(),
+      grad_process_mesh_,
+      grad_placements_);
 
-  *(dist_grad_ptr->unsafe_mutable_value()) =
-      *(static_cast<phi::DenseTensor*>(grad_out.impl().get()));
   grad_input.set_impl(dist_grad_ptr);
 
   VLOG(5) << "Finish C++ API: dtensor_to_local_func";
@@ -109,6 +119,10 @@ DtensorToLocalGradNode::operator()(
     output_str += output_x_grad_str;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("DtensorToLocalGradNode finish");
   }
 
   return returns;

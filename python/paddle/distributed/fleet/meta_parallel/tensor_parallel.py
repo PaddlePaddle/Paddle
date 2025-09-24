@@ -15,6 +15,7 @@
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
     broadcast_input_data,
+    broadcast_moe_sharding_parameters,
     broadcast_mp_parameters,
     broadcast_sep_parameters,
     broadcast_sharding_parameters,
@@ -46,6 +47,12 @@ class TensorParallel(MetaParallelBase):
         if self._hcg.get_data_parallel_world_size() > 1:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg, fuse_params=False)
+
+        if self._hcg.get_moe_sharding_parallel_world_size() > 1:
+            logger.info("start broadcast moe sharding parameters")
+            broadcast_moe_sharding_parameters(
+                self._layers, self._hcg, fuse_params=False
+            )
 
         logger.info("mp's parameters is ready")
 

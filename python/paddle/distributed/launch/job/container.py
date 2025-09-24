@@ -94,9 +94,9 @@ class Container:
 
     def _validate_env(self):
         for k, v in self._env.items():
-            assert isinstance(k, str) and isinstance(
-                v, str
-            ), f'env {k}:{v} must be str'
+            assert isinstance(k, str) and isinstance(v, str), (
+                f'env {k}:{v} must be str'
+            )
 
     def _get_fd(self, pth):
         if not pth:
@@ -168,7 +168,6 @@ class Container:
             return Status.FAILED
 
     def __str__(self):
-
         need_print = os.environ.get('FLAGS_print_launcher_env', 'false').lower()
         if need_print == 'true' or need_print == '1':
             return f'Container rank {self._rank} status {self.status} cmd {self._entrypoint} code {self.exit_code} log {self.errfile} \nenv {self._env}'

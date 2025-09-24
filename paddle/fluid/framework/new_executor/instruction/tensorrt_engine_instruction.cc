@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
+#include <filesystem>
+
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
+#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/phi/common/data_type.h"
@@ -22,10 +25,14 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
+COMMON_DECLARE_string(trt_engine_serialized_path);
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle {
 namespace framework {
 
 using TensorRTEngine = paddle::platform::TensorRTEngine;
+static const int kMaxDim = 1000;
 
 TensorRTEngineInstruction::TensorRTEngineInstruction(
     size_t id,
@@ -39,6 +46,11 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   auto engine_serialized_path = op_attributes.at("engine_serialized_data")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString();
+
+  refit_params_path_ = op_attributes.at("refit_params_path")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+
   workspace_size_ =
       op_attributes.at("workspace_size").dyn_cast<pir::Int64Attribute>().data();
   allow_build_at_runtime_ = op_attributes.at("allow_build_at_runtime")
@@ -51,6 +63,7 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   for (size_t i = 0; i < output_names_attrs.size(); ++i) {
     auto output_name =
         output_names_attrs[i].dyn_cast<pir::StrAttribute>().AsString();
+
     if (output_name != "") {
       output_names_[i] = output_name;
     }
@@ -89,6 +102,35 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   std::vector<int> min_input_shape_vector;
   std::vector<int> max_input_shape_vector;
   std::vector<int> opt_input_shape_vector;
+
+  if (op_attributes.find("refit_param_names") != op_attributes.end()) {
+    auto refit_param_name_attr = op_attributes.at("refit_param_names")
+                                     .dyn_cast<pir::ArrayAttribute>()
+                                     .AsVector();
+    for (const auto &attr : refit_param_name_attr) {
+      refit_param_names_.push_back(
+          attr.dyn_cast<pir::StrAttribute>().AsString());
+    }
+  }
+
+  if (op_attributes.find("refit_param_names2trt_names") !=
+      op_attributes.end()) {
+    // refit_param_names2trt_names:["batch_norm2d_0.b_0:CONSTANT:batch_norm2d_0.b_0","batch_norm2d_0.b_0:SHIFT:270_pd_op.batch_norm_->batch_norm_layer(269)"]
+    auto refit_mapping_attrs = op_attributes.at("refit_param_names2trt_names")
+                                   .dyn_cast<pir::ArrayAttribute>()
+                                   .AsVector();
+    for (const auto &attr : refit_mapping_attrs) {
+      std::string mapping_str = attr.dyn_cast<pir::StrAttribute>().AsString();
+      size_t pos1 = mapping_str.find(':');
+      size_t pos2 = mapping_str.find(':', pos1 + 1);
+      if (pos1 != std::string::npos && pos2 != std::string::npos) {
+        std::string param_name = mapping_str.substr(0, pos1);
+        std::string role = mapping_str.substr(pos1 + 1, pos2 - pos1 - 1);
+        std::string layer_name = mapping_str.substr(pos2 + 1);
+        refit_param_names2trt_names_[param_name][role] = layer_name;
+      }
+    }
+  }
 
   auto dynamic_shape_names_attrs = op_attributes.at("dynamic_shape_names")
                                        .dyn_cast<pir::ArrayAttribute>()
@@ -165,10 +207,66 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
              "===============";
   trt_engine_ = std::make_unique<paddle::platform::TensorRTEngine>(
       params, paddle::platform::NaiveLogger::Global());
-  auto engine_data = ReadBinaryFileToString(engine_serialized_path);
+  std::string engine_data;
+  try {
+    engine_data = ReadBinaryFileToString(engine_serialized_path);
+  } catch (const std::exception &e) {
+    std::filesystem::path path(engine_serialized_path);
+    std::string filename = path.filename().string();
+    std::string file_root = FLAGS_trt_engine_serialized_path;
+    engine_data = ReadBinaryFileToString(file_root + '/' + filename);
+  }
   trt_engine_->Deserialize(engine_data);
 
+  size_t len = refit_param_names_.size();
+  if (!refit_params_path_.empty() && len > 0) {
+    VLOG(6) << "Start refit process for TensorRT engine with " << len
+            << " parameters";
+    auto scope = value_exec_info_->GetScope();
+    trt_engine_->SetScope(scope);
+    std::vector<std::string> param_names = refit_param_names_;
+    std::sort(param_names.begin(), param_names.end());
+
+    std::vector<phi::DenseTensor *> tensor_out;
+    for (size_t i = 0; i < len; ++i) {
+      auto *tensor_temp = new phi::DenseTensor();
+      tensor_temp->Resize({1});
+      phi::DataType type_data = phi::DataType::FLOAT32;
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(phi::CPUPlace());
+      dev_ctx->Alloc(tensor_temp, type_data);
+      tensor_out.push_back(tensor_temp);
+    }
+
+    pir::LoadCombineFunction(
+        refit_params_path_, param_names, &tensor_out, false, place);
+
+    for (size_t i = 0; i < param_names.size(); ++i) {
+      const std::string &param_name = param_names[i];
+      PADDLE_ENFORCE_EQ(
+          trt_engine_->SetRefitWeights(
+              refit_param_names2trt_names_, param_name, *tensor_out[i]),
+          true,
+          common::errors::InvalidArgument(
+              std::string("Failed to set refit weights for") + param_name));
+    }
+    PADDLE_ENFORCE_EQ(
+        trt_engine_->FinalizeRefit(),
+        true,
+        common::errors::InvalidArgument("Failed to finalize refit process,some "
+                                        "weights have not been updated."));
+    VLOG(6) << "Finish tensorrt refit";
+  }
+
   VLOG(6) << "Finish build engine for: " << op_name_;
+
+  use_cuda_graph_ =
+      op_attributes.at("use_cuda_graph").dyn_cast<pir::BoolAttribute>().data();
+  if (use_cuda_graph_) {
+    VLOG(6) << "Enabled CudaGraph.";
+    trt_engine_->SetAllNodesLowerToTrt(true);
+  }
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
@@ -248,10 +346,9 @@ static phi::DataType TRT2PaddleDataType(nvinfer1::DataType type) {
   }
 }
 
-void TensorRTEngineInstruction::PrepareDynamicShape() {
+void TensorRTEngineInstruction::InputsCheck() {
   // get runtime input shapes and shape tensors.
   std::map<std::string, std::vector<int32_t>> runtime_input_shape;
-  std::map<std::string, std::vector<int32_t>> runtime_shape_tensor;
   const paddle::framework::Scope &scope = *(value_exec_info_->GetScope());
   pir::Value source_value = op_->operand_source(0);
   auto in_var_name = value_exec_info_->GetVarName(source_value);
@@ -268,82 +365,6 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
                         "names num(%d) in TensorRTEngineInstruction",
                         variable_array.size(),
                         input_nums_));
-
-  for (const auto &index_name_pair : input_names_) {
-    auto i = index_name_pair.first;
-    if (!variable_array[i]->IsType<phi::DenseTensor>()) {
-      PADDLE_THROW(
-          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                        "not support vector<%d>.",
-                                        variable_array[i]->Type()));
-    }
-    auto input_tensor = variable_array[i]->Get<phi::DenseTensor>();
-    auto name = index_name_pair.second;
-
-    VLOG(4) << "trt engine runtime input name(" << name << "), dims("
-            << input_tensor.dims() << ")";
-    auto t_shape = common::vectorize<int32_t>(input_tensor.dims());
-    runtime_input_shape.insert(std::make_pair(name, t_shape));
-    // We need collect value range for shape tensor for Paddle-TRT's use.
-    // To be noticed, this method to identify all inputs/outputs is shape
-    // tensors; After, TRT Engine gets whether it is a real shape tensor.
-    auto is_shape_tensor = true;
-    if (trt_engine_->engine()) {
-      auto *engine = trt_engine_->engine();
-#if IS_TRT_VERSION_GE(8600)
-      is_shape_tensor = engine->isShapeInferenceIO(name.c_str());
-#else
-      is_shape_tensor =
-          engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
-#endif
-      if (!is_shape_tensor) {
-        runtime_shape_tensor.erase(name);
-        VLOG(4) << "trt engine runtime delete shape name(" << name << "), dims("
-                << input_tensor.dims() << ")";
-      }
-    }
-    if ((input_tensor.dtype() == phi::DataType::INT32 ||
-         input_tensor.dtype() == phi::DataType::INT64) &&
-        is_shape_tensor) {
-      std::vector<int> int32_host(input_tensor.numel());
-      paddle::platform::DeviceContextPool &pool =
-          paddle::platform::DeviceContextPool::Instance();
-
-      if (input_tensor.place().GetType() == phi::AllocationType::CPU) {
-        auto &int32_tensor = input_tensor;
-        if (input_tensor.dtype() == phi::DataType::INT64) {
-          auto *cpu_ctx = pool.Get(phi::CPUPlace());
-          int32_tensor = phi::funcs::TransDataType(
-              reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
-              input_tensor,
-              DataType::INT32);
-        }
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                int32_host.data(),
-                                phi::CPUPlace(),
-                                int32_tensor.data<int>(),
-                                int32_tensor.numel() * sizeof(int));
-      } else if (input_tensor.place().GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA)
-        auto *dev_ctx = pool.Get(input_tensor.place());
-        auto &int32_tensor = input_tensor;
-        if (input_tensor.dtype() == phi::DataType::INT64) {
-          int32_tensor = phi::funcs::TransDataType(
-              reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
-              input_tensor,
-              DataType::INT32);
-        }
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                int32_host.data(),
-                                int32_tensor.place(),
-                                int32_tensor.data<int>(),
-                                int32_tensor.numel() * sizeof(int),
-                                nullptr);
-#endif
-      }
-      runtime_shape_tensor[name] = int32_host;
-    }
-  }
 
   if (!allow_build_at_runtime_) {
     std::map<std::string, std::vector<int>> min_input_shape =
@@ -380,34 +401,8 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
     }
   } else {
     // compare runtime_input_shape and trt_engine dynamic shapes.
-    std::vector<std::string> shape_changed_name;
-    std::vector<std::string> tensor_changed_name;
-    bool is_adjusted =
-        trt_engine_->AdjustDynamicShapeRange(runtime_input_shape,
-                                             runtime_shape_tensor,
-                                             &shape_changed_name,
-                                             &tensor_changed_name);
-    if (is_adjusted) {
-      if (trt_engine_->engine()) {
-        trt_engine_->ResetContext();
-        trt_engine_->ClearTensorMap();
-      }
-      auto *anc = scope.parent();
-      while (anc && anc->parent()) {
-        anc = anc->parent();
-      }
-      if (anc == nullptr) {
-        anc = &scope;
-      }
-
-      // TODO(YuanRisheng): Rebuild TRT Engine
-      // PrepareTRTEngine(*anc, trt_engine_);
-
-      // TODO(YuanRisheng): update global shape_range
-
-      // TODO(YuanRisheng): If add use_static_engine_ attr, need support save
-      // rebuild trt_engine
-    }
+    PADDLE_THROW(common::errors::Unimplemented(
+        "PIR-TRT does not support build at runtime."));
   }
 }
 
@@ -621,7 +616,7 @@ void TensorRTEngineInstruction::BindOutputTensor(
       binding_offset;
 #endif
   std::vector<int> ddim;
-
+  phi::DenseTensor *fluid_t = nullptr;
 #if IS_TRT_VERSION_GE(8500)
   auto x_name = trt_engine_->engine()->getIOTensorName(bind_index);
   auto dims = trt_context->getTensorShape(x_name);
@@ -631,9 +626,28 @@ void TensorRTEngineInstruction::BindOutputTensor(
     if (dims.d[nb_dims - 1] != 1 || nb_dims == outputs_rank_[output_index])
       break;
   }
+  bool has_unknown_dim =
+      false;  // not dynamic shape, some shape is unknown before run trt engine.
   for (int i = 0; i < nb_dims; i++) {
-    ddim.push_back(dims.d[i]);
+    if (dims.d[i] == -1) {
+      has_unknown_dim = true;
+      ddim.push_back(kMaxDim);
+    } else {
+      ddim.push_back(dims.d[i]);
+    }
   }
+
+  if (has_unknown_dim) {
+    const paddle::framework::Scope &scope = *(value_exec_info_->GetScope());
+    std::string tmp_output = output_name + "_tmp";
+    if (scope.FindVar(tmp_output) == nullptr) {
+      const_cast<framework::Scope *>(&scope)->Var(tmp_output);
+    }
+    fluid_t = scope.FindVar(tmp_output)->GetMutable<phi::DenseTensor>();
+  } else {
+    fluid_t = output_tensor;
+  }
+
 #else
   PADDLE_THROW(
       common::errors::Unimplemented("PIR-TRT only support TensorRT "
@@ -641,7 +655,7 @@ void TensorRTEngineInstruction::BindOutputTensor(
                                     "Please check your TensorRT "
                                     "in your env."));
 #endif
-  auto *fluid_t = output_tensor;
+
   fluid_t->Resize(common::make_ddim(ddim));
   PADDLE_ENFORCE_LT(bind_index,
                     num_bindings,
@@ -734,11 +748,67 @@ void TensorRTEngineInstruction::RunTrt() {
   VLOG(4) << "Start running trt engine...";
   // Execute the engine.
   trt_engine_->Execute(runtime_batch, &buffers, stream);
+
   VLOG(4) << "End running trt engine and deal with output";
   for (const auto &index_name_pair : output_names_) {
     size_t i = index_name_pair.first;
     auto type = outputs_dtype_[i];
 
+#if IS_TRT_VERSION_GE(8500)
+    // deal with output that has unknown shape
+    std::string output_name = index_name_pair.second;
+    int bind_index = -1;
+    int binding_offset = 0;
+    binding_offset = trt_engine_->GetBindingsOffset();
+    for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+      if (std::string(output_name.c_str()) ==
+          std::string(trt_engine_->engine()->getIOTensorName(i))) {
+        bind_index = i + binding_offset;
+        break;
+      }
+    }
+
+    auto trt_output_name = trt_engine_->engine()->getIOTensorName(bind_index);
+    auto trt_dims = trt_engine_->context()->getTensorShape(trt_output_name);
+    // find the tmp tensor(Allocated extra memory space for unknown dim) and
+    // copy its element to actual output tensor(Allocated appropriate memory
+    // space)
+    std::string tmp_output = output_name + "_tmp";
+    if (scope.FindVar(tmp_output) != nullptr) {
+      auto *output_tensor_tmp =
+          scope.FindVar(tmp_output)->GetMutable<phi::DenseTensor>();
+      auto *output_tensor = const_cast<phi::DenseTensor *>(
+          &(out_variable_array->at(i)->Get<phi::DenseTensor>()));
+      std::vector<int> ddim;
+      for (int i = 0; i < trt_dims.nbDims; i++) {
+        ddim.push_back(trt_dims.d[i]);
+      }
+      output_tensor->Resize(common::make_ddim(ddim));
+      dev_ctx_->Alloc(output_tensor, type);
+      if (type == phi::DataType::FLOAT32) {
+        auto *mutable_output = output_tensor->data<float>();
+        phi::memory_utils::Copy(phi::GPUPlace(),
+                                mutable_output,
+                                phi::GPUPlace(),
+                                output_tensor_tmp->data<float>(),
+                                sizeof(float) * output_tensor->numel(),
+                                nullptr);
+      } else if (type == phi::DataType::INT64 || type == phi::DataType::INT32) {
+        auto *mutable_output = output_tensor->data<int32_t>();
+        phi::memory_utils::Copy(phi::GPUPlace(),
+                                mutable_output,
+                                phi::GPUPlace(),
+                                output_tensor_tmp->data<int32_t>(),
+                                sizeof(int32_t) * output_tensor->numel(),
+                                nullptr);
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported data type: %d when deal with output", type));
+      }
+    }
+#endif
+
+    // Type transformation for INT64 and FLOAT64
     if (type == phi::DataType::INT64) {
       auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
@@ -778,6 +848,10 @@ void TensorRTEngineInstruction::RunTrt() {
 }
 
 void TensorRTEngineInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " begin");
+  }
+
 #if IS_TRT_VERSION_LT(8500)
   PADDLE_THROW(
       common::errors::Unimplemented("PIR-TRT only support TensorRT "
@@ -785,17 +859,20 @@ void TensorRTEngineInstruction::Run() {
                                     "Please check your TensorRT "
                                     "in your env."));
 #endif
-  PrepareDynamicShape();
+  InputsCheck();
   RunTrt();
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " finish");
+  }
 }
 
 std::string TensorRTEngineInstruction::ReadBinaryFileToString(
     const std::string &filePath) {
   std::ifstream inputFile(filePath, std::ios::binary);
 
-  if (!inputFile) {
-    throw std::runtime_error("Failed to open file: " + filePath);
-  }
+  PADDLE_ENFORCE(inputFile.is_open(),
+                 common::errors::NotFound("Failed to open file: %s", filePath));
 
   inputFile.seekg(0, std::ios::end);
   std::streamsize fileSize = inputFile.tellg();
@@ -803,9 +880,9 @@ std::string TensorRTEngineInstruction::ReadBinaryFileToString(
 
   std::string fileContent(static_cast<size_t>(fileSize), '\0');
 
-  if (!inputFile.read(&fileContent[0], fileSize)) {
-    throw std::runtime_error("Failed to read file: " + filePath);
-  }
+  PADDLE_ENFORCE(inputFile.read(&fileContent[0], fileSize).good(),
+                 common::errors::InvalidArgument(
+                     "Failed to read content from file: %s", filePath));
 
   return fileContent;
 }

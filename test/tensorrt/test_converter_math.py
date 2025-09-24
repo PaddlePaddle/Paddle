@@ -119,6 +119,44 @@ class TestElementwisePowTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestPowCase1TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.pow
+        self.api_args = {
+            "x": np.random.randn(2, 3).astype("float32"),
+            "y": 2.5,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3]}
+        self.opt_shape = {"x": [1, 3]}
+        self.max_shape = {"x": [5, 3]}
+
+    def test_trt_result_fp32(self):
+        self.check_trt_result()
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
+class TestPowCase2TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.pow
+        self.api_args = {
+            "x": np.random.randn(2, 3).astype("float32"),
+            "y": 2,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3]}
+        self.opt_shape = {"x": [1, 3]}
+        self.max_shape = {"x": [5, 3]}
+
+    def test_trt_result_fp32(self):
+        self.check_trt_result()
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
 class TestRemainderFloatTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.remainder
@@ -222,7 +260,7 @@ class TestAnyTRTPattern(TensorRTBaseTest):
         self.python_api = paddle.any
         self.api_args = {
             "x": np.random.randn(2, 3, 2).astype("bool"),
-            "axis": [1, 1],
+            "axis": [1],
             "keepdim": True,
         }
         self.program_config = {"feed_list": ["x"]}
@@ -239,7 +277,7 @@ class TestAny1TRTPattern(TensorRTBaseTest):
         self.python_api = paddle.any
         self.api_args = {
             "x": np.random.randn(2, 3, 2).astype("bool"),
-            "axis": [1, 1],
+            "axis": [1],
             "keepdim": False,
         }
         self.program_config = {"feed_list": ["x"]}
@@ -249,6 +287,26 @@ class TestAny1TRTPattern(TensorRTBaseTest):
 
     def test_trt_result(self):
         self.check_trt_result()
+
+
+class TestAny2TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.any
+        self.api_args = {
+            "x": np.random.randn(2, 3, 2).astype("bool"),
+            "axis": [-1],
+            "keepdim": False,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 2]}
+        self.opt_shape = {"x": [2, 3, 2]}
+        self.max_shape = {"x": [5, 3, 2]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(precision_mode="fp16")
 
 
 class TestAllTRTPattern(TensorRTBaseTest):

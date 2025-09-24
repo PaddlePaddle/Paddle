@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -26,7 +26,6 @@ from paddle.base import core
 
 
 class TestConvDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 3, 3]
@@ -45,21 +44,11 @@ class TestConvDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConvDoubleGradCheckTest0(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 3, 3]
@@ -78,21 +67,11 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConvDoubleGradCheckTest1(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 3, 3, 3]
@@ -111,21 +90,11 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 3, 4, 2]
@@ -144,21 +113,11 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 5, 3, 2]
@@ -177,21 +136,11 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3]
@@ -210,21 +159,11 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3]
@@ -243,21 +182,11 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3]
@@ -276,21 +205,11 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 3, 3]
@@ -310,21 +229,11 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 3, 3]
@@ -344,21 +253,11 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 2, 2, 2]
@@ -377,21 +276,11 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 2, 2, 2]
@@ -410,21 +299,11 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3, 2]
@@ -443,21 +322,11 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 2, 2, 3]
@@ -477,21 +346,11 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 2, 2, 3]
@@ -511,21 +370,11 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func_pir(p)
 
 
 class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 4, 3, 3]
@@ -546,8 +395,8 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func_pir(p)
 
@@ -587,8 +436,8 @@ class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
 
     def test_grad(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -620,8 +469,8 @@ class TestConv3DDoubleGradCheck_NN(unittest.TestCase):
 
     def test_grad(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 

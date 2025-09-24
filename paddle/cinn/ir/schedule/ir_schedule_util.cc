@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
@@ -161,6 +160,31 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
     }
     return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
   });
+
+  // Calculate max_threads_per_block
+  int max_threads_per_block = 1;
+  bool has_symbol_in_thread_num = false;
+  for (int i = 0; i < 3; i++) {
+    ir::Expr block_dim = info.block_dim(i);
+    if (block_dim.is_constant()) {
+      max_threads_per_block *= block_dim.get_constant();
+    } else {
+      has_symbol_in_thread_num = true;
+      break;
+    }
+  }
+
+  if (!has_symbol_in_thread_num) {
+    int min_blocks_per_sm = -1;
+    info.set_max_threads_per_block(max_threads_per_block);
+    if (!lowered_func->temp_spaces.empty()) {
+      min_blocks_per_sm = 1024 / max_threads_per_block;
+      if (min_blocks_per_sm > 1) {
+        info.set_min_blocks_per_sm(min_blocks_per_sm);
+      }
+    }
+  }
+
   lowered_func->cuda_axis_info = info;
 }
 
@@ -374,74 +398,6 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   }
 }
 
-void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
-  auto* rf_for = rf_loop.As<ir::For>();
-  PADDLE_ENFORCE_NOT_NULL(
-      rf_for,
-      ::common::errors::NotFound(
-          "Expr param of Rfactor must be For node! Please check."));
-  // check the rf_loop only has one schedule block
-  auto block_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
-      rf_loop,
-      [&](const Expr* x) { return x->As<ScheduleBlockRealize>(); },
-      true);
-  PADDLE_ENFORCE_EQ(block_nodes.size(),
-                    1U,
-                    ::common::errors::InvalidArgument(
-                        "Rfactor Loop should only have one schedule block!"));
-  auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
-      rf_loop, [&](const Expr* x) { return x->As<Store>(); }, true);
-  PADDLE_ENFORCE_EQ(find_store.size(),
-                    1U,
-                    ::common::errors::InvalidArgument(
-                        "Rfactor Loop should only have one Store node!"));
-  auto indice = find_store.begin()->As<Store>()->indices;
-  // check rf_axis
-  PADDLE_ENFORCE_LE(
-      rf_axis,
-      indice.size(),
-      ::common::errors::InvalidArgument(
-          "rf_axis should not be greater than store's domain size"));
-  // check rfactor loop is reduce
-  auto* sch_block_realize = block_nodes.begin()->As<ScheduleBlockRealize>();
-  auto* sch_block = sch_block_realize->schedule_block.As<ScheduleBlock>();
-  PADDLE_ENFORCE_NOT_NULL(
-      sch_block,
-      ::common::errors::NotFound("ScheduleBlockRealize node's schedule_block "
-                                 "should be ScheduleBlock."));
-  auto& iter_values = sch_block_realize->iter_values;
-  auto& iter_vars = sch_block->iter_vars;
-  PADDLE_ENFORCE_EQ(iter_values.size(),
-                    iter_vars.size(),
-                    ::common::errors::InvalidArgument(
-                        "iter_values size should be equal to iter_vars size"));
-  auto rf_loop_var = rf_for->loop_var;
-  Var rf_block_var;
-  for (int i = 0; i < iter_values.size(); ++i) {
-    if (ContainVar({iter_values[i]}, rf_loop_var->name)) {
-      PADDLE_ENFORCE_EQ(
-          !rf_block_var.defined(),
-          true,
-          ::common::errors::InvalidArgument(
-              "The rfactor loop var can only be binded to one block var."));
-      auto iter_value = iter_values[i].As<_Var_>();
-      PADDLE_ENFORCE_NOT_NULL(
-          iter_value,
-          ::common::errors::NotFound(
-              "The iter value don't support complex reduce bindings."));
-      rf_block_var = iter_vars[i];
-      auto it = std::find_if(indice.begin(), indice.end(), [&](const Expr& x) {
-        return x.As<_Var_>() && x.As<_Var_>()->name == rf_block_var->name;
-      });
-      PADDLE_ENFORCE_EQ(
-          it == indice.end(),
-          true,
-          ::common::errors::InvalidArgument(
-              "Param rfactor loop var is not reduce, please check!"));
-    }
-  }
-}
-
 std::vector<Expr> GetLoopsOfExpr(const Expr& expr, const Expr& root) {
   auto loop_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
@@ -550,7 +506,7 @@ std::vector<IterRange> CalculateTensorRegions(
     auto range = GetAccessedRange(binded_index, loop_vars, loop_ranges);
 
     // in generally, the range should be constant, but in some cases our
-    // AutoSimplify (algebraic simplification function) can't simplify
+    // Simplify (algebraic simplification function) can't simplify
     // completely where we use the whole shape in this indice as the accessed
     // range conservatively
     if (!range.min.is_constant() || !range.extent.is_constant()) {
@@ -624,15 +580,6 @@ Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
     Expr load_index = find_load_vec[index];
     return load_index;
   }
-}
-
-Tensor MakeCacheTensor(const Tensor& tensor, const std::string& memory_type) {
-  auto cache_tensor = lang::Compute(
-      tensor->shape,
-      [=](const std::vector<Expr>& dims) { return tensor(dims); },
-      tensor->name + "_" + memory_type + "_temp_buffer");
-  cache_tensor->WithBuffer(memory_type);
-  return cache_tensor;
 }
 
 Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/utils/name_analysis.h"
+#include <unordered_map>
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 namespace pir {
@@ -35,6 +37,7 @@ pir::Value GetOutputValueByName(const pir::Program &program,
         value = op.operand_source(0);
       }
     } else if (op.isa<paddle::dialect::FeedOp>() ||
+               op.isa<paddle::dialect::DataOp>() ||
                op.isa<paddle::dialect::FetchOp>()) {
       if (op.attribute("name") == name_attr) {
         if (value) {
@@ -42,6 +45,38 @@ pir::Value GetOutputValueByName(const pir::Program &program,
               "More than one feed/fetch named with %s found.", name));
         }
         value = op.result(0);
+      }
+    }
+  }
+  return value;
+}
+
+pir::Value GetValueByNameInPhiKernelProgram(const pir::Program &program,
+                                            const std::string &name) {
+  auto &block = *program.block();
+  pir::StrAttribute name_attr =
+      pir::StrAttribute::get(pir::IrContext::Instance(), name);
+  pir::Value value;
+
+  for (auto &op : block) {
+    if (op.isa<pir::ShadowOutputOp>()) {
+      if (op.attribute("output_name") == name_attr) {
+        if (value) {
+          PADDLE_THROW(common::errors::PreconditionNotMet(
+              "More than one shadow output named with %s found.", name));
+        }
+        value = op.operand_source(0);
+      }
+    } else if (op.isa<paddle::dialect::PhiKernelOp>()) {
+      if (op.attribute("op_name").dyn_cast<pir::StrAttribute>().AsString() ==
+          "pd_op.data") {
+        if (op.attribute("name") == name_attr) {
+          if (value) {
+            PADDLE_THROW(common::errors::PreconditionNotMet(
+                "More than one feed/fetch named with %s found.", name));
+          }
+          value = op.result(0);
+        }
       }
     }
   }
@@ -285,6 +320,33 @@ std::string GetValueFirstName(pir::Value value) {
                      "SetParameterOp and ShadowOutputOp."));
 
   return name.value();
+}
+
+std::unordered_map<std::string, pir::Value> GetAllNamedValues(
+    const pir::Program &program) {
+  std::unordered_map<std::string, pir::Value> named_values;
+  std::vector<pir::Value> all_values;
+  all_values.insert(all_values.end(),
+                    program.block()->args().begin(),
+                    program.block()->args().end());
+  for (const auto &[k, v] : program.block()->kwargs()) {
+    all_values.push_back(v);
+  }
+  for (auto op : program.block()->ops()) {
+    for (auto var : op->results()) {
+      all_values.push_back(var);
+    }
+  }
+
+  for (auto &value : all_values) {
+    std::optional<std::string> name = TryGetValueFirstName(value);
+    if (!name.has_value()) {
+      continue;
+    }
+    named_values[name.value()] = value;
+  }
+
+  return named_values;
 }
 
 }  // namespace name_analysis

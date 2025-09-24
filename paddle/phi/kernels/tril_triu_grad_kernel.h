@@ -19,20 +19,20 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilTriuGradKernel(const Context& ctx,
+void TrilTriuGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         int diagonal,
                         bool lower,
                         DenseTensor* x_grad);
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
+void TrilGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad);
 
 template <typename T, typename Context>
-void TriuGradKernel(const Context& ctx,
+void TriuGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad);

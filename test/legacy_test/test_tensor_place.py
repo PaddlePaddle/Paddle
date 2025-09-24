@@ -1,0 +1,58 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import unittest
+
+from op_test import get_device_place, is_custom_device
+
+import paddle
+
+
+def wrap_place(place):
+    p = paddle.base.libpaddle.Place()
+    p.set_place(place)
+    return p
+
+
+class TestPlace(unittest.TestCase):
+    def test_eq(self):
+        x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+        y = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+        self.assertEqual(x.place, y.place)
+        self.assertEqual(x.place, wrap_place(paddle.CPUPlace()))
+
+    def test_ne(self):
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
+            return
+        x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+        y = paddle.to_tensor([1, 2, 3], place=get_device_place())
+        self.assertNotEqual(x.place, y.place)
+        self.assertNotEqual(x.place, wrap_place(get_device_place()))
+        self.assertNotEqual(y.place, wrap_place(paddle.CPUPlace()))
+        self.assertEqual(y.place, wrap_place(get_device_place()))
+
+
+class TestGetDevice(unittest.TestCase):
+    def test_cpu_tensor(self):
+        x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+        self.assertEqual(x.get_device(), -1)
+
+    def test_gpu_tensor(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+        self.assertEqual(y.get_device(), y.place.gpu_device_id())
+
+
+if __name__ == "__main__":
+    unittest.main()

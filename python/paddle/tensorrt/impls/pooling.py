@@ -19,6 +19,7 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     get_input_constant_value,
     get_trt_plugin,
+    set_layer_name,
 )
 from paddle.tensorrt.register import converter_registry
 
@@ -48,10 +49,78 @@ def pool2d_converter(network, paddle_op, inputs):
     else:
         kernel_size = paddle_op.attrs().get("kernel_size", [1, 1])
 
+    def create_pool_plugin(
+        network,
+        input_tensor,
+        ceil_mode,
+        pool_type,
+        adaptive,
+        exclusive,
+        kernel_size,
+        strides,
+        paddings,
+        global_pooling,
+    ):
+        plugin_fields = [
+            trt.PluginField(
+                "ceil_mode",
+                np.array([ceil_mode], dtype=np.bool_),
+                trt.PluginFieldType.INT32,
+            ),
+            trt.PluginField(
+                "pool_type",
+                np.array(list(pool_type), dtype=np.bytes_),
+                trt.PluginFieldType.CHAR,
+            ),
+            trt.PluginField(
+                "adaptive",
+                np.array([adaptive], dtype=np.bool_),
+                trt.PluginFieldType.INT32,
+            ),
+            trt.PluginField(
+                "exclusive",
+                np.array([exclusive], dtype=np.bool_),
+                trt.PluginFieldType.INT32,
+            ),
+            trt.PluginField(
+                "ksize",
+                np.array(kernel_size, dtype=np.int32),
+                trt.PluginFieldType.INT32,
+            ),
+            trt.PluginField(
+                "strides",
+                np.array(strides, dtype=np.int32),
+                trt.PluginFieldType.INT32,
+            ),
+            trt.PluginField(
+                "paddings",
+                np.array(paddings, dtype=np.int32),
+                trt.PluginFieldType.INT32,
+            ),
+            trt.PluginField(
+                "global_pooling",
+                np.array([global_pooling], dtype=np.bool_),
+                trt.PluginFieldType.INT32,
+            ),
+        ]
+        plugin_field_collection = trt.PluginFieldCollection(plugin_fields)
+        plugin_name = "pir_pool_plugin_dynamic"
+        plugin_version = "1"
+        plugin = get_trt_plugin(
+            plugin_name, plugin_field_collection, plugin_version
+        )
+        layer = network.add_plugin_v2([input_tensor], plugin)
+        set_layer_name(layer, paddle_op)
+        return layer
+
+    reduce_operation = trt.ReduceOperation.MAX
+    nv_pool_type = trt.PoolingType.MAX
     if pool_type == "max":
         nv_pool_type = trt.PoolingType.MAX
+        reduce_operation = trt.ReduceOperation.MAX
     elif pool_type == "avg":
         nv_pool_type = trt.PoolingType.AVERAGE
+        reduce_operation = trt.ReduceOperation.AVG
     else:
         raise ValueError(f"Unsupported pooling type: {pool_type}")
 
@@ -59,12 +128,7 @@ def pool2d_converter(network, paddle_op, inputs):
         paddings = [0, 0, 0, 0]
 
     if padding_algorithm == "VALID":
-        paddings = [0, 0, 0, 0]
-
-    if len(paddings) == 2:
-        paddings = [paddings[0], paddings[0], paddings[1], paddings[1]]
-    elif len(paddings) != 4:
-        raise ValueError(f"Unsupported paddings size: {len(paddings)}")
+        paddings = [0] * len(paddings)
 
     nv_paddings = trt.DimsHW(paddings[0], paddings[1])
     nv_ksize = trt.DimsHW(kernel_size[0], kernel_size[1])
@@ -74,17 +138,9 @@ def pool2d_converter(network, paddle_op, inputs):
     g_pre_pad = trt.DimsHW(0, 0)
     g_post_pad = trt.DimsHW(0, 0)
 
-    if (
-        input_shape[input_dims - 2] > 0
-        and input_shape[input_dims - 2] + paddings[0] + paddings[2]
-        < kernel_size[0]
-    ):
+    if input_shape[input_dims - 2] - kernel_size[0] + 2 * paddings[0] < 0:
         g_post_pad.h = strides[0] - 1
-    if (
-        input_shape[input_dims - 1] > 0
-        and input_shape[input_dims - 1] + paddings[1] + paddings[3]
-        < kernel_size[1]
-    ):
+    if input_shape[input_dims - 1] - kernel_size[1] + 2 * paddings[1] < 0:
         g_post_pad.w = strides[1] - 1
 
     real_paddings = paddings.copy()
@@ -129,53 +185,54 @@ def pool2d_converter(network, paddle_op, inputs):
             if reduce_layer is None:
                 raise RuntimeError("Failed to add reduce layer in TensorRT.")
             layer = reduce_layer
+            set_layer_name(layer, paddle_op)
         else:
             input_h = input_shape[input_dims - 2]
             input_w = input_shape[input_dims - 1]
+
             if input_h < 0 or input_w < 0:
-                raise ValueError(
-                    "Adaptive pooling with dynamic input dimensions is not supported."
+                layer = create_pool_plugin(
+                    network,
+                    input_tensor,
+                    ceil_mode,
+                    pool_type,
+                    adaptive,
+                    exclusive,
+                    kernel_size,
+                    strides,
+                    paddings,
+                    global_pooling,
                 )
+            else:
+                stride_h = input_h // output_h
+                stride_w = input_w // output_w
+                kernel_h = input_h - (output_h - 1) * stride_h
+                kernel_w = input_w - (output_w - 1) * stride_w
 
-            stride_h = input_h // output_h
-            stride_w = input_w // output_w
-            kernel_h = input_h - (output_h - 1) * stride_h
-            kernel_w = input_w - (output_w - 1) * stride_w
+                if stride_h <= 0 or stride_w <= 0:
+                    raise ValueError(
+                        "Calculated stride is non-positive, which is invalid."
+                    )
 
-            if stride_h <= 0 or stride_w <= 0:
-                raise ValueError(
-                    "Calculated stride is non-positive, which is invalid."
+                nv_ksize = trt.DimsHW(kernel_h, kernel_w)
+                nv_strides = trt.DimsHW(stride_h, stride_w)
+                nv_paddings = trt.DimsHW(0, 0)
+
+                pooling_layer = network.add_pooling_nd(
+                    input=input_tensor,
+                    type=nv_pool_type,
+                    window_size=nv_ksize,
                 )
+                if pooling_layer is None:
+                    raise RuntimeError(
+                        "Failed to add pooling layer in TensorRT."
+                    )
+                pooling_layer.stride_nd = nv_strides
+                pooling_layer.padding_nd = nv_paddings
+                pooling_layer.average_count_excludes_padding = exclusive
+                layer = pooling_layer
+                set_layer_name(layer, paddle_op)
 
-            nv_ksize = trt.DimsHW(kernel_h, kernel_w)
-            nv_strides = trt.DimsHW(stride_h, stride_w)
-            nv_paddings = trt.DimsHW(0, 0)
-            pooling_layer = network.add_pooling_nd(
-                input=input_tensor,
-                type=nv_pool_type,
-                window_size=nv_ksize,
-            )
-            if pooling_layer is None:
-                raise RuntimeError("Failed to add pooling layer in TensorRT.")
-            pooling_layer.stride_nd = nv_strides
-            pooling_layer.padding_nd = nv_paddings
-            pooling_layer.average_count_excludes_padding = exclusive
-            layer = pooling_layer
-    elif global_pooling and not adaptive:
-        reduce_axes = (1 << (input_dims - 2)) | (1 << (input_dims - 1))
-        reduce_layer = network.add_reduce(
-            input=input_tensor,
-            op=(
-                trt.ReduceOperation.AVG
-                if pool_type == "avg"
-                else trt.ReduceOperation.MAX
-            ),
-            axes=reduce_axes,
-            keep_dims=True,
-        )
-        if reduce_layer is None:
-            raise RuntimeError("Failed to add reduce layer in TensorRT.")
-        layer = reduce_layer
     elif not adaptive and not global_pooling and not ceil_mode:
         if padding_algorithm != "SAME" and (
             (g_post_pad.h > 0 and input_shape[input_dims - 2] > 0)
@@ -188,6 +245,7 @@ def pool2d_converter(network, paddle_op, inputs):
             )
             if pad_layer is None:
                 raise RuntimeError("Failed to add padding layer in TensorRT.")
+            set_layer_name(pad_layer, paddle_op)
             input_tensor = pad_layer.get_output(0)
         pooling_layer = network.add_pooling_nd(
             input=input_tensor, type=nv_pool_type, window_size=nv_ksize
@@ -201,6 +259,7 @@ def pool2d_converter(network, paddle_op, inputs):
             pooling_layer.padding_mode = trt.PaddingMode.SAME_UPPER
 
         layer = pooling_layer
+        set_layer_name(layer, paddle_op)
     elif not adaptive and not global_pooling and ceil_mode:
         pooling_layer = network.add_pooling_nd(
             input=input_tensor, type=nv_pool_type, window_size=nv_ksize
@@ -215,97 +274,26 @@ def pool2d_converter(network, paddle_op, inputs):
         else:
             pooling_layer.padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
         layer = pooling_layer
-    else:
-        need_to_expand_dims = input_dims == 3
-        if need_to_expand_dims:
-            axes = [3]
-            axes_tensor = network.add_constant(
-                shape=(len(axes),),
-                weights=np.array(axes, dtype=np.int32),
-            ).get_output(0)
-            unsqueeze_layer = network.add_unsqueeze(
-                input=input_tensor, axes=axes_tensor
-            )
-            if unsqueeze_layer is None:
-                raise RuntimeError("Failed to add unsqueeze layer in TensorRT.")
-            input_tensor = unsqueeze_layer.get_output(0)
-            input_shape = unsqueeze_layer.get_output(0).shape
-            input_dims = len(input_shape)
-
-        nbSpatialDims = len(kernel_size)
-        if not (
-            (nbSpatialDims == 1 and need_to_expand_dims)
-            or nbSpatialDims == 2
-            or nbSpatialDims == 3
-        ):
-            raise RuntimeError(
-                f"kernel_shape ({nbSpatialDims}D) misaligns with the input tensor shape ({input_dims}D)."
-            )
-
-        begPadding = [0] * nbSpatialDims
-        endPadding = [0] * nbSpatialDims
-
-        if ceil_mode:
-            padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
-        else:
-            padding_mode = trt.PaddingMode.EXPLICIT_ROUND_DOWN
-
-        countExcludePadding = True
-        if pool_type == "avg":
-            if exclusive:
-                countExcludePadding = True
-            else:
-                countExcludePadding = False
-
-        auto_pad = "NOTSET"
-        if padding_algorithm == "SAME":
-            auto_pad = "SAME_UPPER"
-        elif padding_algorithm == "VALID":
-            auto_pad = "VALID"
-
-        if auto_pad != "SAME_LOWER" and auto_pad != "SAME_UPPER":
-            ndim = len(paddings) // 2
-            for i in range(nbSpatialDims):
-                if i < ndim:
-                    begPadding[i] = paddings[i]
-                    endPadding[i] = paddings[i + ndim]
-                else:
-                    begPadding[i] = 0
-                    endPadding[i] = 0
-            if auto_pad == "EXPLICIT_ROUND_UP":
-                padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
-
-        if nbSpatialDims == 2:
-            nv_begPadding = trt.DimsHW(begPadding[0], begPadding[1])
-            nv_endPadding = trt.DimsHW(endPadding[0], endPadding[1])
-
-        pooling_layer = network.add_pooling_nd(
-            input=input_tensor,
-            type=nv_pool_type,
-            window_size=nv_ksize,
+        set_layer_name(layer, paddle_op)
+    elif global_pooling and not adaptive:
+        reduce_layer = network.add_reduce(
+            input_tensor, reduce_operation, 12, True
         )
-        if pooling_layer is None:
-            raise RuntimeError("Failed to add pooling layer in TensorRT.")
-        pooling_layer.stride_nd = nv_strides
-        pooling_layer.pre_padding = nv_begPadding
-        pooling_layer.post_padding = nv_endPadding
-        pooling_layer.average_count_excludes_padding = countExcludePadding
-        pooling_layer.padding_mode = padding_mode
-
-        layer = pooling_layer
-
-        if need_to_expand_dims:
-            axes = [3]
-            axes_tensor = network.add_constant(
-                shape=(len(axes),),
-                weights=np.array(axes, dtype=np.int32),
-            ).get_output(0)
-            squeeze_layer = network.add_squeeze(
-                input=layer.get_output(0), axes=axes_tensor
-            )
-            if squeeze_layer is None:
-                raise RuntimeError("Failed to add squeeze layer in TensorRT.")
-            layer = squeeze_layer
+        layer = reduce_layer
+        set_layer_name(layer, paddle_op)
+    else:
+        layer = create_pool_plugin(
+            network,
+            input_tensor,
+            ceil_mode,
+            pool_type,
+            adaptive,
+            exclusive,
+            kernel_size,
+            strides,
+            paddings,
+            global_pooling,
+        )
 
     if layer is None:
         raise RuntimeError("Failed to create pooling layer in TensorRT.")
@@ -351,11 +339,13 @@ def pool3d_converter(network, paddle_op, inputs):
         pool_layer.stride_nd = nv_strides
         pool_layer.padding_nd = nv_paddings
         pool_layer.average_count_excludes_padding = exclusive
+        set_layer_name(pool_layer, paddle_op)
         layer = pool_layer
     elif global_pooling:
         reduce_layer = network.add_reduce(
             input_tensor, reduce_operation, 28, True
         )
+        set_layer_name(reduce_layer, paddle_op)
         layer = reduce_layer
     else:
         plugin_fields = [
@@ -402,4 +392,5 @@ def pool3d_converter(network, paddle_op, inputs):
             plugin_name, plugin_field_collection, plugin_version
         )
         layer = network.add_plugin_v2([input_tensor], plugin)
+        set_layer_name(layer, paddle_op)
     return layer.get_output(0)

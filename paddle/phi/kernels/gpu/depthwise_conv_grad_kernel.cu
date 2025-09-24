@@ -14,10 +14,9 @@
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/depthwise_conv.h"
@@ -40,6 +39,18 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   const DenseTensor* output_grad = &out_grad;
 
   if (!input_grad && !filter_grad) return;
+  // 0-size
+  if (input.numel() == 0) {
+    if (input_grad) dev_ctx.template Alloc<T>(input_grad);
+    if (filter_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    }
+    return;
+  }
 
   bool has_fuse_relu = dev_ctx.HasDnnAttr("fuse_relu_before_depthwise_conv");
   bool fuse_relu =
@@ -51,6 +62,37 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   std::vector<int> strides = strides_t;
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
+
+// Enable if cudnn above 8.2, hip already has cudnn kernel.
+#if defined(CUDNN_VERSION) && CUDNN_VERSION_MIN(8, 2, 0) && \
+    !defined(PADDLE_WITH_HIP)
+  DWConvParams params(has_fuse_relu, data_format, strides, dilations);
+  if (params.UseCudnnDepthwise<Context>(dev_ctx, input, filter)) {
+    // Keep same with original kernel.
+    phi::funcs::SetConstant<Context, T> set_zero;
+    if (input_grad) {
+      dev_ctx.template Alloc<T>(input_grad);
+      set_zero(dev_ctx, input_grad, static_cast<T>(0));
+    }
+    if (filter_grad) {
+      dev_ctx.template Alloc<T>(filter_grad);
+      set_zero(dev_ctx, filter_grad, static_cast<T>(0));
+    }
+    phi::DepthwiseConvCudnnGradKernel<T>(dev_ctx,
+                                         input,
+                                         filter,
+                                         *output_grad,
+                                         strides_t,
+                                         paddings_t,
+                                         padding_algorithm,
+                                         groups,
+                                         dilations_t,
+                                         data_format,
+                                         input_grad,
+                                         filter_grad);
+    return;
+  }
+#endif
 
   // update padding and dilation
   auto in_dims = input.dims();
@@ -81,7 +123,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (fuse_relu) {
-      paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T, true>
+      phi::math::DepthwiseConvInputGradFunctor<Context, T, true>
           depthwiseConvInputGrad;
       depthwiseConvInputGrad(dev_ctx,
                              input,
@@ -93,7 +135,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              input_grad,
                              data_layout);
     } else {
-      paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T, false>
+      phi::math::DepthwiseConvInputGradFunctor<Context, T, false>
           depthwiseConvInputGrad;
       depthwiseConvInputGrad(dev_ctx,
                              input,
@@ -111,7 +153,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(filter_grad);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     if (fuse_relu) {
-      paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, true>
+      phi::math::DepthwiseConvFilterGradFunctor<Context, T, true>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(dev_ctx,
                               input,
@@ -122,7 +164,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                               filter_grad,
                               data_layout);
     } else {
-      paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, false>
+      phi::math::DepthwiseConvFilterGradFunctor<Context, T, false>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(dev_ctx,
                               input,
@@ -144,5 +186,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    phi::DepthwiseConvGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

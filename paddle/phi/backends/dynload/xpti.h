@@ -42,13 +42,14 @@ extern void *xpti_dso_handle;
   };                                                             \
   extern DynLoad__##__name __name
 
-#define XPTI_ROUTINE_EACH(__macro) \
-  __macro(xptiActivityEnable);     \
-  __macro(xptiActivityDisable);    \
-  __macro(xptiStartTracing);       \
-  __macro(xptiStopTracing);        \
-  __macro(xptiActivityFlushAll);   \
-  __macro(xptiActivityGetNextRecord);
+#define XPTI_ROUTINE_EACH(__macro)    \
+  __macro(xptiActivityEnable);        \
+  __macro(xptiActivityDisable);       \
+  __macro(xptiStartTracing);          \
+  __macro(xptiStopTracing);           \
+  __macro(xptiActivityFlushAll);      \
+  __macro(xptiActivityGetNextRecord); \
+  __macro(xptiActivityPopRecord)
 
 XPTI_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_XPTI_WRAP);
 

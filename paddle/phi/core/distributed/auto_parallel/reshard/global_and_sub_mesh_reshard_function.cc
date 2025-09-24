@@ -33,7 +33,7 @@ bool GlobalToSubMeshReshardFunction::IsSuitable(
 
   int sub_mesh_dim = SubMeshDim(in_process_mesh, out_process_mesh);
   RESHARD_SHORTCUT_IF_FALSE(sub_mesh_dim != -1);
-  // 1. the splitted dimension must be replicated
+  // 1. the split dimension must be replicated
   // 2. out mesh is the value of a certain dimension of global mesh
   // e.g. global_mesh = [[1, 2], [3, 4]], out_mesh = [1, 2] or [3, 4]
   //      global_mesh = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
@@ -79,10 +79,6 @@ void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                           const TensorDistAttr& out_dist_attr,
                                           DistTensor* out) {
   VLOG(3) << "Call SubMeshToGlobalReshardFunction Eval";
-#if defined(PADDLE_WITH_XPU)
-  PADDLE_THROW(::common::errors::Unimplemented(
-      "Not supported PSendKernel/PRecv on xpu yet."));
-#else
   const TensorDistAttr& in_dist_attr = in.dist_attr();
   const ProcessMesh& in_process_mesh = in_dist_attr.process_mesh();
   const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
@@ -115,28 +111,40 @@ void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     const DenseTensor& in_dense_value = in.value();
     std::vector<int64_t>& recv_vec = send2recv_map[cur_global_rank];
     for (int64_t recv_id : recv_vec) {
+      auto relative_recv_rank = recv_id;
+      for (size_t i = 0; i < all_process_ids.size(); ++i) {
+        if (all_process_ids[i] == recv_id) {
+          relative_recv_rank = i;
+        }
+      }
       RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                 PSendKernel,
                                 dtype,
                                 all_process_ids,
                                 in_dense_value,
-                                recv_id,
+                                relative_recv_rank, /*peer*/
                                 true /*dynamic_shape*/);
     }
     SetValue(out, in_dense_value);
   } else {
     int64_t send_id = recv2send_map[cur_global_rank];
+    auto relative_send_rank = send_id;
+    for (size_t i = 0; i < all_process_ids.size(); ++i) {
+      if (all_process_ids[i] == send_id) {
+        relative_send_rank = i;
+      }
+    }
+
     RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                               PRecv,
                               dtype,
                               all_process_ids,
-                              send_id,
+                              relative_send_rank, /*peer*/
                               {} /*out_shape*/,
                               true /*dynamic_shape*/,
                               GetMutableTensor(out));
   }
   SetDistProps(out, in.dims(), out_dist_attr);
-#endif
 }
 
 }  // namespace phi::distributed

@@ -295,6 +295,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elementwise_div
   args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
@@ -309,6 +310,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elementwise_mul
   args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
@@ -323,6 +325,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elementwise_sub
   args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
@@ -337,6 +340,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elemwise_activation
   args: (Tensor x, Tensor y, str[] functor_list, int axis = -1, float scale = 0.0, bool save_intermediate_out
@@ -384,6 +388,7 @@
   output : Tensor(dweight_out), Tensor(dbias_out)
   infer_meta:
     func : FusedLinearParamGradAddInferMeta
+    spmd_rule : FusedLinearParamGradAddInferSpmd
   optional : dweight, dbias
   kernel:
     func : fused_linear_param_grad_add
@@ -424,6 +429,16 @@
     func : fused_multi_transformer_xpu
     data_type : x
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
+
+- op : fused_partial_rope
+  args: (Tensor x, Tensor cos, Tensor sin)
+  output: Tensor(out)
+  infer_meta:
+    func: FusedPartialRopeInferMeta
+  kernel:
+    func: fused_partial_rope
+  backward: fused_partial_rope_grad
+  support_dygraph_mode : true
 
 - op : fused_rotary_position_embedding
   args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true, bool time_major = false, float rotary_emb_base = 10000.0)
@@ -469,6 +484,26 @@
     data_type: x
   backward: fused_seqpool_cvm_grad
 
+- op : fused_stack_quant
+  args : (Tensor[] x)
+  output : Tensor(out), Tensor(scale)
+  infer_meta :
+    func : FusedStackQuantInferMeta
+  kernel :
+    func : fused_stack_quant
+    data_type : x
+  support_dygraph_mode : true
+
+- op : fused_stack_transpose_quant
+  args : (Tensor[] x)
+  output : Tensor(out), Tensor(scale)
+  infer_meta :
+    func : FusedStackTransposeQuantInferMeta
+  kernel :
+    func : fused_stack_transpose_quant
+    data_type : x
+  support_dygraph_mode : true
+
 - op : fused_token_prune
   args: (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token
     = true, bool keep_order = false)
@@ -477,6 +512,15 @@
     func: FusedTokenPruneInferMeta
   kernel:
     func: fused_token_prune
+  support_dygraph_mode : true
+
+- op : fused_transpose_wlch_split_quant
+  args: (Tensor x, IntArray tokens_per_expert, bool pow_2_scales=false)
+  output: Tensor[](out){tokens_per_expert.size()}, Tensor[](scales){tokens_per_expert.size()}
+  infer_meta:
+    func: FusedTransposeWLCHSplitQuantInferMeta
+  kernel:
+    func: fused_transpose_wlch_split_quant
   support_dygraph_mode : true
 
 - op : fusion_group
@@ -579,6 +623,7 @@
     func : gemm_epilogue
     data_type : input
   optional : bias
+  support_dygraph_mode : true
 
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
@@ -823,16 +868,6 @@
   optional : mask
   support_dygraph_mode : true
 
-- op : weight_only_linear_xpu
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80, int group_size = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : WeightOnlyLinearInferMeta
-  kernel :
-    func : weight_only_linear_xpu
-    data_type : x
-  optional : bias
-
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)
   output : Tensor(out), Tensor(out_max)
@@ -855,6 +890,16 @@
   support_dygraph_mode : true
   interfaces : paddle::dialect::LayoutTransformationInterface
 
+- op: fused_act_dequant
+  args: (Tensor x, Tensor x_scale)
+  output: Tensor(out)
+  infer_meta:
+    func: FusedActDequantInferMeta
+  kernel:
+    func: fused_act_dequant
+    data_type: x
+  support_dygraph_mode: true
+
 - op: fused_embedding_fc_lstm
   args: (Tensor ids, Tensor embeddings, Tensor weight_h, Tensor bias, Tensor h0, Tensor
     c0, bool use_peepholes = true, bool is_reverse = false, bool use_seq = true, str
@@ -870,14 +915,32 @@
   optional: h0, c0
   intermediate: xx, batched_input, batched_hidden, batched_cell, reordered_h0, reordered_c0
 
-- op: fused_moe
-  args: (Tensor x, Tensor gate_weight, Tensor ffn1_weight, Tensor ffn1_scale, Tensor ffn1_bias, Tensor ffn2_weight, Tensor ffn2_scale, Tensor ffn2_bias,
-    str quant_method = "None", int moe_topk = 2, bool group_moe = false, bool norm_topk_prob = true)
-  output: Tensor (out)
+- op: fused_swiglu_weighted_bwd
+  args: (Tensor o1, Tensor do2_s, Tensor unzipped_probs)
+  output: Tensor(do1), Tensor(probs_grad), Tensor(o2_s)
   infer_meta:
-    func: FusedMoeInferMeta
+    func: FusedSwigluWeightedBwdInferMeta
   kernel:
-    func: fused_moe
-    data_type : x
-  optional : ffn1_bias, ffn1_scale, ffn2_bias, ffn2_scale
+    func: fused_swiglu_weighted_bwd
+    data_type: o1
+  support_dygraph_mode : true
+
+- op: fused_transpose_split_quant
+  args: (Tensor x, Tensor input_scales, IntArray tokens_per_expert, bool pow_2_scales=false)
+  output: Tensor[](out){tokens_per_expert.size()}, Tensor[](scales){tokens_per_expert.size()}
+  infer_meta:
+      func: FusedTransposeSplitQuantInferMeta
+  kernel:
+      func: fused_transpose_split_quant
+  optional: input_scales
+  support_dygraph_mode : true
+
+- op: fused_weighted_swiglu_act_quant
+  args: (Tensor x, Tensor prob, bool using_pow2_scaling)
+  output: Tensor(out), Tensor(scale)
+  infer_meta:
+    func: FusedWeightedSwigluActQuantInferMeta
+  kernel:
+    func: fused_weighted_swiglu_act_quant
+  optional: prob
   support_dygraph_mode : true

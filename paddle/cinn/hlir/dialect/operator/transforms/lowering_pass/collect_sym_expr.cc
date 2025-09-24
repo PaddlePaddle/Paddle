@@ -27,9 +27,9 @@ bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
       [](std::int64_t dim_expr) { return false; },
       [](const std::string& dim_expr) { return false; },
       [](const symbol::Negative<symbol::DimExpr>& dim_expr) { return true; },
-      [](const symbol::Reciprocal<symbol::DimExpr>& dim_expr) { return true; },
       [](const symbol::Add<symbol::DimExpr>& dim_expr) { return true; },
       [](const symbol::Mul<symbol::DimExpr>& dim_expr) { return true; },
+      [](const symbol::Div<symbol::DimExpr>& dim_expr) { return true; },
       [](const symbol::Max<symbol::DimExpr>& dim_expr) { return true; },
       [](const symbol::Min<symbol::DimExpr>& dim_expr) { return true; },
       [](const symbol::Broadcast<symbol::DimExpr>& dim_expr) { return true; }};
@@ -86,6 +86,62 @@ void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
       }};
   return std::visit(lambdas, shape_or_data.variant());
 }
+
+bool IsShapeOrDataNeedSubstitute(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
+  bool ret = false;
+  VisitEachDimExpr(shape_or_data, [&](const symbol::DimExpr& dim_expr) {
+    if (dim_expr_map.find(dim_expr) != dim_expr_map.end()) {
+      ret = true;
+    }
+  });
+  return ret;
+}
+
+symbol::ShapeOrDataDimExprs TrySubstitute(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
+  return symbol::SubstituteShapeOrData(shape_or_data, dim_expr_map);
+}
+
+void InferSymbolicShapeForOperation(
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* local_shape_analysis) {
+  // use lazy get to infer
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    auto result = op->result(i);
+    local_shape_analysis->GetShapeOrDataForValue(result);
+  }
+}
+
+std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+GetGroupValue2Shape(const OpLoweringGroupPtr& group,
+                    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
+  for (auto op : group->ops()) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto operand = op->operand_source(i);
+      if (operand && value2shape.find(operand) == value2shape.end()) {
+        VLOG(6) << "Add value_to_shape_or_data_exprs for " << operand.impl();
+        value2shape.insert(
+            {operand, shape_analysis.GetShapeOrDataForValue(operand)});
+      }
+    }
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      if (result && value2shape.find(result) == value2shape.end()) {
+        VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
+        value2shape.insert(
+            {result, shape_analysis.GetShapeOrDataForValue(result)});
+      }
+    }
+  }
+  return value2shape;
+}
+
+}  // namespace
+
+namespace cinn::dialect::ir::details {
 
 std::unordered_map<symbol::DimExpr, symbol::DimExpr>
 CollectSubstituteDimExprMap(
@@ -163,68 +219,11 @@ CollectSubstituteDimExprMap(
   return dim_expr_map;
 }
 
-bool IsShapeOrDataNeedSubstitute(
-    const symbol::ShapeOrDataDimExprs& shape_or_data,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
-  bool ret = false;
-  VisitEachDimExpr(shape_or_data, [&](const symbol::DimExpr& dim_expr) {
-    if (dim_expr_map.find(dim_expr) != dim_expr_map.end()) {
-      ret = true;
-    }
-  });
-  return ret;
-}
-
-symbol::ShapeOrDataDimExprs TrySubstitute(
-    const symbol::ShapeOrDataDimExprs& shape_or_data,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
-  return symbol::SubstituteShapeOrData(shape_or_data, dim_expr_map);
-}
-
-void InferSymbolicShapeForOperation(
-    pir::Operation* op, pir::ShapeConstraintIRAnalysis* local_shape_analysis) {
-  // use lazy get to infer
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    auto result = op->result(i);
-    local_shape_analysis->GetShapeOrDataForValue(result);
-  }
-}
-
-std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-GetGroupValue2Shape(const OpLoweringGroupPtr& group,
-                    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
-  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
-  for (auto op : group->ops()) {
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      auto operand = op->operand_source(i);
-      if (operand && value2shape.find(operand) == value2shape.end()) {
-        VLOG(6) << "Add value_to_shape_or_data_exprs for " << operand.impl();
-        value2shape.insert(
-            {operand, shape_analysis.GetShapeOrDataForValue(operand)});
-      }
-    }
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      auto result = op->result(i);
-      if (result && value2shape.find(result) == value2shape.end()) {
-        VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
-        value2shape.insert(
-            {result, shape_analysis.GetShapeOrDataForValue(result)});
-      }
-    }
-  }
-  return value2shape;
-}
-
-}  // namespace
-
-namespace cinn::dialect::ir::details {
-
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
-    const OpLoweringGroupPtr& group,
+    OpLoweringGroupPtr group,
     pir::ShapeConstraintIRAnalysis& global_shape_analysis) {  // NOLINT
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
-      CollectSubstituteDimExprMap(group, global_shape_analysis);
+  const auto& dim_expr_map = group->substitute_dimexpr_map();
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
   if (dim_expr_map.size() == 0) {
     return GetGroupValue2Shape(group, global_shape_analysis);
@@ -235,6 +234,7 @@ CreateGroupShapeOrDataExprs(
 
   local_shape_analysis.RegisterSymbolConstraintFromShapeAnalysis(
       global_shape_analysis);
+  local_shape_analysis.ClearOpInferSymbolicShapeCache();
   for (const auto& item : dim_expr_map) {
     local_shape_analysis.AddEqualCstr(item.first, item.second);
   }
@@ -251,6 +251,38 @@ CreateGroupShapeOrDataExprs(
   // TODO(Hongqing-work): try to get global constraints
   for (auto* op : group->ops()) {
     InferSymbolicShapeForOperation(op, &local_shape_analysis);
+  }
+
+  auto broadcast_contains = [](const symbol::DimExpr& dimexpr,
+                               const symbol::DimExpr& target) {
+    auto broadcast =
+        std::get_if<symbol::Broadcast<symbol::DimExpr>>(&dimexpr.variant());
+    if (broadcast == nullptr) return false;
+    for (const auto& operand : *(broadcast->operands)) {
+      if (operand == target) return true;
+    }
+    return false;
+  };
+
+  // Add shape constraints after infer.
+  auto& mut_substitute_dimexpr_map = group->mut_substitute_dimexpr_map();
+  for (auto* op : group->ops()) {
+    for (const auto& op_result : op->results()) {
+      auto global_result_shape =
+          global_shape_analysis.GetShapeOrDataForValue(op_result).shape();
+      auto local_result_shape =
+          local_shape_analysis.GetShapeOrDataForValue(op_result).shape();
+      if (global_result_shape.size() != local_result_shape.size()) continue;
+      for (size_t i = 0; i < global_result_shape.size(); ++i) {
+        if (global_result_shape[i] != local_result_shape[i] &&
+            !global_result_shape[i].isa<std::int64_t>() &&
+            !broadcast_contains(local_result_shape[i],
+                                global_result_shape[i])) {
+          mut_substitute_dimexpr_map[global_result_shape[i]] =
+              local_result_shape[i];
+        }
+      }
+    }
   }
 
   // process the result values of each op.

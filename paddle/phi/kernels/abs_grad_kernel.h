@@ -20,13 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AbsGradKernel(const Context& ctx,
+void AbsGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& dout,
                    DenseTensor* dx);
 
 template <typename T, typename Context>
-void AbsDoubleGradKernel(const Context& ctx,
+void AbsDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& ddx,
                          DenseTensor* ddout);

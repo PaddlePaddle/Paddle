@@ -15,7 +15,7 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
-#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 
 CINN_REGISTER_HELPER(cuda_intrinsics) {
@@ -120,6 +120,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(log10);
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(floor);
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(ceil);
+  REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(rint);
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(round);
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(trunc);
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(cos);
@@ -174,6 +175,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(log10);
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(floor);
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(ceil);
+  REGISTER_EXTERN_FUNC_1_IN_1_FP64(rint);
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(round);
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(trunc);
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(cos);
@@ -222,6 +224,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(clz)
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(popc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(trunc)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT32(exp)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT32(abs)
 
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT32
 
@@ -233,6 +237,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(clz)
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(popc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(trunc)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT64(exp)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT64(abs)
 
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT64
 
@@ -425,14 +431,6 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 }
 
 CINN_REGISTER_HELPER(cinn_cuda_host_api) {
-  using cinn::runtime::cuda::cinn_get_value_in_cuda_kernel_args;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_get_value_in_cuda_kernel_args,
-                              cinn::common::DefaultHostTarget())
-      .SetRetType<int64_t>()
-      .AddInputType<void *>()  // args
-      .AddInputType<int>()     // index
-      .End();
-
   using cinn::runtime::cuda::cinn_get_item_in_cuda_kernel_args;
   REGISTER_EXTERN_FUNC_HELPER(cinn_get_item_in_cuda_kernel_args,
                               cinn::common::DefaultHostTarget())
@@ -453,6 +451,23 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
 
   using cinn::runtime::cuda::cinn_call_cuda_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_kernel,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // kernel_fn
+      .AddInputType<void *>()  // args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // grid_x
+      .AddInputType<int>()     // grid_y
+      .AddInputType<int>()     // grid_z
+      .AddInputType<int>()     // block_x
+      .AddInputType<int>()     // block_y
+      .AddInputType<int>()     // block_z
+      .AddInputType<int>()     // shared_mem
+      .AddInputType<void *>()  // stream
+      .End();
+
+  using cinn::runtime::cuda::cinn_call_cuda_cooperative_kernel;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_cooperative_kernel,
                               cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // kernel_fn

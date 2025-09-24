@@ -302,6 +302,53 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
   }
 }
 
+// Helper: compute sin values at the paired indices (rotate_half pairing)
+template <typename T, typename MPType, int VecSize = 2>
+__device__ __forceinline__ void get_paired_sin_values(
+    phi::Array<const T*, 2> sin_cos_data,
+    const int64_t* position_ids_data,
+    bool flag_sin_cos,
+    int64_t index,
+    int64_t batch_size,
+    int64_t seq_len,
+    int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
+    MPType div_c,
+    float rotary_emb_base,
+    MPType* out_sin_paired) {
+  const int64_t stride_r = head_dim / 2;
+#pragma unroll
+  for (int64_t nx = 0; nx < VecSize; ++nx) {
+    const int64_t idx_elem = index + nx;
+    int64_t pos_seq_ori = (idx_elem) / seq_stride % seq_len;
+    int64_t pos_seq;
+    if (position_ids_data) {
+      int64_t pos_bs = (idx_elem) / batch_stride % batch_size;
+      int64_t index_ids = pos_bs * seq_len + pos_seq_ori;
+      pos_seq = position_ids_data[index_ids];
+    } else {
+      pos_seq = pos_seq_ori;
+    }
+    const int64_t pos_head = (idx_elem) % head_dim;
+    const int64_t pos_head_r =
+        (pos_head < stride_r) ? (pos_head + stride_r) : (pos_head - stride_r);
+    if (flag_sin_cos) {
+      const int64_t index_sc = pos_seq * head_dim + pos_head_r;
+      const T* sin_input = sin_cos_data[0] + index_sc;
+      out_sin_paired[nx] = static_cast<MPType>(sin_input[0]);
+    } else {
+      // compute sin from rotary base for the paired position
+      MPType idx_even = static_cast<MPType>((pos_head_r / 2) * 2.0);
+      MPType indicses =
+          static_cast<MPType>(1) /
+          pow(static_cast<MPType>(rotary_emb_base), idx_even * div_c);
+      MPType value = static_cast<MPType>(pos_seq) * indicses;
+      out_sin_paired[nx] = sin(value);
+    }
+  }
+}
+
 template <typename T, typename MPType, int VecSize = 2>
 __device__ __forceinline__ void rotate_half(phi::Array<const T*, 3> ins_data,
                                             int num_inputs,
@@ -387,6 +434,25 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
           rotary_emb_base,
           sin_value,
           cos_value);
+      // Backward path requires paired-index sin: grad_x = g*cos -
+      // rotate_half(g*sin)
+      if (sign == -1) {
+        MPType sin_paired[VecSize];
+        get_paired_sin_values<T, MPType, VecSize>(sin_cos_data,
+                                                  position_ids_data,
+                                                  flag_sin_cos,
+                                                  index,
+                                                  batch_size,
+                                                  seq_len,
+                                                  head_dim,
+                                                  batch_stride,
+                                                  seq_stride,
+                                                  div_c,
+                                                  rotary_emb_base,
+                                                  sin_paired);
+#pragma unroll
+        for (int nx = 0; nx < VecSize; ++nx) sin_value[nx] = sin_paired[nx];
+      }
       rotate_half<T, MPType, VecSize>(ins_data,
                                       num_inputs,
                                       head_dim,
@@ -411,6 +477,23 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
                                                  rotary_emb_base,
                                                  sin_value,
                                                  cos_value);
+    if (sign == -1) {
+      MPType sin_paired[VecSize];
+      get_paired_sin_values<T, MPType, VecSize>(sin_cos_data,
+                                                position_ids_data,
+                                                flag_sin_cos,
+                                                index,
+                                                batch_size,
+                                                seq_len,
+                                                head_dim,
+                                                batch_stride,
+                                                seq_stride,
+                                                div_c,
+                                                rotary_emb_base,
+                                                sin_paired);
+#pragma unroll
+      for (int nx = 0; nx < VecSize; ++nx) sin_value[nx] = sin_paired[nx];
+    }
     rotate_half<T, MPType, VecSize>(ins_data,
                                     num_inputs,
                                     head_dim,

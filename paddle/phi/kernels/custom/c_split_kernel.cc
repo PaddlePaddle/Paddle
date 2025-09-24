@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/backward_api_base.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -25,8 +25,6 @@ void CSplitKernel(const Context& dev_ctx,
                   const DenseTensor& x_in,
                   int rank,
                   int nranks,
-                  int ring_id UNUSED,
-                  bool use_calc_stream UNUSED,
                   bool use_model_parallel UNUSED,
                   DenseTensor* out) {
   auto x = &x_in;
@@ -74,6 +72,6 @@ PD_REGISTER_KERNEL(c_split,
                    phi::CSplitKernel,
                    float,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

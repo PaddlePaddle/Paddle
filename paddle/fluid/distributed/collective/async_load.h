@@ -59,9 +59,9 @@ class AsyncLoad {
       size_t offload_size);
 
   void PrepareLoadEnv(const std::string& key, const Place& place);
-  void SyncCalcuStream(const Place& place,
-                       phi::GPUContext* ctx,
-                       platform::DeviceEvent& calc_event);  // NOLINT
+  void SyncCalcStream(const Place& place,
+                      phi::GPUContext* ctx,
+                      platform::DeviceEvent& calc_event);  // NOLINT
   std::shared_ptr<AsyncLoad::Task> Reload(phi::DenseTensor* dst,
                                           const phi::DenseTensor& src);
 

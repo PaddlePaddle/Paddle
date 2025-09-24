@@ -350,12 +350,13 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       (kernel_iter == iter->second.end() || (xpu_unsupported && !has_kp_kernel))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
-  bool is_xpu_support1 = phi::backends::xpu::is_xpu_support_op(
-      TransToFluidOpName(kernel_name), kernel_key.dtype());
-  bool is_xpu_support2 =
-      phi::backends::xpu::is_xpu_support_op(kernel_name, kernel_key.dtype());
+  bool is_xpu_unsupported =
+      kernel_key.backend() == Backend::XPU &&
+      !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                             kernel_key.dtype()) &&
+      !phi::backends::xpu::is_xpu_support_op(kernel_name, kernel_key.dtype());
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      (!is_xpu_support1 && !is_xpu_support2)
+      is_xpu_unsupported
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (kernel_iter == iter->second.end() &&
       kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
@@ -385,8 +386,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             kernel_key,
             kernel_name,
             KernelSelectionErrorMessage(kernel_name, kernel_key)));
-
-    VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
+    VLOG(1) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
 
@@ -493,32 +493,34 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   bool need_comma = false;
   for (auto& in_def : kernel.args_def().input_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << in_def.backend << ", " << in_def.layout << ", "
-       << in_def.dtype << "\"";
+    os << "\n\tbackend: " << in_def.backend << ", "
+       << " layout: " << in_def.layout << ", "
+       << " dtype: " << in_def.dtype;
     need_comma = true;
   }
-  os << "],";
+  os << "\n],";
 
   // output
-  os << "\"output\":[";
+  os << "\n\"output\":[";
   need_comma = false;
   for (auto& out_def : kernel.args_def().output_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << out_def.backend << ", " << out_def.layout << ", "
-       << out_def.dtype << "\"";
+    os << "\n\tbackend: " << out_def.backend << ", "
+       << " layout: " << out_def.layout << ", "
+       << " dtype: " << out_def.dtype;
     need_comma = true;
   }
-  os << "],";
+  os << "\n],";
 
   // attr
-  os << "\"attribute\":[";
+  os << "\n\"attribute\":[";
   need_comma = false;
   for (auto& arg_def : kernel.args_def().attribute_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << arg_def.type_index << "\"";
+    os << "\n\t\"" << arg_def.type_index << "\"";
     need_comma = true;
   }
-  os << "]}";
+  os << "\n]}";
 
   return os;
 }

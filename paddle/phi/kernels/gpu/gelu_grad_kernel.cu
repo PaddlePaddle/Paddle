@@ -66,6 +66,9 @@ void GeluGradKernel(const Context& dev_ctx,
                     bool approximate,
                     DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x, &out_grad};
   std::vector<DenseTensor*> outs = {x_grad};
   if (approximate) {
@@ -99,5 +102,5 @@ PD_REGISTER_KERNEL(gelu_grad,
                    phi::GeluGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

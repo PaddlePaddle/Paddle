@@ -7,9 +7,9 @@ RUN yum install -y bzip2-devel openssh-server elfutils-devel diffutils libtool i
         blas-devel lapack-devel make git patch unzip bison hostname yasm libsndfile-devel \
         automake which file net-tools zlib-devel libffi-devel vim tk-devel tkinter rpm-build \
         sqlite-devel xz-devel wget curl-devel initscripts mesa-libGL numactl-devel pcre-devel \
-        openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel
+        openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel zstd
 
-COPY build_scripts /build_scripts
+COPY tools/dockerfile/build_scripts /build_scripts
 RUN bash /build_scripts/install_gcc.sh gcc82
 RUN ln -sf /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc
 RUN ln -sf /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
@@ -123,7 +123,7 @@ RUN yum clean all && \
     rm -rf /var/lib/yum/history
 
 # Install DTK
-RUN wget -q --no-proxy https://cancon.hpccube.com:65024/file/1/DTK-24.04.1/CentOS7.6/DTK-24.04.1-CentOS7.6-x86_64.tar.gz && \
+RUN wget -q --no-proxy https://cancon.hpccube.com:65024/file/1/DTK-24.04.1/CentOS7.6/DTK-24.04.1-CentOS7.6-x86_64.tar.gz --no-check-certificate && \
     tar zxf DTK-24.04.1-CentOS7.6-x86_64.tar.gz && rm -rf DTK-24.04.1-CentOS7.6-x86_64.tar.gz
 # Replace if you use other device type, e.g. Z100, Z100L, K100
 RUN wget -q https://paddle-device.bj.bcebos.com/dcu/hyhal-K100AI.tar.gz && \

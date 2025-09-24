@@ -1,3 +1,27 @@
+- op : arange
+  args : (Tensor start_, Tensor end_, Tensor step_, ScalarType start, ScalarType end, ScalarType step, DataType dtype=DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeInferMeta
+    param : [start, end, step, dtype]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : argmax
+  args : (Tensor x, int64_t[] axis, bool keepdim=false, DataType dtype=DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceSumInferMeta
+    param : [x, axis, keepdim, dtype]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : argmin
+  args : (Tensor x, int64_t[] axis, bool keepdim=false, DataType dtype=DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceSumInferMeta
+    param : [x, axis, keepdim, dtype]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : broadcast
   args : (Tensor x, int64_t[] broadcast_axes,  int64_t[] out_shape)
   output : Tensor(out)
@@ -30,7 +54,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool2d
-  args : (Tensor x, int[] kernel_size, int[] stride_size, int[] padding_size, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, int64_t[] kernel_size, int64_t[] stride_size, int64_t[] padding_size, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta

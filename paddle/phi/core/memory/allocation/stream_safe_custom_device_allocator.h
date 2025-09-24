@@ -36,6 +36,7 @@ class StreamSafeCustomDeviceAllocation : public Allocation {
                                    StreamSafeCustomDeviceAllocator *allocator);
 
   bool RecordStream(phi::stream::stream_t stream);
+  void EraseStream(phi::stream::stream_t stream);
   bool CanBeFreed();
   phi::stream::stream_t GetOwningStream() const;
   void SetOwningStream(phi::stream::stream_t s);

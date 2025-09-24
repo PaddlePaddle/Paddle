@@ -69,6 +69,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from paddle import Tensor
+    from paddle.base.libpaddle import NCCLConfig
     from paddle.nn.layer.layers import _StateDict
 __all__ = []
 
@@ -96,7 +97,9 @@ def _coalesce_tensors(var_groups):
         for g_var in grad_vars:
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
-                paddle.reshape(x=g_var, shape=[np.prod(g_var.shape)])
+                paddle.reshape(
+                    x=g_var, shape=[np.prod(g_var.shape, dtype="int64")]
+                )
             )
         coalesced_grad = paddle.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(
@@ -124,7 +127,9 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             origin_grad_vars,
             grad_shapes,
         ) in coalesced_grads_and_grad_vars:
-            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            grad_var_len = [
+                np.prod(g_shape, dtype="int64") for g_shape in grad_shapes
+            ]
             attrs = ()
             attrs += ('sections', grad_var_len)
             attrs += ('axis', 0)
@@ -148,7 +153,9 @@ def build_groups(
         var_dtype = var.dtype
         if isinstance(var_dtype, core.DataType):
             var_dtype = paddle.pir.core.datatype_to_vartype[var_dtype]
-        bytes = np.prod(var.shape) * core.size_of_dtype(var_dtype)
+        bytes = np.prod(var.shape, dtype="int64") * core.size_of_dtype(
+            var_dtype
+        )
         if memory_counter < group_size and dtype == var.dtype:
             memory_counter += bytes
         else:
@@ -167,6 +174,7 @@ def sync_params_buffers(
     src_rank: int = 0,
     is_model_parallel: bool = False,
     fuse_params: bool = True,
+    is_moe_sharding_parallel: bool = False,
 ) -> None:
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
@@ -179,10 +187,18 @@ def sync_params_buffers(
             if hasattr(param, "is_distributed") and param.is_distributed:
                 continue
 
-        # NOTE(shenliang03): Support situations that do not require synchronization parameters,
-        # such as moe's expert parameters
-        if getattr(param, "no_sync", False):
-            continue
+        if not is_moe_sharding_parallel:
+            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
+            # such as moe's expert parameters
+            if getattr(param, "no_sync", False):
+                continue
+        else:
+            # NOTE(zhangyuqin1998): In moe sharding parallel, we do need to broadcast expert parameters
+            # in moe sharding group.
+            if getattr(param, "no_sync", False) and not getattr(
+                param, "expert", False
+            ):
+                continue
 
         if param.type == core.VarDesc.VarType.VOCAB:
             continue
@@ -200,7 +216,9 @@ def sync_params_buffers(
                 coalesced_var, src=src_rank, group=comm_group, sync_op=True
             )
         for coalesced_var, origin_vars, var_shapes in coalesced_vars:
-            var_len = [np.prod(v_shape) for v_shape in var_shapes]
+            var_len = [
+                np.prod(v_shape, dtype="int64") for v_shape in var_shapes
+            ]
             paddle.base.framework._dygraph_tracer().trace_op(
                 type='split',
                 inputs={'X': coalesced_var},
@@ -348,7 +366,7 @@ class DataParallel(Layer):
             ...     model = paddle.DataParallel(model)
             ...     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     for step in range(10):
-            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32) # type: ignore[var-annotated]
+            ...         x_data = numpy.random.randn(2, 2).astype(numpy.float32)
             ...         x = paddle.to_tensor(x_data)
             ...         x.stop_gradient = False
             ...         # step 1 : skip gradient synchronization by 'no_sync'
@@ -381,9 +399,9 @@ class DataParallel(Layer):
     ) -> None:
         super().__init__(layers.full_name() + "_data_parallel")
 
-        assert (
-            in_dynamic_mode()
-        ), "It's not supported to construct DataParallel in static graph mode."
+        assert in_dynamic_mode(), (
+            "It's not supported to construct DataParallel in static graph mode."
+        )
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
@@ -746,12 +764,12 @@ class ParallelEnv:
         ).split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
         self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
-        assert (
-            self._nrings > 0
-        ), "nccl_nrings must be an integer greater than 0."
-        assert (
-            self._nrings < 9
-        ), "nccl_nrings should be less than 9, which is enough in most scenarios."
+        assert self._nrings > 0, (
+            "nccl_nrings must be an integer greater than 0."
+        )
+        assert self._nrings < 9, (
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
+        )
 
     @property
     def rank(self) -> int:
@@ -932,7 +950,7 @@ def _start_kv_server(port, http_server_d, size):
 def _is_cpuonly(backend):
     check_backend(backend)
     if (
-        backend in ['auto', 'nccl', 'bkcl', 'heter']
+        backend in ['auto', 'nccl', 'bkcl', 'heter', 'flagcx']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
@@ -975,7 +993,7 @@ def _print_modified_flags(modified_flags):
         )
 
 
-def init_parallel_env() -> Group:
+def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
     """
 
     Initialize parallel training environment in dynamic graph mode.
@@ -1048,6 +1066,12 @@ def init_parallel_env() -> Group:
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
     #                 enable cpu only gloo parallel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
+    # if we want to use flagcx as backend in xpu environment, we need to
+    # set backend to bkcl, and process_group_bkcl will internally invoke
+    # flagcx to perform communication tasks
+    if backend == "flagcx" and core.is_compiled_with_xpu():
+        os.environ['PADDLE_DISTRI_BACKEND'] = "bkcl"
+        backend = "bkcl"
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
     if not (
@@ -1134,8 +1158,12 @@ def init_parallel_env() -> Group:
         default_store = core.create_or_get_global_tcp_store()
         _set_default_store(default_store)
 
-        if backend in ["nccl", 'xccl', 'bkcl']:
+        if backend in ["nccl", 'xccl', 'bkcl', 'flagcx']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
+
+        from paddle.distributed.fleet.base.topology import (
+            message2nccl_config,
+        )
 
         pg = _new_process_group_impl(
             backend,
@@ -1144,6 +1172,10 @@ def init_parallel_env() -> Group:
             world_size,
             _default_group_name,
             pg_options=None,
+            nccl_config=message2nccl_config(
+                nccl_config,
+                "default",
+            ),
         )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)

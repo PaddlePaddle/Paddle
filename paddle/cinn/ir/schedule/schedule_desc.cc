@@ -123,8 +123,8 @@ class PackedStepContext {
   template <typename AttrType>
   const AttrType& AttrAt(size_t idx) const {
     try {
-      return absl::get<AttrType>(attrs_.at(idx));
-    } catch (absl::bad_variant_access& ex) {
+      return std::get<AttrType>(attrs_.at(idx));
+    } catch (std::bad_variant_access& ex) {
       std::stringstream ss;
       ss << "Attribute cast error, idx:" << idx
          << ", get type:" << typeid(AttrType).name()
@@ -490,12 +490,6 @@ CINN_BUILD_STEP_KIND(Bind)
     .Attrs({"thread_axis"})
     .SetApplyFn(APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::Bind)));
 
-CINN_BUILD_STEP_KIND(Rfactor)
-    .Inputs({"rf_loop"})
-    .Attrs({"rf_axis"})
-    .SetApplyFn(
-        APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::Rfactor)));
-
 CINN_BUILD_STEP_KIND(FactorizeReduction)
     .Inputs({"rf_loop"})
     .Attrs({"rf_axis"})
@@ -591,13 +585,13 @@ void AttrVariantToProto(const utils::Attribute& attr,
 #define SET_DESC_SINGLE_ITEM(index, built_type, proto_type, proto_field)   \
   case index:                                                              \
     attr_proto->set_dtype(proto::ScheduleDesc_Attr_DataType_##proto_type); \
-    attr_proto->set_##proto_field(absl::get<built_type>(attr));            \
+    attr_proto->set_##proto_field(std::get<built_type>(attr));             \
     break;
 
 #define SET_DESC_REPEATED_ITEM(index, built_type, proto_type, proto_field) \
   case index: {                                                            \
     attr_proto->set_dtype(proto::ScheduleDesc_Attr_DataType_##proto_type); \
-    const auto& values = absl::get<built_type>(attr);                      \
+    const auto& values = std::get<built_type>(attr);                       \
     attr_proto->mutable_##proto_field()->Reserve(values.size());           \
     *attr_proto->mutable_##proto_field() = {values.begin(), values.end()}; \
     break;                                                                 \
@@ -691,7 +685,7 @@ void ScheduleDesc::Replay(IRSchedule* schedule,
 
 proto::ScheduleDesc ScheduleDesc::ToProto() const {
   // map each Expr to a formatted name (e1, e2, ...)
-  absl::flat_hash_map<Expr, std::string, ExprHash, ExprEqual> expr2name;
+  paddle::flat_hash_map<Expr, std::string, ExprHash, ExprEqual> expr2name;
   proto::ScheduleDesc desc_proto;
 
   for (auto&& step : steps_) {
@@ -742,7 +736,7 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
   }
 
   // map a formatted name (e1, e2, ...) to an Expr
-  absl::flat_hash_map<std::string, Expr> name2expr;
+  paddle::flat_hash_map<std::string, Expr> name2expr;
   std::vector<Expr> last_outputs;
 
   // restore each scheduling step and apply to the new IRSchedule object
@@ -769,7 +763,7 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
         PADDLE_ENFORCE_NE(
             arg_it,
             name2expr.end(),
-            ::common::errors::InvalidArgument("Cant't find argument: %s", arg));
+            ::common::errors::InvalidArgument("Can't find argument: %s", arg));
         step.inputs[param2args.parameter()].emplace_back(arg_it->second);
       }
     }

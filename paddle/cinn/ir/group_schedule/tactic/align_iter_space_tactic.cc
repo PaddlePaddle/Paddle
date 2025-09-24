@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/ir/group_schedule/tactic/align_iter_space_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {
@@ -135,7 +136,7 @@ void AlignIterSpaceTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
       }
     }
   } else {
-    // If this is a Trvial, calculate the sp_loop_perm according to the output.
+    // If this is a Trivial, calculate the sp_loop_perm according to the output.
     sp_loop_perm_ = GetCommonOutputLoopPerm(sch);
   }
 
