@@ -27,7 +27,7 @@ set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
 if(WIN32)
   set(GLOG_LIB_NAME "glog.dll")
 elseif(APPLE)
-  set(GLOG_LIB_NAME "libglog.dylib")
+  set(GLOG_LIB_NAME "libglog.0.dylib")
 else() #Linux
   set(GLOG_LIB_NAME "libglog.so.0")
 endif()
@@ -38,7 +38,7 @@ set(GLOG_LIBRARIES
 
 if(WIN32)
   set(GLOG_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
-  add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
+  #add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
 else()
   set(GLOG_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 endif()
