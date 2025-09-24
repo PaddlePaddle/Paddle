@@ -276,7 +276,8 @@ if(WITH_PYTHON)
       tracer
       engine
       imperative_profiler
-      imperative_flag)
+      imperative_flag
+      glog)
 
   if(WITH_CINN)
     list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
