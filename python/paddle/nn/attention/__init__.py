@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .sdpa import SDPBackend, sdpa_kernel
+from .sdpa import SDPBackend, _cur_sdpa_kernel_backends, sdpa_kernel
 
-__all__ = ["SDPBackend", "sdpa_kernel"]
+__all__ = ["SDPBackend", "sdpa_kernel", "_cur_sdpa_kernel_backends"]
