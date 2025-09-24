@@ -10,6 +10,7 @@ set(PYBIND_DEPS
     box_wrapper
     metrics
     prune
+    glog
     feed_fetch_method
     pass
     generate_pass
@@ -276,8 +277,7 @@ if(WITH_PYTHON)
       tracer
       engine
       imperative_profiler
-      imperative_flag
-      glog)
+      imperative_flag)
 
   if(WITH_CINN)
     list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
@@ -393,7 +393,7 @@ if(WITH_PYTHON)
       legacy_eager_codegen
       COMMAND
         ${CMAKE_COMMAND} -E env
-        "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib"
+        "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib:${PADDLE_BINARY_DIR}/third_party/install/glog/lib"
         "${CMAKE_CURRENT_BINARY_DIR}/eager_generator"
         "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
         "${CODE_GEN_SPLIT_FILE_COUNT}"
