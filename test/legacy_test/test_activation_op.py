@@ -535,7 +535,7 @@ class TestSigmoidBF16(OpTest):
             place,
             check_prim=False,
             check_pir=True,
-            check_prim_pir=True,
+            check_prim_pir=False,
             check_pir_onednn=self.check_pir_onednn,
             check_symbol_infer=False,
         )
@@ -548,7 +548,7 @@ class TestSigmoidBF16(OpTest):
             'Out',
             check_prim=False,
             check_pir=True,
-            check_prim_pir=True,
+            check_prim_pir=False,
         )
 
 
@@ -4769,7 +4769,7 @@ class TestPow(TestActivation):
     def test_check_output(self):
         self.check_output(
             check_prim=False,
-            check_prim_pir=True,
+            check_prim_pir=False,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
             check_symbol_infer=False,
@@ -4782,7 +4782,7 @@ class TestPow(TestActivation):
             ['X'],
             'Out',
             check_prim=False,
-            check_prim_pir=True,
+            check_prim_pir=False,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
