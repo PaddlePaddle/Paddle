@@ -24,6 +24,8 @@ set(GLOG_INCLUDE_DIR
 set(GLOG_TAG v0.5.0)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
 
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${GLOG_INSTALL_DIR}")
+
 if(WIN32)
   set(GLOG_LIB_NAME "glog.dll")
 elseif(APPLE)
