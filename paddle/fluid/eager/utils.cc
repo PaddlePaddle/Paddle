@@ -1019,20 +1019,14 @@ void DistTensorConverter::operator()(paddle::Tensor* x) {
 }
 
 void DistTensorConverter::operator()(const paddle::Tensor* x) {
-  DistTensorConverter::convert(x);
+  if (x) {
+    DistTensorConverter::convert(x);
+  }
 }
 
 void DistTensorConverter::operator()(const paddle::Tensor& x) {
   DistTensorConverter::convert(&x);
 }
-
-void DistTensorConverter::operator()(
-    const paddle::optional<paddle::Tensor>* x) {
-  if (*x) {
-    DistTensorConverter::convert(x->get_ptr());
-  }
-}
-
 void DistTensorConverter::operator()(std::vector<paddle::Tensor>* x) {
   if (!x->empty()) {
     for (auto& t : *x) {
@@ -1042,10 +1036,8 @@ void DistTensorConverter::operator()(std::vector<paddle::Tensor>* x) {
 }
 
 void DistTensorConverter::operator()(const std::vector<paddle::Tensor> x) {
-  if (!x.empty()) {
-    for (auto& t : x) {
-      DistTensorConverter::convert(&t);
-    }
+  for (auto& t : x) {
+    DistTensorConverter::convert(&t);
   }
 }
 
