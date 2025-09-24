@@ -20,6 +20,7 @@ from decorator_helper import prog_scope
 from op_test import (
     OpTest,
     OpTestTool,
+    convert_float_to_uint16,
     get_device_place,
     get_places,
     is_custom_device,
@@ -34,25 +35,40 @@ from paddle.base import Program, core, program_guard
 np.random.seed(10)
 
 
+def mean_wrapper(x, axis=None, keepdim=False, reduce_all=False):
+    if reduce_all:
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
+    return paddle.mean(x, axis, keepdim)
+
+
+def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
+    if reduce_all:
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
+    return paddle.mean(x, axis, keepdim)
+
+
 class TestMeanOp(OpTest):
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
         self.public_python_api = paddle.mean
-        self.dtype = np.float64
         self.init_dtype_type()
         self.init_prim_type()
-        self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+        self.init_shape()
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def init_prim_type(self):
         self.prim_op_type = "comp"
 
     def init_dtype_type(self):
-        pass
+        self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
@@ -162,7 +178,7 @@ class TestMeanOp_RealValuedNanInput(OpTest):
         self.check_output(check_pir=True, equal_nan=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         with paddle.base.dygraph.guard():
             data = np.arange(1, 100, dtype="float64")
             x_np = np.append(data, np.nan).astype(self.dtype)
@@ -195,7 +211,7 @@ class TestMeanOp_RealNanInput(OpTest):
         self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         with paddle.base.dygraph.guard():
             x_np = np.array([1 + 1j, 2 + 2j, 1 + np.nan * 1j]).astype(
                 self.dtype
@@ -229,7 +245,7 @@ class TestMeanOp_ImagNanInput(OpTest):
         self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         with paddle.base.dygraph.guard():
             x_np = np.array([1 + 1j, 2 + 2j, 1 + np.nan * 1j]).astype(
                 self.dtype
@@ -324,6 +340,377 @@ def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
     if reduce_all:
         axis = None
     return np.mean(x, axis=axis, keepdims=keepdim)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
+    "core is not compiled with CUDA",
+)
+class TestReduceMeanOp(OpTest):
+    def setUp(self):
+        self.op_type = 'reduce_mean'
+        self.python_api = reduce_mean_wrapper
+        self.public_python_api = reduce_mean_wrapper
+        self.init_prim_type()
+        self.dtype = 'float64'
+        self.init_shapes()
+        self.axis = [0]
+        if self.shape == []:
+            self.axis = []
+        self.keepdim = False
+        self.set_attrs()
+        self.if_enable_cinn()
+
+        np.random.seed(10)
+        x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if not hasattr(self, "reduce_all") and not x_np.shape == ():
+            self.reduce_all = (not self.axis) or len(self.axis) == len(x_np)
+        if x_np.shape == ():
+            self.reduce_all = True
+        out_np = ref_reduce_mean(x_np, self.axis, self.keepdim, self.reduce_all)
+        self.inputs = {'X': x_np}
+        self.outputs = {'Out': out_np}
+        self.attrs = {
+            'dim': self.axis,
+            'keep_dim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
+    def init_shapes(self):
+        self.shape = [2, 3, 4, 5]
+
+    def set_attrs(self):
+        pass
+
+    def if_enable_cinn(self):
+        pass
+
+    def test_check_output(self):
+        if self.dtype != 'float16':
+            self.check_output(
+                check_prim=False, check_prim_pir=False, check_pir=True
+            )
+        else:
+            place = get_device_place()
+            self.check_output_with_place(
+                place=place,
+                check_prim=False,
+                check_prim_pir=False,
+                check_pir=True,
+            )
+
+    def test_check_grad(self):
+        if self.dtype != 'float16':
+            self.check_grad(
+                ['X'],
+                ['Out'],
+                check_prim=False,
+                check_prim_pir=False,
+                check_pir=True,
+            )
+        else:
+            place = get_device_place()
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                ['Out'],
+                numeric_grad_delta=0.5,
+                check_prim=False,
+                check_prim_pir=False,
+                check_pir=True,
+            )
+
+
+class TestReduceMeanOpPrim(TestReduceMeanOp):
+    def init_prim_type(self):
+        self.prim_op_type = "prim"
+
+    def test_check_output(self):
+        if self.dtype != 'float16':
+            self.check_output(check_prim_pir=True, check_pir=True)
+        else:
+            place = get_device_place()
+            self.check_output_with_place(
+                place=place,
+                check_prim_pir=True,
+                check_pir=True,
+            )
+
+    def test_check_grad(self):
+        if self.dtype != 'float16':
+            self.check_grad(
+                ['X'],
+                ['Out'],
+                check_prim_pir=True,
+                check_pir=True,
+            )
+        else:
+            place = get_device_place()
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                ['Out'],
+                numeric_grad_delta=0.5,
+                check_prim_pir=True,
+                check_pir=True,
+            )
+
+
+class TestReduceMeanOp_ZeroDim(TestReduceMeanOp):
+    def init_shapes(self):
+        self.shape = []
+        self.enable_cinn = False
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
+class TestReduceMeanBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = 'reduce_mean'
+        self.python_api = reduce_mean_wrapper
+        self.public_python_api = reduce_mean_wrapper
+        self.prim_op_type = "comp"
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4, 5]
+        self.axis = [0]
+        self.keepdim = False
+        self.set_attrs()
+        self.if_enable_cinn()
+
+        np.random.seed(10)
+        x_np = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        if not hasattr(self, "reduce_all"):
+            self.reduce_all = (not self.axis) or len(self.axis) == len(x_np)
+
+        out_np = ref_reduce_mean(x_np, self.axis, self.keepdim, self.reduce_all)
+        self.inputs = {'X': convert_float_to_uint16(x_np)}
+        self.outputs = {'Out': convert_float_to_uint16(out_np)}
+        self.attrs = {
+            'dim': self.axis,
+            'keep_dim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def set_attrs(self):
+        pass
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_output_with_place(place, check_prim=True)
+
+    def test_check_grad(self):
+        place = get_device_place()
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            ['Out'],
+            numeric_grad_delta=0.05,
+            check_prim=True,
+            check_prim_pir=True,
+        )
+
+
+class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
+    def setUp(self):
+        self.op_type = 'reduce_mean'
+        self.python_api = reduce_mean_wrapper
+        self.public_python_api = reduce_mean_wrapper
+        self.prim_op_type = "comp"
+        self.dtype = 'float64'
+        self.shape = [2, 3, 4, 5]
+
+        x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out_np = np.mean(x_np, axis=0)
+        self.inputs = {'X': x_np}
+        self.outputs = {'Out': out_np}
+
+
+class TestReduceMeanOpDefaultAttrsForPrim(TestReduceMeanOpPrim):
+    def setUp(self):
+        self.op_type = 'reduce_mean'
+        self.python_api = reduce_mean_wrapper
+        self.public_python_api = reduce_mean_wrapper
+        self.init_prim_type()
+        self.dtype = 'float64'
+        self.shape = [2, 3, 4, 5]
+
+        x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out_np = np.mean(x_np, axis=0)
+        self.inputs = {'X': x_np}
+        self.outputs = {'Out': out_np}
+
+
+class TestReduceMeanOpFloat32(TestReduceMeanOp):
+    def set_attrs(self):
+        self.dtype = 'float32'
+
+
+class TestReduceMeanOpFloat32Prim(TestReduceMeanOpPrim):
+    def set_attrs(self):
+        self.dtype = 'float32'
+
+
+class TestReduceMeanOpFloat16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpFloat16Prim(TestReduceMeanOpPrim):
+    def set_attrs(self):
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpShape1D(TestReduceMeanOp):
+    def set_attrs(self):
+        self.shape = [100]
+
+
+class TestReduceMeanOpShape1DFP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.shape = [100]
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpShape6D(TestReduceMeanOp):
+    def set_attrs(self):
+        self.shape = [2, 3, 4, 5, 6, 7]
+
+
+class TestReduceMeanOpShape6DBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.shape = [2, 3, 4, 5, 6, 7]
+
+
+class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.shape = [2, 3, 4, 5, 6, 7]
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpAxisAll(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+
+
+class TestReduceMeanOpAxisAllPrim(TestReduceMeanOpPrim):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+
+
+class TestReduceMeanOpAxisAllFP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpAxisAllFP16Prim(TestReduceMeanOpPrim):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpAxisAllBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+
+
+class TestReduceMeanOpAxisTuple(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = (0, 1, 2)
+
+
+class TestReduceMeanOpAxisTupleFP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = (0, 1, 2)
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpAxisTupleBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = (0, 1, 2)
+
+
+class TestReduceMeanOpAxisNegative(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [-2, -1]
+
+
+class TestReduceMeanOpAxisNegativeFP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [-2, -1]
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpAxisNegativeFP16Prim(TestReduceMeanOpPrim):
+    def set_attrs(self):
+        self.axis = [-2, -1]
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpAxisNegativeBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = [-2, -1]
+
+
+class TestReduceMeanOpKeepdimTrue1(TestReduceMeanOp):
+    def set_attrs(self):
+        self.keepdim = True
+
+
+class TestReduceMeanOpKeepdimTrue1FP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.keepdim = True
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpKeepdimTrue1BF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.keepdim = True
+
+
+class TestReduceMeanOpKeepdimTrue2(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+        self.keepdim = True
+
+
+class TestReduceMeanOpKeepdimTrue2FP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+        self.keepdim = True
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpKeepdimTrue2BF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+        self.keepdim = True
+
+
+class TestReduceMeanOpReduceAllTrue(TestReduceMeanOp):
+    def set_attrs(self):
+        self.reduce_all = True
+
+
+class TestReduceMeanOpReduceAllTrueFP16(TestReduceMeanOp):
+    def set_attrs(self):
+        self.reduce_all = True
+        self.dtype = 'float16'
+
+
+class TestReduceMeanOpReduceAllTrueBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.reduce_all = True
 
 
 class TestMeanAPI(unittest.TestCase):
@@ -569,67 +956,19 @@ class TestMeanTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestMeanOp_ZeroSize1(OpTest):
-    def setUp(self):
-        self.op_type = "mean"
-        self.python_api = paddle.mean
-        self.dtype = np.float64
-        self.public_python_api = paddle.mean
-        self.init_prim_type()
+class TestMeanOp_ZeroSize1(TestMeanOp):
+    def init_shape(self):
         self.shape = [0]
-        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
-        self.outputs = {'Out': np.mean(self.inputs["X"])}
-
-    def init_prim_type(self):
-        self.prim_op_type = "comp"
-
-    def test_check_output(self):
-        self.check_output(check_pir=True, equal_nan=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
-class TestMeanOp_ZeroSize2(OpTest):
-    def setUp(self):
-        self.op_type = "mean"
-        self.python_api = paddle.mean
-        self.dtype = np.float64
-        self.public_python_api = paddle.mean
-        self.init_prim_type()
+class TestMeanOp_ZeroSize2(TestMeanOp):
+    def init_shape(self):
         self.shape = [0, 2]
-        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
-        self.outputs = {'Out': np.mean(self.inputs["X"])}
-
-    def init_prim_type(self):
-        self.prim_op_type = "comp"
-
-    def test_check_output(self):
-        self.check_output(check_pir=True, equal_nan=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
-class TestMeanOp_ZeroSize3(OpTest):
-    def setUp(self):
-        self.op_type = "mean"
-        self.python_api = paddle.mean
-        self.dtype = np.float64
-        self.public_python_api = paddle.mean
-        self.init_prim_type()
+class TestMeanOp_ZeroSize3(TestMeanOp):
+    def init_shape(self):
         self.shape = [1, 100, 0]
-        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
-        self.outputs = {'Out': np.mean(self.inputs["X"])}
-
-    def init_prim_type(self):
-        self.prim_op_type = "comp"
-
-    def test_check_output(self):
-        self.check_output(check_pir=True, equal_nan=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 if __name__ == "__main__":
