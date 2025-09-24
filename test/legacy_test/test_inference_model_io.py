@@ -48,6 +48,9 @@ class TestPdmodelCompatibility(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
+        # Ensure we're in static mode for testing
+        paddle.enable_static()
+        
         self.temp_dir = tempfile.TemporaryDirectory()
         self.place = core.CPUPlace()
         self.exe = executor.Executor(self.place)
@@ -57,11 +60,29 @@ class TestPdmodelCompatibility(unittest.TestCase):
         paddle.base.set_flags({'FLAGS_enable_pir_api': True})
 
     def tearDown(self):
-        """Clean up test environment."""
-        self.temp_dir.cleanup()
+        """Clean up test environment and free memory."""
+        # Ensure temporary directory is properly cleaned up
+        try:
+            if hasattr(self, 'temp_dir') and self.temp_dir is not None:
+                self.temp_dir.cleanup()
+        except Exception as e:
+            # Log warning but don't fail the test
+            import warnings
+            warnings.warn("Failed to cleanup temporary directory: {}".format(str(e)))
         
         # Restore original PIR setting
-        paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
+        if hasattr(self, 'original_pir_flag'):
+            paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
+        
+        # Explicit memory cleanup to prevent resource exhaustion
+        import gc
+        gc.collect()
+        
+        # Clear any cached paddle resources
+        try:
+            paddle.device.cuda.empty_cache() if paddle.device.is_compiled_with_cuda() else None
+        except Exception:
+            pass  # Ignore if CUDA not available
 
     def _create_simple_model(self, save_format='pdmodel'):
         """Create a simple linear model for testing.
@@ -87,13 +108,22 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     # Input tensor: [batch_size, 10]
                     x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
 
-                    # Build computation graph: y = x * w + b using fc layer
-                    # Use static APIs that are compatible with legacy mode
-                    y = paddle.static.nn.fc(x, size=1, 
-                                          weight_attr=paddle.ParamAttr(name='weight', 
-                                                                      initializer=paddle.nn.initializer.Normal(0.0, 1.0)),
-                                          bias_attr=paddle.ParamAttr(name='bias',
-                                                                    initializer=paddle.nn.initializer.Constant(0.0)))
+                    # Create weight and bias parameters manually for legacy mode compatibility
+                    w = paddle.create_parameter(
+                        shape=[10, 1],
+                        dtype='float32',
+                        name='weight',
+                        default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
+                    )
+                    b = paddle.create_parameter(
+                        shape=[1],
+                        dtype='float32', 
+                        name='bias',
+                        default_initializer=paddle.nn.initializer.Constant(0.0)
+                    )
+                    
+                    # Build computation graph: y = x * w + b using basic operations
+                    y = paddle.matmul(x, w) + b
 
                 # Initialize parameters
                 self.exe.run(startup_program)
@@ -103,53 +133,46 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     path_prefix=model_path,
                     feed_vars=[x],
                     fetch_vars=[y],
-                    executor=self.exe
+                    executor=self.exe,
+                    main_program=main_program
                 )
         else:  # PIR format (.json)
-            # Ensure PIR mode is enabled for model creation
-            old_pir_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")["FLAGS_enable_pir_api"]
-            try:
-                paddle.base.set_flags({'FLAGS_enable_pir_api': True})
-                
-                main_program = paddle.static.Program()
-                startup_program = paddle.static.Program()
+            # Create model in PIR mode using basic operations for consistency
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
-                with paddle.static.program_guard(main_program, startup_program):
-                    # Input tensor: [batch_size, 10]
-                    x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
+            with paddle.static.program_guard(main_program, startup_program):
+                # Input tensor: [batch_size, 10]
+                x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
 
-                    # Model parameters
-                    w = paddle.create_parameter(
-                        shape=[10, 1],
-                        dtype='float32',
-                        name='weight',
-                        default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
-                    )
-                    b = paddle.create_parameter(
-                        shape=[1],
-                        dtype='float32',
-                        name='bias',
-                        default_initializer=paddle.nn.initializer.Constant(0.0)
-                    )
-
-                    # Build computation graph: y = x @ w + b
-                    # Note: Use @ operator for PIR mode compatibility
-                    y = x @ w + b
-
-                # Initialize parameters
-                self.exe.run(startup_program)
-
-                # Save model in PIR .json format
-                paddle.static.save_inference_model(
-                    path_prefix=model_path,
-                    feed_vars=[x],
-                    fetch_vars=[y],
-                    executor=self.exe,
-                    program=main_program
+                # Create weight and bias parameters 
+                w = paddle.create_parameter(
+                    shape=[10, 1],
+                    dtype='float32',
+                    name='weight',
+                    default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
                 )
-            finally:
-                # Restore original PIR flag setting
-                paddle.base.set_flags({'FLAGS_enable_pir_api': old_pir_flag})
+                b = paddle.create_parameter(
+                    shape=[1],
+                    dtype='float32',
+                    name='bias',
+                    default_initializer=paddle.nn.initializer.Constant(0.0)
+                )
+                
+                # Build computation graph: y = x * w + b using basic operations
+                y = paddle.matmul(x, w) + b
+
+            # Initialize parameters
+            self.exe.run(startup_program)
+
+            # Save model in PIR .json format
+            paddle.static.save_inference_model(
+                path_prefix=model_path,
+                feed_vars=[x],
+                fetch_vars=[y],
+                executor=self.exe,
+                program=main_program
+            )
 
         return model_path
 
@@ -274,12 +297,12 @@ class TestPdmodelCompatibility(unittest.TestCase):
         )
         self.assertIsNotNone(program, "Should load successfully with fallback enabled")
         
-        # Test with fallback disabled
+        # Test with fallback disabled - use more robust environment handling
         import os
-        original_env = os.environ.get('PADDLE_DISABLE_PDMODEL_FALLBACK', None)
-        try:
-            os.environ['PADDLE_DISABLE_PDMODEL_FALLBACK'] = '1'
-            
+        from unittest import mock
+        
+        # Use mock to safely test environment variable behavior
+        with mock.patch.dict(os.environ, {'PADDLE_DISABLE_PDMODEL_FALLBACK': '1'}):
             with self.assertRaises(ValueError) as context:
                 load_inference_model(
                     path_prefix=model_path,
@@ -289,13 +312,6 @@ class TestPdmodelCompatibility(unittest.TestCase):
             error_msg = str(context.exception)
             self.assertIn("automatic fallback is disabled", error_msg)
             self.assertIn("PADDLE_DISABLE_PDMODEL_FALLBACK", error_msg)
-            
-        finally:
-            # Restore original environment
-            if original_env is None:
-                os.environ.pop('PADDLE_DISABLE_PDMODEL_FALLBACK', None)
-            else:
-                os.environ['PADDLE_DISABLE_PDMODEL_FALLBACK'] = original_env
 
     def test_corrupted_json_fallback(self):
         """Test fallback when JSON file is corrupted or invalid."""
@@ -313,10 +329,14 @@ class TestPdmodelCompatibility(unittest.TestCase):
             executor=self.exe
         )
         
-        # Verify successful loading via fallback
+        # Verify successful loading via fallback with more robust assertions
         self.assertIsNotNone(program, "Should load successfully via pdmodel fallback")
+        self.assertIsInstance(program, paddle.static.Program, "Should return a valid Program object")
         self.assertEqual(len(feed_names), 1, "Should have one feed variable")
         self.assertEqual(len(fetch_targets), 1, "Should have one fetch variable")
+        
+        # Verify the program is not empty (has operations)
+        self.assertGreater(len(program.global_block().ops), 0, "Program should contain operations")
         
         # Clean up the corrupted JSON file
         os.remove(json_path)
