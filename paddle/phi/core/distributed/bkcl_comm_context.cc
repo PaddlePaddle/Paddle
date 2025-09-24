@@ -77,8 +77,13 @@ void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                              size_,
                              phi::AllocationType::XPU);
 
-  if (compute_event_ && dev_ctx_->stream() != stream) {
-    dev_ctx_->StreamWaitEvent(compute_event_.get(), stream);
+  auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx_);
+  PADDLE_ENFORCE_NOT_NULL(
+      gpu_ctx,
+      phi::errors::InvalidArgument("StreamWaitEvent only supports GPU now."));
+
+  if (compute_event_ && gpu_ctx->stream() != stream) {
+    gpu_ctx->StreamWaitEvent(compute_event_.get(), stream);
   }
 
 #if defined(PADDLE_WITH_FLAGCX)
