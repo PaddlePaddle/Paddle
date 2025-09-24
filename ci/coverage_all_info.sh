@@ -75,13 +75,11 @@ function gen_full_report() {
     lcov --list coverage-full.info
     wc -l coverage-full.info
     pwd
-    c_coverage_percent=$(lcov --list coverage-full.info |grep Total |awk '{print $2}'|awk -F '|' '{print $2}')
-    c_coverage_lines=$(lcov --list coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $1}')
-    c_coverage_func=$(lcov --list coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $2}')
-    echo "Done full report for c++ coverage: ${c_coverage_percent} ${c_coverage_lines} ${c_coverage_func}"
+    c_coverage_percent=$(lcov --list coverage-full.info |grep Total |awk '{print $1}'|awk -F '|' '{print $2}')
+    c_coverage_lines=$(lcov --list coverage-full.info |grep Total |awk '{print $2}'|awk -F '|' '{print $1}')
+    echo "Done full report for c++ coverage: ${c_coverage_percent} ${c_coverage_lines}"
     echo "c_coverage_percent:${c_coverage_percent}" >>${PADDLE_ROOT}/night_coverage.txt
     echo "c_coverage_lines:${c_coverage_lines}" >>${PADDLE_ROOT}/night_coverage.txt
-    echo "c_coverage_func:${c_coverage_func}" >>${PADDLE_ROOT}/night_coverage.txt
 }
 
 function gen_full_report_xpu() {
@@ -162,13 +160,11 @@ function gen_python_full_report() {
     mv -f python-coverage-full.tmp python-coverage-full.info
     lcov --list python-coverage-full.info
     echo "Done full report for python coverage"
-    python_coverage_percent=$(lcov --list python-coverage-full.info |grep Total |awk '{print $2}'|awk -F '|' '{print $2}')
-    python_coverage_lines=$(lcov --list python-coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $1}')
-    python_coverage_func=$(lcov --list python-coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $2}')
-    echo "Done full report for c++ coverage: ${python_coverage_percent} ${python_coverage_lines} ${python_coverage_func}"
+    python_coverage_percent=$(lcov --list python-coverage-full.info |grep Total |awk '{print $1}'|awk -F '|' '{print $2}')
+    python_coverage_lines=$(lcov --list python-coverage-full.info |grep Total |awk '{print $2}'|awk -F '|' '{print $1}')
+    echo "Done full report for c++ coverage: ${python_coverage_percent} ${python_coverage_lines}"
     echo "python_coverage_percent:${python_coverage_percent}" >>${PADDLE_ROOT}/night_coverage.txt
     echo "python_coverage_lines:${python_coverage_lines}" >>${PADDLE_ROOT}/night_coverage.txt
-    echo "python_coverage_func:${python_coverage_func}" >>${PADDLE_ROOT}/night_coverage.txt
 }
 
 gen_python_full_report || true  # python-coverage-full.info
