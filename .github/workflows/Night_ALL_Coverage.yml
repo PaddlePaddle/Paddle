@@ -369,7 +369,6 @@ jobs:
           cp ${PADDLE_ROOT}/night_coverage.txt .
           python ${{ env.bos_file }} night_coverage.txt paddle-github-action/night/coverage/${coverage_time}
           echo "Uploading night_coverage.txt"
-          sleep 3d
           '
 
       - name: Terminate and delete the container
@@ -377,6 +376,6 @@ jobs:
         run: |
           set +e
           rm Paddle.tar.gz
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}

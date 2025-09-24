@@ -73,7 +73,7 @@ function gen_full_report() {
 
     mv -f coverage-full.tmp coverage-full.info
     lcov --list coverage-full.info
-    wc -l coverage-full.info 
+    wc -l coverage-full.info
     pwd
     c_coverage_percent=$(lcov --list coverage-full.info |grep Total |awk '{print $2}'|awk -F '|' '{print $2}')
     c_coverage_lines=$(lcov --list coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $1}')
@@ -133,6 +133,8 @@ else
     echo "::endgroup::"
 fi
 
+cp coverage-full.info coverage_files/
+
 # python coverage
 
 coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
@@ -170,4 +172,4 @@ function gen_python_full_report() {
 }
 
 gen_python_full_report || true  # python-coverage-full.info
-
+cp python-coverage-full.info coverage_files/
