@@ -4494,7 +4494,13 @@ struct CudaTanhGradFunctor : public BaseActivationFunctor<T> {
 
   // dx = dout * (1 - out^2)
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * (one - out * out);
+    if constexpr (std::is_same<T, phi::float16>::value) {
+      __half out_half = __float2half_rn(static_cast<float>(out));
+      __half tmp_half = __hmul(out_half, out_half);
+      return dout * (one - static_cast<T>(__half2float(tmp_half)));
+    } else {
+      return dout * (one - out * out);
+    }
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

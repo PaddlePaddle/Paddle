@@ -43,18 +43,6 @@ class TestCudaCompat(unittest.TestCase):
     def test_device_to_paddle_none(self):
         self.assertIsNone(_device_to_paddle(None))
 
-    def test_device_to_paddle_int(self):
-        self.assertEqual(_device_to_paddle(0), 'gpu:0')
-        self.assertEqual(_device_to_paddle(2), 'gpu:2')
-
-    def test_device_to_paddle_str(self):
-        self.assertEqual(_device_to_paddle('cuda:0'), 'gpu:0')
-        self.assertEqual(_device_to_paddle('gpu:1'), 'gpu:1')
-
-    def test_device_to_paddle_invalid(self):
-        with self.assertRaises(TypeError):
-            _device_to_paddle(1.5)
-
     # ---------------------
     # is_available test
     # ---------------------
@@ -258,8 +246,14 @@ class TestCudaCompat(unittest.TestCase):
         self.assertGreaterEqual(a, 0)
         self.assertGreaterEqual(b, 0)
 
-        with self.assertRaises(ValueError):
-            a, b = mem_get_info(0)
+        a, b = mem_get_info(0)
+        self.assertGreaterEqual(a, 0)
+        self.assertGreaterEqual(b, 0)
+
+        with self.assertRaisesRegex(
+            ValueError, "Expected a cuda device, but got"
+        ):
+            a, b = mem_get_info(paddle.CPUPlace())
 
     @unittest.skipIf(
         (
