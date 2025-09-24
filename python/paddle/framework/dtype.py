@@ -235,7 +235,7 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
-        dtype(paddle.dtype|string):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
+        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
 
     Returns:
         An iinfo object, which has the following 4 attributes:
@@ -285,8 +285,8 @@ def finfo(dtype: DTypeLike) -> core_finfo:
     For example, ``type=paddle.float32`` is equivalent to ``type=paddle.float32``.
 
     Args:
-        dtype(paddle.dtype|string):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
-            ``paddle.float8_e4m3fn``, ``paddle.float8_e5m2``, ``paddle.complex64`` and ``paddle.complex128``.
+        dtype(str|paddle.dtype|np.dtype):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
+            ``paddle.complex64``, and ``paddle.complex128``.
         type: An alias for ``dtype`` , with identical behavior.
 
     Returns:
