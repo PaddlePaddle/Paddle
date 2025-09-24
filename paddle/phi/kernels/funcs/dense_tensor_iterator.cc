@@ -137,13 +137,14 @@ std::vector<int64_t> DenseTensorIteratorBase::invert_perm(
 }
 
 void DenseTensorIteratorBase::allocate_or_resize_outputs() {
-  for (auto i = 0; i < num_outputs_; i++) {
+  for (size_t i = 0; i < num_outputs_; i++) {
     auto& op = operands_[i];
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-
-    bool reduce_pass = op.tensor().strides().size() == -1 ? false : true;
-
-    if (reduce_pass &&
+    bool reduce_pass = false;
+    if (is_reduction_ && !valid_stride && op.is_output) {
+      reduce_pass = true;
+    }
+    if (!reduce_pass &&
         (!op.tensor().initialized() || op.will_resize || !valid_stride)) {
       auto element_size = phi::SizeOf(op.tensor().dtype());
       op.stride_bytes = compatible_stride(static_cast<int64_t>(element_size));
@@ -319,7 +320,7 @@ bool DenseTensorIteratorBase::fast_set_up(
   }
   switch (setup_type) {
     case FastSetupType::CONTIGUOUS: {
-      for (auto i = 0; i < num_outputs_; i++) {
+      for (size_t i = 0; i < num_outputs_; i++) {
         set_output_raw_strided(i, shape_, {});
       }
       break;
@@ -342,6 +343,26 @@ bool DenseTensorIteratorBase::fast_set_up(
     }
   }
   return true;
+}
+
+int DenseTensorIteratorBase::num_reduce_dims() const {
+  int count = 0;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] == 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int64_t DenseTensorIteratorBase::num_output_elements() const {
+  int64_t elem = 1;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] != 0 || shape_[dim] == 0) {
+      elem *= shape_[dim];
+    }
+  }
+  return elem;
 }
 
 void DenseTensorIteratorBase::compute_shape(
@@ -376,6 +397,7 @@ void DenseTensorIteratorBase::compute_strides(
     const DenseTensorIteratorConfig& config) {
   for (auto& op : operands_) {
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
+    bool reduce_pass = false;
     bool out_pass = false;
 
     if (is_alloc_out_ && op.is_output) out_pass = true;
@@ -384,12 +406,23 @@ void DenseTensorIteratorBase::compute_strides(
         common::vectorize<int64_t>(op.tensor().dims());
     std::vector<int64_t> tmp_stride =
         common::vectorize<int64_t>(op.tensor().strides());
-    if (out_pass ||
+
+    if (is_reduction_ && !valid_stride && op.is_output) {
+      tmp_stride = std::vector<int64_t>(shape_.size(), 0);
+      tmp_shape = std::vector<int64_t>(shape_.size(), 1);
+      reduce_pass = true;
+    }
+
+    if (out_pass || reduce_pass ||
         op.tensor().initialized() && !op.will_resize && valid_stride) {
-      std::vector<int64_t> original_shape =
-          config.static_shape_ ? shape_
-                               : common::vectorize<int64_t>(op.tensor().dims());
-      auto original_stride = common::vectorize<int64_t>(op.tensor().strides());
+      std::vector<int64_t> original_shape;
+      original_shape = config.static_shape_
+                           ? shape_
+                           : common::vectorize<int64_t>(op.tensor().dims());
+      if (op.is_output && reduce_pass) original_shape = tmp_shape;
+      std::vector<int64_t> original_stride;
+      original_stride = common::vectorize<int64_t>(op.tensor().strides());
+      if (op.is_output && reduce_pass) original_stride = tmp_stride;
       auto element_size_in_bytes = phi::SizeOf(op.tensor().dtype());
       auto offset = ndim() - original_shape.size();
       if (offset > 0)
@@ -421,16 +454,20 @@ void DenseTensorIteratorBase::build(DenseTensorIteratorConfig& config) {
   }
 }
 
-DimCounter::DimCounter(std::vector<int64_t> shape, Range range)
-    : shape(shape), range(range), values(shape.size()), offset(range.begin) {
+DimIter::DimIter(std::vector<int64_t> shape, int64_t start, int64_t end)
+    : shape(shape),
+      start(start),
+      end(end),
+      values(shape.size()),
+      offset(start) {
   std::fill(values.begin(), values.end(), 0);
-  if (range.begin == 0) {
+  if (start == 0) {
     return;
   }
 
-  int64_t linear_offset = range.begin;
+  int64_t linear_offset = start;
   auto ndim = values.size();
-  for (int dim = 0; dim < ndim; dim++) {
+  for (size_t dim = 0; dim < ndim; dim++) {
     int64_t size = shape[dim];
     if (size > 0) {
       values[dim] = linear_offset % size;
@@ -439,9 +476,9 @@ DimCounter::DimCounter(std::vector<int64_t> shape, Range range)
   }
 }
 
-bool DimCounter::is_done() const { return offset >= range.end; }
+bool DimIter::iter_to_end() const { return offset >= end; }
 
-void DimCounter::increment(const std::array<int64_t, 2>& step) {
+void DimIter::iter_to_next(const std::array<int64_t, 2>& step) {
   offset += step[0] * step[1];
   auto ndim = values.size();
   int64_t overflow = step[0];
@@ -464,11 +501,11 @@ void DimCounter::increment(const std::array<int64_t, 2>& step) {
   }
 }
 
-std::array<int64_t, 2> DimCounter::max_2d_step() const {
-  int64_t step0 = std::min(shape[0] - values[0], range.end - offset);
+std::array<int64_t, 2> DimIter::iter_for_step() const {
+  int64_t step0 = std::min(shape[0] - values[0], end - offset);
   int64_t step1 = 1;
   if (step0 == shape[0] && !shape.empty()) {
-    step1 = std::min(shape[1] - values[1], (range.end - offset) / shape[0]);
+    step1 = std::min(shape[1] - values[1], (end - offset) / shape[0]);
   }
   return {step0, step1};
 }

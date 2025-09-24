@@ -18,59 +18,9 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/small_vector.h"
 
 namespace phi {
-
-template <typename T, size_t N>
-class SmallBuffer {
-  static_assert(std::is_trivial_v<T>, "SmallBuffer is intended for POD types");
-
-  std::array<T, N> storage_;
-  size_t size_{};
-  T* data_{};
-
- public:
-  explicit SmallBuffer(size_t size) : size_(size) {
-    if (size > N) {
-      data_ = new T[size];
-    } else {
-      data_ = &storage_[0];
-    }
-  }
-
-  SmallBuffer(const SmallBuffer&) = delete;
-  SmallBuffer& operator=(const SmallBuffer&) = delete;
-
-  // move constructor is needed in function return
-  SmallBuffer(SmallBuffer&& rhs) noexcept : size_{rhs.size_} {
-    rhs.size_ = 0;
-    if (size_ > N) {
-      data_ = rhs.data_;
-      rhs.data_ = nullptr;
-    } else {
-      storage_ = std::move(rhs.storage_);
-      data_ = &storage_[0];
-    }
-  }
-
-  SmallBuffer& operator=(SmallBuffer&&) = delete;
-
-  ~SmallBuffer() {
-    if (size_ > N) {
-      delete[] data_;
-    }
-  }
-  T& operator[](size_t idx) { return data()[idx]; }
-  const T& operator[](size_t idx) const { return data()[idx]; }
-  T* data() { return data_; }
-  const T* data() const { return data_; }
-  size_t size() const { return size_; }
-  T* begin() { return data_; }
-  const T* begin() const { return data_; }
-  T* end() { return data_ + size_; }
-  const T* end() const { return data_ + size_; }
-};
-
 struct DenseTensorIteratorConfig;
 struct DenseTensorIterator;
 
@@ -123,10 +73,15 @@ struct DenseTensorIteratorBase {
   int64_t numel() const;
   int ntensors() const { return static_cast<int>(operands_.size()); }
   bool is_contiguous() const;
+  int64_t num_output_elements() const;
+  int noutputs() const { return num_outputs_; }
+  int num_reduce_dims() const;
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
   const void* data_ptr(int64_t arg) const;
+  bool should_accumulate() const { return accumulate_; }
+  bool is_final_output() const { return final_output_; }
 
  protected:
   void populate_operands(DenseTensorIteratorConfig&);
@@ -143,7 +98,7 @@ struct DenseTensorIteratorBase {
   std::vector<int64_t> shape_;
   std::vector<int64_t> perm_;
   bool has_coalesced_dimensions_ = false;
-  int num_outputs_ = 0;
+  size_t num_outputs_ = 0;
   bool all_ops_same_shape_ = false;
   bool all_ops_are_scalars_ = false;
 
@@ -156,6 +111,8 @@ struct DenseTensorIteratorBase {
                                       std::vector<int64_t> strides);
   bool is_reduction_ = false;
   bool is_alloc_out_ = false;
+  bool accumulate_ = false;
+  bool final_output_ = true;
 };
 
 /**
@@ -239,55 +196,26 @@ struct DenseTensorIteratorConfig final {
  private:
   std::vector<const DenseTensor*> tensors_;
   std::vector<size_t> const_tensor_indices_;
-  int num_outputs_ = 0;
-  int num_inputs_ = 0;
+  size_t num_outputs_ = 0;
+  size_t num_inputs_ = 0;
 
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
   bool is_reduction_ = false;
-  bool resize_outputs_ = true;
+  bool resize_outputs_ = false;
 };
 
-struct Range {
-  Range(int64_t begin, int64_t end) : begin(begin), end(end) {}
+struct DimIter {
+  DimIter(std::vector<int64_t> shape, int64_t start, int64_t end);
 
-  int64_t size() const { return end - begin; }
-
-  Range operator/(int64_t divisor) {
-    return Range(begin / divisor, end / divisor);
-  }
-
-  int64_t begin;
-  int64_t end;
-};
-
-std::ostream& operator<<(std::ostream& out, const Range& range);
-
-struct DimCounter {
-  DimCounter(std::vector<int64_t> shape, Range range);
-
-  void increment(const std::array<int64_t, 2>& step);
-  bool is_done() const;
-  std::array<int64_t, 2> max_2d_step() const;
+  void iter_to_next(const std::array<int64_t, 2>& step);
+  bool iter_to_end() const;
+  std::array<int64_t, 2> iter_for_step() const;
 
   std::vector<int64_t> shape;
-  Range range;
-  SmallBuffer<int64_t, 4> values;
+  int64_t start;
+  int64_t end;
+  paddle::small_vector<int64_t, 4> values;
   int64_t offset;
 };
-
-inline void get_data_ptrs(char** ptrs,
-                          std::vector<char*> base,
-                          std::vector<int64_t> strides,
-                          std::vector<int64_t> counter) {
-  const auto ntensors = base.size();
-  const auto ndim = counter.size();
-  std::copy(base.begin(), base.end(), ptrs);
-  for (size_t dim = 0; dim < ndim; dim++) {
-    int64_t value = counter[dim];
-    for (size_t arg = 0; arg < ntensors; arg++) {
-      ptrs[arg] += value * strides[dim * ntensors + arg];
-    }
-  }
-}
 
 }  // namespace phi
