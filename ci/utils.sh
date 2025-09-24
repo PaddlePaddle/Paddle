@@ -1068,7 +1068,6 @@ set -ex
 }
 
 function check_coverage() {
-    echo "1111, $WITH_ALL_COVERAGE"
     if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
       if [ ${WITH_ALL_COVERAGE:-OFF} == "ON" ];then
           echo "Run all info coverage "

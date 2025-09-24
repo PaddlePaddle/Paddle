@@ -332,17 +332,17 @@ jobs:
       - name: Generate coverage information
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          set -x
           source ~/.bashrc
-          commit_info=$(git log --format=fuller |head -1|awk "{print $2}")
+          commit_info=$(git log --format=fuller |head -1|awk "{print \$2}")
           touch ${PADDLE_ROOT}/night_coverage.txt
           echo "commit:${commit_info}" >>${PADDLE_ROOT}/night_coverage.txt
           unset GREP_OPTIONS
+          export WITH_ALL_COVERAGE=ON
           source ${{ github.workspace }}/../../../proxy
-          source ${ci_scripts}/utils.sh; export WITH_ALL_COVERAGE=ON &&  check_coverage
+          source ${ci_scripts}/utils.sh; check_coverage
           coverage_tag=$(date +"%m-%d")
-          mkdir -p /home/data/cfs/coverage/${coverage_tag}
-          cp build/coverage_files/* /home/data/cfs/coverage/${coverage_tag}
+          mkdir -p ${CFS_DIR}/coverage_night/${coverage_tag}
+          cp build/coverage_files/* ${CFS_DIR}/coverage_night/${coverage_tag}
           '
 
       - name: Upload coverage product
@@ -369,8 +369,8 @@ jobs:
           cp ${PADDLE_ROOT}/night_coverage.txt .
           python ${{ env.bos_file }} night_coverage.txt paddle-github-action/night/coverage/${coverage_time}
           echo "Uploading night_coverage.txt"
+          sleep 3d
           '
-
 
       - name: Terminate and delete the container
         if: always()

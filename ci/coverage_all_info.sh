@@ -73,9 +73,11 @@ function gen_full_report() {
 
     mv -f coverage-full.tmp coverage-full.info
     lcov --list coverage-full.info
-    c_coverage_percent=$(grep Total coverage-full.info |awk '{print $2}'|awk -F '|' '{print $2}')
-    c_coverage_lines=$(grep Total coverage-full.info |awk '{print $3}'|awk -F '|' '{print $1}')
-    c_coverage_func=$(grep Total coverage-full.info |awk '{print $3}'|awk -F '|' '{print $2}')
+    wc -l coverage-full.info 
+    pwd
+    c_coverage_percent=$(lcov --list coverage-full.info |grep Total |awk '{print $2}'|awk -F '|' '{print $2}')
+    c_coverage_lines=$(lcov --list coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $1}')
+    c_coverage_func=$(lcov --list coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $2}')
     echo "Done full report for c++ coverage: ${c_coverage_percent} ${c_coverage_lines} ${c_coverage_func}"
     echo "c_coverage_percent:${c_coverage_percent}" >>${PADDLE_ROOT}/night_coverage.txt
     echo "c_coverage_lines:${c_coverage_lines}" >>${PADDLE_ROOT}/night_coverage.txt
@@ -131,25 +133,6 @@ else
     echo "::endgroup::"
 fi
 
-# mkdir coverage
-
-if [ "${PR_ID}" != "" ]; then
-
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${PR_ID}`"
-
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${PR_ID} > git-diff.out
-fi
-
-lcov --extract coverage-full.info \
-    ${COVERAGE_DIFF_PATTERN} \
-    -o coverage-diff.info \
-    --rc lcov_branch_coverage=0
-
-
-mv -f coverage-diff.tmp coverage-diff.info
-
-cp coverage-diff.info coverage_files
-
 # python coverage
 
 coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
@@ -177,9 +160,9 @@ function gen_python_full_report() {
     mv -f python-coverage-full.tmp python-coverage-full.info
     lcov --list python-coverage-full.info
     echo "Done full report for python coverage"
-    python_coverage_percent=$(grep Total python-coverage-full.infoo |awk '{print $2}'|awk -F '|' '{print $2}')
-    python_coverage_lines=$(grep Total python-coverage-full.info |awk '{print $3}'|awk -F '|' '{print $1}')
-    python_coverage_func=$(grep Total python-coverage-full.info |awk '{print $3}'|awk -F '|' '{print $2}')
+    python_coverage_percent=$(lcov --list python-coverage-full.info |grep Total |awk '{print $2}'|awk -F '|' '{print $2}')
+    python_coverage_lines=$(lcov --list python-coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $1}')
+    python_coverage_func=$(lcov --list python-coverage-full.info |grep Total |awk '{print $3}'|awk -F '|' '{print $2}')
     echo "Done full report for c++ coverage: ${python_coverage_percent} ${python_coverage_lines} ${python_coverage_func}"
     echo "python_coverage_percent:${python_coverage_percent}" >>${PADDLE_ROOT}/night_coverage.txt
     echo "python_coverage_lines:${python_coverage_lines}" >>${PADDLE_ROOT}/night_coverage.txt
@@ -188,20 +171,3 @@ function gen_python_full_report() {
 
 gen_python_full_report || true  # python-coverage-full.info
 
-
-if [ "${GIT_PR_ID}" != "" ]; then
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${GIT_PR_ID}`"
-
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
-fi
-
-lcov --extract python-coverage-full.info \
-    ${COVERAGE_DIFF_PATTERN} \
-    -o python-coverage-diff.info \
-    --rc lcov_branch_coverage=0
-
-python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
-
-mv -f python-coverage-diff.tmp python-coverage-diff.info
-
-cp python-coverage-diff.info coverage_files
