@@ -72,12 +72,14 @@ if core.is_compiled_with_cuda():
         device_count,
         empty_cache,
         get_device_properties as _get_device_properties,
+        get_rng_state,
         max_memory_allocated,
         max_memory_reserved,
         memory_allocated,
         memory_reserved,
         reset_max_memory_allocated,
         reset_max_memory_reserved,
+        set_rng_state,
     )
 elif core.is_compiled_with_xpu():
     from .xpu import (
@@ -85,12 +87,14 @@ elif core.is_compiled_with_xpu():
         create_stream as _create_stream_base,
         device_count,
         empty_cache,
+        get_rng_state,
         max_memory_allocated,
         max_memory_reserved,
         memory_allocated,
         memory_reserved,
         reset_max_memory_allocated,
         reset_max_memory_reserved,
+        set_rng_state,
     )
 else:
     if hasattr(core, 'get_all_custom_device_type'):
@@ -104,15 +108,23 @@ else:
             device_count,
             empty_cache,
             get_device_properties as _get_device_properties,
+            get_rng_state,
             max_memory_allocated,
             max_memory_reserved,
             memory_allocated,
             memory_reserved,
             reset_max_memory_allocated,
             reset_max_memory_reserved,
+            set_rng_state,
         )
     else:
         current_device_is_cpu = 1
+        from .cpu_device import (
+            device_count,
+            get_rng_state,
+            set_rng_state,
+        )
+
 
 __all__ = [
     'get_cudnn_version',
@@ -147,6 +159,12 @@ __all__ = [
     'reset_max_memory_reserved',
     'memory_allocated',
     'memory_reserved',
+    'is_available',
+    'is_current_stream_capturing',
+    'get_device_name',
+    'get_device_capability',
+    'get_rng_state',
+    'set_rng_state',
 ]
 
 _cudnn_version = None
@@ -246,6 +264,54 @@ def XPUPlace(dev_id: int) -> _XPUPlace:
     return core.XPUPlace(dev_id)
 
 
+def is_available() -> bool:
+    """
+    Check whether **any supported device** is available in the current environment.
+
+    This function checks whether Paddle is built with support for at least one
+    type of accelerator (e.g., CUDA, XPU, CustomDevice) and whether there is
+    at least one device of that type available.
+
+    If any supported device is available, this function returns True. Otherwise,
+    it returns False.
+
+    Returns:
+        bool: True if there is at least one available device (GPU/XPU/CustomDevice),
+        False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> if paddle.device.is_available():
+            ...     print("At least one device is available")
+            ... else:
+            ...     print("No supported devices available")
+    """
+    return device_count() >= 1
+
+
+def is_current_stream_capturing() -> bool:
+    """
+    Check whether the current stream is in CUDA graph capturing state.
+
+    Returns:
+        bool: True if the current stream is capturing, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> if paddle.device.is_available():
+            ...     graph = paddle.device.cuda.graphs.CUDAGraph()
+            ...     graph.capture_begin()
+            ...     print(paddle.device.is_current_stream_capturing())  # True
+            ...     graph.capture_end()
+    """
+    return core.is_cuda_graph_capturing()
+
+
 def get_cudnn_version() -> int | None:
     """
 
@@ -277,6 +343,15 @@ def get_cudnn_version() -> int | None:
             return cudnn_version
     else:
         return _cudnn_version
+
+
+def device_to_place(device: Place | int | str | None = None) -> Place:
+    """
+    Convert input device(Place | int | str | None) into corresponding Place object.
+    """
+    device = _device_to_paddle(device)
+    device = _convert_to_place(device)
+    return device
 
 
 def _convert_to_place(device: PlaceLike) -> Place:
@@ -575,6 +650,7 @@ def get_device_properties(
             >>> # paddle.device.get_device_properties('npu')
             >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
     """
+    device = _device_to_paddle(device)
     return _get_device_properties(device)
 
 
@@ -599,10 +675,10 @@ def get_device_module(device: _CustomPlaceLike = None):
 
     Example:
         .. code-block:: python
-        >>> get_device_module("gpu:0")
+        >>> paddle.get_device_module("gpu:0")
         <module 'paddle.cuda' ...>
 
-        >>> # get_device_module(paddle.XPUPlace(0))
+        >>> # paddle.get_device_module(paddle.XPUPlace(0))
         >>> # <module 'paddle.device.xpu' ...>
     """
     device = _device_to_paddle(device)
@@ -648,6 +724,61 @@ def get_device_module(device: _CustomPlaceLike = None):
     for place_type, module in place_to_module.items():
         if isinstance(place, place_type):
             return module
+
+
+def get_device_name(
+    device: _CustomPlaceLike | None = None,
+) -> str:
+    """
+
+    Return the properties of given device.
+
+    Args:
+        device(|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like npu:x' which to get the properties of the
+            device from. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        str: The name of the CUDA device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+            >>> name = paddle.device.get_device_name()
+            >>> print(name)
+    """
+    return get_device_properties(device).name
+
+
+def get_device_capability(
+    device: _CustomPlaceLike | None = None,
+) -> tuple[int, int]:
+    """
+
+    Return the device_capability of given device.
+
+    Args:
+        device(|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like npu:x' which to get the properties of the
+            device from. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+        str: The device_capability of given device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # import paddle
+            >>> # cap = paddle.device.get_device_capability()
+            >>> # print(cap)
+    """
+    prop = get_device_properties(device)
+    return prop.major, prop.minor
 
 
 def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
@@ -1147,6 +1278,8 @@ def _device_to_paddle(
             if "cuda:" in cleaned_device
             else cleaned_device
         )
+    elif dev is None:
+        return get_device()
     else:
         return dev
 
