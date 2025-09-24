@@ -47,7 +47,7 @@ class TestGetDeviceModule(unittest.TestCase):
             get_device_module("unknown_device")
 
     def test_place_devices(self):
-        if paddle.cuda.is_available():
+        if paddle.cuda.is_available() and paddle.device.is_compiled_with_cuda():
             self.assertIs(get_device_module(paddle.CUDAPlace(0)), paddle.cuda)
 
     def test_none_device(self):
