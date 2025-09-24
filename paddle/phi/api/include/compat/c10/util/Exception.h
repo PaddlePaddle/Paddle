@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <variant>
 #include <vector>
