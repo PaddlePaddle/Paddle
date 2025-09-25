@@ -151,7 +151,7 @@ class ValueDict:
         *,
         default_factory=None,
     ):
-        self._items: dict[ValueWrapper] = {}
+        self._items: dict[ValueWrapper, Any] = {}
         self._default_factory = default_factory
         if iter is not None:
             for key, val in iter.items():

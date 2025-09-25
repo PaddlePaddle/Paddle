@@ -130,7 +130,7 @@ class InfoBase(ABC):
     def summary(cls, history: list[Self]) -> str: ...
 
     @classmethod
-    def serialize(cls, obj: dict[str:Any]) -> str:
+    def serialize(cls, obj: dict[str, Any]) -> str:
         json_data = json.dumps(obj)
         b64_bytes = base64.b64encode(json_data.encode(ENCODING))
 

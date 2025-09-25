@@ -181,7 +181,7 @@ def split_args_kwargs_into_chunks(
     args_chunk_spec: (
         tuple[
             tuple[TensorChunkSpec, ...]
-            | list[TensorChunkSpec, ...]
+            | list[TensorChunkSpec]
             | TensorChunkSpec,
             ...,
         ]
@@ -191,7 +191,7 @@ def split_args_kwargs_into_chunks(
         dict[
             str,
             tuple[TensorChunkSpec, ...]
-            | list[TensorChunkSpec, ...]
+            | list[TensorChunkSpec]
             | TensorChunkSpec,
         ]
         | None

@@ -190,7 +190,7 @@ class PrepareContextParallel(PlanBase):
                 new_args = tuple(all_args)
                 return new_args
             elif isinstance(args, paddle.Tensor):
-                reshard_input = shard_seq_load_balance(input_tensor, 1)
+                reshard_input = shard_seq_load_balance(args, 1)
                 return reshard_input
             else:
                 raise ValueError(

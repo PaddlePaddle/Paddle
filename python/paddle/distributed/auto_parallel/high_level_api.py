@@ -179,13 +179,13 @@ def reshard_all_inputs(layer, inputs):
                     new_inputs.append(input)
             return tuple(new_inputs)
         else:
-            if input.is_dist():
+            if inputs.is_dist():
                 new_input = dist.reshard(
-                    input, current_mesh, [dist.Shard(0), dist.Replicate()]
+                    inputs, current_mesh, [dist.Shard(0), dist.Replicate()]
                 )
             else:
                 new_input = dist.shard_tensor(
-                    input, current_mesh, [dist.Shard(0), dist.Replicate()]
+                    inputs, current_mesh, [dist.Shard(0), dist.Replicate()]
                 )
             return new_input
 
