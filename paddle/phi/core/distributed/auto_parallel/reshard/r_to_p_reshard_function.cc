@@ -57,7 +57,7 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   int64_t local_rank = GetCurRankCoordInMesh(out_process_mesh)[0];
   const auto& in_reduce_type = out_dist_attr.partial_status().at(0);
-  //
+
   if (local_rank != 0) {
     if (in_reduce_type == ReduceType::kRedAvg) {
       // assign the input value to output
