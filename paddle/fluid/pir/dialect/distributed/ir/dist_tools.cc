@@ -197,7 +197,7 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
           return true;
         }
       }
-      return false;
+      continue;
     }
   }
   return false;
