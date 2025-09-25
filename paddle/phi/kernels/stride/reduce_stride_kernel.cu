@@ -219,7 +219,7 @@ void ProdStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  T ident = static_cast<T>(1);
+  T ident = T(1);
   ReduceStrideImpl<T, Context, kps::MulFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   return;
@@ -267,7 +267,7 @@ void AllStrideKernel(const Context& dev_ctx,
 
   auto out_dtype = phi::DataType::BOOL;
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
-    auto tmp_tensor = phi::Cast<T>(dev_ctx, x_, out_dtype);
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
         phi::DataType::INT64,
@@ -276,12 +276,12 @@ void AllStrideKernel(const Context& dev_ctx,
         out_dtype,
         "ReduceStrideImpl",
         ([&] {
-          data_t ident = static_cast<data_t>(1);
+          data_t ident = data_t(1);
           ReduceStrideImpl<data_t, Context, kps::LogicalAndFunctor>(
               dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
         }));
   } else {
-    T ident = 1;
+    T ident = T(1);
     ReduceStrideImpl<T, Context, kps::LogicalAndFunctor>(
         dev_ctx, x_, dims, keep_dim, ident, out);
   }

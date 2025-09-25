@@ -56,7 +56,7 @@ class TestReduceOp_Stride(unittest.TestCase):
         else:
             raise TypeError(f"Unsupported test type {self.strided_input_type}.")
         res = self.python_api(x_trans_tmp)
-        res = res.numpy()
+        res = res.cpu().numpy()
         np.testing.assert_allclose(res, self.out, rtol=1e-05)
 
 

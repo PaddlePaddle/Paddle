@@ -80,18 +80,16 @@ struct ReduceStrideConfig {
   bool vectorize_input = false;
   int output_vec_size = 1;
 
-  int warp_size = 32;
-
-  int MAX_THREADS = 512;
-
   template <typename T>
   void set_block_dimension(int64_t dim0, int64_t dim1) {
-    const int max_num_threads = MAX_THREADS / output_vec_size;
+    const int max_num_threads =
+        kps::details::kReduceMaxThread / output_vec_size;
     int dim0_pow2 = dim0 < max_num_threads ? static_cast<int>(LastPow2(dim0))
                                            : max_num_threads;
     int dim1_pow2 = dim1 < max_num_threads ? static_cast<int>(LastPow2(dim1))
                                            : max_num_threads;
-    block_width = std::min(dim0_pow2, static_cast<int>(warp_size));
+    block_width =
+        std::min(dim0_pow2, static_cast<int>(kps::details::kWarpSize));
     block_height =
         std::min(dim1_pow2, static_cast<int>(max_num_threads / block_width));
     block_width =
@@ -173,7 +171,7 @@ struct ReduceStrideConfig {
 
   int shared_memory_size() const {
     if (!should_block_y_reduce() &&
-        (!should_block_x_reduce() || block_width <= warp_size)) {
+        (!should_block_x_reduce() || block_width <= kps::details::kWarpSize)) {
       return 0;
     }
     return element_size_bytes * num_threads * output_vec_size;
@@ -296,13 +294,8 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
     dim1 = 1;
   }
   if (fastest_moving_stride == sizeof(scalar_t)) {
-#if defined(__HIPCC__)
-    if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
-        iter.num_reduce_dims() == 1) {
-#else
     if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
         iter.num_reduce_dims() == 1 && VT0 >= INPUT_VEC_SIZE) {
-#endif
       config.vectorize_input = true;
       dim0 /= INPUT_VEC_SIZE;
     } else if (!reduction_on_fastest_striding_dimension) {
@@ -331,12 +324,6 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
       std::min<int>(block_height * 16, max_values_per_thread);
   bool split_across_warps = config.values_per_thread() >= warp_split_threshold;
   const int num_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-#if defined(__HIPCC__)
-  bool force_splitting_output =
-      iter.ndim() == 2 && reduction_on_fastest_striding_dimension &&
-      config.values_per_thread() < 1024 && num_mp < 100;
-  split_across_warps = !force_splitting_output && split_across_warps;
-#endif
   if (split_across_warps) {
     config.input_mult[1] = config.split_input(block_height);
   } else {
@@ -345,11 +332,6 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
 
   int max_threads_per_mp =
       phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
-
-#if defined(__HIPCC__)
-  if (iter.ndim() == 1 || iter.ndim() == 3) max_threads_per_mp = 512;
-  if (iter.ndim() == 2) max_threads_per_mp = 256;
-#endif
 
   const int blocks_per_sm = max_threads_per_mp / config.num_threads;
   const int target_grid_size = num_mp * blocks_per_sm;
@@ -364,25 +346,6 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
         DivUp(config.values_per_thread(), max_values_per_thread);
     config.ctas_per_output = std::max(
         std::min<int>(ctas_per_output1, ctas_per_output2), ctas_per_output3);
-
-#ifdef defined(__HIPCC__)
-    if (config.ctas_per_output > num_mp) {
-      if (num_mp < 128) {
-        config.ctas_per_output =
-            num_mp * (config.ctas_per_output > 512 ? 4 : 2);
-      } else {
-        config.ctas_per_output = num_mp;
-      }
-    } else if (config.ctas_per_output > DivUp(num_mp, 2)) {
-      config.ctas_per_output = DivUp(num_mp, 2);
-    } else if (config.ctas_per_output < 16) {
-      config.ctas_per_output = 1;
-    }
-    if (iter.ndim() == 3 && !reduction_on_fastest_striding_dimension) {
-      config.ctas_per_output = 4;
-    }
-#endif
-
     if (config.ctas_per_output > 1) {
       config.input_mult[2] = config.split_input(config.ctas_per_output);
     }
@@ -417,6 +380,18 @@ __device__ __forceinline__ void VecReadData(T* dst, const T* __restrict__ src) {
       }
     }
   }
+}
+
+template <typename T, typename ReduceOp>
+__device__ __forceinline__ T InterWarpReduce(T val, ReduceOp reducer) {
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+  // hack WarpSize = 32 to pass ROCM unittest
+  for (int stride = 32 / 2; stride > 0; stride >>= 1) {
+    T temp = phi::backends::gpu::CudaShuffleDownSync(mask, val, stride);
+    val = reducer(val, temp);
+  }
+  return val;
 }
 
 template <typename scalar_t,
@@ -702,10 +677,11 @@ struct ReduceStrideOp {
     using args_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
     int dim_x = blockDim.x;
     args_vec_t* shared = reinterpret_cast<args_vec_t*>(shared_memory);
-    if (dim_x > warpSize) {
+    if (dim_x > kps::details::kWarpSize) {
       int address_base = threadIdx.x + threadIdx.y * blockDim.x;
       shared[address_base] = value;
-      for (int offset = dim_x / 2; offset >= warpSize; offset >>= 1) {
+      for (int offset = dim_x / 2; offset >= kps::details::kWarpSize;
+           offset >>= 1) {
         __syncthreads();
         if (threadIdx.x < offset && threadIdx.x + offset < blockDim.x) {
           args_vec_t other = shared[address_base + offset];
@@ -721,12 +697,11 @@ struct ReduceStrideOp {
           shared[address_base] = value;
         }
       }
-      dim_x = warpSize;
+      dim_x = kps::details::kWarpSize;
     }
 
     __syncthreads();
-
-    value[0] = kps::details::WarpReduce<arg_t, ops_t>(value[0], ops);
+    value[0] = InterWarpReduce<arg_t, ops_t>(value[0], ops);
 
     return value;
   }
@@ -1011,9 +986,9 @@ void ReduceStrideImpl(const Context& dev_ctx,
   reduce.accumulate = iter.should_accumulate();
   reduce.final_output = iter.is_final_output();
 
-  constexpr int MAX_THREAD = 512;
+  constexpr int MaxThread = kps::details::kReduceMaxThread;
 
-  launch_reduce_kernel<Context, MAX_THREAD>(dev_ctx, reduce_config, reduce);
+  launch_reduce_kernel<Context, MaxThread>(dev_ctx, reduce_config, reduce);
 }
 
 }  // namespace phi
