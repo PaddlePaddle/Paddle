@@ -217,6 +217,15 @@ strided_op_list = {
     "view_shape",
     "view_dtype",
     "matmul",
+    "amax",
+    "amin",
+    "max",
+    "min",
+    "prod",
+    "any",
+    "all",
+    "sum",
+    "mean",
 }
 
 strided_op_need_flags_check_list = {
@@ -235,6 +244,15 @@ strided_op_need_flags_check_list = {
     "view_shape_",
     "view_dtype_",
     "matmul_",
+    "amax_",
+    "amin_",
+    "max_",
+    "min_",
+    "prod_",
+    "any_",
+    "all_",
+    "sum_",
+    "mean_",
 }
 
 
