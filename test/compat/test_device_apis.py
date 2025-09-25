@@ -85,6 +85,9 @@ class TestDeviceAPIs(unittest.TestCase):
         props_str = paddle.device.get_device_properties('gpu:0')
         self.assertIsNotNone(props_str)
 
+        props_str = paddle.device.get_device_properties('cuda:0')
+        self.assertIsNotNone(props_str)
+
         # Test with integer input
         props_int = paddle.device.get_device_properties(0)
         self.assertIsNotNone(props_int)

@@ -564,9 +564,7 @@ def narrow(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1, 2, 3, 4],
-            ...                       [5, 6, 7, 8]], dtype='int64')
-
+            >>> x = paddle.to_tensor([[1, 2, 3, 4],[5, 6, 7, 8]], dtype='int64')
             >>> y1 = paddle.narrow(x, dim=1, start=1, length=2)
             >>> print(y1)
             Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -3529,8 +3527,7 @@ def unique_consecutive(
             Default is False.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
             Default is None.
-            alias: ``dim``.
-        dtype(np.dtype|str, optional): The data type `inverse` tensor: int32 or int64.
+        dtype(str|paddle.dtype|np.dtype, optional):The data type `inverse` tensor: int32 or int64.
             Default: int64.
         name(str|None, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default is None.
@@ -3794,7 +3791,7 @@ def unique(
         return_counts(bool, optional): If True, also return the counts for each unique element.
         axis(int, optional): The axis to apply unique. If None, the input will be flattened.
             Default: None.
-        dtype(np.dtype|str, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
+        dtype(str|paddle.dtype|np.dtype, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
             Default: int64.
         name(str|None, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default: None.

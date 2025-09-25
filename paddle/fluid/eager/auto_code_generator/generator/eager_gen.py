@@ -216,6 +216,7 @@ strided_op_list = {
     "unsqueeze",
     "view_shape",
     "view_dtype",
+    "matmul",
     "index_elementwise_get",
 }
 
@@ -234,6 +235,7 @@ strided_op_need_flags_check_list = {
     "unbind_",
     "view_shape_",
     "view_dtype_",
+    "matmul_",
 }
 
 
