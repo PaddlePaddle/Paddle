@@ -652,7 +652,7 @@ TEST(test_torch_library, TestIValueDouble) {
   torch::IValue ival = 3.14;
   ASSERT_TRUE(ival.is_double());
   ASSERT_TRUE(ival.to_repr().find("3.14") != std::string::npos);
-  ASSERT_EQ(ival.type_string(), "Float");
+  ASSERT_EQ(ival.type_string(), "Double");
 }
 
 TEST(test_torch_library, TestIValueString) {
