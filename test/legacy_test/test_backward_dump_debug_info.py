@@ -156,9 +156,10 @@ import paddle.nn.functional as F
 import paddle.nn as nn
 
 paddle.base.core.set_vlog_level({"backward":6, "*": 7})
-
-x = paddle.randn([3,3],dtype='float16')
-y = paddle.randn([3,3],dtype='float32')
+with paddle.base.framework.vlog_guard (6):
+    x = paddle.randn([3,3],dtype='float16')
+with paddle.base.framework.vlog_guard ({"api":6}):
+    y = paddle.randn([3,3],dtype='float32')
 z = paddle.randn([3,3],dtype='float64')
 w = paddle.randn([3,3],dtype='float64')
 x.stop_gradient = False
