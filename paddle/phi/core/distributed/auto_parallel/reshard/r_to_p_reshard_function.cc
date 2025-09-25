@@ -23,7 +23,7 @@
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-//
+
 namespace phi::distributed {
 
 bool RToPReshardFunction::IsSuitable(const DistTensor& in,
