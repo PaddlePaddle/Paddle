@@ -229,6 +229,16 @@ strided_op_list = {
     "heaviside",
     "fmax",
     "fmin",
+    # reduce
+    "amax",
+    "amin",
+    "max",
+    "min",
+    "prod",
+    "any",
+    "all",
+    "sum",
+    "mean",
     # logical
     "bitwise_and",
     "bitwise_or",
@@ -292,6 +302,8 @@ strided_op_list = {
     "round",
     "floor",
     "ceil"
+    # indexing
+    "index_put",
     # others
     "matmul",
 }
@@ -311,84 +323,6 @@ strided_op_need_flags_check_list = {
     "unbind_",
     "view_shape_",
     "view_dtype_",
-    # elementwise
-    "add_",
-    "subtract_",
-    "multiply_",
-    "divide_",
-    "copysign_",
-    "remainder_",
-    "maximum_",
-    "minimum_",
-    "floor_divide_",
-    "heaviside_",
-    "fmax_",
-    "fmin_",
-    # logical
-    "bitwise_and_",
-    "bitwise_or_",
-    "bitwise_xor_",
-    "bitwise_left_shift_",
-    "bitwise_right_shift_",
-    "bitwise_not_",
-    # compare
-    "less_than_",
-    "less_equal_",
-    "greater_than_",
-    "greater_equal_",
-    "equal_",
-    "not_equal_",
-    # bitwise
-    "bitwise_and_",
-    "bitwise_or_",
-    "bitwise_xor_",
-    "bitwise_left_shift_",
-    "bitwise_right_shift_",
-    "bitwise_not_",
-    # activation
-    "abs_",
-    "cos_",
-    "sin_",
-    "tan_",
-    "acos_",
-    "asin_",
-    "atan_",
-    "sinh_",
-    "cosh_",
-    "asinh_",
-    "acosh_",
-    "atanh_",
-    "tanh_",
-    "hardtanh_",
-    "leaky_relu_",
-    "mish_",
-    "silu_",
-    "softplus_",
-    "softsign_",
-    "sigmoid_",
-    "logsigmoid_",
-    "hard_shrink_",
-    "softshrink_",
-    "celu_",
-    "elu_",
-    "hardsigmoid_",
-    "selu_",
-    "hardwish_",
-    "reciprocal_",
-    "sqrt_",
-    "rsqrt_",
-    "square_",
-    "log_",
-    "log2_",
-    "log10_",
-    "log1p_",
-    "exp_",
-    "expm1_",
-    "round_",
-    "floor_",
-    "ceil_",
-    # others
-    "matmul_",
 }
 
 
@@ -805,6 +739,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(check_cuda_error);
 static std::string separator = "==========================";
 {}
@@ -1512,7 +1447,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             for name, (ttype, pos) in forward_inputs_position_map.items():
                 if name in need_pre_contiguous_set:
                     pre_contiguous_list.append(
-                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
+                        f"{indent}const auto& {name}_tmp = (!FLAGS_use_stride_compute_kernel && require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
                     )
                     self.inputs_call_list_tmp[pos] = (
                         self.inputs_call_list_tmp[pos] + '_tmp'
