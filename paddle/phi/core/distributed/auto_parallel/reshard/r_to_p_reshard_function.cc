@@ -73,7 +73,7 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
           phi::errors::InvalidArgument(
               "RToPReshardFunction only supports GPU now."));
       phi::Full<phi::GPUContext>(
-          gpu_ctx->stream(), in.dtype(), shape, 0, GetMutableTensor(out));
+          *gpu_ctx, shape, phi::Scalar(0), GetMutableTensor(out));
     }
   } else {
     // assign the input value to output
