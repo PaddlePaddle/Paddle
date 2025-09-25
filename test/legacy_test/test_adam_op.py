@@ -320,6 +320,8 @@ def adam_step(inputs, attributes, weight_decay=False):
     beta1 power accumulator and beta2 power accumulator
     '''
     if weight_decay and attributes.get("with_decay", False):
+        param = inputs['Param']
+        lr = inputs['LearningRate']
         decay = 1.0 - lr * attributes["coeff"]
         param = param * decay
     param = inputs['Param']
