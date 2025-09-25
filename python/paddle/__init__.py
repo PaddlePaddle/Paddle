@@ -731,6 +731,18 @@ from .utils.dlpack import (
 )
 
 
+def get_default_device() -> str:
+    """
+    Returns:
+        str: The default device for PaddlePaddle.
+    Example:
+        .. code-block:: python
+            import paddle
+            print(paddle.get_default_device())
+    """
+    return get_device().replace("gpu", "cuda")
+
+
 class _TensorMethodOrModule:
     def __init__(self):
         import paddle.tensor as tensor_module
@@ -959,7 +971,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
-get_default_device = get_device
+
 
 __all__ = [
     'block_diag',

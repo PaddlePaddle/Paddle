@@ -119,7 +119,7 @@ else:
         )
     else:
         current_device_is_cpu = 1
-        from .cpu_device import (
+        from .cpu import (
             device_count,
             get_rng_state,
             set_rng_state,
@@ -704,7 +704,7 @@ def get_device_module(device: _CustomPlaceLike = None):
         elif device in custom_device_types:
             return paddle.device.custom_device
         elif device == "cpu":
-            return paddle.device
+            return paddle.device.cpu
         else:
             raise RuntimeError(f"Unsupported device type: {device}")
 
