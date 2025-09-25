@@ -97,7 +97,6 @@ void RangeInferMeta(const Scalar& start,
     out->set_dims({-1});
   } else {
     auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
-      using ElementType = std::decay_t<decltype(start)>;
       PADDLE_ENFORCE_NE(step,
                         0,
                         ::common::errors::InvalidArgument(

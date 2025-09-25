@@ -24,7 +24,7 @@ from paddle.base import core
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestElementwiseAddBf16MklDNNOp(OpTest):
+class TestElementwiseAddBf16OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.use_onednn = True
@@ -86,8 +86,8 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
         )
 
 
-class TestElementwiseAddBroadCastingBf16MklDNNOp(
-    TestElementwiseAddBf16MklDNNOp
+class TestElementwiseAddBroadCastingBf16OneDNNOp(
+    TestElementwiseAddBf16OneDNNOp
 ):
     def generate_data(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(np.float32)

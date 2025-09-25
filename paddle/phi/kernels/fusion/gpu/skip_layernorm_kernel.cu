@@ -77,7 +77,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(skip_layernorm,
                    GPU,
                    ALL_LAYOUT,

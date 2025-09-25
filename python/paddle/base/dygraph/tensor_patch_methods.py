@@ -286,6 +286,7 @@ def monkey_patch_tensor():
         self: Tensor,
         grad_tensor: Tensor | None = None,
         retain_graph: bool = False,
+        *,
         dump_backward_graph_path: str | None = None,
     ) -> None:
         """

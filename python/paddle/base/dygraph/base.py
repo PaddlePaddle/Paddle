@@ -682,6 +682,7 @@ def grad(
     only_inputs: bool = True,
     allow_unused: bool = False,
     no_grad_vars: Tensor | Sequence[Tensor] | set[Tensor] | None = None,
+    *,
     dump_backward_graph_path: str | None = None,
 ) -> list[Tensor]:
     '''
