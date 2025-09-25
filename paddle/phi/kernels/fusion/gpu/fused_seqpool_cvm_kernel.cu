@@ -18,6 +18,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "Paddle/paddle/phi/kernels/fused_seqpool_cvm_kernel.h"
 
 namespace phi {
 namespace fusion {

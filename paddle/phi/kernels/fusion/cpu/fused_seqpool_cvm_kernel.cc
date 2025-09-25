@@ -17,6 +17,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "Paddle/paddle/phi/kernels/fused_seqpool_cvm_kernel.h"
 
 namespace phi {
 
