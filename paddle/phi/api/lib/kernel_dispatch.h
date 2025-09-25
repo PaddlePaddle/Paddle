@@ -189,17 +189,17 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
   void operator()(const std::vector<Tensor>& x) {
     if (!x.empty()) {
       for (auto& t : x) {
-        result = t.is_dist_tensor();
+        result = result || t.is_dist_tensor();
+        if (short_circuit()) break;
       }
     }
   }
 
   void operator()(const paddle::optional<std::vector<Tensor>>& x) {
-    if (x) {
-      if (!(x.get_ptr()->empty())) {
-        for (auto& t : *(x.get_ptr())) {
-          result = t.is_dist_tensor();
-        }
+    if (x && !x->empty()) {
+      for (auto& t : *(x.get_ptr())) {
+        result = result || t.is_dist_tensor();
+        if (short_circuit()) break;
       }
     }
   }

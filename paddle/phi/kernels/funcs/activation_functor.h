@@ -860,6 +860,27 @@ struct SoftplusFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct SoftplusFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  float beta;
+  float threshold;
+
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto x_beta = static_cast<ComplexType<T>>(beta) * x;
+    out.device(d) =
+        (x_beta > static_cast<ComplexType<T>>(threshold))
+            .select(x,
+                    (static_cast<ComplexType<T>>(1) + x_beta.exp()).log() /
+                        static_cast<ComplexType<T>>(beta));
+  }
+};
+
 // For numerical stability, using the following formula instead of
 // d(softplus(x))/dx = 1 / (1 + exp(-x))
 // d(softplus(x))/dx = 1 / (1 + exp(-beta * x)) when beta * x <= threshold(beta
@@ -3497,7 +3518,11 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(-dout * sin(x));
+    if constexpr (std::is_same<T, phi::float16>::value) {
+      return static_cast<T>(-arg_dout * static_cast<T>(sin(x)));
+    } else {
+      return static_cast<T>(-dout * sin(x));
+    }
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -3832,7 +3857,11 @@ struct CudaSinGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(dout * cos(x));
+    if constexpr (std::is_same<T, phi::float16>::value) {
+      return static_cast<T>(arg_dout * static_cast<T>(cos(x)));
+    } else {
+      return static_cast<T>(dout * cos(x));
+    }
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -4248,6 +4277,30 @@ struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaSoftplusFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  using MPType = typename phi::dtype::MPTypeTrait<ComplexType<T>>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float beta;
+  float threshold;
+
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+
+  // softplus(x) = beta * x > threshold ? x : log(1 + exp(beta * x)) / beta
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType b = static_cast<MPType>(beta);
+    MPType t = static_cast<MPType>(threshold);
+    MPType x_beta = x * static_cast<MPType>(beta);
+    return static_cast<ComplexType<T>>(x_beta > t ? x
+                                                  : log(one + exp(x_beta)) / b);
+  }
+};
+
+template <typename T>
 struct CudaSoftplusGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
@@ -4494,7 +4547,13 @@ struct CudaTanhGradFunctor : public BaseActivationFunctor<T> {
 
   // dx = dout * (1 - out^2)
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * (one - out * out);
+    if constexpr (std::is_same<T, phi::float16>::value) {
+      __half out_half = __float2half_rn(static_cast<float>(out));
+      __half tmp_half = __hmul(out_half, out_half);
+      return dout * (one - static_cast<T>(__half2float(tmp_half)));
+    } else {
+      return dout * (one - out * out);
+    }
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

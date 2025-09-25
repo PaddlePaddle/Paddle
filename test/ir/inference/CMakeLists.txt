@@ -26,9 +26,9 @@ file(
 string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_use_optimized_model_api")
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_mkldnn_conv_gelu_fuse_pass")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_onednn_conv_gelu_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-     "test_mkldnn_conv_transpose_bias_fuse_pass")
+     "test_onednn_conv_transpose_bias_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
      "test_onednn_batch_norm_act_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_onednn_conv_bn_fuse_pass")
@@ -279,7 +279,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT
                                                                       120)
       set_tests_properties(test_onednn_mish_op PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_conv3d_op PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_onednn_conv3d_op PROPERTIES TIMEOUT 300)
       set_tests_properties(test_onednn_prelu_op PROPERTIES TIMEOUT 300)
 
       set_tests_properties(test_onednn_matmul_transpose_reshape_fuse_pass
@@ -292,11 +292,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
                            PROPERTIES TIMEOUT 100)
-      set_tests_properties(test_mkldnn_conv_mish_fuse_pass PROPERTIES TIMEOUT
+      set_tests_properties(test_onednn_conv_mish_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
       set_tests_properties(test_onednn_fc_activation_fuse_pass
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass
+      set_tests_properties(test_onednn_conv_affine_channel_fuse_pass
                            PROPERTIES TIMEOUT 60)
     endif()
   endif()
@@ -307,13 +307,13 @@ if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
 elseif(WITH_ONEDNN)
 
   set(PIR_COVERAGE_MKLDNN_TESTS
-      test_mkldnn_conv_affine_channel_fuse_pass
-      test_mkldnn_conv_gelu_fuse_pass
+      test_onednn_conv_affine_channel_fuse_pass
+      test_onednn_conv_gelu_fuse_pass
       test_onednn_conv_hard_sigmoid_fuse_pass
       test_onednn_conv_hard_swish_fuse_pass
-      test_mkldnn_conv_mish_fuse_pass
-      test_mkldnn_conv_transpose_bias_fuse_pass
-      test_mkldnn_conv3d_op
+      test_onednn_conv_mish_fuse_pass
+      test_onednn_conv_transpose_bias_fuse_pass
+      test_onednn_conv3d_op
       test_mkldnn_depthwise_conv_pass
       test_onednn_shape_op
       test_onednn_shuffle_channel_op)
@@ -392,19 +392,19 @@ if(WITH_GPU AND TENSORRT_FOUND)
       message(STATUS "Skip tests unrelated to CUDA/TRT")
     else()
 
-      set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass_pir
+      set_tests_properties(test_onednn_conv_affine_channel_fuse_pass_pir
                            PROPERTIES TIMEOUT 120)
-      set_tests_properties(test_mkldnn_conv_gelu_fuse_pass_pir
+      set_tests_properties(test_onednn_conv_gelu_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_onednn_conv_hard_sigmoid_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_onednn_conv_hard_swish_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_conv_mish_fuse_pass_pir
+      set_tests_properties(test_onednn_conv_mish_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_conv_transpose_bias_fuse_pass_pir
+      set_tests_properties(test_onednn_conv_transpose_bias_fuse_pass_pir
                            PROPERTIES TIMEOUT 100)
-      set_tests_properties(test_mkldnn_conv3d_op_pir PROPERTIES TIMEOUT 300)
+      set_tests_properties(test_onednn_conv3d_op_pir PROPERTIES TIMEOUT 300)
       set_tests_properties(test_mkldnn_depthwise_conv_pass_pir
                            PROPERTIES TIMEOUT 120)
 
