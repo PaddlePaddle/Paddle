@@ -4,5 +4,6 @@ collect_srcs(
   place.cc
   scalar.cc
   int_array.cc
+  logging_utils.cc
   memory_utils.cc
   port.cc)

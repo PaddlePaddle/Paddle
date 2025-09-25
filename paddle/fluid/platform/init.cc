@@ -55,6 +55,7 @@ limitations under the License. */
 
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
+#include "paddle/phi/common/logging_utils.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
@@ -291,7 +292,7 @@ const char *ParseSignalErrorString(const std::string &str) {
 }
 
 // Handle SIGSEGV, SIGILL, SIGFPE, SIGABRT, SIGBUS, and SIGTERM.
-void SignalHandle(const char *data, int size) {
+void SignalHandle(const char *data, size_t size) {
   try {
     // NOTE1: The glog FailureSignalHandler dumped messages
     //   are deal with line by line
@@ -417,6 +418,7 @@ void InitGLOG(const std::string &prog_name) {
         (LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);
 #endif
     google::InitGoogleLogging(strdup(prog_name.c_str()));
+    phi::init_phi_glog();
 #ifndef _WIN32
     google::InstallFailureSignalHandler();
     google::InstallFailureWriter(&SignalHandle);

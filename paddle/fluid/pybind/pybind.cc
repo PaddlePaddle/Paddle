@@ -85,6 +85,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/logging_utils.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #include "paddle/phi/core/raw_tensor.h"
@@ -3074,7 +3075,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("init_gflags", framework::InitGflags);
-  m.def("init_glog", framework::InitGLOG);
+  m.def("logging_utils", framework::InitGLOG);
   m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
     const auto &new_op_meta_info_map =
@@ -3206,6 +3207,7 @@ All parameter, weight, gradient are variables in Paddle.
           // It may cause configuration effects for a single module
           VLOG(3) << "Set the VLOG level of all modules to " << level;
           FLAGS_v = level;
+          phi::set_phi_vlog_level(level);
         } else if (py::isinstance<py::dict>(module_levels)) {
           auto module_levels_dict = module_levels.cast<py::dict>();
           for (auto &item : module_levels_dict) {
@@ -3214,8 +3216,10 @@ All parameter, weight, gradient are variables in Paddle.
             if (module_name == "*") {
               VLOG(3) << "Set the VLOG level of all modules to " << level;
               FLAGS_v = level;
+              phi::set_phi_vlog_level(level);
             } else {
               google::SetVLOGLevel(module_name.c_str(), level);
+              phi::set_phi_vlog_level(module_name.c_str(), level);
             }
           }
         } else {
