@@ -17,10 +17,11 @@ from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
 
+import paddle
 from paddle.base import core
 from paddle.utils import deprecated
 
-from .streams import Event, Stream
+from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import XPUPlace
@@ -82,6 +83,9 @@ def current_stream(device: _XPUPlaceLike | None = None) -> core.XPUStream:
             device_id = device
         elif isinstance(device, core.XPUPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            place = paddle.device._convert_to_place(device)
+            device_id = place.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.XPUPlace")
 
@@ -163,6 +167,17 @@ def synchronize(device: _XPUPlaceLike | None = None) -> int:
             device_id = device
         elif isinstance(device, core.XPUPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('xpu:'):
+                device_id = int(device[4:])
+            elif device == 'xpu':
+                device_id = 0
+            else:
+                raise ValueError(
+                    f"The current string {device} is not expected. Because paddle.device.cuda."
+                    "synchronize only support string which is like 'xpu:x' or 'xpu'. "
+                    "Please input appropriate string again!"
+                )
         else:
             raise ValueError("device type must be int or paddle.XPUPlace")
 
@@ -508,3 +523,59 @@ def memory_used(device: _XPUPlaceLike | None = None) -> int:
         )
     device_id = extract_xpu_device_id(device, op_name=name)
     return core.get_xpu_device_used_memory(device_id)
+
+
+def get_rng_state(device: _XPUPlaceLike | None = None) -> core.GeneratorState:
+    '''
+    Get the random state for the default generator.
+
+    Returns:
+        Tensor: The random state tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:XPU)
+            >>> import paddle
+            >>> paddle.device.get_rng_state()
+
+    '''
+    place = paddle.device.device_to_place(device)
+    if isinstance(place, core.CPUPlace):
+        return core.default_cpu_generator().get_state()
+    return core.default_xpu_generator(place.get_device_id()).get_state()
+
+
+def set_rng_state(
+    new_state: core.GeneratorState, device: _XPUPlaceLike | None = None
+) -> None:
+    """
+    Set the random number generator state of the specified device.
+
+    Args:
+        new_state (core.GeneratorState): The desired RNG state to set.
+            This should be a state object previously obtained from ``get_rng_state()``.
+        device (DeviceLike, optional): The device to set the RNG state for.
+            If not specified, uses the current default device (as returned by ``paddle.framework._current_expected_place_()``).
+            Can be a device object, integer device ID, or device string.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # Save RNG state
+            >>> state = paddle.device.get_rng_state()
+            >>> # Do some random operations
+            >>> x = paddle.randn([2, 3])
+            >>> # Restore RNG state
+            >>> paddle.device.set_rng_state(state)
+    """
+    place = paddle.device.device_to_place(device)
+    if isinstance(place, core.CPUPlace):
+        core.default_cpu_generator().set_state(new_state)
+    else:
+        core.default_xpu_generator(place.get_device_id()).set_state(new_state)

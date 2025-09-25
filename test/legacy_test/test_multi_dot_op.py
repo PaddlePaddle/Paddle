@@ -363,7 +363,6 @@ class APITestMultiDot(unittest.TestCase):
 
     def test_dygraph_without_out(self):
         paddle.disable_static()
-        device = paddle.CPUPlace()
         input_array1 = np.random.rand(3, 4).astype("float64")
         input_array2 = np.random.rand(4, 3).astype("float64")
         data1 = paddle.to_tensor(input_array1)

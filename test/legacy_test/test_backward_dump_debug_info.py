@@ -121,6 +121,7 @@ grads = paddle.autograd.backward(
     [x, y],
     [None, None],
 )
+paddle.base.core.set_vlog_level(4)
         """
         process = subprocess.run(
             [sys.executable, '-c', code.format(glog_level=4)],
@@ -154,6 +155,7 @@ import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
 
+paddle.base.core.set_vlog_level({"backward":6, "*": 7})
 
 x = paddle.randn([3,3],dtype='float16')
 y = paddle.randn([3,3],dtype='float32')
@@ -186,6 +188,7 @@ if paddle.is_compiled_with_cuda():
     hidden1 = sync_batch_norm(sync_bn_input)
 loss = out1 + out2 + out3 + out4 + out5 + out6.sum()+hidden1.sum()
 loss.backward(dump_backward_graph_path="./backward")
+
 
     """
         process = subprocess.run(
@@ -239,6 +242,12 @@ loss.backward(dump_backward_graph_path="./backward")
             "Create '/path/to/create' failed : Mocked exception"
             in str(context.exception)
         )
+
+
+class TestSetVlogLevelError(unittest.TestCase):
+    def test_input_invalid(self):
+        with self.assertRaises(ValueError):
+            paddle.base.core.set_vlog_level("3")
 
 
 if __name__ == "__main__":

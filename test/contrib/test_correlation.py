@@ -180,6 +180,89 @@ class TestCorrelationOpDyGraph(unittest.TestCase):
             out = y.numpy()
             np.testing.assert_allclose(out, out_np, rtol=1e-05, atol=1e-8)
 
+    def test_check_grad_numeric(self):
+        if not base.core.is_compiled_with_cuda():
+            return
+        np.random.seed(13)
+        eps = 1e-3
+        x_type = 'float32'
+        place = base.CUDAPlace(0)
+
+        with base.dygraph.guard(place):
+            x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)
+            x2_np = np.random.randn(2, 3, 4, 5).astype(x_type)
+
+            x1 = paddle.to_tensor(x1_np, stop_gradient=False)
+            x2 = paddle.to_tensor(x2_np, stop_gradient=False)
+            corr_pd = Net('corr_pd')
+            y = corr_pd(x1, x2)
+
+            grad_y = np.random.randn(*y.shape).astype(x_type)
+
+            dx1, dx2 = paddle.autograd.grad(
+                outputs=y,
+                inputs=[x1, x2],
+                grad_outputs=paddle.to_tensor(grad_y),
+            )
+
+            dx1_num = np.zeros_like(x1_np)
+            for idx in np.ndindex(*x1_np.shape):
+                x1_pos = x1_np.copy()
+                x1_neg = x1_np.copy()
+                x1_pos[idx] += eps
+                x1_neg[idx] -= eps
+                out_pos = corr(
+                    x1_pos,
+                    x2_np,
+                    pad_size=4,
+                    kernel_size=1,
+                    max_displacement=4,
+                    stride1=1,
+                    stride2=1,
+                )
+                out_neg = corr(
+                    x1_neg,
+                    x2_np,
+                    pad_size=4,
+                    kernel_size=1,
+                    max_displacement=4,
+                    stride1=1,
+                    stride2=1,
+                )
+                dx1_num[idx] = np.sum((out_pos - out_neg) * grad_y) / (2 * eps)
+
+            dx2_num = np.zeros_like(x2_np)
+            for idx in np.ndindex(*x2_np.shape):
+                x2_pos = x2_np.copy()
+                x2_neg = x2_np.copy()
+                x2_pos[idx] += eps
+                x2_neg[idx] -= eps
+                out_pos = corr(
+                    x1_np,
+                    x2_pos,
+                    pad_size=4,
+                    kernel_size=1,
+                    max_displacement=4,
+                    stride1=1,
+                    stride2=1,
+                )
+                out_neg = corr(
+                    x1_np,
+                    x2_neg,
+                    pad_size=4,
+                    kernel_size=1,
+                    max_displacement=4,
+                    stride1=1,
+                    stride2=1,
+                )
+                dx2_num[idx] = np.sum((out_pos - out_neg) * grad_y) / (2 * eps)
+            np.testing.assert_allclose(
+                dx1.numpy(), dx1_num, rtol=1e-3, atol=1e-3
+            )
+            np.testing.assert_allclose(
+                dx2.numpy(), dx2_num, rtol=1e-3, atol=1e-3
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

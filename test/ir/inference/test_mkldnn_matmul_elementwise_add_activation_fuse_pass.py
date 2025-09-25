@@ -18,9 +18,11 @@ from functools import partial
 import hypothesis.strategies as st
 import numpy as np
 from auto_scan_test import PassAutoScanTest
+from op_test import OpTestTool
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
+@OpTestTool.skip_if_not_cpu()
 class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
@@ -60,7 +62,7 @@ class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
             inputs={'X': ['matmul_x'], 'Y': ['matmul_y']},
             outputs={'Out': ['matmul_output']},
             attrs={
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 

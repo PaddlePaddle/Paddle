@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/phi/backends/custom/custom_context.h"
 
 #include "paddle/common/exception.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/stream.h"
@@ -284,7 +285,7 @@ struct CustomContext::Impl {
       }
     });
 
-    if (blas_tf32_tensor_core_handle_ && allow_tf32_blas_) {
+    if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
       callback(blas_tf32_tensor_core_handle_);
     } else {
@@ -396,8 +397,6 @@ struct CustomContext::Impl {
     BLAS_TENSOR_OP_MATH = 1,
     BLAS_TF32_TENSOR_OP_MATH = 2
   };
-
-  bool allow_tf32_blas_ = true;
 
   std::once_flag flag_sparse_;
   std::once_flag flag_blas_;
