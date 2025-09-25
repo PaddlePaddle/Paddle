@@ -67,7 +67,7 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     } else {
       // reset the physical tensor to zero
       IntArray shape(in.local_dims().Get(), in.local_dims().size());
-      auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+      auto* gpu_ctx = dynamic_cast<phi::CUDAContext*>(dev_ctx);
       PADDLE_ENFORCE_NOT_NULL(
           gpu_ctx,
           phi::errors::InvalidArgument(

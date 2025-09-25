@@ -15,7 +15,7 @@
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 
 #include "glog/logging.h"
-
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/utils.h"
@@ -77,7 +77,7 @@ void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                              size_,
                              phi::AllocationType::XPU);
 
-  auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx_);
+  auto* gpu_ctx = dynamic_cast<phi::CUDAContext*>(dev_ctx);
   PADDLE_ENFORCE_NOT_NULL(
       gpu_ctx,
       phi::errors::InvalidArgument("StreamWaitEvent only supports GPU now."));
