@@ -60,6 +60,197 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_OPENMP)
+
+  if (FLAGS_use_stride_compute_kernel &&
+      input.place().GetType() == phi::AllocationType::CPU &&
+      out->place().GetType() == phi::AllocationType::GPU &&
+      input.dtype() == out->dtype() && !input.meta().is_contiguous()) {
+    phi::DenseTensor dst_gpu;
+    phi::DenseTensor src_cpu;
+
+    if (out->meta().is_contiguous()) {
+      dst_gpu = *out;
+    } else {
+      auto meta_dst = dst_gpu.meta();
+      meta_dst.dims = out->dims();
+      meta_dst.strides = meta_dst.calc_strides(out->dims());
+      dst_gpu.set_meta(meta_dst);
+      dev_ctx.Alloc(&dst_gpu, input.dtype());
+    }
+
+    phi::DenseTensor cpu_input = input;
+    phi::DenseTensor* cpu_out = &src_cpu;
+    void* cpu_output_data;
+
+    phi::DenseTensorMeta cpu_meta = cpu_input.meta();
+    cpu_meta.strides = cpu_meta.calc_strides(cpu_meta.dims);
+    cpu_meta.offset = 0;
+    cpu_out->set_meta(cpu_meta);
+
+    const void* cpu_input_data = cpu_input.data();
+    cpu_output_data = malloc(phi::SizeOf(cpu_input.dtype()) * cpu_out->numel());
+
+    if (FastTransposeCopyValid(*cpu_out, cpu_input)) {
+      constexpr int64_t TRANS_NUMEL = 60;
+      void* trans_buffer =
+          malloc(phi::SizeOf(input.dtype()) * TRANS_NUMEL * TRANS_NUMEL);
+
+      const T* tmp_src_ptr = reinterpret_cast<const T*>(cpu_input_data);
+      T* tmp_out_ptr = reinterpret_cast<T*>(cpu_output_data);
+      T* tmp_buf_ptr = reinterpret_cast<T*>(trans_buffer);
+
+      int64_t dim0 = cpu_out->dims()[0];
+      int64_t dim1 = cpu_out->dims()[1];
+
+      for (int64_t d0 = 0; d0 < dim0; d0 += TRANS_NUMEL) {
+        for (int64_t d1 = 0; d1 < dim1; d1 += TRANS_NUMEL) {
+          const T* src_ptr_inter = tmp_src_ptr + d0 + d1 * dim0;
+          T* out_ptr_inter = tmp_out_ptr + d1 + d0 * dim1;
+
+          int nr = std::min(dim0 - d0, TRANS_NUMEL);
+          int nc = std::min(dim1 - d1, TRANS_NUMEL);
+
+          for (int c = 0; c < nc; c++) {
+            memcpy(tmp_buf_ptr + c * TRANS_NUMEL,
+                   src_ptr_inter + c * dim0,
+                   nr * sizeof(T));
+          }
+
+          int rc_max = std::max(nr, nc);
+          int rc_min = std::min(nr, nc);
+          for (int r = 0; r < rc_max; r++) {
+            int end = std::min(r, rc_min);
+            for (int c = 0; c < end; c++) {
+              T tmp = tmp_buf_ptr[r + TRANS_NUMEL * c];
+              tmp_buf_ptr[r + TRANS_NUMEL * c] =
+                  tmp_buf_ptr[r * TRANS_NUMEL + c];
+              tmp_buf_ptr[r * TRANS_NUMEL + c] = tmp;
+            }
+          }
+
+          for (int r = 0; r < nr; r++) {
+            memcpy(out_ptr_inter + r * dim1,
+                   tmp_buf_ptr + r * TRANS_NUMEL,
+                   nc * sizeof(T));
+          }
+        }
+      }
+      free(trans_buffer);
+    } else {
+      phi::DenseTensorIteratorConfig config;
+      config.add_output(*cpu_out);
+      config.add_const_input(cpu_input);
+      config.is_alloc_out_ = true;
+      phi::DenseTensorIterator iter = config.build();
+
+      std::vector<int64_t> tmp_strides(
+          iter.ntensors() * static_cast<size_t>(std::max(iter.ndim(), 2)));
+
+      DealWithStride(iter, tmp_strides.data());
+
+      std::vector<int64_t> out_stride(tmp_strides.begin() + iter.ntensors(),
+                                      tmp_strides.end());
+
+      std::vector<int64_t> output_stride = iter.strides(0);
+      std::vector<int64_t> input_stride = iter.strides(1);
+
+      const int64_t& numel = iter.numel();
+
+      const char* in_ptr = reinterpret_cast<const char*>(cpu_input_data);
+      char* out_ptr = reinterpret_cast<char*>(cpu_output_data);
+
+      int64_t end = numel;
+      int64_t begin = 0;
+      int64_t grain_size = 32768;
+
+      int64_t* whole_stride = tmp_strides.data();
+
+      omp_set_num_threads(std::thread::hardware_concurrency());
+
+#pragma omp parallel
+      {
+        int64_t num_threads = omp_get_num_threads();
+
+        if (grain_size > 0) {
+          num_threads = std::min(num_threads, DivUp((end - begin), grain_size));
+        }
+
+        int64_t tid = omp_get_thread_num();
+        int64_t chunk_size = DivUp((end - begin), num_threads);
+        int64_t begin_tid = begin + tid * chunk_size;
+
+        if (begin_tid < end) {
+          int64_t range_start = begin_tid;
+          int64_t range_end = std::min(end, chunk_size + begin_tid);
+
+          auto dimiter = DimIter(iter.shape(), range_start, range_end);
+          while (!dimiter.iter_to_end()) {
+            const auto v_ndim = dimiter.values.size();
+            const char* tmp_in_data = in_ptr;
+            char* tmp_out_data = out_ptr;
+            for (size_t dim = 0; dim < v_ndim; dim++) {
+              int64_t value = dimiter.values[dim];
+              tmp_out_data += value * whole_stride[dim * iter.ntensors() + 0];
+              tmp_in_data += value * whole_stride[dim * iter.ntensors() + 1];
+            }
+
+            auto step = dimiter.iter_for_step();
+
+            for (int64_t i = 0; i < step[1]; i++) {
+              for (int64_t j = 0; j < step[0]; j++) {
+                const char* real_in_ptr = tmp_in_data + j * whole_stride[1];
+                char* real_out_ptr = tmp_out_data + j * whole_stride[0];
+
+                *reinterpret_cast<T*>(real_out_ptr) =
+                    *reinterpret_cast<const T*>(real_in_ptr);
+              }
+              tmp_in_data = tmp_in_data + out_stride[1];
+              tmp_out_data = tmp_out_data + out_stride[0];
+            }
+
+            dimiter.iter_to_next(step);
+          }
+        }
+      }
+    }
+
+    auto src_cpu_place = input.place();
+    auto dst_gpu_place = out->place();
+
+    auto& pool = phi::DeviceContextPool::Instance();
+    auto* gpu_dev_ctx = static_cast<phi::GPUContext*>(pool.Get(out->place()));
+    auto stream = gpu_dev_ctx->stream();
+    auto* src_ptr = cpu_output_data;
+
+    auto size = phi::SizeOf(input.dtype()) * src_cpu.numel();
+    void* dst_ptr = gpu_dev_ctx->Alloc(
+        &dst_gpu,
+        dst_gpu.dtype(),
+        0,
+        dst_gpu_place.GetType() == AllocationType::GPUPINNED);
+
+    phi::memory_utils::Copy(
+        dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+
+    free(cpu_output_data);
+    if (out != &dst_gpu) {
+      PD_VISIT_ALL_TYPES(
+          out->dtype(), "StridedCopyKernel", ([&] {
+            phi::StridedCopyKernel<data_t, phi::GPUContext>(
+                reinterpret_cast<const phi::GPUContext&>(*gpu_dev_ctx),
+                dst_gpu,
+                common::vectorize<int64_t>(out->dims()),
+                common::vectorize<int64_t>(out->strides()),
+                out->offset(),
+                out);
+          }));
+    }
+
+    return;
+  }
+#endif
+
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = common::make_ddim(out_stride);
   meta.dims = common::make_ddim(dims);
