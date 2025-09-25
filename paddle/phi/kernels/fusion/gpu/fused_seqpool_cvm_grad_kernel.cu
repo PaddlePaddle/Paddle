@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_seqpool_cvm_grad_kernel.h"
 #include <string>
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
-#include "Paddle/paddle/phi/kernels/fused_seqpool_cvm_grad_kernel.h"
 
 namespace phi {
 namespace fusion {
