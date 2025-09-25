@@ -3,9 +3,6 @@ name: Night-Coverage
 on:
   schedule:
     - cron: '0 18 * * * '
-  pull_request:
-    types: [opened, synchronize]
-    branches: [develop, release/**]
 
 permissions: read-all
 
@@ -127,8 +124,6 @@ jobs:
           git clone --depth=1000 https://github.com/PaddlePaddle/Paddle.git .
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
-          git fetch origin pull/75348/head
-          git checkout -b test FETCH_HEAD
           echo "Extracting Paddle"
           git remote -v
           set +e
@@ -147,22 +142,6 @@ jobs:
           mkdir -p ${CFS_DIR}/.ccache/coverage
           bash ${ci_scripts}/cmake-predownload.sh
           bash $ci_scripts/coverage_build.sh bdist_wheel
-          '
-
-      - name: Check added unittests
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ~/.bashrc
-          source ${{ github.workspace }}/../../../proxy
-          bash $ci_scripts/check_added_ut.sh
-          '
-
-      - name: Check coverage build size requires approval
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ~/.bashrc
-          source ${{ github.workspace }}/../../../proxy
-          bash $ci_scripts/coverage_build_size_approval.sh
           '
 
       - name: Clean up env
@@ -207,9 +186,9 @@ jobs:
           coverage_tag=$(date +"%m-%d")
           mkdir -p ${CFS_DIR}/coverage_night/${coverage_tag}
           echo "Uploading coverage build size"
-          python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          python ${{ env.bos_file }} coverage_build_size paddle-github-action/night/coverage/${coverage_tag}
           echo "Uploading coverage wheel"
-          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/night/coverage/${coverage_tag}
           cd /
           echo "Uploading Paddle.tar.gz"
           cp Paddle.tar.gz ${CFS_DIR}/coverage_night/${coverage_tag}
@@ -366,7 +345,6 @@ jobs:
           fi
           echo "Uploading night_coverage.txt"
           coverage_time=$(date +%Y-%m-%d)
-          cp ${PADDLE_ROOT}/night_coverage.txt .
           python ${{ env.bos_file }} night_coverage.txt paddle-github-action/night/coverage/${coverage_time}
           echo "Uploading night_coverage.txt"
           '
@@ -376,6 +354,6 @@ jobs:
         run: |
           set +e
           rm Paddle.tar.gz
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
