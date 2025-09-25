@@ -72,6 +72,7 @@ from ....symbolic_shape.constraints import (
 from ....symbolic_shape.operators import (
     symbolic_not,
     symbolic_to_bool,
+    symbolic_truediv,
 )
 from ....symbolic_shape.symbolic_value import (
     SymbolicBool,
@@ -1155,7 +1156,7 @@ class SymbolicVariable(VariableBase):
         elif tracker.op is operator.mul:
             assert len(input_nodes) == 2
             return MulConstraintNode(*input_nodes), extern_vars
-        elif tracker.op is operator.truediv:
+        elif tracker.op is symbolic_truediv:
             assert len(input_nodes) == 2
             return TrueDivConstraintNode(*input_nodes), extern_vars
         elif tracker.op is operator.floordiv:
