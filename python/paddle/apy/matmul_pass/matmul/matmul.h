@@ -23,22 +23,3 @@
 #include "math_function.h"
 #endif
 
-
-// namespace ap {
-
-// template <typename ElementT,
-//         typename ElementComputeT,
-//         template <typename T>
-//         class VariadicFunctor,
-//         int AlignA,
-//         int AlignB,
-//         int ConfigId>
-// void MatmulAddVariadic(
-//     const GemmEpilogueParams &params, 
-//     const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
-
-
-// }
-
-
-// }  // namespace ap

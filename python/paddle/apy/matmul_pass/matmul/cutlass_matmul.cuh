@@ -32,35 +32,9 @@
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
 #include "cutlass_patch/batched_matrix_coord.h"
-
 #include "cutlass_patch/all_tuning_configs.h"
+#include "cutlass_patch/check.h"
 #include "params.h"
-
-using ap_bfloat16 = nv_bfloat16;
-using ap_half = half;
-using apStream_t = cudaStream_t;
-
-#define CHECK_CUTLASS(status)                                             \
-  {                                                                       \
-    cutlass::Status error = status;                                       \
-    if (error != cutlass::Status::kSuccess) {                             \
-      std::cerr << "Got cutlass error: " << cutlassGetStatusString(error) \
-                << " at: " << __LINE__ << std::endl;                      \
-      exit(EXIT_FAILURE);                                                 \
-    }                                                                     \
-  }
-
-#define CHECK_CUDA(func)                                                      \
-  {                                                                           \
-    cudaError_t err = func;                                                   \
-    if (err != cudaSuccess) {                                                 \
-      std::cerr << "[" << __FILE__ << ":" << __LINE__ << ", " << __FUNCTION__ \
-                << "] "                                                       \
-                << "CUDA error(" << err << "), " << cudaGetErrorString(err)   \
-                << " when call " << #func << std::endl;                       \
-      exit(EXIT_FAILURE);                                                     \
-    }                                                                         \
-  }
 
 
 namespace ap {
@@ -167,6 +141,9 @@ template <typename T, int N>
 using Array = cutlass::Array<T, N>;
 
 using MatrixCoord = cutlass::BatchedMatrixCoord;
+using ap_bfloat16 = nv_bfloat16;
+using ap_half = half;
+// using apStream_t = cudaStream_t;
 
 
 template <typename ElementT,
