@@ -15,13 +15,13 @@
 include(ExternalProject)
 
 add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
-
+add_definitions(-DGLOG_CUSTOM_PREFIX_SUPPORT)
 set(GLOG_PREFIX_DIR ${THIRD_PARTY_PATH}/glog)
 set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
     "${GLOG_INSTALL_DIR}/include"
     CACHE PATH "glog include directory." FORCE)
-set(GLOG_TAG v0.4.0)
+set(GLOG_TAG v0.5.0)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
 if(WIN32)
   set(GLOG_LIBRARIES
@@ -56,6 +56,9 @@ ExternalProject_Add(
              -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
              -DCMAKE_INSTALL_LIBDIR=${GLOG_INSTALL_DIR}/lib
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+             -DBUILD_SHARED_LIBS=OFF
+             -DWITH_CUSTOM_PREFIX=ON
+             -DWITH_UNWIND=OFF
              -DWITH_GFLAGS=OFF
              -DBUILD_TESTING=OFF
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
