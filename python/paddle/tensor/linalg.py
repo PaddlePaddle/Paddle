@@ -3436,7 +3436,7 @@ def lu_solve(
             >>> A = paddle.to_tensor([[3, 1], [1, 2]], dtype="float64")
             >>> b = paddle.to_tensor([[9, 8], [9, 8]], dtype="float64")
             >>> lu, p = paddle.linalg.lu(A)
-            >>> x = paddle.lu_solve(b, lu, p)
+            >>> x = paddle.linalg.lu_solve(b, lu, p)
             >>> paddle.allclose(A @ x, b)
 
             >>> print(x)
