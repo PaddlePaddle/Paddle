@@ -564,10 +564,10 @@ TEST(MatmulSPMDRuleInferBackward, Ctor) {
 }
 TEST(GroupNorm, Ctor) {
   // build input data class
-  std::vector<int64_t> x_shape = {64, 64, 64, 64};  // N,C,H,W
-  std::vector<int64_t> scale_shape = {64};
-  std::vector<int64_t> bias_shape = {64};
-  std::vector<int64_t> mean_and_variance_shape = {64, 64};
+  std::vector<int64_t> x_shape = {48, 48, 48, 48};  // N,C,H,W
+  std::vector<int64_t> scale_shape = {48};
+  std::vector<int64_t> bias_shape = {48};
+  std::vector<int64_t> mean_and_variance_shape = {48, 48};
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
   std::vector<std::string> dim_names = {"x", "y"};
@@ -660,6 +660,55 @@ TEST(GroupNorm, Ctor) {
   check_dim_mapping(backward_info.second[1], {-1});
   check_dim_mapping(backward_info.second[2], {-1});
   VLOG(4) << "test backward done.";
+
+  // Test forward 2.
+  // [0,1], -1, -1, -1], [-1], [-1] --> input: [[0,1], -1, -1, -1], [-1], [-1]
+  // output:[[0,1],-1, -1, -1], [0,1], [0,1]
+
+  x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
+                                       x_dist_attr);
+  forward_info = phi::distributed::GroupNormInferSpmd(
+      x, scale, bias, epsilon, groups, data_format);
+  input_size = 3;
+  output_size = 3;
+  EXPECT_EQ(forward_info.first.size(), input_size);
+  EXPECT_EQ(forward_info.second.size(), output_size);
+  check_multi_dims_mapping(forward_info.first[0], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(forward_info.first[1], {{}});
+  check_multi_dims_mapping(forward_info.first[2], {{}});
+  check_multi_dims_mapping(forward_info.second[0], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(forward_info.second[1], {{0, 1}, {}});
+  check_multi_dims_mapping(forward_info.second[2], {{0, 1}, {}});
+  VLOG(4) << "test forward 2 done.";
+
+  // Test backward 2.
+  // [[0,1], -1, -1, -1], [-1],[-1], [[0,1], -1, -1, -1],[-1], [-1], [[0,1], -1,
+  // -1, -1] infer input:[[0,1], -1, -1, -1], [-1],[-1], [[0,1], -1, -1,
+  // -1],[0,1], [0,1], [[0,1], -1, -1, -1] infer output:[[0,1], -1, -1, -1],
+  // [-1],[-1]
+  y = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
+                                       x_dist_attr);
+  y_grad = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
+                                            x_dist_attr);
+
+  backward_info = phi::distributed::GroupNormGradInferSpmd(
+      x, scale, bias, y, mean, variance, y_grad, epsilon, groups, data_format);
+  input_size = 7;
+  output_size = 3;
+  EXPECT_EQ(backward_info.first.size(), input_size);
+  EXPECT_EQ(backward_info.second.size(), output_size);
+  check_multi_dims_mapping(backward_info.first[0], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(backward_info.first[1], {{}});
+  check_multi_dims_mapping(backward_info.first[2], {{}});
+  check_multi_dims_mapping(backward_info.first[3], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(backward_info.first[4], {{0, 1}, {}});
+  check_multi_dims_mapping(backward_info.first[5], {{0, 1}, {}});
+  check_multi_dims_mapping(backward_info.first[6], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(backward_info.second[0], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(backward_info.second[1], {{}});
+  check_multi_dims_mapping(backward_info.second[2], {{}});
+  VLOG(4) << "test backward 2 done.";
 }
 TEST(ReplicatedSPMDRule, Ctor) {
   // build input data class
@@ -2948,7 +2997,7 @@ TEST(BatchNorm, Ctor) {
   // [0, 1, -1, -1],[-1],[-1],[-1],[-1],[-1],[-1],[-1],[0, 1, -1, -1]
   // ->[-1,1,-1,-1],[-1],[-1]
   // dst_input: [-1, 1, -1, -1],[-1],[-1],[1],[1],[1],[1],[-1],[-1, 1, -1, -1]
-
+  x_dist_attr.set_dims_mapping({0, 1, -1, -1});
   x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16, 16}),
                                        x_dist_attr);
   phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
@@ -2958,10 +3007,6 @@ TEST(BatchNorm, Ctor) {
   phi::distributed::DistMetaTensor variance_out =
       phi::distributed::DistMetaTensor(common::make_ddim({16}),
                                        one_dim_dist_attr);
-  scale = phi::distributed::DistMetaTensor(common::make_ddim({16}),
-                                           one_dim_dist_attr);
-  bias = phi::distributed::DistMetaTensor(common::make_ddim({16}),
-                                          one_dim_dist_attr);
   phi::distributed::DistMetaTensor saved_mean =
       phi::distributed::DistMetaTensor(common::make_ddim({16}),
                                        one_dim_dist_attr);
@@ -3003,6 +3048,71 @@ TEST(BatchNorm, Ctor) {
   check_dim_mapping(backward_info.second[0], {-1, 1, -1, -1});
   check_dim_mapping(backward_info.second[1], {-1});
   check_dim_mapping(backward_info.second[2], {-1});
+
+  // test forward 2
+  // data_format = NCHW
+  // [-1, [0, 1], -1, -1],[-1],[-1],[-1],[-1] ->[-1 , [0,1], -1,
+  // -1],[0,1],[0,1],[0,1],[0,1],[-1]
+  x_dist_attr.set_dims_mapping({{}, {0, 1}, {}, {}});
+
+  x = phi::distributed::DistMetaTensor(common::make_ddim({16, 16, 16, 16}),
+                                       x_dist_attr);
+  forward_info = phi::distributed::BatchNormInferSpmdStatic(
+      x, mean, variance, scale, bias);
+
+  EXPECT_EQ(forward_info.first.size(), 5UL);
+  EXPECT_EQ(forward_info.second.size(), 6UL);
+  check_multi_dims_mapping(forward_info.first[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(forward_info.first[1], {{0, 1}});
+  check_multi_dims_mapping(forward_info.first[2], {{0, 1}});
+  check_multi_dims_mapping(forward_info.first[3], {{}});
+  check_multi_dims_mapping(forward_info.first[4], {{}});
+  check_multi_dims_mapping(forward_info.second[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(forward_info.second[1], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[2], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[3], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[4], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[5], {{}});
+
+  // test backward 2
+  // data_format = NCHW
+  // [-1, [0,1], -1, -1],[-1],[-1],[-1],[-1],[-1],[-1],[-1],[-1, [0,1], -1, -1]
+  // ->[-1,[0,1],-1,-1],[-1],[-1]
+  // dst_input: [-1, [0,1], -1, -1],[-1],[-1],[0,1],[0,1],[0,1],[0,1],[-1],[-1,
+  // [0,1], -1, -1]
+  out_grad = phi::distributed::DistMetaTensor(
+      common::make_ddim({16, 16, 16, 16}), x_dist_attr);
+  backward_info = phi::distributed::BatchNormGradInferSpmd(x,
+                                                           scale,
+                                                           bias,
+                                                           mean_out,
+                                                           variance_out,
+                                                           saved_mean,
+                                                           saved_variance,
+                                                           reserve_space,
+                                                           out_grad,
+                                                           0.9,
+                                                           0.1,
+                                                           "NCHW",
+                                                           false,
+                                                           false,
+                                                           false);
+
+  EXPECT_EQ(backward_info.first.size(), 9UL);
+  EXPECT_EQ(backward_info.second.size(), 3UL);
+  check_multi_dims_mapping(backward_info.first[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(backward_info.first[1], {{}});
+  check_multi_dims_mapping(backward_info.first[2], {{}});
+  check_multi_dims_mapping(backward_info.first[3], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[4], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[5], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[6], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[7], {{}});
+  check_multi_dims_mapping(backward_info.first[8], {{}, {0, 1}, {}, {}});
+
+  check_multi_dims_mapping(backward_info.second[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(backward_info.second[1], {{}});
+  check_multi_dims_mapping(backward_info.second[2], {{}});
 }
 TEST(Topk, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
