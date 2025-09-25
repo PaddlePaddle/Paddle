@@ -73,9 +73,7 @@ struct DenseTensorIteratorBase {
   int64_t numel() const;
   int ntensors() const { return static_cast<int>(operands_.size()); }
   bool is_contiguous() const;
-  int64_t num_output_elements() const;
   int noutputs() const { return num_outputs_; }
-  int num_reduce_dims() const;
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }

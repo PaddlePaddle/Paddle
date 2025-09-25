@@ -345,26 +345,6 @@ bool DenseTensorIteratorBase::fast_set_up(
   return true;
 }
 
-int DenseTensorIteratorBase::num_reduce_dims() const {
-  int count = 0;
-  for (int dim = 0; dim < ndim(); dim++) {
-    if (operands_[0].stride_bytes[dim] == 0) {
-      count++;
-    }
-  }
-  return count;
-}
-
-int64_t DenseTensorIteratorBase::num_output_elements() const {
-  int64_t elem = 1;
-  for (int dim = 0; dim < ndim(); dim++) {
-    if (operands_[0].stride_bytes[dim] != 0 || shape_[dim] == 0) {
-      elem *= shape_[dim];
-    }
-  }
-  return elem;
-}
-
 void DenseTensorIteratorBase::compute_shape(
     const DenseTensorIteratorConfig& config) {
   all_ops_same_shape_ = true;
