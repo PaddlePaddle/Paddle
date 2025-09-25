@@ -60,10 +60,6 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             if predictor_config.tensorrt_engine_enabled():
                 # On 3080, the results of MatMul and Mul are different
                 return True
-
-                x_shape = list(program_config.inputs["matmul_x"].shape)
-                if len(x_shape) > 5:
-                    return True
             return False
 
         self.add_ignore_check_case(
