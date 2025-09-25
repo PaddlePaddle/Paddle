@@ -731,7 +731,7 @@ from .utils.dlpack import (
 )
 
 
-def get_default_device() -> str:
+def get_default_device() -> "paddle.device":
     """
     Returns:
         str: The default device for PaddlePaddle.
@@ -740,7 +740,7 @@ def get_default_device() -> str:
             import paddle
             print(paddle.get_default_device())
     """
-    return get_device().replace("gpu", "cuda")
+    return paddle.device(get_device().replace("gpu", "cuda"))
 
 
 class _TensorMethodOrModule:
