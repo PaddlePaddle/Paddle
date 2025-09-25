@@ -3885,22 +3885,27 @@ struct CudaTanFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaTanGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  T one = static_cast<T>(1.0f);
 
   // dx = dout *(1 + tan(x)^2)
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<MPType, double>::value) {
+    if constexpr (std::is_same<T, double>::value) {
       double td = ::tan(x);
       double tsq = __dmul_rn(td, td);
       double y = __dadd_rn(tsq, 1.0);
       return static_cast<T>(dout * y);
-    } else {
+    } else if constexpr (std::is_same<T, float>::value) {
       float tf = ::tanf(x);
       float tsq = __fmul_rn(tf, tf);
       float y = __fadd_rn(tsq, 1.0f);
       return static_cast<T>(dout * y);
+    } else {
+      __half tf = __float2half_rn(::tanf(x));
+      __half tmp_half = __hmul(tf, tf);
+      return arg_dout * (one + static_cast<T>(__half2float(tmp_half)));
     }
   }
 
