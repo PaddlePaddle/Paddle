@@ -3,6 +3,9 @@ name: Night-Coverage
 on:
   schedule:
     - cron: '0 18 * * * '
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop, release/**]
 
 permissions: read-all
 
