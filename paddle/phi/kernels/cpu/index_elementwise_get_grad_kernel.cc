@@ -136,6 +136,9 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
   auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
   auto& place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
+  auto meta = x_grad->meta();
+  meta.strides = meta.calc_strides(x_grad->dims());
+  x_grad->set_meta(meta);
   if (out_grad.numel() == 0) return;
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
@@ -162,7 +165,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
 }  // namespace phi
 PD_REGISTER_KERNEL(index_elementwise_get_grad,
                    CPU,
-                   ALL_LAYOUT,
+                   STRIDED,
                    phi::IndexElementwiseGetGradKernel,
                    bool,
                    float,

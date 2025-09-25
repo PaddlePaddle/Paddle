@@ -25,7 +25,6 @@
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -288,18 +287,6 @@ static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   }
 }
 
-static inline paddle::Tensor EnsureContiguous(const paddle::Tensor& x) {
-  if (x.is_dense_tensor()) {
-    auto dense_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
-    if (dense_ptr && !dense_ptr->meta().is_contiguous()) {
-      auto new_dense = std::make_shared<phi::DenseTensor>(
-          paddle::experimental::Trans2Contiguous(*dense_ptr));
-      return paddle::Tensor(new_dense, x.mutable_autograd_meta(), x.name());
-    }
-  }
-
-  return x;
-}
 // NOTE(zhiqiu): Revised version of PySlice_GetIndices. From:
 // https://github.com/python/cpython/blob/8d21aa21f2cbc6d50aab3f420bb23be1d081dac4/Objects/sliceobject.c#L103
 // Original PySlice_GetIndices return wrong result when
@@ -854,9 +841,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
             egr::Controller::Instance().GetCurrentAmpAttrs(),
             paddle::imperative::AmpLevel::O0);
 
-        auto transed_tensor_contiguous = EnsureContiguous(new_tensor);
-        AdvancedIndex ad =
-            AdvancedIndex(transed_tensor_contiguous, indices_int64);
+        AdvancedIndex ad = AdvancedIndex(new_tensor, indices_int64);
         const bool is_combined = false;
         const bool accumulate = false;
 
@@ -871,9 +856,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                              is_combined);
       }
     }
-    auto transed_tensor_contiguous = EnsureContiguous(tensor);
-
-    AdvancedIndex ad = AdvancedIndex(transed_tensor_contiguous, indices_int64);
+    AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
     const bool is_combined = false;
     const bool accumulate = false;
 
@@ -1356,15 +1339,13 @@ static void ApplyGetitem(const int index_size,
         auto new_transed_tensor = paddle::imperative::AmpAutoCast(
             "transed_tensor", *transed_tensor, amp_dst_dtype, op_name);
 
-        auto transed_tensor_contiguous = EnsureContiguous(new_transed_tensor);
-
         {
           paddle::imperative::AutoCastGuard guard(
               egr::Controller::Instance().GetCurrentAmpAttrs(),
               paddle::imperative::AmpLevel::O0);
 
           AdvancedIndex ad =
-              AdvancedIndex(transed_tensor_contiguous, transed_index_int64);
+              AdvancedIndex(new_transed_tensor, transed_index_int64);
 
           const bool is_combined = (index_size == 1) ? false : true;
           const bool accumulate = true;
@@ -1381,9 +1362,7 @@ static void ApplyGetitem(const int index_size,
         return;
       }
 
-      auto transed_tensor_contiguous = EnsureContiguous(*transed_tensor);
-      AdvancedIndex ad =
-          AdvancedIndex(transed_tensor_contiguous, transed_index_int64);
+      AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
       // is_combined:
       //   Distinguishes between regular indexing (single index) and combined
       //   indexing (multiple indices). When false (single index case), enables

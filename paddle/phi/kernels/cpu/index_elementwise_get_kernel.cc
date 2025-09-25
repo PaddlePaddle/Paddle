@@ -132,7 +132,7 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(index_elementwise_get,
                    CPU,
-                   ALL_LAYOUT,
+                   STRIDED,
                    phi::IndexElementwiseGetKernel,
                    bool,
                    float,

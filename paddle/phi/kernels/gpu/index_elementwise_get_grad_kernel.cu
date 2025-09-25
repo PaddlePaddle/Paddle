@@ -389,6 +389,10 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
+  auto meta = x_grad->meta();
+  meta.strides = meta.calc_strides(x_grad->dims());
+  x_grad->set_meta(meta);
+
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
@@ -434,7 +438,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
 }  // namespace phi
 PD_REGISTER_KERNEL(index_elementwise_get_grad,
                    GPU,
-                   ALL_LAYOUT,
+                   STRIDED,
                    phi::IndexElementwiseGetGradKernel,
                    bool,
                    float,
