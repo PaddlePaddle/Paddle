@@ -292,7 +292,7 @@ const char *ParseSignalErrorString(const std::string &str) {
 }
 
 // Handle SIGSEGV, SIGILL, SIGFPE, SIGABRT, SIGBUS, and SIGTERM.
-void SignalHandle(const char *data, size_t size) {
+void SignalHandle(const char *data, int size) {
   try {
     // NOTE1: The glog FailureSignalHandler dumped messages
     //   are deal with line by line
