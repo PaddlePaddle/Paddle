@@ -39,6 +39,7 @@ from .sharded_weight import (
 )
 from .utils import (
     assign_sharded_slice,
+    build_global_state_shard_info,
     build_shard_desc,
     check_unique_id,
     compute_local_shape_and_global_offset,
@@ -46,7 +47,6 @@ from .utils import (
     flatten_state_dict,
     get_max_id,
     is_sharded_state_dict,
-    merge_shard_info_list,
     minimal_nd_slice,
 )
 
@@ -679,6 +679,7 @@ def _handle_aoa(
                 local_shape=tuple(meta.local_shape),
                 global_shape=tuple(meta.global_shape),
                 global_offset=tuple(meta.global_offset),
+                dtype=meta.dtype,
             )
             for meta in local_tensor_metas
         ]
@@ -852,18 +853,8 @@ def load_state_dict(
         )
         return
 
-    destination_state_shard_info = defaultdict(list)
-    for key, val in state_dict.items():
-        desc = build_shard_desc(val)
-        destination_state_shard_info[key].append(desc)
-    dst_sharded_shard_info_list = []
-    paddle.distributed.all_gather_object(
-        dst_sharded_shard_info_list,
-        dict(destination_state_shard_info),
-        process_group,
-    )
-    destination_state_shard_info = merge_shard_info_list(
-        dst_sharded_shard_info_list
+    destination_state_shard_info = build_global_state_shard_info(
+        state_dict, process_group
     )
 
     flat_shards, nonflat_shards = _split_flat_shards(state_dict)

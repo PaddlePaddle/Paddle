@@ -332,6 +332,7 @@ def build_shard_desc(val):
         local_shape=tuple(val.local_shape),
         global_shape=tuple(val.global_shape),
         global_offset=tuple(val.global_offset),
+        dtype=str(val.local_tensor.dtype).split(".")[-1],
     )
 
 
@@ -365,3 +366,17 @@ def write_to_file_if_empty(data, path):
         logger.info(
             f"Process {os.getpid()} could not acquire the lock; another process is writing or has written the metadata."
         )
+
+
+def build_global_state_shard_info(sharded_state_dict, process_group):
+    state_shard_info = defaultdict(list)
+    for key, val in sharded_state_dict.items():
+        desc = build_shard_desc(val)
+        state_shard_info[key].append(desc)
+
+    gathered_info = []
+    paddle.distributed.all_gather_object(
+        gathered_info, dict(state_shard_info), process_group
+    )
+
+    return merge_shard_info_list(gathered_info)

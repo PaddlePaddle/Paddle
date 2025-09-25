@@ -51,10 +51,26 @@ from paddle.base.framework import (
     paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
+    AOAEngine,
+)
+from paddle.distributed.flex_checkpoint.dcp.reshard import (
+    reshard_sharded_state_dict,
+)
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
+    ShardedWeight,
+    ShardedWeightDesc,
     build_sharded_state_dict,
 )
+from paddle.distributed.flex_checkpoint.dcp.utils import (
+    assign_sharded_slice,
+    build_global_state_shard_info,
+)
+
+if TYPE_CHECKING:
+    from paddle.distributed.communication.group import Group
+
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -2310,6 +2326,169 @@ class Layer:
                 sharded_state_dict.update(sub_sharded)
 
         return sharded_state_dict
+
+    def full(
+        self,
+        aoa_config: dict[str : list[str]] | None = None,
+        process_group: Group | None = None,
+    ):
+        """
+        Returns an iterator over the full, unsharded model parameters.
+        The output parameters can be customized using the `aoa_config` argument.
+
+        Args:
+            aoa_config (dict[str, list[str]], optional):
+                Optional. Specifies the Area of Application (AOA) customization configuration.
+                The dictionary keys are strings and the values are lists of strings.
+                If None, all parameters are returned.
+            process_group (Group, optional):
+                Optional. Specifies the process group for collective communication.
+                If None, the default process group is used.
+
+        Returns:
+            Iterator:
+                An iterator over the full, unsharded model parameters, optionally filtered and customized according to `aoa_config`.
+        """
+        sharded_state_dict = self.sharded_state_dict()
+
+        source_state_shard_info = build_global_state_shard_info(
+            sharded_state_dict, process_group
+        )
+
+        if aoa_config is not None:
+            source_state_origin_shard_num = {
+                key: len({shard.global_offset for shard in shards})
+                for key, shards in source_state_shard_info.items()
+            }
+
+            aoa_engine = AOAEngine(
+                aoa_config=aoa_config,
+                source_state_shard_info=source_state_shard_info,
+                destination_state_shard_info=None,
+                source_state_origin_shard_num=source_state_origin_shard_num,
+            )
+
+            destination_sharded_weight_desc = {}
+            # destination_state
+            for k, v in aoa_engine.output_vars.items():
+                destination_sharded_weight_desc[k] = ShardedWeightDesc(
+                    key=k,
+                    local_shape=v.shape,
+                    global_shape=v.shape,
+                    global_offset=(0,) * len(v.shape),
+                    dtype=v.dtype,
+                )
+
+            for k, v in destination_sharded_weight_desc.items():
+                shard_mappings = aoa_engine.find_shard_sources(v)
+                destination_sharded_state_dict = {}
+                src_desc_to_sharded_tensor = {}
+                dst_to_src_desc_mapping = {}
+                cur_source_sharded_state_dict = {}
+
+                for mapping in shard_mappings:
+                    src_desc = mapping.source_slice
+                    if src_desc.key in sharded_state_dict:
+                        cur_source_sharded_state_dict[src_desc.key] = (
+                            sharded_state_dict[src_desc.key]
+                        )
+
+                src_desc_to_postprocess_list = {}
+                target_local_tensor = paddle.empty(v.local_shape, dtype=v.dtype)
+
+                target_sharded_tensor = ShardedWeight(
+                    key=v.key,
+                    local_tensor=target_local_tensor,
+                    local_shape=v.local_shape,
+                    global_shape=v.global_shape,
+                    global_offset=v.global_offset,
+                )
+                force_gc = []
+                for idx, mapping in enumerate(shard_mappings):
+                    src_desc = mapping.source_slice
+                    dst_desc = mapping.target_slice
+                    idx = (src_desc.key, tuple(src_desc.global_offset))
+
+                    if mapping.postprocess_list is not None:
+                        src_desc_to_postprocess_list[src_desc] = (
+                            mapping.postprocess_list
+                        )
+                    if (len(shard_mappings) == 1) and (
+                        src_desc.local_shape == dst_desc.local_shape
+                        and src_desc.global_shape == dst_desc.global_shape
+                        and src_desc.global_offset == dst_desc.global_offset
+                    ):
+                        destination_sharded_state_dict[idx] = (
+                            target_sharded_tensor
+                        )
+                    else:
+                        local_tensor = paddle.empty(
+                            src_desc.local_shape, dtype=src_desc.dtype
+                        )
+                        force_gc.append(local_tensor)
+                        destination_sharded_state_dict[idx] = ShardedWeight(
+                            key=src_desc.key,
+                            local_tensor=local_tensor,
+                            local_shape=src_desc.local_shape,
+                            global_shape=src_desc.global_shape,
+                            global_offset=src_desc.global_offset,
+                        )
+                        src_desc_to_sharded_tensor[src_desc] = (
+                            destination_sharded_state_dict[idx]
+                        )
+                        dst_to_src_desc_mapping[dst_desc] = src_desc
+
+                reshard_sharded_state_dict(
+                    src_sharded_state_dict=cur_source_sharded_state_dict,
+                    dst_sharded_state_dict=destination_sharded_state_dict,
+                    process_group=process_group,
+                )
+
+                for dst_desc, src_desc in dst_to_src_desc_mapping.items():
+                    src_tensor = src_desc_to_sharded_tensor[src_desc]
+                    dst_tensor = target_sharded_tensor
+                    postprocess_list = src_desc_to_postprocess_list.get(
+                        src_desc, None
+                    )
+                    assign_sharded_slice(
+                        src_desc,
+                        src_tensor,
+                        dst_desc,
+                        dst_tensor,
+                        postprocess_list,
+                    )
+
+                for tensor in force_gc:
+                    tensor._clear_to_zero_allocation()
+                    del tensor
+
+                yield k, target_local_tensor
+        else:
+            for k, shards in source_state_shard_info.items():
+                assert len(shards) > 0, f"{k} should have at least one shard"
+                global_shape = shards[0].global_shape
+                dtype = shards[0].dtype
+                cur_source_sharded_state_dict = {}
+                target_local_tensor = paddle.empty(global_shape, dtype=dtype)
+
+                target_sharded_tensor = ShardedWeight(
+                    key=k,
+                    local_tensor=target_local_tensor,
+                    local_shape=global_shape,
+                    global_shape=global_shape,
+                    global_offset=(0,) * len(global_shape),
+                )
+
+                if k in sharded_state_dict:
+                    cur_source_sharded_state_dict[k] = sharded_state_dict[k]
+
+                reshard_sharded_state_dict(
+                    src_sharded_state_dict=cur_source_sharded_state_dict,
+                    dst_sharded_state_dict={k: target_sharded_tensor},
+                    process_group=process_group,
+                )
+
+                yield k, target_local_tensor
 
     @framework.deprecate_stat_dict
     def set_state_dict(

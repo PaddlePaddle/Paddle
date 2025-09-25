@@ -34,9 +34,19 @@ SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], Optional[list[str]]]
 
 
 class TensorDesc:
-    def __init__(self, slices: list[SliceRef], shape: tuple[int]):
+    def __init__(
+        self,
+        slices: list[SliceRef],
+        shape: tuple[int],
+        in_degree: int = 0,
+        out_degree: int = 0,
+        dtype: str | None = None,
+    ):
         self.slices = slices
         self.shape = shape
+        self.in_degree = in_degree
+        self.out_degree = out_degree
+        self.dtype = dtype
 
     def __repr__(self):
         s = []
@@ -44,7 +54,7 @@ class TensorDesc:
             s.append(
                 f"{key}{sl_src} -> self{sl_dst}, postprocess_list={pp_list}"
             )
-        return f"Tensor(shape={self.shape}, slices={s})"
+        return f"Tensor(shape={self.shape}, slices={s}, in_degree={self.in_degree}, out_degree={self.out_degree}, dtype={self.dtype})"
 
 
 @dataclass(frozen=True)
@@ -85,6 +95,8 @@ class AOAShardInfoContext:
 
     def get_all_dst_state_keys(self):
         dst_state_keys = set()
+        if self.destination_state_shard_info is None:
+            return dst_state_keys
         for k in self.destination_state_shard_info.keys():
             model_state_key, _ = split_optimizer_state_key(k)
             dst_state_keys.add(model_state_key)
@@ -107,7 +119,7 @@ class AOAShardInfoContext:
         prefix, suffix = name_with_layer_id.split(layer_id_macro_tag, 1)
         pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         match_layer_id = set()
-        for key in self.get_all_dst_state_keys():
+        for key in self.get_all_src_state_keys():
             match = pattern.fullmatch(key)
             if match:
                 layer_num = int(match.group(1))
@@ -160,6 +172,10 @@ class AOAShardInfoContext:
         return shard_nums.pop()
 
     def get_dst_state_shard_num(self, dst_state_key: str) -> int:
+        if self.destination_state_shard_info is None:
+            # Default `dst_state_shard_num=1` if `destination_state_shard_info` is missing.
+            return 1
+
         model_state_key, opt_state_name = split_optimizer_state_key(
             dst_state_key
         )
@@ -221,23 +237,33 @@ class AOAEngine:
         self.statements = self.parser.parse_program()
         self.input_vars = self.build_input_vars()
         self.output_vars = {}
+        self.intermediate_vars = {}
         self.need_remove_input_vars = set()
         self.need_add_output_vars = set()
 
         self.shape_propagation()
 
-    def make_input_tensor(self, key: str, shape: tuple[int]) -> TensorDesc:
+    def make_input_tensor(
+        self, key: str, shape: tuple[int], dtype: str
+    ) -> TensorDesc:
         base_slice = tuple([slice(0, s) for s in shape])
-        return TensorDesc([(key, base_slice, base_slice, None)], shape)
+        return TensorDesc(
+            [(key, base_slice, base_slice, None)],
+            shape,
+            in_degree=0,
+            out_degree=0,
+            dtype=dtype,
+        )
 
     def build_input_vars(self):
         input_vars = {}
         for key, shards in self.source_state_shard_info.items():
             global_shape = shards[0].global_shape
+            dtype = shards[0].dtype
             model_state_key, opt_state_name = split_optimizer_state_key(key)
             if opt_state_name in [".w_0", ".moment1_0", ".moment2_0", None]:
                 input_vars[model_state_key] = self.make_input_tensor(
-                    model_state_key, global_shape
+                    model_state_key, global_shape, dtype
                 )
         return input_vars
 
@@ -246,6 +272,8 @@ class AOAEngine:
     ) -> list[TensorDesc]:
         results = []
         start = 0
+        tensor.out_degree += len(sizes)
+        dtype = tensor.dtype
         for sz in sizes:
             sub_dst_slice = [slice(None)] * len(tensor.shape)
             sub_dst_slice[axis] = slice(0, sz)
@@ -299,16 +327,32 @@ class AOAEngine:
                         )
             new_shape = list(tensor.shape)
             new_shape[axis] = sz
-            results.append(TensorDesc(sub_slices, tuple(new_shape)))
+            results.append(
+                TensorDesc(
+                    sub_slices,
+                    tuple(new_shape),
+                    in_degree=1,
+                    out_degree=0,
+                    dtype=dtype,
+                )
+            )
             start += sz
         return results
 
     def concat(self, tensors: list[TensorDesc], axis: int) -> TensorDesc:
         slices = []
+        assert len(tensors) >= 1, (
+            "When concatenating multiple tensors, there should be at least one!"
+        )
         shape = list(tensors[0].shape)
         shape[axis] = sum(t.shape[axis] for t in tensors)
+        dtype = tensors[0].dtype
+        assert all(t.dtype == dtype for t in tensors), (
+            "All tensors must have the same dtype!"
+        )
         curr = 0
         for t in tensors:
+            t.out_degree += 1
             for aidx, src_sl, dst_sl, pp_list in t.slices:
                 new_dst_sl = list(dst_sl)
                 dst_start = (
@@ -330,13 +374,21 @@ class AOAEngine:
                 else:
                     slices.append((aidx, src_sl, tuple(new_dst_sl), None))
             curr += t.shape[axis]
-        return TensorDesc(slices, tuple(shape))
+        return TensorDesc(
+            slices,
+            tuple(shape),
+            in_degree=len(tensors),
+            out_degree=0,
+            dtype=dtype,
+        )
 
     def transpose(self, tensor: TensorDesc, permutation: str) -> TensorDesc:
         slices = []
+        tensor.out_degree += 1
         tensor_shape = transpose_list(
             tensor.shape, ast.literal_eval(permutation)
         )
+        dtype = tensor.dtype
         for aidx, src_sl, dst_sl, pp_list in tensor.slices:
             trans_dst_sl = transpose_list(dst_sl, ast.literal_eval(permutation))
             if pp_list is not None:
@@ -345,10 +397,13 @@ class AOAEngine:
                 slices.append((aidx, src_sl, trans_dst_sl, new_pp_list))
             else:
                 slices.append((aidx, src_sl, trans_dst_sl, [permutation]))
-        return TensorDesc(slices, tensor_shape)
+        return TensorDesc(
+            slices, tensor_shape, in_degree=1, out_degree=0, dtype=dtype
+        )
 
     def cast(self, tensor: TensorDesc, dtype: str) -> TensorDesc:
         slices = []
+        tensor.out_degree += 1
         for aidx, src_sl, dst_sl, pp_list in tensor.slices:
             if pp_list is not None:
                 new_pp_list = pp_list.copy()
@@ -356,14 +411,26 @@ class AOAEngine:
                 slices.append((aidx, src_sl, dst_sl, new_pp_list))
             else:
                 slices.append((aidx, src_sl, dst_sl, [dtype]))
-        return TensorDesc(slices, tensor.shape)
+        # For the cast operation, post_process is required. Therefore, the returned
+        # Tensor's dtype here is the same as the input tensor's dtype, rather than the casted dtype.
+        return TensorDesc(
+            slices, tensor.shape, in_degree=1, out_degree=0, dtype=tensor.dtype
+        )
+
+    def identity(self, tensor: TensorDesc) -> TensorDesc:
+        tensor.out_degree += 1
+        return TensorDesc(
+            tensor.slices,
+            tensor.shape,
+            in_degree=1,
+            out_degree=0,
+            dtype=tensor.dtype,
+        )
 
     def shape_propagation(self):
-        intermediate_vars = {}
-
         def _get_var_ref(var):
-            if var.name in intermediate_vars:
-                return intermediate_vars[var.name]
+            if var.name in self.intermediate_vars:
+                return self.intermediate_vars[var.name]
             elif var.name in self.input_vars:
                 return self.input_vars[var.name]
             else:
@@ -390,7 +457,7 @@ class AOAEngine:
                     ]
                     result = self.split(in_ref, axis, sizes)
                     for out_var, out_ref in zip(right_vars, result):
-                        intermediate_vars[out_var.name] = out_ref
+                        self.intermediate_vars[out_var.name] = out_ref
                         if (
                             out_var.name
                             in self.context.get_all_dst_state_keys()
@@ -401,7 +468,7 @@ class AOAEngine:
                     left_refs = [_get_var_ref(var) for var in left_vars]
                     result = self.concat(left_refs, axis)
                     out_name = right_vars[0].name
-                    intermediate_vars[out_name] = result
+                    self.intermediate_vars[out_name] = result
                     if out_name in self.context.get_all_dst_state_keys():
                         self.output_vars[out_name] = result
 
@@ -418,49 +485,56 @@ class AOAEngine:
                     self.need_add_output_vars.add(rvar.name)
                 else:
                     if len(attrs) > 0:
-                        for attr in attrs:
-                            in_ref = _get_var_ref(lvar)
-                            if attr.key == "permute":
-                                if attr.value == "[]":
-                                    ndim = len(in_ref.shape)
-                                    perm = str(list(range(ndim - 1, -1, -1)))
-                                else:
-                                    perm = attr.value
-                                result = self.transpose(in_ref, perm)
-                            elif attr.key == "dtype":
-                                result = self.cast(in_ref, attr.value)
-                            elif attr.key == "axis":
-                                pass
-                            else:
-                                raise ValueError(
-                                    f"Unsupported attribute: {attr}"
-                                )
-
-                            intermediate_vars[rvar.name] = result
-                            if (
-                                rvar.name
-                                in self.context.get_all_dst_state_keys()
-                            ):
-                                self.output_vars[rvar.name] = result
-                    else:
+                        assert len(attrs) == 1, "Only support one operator!"
+                        attr = attrs[0]
                         in_ref = _get_var_ref(lvar)
-                        intermediate_vars[rvar.name] = in_ref
-                        if rvar.name in self.context.get_all_dst_state_keys():
-                            self.output_vars[rvar.name] = in_ref
+                        if attr.key == "permute":
+                            if attr.value == "[]":
+                                ndim = len(in_ref.shape)
+                                perm = str(list(range(ndim - 1, -1, -1)))
+                            else:
+                                perm = attr.value
+                            result = self.transpose(in_ref, perm)
+                        elif attr.key == "dtype":
+                            result = self.cast(in_ref, attr.value)
+                        elif attr.key == "axis":
+                            pass
+                        else:
+                            raise ValueError(f"Unsupported attribute: {attr}")
 
+                        self.intermediate_vars[rvar.name] = result
+                        if rvar.name in self.context.get_all_dst_state_keys():
+                            self.output_vars[rvar.name] = result
+                    else:
+                        # rename operation
+                        in_ref = _get_var_ref(lvar)
+                        result = self.identity(in_ref)
+                        self.intermediate_vars[rvar.name] = result
+                        if rvar.name in self.context.get_all_dst_state_keys():
+                            self.output_vars[rvar.name] = result
             else:
                 raise SyntaxError(f'Unexpected statement: {stmt}')
-
-        for name in self.destination_state_shard_info.keys():
-            model_state_key, opt_state_name = split_optimizer_state_key(name)
-            if model_state_key not in self.output_vars:
-                if model_state_key in self.need_add_output_vars:
-                    self.output_vars[model_state_key] = None
-                else:
-                    assert model_state_key in self.input_vars
-                    self.output_vars[model_state_key] = self.input_vars[
-                        model_state_key
-                    ]
+        if self.destination_state_shard_info is not None:
+            for name in self.destination_state_shard_info:
+                model_state_key, _ = split_optimizer_state_key(name)
+                if model_state_key not in self.output_vars:
+                    self.output_vars[model_state_key] = (
+                        None
+                        if model_state_key in self.need_add_output_vars
+                        else self.input_vars[
+                            model_state_key
+                        ]  # Assertion implied by direct access
+                    )
+        else:
+            # When destination_state_shard_info is not provided, the AOAEngine automatically derives it
+            # from source_state_shard_info and aha_statements. In this case, all destination_states
+            # remain unsharded (not partitioned).
+            for name, ref_t in self.input_vars.items():
+                if name not in self.output_vars and ref_t.out_degree == 0:
+                    self.output_vars[name] = self.identity(ref_t)
+            for name, ref_t in self.intermediate_vars.items():
+                if name not in self.output_vars and ref_t.out_degree == 0:
+                    self.output_vars[name] = self.identity(ref_t)
 
     def find_source_slices(
         self, key: str, local_slice: tuple[slice, ...]
@@ -577,6 +651,7 @@ class AOAEngine:
                         target.local_shape,
                         target.global_shape,
                         target.global_offset,
+                        target.dtype,
                     ),
                     None,
                 )
@@ -584,6 +659,11 @@ class AOAEngine:
 
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
+            assert src_var.dtype == target.dtype, (
+                "Direct assignment of Tensors with different types is prohibited in AOA. "
+                "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+            )
+
             src_global_shape = src_var.shape
 
             src_local_shape = tuple(slc.stop - slc.start for slc in src_slices)
@@ -605,12 +685,14 @@ class AOAEngine:
                 src_local_shape,
                 tuple(src_global_shape),
                 src_global_offset,
+                target.dtype,
             )
             target_sharded_weight = ShardedWeightDesc(
                 target_key,
                 tgt_local_shape,
                 tuple(target_global_shape),
                 tgt_global_offset,
+                target.dtype,
             )
 
             if src_key in self.need_remove_input_vars:

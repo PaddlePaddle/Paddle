@@ -100,10 +100,11 @@ def star_macro(tokens, expression, context):
             allkeys = (
                 context.get_all_dst_state_keys()
                 if not pre_rarrow
-                else context.get_all_dst_state_keys()
+                else context.get_all_src_state_keys()
             )
             assert len(allkeys) != 0, (
-                f"No keys found with prefix {prefix} and suffix {suffix}!"
+                f"No keys found with prefix '{prefix}' and suffix '{suffix}' in "
+                f"{'destination_state_shard_info' if not pre_rarrow else 'source_state_shard_info'}, please check!"
             )
             keys = list(_sort_keys_by_numeric_part(prefix, suffix, allkeys))
             for key in keys:
