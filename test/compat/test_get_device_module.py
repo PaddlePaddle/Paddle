@@ -72,7 +72,7 @@ class TestGetDeviceModule(unittest.TestCase):
         ]:
             self.assertIs(current_device_module, paddle.device.custom_device)
         elif current_device_type == "cpu":
-            self.assertIs(current_device_module, paddle.device)
+            self.assertIs(current_device_module, paddle.device.cpu)
 
 
 if __name__ == "__main__":
