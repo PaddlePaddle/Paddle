@@ -30,6 +30,36 @@ import paddle.distributed as dist
 from paddle.io import BatchSampler, DataLoader, Dataset
 
 
+# Set deterministic seeds for numerical stability
+def _ensure_deterministic_computation():
+    """Ensure deterministic computation for numerical stability in tests."""
+    # Set seeds for reproducibility - this is a standard practice in ML testing
+    random.seed(1234)
+    np.random.seed(1234)
+    paddle.seed(1234)
+    
+    # Enable deterministic algorithms for better numerical stability
+    try:
+        # Set deterministic flags if available (non-breaking)
+        if hasattr(paddle.framework, 'set_flags'):
+            paddle.framework.set_flags({
+                'FLAGS_cudnn_deterministic': True,
+                'FLAGS_use_mkldnn': False,  # Disable MKL-DNN for better reproducibility
+                'FLAGS_cpu_deterministic': True  # Ensure CPU deterministic
+            })
+    except Exception:
+        # Ignore if not supported in this version
+        pass
+    
+    # Additional deterministic settings
+    try:
+        import os
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'  # For CUDA deterministic
+        os.environ['PYTHONHASHSEED'] = '0'  # For Python hash deterministic
+    except Exception:
+        pass
+
+
 class Config:
     vocab_size = 320
     hidden_size = 8
@@ -236,6 +266,9 @@ class TestLlamaAuto:
         return losses
 
     def init_dist_env(self):
+        # Ensure deterministic computation for numerical stability
+        _ensure_deterministic_computation()
+        
         order = ["dp", "pp", "mp", "sep"]
         dp_degree = self.dp
         mp_degree = self.mp
@@ -380,39 +413,76 @@ class TestLlamaAuto:
             loss = np.average(loss)
         return np.array(loss)
 
-    def run_test_cases(self):
-        self.init_dist_env()
-        # context parallel with flash_attn backend not support CPU, not support float32
-        # flash_attn only support Cuda Compute Capability >= 8 and cuda version >= 11
-        if self.config.context_parallel_degree > 1 and (
-            os.getenv("backend") != "gpu"
-            or not self.strategy._amp.enable
-            or int(paddle.version.cuda().split(".")[0]) < 11
-            or paddle.device.cuda.get_device_capability()[0] < 8
-        ):
-            return
-        if self.gradient_accumulation_steps > 1:
-            dy_losses = self.run_dynamic()
-            # context parallel not support static mode
-            if self.sep > 1:
-                return
-            self.init_dist_env()
-            st_losses = self.run_dy2static()
-            if int(dist.get_rank()) in [2, 3, 6, 7]:
-                np.testing.assert_allclose(dy_losses, st_losses, atol=1e-7)
+    def _cleanup_resources(self):
+        """Resource cleanup to prevent memory leaks and OOM issues."""
+        import gc
+        import os
+        
+        # Force garbage collection to free unreferenced objects
+        gc.collect()
+        
+        # Clear GPU memory if available (non-breaking)
+        try:
+            import paddle
+            if paddle.device.is_compiled_with_cuda():
+                paddle.device.cuda.empty_cache()
+                paddle.device.cuda.synchronize()
+        except Exception:
+            # Ignore if CUDA not available
+            pass
+        
+        # Additional aggressive cleanup for OOM prevention
+        try:
+            # Clear any lingering temporary variables
+            import sys
+            if hasattr(sys, '_clear_type_cache'):
+                sys._clear_type_cache()
+        except Exception:
+            pass
 
-        else:
-            dy_losses = self.run_llama(to_static=0)
-            # context parallel not support static mode
-            if self.sep > 1:
-                return
+    def run_test_cases(self):
+        try:
             self.init_dist_env()
-            st_losses = self.run_llama(to_static=1)
-            assert len(dy_losses) == len(st_losses)
-            for idx in range(len(dy_losses)):
-                np.testing.assert_allclose(
-                    dy_losses[idx], st_losses[idx], atol=1e-7
-                )
+            # context parallel with flash_attn backend not support CPU, not support float32
+            # flash_attn only support Cuda Compute Capability >= 8 and cuda version >= 11
+            if self.config.context_parallel_degree > 1 and (
+                os.getenv("backend") != "gpu"
+                or not self.strategy._amp.enable
+                or int(paddle.version.cuda().split(".")[0]) < 11
+                or paddle.device.cuda.get_device_capability()[0] < 8
+            ):
+                return
+            if self.gradient_accumulation_steps > 1:
+                dy_losses = self.run_dynamic()
+                # Clean up resources between test runs to prevent OOM
+                self._cleanup_resources()
+                
+                # context parallel not support static mode
+                if self.sep > 1:
+                    return
+                self.init_dist_env()
+                st_losses = self.run_dy2static()
+                if int(dist.get_rank()) in [2, 3, 6, 7]:
+                    np.testing.assert_allclose(dy_losses, st_losses, atol=1e-7)
+
+            else:
+                dy_losses = self.run_llama(to_static=0)
+                # Clean up resources between test runs to prevent OOM
+                self._cleanup_resources()
+                
+                # context parallel not support static mode
+                if self.sep > 1:
+                    return
+                self.init_dist_env()
+                st_losses = self.run_llama(to_static=1)
+                assert len(dy_losses) == len(st_losses)
+                for idx in range(len(dy_losses)):
+                    np.testing.assert_allclose(
+                        dy_losses[idx], st_losses[idx], atol=1e-7
+                    )
+        finally:
+            # Ensure cleanup happens even if test fails
+            self._cleanup_resources()
 
 
 if __name__ == '__main__':

@@ -511,19 +511,21 @@ class Args:
 
 
 def train_mobilenet(args, to_static):
+    paddle.disable_static()
+    
     with unique_name.guard():
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         if args.model == "MobileNetV1":
-            net = paddle.jit.to_static(
-                MobileNetV1(class_dim=args.class_dim, scale=1.0)
-            )
+            net = MobileNetV1(class_dim=args.class_dim, scale=1.0)
+            if to_static:
+                net = paddle.jit.to_static(net)
         elif args.model == "MobileNetV2":
-            net = paddle.jit.to_static(
-                MobileNetV2(class_dim=args.class_dim, scale=1.0)
-            )
+            net = MobileNetV2(class_dim=args.class_dim, scale=1.0)
+            if to_static:
+                net = paddle.jit.to_static(net)
         else:
             print(
                 "wrong model name, please try model = MobileNetV1 or MobileNetV2"
@@ -669,9 +671,21 @@ class TestMobileNet(Dy2StTestBase):
         self.args.model_save_dir = os.path.join(
             self.temp_dir.name, "./inference"
         )
+        
+        paddle.disable_static()
 
     def tearDown(self):
         self.temp_dir.cleanup()
+        
+        import gc
+        gc.collect()
+        
+        try:
+            if paddle.device.is_compiled_with_cuda():
+                paddle.device.cuda.empty_cache()
+                paddle.device.cuda.synchronize()
+        except Exception:
+            pass
 
     def train(self, model_name, to_static):
         self.args.model = model_name

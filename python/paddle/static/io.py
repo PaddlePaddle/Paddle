@@ -1078,30 +1078,37 @@ def load_inference_model(
         # check environment variable to disable fallback
         disable_fallback = os.environ.get('PADDLE_DISABLE_PDMODEL_FALLBACK', '').lower() in ('1', 'true', 'yes')
 
-        # prefer JSON, fallback to pdmodel if needed
+
         use_pir = os.path.exists(json_path) and os.path.getsize(json_path) > 0
         use_legacy = os.path.exists(pdmodel_path)
         
+        _logger.debug("Model format detection for path prefix '{}': JSON exists={}, PDMODEL exists={}, fallback_disabled={}".format(
+            path_prefix, use_pir, use_legacy, disable_fallback))
+        
         if use_pir:
-            # try PIR loading with fallback on failure
+
             try:
-                _logger.debug("Attempting PIR format loading from {}".format(json_path))
+                _logger.info("Loading model in PIR format from {}".format(json_path))
                 return load_inference_model_pir(path_prefix, executor, **kwargs)
             except Exception as e:
                 if use_legacy and not disable_fallback:
-                    _logger.warning("PIR loading failed ({}), falling back to legacy mode".format(str(e)))
+                    _logger.warning("PIR format loading failed: {}. Initiating automatic fallback to legacy .pdmodel format".format(str(e)))
                     use_pir = False
                 else:
+                    _logger.error("PIR format loading failed and fallback is disabled or unavailable: {}".format(str(e)))
                     raise
         
         if use_legacy and not use_pir:
             if disable_fallback:
+                _logger.error("Legacy .pdmodel format detected at '{}', but automatic fallback is disabled via PADDLE_DISABLE_PDMODEL_FALLBACK environment variable".format(pdmodel_path))
                 raise ValueError("Legacy .pdmodel format detected, but automatic fallback is disabled. "
                                "Set PADDLE_DISABLE_PDMODEL_FALLBACK=0 to enable fallback.")
             
-            _logger.warning("Loading legacy .pdmodel format in PIR mode via fallback")
+
+            _logger.info("Loading legacy .pdmodel format in PIR mode via OldIrGuard fallback mechanism from {}".format(pdmodel_path))
             from paddle.pir_utils import OldIrGuard
             with OldIrGuard():
+                _logger.debug("Entering legacy mode context for .pdmodel loading")
                 return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
         
         raise ValueError("No model files found at path prefix '{}'. "

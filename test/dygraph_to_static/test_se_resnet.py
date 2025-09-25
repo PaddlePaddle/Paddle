@@ -370,18 +370,24 @@ class TestSeResnet(Dy2StTestBase):
         self.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, "se_resnet.dygraph"
         )
+        paddle.disable_static()
 
     def tearDown(self):
         self.temp_dir.cleanup()
+        import gc
+        gc.collect()
 
     def train(self, train_reader, to_static):
         np.random.seed(SEED)
 
         with base.dygraph.guard(place):
+            paddle.disable_static()
+            
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             se_resnext = SeResNeXt()
-            se_resnext = paddle.jit.to_static(se_resnext, full_graph=True)
+            if to_static:
+                se_resnext = paddle.jit.to_static(se_resnext, full_graph=True)
             optimizer = optimizer_setting(
                 train_parameters, se_resnext.parameters()
             )
@@ -493,6 +499,14 @@ class TestSeResnet(Dy2StTestBase):
     def predict_static(self, data):
         paddle.enable_static()
         model_filename = self.pir_model_filename
+
+        model_file_path = os.path.join(self.model_save_dir, model_filename)
+        params_file_path = os.path.join(self.model_save_dir, self.params_filename)
+        
+        if not os.path.exists(model_file_path):
+            raise FileNotFoundError("Model file not found: {}".format(model_file_path))
+        if not os.path.exists(params_file_path):
+            raise FileNotFoundError("Params file not found: {}".format(params_file_path))
 
         exe = base.Executor(place)
         [

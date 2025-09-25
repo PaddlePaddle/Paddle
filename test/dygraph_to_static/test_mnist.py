@@ -143,9 +143,12 @@ class TestMNIST(Dy2StTestBase):
             drop_last=True,
         )
         self.temp_dir = tempfile.TemporaryDirectory()
+        paddle.disable_static()
 
     def tearDown(self):
         self.temp_dir.cleanup()
+        import gc
+        gc.collect()
 
 
 class TestMNISTWithToStatic(TestMNIST):
@@ -188,6 +191,8 @@ class TestMNISTWithToStatic(TestMNIST):
         )
 
     def train(self, to_static=False):
+        paddle.disable_static()
+        
         loss_data = []
         paddle.seed(SEED)
         mnist = MNIST()
@@ -259,6 +264,9 @@ class TestMNISTWithToStatic(TestMNIST):
             MODEL_SUFFIX = PIR_INFER_MODEL_SUFFIX
             model_filename = "mnist" + MODEL_SUFFIX
             params_filename = "mnist" + INFER_PARAMS_SUFFIX
+            
+            os.makedirs(model_save_dir, exist_ok=True)
+            
             paddle.jit.save(
                 layer=model,
                 path=model_save_prefix,
@@ -266,6 +274,15 @@ class TestMNISTWithToStatic(TestMNIST):
                 output_spec=[gt_out_index],
                 input_names_after_prune=input_names_after_prune,
             )
+            
+            # Verify model files were saved successfully
+            model_file_path = model_save_prefix + MODEL_SUFFIX
+            params_file_path = model_save_prefix + INFER_PARAMS_SUFFIX
+            
+            if not os.path.exists(model_file_path):
+                raise RuntimeError("Failed to save model file: {}".format(model_file_path))
+            if not os.path.exists(params_file_path):
+                raise RuntimeError("Failed to save params file: {}".format(params_file_path))
             # load in static graph mode
             static_infer_out = self.jit_load_and_run_inference_static(
                 model_save_dir, model_filename, params_filename, inputs
@@ -296,6 +313,16 @@ class TestMNISTWithToStatic(TestMNIST):
     ):
         paddle.enable_static()
         exe = base.Executor(self.place)
+
+        import os
+        model_file_path = os.path.join(model_path, model_filename)
+        params_file_path = os.path.join(model_path, params_filename)
+        
+        if not os.path.exists(model_file_path):
+            raise FileNotFoundError("Model file not found: {}".format(model_file_path))
+        if not os.path.exists(params_file_path):
+            raise FileNotFoundError("Params file not found: {}".format(params_file_path))
+
         [
             inference_program,
             feed_target_names,
