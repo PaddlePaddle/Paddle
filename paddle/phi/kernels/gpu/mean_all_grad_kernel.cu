@@ -63,8 +63,6 @@ PD_REGISTER_KERNEL(mean_all_grad,
                    phi::MeanAllGradKernel,
                    float,
                    double,
-                   int,
-                   int64_t,
                    phi::float16,
                    phi::complex64,
                    phi::complex128) {}
