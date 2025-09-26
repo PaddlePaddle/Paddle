@@ -36,7 +36,7 @@ def skip_unit_test():
         or paddle.device.cuda.get_device_capability()[0] < 8
     )
 
-skip_msg = "only support with cuda and Ampere or later devices, also please ensure you use compile mode to install paddlepaddle with -WITH_CUDNN_FRONTEND ON"
+skip_msg = "only support with cuda and Ampere or later devices, also please ensure you have used compile mode to install paddlepaddle with -WITH_CUDNN_FRONTEND ON"
 
 
 @skip_check_grad_ci(reason="no grad op")
