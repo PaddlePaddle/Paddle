@@ -478,6 +478,30 @@
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)
 
+- backward_op : softplus_double_grad
+  forward : softplus_grad (Tensor x, Tensor grad_out, float beta, float threshold) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float beta, float threshold)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : softplus_double_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
+- backward_op : softplus_grad
+  forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float beta, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : SoftplusGradInfoSpmd
+  kernel :
+    func : softplus_grad
+  backward : softplus_double_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray axis)
