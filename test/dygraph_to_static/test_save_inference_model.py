@@ -143,7 +143,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             input_spec=[x],
             output_spec=[1],
         )
-        # Check the correctness of the inference
         dygraph_out, _ = layer(x)
         self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
         self.check_save_inference_model(
@@ -187,7 +186,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             input_spec=[x],
             output_spec=[1],
         )
-        # Check the correctness of the inference
         loss_out, _ = layer(x)
 
         loss_out_numpy = float(loss_out)
@@ -225,7 +223,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             output_spec=fetch if fetch else None,
         )
         
-        # Verify model files were actually saved
         model_file_path = infer_model_prefix + PIR_INFER_MODEL_SUFFIX
         params_file_path = infer_model_prefix + INFER_PARAMS_SUFFIX
         
@@ -297,8 +294,6 @@ class TestPartialProgramRaiseError(Dy2StTestBase):
         params = concrete_program.parameters
 
         concrete_program.parameters = params[0]
-        # TypeError: Type of self._params should be list or tuple,
-        # but received <class 'paddle.base.framework.EagerParamBase'>.
         with self.assertRaises(TypeError):
             pir_partial_program_from(concrete_program)
 

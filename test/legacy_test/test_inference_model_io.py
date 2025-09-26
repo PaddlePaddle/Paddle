@@ -44,23 +44,23 @@ class TestLoadInferenceModelError(unittest.TestCase):
 
 
 class TestPdmodelCompatibility(unittest.TestCase):
-    """Test pdmodel compatibility with PIR mode auto-fallback functionality."""
+    """Test pdmodel compatibility with PIR mode fallback."""
 
     def setUp(self):
-        """Set up test environment."""
         self.temp_dir = tempfile.TemporaryDirectory()
         self.place = core.CPUPlace()
         self.exe = executor.Executor(self.place)
         
-        # Store original PIR setting and ensure PIR is enabled for testing fallback
         self.original_pir_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")["FLAGS_enable_pir_api"]
         paddle.base.set_flags({'FLAGS_enable_pir_api': True})
         
-        # Initialize in static mode for legacy model testing
+        import os
+        self.original_fallback_env = os.environ.get('PADDLE_ENABLE_PDMODEL_FALLBACK', '')
+        os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = '1'
+        
         paddle.enable_static()
 
     def tearDown(self):
-        """Clean up test environment."""
         try:
             if hasattr(self, 'temp_dir') and self.temp_dir is not None:
                 self.temp_dir.cleanup()
@@ -68,10 +68,18 @@ class TestPdmodelCompatibility(unittest.TestCase):
             import warnings
             warnings.warn(f"Failed to cleanup temporary directory: {str(e)}")
         
-        # Restore original PIR setting
         try:
             if hasattr(self, 'original_pir_flag'):
                 paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
+        except Exception:
+            pass
+        
+        try:
+            if hasattr(self, 'original_fallback_env'):
+                if self.original_fallback_env:
+                    os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = self.original_fallback_env
+                else:
+                    os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
         except Exception:
             pass
         
@@ -86,30 +94,16 @@ class TestPdmodelCompatibility(unittest.TestCase):
             pass
 
     def _create_simple_model(self, save_format='pdmodel'):
-        """Create a simple linear model for testing.
-
-        Args:
-            save_format (str): Format to save the model in. Options are:
-                - 'pdmodel': Legacy binary format compatible with PaddleLite
-                - 'json': PIR text format used in Paddle 3.x
-
-        Returns:
-            str: Path prefix of the saved model (without extension)
-        """
         model_path = os.path.join(self.temp_dir.name, "test_model")
 
-        # Save model in the specified format
         if save_format == 'pdmodel':
-            # Create model in legacy mode using OldIrGuard
             with paddle.pir_utils.OldIrGuard():
                 main_program = paddle.static.Program()
                 startup_program = paddle.static.Program()
 
                 with paddle.static.program_guard(main_program, startup_program):
-                    # Input tensor: [batch_size, 10]
                     x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
 
-                    # Model parameters
                     w_param = paddle.static.create_parameter(
                         shape=[10, 1],
                         dtype='float32',
@@ -123,8 +117,6 @@ class TestPdmodelCompatibility(unittest.TestCase):
                         default_initializer=paddle.nn.initializer.Constant(0.0)
                     )
 
-                    # Build computation graph: y = x * w + b
-                    # Note: Use explicit fluid.layers APIs to ensure ops are added to program
                     mul_result = paddle.fluid.layers.matmul(x, w_param)
                     y = paddle.fluid.layers.elementwise_add(mul_result, b_param)
 
@@ -133,7 +125,6 @@ class TestPdmodelCompatibility(unittest.TestCase):
                 if len(main_program.global_block().ops) == 0:
                     raise ValueError("Main program is empty - no operators found!")
                 
-                # Save model in legacy .pdmodel format
                 paddle.static.save_inference_model(
                     path_prefix=model_path,
                     feed_vars=[x],
@@ -150,10 +141,8 @@ class TestPdmodelCompatibility(unittest.TestCase):
                 startup_program = paddle.static.Program()
 
                 with paddle.static.program_guard(main_program, startup_program):
-                    # Input tensor: [batch_size, 10]
                     x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
 
-                    # Model parameters
                     w = paddle.create_parameter(
                         shape=[10, 1],
                         dtype='float32',
@@ -167,8 +156,6 @@ class TestPdmodelCompatibility(unittest.TestCase):
                         default_initializer=paddle.nn.initializer.Constant(0.0)
                     )
 
-                    # Build computation graph: y = x @ w + b
-                    # Note: Use @ operator for PIR mode compatibility
                     y = x @ w + b
 
                 self.exe.run(startup_program)
@@ -176,7 +163,6 @@ class TestPdmodelCompatibility(unittest.TestCase):
                 if len(main_program.global_block().ops) == 0:
                     raise ValueError("Main program is empty - no operators found!")
                 
-                # Save model in PIR .json format
                 paddle.static.save_inference_model(
                     path_prefix=model_path,
                     feed_vars=[x],
@@ -191,11 +177,8 @@ class TestPdmodelCompatibility(unittest.TestCase):
         return model_path
 
     def test_auto_fallback_pdmodel_to_legacy(self):
-        """Test automatic fallback from PIR mode to legacy mode when loading .pdmodel files."""
-        # Create model in legacy .pdmodel format
         model_path = self._create_simple_model(save_format='pdmodel')
 
-        # Verify expected files exist
         pdmodel_file = model_path + ".pdmodel"
         pdiparams_file = model_path + ".pdiparams"
         json_file = model_path + ".json"
@@ -204,7 +187,6 @@ class TestPdmodelCompatibility(unittest.TestCase):
         self.assertTrue(os.path.exists(pdiparams_file), "pdiparams file should exist")
         self.assertFalse(os.path.exists(json_file), "json file should not exist")
 
-        # Load model in PIR mode - should auto-fallback to legacy
         program, feed_names, fetch_targets = load_inference_model(
             path_prefix=model_path,
             executor=self.exe

@@ -30,32 +30,26 @@ import paddle.distributed as dist
 from paddle.io import BatchSampler, DataLoader, Dataset
 
 
-# Set deterministic seeds for numerical stability
 def _ensure_deterministic_computation():
     """Ensure deterministic computation for numerical stability in tests."""
-    # Set seeds for reproducibility - this is a standard practice in ML testing
     random.seed(1234)
     np.random.seed(1234)
     paddle.seed(1234)
     
-    # Enable deterministic algorithms for better numerical stability
     try:
-        # Set deterministic flags if available (non-breaking)
         if hasattr(paddle.framework, 'set_flags'):
             paddle.framework.set_flags({
                 'FLAGS_cudnn_deterministic': True,
-                'FLAGS_use_mkldnn': False,  # Disable MKL-DNN for better reproducibility
-                'FLAGS_cpu_deterministic': True  # Ensure CPU deterministic
+                'FLAGS_use_mkldnn': False,
+                'FLAGS_cpu_deterministic': True
             })
     except Exception:
-        # Ignore if not supported in this version
         pass
     
-    # Additional deterministic settings
     try:
         import os
-        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'  # For CUDA deterministic
-        os.environ['PYTHONHASHSEED'] = '0'  # For Python hash deterministic
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        os.environ['PYTHONHASHSEED'] = '0'
     except Exception:
         pass
 
@@ -266,7 +260,6 @@ class TestLlamaAuto:
         return losses
 
     def init_dist_env(self):
-        # Ensure deterministic computation for numerical stability
         _ensure_deterministic_computation()
         
         order = ["dp", "pp", "mp", "sep"]
@@ -418,22 +411,17 @@ class TestLlamaAuto:
         import gc
         import os
         
-        # Force garbage collection to free unreferenced objects
         gc.collect()
         
-        # Clear GPU memory if available (non-breaking)
         try:
             import paddle
             if paddle.device.is_compiled_with_cuda():
                 paddle.device.cuda.empty_cache()
                 paddle.device.cuda.synchronize()
         except Exception:
-            # Ignore if CUDA not available
             pass
         
-        # Additional aggressive cleanup for OOM prevention
         try:
-            # Clear any lingering temporary variables
             import sys
             if hasattr(sys, '_clear_type_cache'):
                 sys._clear_type_cache()
@@ -454,7 +442,6 @@ class TestLlamaAuto:
                 return
             if self.gradient_accumulation_steps > 1:
                 dy_losses = self.run_dynamic()
-                # Clean up resources between test runs to prevent OOM
                 self._cleanup_resources()
                 
                 # context parallel not support static mode
@@ -467,7 +454,6 @@ class TestLlamaAuto:
 
             else:
                 dy_losses = self.run_llama(to_static=0)
-                # Clean up resources between test runs to prevent OOM
                 self._cleanup_resources()
                 
                 # context parallel not support static mode
@@ -481,7 +467,6 @@ class TestLlamaAuto:
                         dy_losses[idx], st_losses[idx], atol=1e-7
                     )
         finally:
-            # Ensure cleanup happens even if test fails
             self._cleanup_resources()
 
 

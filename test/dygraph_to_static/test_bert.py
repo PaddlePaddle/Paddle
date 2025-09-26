@@ -120,7 +120,6 @@ class TestBert(Dy2StTestBase):
             if hasattr(self, 'temp_dir') and self.temp_dir is not None:
                 self.temp_dir.cleanup()
         except Exception as e:
-            # Log warning but don't fail the test
             import warnings
             warnings.warn(f"Failed to cleanup temporary directory: {str(e)}")
         
@@ -169,7 +168,6 @@ class TestBert(Dy2StTestBase):
                     labels,
                 ) = input_data
 
-                # Required for @paddle.jit.to_static compatibility
                 paddle.disable_static()
                 
                 next_sent_acc, mask_lm_loss, total_loss = bert(
