@@ -22,7 +22,7 @@ set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
     "${GLOG_INSTALL_DIR}/include"
     CACHE PATH "glog include directory." FORCE)
-set(GLOG_TAG v0.5.0)
+set(GLOG_TAG v0.6.0)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
 if(WIN32)
   set(GLOG_LIBRARIES

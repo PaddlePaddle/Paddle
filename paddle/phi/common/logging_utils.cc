@@ -17,7 +17,12 @@
 #include <glog/logging.h>
 #include <iostream>
 namespace phi {
-void init_phi_glog() { google::InitGoogleLogging("phi"); }
+void init_phi_glog(bool logtostderr) {
+  if (google::IsGoogleLoggingInitialized() == false) {
+    google::InitGoogleLogging("phi");
+  }
+  FLAGS_logtostderr = logtostderr;
+}
 void set_phi_vlog_level(int level) { FLAGS_v = level; }
 void set_phi_vlog_level(const char* module_pattern, int level) {
   google::SetVLOGLevel(module_pattern, level);

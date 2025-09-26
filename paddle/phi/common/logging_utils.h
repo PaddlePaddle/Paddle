@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-
+#include "paddle/common/macros.h"
 namespace phi {
-void init_phi_glog();
-void set_phi_vlog_level(int level);
-void set_phi_vlog_level(const char* module_pattern, int level);
+PADDLE_API void init_phi_glog(bool logtostderr);
+PADDLE_API void set_phi_vlog_level(int level);
+PADDLE_API void set_phi_vlog_level(const char* module_pattern, int level);
 }  // namespace phi
