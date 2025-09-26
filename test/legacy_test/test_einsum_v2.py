@@ -723,16 +723,33 @@ class TestBF16(unittest.TestCase):
     """
 
     def test_shape(self):
-        cuda_major = paddle.version.cuda().split('.')[0].strip()
-        if int(cuda_major) >= 11:
-            """MatmulKernel support bfloat16 only if cuda_major > 11.0."""
-            A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
-            A = A.cuda()
-            B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
-            B = B.cuda()
-            C = paddle.einsum('i,i->', A, B)
-            D = paddle.to_tensor([8.0]).astype(paddle.bfloat16)
-            self.assertEqual(C.item(), D.item())
+        if core.is_compiled_with_cuda():
+            cuda_major = paddle.version.cuda().split('.')[0].strip()
+            if int(cuda_major) >= 11:
+                """MatmulKernel support bfloat16 only if cuda_major > 11.0."""
+                A = paddle.to_tensor(np.array([1.0, 2.0])).astype(
+                    paddle.bfloat16
+                )
+                A = A.cuda()
+                B = paddle.to_tensor(np.array([2.0, 3.0])).astype(
+                    paddle.bfloat16
+                )
+                B = B.cuda()
+                C = paddle.einsum('i,i->', A, B)
+                D = paddle.to_tensor([8.0]).astype(paddle.bfloat16)
+                self.assertEqual(C.item(), D.item())
+        elif is_custom_device():
+            """ Custom device support bfloat16 """
+            if core.is_bfloat16_supported(get_device_place()):
+                A = paddle.to_tensor(np.array([1.0, 2.0])).astype(
+                    paddle.bfloat16
+                )
+                B = paddle.to_tensor(np.array([2.0, 3.0])).astype(
+                    paddle.bfloat16
+                )
+                C = paddle.einsum('i,i->', A, B)
+                D = paddle.to_tensor([8.0]).astype(paddle.bfloat16)
+                self.assertEqual(C.item(), D.item())
 
 
 class TestComplex(unittest.TestCase):
