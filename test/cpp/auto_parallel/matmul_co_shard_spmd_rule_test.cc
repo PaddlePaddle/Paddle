@@ -411,6 +411,7 @@ TEST(MatmulGradInferSpmd, Ctor) {
     }
   }
 }
+
 TEST(BmmInferSpmd, CoShard) {
   std::vector<int64_t> mesh_shape = {2, 2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -496,7 +497,8 @@ TEST(BmmGradInferSpmd, CoShard) {
   check_multi_dims_mapping(bmm_grad_spmd_info.second[0], x_dims_mapping);
   EXPECT_FALSE(is_partial(bmm_grad_spmd_info.second[0]));
   check_multi_dims_mapping(bmm_grad_spmd_info.second[1], y_dims_mapping);
-  EXPECT_FALSE(is_partial(bmm_grad_spmd_info.second[1]));
+  EXPECT_TRUE(is_partial(bmm_grad_spmd_info.second[1]));
+  check_partial_dims(bmm_grad_spmd_info.second[1], {2});
 }
 }  // namespace auto_parallel
 }  // namespace distributed
