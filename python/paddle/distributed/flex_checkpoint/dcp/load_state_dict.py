@@ -1006,16 +1006,18 @@ def load_state_dict_impl(
                     os.path.join(path, file), safetensors=safetensors
                 )
         logger.info(f".......source_state_dict: {source_state_dict}")
-        metadata = create_metadata(
-            source_state_dict,
-            process_group,
-            unique_id,
-        )
+        if len(metadata_list) == 0:
+            metadata = create_metadata(
+                source_state_dict,
+                process_group,
+                unique_id,
+            )
+            metadata_list = [metadata]
 
         _load_state_dict(
             flat_state_dict,
             source_state_dict,
-            [metadata],  # _list,
+            metadata_list,
             process_group,
             coordinator_rank,
             offload,
