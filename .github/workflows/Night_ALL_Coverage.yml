@@ -40,8 +40,10 @@ jobs:
     steps:
       - name: build-docker-images
         run: |
+          set -x
           cd ${{ github.workspace }}
-          git clone --depth=1000 https://github.com/PaddlePaddle/Paddle.git .
+          pwd
+          git clone --depth=1000 https://github.com/PaddlePaddle/Paddle.git
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
 
