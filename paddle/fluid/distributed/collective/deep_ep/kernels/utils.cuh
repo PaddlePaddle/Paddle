@@ -231,6 +231,8 @@ __device__ __forceinline__ int64_t ld_volatile_global(const uint64_t *ptr) {
 #define DISABLE_AGGRESSIVE_PTX_INSTRS
 #endif
 
+// swgu98: cuda13 strictly limits graphics cards below 80 architecture from
+// using ".L2::256B" optimization
 #if (__CUDACC_VER_MAJOR__ >= 13)
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
 #ifndef DISABLE_AGGRESSIVE_PTX_INSTRS
