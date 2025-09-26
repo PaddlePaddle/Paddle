@@ -216,6 +216,9 @@ strided_op_list = {
     "unsqueeze",
     "view_shape",
     "view_dtype",
+}
+
+strided_compute_op_list = {
     # elementwise
     "add",
     "subtract",
@@ -1438,7 +1441,21 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             set_output_tensor_wrappers_list
         )
 
-        if (forward_api_name in strided_op_list) or for_backward:
+        if forward_api_name in strided_compute_op_list:
+            self.inputs_call_list_tmp = self.inputs_call_list
+            pre_contiguous_list = []
+            for name, (ttype, pos) in forward_inputs_position_map.items():
+                if name in need_pre_contiguous_set:
+                    pre_contiguous_list.append(
+                        f"{indent}const auto& {name}_tmp = (!FLAGS_use_stride_compute_kernel && require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
+                    )
+                    self.inputs_call_list_tmp[pos] = (
+                        self.inputs_call_list_tmp[pos] + '_tmp'
+                    )
+            self.node_creation_pre_contiguous_str = "\n".join(
+                pre_contiguous_list
+            )
+        elif (forward_api_name in strided_op_list) or for_backward:
             self.inputs_call_list_tmp = None
             self.node_creation_pre_contiguous_str = ""
         else:
@@ -1447,7 +1464,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             for name, (ttype, pos) in forward_inputs_position_map.items():
                 if name in need_pre_contiguous_set:
                     pre_contiguous_list.append(
-                        f"{indent}const auto& {name}_tmp = (!FLAGS_use_stride_compute_kernel && require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
+                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
                     )
                     self.inputs_call_list_tmp[pos] = (
                         self.inputs_call_list_tmp[pos] + '_tmp'
