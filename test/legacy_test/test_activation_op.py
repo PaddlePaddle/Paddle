@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import warnings
 from contextlib import contextmanager
 
 import numpy as np
@@ -33,7 +31,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base, static
 from paddle.base import Program, core, program_guard
-from paddle.base.layer_helper import LayerHelper
 
 devices = ['cpu', get_device()]
 
@@ -534,7 +531,7 @@ class TestSigmoidBF16(OpTest):
             place,
             check_prim=False,
             check_pir=True,
-            check_prim_pir=False,
+            check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
             check_symbol_infer=False,
         )
@@ -547,7 +544,7 @@ class TestSigmoidBF16(OpTest):
             'Out',
             check_prim=False,
             check_pir=True,
-            check_prim_pir=False,
+            check_prim_pir=True,
         )
 
 
@@ -3454,36 +3451,6 @@ class TestRelu6API(unittest.TestCase):
                 F.relu6(x_fp16)
 
 
-class TestRelu6APIWarnings(unittest.TestCase):
-    def test_warnings(self):
-        with (
-            static_guard(),
-            warnings.catch_warnings(record=True) as context,
-            paddle.pir_utils.OldIrGuard(),
-            paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ),
-        ):
-            warnings.simplefilter("always")
-
-            helper = LayerHelper("relu6")
-            data = paddle.static.data(
-                name='data', shape=[None, 3, 32, 32], dtype='float32'
-            )
-            out = helper.create_variable_for_type_inference(dtype=data.dtype)
-            os.environ['FLAGS_print_extra_attrs'] = "1"
-            helper.append_op(
-                type="relu6",
-                inputs={'X': data},
-                outputs={'Out': out},
-                attrs={'threshold': 6.0},
-            )
-            self.assertTrue(
-                "op relu6 use extra_attr: threshold" in str(context[-1].message)
-            )
-            os.environ['FLAGS_print_extra_attrs'] = "0"
-
-
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
     x_dtype = x.dtype
     if x_dtype == 'float16':
@@ -4768,7 +4735,7 @@ class TestPow(TestActivation):
     def test_check_output(self):
         self.check_output(
             check_prim=False,
-            check_prim_pir=False,
+            check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
             check_symbol_infer=False,
@@ -4781,7 +4748,7 @@ class TestPow(TestActivation):
             ['X'],
             'Out',
             check_prim=False,
-            check_prim_pir=False,
+            check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -5969,7 +5936,7 @@ create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p, check_pir=True)
 create_test_act_fp16_class(TestSquare, check_pir=True, check_prim_pir=True)
-create_test_act_fp16_class(TestPow, check_prim=False, check_prim_pir=False)
+create_test_act_fp16_class(TestPow, check_prim=False, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
 create_test_act_fp16_class(TestSoftplus, check_pir=True)
