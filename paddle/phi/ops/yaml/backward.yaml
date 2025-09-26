@@ -323,6 +323,7 @@
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : BmmGradInferMeta
+    spmd_rule : BmmGradInferSpmd
   kernel :
     func : bmm_grad
     data_type : out_grad

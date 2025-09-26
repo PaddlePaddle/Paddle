@@ -773,6 +773,7 @@
   output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
+    spmd_rule: BmmInferSpmd
   kernel :
     func : bmm
   backward : bmm_grad
