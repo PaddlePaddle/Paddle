@@ -12,35 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fused_seqpool_cvm_grad_kernel.h"
-#include <memory>
+#pragma once
+
+#include <string>
 #include <vector>
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
-void FusedSeqpoolCVMGradOpCPUKernel(
+void FusedSeqpoolCVMGradCUDAKernel(
     const Context &dev_ctx,
     const std::vector<const DenseTensor *> &x,
-    const DenseTensor &cvm,
+    const DenseTensor &cvm_in,
     const std::vector<const DenseTensor *> &out_grad,
     const std::string &pooltype,
     float pad_value,
     bool use_cvm,
     int cvm_offset,
     std::vector<DenseTensor *> x_grad,
-    DenseTensor *cvm_grad) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "Unimplemented CPU kernel for FusedSeqpoolCVMGradOp, only support GPU "
-      "now."));
-}
+    DenseTensor *cvm_grad);
 
+}  // namespace fusion
 }  // namespace phi
-
-PD_REGISTER_KERNEL(fused_seqpool_cvm_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FusedSeqpoolCVMGradOpCPUKernel,
-                   float) {}
