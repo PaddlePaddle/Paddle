@@ -53,7 +53,7 @@ class SignalMessageDumper {
   std::shared_ptr<std::ostringstream> dumper_;
 };
 
-void SignalHandle(const char* data, int size);
+void SignalHandle(const char* data, size_t size);
 #endif
 
 PADDLE_API void DisableSignalHandler();
