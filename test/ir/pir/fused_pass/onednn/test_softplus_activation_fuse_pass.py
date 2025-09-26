@@ -24,9 +24,9 @@ paddle.enable_static()
 activation_type = [
     "abs",
     "gelu",
-    # "hard_sigmoid",
+    "hard_sigmoid",
     "hard_swish",
-    # "leaky_relu",
+    "leaky_relu",
     "mish",
     "relu",
     "relu6",
