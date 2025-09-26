@@ -79,9 +79,9 @@ struct SwizzleWrapper {
 constexpr int kNumConfigsHalf = 23;
 constexpr int kNumConfigsFloat = 13;
 
-#define AP_AUTOTUNE_half(func, stream_ptr, ...)  AP_AUTOTUNE(func, ap::kNumConfigsHalf, stream_ptr, __VA_ARGS__)
-#define AP_AUTOTUNE_float(func, stream_ptr, ...)  AP_AUTOTUNE(func, ap::kNumConfigsFloat, stream_ptr, __VA_ARGS__)
-#define AP_AUTOTUNE_nv_bfloat16(func, stream_ptr, ...) AP_AUTOTUNE_half(func, stream_ptr, __VA_ARGS__)
+#define AP_AUTOTUNE_half(func, stream_ptr, ...)  AP_AUTOTUNE(func, stream_ptr, ap::kNumConfigsHalf, __VA_ARGS__)
+#define AP_AUTOTUNE_float(func, stream_ptr, ...)  AP_AUTOTUNE(func, stream_ptr, ap::kNumConfigsFloat, __VA_ARGS__)
+#define AP_AUTOTUNE_bfloat16(func, stream_ptr, ...) AP_AUTOTUNE_half(func, stream_ptr, __VA_ARGS__)
 
 
 template <typename ElementT, int SwizzleFactor, bool Batched, int Id = 0>

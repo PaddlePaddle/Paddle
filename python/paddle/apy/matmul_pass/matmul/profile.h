@@ -27,9 +27,9 @@
 
 #define GPUEventCreate(e) cudaEventCreate(e)
 #define GPUEventDestroy(e) cudaEventDestroy(e)
-#define GPUEventRecord(e, s) GPUEventRecord(e, s)
-#define GPUEventSynchronize(e) GPUEventSynchronize(e)
-#define GPUEventElapsedTime(ms, s, e) GPUEventElapsedTime(ms, s, e)
+#define GPUEventRecord(e, s) cudaEventRecord(e, s)
+#define GPUEventSynchronize(e) cudaEventSynchronize(e)
+#define GPUEventElapsedTime(ms, s, e) cudaEventElapsedTime(ms, s, e)
 #define GPUProfilerStart() cudaProfilerStart()
 #define GPUProfilerStop() cudaProfilerStop()
 #define GPUStreamSynchronize(s) cudaStreamSynchronize(s)

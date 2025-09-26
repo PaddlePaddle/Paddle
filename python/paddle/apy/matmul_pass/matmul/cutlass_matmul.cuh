@@ -36,6 +36,10 @@
 #include "cutlass_patch/check.h"
 #include "params.h"
 
+using MatrixCoord = cutlass::BatchedMatrixCoord;
+using bfloat16 = nv_bfloat16;
+// using ap_half = half;
+// using apStream_t = cudaStream_t;
 
 namespace ap {
 

@@ -39,14 +39,14 @@ class MatmulVariadicTemplate:
         self.dtype2type_name = ap.OrderedDict(
             [
                 [ap.PointerType.const_float_ptr, "const float*"],
-                [ap.PointerType.const_float16_ptr, "const ap_half*"],
-                [ap.PointerType.const_bfloat16_ptr, "const ap_bfloat16*"],
+                [ap.PointerType.const_float16_ptr, "const half*"],
+                [ap.PointerType.const_bfloat16_ptr, "const bfloat16*"],
                 [ap.PointerType.float_ptr, "float*"],
-                [ap.PointerType.float16_ptr, "ap_half*"],
-                [ap.PointerType.bfloat16_ptr, "ap_bfloat16*"],
+                [ap.PointerType.float16_ptr, "half*"],
+                [ap.PointerType.bfloat16_ptr, "bfloat16*"],
                 [ap.DataType.float, "float"],
-                [ap.DataType.float16, "ap_half"],
-                [ap.DataType.bfloat16, "ap_bfloat16"],
+                [ap.DataType.float16, "half"],
+                [ap.DataType.bfloat16, "bfloat16"],
                 [ap.DataType.int64_t, "int64_t"],
             ]
         )
@@ -62,7 +62,7 @@ class MatmulVariadicTemplate:
     
     def make_gpu_compile_cmd(self, dir_name, source_dir):
         cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
-        compile_cmd = "nvcc -std=c++17 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
+        compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
         compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
         compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
         compile_cmd = compile_cmd + " -I " + source_dir
@@ -81,9 +81,12 @@ class MatmulVariadicTemplate:
 
     def make_dcu_compile_cmd(self, dir_name, source_dir):
         ck_dir = f"{dir_name}/matmul/composable_kernel"
-        compile_cmd = "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx906"
+        compile_cmd = "hipcc -std=c++20 -O3 -fPIC --offload-arch=gfx906"
         compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
         compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = (
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+        )
         compile_cmd = (
             compile_cmd
             + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
