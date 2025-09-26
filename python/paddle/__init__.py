@@ -230,6 +230,7 @@ from .device import (  # noqa: F401
     PaddleStream as Stream,
     device_guard,
     get_cudnn_version,
+    get_default_device,
     get_device,
     get_device_module,
     is_compiled_with_cinn,
@@ -729,18 +730,6 @@ from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
 )
-
-
-def get_default_device() -> "paddle.device":
-    """
-    Returns:
-        str: The default device for PaddlePaddle.
-    Example:
-        .. code-block:: python
-            import paddle
-            print(paddle.get_default_device())
-    """
-    return paddle.device(get_device().replace("gpu", "cuda"))
 
 
 class _TensorMethodOrModule:

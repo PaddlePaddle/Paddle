@@ -513,6 +513,18 @@ def get_device() -> str:
     return device
 
 
+def get_default_device() -> paddle.device:
+    """
+    Returns:
+        str: The default device for PaddlePaddle.
+    Example:
+        .. code-block:: python
+            import paddle
+            print(paddle.get_default_device())
+    """
+    return paddle.device(get_device().replace("gpu", "cuda"))
+
+
 def get_all_device_type() -> list[str]:
     """
 
