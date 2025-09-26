@@ -31,7 +31,6 @@ from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
-import paddle.pir_utils
 from paddle import base, static
 from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
