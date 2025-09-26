@@ -663,23 +663,23 @@ cinn_type_t cinn_type_of<double>() {
 
 template <>
 cinn_type_t cinn_type_of<float*>() {
-  return cinn_float64_t();
+  return cinn_float32_t(1);
 }
 template <>
 cinn_type_t cinn_type_of<double*>() {
-  return cinn_float64_t();
+  return cinn_float64_t(1);
 }
 template <>
 cinn_type_t cinn_type_of<bfloat16*>() {
-  return cinn_float64_t();
+  return cinn_bfloat16_t(1);
 }
 template <>
 cinn_type_t cinn_type_of<float8e4m3*>() {
-  return cinn_float64_t();
+  return cinn_float8e4m3_t(1);
 }
 template <>
 cinn_type_t cinn_type_of<float16*>() {
-  return cinn_float64_t();
+  return cinn_float16_t(1);
 }
 
 #include "paddle/cinn/runtime/cinn_x86_device_impl.cc"
