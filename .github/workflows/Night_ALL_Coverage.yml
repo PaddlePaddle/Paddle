@@ -317,7 +317,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz from cfs"
-          coverage_tag=$(date +"%m-%d")
+          coverage_tag=$(date +%Y-%m-%d)
           cp ${CFS_DIR}/coverage_night/${coverage_tag}/Paddle.tar.gz .
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
