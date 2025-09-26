@@ -1441,7 +1441,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             set_output_tensor_wrappers_list
         )
 
-        if forward_api_name in strided_compute_op_list:
+        if (forward_api_name in strided_op_list) or for_backward:
+            self.inputs_call_list_tmp = None
+            self.node_creation_pre_contiguous_str = ""
+        elif forward_api_name in strided_compute_op_list:
             self.inputs_call_list_tmp = self.inputs_call_list
             pre_contiguous_list = []
             for name, (ttype, pos) in forward_inputs_position_map.items():
@@ -1455,9 +1458,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             self.node_creation_pre_contiguous_str = "\n".join(
                 pre_contiguous_list
             )
-        elif (forward_api_name in strided_op_list) or for_backward:
-            self.inputs_call_list_tmp = None
-            self.node_creation_pre_contiguous_str = ""
         else:
             self.inputs_call_list_tmp = self.inputs_call_list
             pre_contiguous_list = []
