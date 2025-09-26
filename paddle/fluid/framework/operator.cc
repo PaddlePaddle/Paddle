@@ -3514,8 +3514,21 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(float, attr_iter->second));
             break;
           case phi::AttributeType::FLOAT64:
-            phi_kernel_context->EmplaceBackAttr(
-                PADDLE_GET_CONST(double, attr_iter->second));
+            switch (AttrTypeID(attr_iter->second)) {
+              case proto::AttrType::FLOAT64:
+                phi_kernel_context->EmplaceBackAttr(
+                    PADDLE_GET_CONST(double, attr_iter->second));
+                break;
+              case proto::AttrType::FLOAT: {
+                const auto val = PADDLE_GET_CONST(float, attr_iter->second);
+                phi_kernel_context->EmplaceBackAttr(static_cast<double>(val));
+              } break;
+              default:
+                PADDLE_THROW(common::errors::Unimplemented(
+                    "Unsupported cast op attribute `%s` to double when "
+                    "construct KernelContext.",
+                    attr_names[i]));
+            }
             break;
           case phi::AttributeType::INT32:
             phi_kernel_context->EmplaceBackAttr(

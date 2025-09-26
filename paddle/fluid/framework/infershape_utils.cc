@@ -795,8 +795,21 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
               break;
             case phi::AttributeType::FLOAT64:
-              infer_meta_context.EmplaceBackAttr(
-                  PADDLE_GET_CONST(double, attr));
+              switch (AttrTypeID(attr)) {
+                case framework::proto::AttrType::FLOAT64:
+                  infer_meta_context.EmplaceBackAttr(
+                      PADDLE_GET_CONST(double, attr));
+                  break;
+                case framework::proto::AttrType::FLOAT: {
+                  const auto val = PADDLE_GET_CONST(float, attr);
+                  infer_meta_context.EmplaceBackAttr(static_cast<double>(val));
+                } break;
+                default:
+                  PADDLE_THROW(common::errors::Unimplemented(
+                      "Unsupported cast op attribute `%s` to double when "
+                      "construct InferMetaContext.",
+                      attr_names[i]));
+              }
               break;
             case phi::AttributeType::INT32:
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(int, attr));
