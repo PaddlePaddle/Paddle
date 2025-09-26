@@ -1080,11 +1080,11 @@ class PrimGradChecker(PrimForwardChecker):
             core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
+        # prim op don't need gradient decomposition
         if self.prim_op_type == "prim":
-            core._set_prim_backward_enabled(self.enable_rev_comp)
-        else:
-            core._set_prim_forward_enabled(self.enable_fw_comp)
-            core._set_prim_backward_enabled(self.enable_rev_comp)
+            return
+        core._set_prim_forward_enabled(self.enable_fw_comp)
+        core._set_prim_backward_enabled(self.enable_rev_comp)
         atol = self.rev_comp_atol if self.enable_rev_comp else self.fw_comp_atol
         rtol = self.rev_comp_rtol if self.enable_rev_comp else self.fw_comp_rtol
         with static_guard():

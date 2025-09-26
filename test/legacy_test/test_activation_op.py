@@ -501,7 +501,7 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 class TestSigmoidBF16(OpTest):
     def setUp(self):
         self.op_type = "sigmoid"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.nn.functional.sigmoid
         self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
@@ -4713,7 +4713,7 @@ class TestSquareBF16(OpTest):
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.init_dtype()
