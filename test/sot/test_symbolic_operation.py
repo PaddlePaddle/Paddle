@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .sdpa import (  # noqa: F401
-    SDPBackend,
-    _cur_sdpa_kernel_backends,
-    sdpa_kernel,
-)
+import unittest
 
-__all__ = ["SDPBackend", "sdpa_kernel"]
+import numpy as np
+from test_case_base import TestCaseBase
+
+import paddle
+
+
+def shape_div(x):
+    return int(np.ceil(x.shape[0] / 7))
+
+
+class TestSymbolicOperation(TestCaseBase):
+    def test_symbolic_truediv(self):
+        x = paddle.rand([168, 1])
+        paddle.jit.marker.dynamic_dims(x, [0])
+        self.assert_results(shape_div, x)
+
+
+if __name__ == "__main__":
+    unittest.main()

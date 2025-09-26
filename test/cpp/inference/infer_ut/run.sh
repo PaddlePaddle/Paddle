@@ -43,7 +43,7 @@ if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
-  test_suite_list="${test_suite_list}:mkldnn_tester*"
+  test_suite_list="${test_suite_list}:onednn_tester*"
 fi
 
 if [ $3 == ON ]; then

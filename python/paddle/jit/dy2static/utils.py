@@ -1049,7 +1049,7 @@ def patch_method_guard(
 
 def extract_tensor_dynamic_dims(
     tensor: paddle.Tensor,
-) -> tuple[int]:
+) -> tuple[int, ...]:
     """
     Extract dynamic dimensions from a paddle.Tensor.
     Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
@@ -1060,7 +1060,7 @@ def extract_tensor_dynamic_dims(
         )
 
     if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
-        return []
+        return ()
 
     dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
     if not isinstance(dynamic_dims, tuple):
