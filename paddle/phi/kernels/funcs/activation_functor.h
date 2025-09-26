@@ -3902,10 +3902,13 @@ struct CudaTanGradFunctor : public BaseActivationFunctor<T> {
       float tsq = __fmul_rn(tf, tf);
       float y = __fadd_rn(tsq, 1.0f);
       return static_cast<T>(dout * y);
-    } else {
+    } else if constexpr (std::is_same<T, phi::float16>::value) {
       __half tf = __float2half_rn(::tanf(x));
       __half tmp_half = __hmul(tf, tf);
       return arg_dout * (one + static_cast<T>(__half2float(tmp_half)));
+    } else {
+      return static_cast<T>(dout *
+                            (static_cast<MPType>(1.0f) + ::tan(x) * ::tan(x)));
     }
   }
 
