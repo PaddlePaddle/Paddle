@@ -18,6 +18,7 @@ from functools import partial
 import hypothesis.strategies as st
 import numpy as np
 from auto_scan_test import PassAutoScanTest
+from op_test import OpTestTool
 from program_config import ProgramConfig, TensorConfig
 
 
@@ -30,6 +31,7 @@ def product(input):
     return result
 
 
+@OpTestTool.skip_if_not_cpu()
 class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         input_shape = program_config.inputs['input_data'].shape
