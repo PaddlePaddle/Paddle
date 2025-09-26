@@ -27,11 +27,11 @@ busybox bash ./run.sh $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU $DATA_DIR
 now only support 4 kinds of tests which controlled by `--gtest_filter` argument, test suite name should be same as following.
 - `TEST(gpu_tester_*, test_name)`
 - `TEST(cpu_tester_*, test_name)`
-- `TEST(mkldnn_tester_*, test_name)`
+- `TEST(onednn_tester_*, test_name)`
 - `TEST(tensorrt_tester_*, test_name)`
 
 skpied test suite name.
 - `TEST(DISABLED_gpu_tester_*, test_name)`
 - `TEST(DISABLED_cpu_tester_*, test_name)`
-- `TEST(DISABLED_mkldnn_tester_*, test_name)`
+- `TEST(DISABLED_onednn_tester_*, test_name)`
 - `TEST(DISABLED_tensorrt_tester_*, test_name)`
