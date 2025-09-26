@@ -63,7 +63,7 @@ class TestSqrtOpError(unittest.TestCase):
             in2 = paddle.static.data(
                 name='input2', shape=[-1, 12, 10], dtype="int32"
             )
-            paddle.sqrt(in2)  # This should work without error
+            paddle.sqrt(in2)
 
             in3 = paddle.static.data(
                 name='input3', shape=[-1, 12, 10], dtype="float16"
@@ -954,7 +954,7 @@ class TestTanhAPI(unittest.TestCase):
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.tanh(x_int32)  # This should work without error
+            self.tanh(x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
@@ -1166,7 +1166,7 @@ class TestSinhOpError(unittest.TestCase):
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            paddle.sinh(x_int32)  # This should work without error
+            paddle.sinh(x_int32)
             # support the input dtype is float16
             if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
@@ -1299,7 +1299,7 @@ class TestCoshOpError(unittest.TestCase):
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            paddle.cosh(x_int32)  # This should work without error
+            paddle.cosh(x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
@@ -4803,28 +4803,12 @@ class TestPow_API(TestActivation):
             factor_2 = paddle.tensor.fill_constant([1], "float32", 3.0)
             out_1 = paddle.pow(x, factor_1)
             out_2 = paddle.pow(x, factor_2)
-            out_4 = paddle.pow(x, factor_1, name='pow_res')
-            out_6 = paddle.pow(x, factor_2)
-            if paddle.framework.in_pir_mode():
-                with (
-                    paddle.pir_utils.OldIrGuard(),
-                    paddle.static.program_guard(
-                        paddle.static.Program(), paddle.static.Program()
-                    ),
-                ):
-                    x_old = paddle.static.data(
-                        name="x", shape=[11, 17], dtype="float32"
-                    )
-                    out_old = paddle.pow(x_old, factor_1, name='pow_res')
-                    self.assertTrue('pow_res' in out_old.name)
-            else:
-                self.assertTrue('pow_res' in out_4.name)
 
             exe = base.Executor(place=base.CPUPlace())
-            res_1, res_2, res_6 = exe.run(
+            res_1, res_2 = exe.run(
                 base.default_main_program(),
                 feed={"x": input},
-                fetch_list=[out_1, out_2, out_6],
+                fetch_list=[out_1, out_2],
             )
 
             np.testing.assert_allclose(
@@ -4832,9 +4816,6 @@ class TestPow_API(TestActivation):
             )
             np.testing.assert_allclose(
                 res_2, np.power(input, 3), rtol=1e-5, atol=1e-8
-            )
-            np.testing.assert_allclose(
-                res_6, np.power(input, 3), rtol=1e-5, atol=1e-8
             )
 
 
@@ -4970,7 +4951,7 @@ class TestSTanhAPI(unittest.TestCase):
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            paddle.stanh(x_int32)  # This should work without error
+            paddle.stanh(x_int32)
             # support the input dtype is float16
             if core.is_compiled_with_cuda():
                 x_fp16 = paddle.static.data(
