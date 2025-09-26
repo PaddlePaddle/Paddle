@@ -3782,11 +3782,19 @@ struct CudaReciprocalGradDepXFunctor<ComplexType<T>>
 
 template <typename T>
 struct CudaExpm1Functor : public BaseActivationFunctor<T> {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
+  // expm1(x) = expm1f(x)
+  __device__ __forceinline__ U operator()(const T x) const {
+    return static_cast<U>(::expm1f(static_cast<float>(x)));
+  }
+};
+
+template <>
+struct CudaExpm1Functor<double> : public BaseActivationFunctor<double> {
   // expm1(x) = expm1(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(expm1(x));
+  __device__ __forceinline__ double operator()(const double x) const {
+    return ::expm1(x);
   }
 };
 
