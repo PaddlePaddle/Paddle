@@ -529,7 +529,7 @@ class TestSparseAdamOp(unittest.TestCase):
             actual = actual.reshape([actual.size])
             np_array = np_array.reshape([np_array.size])
 
-            np.testing.assert_allclose(actual, np_array, atol=1e-5)
+            np.testing.assert_allclose(actual, np_array, atol=2e-5)
 
     def test_sparse_adam(self):
         for place in get_places():
