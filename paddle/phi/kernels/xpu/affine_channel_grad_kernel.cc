@@ -18,6 +18,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/affine_channel_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {

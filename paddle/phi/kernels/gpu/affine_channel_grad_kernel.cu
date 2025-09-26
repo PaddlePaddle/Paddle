@@ -24,6 +24,7 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/affine_channel_grad_kernel.h"
 
 namespace phi {
 
