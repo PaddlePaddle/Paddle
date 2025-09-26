@@ -125,7 +125,7 @@ void EmbeddingEltWiseLayerNormKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(fused_embedding_eltwise_layernorm,
                    GPU,
                    ALL_LAYOUT,

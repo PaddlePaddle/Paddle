@@ -1745,13 +1745,13 @@ TEST(Reshape, Ctor) {
 }
 
 TEST(ElementwiseUnaryLike, Ctor) {
-  std::vector<int64_t> mesh_shape = {2, 2};
-  std::vector<int64_t> process_ids = {0, 1, 2, 3};
-  std::vector<std::string> dim_names = {"x", "y"};
+  std::vector<int64_t> mesh_shape = {2, 2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> dim_names = {"x", "y", "z"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
   std::vector<int64_t> shape = {16, 16, 16};
-  std::vector<int64_t> dims_mapping = {0, -1, 1};
+  std::vector<std::vector<int64_t>> dims_mapping = {{0, 1}, {}, {2}};
 
   auto t_dist_attr = TensorDistAttr();
   t_dist_attr.set_process_mesh(process_mesh);
@@ -1761,8 +1761,8 @@ TEST(ElementwiseUnaryLike, Ctor) {
   auto check_element_unary_like = [&dims_mapping](auto& spmd_info) {
     EXPECT_EQ(spmd_info.first.size(), static_cast<size_t>(1));
     EXPECT_EQ(spmd_info.second.size(), static_cast<size_t>(1));
-    check_dim_mapping(spmd_info.first[0], dims_mapping);
-    check_dim_mapping(spmd_info.second[0], dims_mapping);
+    check_multi_dims_mapping(spmd_info.first[0], dims_mapping);
+    check_multi_dims_mapping(spmd_info.second[0], dims_mapping);
     check_partial_dims(spmd_info.second[0], {});
   };
 
@@ -1770,9 +1770,9 @@ TEST(ElementwiseUnaryLike, Ctor) {
     EXPECT_GT(spmd_info.first.size(), static_cast<size_t>(1));
     EXPECT_EQ(spmd_info.second.size(), static_cast<size_t>(1));
     for (auto& dim_mapping : spmd_info.first) {
-      check_dim_mapping(dim_mapping, dims_mapping);
+      check_multi_dims_mapping(dim_mapping, dims_mapping);
     }
-    check_dim_mapping(spmd_info.second[0], dims_mapping);
+    check_multi_dims_mapping(spmd_info.second[0], dims_mapping);
     check_partial_dims(spmd_info.second[0], {});
   };
 

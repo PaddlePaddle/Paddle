@@ -28,6 +28,10 @@ struct Device final {
 
   DeviceType type() const { return inner_.GetType(); }
 
+  bool is_cuda() const noexcept { return phi::is_gpu_place(inner_); }
+
+  bool is_cpu() const noexcept { return phi::is_cpu_place(inner_); }
+
   phi::Place _PD_GetInner() const { return inner_; }
 
  private:
