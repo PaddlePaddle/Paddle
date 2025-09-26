@@ -2037,6 +2037,14 @@
      out : Out
   attrs : {slice_offset : slice_offset, accumulate : accumulate, is_combined : is_combined}
 
+- op : index_elementwise_get_strided
+  backward : index_elementwise_get_strided_grad, index_elementwise_get_strided_double_grad
+  inputs :
+     {x : x, index : index, input_dims : input_dims, input_strides : input_strides, index_dims : index_dims, index_stride : index_stride}
+  outputs :
+     out : Out
+  attrs : {slice_offset : slice_offset, accumulate : accumulate, is_combined : is_combined}
+
 - op : index_sample
   inputs :
     {x : X, index : Index}

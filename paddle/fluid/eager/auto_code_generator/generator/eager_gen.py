@@ -217,7 +217,7 @@ strided_op_list = {
     "view_shape",
     "view_dtype",
     "matmul",
-    "index_elementwise_get",
+    "index_elementwise_get_strided",
 }
 
 strided_op_need_flags_check_list = {

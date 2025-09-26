@@ -162,10 +162,54 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                          x_grad);
 }
 
+template <typename T, typename Context>
+void IndexElementwiseGetStridedGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& index,
+    const DenseTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    const bool accumulate,
+    const bool is_combined,
+    DenseTensor* x_grad) {
+  IndexElementwiseGetGradKernel<T, Context>(dev_ctx,
+                                            x,
+                                            index,
+                                            out_grad,
+                                            input_dims,
+                                            input_strides,
+                                            index_dims,
+                                            index_strides,
+                                            slice_offset,
+                                            accumulate,
+                                            is_combined,
+                                            x_grad);
+}
+
 }  // namespace phi
-PD_REGISTER_KERNEL(index_elementwise_get_grad,
+PD_REGISTER_KERNEL(index_elementwise_get_strided_grad,
                    CPU,
                    STRIDED,
+                   phi::IndexElementwiseGetStridedGradKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int8_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+PD_REGISTER_KERNEL(index_elementwise_get_grad,
+                   CPU,
+                   ALL_LAYOUT,
                    phi::IndexElementwiseGetGradKernel,
                    bool,
                    float,

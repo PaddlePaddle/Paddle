@@ -128,11 +128,53 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
                                            out);
 }
 
+template <typename T, typename Context>
+void IndexElementwiseGetStridedKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& index,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_stride,
+    const int64_t slice_offset,
+    const bool accumulate,
+    const bool is_combined,
+    DenseTensor* out) {
+  IndexElementwiseGetKernel<T, Context>(dev_ctx,
+                                        x,
+                                        index,
+                                        input_dims,
+                                        input_strides,
+                                        index_dims,
+                                        index_stride,
+                                        slice_offset,
+                                        accumulate,
+                                        is_combined,
+                                        out);
+}
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_elementwise_get,
+PD_REGISTER_KERNEL(index_elementwise_get_strided,
                    CPU,
                    STRIDED,
+                   phi::IndexElementwiseGetStridedKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int8_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+PD_REGISTER_KERNEL(index_elementwise_get,
+                   CPU,
+                   ALL_LAYOUT,
                    phi::IndexElementwiseGetKernel,
                    bool,
                    float,
