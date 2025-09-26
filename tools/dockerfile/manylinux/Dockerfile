@@ -118,6 +118,7 @@ RUN chmod o+rw /usr/local
 
 # Final step
 FROM ${BASE_TARGET} as final
+ENV GDRCOPY_HOME=/usr/local/gdrcopy
 COPY --from=openssl          /usr/local/ssl          /usr/local/ssl
 COPY --from=patchelf         /usr/local/bin/patchelf /usr/local/bin/patchelf
 COPY --from=ccache           /usr/local/bin/ccache   /usr/local/bin/ccache
