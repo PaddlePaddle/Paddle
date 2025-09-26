@@ -67,6 +67,8 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     } else {
       // reset the physical tensor to zero
       IntArray shape(in.local_dims().Get(), in.local_dims().size());
+
+#ifdef PADDLE_WITH_CUDA
       auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
       PADDLE_ENFORCE_NOT_NULL(
           gpu_ctx,
@@ -74,6 +76,10 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
               "RToPReshardFunction only supports GPU now."));
       phi::Full<phi::GPUContext>(
           *gpu_ctx, shape, phi::Scalar(0), GetMutableTensor(out));
+#else
+      RESHARD_FUNCTOR(
+          dev_ctx, Full, in.dtype(), shape, 0, GetMutableTensor(out));
+#endif
     }
   } else {
     // assign the input value to output
