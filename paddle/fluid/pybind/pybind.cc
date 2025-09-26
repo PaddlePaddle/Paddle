@@ -3075,7 +3075,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("init_gflags", framework::InitGflags);
-  m.def("logging_utils", framework::InitGLOG);
+  m.def("init_glog", framework::InitGLOG);
   m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
     const auto &new_op_meta_info_map =
