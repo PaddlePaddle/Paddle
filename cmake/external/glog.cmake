@@ -16,7 +16,6 @@ include(ExternalProject)
 
 add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
 add_definitions(-DGLOG_CUSTOM_PREFIX_SUPPORT)
-add_definitions(-DGLOG_USE_GLOG_EXPORT)
 set(GLOG_PREFIX_DIR ${THIRD_PARTY_PATH}/glog)
 set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
@@ -29,8 +28,10 @@ if(WIN32)
       "${GLOG_INSTALL_DIR}/lib/glog.lib"
       CACHE FILEPATH "glog library." FORCE)
   set(GLOG_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
+  add_definitions("/DGLOG_EXPORT=")
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
 else()
+  add_definitions(-DGLOG_USE_GLOG_EXPORT)
   set(GLOG_LIBRARIES
       "${GLOG_INSTALL_DIR}/lib/libglog.a"
       CACHE FILEPATH "glog library." FORCE)
