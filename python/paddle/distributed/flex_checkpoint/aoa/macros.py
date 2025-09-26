@@ -122,19 +122,22 @@ def layer_id_macro(tokens, expression, context):
     if LAYER_ID_MACRO_TAG not in expression:
         return expression
 
-    name_with_layer_id = next(
-        (
-            token.value
-            for token in tokens
-            if token.type == TokenType.IDENTIFIER
+    left_var_check_layer_id = True
+    name_with_layer_id = None
+    for token in tokens:
+        if token.type == TokenType.RARROW:
+            left_var_check_layer_id = False
+        if (
+            token.type == TokenType.IDENTIFIER
             and LAYER_ID_MACRO_TAG in token.value
-        ),
-        None,
-    )
+        ):
+            name_with_layer_id = token.value
+            break
+
     assert name_with_layer_id, "No $LAYER_ID found in NAME tokens"
 
     match_layer_id = context.get_num_hidden_layers(
-        name_with_layer_id, LAYER_ID_MACRO_TAG
+        name_with_layer_id, LAYER_ID_MACRO_TAG, left_var_check_layer_id
     )
     expanded_expressions = []
 
