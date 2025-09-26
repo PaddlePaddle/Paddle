@@ -455,6 +455,8 @@ class IValue {
         return "Tensor";
       case TypeTag::GenericList:
         return "List";
+      case TypeTag::Tuple:
+        return "Tuple";
       case TypeTag::CustomClass:
         return "CustomClass(" + get_custom_class_name() + ")";
       default:
@@ -486,6 +488,17 @@ class IValue {
           result += list[i].to_repr();
         }
         result += "]";
+        return result;
+      }
+      case TypeTag::Tuple: {
+        const auto& tuple = std::get<GenericTuple>(value_);
+        std::string result = "(";
+        for (size_t i = 0; i < tuple.size(); ++i) {
+          if (i > 0) result += ", ";
+          result += tuple[i].to_repr();
+        }
+        if (tuple.size() == 1) result += ",";  // Single element tuple
+        result += ")";
         return result;
       }
       case TypeTag::CustomClass: {

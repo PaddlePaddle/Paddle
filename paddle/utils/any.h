@@ -1,3 +1,4 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 // This file copy from boost/any.hpp and boost version: 1.41.0
 // Modified the following points:
 // 1. modify namespace from boost::any to paddle::any
@@ -22,7 +23,7 @@
 #include <typeinfo>
 
 // See boost/python/type_id.hpp
-// TODO: add BOOST_TYPEID_COMPARE_BY_NAME to config.hpp
+// TODO(name): add BOOST_TYPEID_COMPARE_BY_NAME to config.hpp
 #if (defined(__GNUC__) && __GNUC__ >= 3) || defined(_AIX) || \
     (defined(__sgi) && defined(__host_mips)) ||              \
     (defined(__hpux) && defined(__HP_aCC)) ||                \
@@ -37,8 +38,8 @@ class any {
   any() : content(nullptr) {}
 
   template <typename ValueType>
-  any(const ValueType &value)
-      : content(std::make_unique<holder<ValueType>>(value)) {}
+  any(const ValueType &value)  // NOLINT(runtime/explicit)
+      : content(new holder<ValueType>(value)) {}
 
   any(const any &other)
       : content(other.content ? other.content->clone() : nullptr) {}
@@ -55,7 +56,7 @@ class any {
 
   template <typename ValueType>
   any &operator=(const ValueType &rhs) {
-    any(rhs).swap(*this);
+    any(rhs).swap(*this);  // NOLINT(runtime/explicit)
     return *this;
   }
 
@@ -85,7 +86,7 @@ class any {
   template <typename ValueType>
   class holder : public placeholder {
    public:  // structors
-    holder(const ValueType &value) : held(value) {}
+    explicit holder(const ValueType &value) : held(value) {}
 
    public:  // queries
     const std::type_info &type() const override { return typeid(ValueType); }
@@ -98,7 +99,7 @@ class any {
     ValueType held;
 
    private:  // intentionally left unimplemented
-    holder &operator=(const holder &);
+    holder &operator=(const holder &) = delete;
   };
 
  public:  // representation (public so any_cast can be non-friend)
@@ -122,8 +123,7 @@ ValueType *any_cast(any *operand) {
 #else
                  operand->type() == typeid(ValueType)
 #endif
-             ? &static_cast<any::holder<ValueType> *>(operand->content.get())
-                    ->held
+             ? &(static_cast<any::holder<ValueType> *>(operand->content)->held)
              : 0;
 }
 
@@ -133,6 +133,7 @@ inline const ValueType *any_cast(const any *operand) {
 }
 
 template <typename ValueType>
+// NOLINTNEXTLINE(runtime/references)
 ValueType any_cast(any &operand) {
   typedef typename std::remove_reference<ValueType>::type nonref;
 
@@ -161,7 +162,7 @@ inline ValueType any_cast(const any &operand) {
 // different shared libraries.
 template <typename ValueType>
 inline ValueType *unsafe_any_cast(any *operand) {
-  return &static_cast<any::holder<ValueType> *>(operand->content.get())->held;
+  return &(static_cast<any::holder<ValueType> *>(operand->content)->held);
 }
 
 template <typename ValueType>

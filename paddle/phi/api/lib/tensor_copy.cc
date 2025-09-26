@@ -45,12 +45,14 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   auto* dev_ctx = pool.GetMutable(
       target_place.GetType() == place.GetType() ? place : target_place);
 #ifdef PADDLE_WITH_DISTRIBUTE
-  if (AllInputsAreDistTensor(src)) {
+  bool run_auto_parallel = AllInputsAreDistTensor(src);
+  bool rank_is_in_current_mesh = false;
+  if (run_auto_parallel) {
     auto mesh =
         std::static_pointer_cast<phi::distributed::DistTensor>(src.impl())
             ->dist_attr()
             .process_mesh();
-    bool rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
+    rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
 
     auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
 
@@ -61,7 +63,12 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
           phi::DenseTensor(std::make_shared<phi::Allocation>(
                                nullptr, 0, phi::distributed::GetDefaultPlace()),
                            phi::DenseTensorMeta());
-    } else {
+    }
+
+    phi::MetaTensor meta_dist_out(dist_out);
+    phi::UnchangedInferMeta(MakeMetaTensor(*(src.impl())), &meta_dist_out);
+
+    if (rank_is_in_current_mesh) {
       auto dist_input_x =
           static_cast<phi::distributed::DistTensor*>(src.impl().get());
 

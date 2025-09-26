@@ -169,6 +169,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
     device as device,
@@ -230,6 +231,7 @@ from .device import (  # noqa: F401
     device_guard,
     get_cudnn_version,
     get_device,
+    get_device_module,
     is_compiled_with_cinn,
     is_compiled_with_cuda,
     is_compiled_with_custom_device,
@@ -957,6 +959,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+get_default_device = get_device
 
 __all__ = [
     'block_diag',

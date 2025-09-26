@@ -341,7 +341,7 @@ struct VecAtomicAddHelper<phi::dtype::float16>
     : VecAtomicAddHelperBase<phi::dtype::float16, true, __half, __half2> {};
 #endif
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+#if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
 template <>
 struct VecAtomicAddHelper<phi::dtype::bfloat16>
     : VecAtomicAddHelperBase<phi::dtype::bfloat16,

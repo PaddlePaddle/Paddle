@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
-sys.path.append("../../../legacy_test")
-from test_parallel_dygraph_dataparallel import (
-    TestMultipleAccelerators,
-)
+import numpy as np
+from test_case_base import TestCaseBase
+
+import paddle
 
 
-class TestParallelizer(TestMultipleAccelerators):
-    # check sharding logic as well as the accuracy with single mode
-    def test_parallelizer_logic(self):
-        self.run_mnist_2accelerators('auto_parallel_parallelizer_deprecated.py')
+def shape_div(x):
+    return int(np.ceil(x.shape[0] / 7))
+
+
+class TestSymbolicOperation(TestCaseBase):
+    def test_symbolic_truediv(self):
+        x = paddle.rand([168, 1])
+        paddle.jit.marker.dynamic_dims(x, [0])
+        self.assert_results(shape_div, x)
 
 
 if __name__ == "__main__":
