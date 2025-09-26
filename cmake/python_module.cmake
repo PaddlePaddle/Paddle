@@ -50,7 +50,7 @@ function(find_python_module module)
 endfunction()
 
 function(check_py_version py_version)
-  if(py_version VERSION_LESS 3.8)
+  if(py_version VERSION_LESS 3.9)
     message(FATAL_ERROR "Paddle only support Python version >=3.9 now!")
   endif()
 endfunction()
