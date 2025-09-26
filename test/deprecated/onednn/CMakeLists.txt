@@ -4,7 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_ONEDNN_LISTS "${TEST_ONEDNN_LISTS}")
 if(WIN32)
-  message(STATUS "Skip tests unrelated to onednn/mkldnn")
+  message(STATUS "Skip tests unrelated to onednn")
 elseif(WITH_ONEDNN)
   foreach(target ${TEST_ONEDNN_LISTS})
     py_test_modules(${target} MODULES ${target})

@@ -1815,10 +1815,7 @@ class TestCompositeDropout(unittest.TestCase):
     def get_eager_desire(self, place):
         paddle.disable_static()
         paddle.seed(self.seed)
-        if isinstance(place, base.CPUPlace):
-            paddle.set_device("cpu")
-        if isinstance(place, get_device_class()):
-            paddle.set_device(get_device())
+        paddle.set_device(place)
         core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
             data=self.x,
@@ -1897,10 +1894,7 @@ class TestCompositeDropout(unittest.TestCase):
         rev_actual = []
         paddle.disable_static()
         for place in self.places:
-            if isinstance(place, base.CPUPlace):
-                paddle.set_device("cpu")
-            if isinstance(place, get_device_class()):
-                paddle.set_device(get_device())
+            paddle.set_device(place)
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
                 data=self.x,
@@ -1940,7 +1934,7 @@ class TestCompositeDropout(unittest.TestCase):
         for place in self.places:
             if not isinstance(place, get_device_class()):
                 continue
-            paddle.set_device(get_device())
+            paddle.set_device(place)
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
                 data=self.x,
@@ -2159,10 +2153,7 @@ class TestPirCompositeDropout(unittest.TestCase):
     def get_eager_desire(self, place):
         paddle.disable_static()
         paddle.seed(self.seed)
-        if isinstance(place, base.CPUPlace):
-            paddle.set_device("cpu")
-        if isinstance(place, get_device_class()):
-            paddle.set_device(get_device())
+        paddle.set_device(place)
         core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
             data=self.x,

@@ -120,11 +120,11 @@ class TestConv3dBiasOnednnFusePass(PassAutoScanTest):
         yield config, ["conv3d"], (1e-5, 1e-5)
 
     # TODO(baoachun)
-    # Need to support 5-dimensional input when using mkldnn.
+    # Need to support 5-dimensional input when using onednn.
     def test(self):
         pass
         # self.run_and_statis(
-        #     quant=False, passes=["conv3d_bias_mkldnn_fuse_pass"])
+        #     quant=False, passes=["conv3d_bias_onednn_fuse_pass"])
 
 
 if __name__ == "__main__":
