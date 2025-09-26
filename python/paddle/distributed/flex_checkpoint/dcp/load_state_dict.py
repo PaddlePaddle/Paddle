@@ -31,7 +31,7 @@ from paddle.distributed.fleet.utils.log_util import logger
 from ..aoa.aoa_engine import (
     AOAEngine,
 )
-from .metadata import LocalTensorIndex, LocalTensorMetadata
+from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
@@ -96,6 +96,15 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
     if use_cache and path in PATH_TO_CHECKPOINT_FILES:
         return PATH_TO_CHECKPOINT_FILES[path]
     accessible_files = os.listdir(path)
+    safetensors_files = [
+        file for file in accessible_files if file.endswith(".safetensors")
+    ]
+    if len(safetensors_files) > 0:
+        logger.info(
+            f"Found safetensors files: {', '.join(safetensors_files)}. "
+        )
+        return ([], safetensors_files)
+
     metadata_files = [
         file
         for file in accessible_files
@@ -137,6 +146,9 @@ def get_rank_to_files(
     state_dict_param_names = {
         key if isinstance(key, str) else key[0] for key in state_dict.keys()
     }
+
+    if len(metadata_list) == 0:
+        necessary_files = local_data_files
 
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
@@ -993,11 +1005,17 @@ def load_state_dict_impl(
                 source_state_dict[file] = paddle.load(
                     os.path.join(path, file), safetensors=safetensors
                 )
+        logger.info(f".......source_state_dict: {source_state_dict}")
+        metadata = create_metadata(
+            source_state_dict,
+            process_group,
+            unique_id,
+        )
 
         _load_state_dict(
             flat_state_dict,
             source_state_dict,
-            metadata_list,
+            [metadata],  # _list,
             process_group,
             coordinator_rank,
             offload,
@@ -1660,6 +1678,131 @@ def merge_sharded_state_dict(
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )
+
+
+def create_metadata(
+    source_state_dict: dict[str : dict[str:Tensor]],
+    process_group: Group | None = None,
+    unique_id: int | None = None,
+):
+    state_dict = {
+        k: v
+        for inner_dict in source_state_dict.values()
+        for k, v in inner_dict.items()
+    }
+    flat_state_dict, mapping = flatten_state_dict(state_dict)
+    if len(flat_state_dict) > 0:
+        for val in flat_state_dict.values():
+            assert isinstance(val, (paddle.Tensor, ShardedWeight)), (
+                f"The value of state_dict should be a paddle.Tensor or ShardedWeight, but got: {val}."
+            )
+    use_dist = True if paddle.distributed.get_world_size() > 1 else False
+
+    if use_dist and process_group is None and not is_initialized():
+        # Init the default global process group
+        paddle.distributed.init_parallel_env()
+
+    if use_dist:
+        check_unique_id(unique_id, process_group)
+
+    file_name = f"model-{paddle.distributed.get_rank() + 1:05d}-of-{paddle.distributed.get_world_size():05d}.safetensors"
+    logger.debug(f"The checkpoint is saved to file_name:{file_name}")
+
+    metadata = Metadata()
+    local_state_dict = {}
+    local_state_dict_metadata = {}
+    local_storage_metadata = {}
+    global_shape = None
+    for key, val in flat_state_dict.items():
+        if isinstance(val, paddle.Tensor):
+            # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
+            if not val._is_initialized():
+                continue
+            if val.is_dist():
+                local_tensor = val._local_value()
+                # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+                local_tensor.name = val.name
+                # when val is scalar, the shape is []
+                (
+                    local_shape,
+                    global_offset,
+                ) = (
+                    compute_local_shape_and_global_offset(
+                        val.shape,
+                        val.process_mesh,
+                        val.placements,
+                    )
+                    if len(val.shape) > 0
+                    else ((), ())
+                )
+                global_shape = val.shape
+                if local_shape is None or global_offset is None:
+                    continue
+            else:
+                local_shape = tuple(val.shape)
+                global_offset = (
+                    tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
+                )
+                global_shape = local_shape
+                local_tensor = val
+        local_state_dict[key] = local_tensor
+        local_tensor_dtype = str(local_tensor.dtype).split('.')[1]
+        local_state_dict_metadata[key] = LocalTensorMetadata(
+            global_offset, local_shape, local_tensor_dtype, global_shape
+        )
+        local_storage_metadata[LocalTensorIndex(key, tuple(global_offset))] = (
+            file_name
+        )
+    global_state_dict_metadata = []
+    global_storage_metadata = []
+    global_flatten_mapping = []
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            global_state_dict_metadata,
+            local_state_dict_metadata,
+            process_group,
+        )
+        paddle.distributed.all_gather_object(
+            global_storage_metadata, local_storage_metadata, process_group
+        )
+        paddle.distributed.all_gather_object(
+            global_flatten_mapping, mapping, process_group
+        )
+    else:
+        global_state_dict_metadata.append(local_state_dict_metadata)
+        global_storage_metadata.append(local_storage_metadata)
+        global_flatten_mapping.append(mapping)
+
+    def merge_metadata(global_state_dict_metadata):
+        assert isinstance(global_state_dict_metadata, list), (
+            "The global_state_dict should be a list."
+        )
+        out = {}
+        for state_dict in global_state_dict_metadata:
+            for key, val in state_dict.items():
+                if key in out:
+                    if val in out[key]:
+                        continue
+                    out[key].append(val)
+                else:
+                    out[key] = [val]
+        return out
+
+    def dedup_key(global_storage_metadata):
+        out = {}
+        for storage_metadata in global_storage_metadata:
+            for key, val in storage_metadata.items():
+                if key in out:
+                    continue
+                out[key] = val
+        return out
+
+    metadata.state_dict_metadata = merge_metadata(global_state_dict_metadata)
+    metadata.storage_metadata = dedup_key(global_storage_metadata)
+    metadata.flat_mapping = dedup_key(global_flatten_mapping)
+
+    logger.info(f"metadata:{metadata}")
+    return metadata
 
 
 class SavePartialSafetensors:
