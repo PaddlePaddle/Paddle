@@ -39,6 +39,7 @@ jobs:
       group: HK-Clone
     steps:
       - name: build-docker-images
+        id: build-docker-images
         run: |
           set -x
           cd ${{ github.workspace }}
