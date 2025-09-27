@@ -45,18 +45,49 @@ class MacroContext:
             "layers.0.experts.1.weight",
             "layers.1.experts.0.weight",
             "layers.1.experts.1.weight",
-            "layers.1.self_attn.qkv_proj.bias",
-            "layers.0.mlp.gate_up_fused_proj.bias",
+            "layers.0.qkv_proj.weight",
+            "layers.5.experts.0.up_gate_proj.weight",
+            "layers.5.experts.1.up_gate_proj.weight",
+        }
+
+        self.dst_keys = {
+            "embed_tokens.weight",
+            "layers.0.self_attn.qkv_proj.weight",
+            "layers.0.self_attn.o_proj.weight",
+            "layers.0.mlp.gate_up_fused_proj.weight",
+            "layers.0.mlp.down_proj.weight",
+            "layers.0.input_layernorm.weight",
+            "layers.0.post_attention_layernorm.weight",
+            "layers.1.self_attn.qkv_proj.weight",
+            "layers.1.self_attn.o_proj.weight",
+            "layers.1.mlp.gate_up_fused_proj.weight",
+            "layers.1.mlp.down_proj.weight",
+            "layers.1.input_layernorm.weight",
+            "layers.1.post_attention_layernorm.weight",
+            "layers.0.experts.0.weight",
+            "layers.0.experts.1.weight",
+            "layers.1.experts.0.weight",
+            "layers.1.experts.1.weight",
+            "layers.0.q_proj.weight",
+            "layers.0.k_proj.weight",
+            "layers.0.v_proj.weight",
+            "layers.5.experts.0.gate_proj.weight",
+            "layers.5.experts.1.gate_proj.weight",
+            "layers.5.experts.0.up_proj.weight",
+            "layers.5.experts.1.up_proj.weight",
         }
 
     def get_all_dst_state_keys(self) -> Iterable[str]:
-        return self.source_keys
+        return self.dst_keys
 
     def get_all_src_state_keys(self) -> Iterable[str]:
         return self.source_keys
 
     def get_num_hidden_layers(
-        self, name_with_layer_id: str, layer_id_macro_tag: str
+        self,
+        name_with_layer_id: str,
+        layer_id_macro_tag: str,
+        left_var_check_layer_id: bool,
     ) -> int:
         if layer_id_macro_tag not in name_with_layer_id:
             raise ValueError(
@@ -65,12 +96,46 @@ class MacroContext:
         prefix, suffix = name_with_layer_id.split(layer_id_macro_tag, 1)
         pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         match_layer_id = set()
-        for key in self.get_all_dst_state_keys():
-            match = pattern.fullmatch(key)
-            if match:
-                layer_num = int(match.group(1))
-                match_layer_id.add(layer_num)
+        if left_var_check_layer_id:
+            for key in self.get_all_src_state_keys():
+                match = pattern.fullmatch(key)
+                if match:
+                    layer_num = int(match.group(1))
+                    match_layer_id.add(layer_num)
+        else:
+            for key in self.get_all_dst_state_keys():
+                match = pattern.fullmatch(key)
+                if match:
+                    layer_num = int(match.group(1))
+                    match_layer_id.add(layer_num)
         return match_layer_id
+
+    def get_num_experts(
+        self,
+        name_with_expert_id: str,
+        expert_id_macro_tag: str,
+        left_var_check_expert_id: bool,
+    ) -> set:
+        if expert_id_macro_tag not in name_with_expert_id:
+            raise ValueError(
+                f"expert_id_macro_tag '{expert_id_macro_tag}' not in name_with_expert_id '{name_with_expert_id}'"
+            )
+        prefix, suffix = name_with_expert_id.split(expert_id_macro_tag, 1)
+        pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
+        match_expert_id = set()
+        if left_var_check_expert_id:
+            for key in self.get_all_src_state_keys():
+                match = pattern.fullmatch(key)
+                if match:
+                    expert_num = int(match.group(1))
+                    match_expert_id.add(expert_num)
+        else:
+            for key in self.get_all_dst_state_keys():
+                match = pattern.fullmatch(key)
+                if match:
+                    expert_num = int(match.group(1))
+                    match_expert_id.add(expert_num)
+        return match_expert_id
 
     def get_src_state_shard_num(self, src_state_key: str) -> int:
         return 2
@@ -137,6 +202,22 @@ class TestLayerIdMacro(TestMacro):
         return [
             'layers.0.experts.0.weight->test_layer_id.layer.0,axis=1\n',
             'layers.1.experts.0.weight->test_layer_id.layer.1,axis=1\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestLayerIdMacro2(TestMacro):
+    def macro_name(self):
+        return "layer_id_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight\n"
+
+    def expected(self):
+        return [
+            'layers.0.qkv_proj.weight->layers.0.q_proj.weight,layer.0.k_proj.weight,layer.0.v_proj.weight\n',
         ]
 
     def test(self):
@@ -352,6 +433,23 @@ class TestFusedFfnMacro4(TestMacro):
         return [
             'layers.1.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=0',
             'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.bias, axis=0',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class Test_expert_id_Macro(TestMacro):
+    def macro_name(self):
+        return "expert_id_macro"
+
+    def source_code(self):
+        return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight"
+
+    def expected(self):
+        return [
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight\n',
         ]
 
     def test(self):

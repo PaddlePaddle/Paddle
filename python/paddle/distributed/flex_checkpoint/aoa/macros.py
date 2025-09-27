@@ -122,19 +122,22 @@ def layer_id_macro(tokens, expression, context):
     if LAYER_ID_MACRO_TAG not in expression:
         return expression
 
-    name_with_layer_id = next(
-        (
-            token.value
-            for token in tokens
-            if token.type == TokenType.IDENTIFIER
+    left_var_check_layer_id = True
+    name_with_layer_id = None
+    for token in tokens:
+        if token.type == TokenType.RARROW:
+            left_var_check_layer_id = False
+        if (
+            token.type == TokenType.IDENTIFIER
             and LAYER_ID_MACRO_TAG in token.value
-        ),
-        None,
-    )
+        ):
+            name_with_layer_id = token.value
+            break
+
     assert name_with_layer_id, "No $LAYER_ID found in NAME tokens"
 
     match_layer_id = context.get_num_hidden_layers(
-        name_with_layer_id, LAYER_ID_MACRO_TAG
+        name_with_layer_id, LAYER_ID_MACRO_TAG, left_var_check_layer_id
     )
     expanded_expressions = []
 
@@ -156,6 +159,47 @@ def layer_id_macro(tokens, expression, context):
                 expr += token.value
         expanded_expressions.append(expr)
 
+    return expanded_expressions
+
+
+@macro(name='expert_id_macro', priority=1)
+def expert_id_macro(tokens, expression, context):
+    EXPERT_ID_MACRO_TAG = "$EXPERT_ID"
+    if EXPERT_ID_MACRO_TAG not in expression:
+        return expression
+
+    left_var_check_expert_id = True
+    name_with_expert_id = None
+    for token in tokens:
+        if token.type == TokenType.RARROW:
+            left_var_check_layer_id = False
+        if (
+            token.type == TokenType.IDENTIFIER
+            and EXPERT_ID_MACRO_TAG in token.value
+        ):
+            name_with_expert_id = token.value
+            break
+
+    assert name_with_expert_id, "No $EXPERT_ID found in NAME tokens"
+
+    match_expert_id = context.get_num_experts(
+        name_with_expert_id, EXPERT_ID_MACRO_TAG, left_var_check_expert_id
+    )
+    expanded_expressions = []
+
+    match_expert_id = sorted(match_expert_id)
+
+    for expert_id in match_expert_id:
+        expr = ""
+        for token in tokens:
+            if (
+                EXPERT_ID_MACRO_TAG in token.value
+                and token.type == TokenType.IDENTIFIER
+            ):
+                expr += token.value.replace(EXPERT_ID_MACRO_TAG, str(expert_id))
+            else:
+                expr += token.value
+        expanded_expressions.append(expr)
     return expanded_expressions
 
 
