@@ -703,8 +703,10 @@ def _handle_aoa(
     dst_to_src_desc_mapping = {}
     new_load_dict = {}
     src_desc_to_postprocess_list = {}
-
+    meaningless_optimizer_key = aoa_engine.get_meaningless_optimizer_key()
     for param_name, tgt_shard in load_dict.items():
+        if param_name in meaningless_optimizer_key:
+            continue
         tgt_desc = build_shard_desc(tgt_shard)
         shard_mappings = aoa_engine.find_shard_sources(tgt_desc)
         for mapping in shard_mappings:
