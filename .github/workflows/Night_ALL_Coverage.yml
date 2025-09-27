@@ -30,6 +30,7 @@ defaults:
 jobs:
   build:
     name: Coverage build
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     runs-on:
       group: GZ_BD-CPU
     outputs:
