@@ -25,53 +25,65 @@ namespace distributed {
 namespace {
 
 std::vector<int64_t> CheckBmmTensorMeta(const DistMetaTensor& tensor,
-                                        const char* rank_error_msg,
-                                        const char* dims_mapping_error_msg) {
+                                        const char* tensor_name,
+                                        const char* rule_name) {
   const auto shape = common::vectorize(tensor.dims());
   const auto& dims_mapping = tensor.dist_attr().multi_dims_mapping();
 
   PADDLE_ENFORCE_EQ(shape.size(),
                     3,
                     common::errors::InvalidArgument(
-                        rank_error_msg, static_cast<int>(shape.size())));
+                        "%s expects %s to be a 3-D tensor, but it has rank %d.",
+                        rule_name,
+                        tensor_name,
+                        static_cast<int>(shape.size())));
   PADDLE_ENFORCE_EQ(
       dims_mapping.size(),
       shape.size(),
-      common::errors::InvalidArgument(dims_mapping_error_msg,
-                                      static_cast<int>(dims_mapping.size()),
-                                      static_cast<int>(shape.size())));
+      common::errors::InvalidArgument(
+          "%s expects dims_mapping length of %s (%d) to match its rank (%d).",
+          rule_name,
+          tensor_name,
+          static_cast<int>(dims_mapping.size()),
+          static_cast<int>(shape.size())));
 
   return shape;
 }
 
-inline void CheckDimEqual(int64_t lhs, int64_t rhs, const char* msg) {
+inline void CheckDimEqual(int64_t lhs,
+                          int64_t rhs,
+                          const char* lhs_desc,
+                          const char* rhs_desc,
+                          const char* rule_name) {
   if (lhs != -1 && rhs != -1) {
-    PADDLE_ENFORCE_EQ(lhs, rhs, common::errors::InvalidArgument(msg, lhs, rhs));
+    PADDLE_ENFORCE_EQ(lhs,
+                      rhs,
+                      common::errors::InvalidArgument(
+                          "%s expects %s (%d) to be equal to %s (%d).",
+                          rule_name,
+                          lhs_desc,
+                          lhs,
+                          rhs_desc,
+                          rhs));
   }
 }
 
 }  // namespace
 
 SpmdInfo BmmInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y) {
-  const auto x_shape = CheckBmmTensorMeta(
-      x,
-      "BmmInferSpmd requires Input(X) to be a 3-D tensor, but got rank [%d].",
-      "BmmInferSpmd expects Input(X)'s dims_mapping size [%d] to match its "
-      "rank [%d].");
-  const auto y_shape = CheckBmmTensorMeta(
-      y,
-      "BmmInferSpmd requires Input(Y) to be a 3-D tensor, but got rank [%d].",
-      "BmmInferSpmd expects Input(Y)'s dims_mapping size [%d] to match its "
-      "rank [%d].");
+  const auto x_shape = CheckBmmTensorMeta(x, "Input(X)", "BmmInferSpmd");
+  const auto y_shape = CheckBmmTensorMeta(y, "Input(Y)", "BmmInferSpmd");
 
   CheckDimEqual(x_shape[2],
                 y_shape[1],
-                "BmmInferSpmd expects Input(X)'s width [%d] to equal "
-                "Input(Y)'s height [%d].");
+                "the last dimension of Input(X)",
+                "the second dimension of Input(Y)",
+                "BmmInferSpmd");
   CheckDimEqual(x_shape[0],
                 y_shape[0],
-                "BmmInferSpmd expects Input(X) and Input(Y) to share the "
-                "same batch size [%d] vs [%d].");
+                "the batch dimension of Input(X)",
+                "the batch dimension of Input(Y)",
+                "BmmInferSpmd");
 
   VLOG(6) << "BmmInferSpmd delegates to MatmulInferSpmd (trans_x=false, "
              "trans_y=false).";
@@ -82,45 +94,36 @@ SpmdInfo BmmInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y) {
 SpmdInfo BmmGradInferSpmd(const DistMetaTensor& x,
                           const DistMetaTensor& y,
                           const DistMetaTensor& out_grad) {
-  const auto x_shape =
-      CheckBmmTensorMeta(x,
-                         "BmmGradInferSpmd requires Input(X) to be a 3-D "
-                         "tensor, but got rank [%d].",
-                         "BmmGradInferSpmd expects Input(X)'s dims_mapping "
-                         "size [%d] to match its rank [%d].");
-  const auto y_shape =
-      CheckBmmTensorMeta(y,
-                         "BmmGradInferSpmd requires Input(Y) to be a 3-D "
-                         "tensor, but got rank [%d].",
-                         "BmmGradInferSpmd expects Input(Y)'s dims_mapping "
-                         "size [%d] to match its rank [%d].");
+  const auto x_shape = CheckBmmTensorMeta(x, "Input(X)", "BmmGradInferSpmd");
+  const auto y_shape = CheckBmmTensorMeta(y, "Input(Y)", "BmmGradInferSpmd");
   const auto out_grad_shape =
-      CheckBmmTensorMeta(out_grad,
-                         "BmmGradInferSpmd requires Output@Grad to be a 3-D "
-                         "tensor, but got rank [%d].",
-                         "BmmGradInferSpmd expects Output@Grad's dims_mapping "
-                         "size [%d] to match its rank [%d].");
+      CheckBmmTensorMeta(out_grad, "Output@Grad", "BmmGradInferSpmd");
 
   CheckDimEqual(x_shape[2],
                 y_shape[1],
-                "BmmGradInferSpmd expects Input(X)'s width [%d] to equal "
-                "Input(Y)'s height [%d].");
+                "the last dimension of Input(X)",
+                "the second dimension of Input(Y)",
+                "BmmGradInferSpmd");
   CheckDimEqual(x_shape[0],
                 y_shape[0],
-                "BmmGradInferSpmd expects Input(X) and Input(Y) to share the "
-                "same batch size [%d] vs [%d].");
+                "the batch dimension of Input(X)",
+                "the batch dimension of Input(Y)",
+                "BmmGradInferSpmd");
   CheckDimEqual(x_shape[0],
                 out_grad_shape[0],
-                "BmmGradInferSpmd expects Output@Grad's batch size [%d] to "
-                "match Input(X)'s [%d].");
+                "the batch dimension of Input(X)",
+                "the batch dimension of Output@Grad",
+                "BmmGradInferSpmd");
   CheckDimEqual(x_shape[1],
                 out_grad_shape[1],
-                "BmmGradInferSpmd expects Output@Grad's second dimension "
-                "[%d] to match Input(X)'s second dimension [%d].");
+                "the second dimension of Input(X)",
+                "the second dimension of Output@Grad",
+                "BmmGradInferSpmd");
   CheckDimEqual(y_shape[2],
                 out_grad_shape[2],
-                "BmmGradInferSpmd expects Output@Grad's third dimension [%d] "
-                "to match Input(Y)'s third dimension [%d].");
+                "the last dimension of Input(Y)",
+                "the last dimension of Output@Grad",
+                "BmmGradInferSpmd");
 
   VLOG(6)
       << "BmmGradInferSpmd delegates to MatmulGradInferSpmd (trans_x=false, "
