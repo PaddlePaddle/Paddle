@@ -24,16 +24,48 @@ import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional import sdp_kernel
-from paddle.nn.functional.flash_attention import (
-    calc_reduced_attention_scores,
-    flash_attention,
-    flash_attention_v3_varlen,
-    flash_attn_qkvpacked,
-    flash_attn_unpadded,
-    flash_attn_varlen_qkvpacked,
-    flashmask_attention,
-    scaled_dot_product_attention,
-)
+# 兼容不同的导入路径
+try:
+    from paddle.nn.functional.flash_attention import (
+        calc_reduced_attention_scores,
+        flash_attention,
+        flash_attention_v3_varlen,
+        flash_attn_qkvpacked,
+        flash_attn_unpadded,
+        flash_attn_varlen_qkvpacked,
+        flashmask_attention,
+        scaled_dot_product_attention,
+    )
+except ImportError:
+    try:
+        from paddle.nn.functional import (
+            calc_reduced_attention_scores,
+            flash_attention,
+            flash_attention_v3_varlen,
+            flash_attn_qkvpacked,
+            flash_attn_unpadded,
+            flash_attn_varlen_qkvpacked,
+            flashmask_attention,
+            scaled_dot_product_attention,
+        )
+    except ImportError:
+        # 如果导入失败，定义空函数避免错误
+        def calc_reduced_attention_scores(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
+        def flash_attention(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
+        def flash_attention_v3_varlen(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
+        def flash_attn_qkvpacked(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
+        def flash_attn_unpadded(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
+        def flash_attn_varlen_qkvpacked(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
+        def flashmask_attention(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
+        def scaled_dot_product_attention(*args, **kwargs):
+            raise NotImplementedError("flash_attention not available")
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 

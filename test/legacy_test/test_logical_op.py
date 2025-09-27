@@ -126,9 +126,10 @@ def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 
 def np_data_generator(np_shape, dtype, *args, **kwargs):
-    if dtype == bool:
+    # 兼容不同的数据类型表示方式
+    if dtype == bool or dtype == np.bool_:
         return np.random.choice(a=[True, False], size=np_shape).astype(bool)
-    elif dtype == np.uint16:
+    elif dtype == np.uint16 or (hasattr(paddle, 'bfloat16') and dtype == paddle.bfloat16):
         x = np.random.uniform(0.0, 1.0, np_shape).astype(np.float32)
         return convert_float_to_uint16(x)
     elif dtype == np.complex64 or dtype == np.complex128:

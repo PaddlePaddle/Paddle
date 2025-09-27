@@ -16,14 +16,36 @@ import unittest
 
 import paddle
 from paddle import base
-from paddle.incubate.distributed.fleet import role_maker
-from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
-    fleet,
-)
-from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
-    StrategyFactory,
-)
-from paddle.incubate.layers.nn import search_pyramid_hash
+# 兼容不同的导入路径
+try:
+    from paddle.incubate.distributed.fleet import role_maker
+    from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+        fleet,
+    )
+    from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        StrategyFactory,
+    )
+    from paddle.incubate.layers.nn import search_pyramid_hash
+except ImportError:
+    try:
+        from paddle.distributed.fleet import role_maker
+        from paddle.distributed.fleet.parameter_server.distribute_transpiler import (
+            fleet,
+        )
+        from paddle.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+            StrategyFactory,
+        )
+        from paddle.nn import search_pyramid_hash
+    except ImportError:
+        # 如果导入失败，定义空函数避免错误
+        def role_maker(*args, **kwargs):
+            raise NotImplementedError("distributed fleet not available")
+        def fleet(*args, **kwargs):
+            raise NotImplementedError("distributed fleet not available")
+        def StrategyFactory(*args, **kwargs):
+            raise NotImplementedError("distributed fleet not available")
+        def search_pyramid_hash(*args, **kwargs):
+            raise NotImplementedError("pyramid hash not available")
 
 
 class TestPyramidHashOpApi(unittest.TestCase):

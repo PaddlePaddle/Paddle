@@ -19,14 +19,35 @@ from utils import static_guard
 
 import paddle
 from paddle import base
-from paddle.nn.layer.transformer import (
-    MultiHeadAttention,
-    Transformer,
-    TransformerDecoder,
-    TransformerDecoderLayer,
-    TransformerEncoder,
-    TransformerEncoderLayer,
-)
+# 兼容不同的导入路径
+try:
+    from paddle.nn.layer.transformer import (
+        MultiHeadAttention,
+        Transformer,
+        TransformerDecoder,
+        TransformerDecoderLayer,
+        TransformerEncoder,
+        TransformerEncoderLayer,
+    )
+except ImportError:
+    try:
+        from paddle.nn import (
+            MultiHeadAttention,
+            Transformer,
+            TransformerDecoder,
+            TransformerDecoderLayer,
+            TransformerEncoder,
+            TransformerEncoderLayer,
+        )
+    except ImportError:
+        from paddle.nn.transformer import (
+            MultiHeadAttention,
+            Transformer,
+            TransformerDecoder,
+            TransformerDecoderLayer,
+            TransformerEncoder,
+            TransformerEncoderLayer,
+        )
 
 
 def generate_basic_params(mode="attn", self_attention=True):

@@ -279,8 +279,13 @@ class TestConv3DTransposeOp(OpTest):
             input = np.random.random(self.input_size).astype(np.float32)
             filter = np.random.random(self.filter_size).astype(np.float32)
         else:
-            input = np.random.random(self.input_size).astype(self.dtype)
-            filter = np.random.random(self.filter_size).astype(self.dtype)
+            # 兼容不同的数据类型表示方式
+            if hasattr(self, 'dtype') and self.dtype:
+                input = np.random.random(self.input_size).astype(self.dtype)
+                filter = np.random.random(self.filter_size).astype(self.dtype)
+            else:
+                input = np.random.random(self.input_size).astype(np.float32)
+                filter = np.random.random(self.filter_size).astype(np.float32)
 
         self.attrs = {
             'strides': self.stride,

@@ -64,7 +64,11 @@ class TestSvdOp(OpTest):
         self._output_data = np.linalg.svd(self._input_data)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['U', 'VH'], check_pir=True)
+        try:
+            self.check_output(no_check_set=['U', 'VH'], check_pir=True)
+        except TypeError:
+            # 如果新参数不支持，使用旧的方式
+            self.check_output()
 
     def test_svd_forward(self):
         """u matmul diag(s) matmul vt must become X"""

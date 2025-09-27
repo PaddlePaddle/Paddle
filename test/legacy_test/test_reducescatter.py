@@ -14,7 +14,14 @@
 
 import unittest
 
-from test_collective_base import TestDistBase
+# 兼容不同的导入路径
+try:
+    from test_collective_base import TestDistBase
+except ImportError:
+    try:
+        from .test_collective_base import TestDistBase
+    except ImportError:
+        from test.collective.test_collective_base import TestDistBase
 
 import paddle
 

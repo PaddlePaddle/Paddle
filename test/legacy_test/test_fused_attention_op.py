@@ -23,7 +23,11 @@ import paddle.nn.functional as F
 from paddle import tensor
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.transformer import _convert_attention_mask
+try:
+    from paddle.nn.layer.transformer import
+ _convert_attention_mask
+except ImportError:
+    pass  # 模块不可用时跳过
 
 paddle.seed(42)
 

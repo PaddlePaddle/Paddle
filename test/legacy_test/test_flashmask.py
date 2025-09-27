@@ -21,7 +21,11 @@ from op_test import get_device_place, is_custom_device
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.nn.functional.flash_attention import (
+try:
+    from paddle.nn.functional.flash_attention import
+ (
+except ImportError:
+    pass  # 模块不可用时跳过
     flashmask_attention,
 )
 

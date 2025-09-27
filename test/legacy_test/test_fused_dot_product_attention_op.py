@@ -28,10 +28,24 @@ from op_test import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle.incubate.nn.functional import (
-    cudnn_flash_attention,
-    fused_dot_product_attention,
-)
+# 兼容不同的导入路径
+try:
+    from paddle.incubate.nn.functional import (
+        cudnn_flash_attention,
+        fused_dot_product_attention,
+    )
+except ImportError:
+    try:
+        from paddle.nn.functional import (
+            cudnn_flash_attention,
+            fused_dot_product_attention,
+        )
+    except ImportError:
+        # 如果导入失败，定义空函数避免错误
+        def cudnn_flash_attention(*args, **kwargs):
+            raise NotImplementedError("fused_attention not available")
+        def fused_dot_product_attention(*args, **kwargs):
+            raise NotImplementedError("fused_attention not available")
 
 np.random.seed(2023)
 

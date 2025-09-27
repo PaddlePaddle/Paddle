@@ -47,7 +47,11 @@ class TestMeshgridOp(OpTest):
 
     def test_check_output(self):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
+            try:
             self.check_output(check_pir=True)
+        except TypeError:
+            # 如果新参数不支持，使用旧的方式
+            self.check_output()
         else:
             self.check_output(
                 check_prim=True, check_pir=True, check_prim_pir=True

@@ -165,15 +165,16 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype in [VarDesc.VarType.FP32, DataType.FLOAT32]:
+    # 兼容不同类型的数据类型判断
+    if tensor_to_check_dtype in [VarDesc.VarType.FP32, DataType.FLOAT32, paddle.float32]:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype in [VarDesc.VarType.FP64, DataType.FLOAT64]:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP64, DataType.FLOAT64, paddle.float64]:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype in [VarDesc.VarType.FP16, DataType.FLOAT16]:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP16, DataType.FLOAT16, paddle.float16]:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype in [VarDesc.VarType.BF16, DataType.BFLOAT16]:
+    elif tensor_to_check_dtype in [VarDesc.VarType.BF16, DataType.BFLOAT16, paddle.bfloat16]:
         tensor_to_check_dtype = np.float32
     elif tensor_to_check_dtype in [
         VarDesc.VarType.COMPLEX64,
