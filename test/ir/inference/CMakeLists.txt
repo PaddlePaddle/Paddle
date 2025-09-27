@@ -276,7 +276,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
       message(STATUS "Skip tests unrelated to CUDA/TRT")
     else()
-      set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT
+      set_tests_properties(test_onednn_depthwise_conv_pass PROPERTIES TIMEOUT
                                                                       120)
       set_tests_properties(test_onednn_mish_op PROPERTIES TIMEOUT 300)
       set_tests_properties(test_onednn_conv3d_op PROPERTIES TIMEOUT 300)
@@ -290,7 +290,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_onednn_conv_hard_swish_fuse_pass
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
+      set_tests_properties(test_onednn_matmul_v2_transpose_reshape_fuse_pass
                            PROPERTIES TIMEOUT 100)
       set_tests_properties(test_onednn_conv_mish_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
@@ -314,7 +314,7 @@ elseif(WITH_ONEDNN)
       test_onednn_conv_mish_fuse_pass
       test_onednn_conv_transpose_bias_fuse_pass
       test_onednn_conv3d_op
-      test_mkldnn_depthwise_conv_pass
+      test_onednn_depthwise_conv_pass
       test_onednn_shape_op
       test_onednn_shuffle_channel_op)
   foreach(target ${PIR_COVERAGE_MKLDNN_TESTS})
@@ -405,7 +405,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_onednn_conv_transpose_bias_fuse_pass_pir
                            PROPERTIES TIMEOUT 100)
       set_tests_properties(test_onednn_conv3d_op_pir PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_depthwise_conv_pass_pir
+      set_tests_properties(test_onednn_depthwise_conv_pass_pir
                            PROPERTIES TIMEOUT 120)
 
       set_tests_properties(test_onednn_conv_bn_fuse_pass_pir PROPERTIES TIMEOUT

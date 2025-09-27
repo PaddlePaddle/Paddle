@@ -17,6 +17,8 @@ from __future__ import annotations
 import operator
 from typing import TYPE_CHECKING
 
+import paddle
+
 if TYPE_CHECKING:
     from ..utils.magic_methods import BinaryOp, UnaryOp
 
@@ -28,6 +30,34 @@ def symbolic_to_bool(x):
 
 def symbolic_not(x):
     return x == 0
+
+
+def symbolic_truediv(x, y):
+    # NOTE(SigureMo): In Paddle, the truediv maybe has precision issue.
+    # For example, paddle.tensor(168) / 7, in Python it should be 24.0,
+    # but in Paddle it will construct a Scale OP, which will calculate
+    # as 168 * (1 / 7) = 24.00000191, which may cause some unexpected
+    # bugs. So we cast the tensor and scalar both to float64 to avoid
+    # this issue.
+    is_need_cast_tensor = (
+        lambda v: isinstance(v, paddle.pir.Value)
+        and v.dtype is not paddle.float64
+    )
+    cast_tensor_if_needed = (
+        lambda v: v.cast(paddle.float64) if is_need_cast_tensor(v) else v
+    )
+    cast_scalar_if_needed = (
+        lambda v: paddle.full([], v, dtype=paddle.float64)
+        if isinstance(v, (int, float))
+        else v
+    )
+    cast_if_needed = lambda v: cast_tensor_if_needed(cast_scalar_if_needed(v))
+    has_tensor_need_cast = is_need_cast_tensor(x) or is_need_cast_tensor(y)
+    if not has_tensor_need_cast:
+        return operator.truediv(x, y)
+    x = cast_if_needed(x)
+    y = cast_if_needed(y)
+    return operator.truediv(x, y)
 
 
 # All symbolic operations need unified for python number and paddle Tensor
@@ -42,7 +72,7 @@ SYMBOLIC_BINARY_MATH_OPS: list[BinaryOp] = [
     operator.add,
     operator.sub,
     operator.mul,
-    operator.truediv,
+    symbolic_truediv,
     operator.floordiv,
     operator.pow,
     operator.mod,
