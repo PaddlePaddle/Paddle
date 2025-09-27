@@ -38,7 +38,6 @@ def skip_unit_test():
 
 skip_msg = "only support with cuda and Ampere or later devices, also please ensure you have used compile mode to install paddlepaddle with -WITH_CUDNN_FRONTEND ON"
 
-
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOp(OpTest):
@@ -54,6 +53,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.fuse_shortcut = fuse_shortcut
         self.fuse_dual = fuse_dual
         self.exhaustive_search = exhaustive_search
+
     def setUp(self):
         self.__class__.op_type = "fused_dconv_drelu_dbn"
         self.dtype = np.float16
@@ -478,6 +478,7 @@ class TestFusedDconvDreluDbnOpExhaustive(TestFusedDconvDreluDbnOp):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.set_attrs(exhaustive_search=True)
+
 
 if __name__ == '__main__':
     for _ in range(10):
