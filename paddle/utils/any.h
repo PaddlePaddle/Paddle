@@ -21,6 +21,8 @@
 #include <memory>
 #include <type_traits>
 #include <typeinfo>
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/vocab.h"
 
 // See boost/python/type_id.hpp
 // TODO(name): add BOOST_TYPEID_COMPARE_BY_NAME to config.hpp
