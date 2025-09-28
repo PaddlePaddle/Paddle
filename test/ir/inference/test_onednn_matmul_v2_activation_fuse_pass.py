@@ -153,7 +153,7 @@ class TestMatmulv2ActivationOnednnFusePass(PassAutoScanTest):
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=50,
             passes=[

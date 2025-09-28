@@ -148,6 +148,8 @@ class TestCudaCompat(unittest.TestCase):
     def test_get_default_device(self):
         default_device = paddle.get_default_device()
         self.assertIsInstance(default_device, str)
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(paddle.get_default_device(), paddle.device('cuda'))
 
     @unittest.skipIf(
         (

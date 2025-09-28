@@ -136,7 +136,7 @@ class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
         yield config, ["shuffle_channel"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=["shuffle_channel_onednn_detect_pass"]
         )
 
