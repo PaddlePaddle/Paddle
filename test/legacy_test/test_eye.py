@@ -27,7 +27,7 @@ class TestTensorCreation(unittest.TestCase):
         if paddle.device.is_compiled_with_cuda() or is_custom_device():
             self.devices.append(get_device_place())
             self.devices.append(get_device())
-            self.devices.append("gpu:0")
+            self.devices.append(get_device(True))
         if paddle.device.is_compiled_with_xpu():
             self.devices.append(paddle.XPUPlace(0))
         if paddle.device.is_compiled_with_ipu():
@@ -37,8 +37,9 @@ class TestTensorCreation(unittest.TestCase):
         self.dtypes = [None, paddle.float32]
         self.pin_memorys = [False]
         if (
-            paddle.device.is_compiled_with_cuda() or is_custom_device()
-        ) and not paddle.device.is_compiled_with_rocm():
+            paddle.device.is_compiled_with_cuda()
+            and not paddle.device.is_compiled_with_rocm()
+        ):
             self.pin_memorys.append(True)
 
     def test_eye(self):
@@ -49,7 +50,7 @@ class TestTensorCreation(unittest.TestCase):
                 device
                 not in [
                     get_device(),
-                    "gpu:0",
+                    get_device(True),
                     get_device_place()
                     if (
                         paddle.device.is_compiled_with_cuda()
