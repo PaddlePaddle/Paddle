@@ -315,11 +315,7 @@ template <typename T, typename Enable = void>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
 #ifndef PADDLE_WITH_XPU_KP
-    PADDLE_ENFORCE_NE(
-        b,
-        0,
-        "InvalidArgumentError: Integer division by zero encountered in "
-        "(floor/trunc) divide. Please check the input value.");
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
 #endif
 
     if (phi::is_negative(a) != phi::is_negative(b)) {
@@ -433,11 +429,7 @@ template <typename T, typename Enable = void>
 struct InverseFloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
 #ifndef PADDLE_WITH_XPU_KP
-    PADDLE_ENFORCE_NE(
-        a,
-        0,
-        "InvalidArgumentError: Integer division by zero encountered in "
-        "(floor/trunc) divide. Please check the input value.");
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
 #endif
     if (phi::is_negative(a) != phi::is_negative(b)) {
       // Subtracts one from the results of truncation division if the
