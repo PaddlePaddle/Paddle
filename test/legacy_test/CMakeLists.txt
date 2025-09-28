@@ -487,7 +487,6 @@ list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_index_put_op)
-list(REMOVE_ITEM TEST_OPS test_fast_h2d_copy)
 list(REMOVE_ITEM TEST_OPS test_reduce_stride_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
@@ -654,8 +653,6 @@ if(WITH_GPU
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
 endif()
 py_test_modules(test_index_put_op MODULES test_index_put_op ENVS
-                FLAGS_use_stride_compute_kernel=1)
-py_test_modules(test_fast_h2d_copy MODULES test_fast_h2d_copy ENVS
                 FLAGS_use_stride_compute_kernel=1)
 py_test_modules(test_reduce_stride_op MODULES test_reduce_stride_op ENVS
                 FLAGS_use_stride_compute_kernel=1)
