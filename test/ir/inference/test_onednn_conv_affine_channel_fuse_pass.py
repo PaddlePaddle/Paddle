@@ -162,7 +162,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         )
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=["conv_affine_channel_onednn_fuse_pass"],
         )

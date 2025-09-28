@@ -493,8 +493,8 @@ void MeanStrideKernel(const Context& dev_ctx,
 
 using float16 = phi::float16;
 using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(
     amax, GPU, STRIDED, phi::AMaxStrideKernel, float, double, int, int64_t) {}
