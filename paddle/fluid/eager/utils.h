@@ -375,5 +375,16 @@ void SaveDebugInfo(std::string dir_path,
 void SaveStringToFile(const std::string& file_path,
                       const std::string& serialized_graph,
                       const std::string& mode = "trunc");
-
+static inline const std::string GenerateUniqueApiName(
+    const std::string& api_name, const int64_t& call_count) {
+  return api_name + std::to_string(call_count);
+}
+// const std::string& GenerateUniqueTensorName(const std::string&
+// unique_api_name,const std::string& var_name,const paddle::Tensor& tensor);
+void SetTensorName(const std::string& unique_api_name,
+                   const std::string& var_name,
+                   paddle::Tensor* tensor);
+void SetTensorName(const std::string& unique_api_name,
+                   const std::string& var_name,
+                   paddle::optional<paddle::Tensor>* tensor);
 }  // namespace egr

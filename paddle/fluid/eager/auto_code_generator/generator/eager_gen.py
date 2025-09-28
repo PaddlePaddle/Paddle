@@ -430,10 +430,15 @@ TEST_API {} {}({}) {{
 
   // Set grad_node before API Call
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
+  // Generate a unique API name
+  static int64_t call_count = 0;
+  call_count ++;
+  const std::string & unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << unique_api_name << separator;
   // Forward API Call
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << unique_api_name << separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
@@ -501,10 +506,14 @@ TEST_API {} {}({}) {{
 
   // Before log info
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
+  // Generate a unique API name
+  static int64_t call_count = 0;
+  call_count ++;
+  const std::string & unique_api_name = egr::GenerateUniqueApiName(\"{}\",call_count);
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << unique_api_name <<separator;
   // Forward API Call
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << unique_api_name <<separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
@@ -640,6 +649,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
+#include "paddle/fluid/eager/utils.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
@@ -1972,6 +1982,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 get_outputs_str += (
                     f"{indent}auto& {name} = std::get<{pos}>(api_result);\n"
                 )
+            if rtype == "Tensor":
+                get_outputs_str += f'{indent}egr::SetTensorName(unique_api_name, "{name}", &{name});\n'
 
         # Get return type list & outputs
         returns_type_list = ["" for i in range(num_outputs)]
@@ -2341,7 +2353,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     before_log_str,
                     forward_api_name,
                     forward_call_str,
-                    forward_api_name,
+                    # forward_api_name,
                     log_memory_info_str,
                     check_nan_inf_str,
                     get_outputs_str,
@@ -2374,7 +2386,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 node_creation_before_call_str,
                 forward_api_name,
                 forward_call_str,
-                forward_api_name,
+                # forward_api_name,
                 log_memory_info_str,
                 check_nan_inf_str,
                 get_outputs_str,

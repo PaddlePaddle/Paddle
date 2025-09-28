@@ -1250,4 +1250,35 @@ void SaveDebugInfo(std::string dir_path,
     SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
   }
 }
+const std::string GenerateUniqueTensorName(const std::string& unique_api_name,
+                                           const std::string& var_name,
+                                           const paddle::Tensor* tensor) {
+  // example: {unique_api_name}_{var_name}_fp16_1024x1024
+  std::ostringstream oss;
+  oss << unique_api_name << "_" << var_name << "_" << tensor->dtype() << "_";
+  for (int i = 0; i < tensor->dims().size(); ++i) {
+    if (i != 0) {
+      oss << "x";
+    }
+    oss << tensor->dims()[i];
+  }
+  return oss.str();
+}
+void SetTensorName(const std::string& unique_api_name,
+                   const std::string& var_name,
+                   paddle::Tensor* tensor) {
+  if (!tensor->defined() || !tensor->has_allocation()) return;
+  const std::string& unique_name =
+      egr::GenerateUniqueTensorName(unique_api_name, var_name, tensor);
+  tensor->set_name(unique_name);
+}
+void SetTensorName(const std::string& unique_api_name,
+                   const std::string& var_name,
+                   paddle::optional<paddle::Tensor>* tensor) {
+  if (tensor->get_ptr() != nullptr) {
+    paddle::Tensor* t = tensor->get_ptr();
+    if (!t->defined() || !t->has_allocation()) return;
+    t->set_name(egr::GenerateUniqueTensorName(unique_api_name, var_name, t));
+  }
+}
 }  // namespace egr
