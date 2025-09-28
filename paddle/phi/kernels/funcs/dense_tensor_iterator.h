@@ -73,10 +73,15 @@ struct DenseTensorIteratorBase {
   int64_t numel() const;
   int ntensors() const { return static_cast<int>(operands_.size()); }
   bool is_contiguous() const;
+  int64_t num_output_elements() const;
+  int noutputs() const { return num_outputs_; }
+  int num_reduce_dims() const;
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
   const void* data_ptr(int64_t arg) const;
+  bool should_accumulate() const { return accumulate_; }
+  bool is_final_output() const { return final_output_; }
 
  protected:
   void populate_operands(DenseTensorIteratorConfig&);
@@ -105,6 +110,8 @@ struct DenseTensorIteratorBase {
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
   bool is_reduction_ = false;
+  bool accumulate_ = false;
+  bool final_output_ = true;
 };
 
 /**
@@ -177,6 +184,11 @@ struct DenseTensorIteratorConfig final {
     return *this;
   }
 
+  DenseTensorIteratorConfig& is_reduction(const bool _is_reduction) {
+    is_reduction_ = _is_reduction;
+    return *this;
+  }
+
   DenseTensorIterator build() {
     DenseTensorIterator iter;
     iter.build(*this);
@@ -191,7 +203,7 @@ struct DenseTensorIteratorConfig final {
 
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
   bool is_reduction_ = false;
-  bool resize_outputs_ = true;
+  bool resize_outputs_ = false;
 };
 
 }  // namespace phi

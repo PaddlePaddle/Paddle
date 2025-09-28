@@ -119,7 +119,7 @@ else:
         )
     else:
         current_device_is_cpu = 1
-        from .cpu_device import (
+        from .cpu import (
             device_count,
             get_rng_state,
             set_rng_state,
@@ -513,6 +513,18 @@ def get_device() -> str:
     return device
 
 
+def get_default_device() -> paddle.device:
+    """
+    Returns:
+        str: The default device for PaddlePaddle.
+    Example:
+        .. code-block:: python
+            import paddle
+            print(paddle.get_default_device())
+    """
+    return paddle.device(get_device().replace("gpu", "cuda"))
+
+
 def get_all_device_type() -> list[str]:
     """
 
@@ -704,7 +716,7 @@ def get_device_module(device: _CustomPlaceLike = None):
         elif device in custom_device_types:
             return paddle.device.custom_device
         elif device == "cpu":
-            return paddle.device
+            return paddle.device.cpu
         else:
             raise RuntimeError(f"Unsupported device type: {device}")
 

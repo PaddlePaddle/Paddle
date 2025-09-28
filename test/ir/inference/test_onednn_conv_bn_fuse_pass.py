@@ -140,7 +140,7 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
         yield config, ['fused_conv2d'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=100,
             passes=["conv_bn_fuse_pass"],
