@@ -16,9 +16,11 @@ import unittest
 
 import hypothesis.strategies as st
 from auto_scan_test import PassAutoScanTest
+from op_test import OpTestTool
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
+@OpTestTool.skip_if_not_cpu()
 class TestInt8ScaleCalculationOnednnPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
@@ -169,7 +171,7 @@ class TestInt8ScaleCalculationOnednnPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=100,
             passes=["int8_scale_calculation_onednn_pass"],

@@ -34,7 +34,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
     '''
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=150,
             max_duration=250,

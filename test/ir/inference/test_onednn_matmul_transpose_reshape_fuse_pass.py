@@ -113,7 +113,7 @@ class TestOneDNNMatmulTransposeReshapeFusePass(PassAutoScanTest):
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=['matmul_transpose_reshape_onednn_fuse_pass']
         )
 

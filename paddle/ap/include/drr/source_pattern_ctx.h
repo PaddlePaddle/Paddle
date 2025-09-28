@@ -29,7 +29,7 @@ struct SourcePatternCtxImpl {
   TensorPatternCtx tensor_pattern_ctx;
 
   bool operator==(const SourcePatternCtxImpl& other) const {
-    return this != &other;
+    return this == &other;
   }
 };
 

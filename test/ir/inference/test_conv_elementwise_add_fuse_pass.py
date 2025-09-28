@@ -155,7 +155,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         )
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=["conv_elementwise_add_fuse_pass"],
         )

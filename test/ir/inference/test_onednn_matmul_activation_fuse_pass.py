@@ -23,20 +23,19 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 @OpTestTool.skip_if_not_cpu()
-class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
+class TestMatmulActivationOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
-        axis = draw(st.sampled_from([-1, 0, 1]))
-        matmul_as_x = draw(st.booleans())
-        batch_size = draw(st.integers(min_value=2, max_value=4))
-        channel = draw(st.sampled_from([16, 32, 64]))
-        input_dim = draw(st.sampled_from([16, 32, 64]))
+        transpose_X = draw(st.booleans())
+        transpose_Y = draw(st.booleans())
+        alpha = draw(st.sampled_from([1, 2]))
+        batch_size = draw(st.sampled_from([4]))
+        channel = draw(st.sampled_from([8]))
+        input_dim = draw(st.sampled_from([32]))
         activation_type = draw(
             st.sampled_from(
                 [
                     'relu',
                     'gelu',
-                    'tanh',
-                    'sigmoid',
                     'swish',
                     'mish',
                     'sqrt',
@@ -48,61 +47,74 @@ class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
                     'tanh',
                     'hard_sigmoid',
                     'leaky_relu',
+                    'scale',
                 ]
             )
         )
 
-        def generate_input():
-            return np.random.random(
-                [batch_size, channel, input_dim, input_dim]
-            ).astype(np.float32)
+        def generate_input(type):
+            if transpose_X and transpose_Y:
+                shape_x = [batch_size, channel, input_dim, 32]
+                shape_y = [batch_size, channel, 64, input_dim]
+            elif transpose_X:
+                shape_x = [batch_size, channel, input_dim, 32]
+                shape_y = [batch_size, channel, input_dim, 64]
+            elif transpose_Y:
+                shape_x = [batch_size, channel, 32, input_dim]
+                shape_y = [batch_size, channel, 8, input_dim]
+            else:
+                shape_x = [batch_size, channel, 32, input_dim]
+                shape_y = [batch_size, channel, input_dim, 16]
+
+            if type == 'x':
+                return np.random.random(shape_x).astype(np.float32)
+            else:
+                return np.random.random(shape_y).astype(np.float32)
 
         matmul_op = OpConfig(
             type='matmul',
-            inputs={'X': ['matmul_x'], 'Y': ['matmul_y']},
+            inputs={'X': ['matmul_X'], 'Y': ['matmul_Y']},
             outputs={'Out': ['matmul_output']},
             attrs={
+                'transpose_X': transpose_X,
+                'transpose_Y': transpose_Y,
+                'alpha': alpha,
                 'use_onednn': True,
             },
-        )
-
-        if matmul_as_x:
-            inputs = {'X': ['matmul_output'], 'Y': ['elementwise_addend']}
-        else:
-            inputs = {'X': ['elementwise_addend'], 'Y': ['matmul_output']}
-
-        elt_add_op = OpConfig(
-            type='elementwise_add',
-            inputs=inputs,
-            outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_onednn': True},
         )
 
         if activation_type == "relu6":
             activation_op = OpConfig(
                 activation_type,
-                inputs={"X": ["elementwise_add_output"]},
+                inputs={"X": ["matmul_output"]},
                 outputs={"Out": ["activation_output"]},
-                threshold=6.0,
+                threshold=6,
             )
         elif activation_type == "leaky_relu":
             activation_op = OpConfig(
                 activation_type,
-                inputs={"X": ["elementwise_add_output"]},
+                inputs={"X": ["matmul_output"]},
                 outputs={"Out": ["activation_output"]},
                 alpha=draw(st.floats(min_value=0.1, max_value=1.0)),
+            )
+        elif activation_type == "scale":
+            activation_op = OpConfig(
+                activation_type,
+                inputs={"X": ["matmul_output"]},
+                outputs={"Out": ["activation_output"]},
+                scale=draw(st.sampled_from([0.125, 0.4, 0.875, 2])),
             )
         elif activation_type == "swish":
             activation_op = OpConfig(
                 activation_type,
-                inputs={"X": ["elementwise_add_output"]},
+                inputs={"X": ["matmul_output"]},
                 outputs={"Out": ["activation_output"]},
                 beta=1.0,
             )
         elif activation_type == "clip":
             activation_op = OpConfig(
                 activation_type,
-                inputs={"X": ["elementwise_add_output"]},
+                inputs={"X": ["matmul_output"]},
                 outputs={"Out": ["activation_output"]},
                 min=draw(st.floats(min_value=0.1, max_value=0.49)),
                 max=draw(st.floats(min_value=0.5, max_value=1.0)),
@@ -110,21 +122,18 @@ class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
         else:
             activation_op = OpConfig(
                 activation_type,
-                inputs={"X": ["elementwise_add_output"]},
+                inputs={"X": ["matmul_output"]},
                 outputs={"Out": ["activation_output"]},
             )
 
-        model_net = [matmul_op, elt_add_op, activation_op]
+        model_net = [matmul_op, activation_op]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={},
             inputs={
-                'matmul_x': TensorConfig(data_gen=partial(generate_input)),
-                'matmul_y': TensorConfig(data_gen=partial(generate_input)),
-                'elementwise_addend': TensorConfig(
-                    data_gen=partial(generate_input)
-                ),
+                'matmul_X': TensorConfig(data_gen=partial(generate_input, 'x')),
+                'matmul_Y': TensorConfig(data_gen=partial(generate_input, 'y')),
             },
             outputs=['activation_output'],
         )
@@ -135,18 +144,19 @@ class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_onednn=True,
             passes=[
-                'matmul_elementwise_add_onednn_fuse_pass',
                 'matmul_activation_onednn_fuse_pass',
+                'operator_scale_onednn_fuse_pass',
             ],
         )
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
+            max_examples=50,
             passes=[
-                'matmul_elementwise_add_onednn_fuse_pass',
                 'matmul_activation_onednn_fuse_pass',
+                'operator_scale_onednn_fuse_pass',
             ],
         )
 

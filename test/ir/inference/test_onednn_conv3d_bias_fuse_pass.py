@@ -123,7 +123,7 @@ class TestConv3dBiasOnednnFusePass(PassAutoScanTest):
     # Need to support 5-dimensional input when using onednn.
     def test(self):
         pass
-        # self.run_and_statis(
+        # self.run_and_statistics(
         #     quant=False, passes=["conv3d_bias_onednn_fuse_pass"])
 
 

@@ -64,7 +64,9 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
+        self.run_and_statistics(
+            max_examples=25, passes=["identity_op_clean_pass"]
+        )
 
 
 class TestIdentityScaleCleanPass_V1(PassAutoScanTest):
@@ -107,7 +109,9 @@ class TestIdentityScaleCleanPass_V1(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
+        self.run_and_statistics(
+            max_examples=25, passes=["identity_op_clean_pass"]
+        )
 
 
 class TestIdentityScaleCleanPass_V2(PassAutoScanTest):
@@ -152,7 +156,9 @@ class TestIdentityScaleCleanPass_V2(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
+        self.run_and_statistics(
+            max_examples=25, passes=["identity_op_clean_pass"]
+        )
 
 
 class TestIdentityCastCleanPass(PassAutoScanTest):
@@ -207,7 +213,9 @@ class TestIdentityCastCleanPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
+        self.run_and_statistics(
+            max_examples=25, passes=["identity_op_clean_pass"]
+        )
 
 
 if __name__ == "__main__":

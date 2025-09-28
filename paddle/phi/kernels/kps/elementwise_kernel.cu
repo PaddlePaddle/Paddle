@@ -341,8 +341,8 @@ PD_REGISTER_KERNEL(
 #else
 using float16 = phi::float16;
 using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(fmax,
                    KPS,
@@ -389,8 +389,8 @@ PD_REGISTER_KERNEL(add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::float16,
-                   phi::bfloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 
@@ -406,8 +406,8 @@ PD_REGISTER_KERNEL(grad_add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::float16,
-                   phi::bfloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 
