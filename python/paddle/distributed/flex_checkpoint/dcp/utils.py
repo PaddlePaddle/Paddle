@@ -326,13 +326,15 @@ def merge_shard_info_list(list_of_dicts):
     return dict(merged)
 
 
-def build_shard_desc(val):
+def build_shard_desc(val: ShardedWeight):
     return ShardedWeightDesc(
         key=val.key,
         local_shape=tuple(val.local_shape),
         global_shape=tuple(val.global_shape),
         global_offset=tuple(val.global_offset),
         dtype=str(val.local_tensor.dtype).split(".")[-1],
+        is_flattened=val.is_flattened,
+        flattened_range=val.flattened_range,
     )
 
 
@@ -368,11 +370,10 @@ def write_to_file_if_empty(data, path):
         )
 
 
-def build_global_state_shard_info(sharded_state_dict, process_group):
+def build_global_state_shard_info(state_dict, process_group):
     state_shard_info = defaultdict(list)
-    for key, val in sharded_state_dict.items():
-        desc = build_shard_desc(val)
-        state_shard_info[key].append(desc)
+    for shard_desc, val in state_dict.items():
+        state_shard_info[shard_desc.key].append(shard_desc)
 
     gathered_info = []
     paddle.distributed.all_gather_object(
@@ -380,3 +381,97 @@ def build_global_state_shard_info(sharded_state_dict, process_group):
     )
 
     return merge_shard_info_list(gathered_info)
+
+
+def extract_sharded_weight_desc_and_tensor(
+    key: str,
+    val: paddle.Tensor | ShardedWeight,
+):
+    if isinstance(val, paddle.Tensor):
+        # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
+        if not val._is_initialized():
+            return None, None
+        if val.is_dist():
+            local_tensor = val._local_value()
+            # Note: The local_tensor must keep the same name with the original tensor.
+            # Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+            local_tensor.name = val.name
+            # when val is scalar, the shape is []
+            (
+                local_shape,
+                global_offset,
+            ) = (
+                compute_local_shape_and_global_offset(
+                    val.shape,
+                    val.process_mesh,
+                    val.placements,
+                )
+                if len(val.shape) > 0
+                else ((), ())
+            )
+            global_shape = val.shape
+            if local_shape is None or global_offset is None:
+                return None, None
+        else:
+            local_shape = tuple(val.shape)
+            global_offset = (
+                tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
+            )
+            global_shape = local_shape
+            local_tensor = val
+        sharded_weight_desc = ShardedWeightDesc(
+            key=key,
+            local_shape=local_shape,
+            global_shape=global_shape,
+            global_offset=global_offset,
+            dtype=str(val.dtype).split(".")[1],
+        )
+        return sharded_weight_desc, local_tensor
+    elif isinstance(val, ShardedWeight):
+        assert key == val.key, f"key mismatch: {key} vs {val.key}"
+        return build_shard_desc(val), val.local_tensor
+    else:
+        raise ValueError(
+            f"The value of state_dict should be a paddle.Tensor or ShardedWeight, but got: {type(val)}"
+        )
+
+
+def build_sharded_weight(
+    sharded_weight_desc: ShardedWeightDesc,
+    local_tensor: paddle.Tensor,
+):
+    if sharded_weight_desc.is_flattened:
+        expected_numel = (
+            sharded_weight_desc.flattened_range.stop
+            - sharded_weight_desc.flattened_range.start
+        )
+        if len(local_tensor.shape) != 1:
+            raise ValueError(
+                f"Expected 1D tensor, got shape {local_tensor.shape}"
+            )
+        if local_tensor.numel() != expected_numel:
+            raise ValueError(
+                f"Tensor numel {local_tensor.numel()} != expected {expected_numel}"
+            )
+    else:
+        if len(local_tensor.shape) != len(sharded_weight_desc.local_shape):
+            raise ValueError(
+                f"Tensor rank {len(local_tensor.shape)} != expected {len(sharded_weight_desc.local_shape)}"
+            )
+        for i, (actual, expected) in enumerate(
+            zip(local_tensor.shape, sharded_weight_desc.local_shape)
+        ):
+            if actual != expected:
+                raise ValueError(
+                    f"Shape mismatch at dim {i}: {actual} != {expected}"
+                )
+
+    return ShardedWeight(
+        key=sharded_weight_desc.key,
+        local_tensor=local_tensor,
+        local_shape=sharded_weight_desc.local_shape,
+        global_shape=sharded_weight_desc.global_shape,
+        global_offset=sharded_weight_desc.global_offset,
+        is_flattened=sharded_weight_desc.is_flattened,
+        flattened_range=sharded_weight_desc.flattened_range,
+    )

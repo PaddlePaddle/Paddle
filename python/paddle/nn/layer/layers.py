@@ -55,7 +55,7 @@ from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
     AOAEngine,
 )
 from paddle.distributed.flex_checkpoint.dcp.reshard import (
-    reshard_sharded_state_dict,
+    reshard_sharded_weights,
 )
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
@@ -2356,16 +2356,10 @@ class Layer:
         )
 
         if aoa_config is not None:
-            source_state_origin_shard_num = {
-                key: len({shard.global_offset for shard in shards})
-                for key, shards in source_state_shard_info.items()
-            }
-
             aoa_engine = AOAEngine(
                 aoa_config=aoa_config,
                 source_state_shard_info=source_state_shard_info,
                 destination_state_shard_info=None,
-                source_state_origin_shard_num=source_state_origin_shard_num,
             )
 
             destination_sharded_weight_desc = {}
@@ -2381,15 +2375,15 @@ class Layer:
 
             for k, v in destination_sharded_weight_desc.items():
                 shard_mappings = aoa_engine.find_shard_sources(v)
-                destination_sharded_state_dict = {}
+                destination_sharded_weights = []
                 src_desc_to_sharded_tensor = {}
                 dst_to_src_desc_mapping = {}
-                cur_source_sharded_state_dict = {}
+                cur_source_sharded_weights = []
 
                 for mapping in shard_mappings:
                     src_desc = mapping.source_slice
                     if src_desc.key in sharded_state_dict:
-                        cur_source_sharded_state_dict[src_desc.key] = (
+                        cur_source_sharded_weights.append(
                             sharded_state_dict[src_desc.key]
                         )
 
@@ -2407,8 +2401,6 @@ class Layer:
                 for idx, mapping in enumerate(shard_mappings):
                     src_desc = mapping.source_slice
                     dst_desc = mapping.target_slice
-                    idx = (src_desc.key, tuple(src_desc.global_offset))
-
                     if mapping.postprocess_list is not None:
                         src_desc_to_postprocess_list[src_desc] = (
                             mapping.postprocess_list
@@ -2418,7 +2410,7 @@ class Layer:
                         and src_desc.global_shape == dst_desc.global_shape
                         and src_desc.global_offset == dst_desc.global_offset
                     ):
-                        destination_sharded_state_dict[idx] = (
+                        destination_sharded_weights.append(
                             target_sharded_tensor
                         )
                     else:
@@ -2426,21 +2418,23 @@ class Layer:
                             src_desc.local_shape, dtype=src_desc.dtype
                         )
                         force_gc.append(local_tensor)
-                        destination_sharded_state_dict[idx] = ShardedWeight(
+                        tmp_sharded_weight = ShardedWeight(
                             key=src_desc.key,
                             local_tensor=local_tensor,
                             local_shape=src_desc.local_shape,
                             global_shape=src_desc.global_shape,
                             global_offset=src_desc.global_offset,
                         )
+
+                        destination_sharded_weights.append(tmp_sharded_weight)
                         src_desc_to_sharded_tensor[src_desc] = (
-                            destination_sharded_state_dict[idx]
+                            tmp_sharded_weight
                         )
                         dst_to_src_desc_mapping[dst_desc] = src_desc
 
-                reshard_sharded_state_dict(
-                    src_sharded_state_dict=cur_source_sharded_state_dict,
-                    dst_sharded_state_dict=destination_sharded_state_dict,
+                reshard_sharded_weights(
+                    src_sharded_weights=cur_source_sharded_weights,
+                    dst_sharded_weights=destination_sharded_weights,
                     process_group=process_group,
                 )
 
@@ -2479,12 +2473,14 @@ class Layer:
                     global_offset=(0,) * len(global_shape),
                 )
 
-                if k in sharded_state_dict:
-                    cur_source_sharded_state_dict[k] = sharded_state_dict[k]
+                cur_source_sharded_weights = []
 
-                reshard_sharded_state_dict(
-                    src_sharded_state_dict=cur_source_sharded_state_dict,
-                    dst_sharded_state_dict={k: target_sharded_tensor},
+                if k in sharded_state_dict:
+                    cur_source_sharded_weights.append(sharded_state_dict[k])
+
+                reshard_sharded_weights(
+                    src_sharded_weights=cur_source_sharded_weights,
+                    dst_sharded_weights=[target_sharded_tensor],
                     process_group=process_group,
                 )
 

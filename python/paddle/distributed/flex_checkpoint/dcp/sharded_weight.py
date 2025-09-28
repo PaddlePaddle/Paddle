@@ -32,6 +32,30 @@ class ShardedWeightDesc:
     global_shape: tuple[int, ...]
     global_offset: tuple[int, ...]
     dtype: str | None = None
+    is_flattened: bool = False
+    flattened_range: slice | None = None
+
+    def __hash__(self):
+        flattened_range_hash = (
+            (
+                self.flattened_range.start,
+                self.flattened_range.stop,
+                self.flattened_range.step,
+            )
+            if self.flattened_range
+            else None
+        )
+        return hash(
+            (
+                self.key,
+                self.local_shape,
+                self.global_shape,
+                self.global_offset,
+                self.dtype,
+                self.is_flattened,
+                flattened_range_hash,
+            )
+        )
 
 
 class ShardedWeight:

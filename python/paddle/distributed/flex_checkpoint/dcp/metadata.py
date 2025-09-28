@@ -14,33 +14,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-
-@dataclass
-class LocalTensorMetadata:
-    """
-    The location of a local tensor in the global tensor.
-    """
-
-    global_offset: tuple[int]
-    local_shape: tuple[int]
-    dtype: str
-    global_shape: tuple[int] | None = None
-
-
-@dataclass(frozen=True)
-class LocalTensorIndex:
-    """
-    The identifier of a local tensor.
-    """
-
-    tensor_key: str
-    global_offset: tuple[int]
+if TYPE_CHECKING:
+    from .sharded_weight import ShardedWeightDesc
 
 
 @dataclass
 class Metadata:
-    state_dict_metadata: dict[str, list[LocalTensorMetadata]] = None
-    storage_metadata: dict[LocalTensorIndex, str] = None
+    state_dict_metadata: dict[str, list[ShardedWeightDesc]] = None
+    storage_metadata: dict[ShardedWeightDesc, str] = None
     flat_mapping: dict[str, tuple[str]] = None
-    origin_shard_num: dict[str, int] = None

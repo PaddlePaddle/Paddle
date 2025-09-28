@@ -91,7 +91,6 @@ class AOAShardInfoContext:
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
-        self.source_state_origin_shard_num = source_state_origin_shard_num
 
     def get_all_dst_state_keys(self):
         dst_state_keys = set()
@@ -142,23 +141,16 @@ class AOAShardInfoContext:
             f"{model_state_key}.moment2_0",
         ]
 
-        if self.source_state_origin_shard_num is not None:
-            shard_nums = {
-                self.source_state_origin_shard_num[key]
-                for key in state_keys
-                if key in self.source_state_origin_shard_num
-            }
-        else:
-            shard_nums = {
-                len(
-                    {
-                        shard_info.global_offset
-                        for shard_info in self.source_state_shard_info[key]
-                    }
-                )
-                for key in state_keys
-                if key in self.source_state_shard_info
-            }
+        shard_nums = {
+            len(
+                {
+                    shard_info.global_offset
+                    for shard_info in self.source_state_shard_info[key]
+                }
+            )
+            for key in state_keys
+            if key in self.source_state_shard_info
+        }
 
         if not shard_nums:
             raise ValueError(
@@ -220,7 +212,6 @@ class AOAEngine:
         aoa_config: dict[str, list[str]],
         source_state_shard_info: _ShardInfo,
         destination_state_shard_info: _ShardInfo,
-        source_state_origin_shard_num: dict[str, int] | None = None,
     ):
         self.aoa_config = aoa_config
         self.source_state_shard_info = source_state_shard_info
@@ -228,7 +219,6 @@ class AOAEngine:
         self.context = AOAShardInfoContext(
             source_state_shard_info,
             destination_state_shard_info,
-            source_state_origin_shard_num,
         )
         self.lexer = Lexer(self.context)
         self.parser = Parser(
