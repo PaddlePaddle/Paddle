@@ -180,11 +180,15 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         # The input data should be >= 0
         batch_size = 10
 
-        test_reader = paddle.batch(
-            paddle.dataset.uci_housing.test(), batch_size=batch_size
-        )
+        test_data = []
+        uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+        count = 0
+        for data in uci_housing:
+            test_data.append(data)
+            count = count + 1
+            if count >= batch_size:
+                break
 
-        test_data = next(test_reader())
         test_feat = numpy.array([data[0] for data in test_data]).astype(
             "float32"
         )
