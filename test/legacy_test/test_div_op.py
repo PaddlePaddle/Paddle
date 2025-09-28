@@ -15,6 +15,7 @@ import unittest
 
 import numpy as np
 from op_test import get_device_place, is_custom_device
+from utils import dygraph_guard
 
 import paddle
 from paddle.base import core
@@ -678,6 +679,99 @@ class TestPaddleDivideWithOut(unittest.TestCase):
         np.testing.assert_equal(o2, None)
         np.testing.assert_equal(o3, None)
         np.testing.assert_equal(o4, None)
+
+
+class TestPaddleDivideTrunc(unittest.TestCase):
+    def setUp(self):
+        self.data = [5, -5, 3, -3]
+        self.divisor = [2, 2, 2, 2]
+        self.data_vec = [5, 10]
+        self.data_mat = [[2, 2], [3, 3]]
+
+        self.expected_f32 = [2.0, -2.0, 1.0, -1.0]
+        self.expected_int = [2, -2, 1, -1]
+        self.expected_b_f32 = [[2.0, 5.0], [1.0, 3.0]]
+        self.expected_b_int = [[2, 5], [1, 3]]
+
+    def _test_dtype_division(self, dtype, place, expected=None):
+        x = paddle.to_tensor(self.data, dtype=dtype, place=place)
+        y = paddle.to_tensor(self.divisor, dtype=dtype, place=place)
+        out = paddle.divide(x, y, rounding_mode='trunc')
+        if expected is not None:
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+    def _test_broadcast_division(self, dtype, place, expected=None):
+        x = paddle.to_tensor(self.data_vec, dtype=dtype, place=place)
+        y = paddle.to_tensor(self.data_mat, dtype=dtype, place=place)
+        out = paddle.divide(x, y, rounding_mode='trunc')
+        if expected is not None:
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+    def _test_divide_by_zero(self, place):
+        y_f32 = paddle.to_tensor(self.divisor, dtype='float32', place=place)
+        y_b_f32 = paddle.to_tensor(self.data_mat, dtype='float32', place=place)
+        zero_f32 = paddle.to_tensor([0.0], dtype='float32', place=place)
+        out_f32 = paddle.divide(y_f32, zero_f32, rounding_mode='trunc')
+        out_b_f32 = paddle.divide(y_b_f32, zero_f32, rounding_mode='trunc')
+
+    def _run_all_tests(self, place):
+        self._test_dtype_division('float32', place, self.expected_f32)
+        self._test_broadcast_division('float32', place, self.expected_b_f32)
+        self._test_dtype_division('float16', place, self.expected_f32)
+        self._test_broadcast_division('float16', place, self.expected_b_f32)
+        self._test_dtype_division('bfloat16', place, None)
+        self._test_broadcast_division('bfloat16', place, None)
+        self._test_dtype_division('int32', place, self.expected_int)
+        self._test_broadcast_division('int32', place, self.expected_b_int)
+        self._test_divide_by_zero(place)
+
+    def test_cpu(self):
+        self._run_all_tests(paddle.CPUPlace())
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "skip gpu test in TestPaddleDivideTrunc",
+    )
+    def test_gpu(self):
+        self._run_all_tests(paddle.CUDAPlace(0))
+
+    def test_infer_symbolic_shape(self):
+        devices = [paddle.device.get_device()]
+        if "gpu:" in devices and not paddle.device.is_compiled_with_rocm():
+            devices.append("cpu")
+
+        for device in devices:
+            with paddle.device.device_guard(device), dygraph_guard():
+                x = paddle.randn([2, 2], dtype="float32")
+                y = paddle.randn([2, 2], dtype="float32")
+                x.stop_gradient = False
+                y.stop_gradient = False
+
+                def divide_trunc(x, y):
+                    return paddle.divide(x, y, rounding_mode='trunc')
+
+                def divide_floor(x, y):
+                    return paddle.divide(x, y, rounding_mode='floor')
+
+                st_f = paddle.jit.to_static(
+                    divide_trunc,
+                    full_graph=True,
+                    input_spec=[
+                        paddle.static.InputSpec(
+                            shape=[-1, -1], dtype="float32"
+                        ),
+                        paddle.static.InputSpec(
+                            shape=[-1, -1], dtype="float32"
+                        ),
+                    ],
+                )
+
+                out = st_f(x, y)
+                self.assertEqual(
+                    out.shape,
+                    x.shape,
+                    msg=f"shape mismatch for 2D input, got {out.shape}, expected {x.shape}",
+                )
 
 
 if __name__ == "__main__":

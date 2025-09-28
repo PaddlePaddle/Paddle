@@ -25,7 +25,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 
-#if CUDA_VERSION >= 10020
+#ifdef PADDLE_WITH_CUDA
 
 namespace paddle {
 namespace memory {

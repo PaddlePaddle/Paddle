@@ -406,7 +406,7 @@ class PassAutoScanTest(AutoScanTest):
             f"Expected operator list after fusion is {op_list_after_fusion}, but now it's {after_op_list}",
         )
 
-    def run_and_statis(
+    def run_and_statistics(
         self,
         quant=False,
         max_examples=100,
@@ -432,7 +432,7 @@ class PassAutoScanTest(AutoScanTest):
         )
         settings.load_profile("ci")
         assert passes is not None, (
-            "Parameter of passes must be defined in function run_and_statis."
+            "Parameter of passes must be defined in function run_and_statistics."
         )
         self.passes = passes
 

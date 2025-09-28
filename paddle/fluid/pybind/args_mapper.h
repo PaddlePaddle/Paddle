@@ -38,6 +38,15 @@ void ArgMaxMinMapper(PyObject* args,
                      bool* flatten,
                      phi::DataType* dtype);
 
+void GeluMapper(PyObject* args,
+                PyObject* kwargs,
+                Tensor** x_ptr_ptr,
+                bool* approximate);
+void GeluMapper(PyObject* args,
+                PyObject* kwargs,
+                pir::Value* x,
+                bool* approximate);
+
 void ArgSumMapper(PyObject* args,
                   PyObject* kwargs,
                   Tensor** x_ptr_ptr,
