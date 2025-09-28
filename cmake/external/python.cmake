@@ -39,8 +39,6 @@ set(PYTHON_INCLUDE_DIRS ${Python_INCLUDE_DIRS})
 
 set(PYTHON_LIBRARY ${Python_LIBRARIES})
 set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS})
-# find_package(PythonInterp ${PY_VERSION} REQUIRED)
-# find_package(PythonLibs ${PY_VERSION} REQUIRED)
 
 if(WIN32)
   execute_process(
