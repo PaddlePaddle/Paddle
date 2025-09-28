@@ -3785,19 +3785,30 @@ struct CudaExpm1Functor<double> : public BaseActivationFunctor<double> {
 };
 
 template <typename T>
+__device__ __forceinline__ ComplexType<T> local_expm1(const ComplexType<T>& z) {
+  T x = z.real;
+  T y = z.imag;
+  T a = std::sin(y / 2);
+  T er = std::expm1(x) * std::cos(y) - T(2) * a * a;
+  T ei = std::exp(x) * std::sin(y);
+  return {er, ei};
+}
+
+template <typename T>
 struct CudaExpm1Functor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> x) const {
-    return static_cast<ComplexType<T>>(Expm1<ComplexType<T>>()(x));
+    return static_cast<ComplexType<T>>(local_expm1(x));
   }
 };
 
 template <typename T>
 struct CudaExpm1GradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
   // dx = dout * out
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * out + dout;
+    return dout * (out + one);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3808,10 +3819,11 @@ struct CudaExpm1GradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaExpm1GradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
   // dx = dout * exp(x)
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> out) const {
-    return static_cast<ComplexType<T>>(dout * conj(out) + dout);
+    return static_cast<ComplexType<T>>(dout * (conj(out) + one));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
