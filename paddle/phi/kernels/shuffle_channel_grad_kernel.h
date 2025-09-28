@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/shuffle_channel_grad_kernel.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/shuffle_channel_kernel.h"
-PD_REGISTER_KERNEL(shuffle_channel_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ShuffleChannelGradOpKernel,
-                   float,
-                   double) {}
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void ShuffleChannelGradOpKernel(const Context& dev_ctx,
+                                const DenseTensor& out_grad,
+                                int group,
+                                DenseTensor* x_grad);
+
+}  // namespace phi
