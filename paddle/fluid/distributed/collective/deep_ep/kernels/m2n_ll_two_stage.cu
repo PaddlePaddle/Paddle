@@ -172,11 +172,11 @@ __global__ __launch_bounds__(
           reinterpret_cast<uint8_t*>(rdma_x_src_idx) + sizeof(int4));
       const auto rdma_x_scales = reinterpret_cast<float*>(
           reinterpret_cast<uint8_t*>(rdma_x_vec) + hidden_bytes);
-      const auto index_source = rdma_x_src_idx;
+      // const auto index_source = rdma_x_src_idx;
       const auto nvl_rank_meta =
           reinterpret_cast<int*>(rdma_x_scales + (kUseFP8 ? kNumScales : 0));
 
-      thread_id == 0 ? (*index_source = token_idx) : 0;
+      thread_id == 0 ? (*rdma_x_src_idx = token_idx) : 0;
 
 #pragma unroll
       for (int i = thread_id; i < hidden_bf16_int4; i += num_threads) {
@@ -378,10 +378,15 @@ __global__ __launch_bounds__(
       const auto local_expert_idx = responsible_expert_idx % kNumLocalExperts;
       const auto recv_range =
         packed_recv_layout_range + local_expert_idx * kNumRanks;
+      
+      if (sub_warp_id == 0 && lane_id == 0)
+      {
+
       recv_range[src_rank] =
           pack2<int, int64_t>(0, 0);
-    }
 
+      }
+    }
 
     if (sm_id < e_num_rdma_rank && thread_id < NUM_MAX_NVL_PEERS) {
       int src_rdma_rank = sm_id + e_start_rdma_rank;
@@ -428,11 +433,15 @@ __global__ __launch_bounds__(
     return;
   }
 
+  // below code are only executed by MoE
+  
+
   /* RDMA Receiver and NVL Sender */
   {
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
     const int src_rdma_rank = sm_id / sms_per_rdma;
-    if (src_rdma_rank < kNumRdmaRanks) {
+    // Only 
+    if (src_rdma_rank >= a_start_rdma_rank and src_rdma_rank < a_start_rdma_rank + a_num_rdma_ranks) {
       const int sub_rdma_rank = sm_id % sms_per_rdma;
 
       const int src_rank = src_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank;
@@ -447,19 +456,17 @@ __global__ __launch_bounds__(
       int num_recv_tokens_per_rdma = -1;
       if (thread_id < kNumQPs) {
         // only read flag of attn mechine, if one machine is fast and one machine is slow, this will have hang in the last micro batch
-        if (src_rdma_rank >= a_start_rdma_rank and src_rdma_rank < a_start_rdma_rank + a_num_rdma_ranks) {
-          auto start_time = clock64();
-          auto wait_recv_cost = clock64();
-          while ((num_recv_tokens_per_rdma = ld_acquire_sys_global(
-                    rdma_recv_count + src_rdma_rank * kNumQPs + thread_id)) ==
-               0) {
-            if (M2N_LL_HANG_DEBUG) {
-              if (thread_id == 0) {
-                wait_recv_cost = clock64() - start_time;
-                if (wait_recv_cost > M2N_NUM_HANG_CYCLES) {
-                  printf("[kernel][dispatch][rdma_recv_count] wait than clock cycles: %ld\n", wait_recv_cost);
-                  start_time = clock64();
-                }
+        auto start_time = clock64();
+        auto wait_recv_cost = clock64();
+        while ((num_recv_tokens_per_rdma = ld_acquire_sys_global(
+                  rdma_recv_count + src_rdma_rank * kNumQPs + thread_id)) ==
+              0) {
+          if (M2N_LL_HANG_DEBUG) {
+            if (thread_id == 0) {
+              wait_recv_cost = clock64() - start_time;
+              if (wait_recv_cost > M2N_NUM_HANG_CYCLES) {
+                printf("[kernel][dispatch][rdma_recv_count] wait than clock cycles: %ld\n", wait_recv_cost);
+                start_time = clock64();
               }
             }
           }
@@ -702,6 +709,11 @@ __global__ __launch_bounds__(
       }
     }
   }
+  
+  // 这里为啥需要加上这个？
+  // 加上吧，放置出错啦！
+  cg::this_grid().sync();
+  
   // TODO: 
   if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
     if (sm_id < a_num_rdma_ranks && thread_id < NUM_MAX_NVL_PEERS) {
@@ -1011,6 +1023,9 @@ __global__ __launch_bounds__(
     // Unpack layout
     int offset, num_tokens_to_send;
     unpack2(layout, num_tokens_to_send, offset);
+    
+    // Attention 卡上当然要是鸡蛋啦！
+    // if (rank >= 0 && rank < 16) EP_DEVICE_ASSERT(num_tokens_to_send == 0);
 
     for (int token_idx = sub_warp_id; token_idx < num_tokens_to_send;
          token_idx += kNumWarpsPerGroup) {
@@ -1331,7 +1346,11 @@ __global__ __launch_bounds__(
        token_idx * hidden_bf16_int4)[g_id] = combined_int4;
     }
   }
-    // TODO: 
+
+  // 
+  cg::this_grid().sync();
+
+  // TODO: 
   if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
     // int e_num_rdma_ranks = e_num_ranks / NUM_MAX_NVL_PEERS;
     // int e_start_rdma_rank = e_start_rank / NUM_MAX_NVL_PEERS;
