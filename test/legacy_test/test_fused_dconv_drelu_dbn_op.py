@@ -31,12 +31,14 @@ from paddle.base.executor import Executor
 
 def skip_unit_test():
     return (
-        not (paddle.base.libpaddle.is_compiled_with_cudnn_frontend()) or
-        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        not (paddle.base.libpaddle.is_compiled_with_cudnn_frontend())
+        or not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
     )
 
+
 skip_msg = "only support with cuda and Ampere or later devices, also please ensure you have used compile mode to install paddlepaddle with -WITH_CUDNN_FRONTEND ON"
+
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
@@ -48,7 +50,13 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.fuse_dual = False
         self.exhaustive_search = False
 
-    def set_attrs(self, fuse_add=False, fuse_shortcut=False, fuse_dual=False, exhaustive_search=False):
+    def set_attrs(
+        self,
+        fuse_add=False,
+        fuse_shortcut=False,
+        fuse_dual=False,
+        exhaustive_search=False,
+    ):
         self.fuse_add = fuse_add
         self.fuse_shortcut = fuse_shortcut
         self.fuse_dual = fuse_dual
