@@ -163,7 +163,7 @@ if(WITH_TESTING)
     add_subdirectory(collective)
   endif()
   if(WITH_ONEDNN)
-    add_subdirectory(mkldnn)
+    add_subdirectory(onednn)
   endif()
 
 endif()
