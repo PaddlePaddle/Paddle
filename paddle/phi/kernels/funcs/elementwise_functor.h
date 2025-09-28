@@ -1128,7 +1128,7 @@ struct RemainderGradYFunctor<
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
     FloorDivideFunctor<MPType> floor_div;
-    return static_cast<T>(-static_cast<MPType>(dout) * (floor_div(x_ / y_)));
+    return static_cast<T>(-static_cast<MPType>(dout) * (floor_div(x_, y_)));
   }
 };
 template <typename T>
