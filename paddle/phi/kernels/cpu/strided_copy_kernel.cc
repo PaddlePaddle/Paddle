@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
-#if defined(_OPENMP)
+#if defined(PADDLE_WITH_OPENMP)
 #include <omp.h>
 #else
 #include "paddle/phi/kernels/contiguous_kernel.h"
@@ -60,10 +60,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_OPENMP)
-
-  if (FLAGS_use_stride_compute_kernel &&
-      input.place().GetType() == phi::AllocationType::CPU &&
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (input.place().GetType() == phi::AllocationType::CPU &&
       out->place().GetType() == phi::AllocationType::GPU &&
       input.dtype() == out->dtype() && !input.meta().is_contiguous()) {
     phi::DenseTensor dst_gpu;
@@ -88,6 +86,9 @@ void StridedCopyKernel(const Context& dev_ctx,
     cpu_meta.offset = 0;
     cpu_out->set_meta(cpu_meta);
 
+#if defined(PADDLE_WITH_OPENMP)
+    dev_ctx.HostAlloc(cpu_out, cpu_out->dtype());
+#endif
     const void* cpu_input_data = cpu_input.data();
     cpu_output_data = malloc(phi::SizeOf(cpu_input.dtype()) * cpu_out->numel());
 
@@ -97,7 +98,11 @@ void StridedCopyKernel(const Context& dev_ctx,
           malloc(phi::SizeOf(input.dtype()) * TRANS_NUMEL * TRANS_NUMEL);
 
       const T* tmp_src_ptr = reinterpret_cast<const T*>(cpu_input_data);
+#if defined(PADDLE_WITH_OPENMP)
       T* tmp_out_ptr = reinterpret_cast<T*>(cpu_output_data);
+#else
+      T* tmp_out_ptr = cpu_out->data<T>();
+#endif
       T* tmp_buf_ptr = reinterpret_cast<T*>(trans_buffer);
 
       int64_t dim0 = cpu_out->dims()[0];
@@ -138,6 +143,7 @@ void StridedCopyKernel(const Context& dev_ctx,
       }
       free(trans_buffer);
     } else {
+#if defined(PADDLE_WITH_OPENMP)
       phi::DenseTensorIteratorConfig config;
       config.add_output(*cpu_out);
       config.add_const_input(cpu_input);
@@ -213,6 +219,9 @@ void StridedCopyKernel(const Context& dev_ctx,
           }
         }
       }
+#else
+      phi::ContiguousKernel<T, Context>(dev_ctx, input, cpu_out);
+#endif
     }
 
     auto src_cpu_place = input.place();
@@ -221,7 +230,11 @@ void StridedCopyKernel(const Context& dev_ctx,
     auto& pool = phi::DeviceContextPool::Instance();
     auto* gpu_dev_ctx = static_cast<phi::GPUContext*>(pool.Get(out->place()));
     auto stream = gpu_dev_ctx->stream();
+#if defined(PADDLE_WITH_OPENMP)
     auto* src_ptr = cpu_output_data;
+#else
+    auto* src_ptr = cpu_out->data<T>();
+#endif
 
     auto size = phi::SizeOf(input.dtype()) * src_cpu.numel();
     void* dst_ptr = gpu_dev_ctx->Alloc(
@@ -337,9 +350,9 @@ PD_REGISTER_KERNEL(strided_copy,
                    int64_t,
                    float,
                    double,
-                   ::phi::float16,
-                   ::phi::bfloat16,
-                   ::phi::complex64,
-                   ::phi::complex128,
-                   ::phi::float8_e4m3fn,
-                   ::phi::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

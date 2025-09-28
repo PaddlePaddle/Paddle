@@ -345,6 +345,26 @@ bool DenseTensorIteratorBase::fast_set_up(
   return true;
 }
 
+int DenseTensorIteratorBase::num_reduce_dims() const {
+  int count = 0;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] == 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int64_t DenseTensorIteratorBase::num_output_elements() const {
+  int64_t elem = 1;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] != 0 || shape_[dim] == 0) {
+      elem *= shape_[dim];
+    }
+  }
+  return elem;
+}
+
 void DenseTensorIteratorBase::compute_shape(
     const DenseTensorIteratorConfig& config) {
   all_ops_same_shape_ = true;
@@ -379,9 +399,7 @@ void DenseTensorIteratorBase::compute_strides(
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
     bool reduce_pass = false;
     bool out_pass = false;
-
     if (is_alloc_out_ && op.is_output) out_pass = true;
-
     std::vector<int64_t> tmp_shape =
         common::vectorize<int64_t>(op.tensor().dims());
     std::vector<int64_t> tmp_stride =
@@ -392,7 +410,6 @@ void DenseTensorIteratorBase::compute_strides(
       tmp_shape = std::vector<int64_t>(shape_.size(), 1);
       reduce_pass = true;
     }
-
     if (out_pass || reduce_pass ||
         op.tensor().initialized() && !op.will_resize && valid_stride) {
       std::vector<int64_t> original_shape;

@@ -780,6 +780,7 @@ class AdamW(Optimizer):
             sorted(model_sharded_state_dict.items())
         )
         for k, v in model_sharded_state_dict.items():
+            # When shared weights exist, the v.local_tensor.name of shared parameters are identical, but only the first parameter has optimizer states. Therefore, only the key-value pairs of the first occurrence in the shared parameter group need to be retained.
             if v.local_tensor.name not in static_to_struct_mapping:
                 static_to_struct_mapping[v.local_tensor.name] = k
 
