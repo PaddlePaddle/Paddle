@@ -16,21 +16,6 @@ include(python_module)
 
 check_py_version(${PY_VERSION})
 
-# if(NOT PYTHON_EXECUTABLE)
-#   execute_process(
-#     COMMAND "which" "python"
-#     RESULT_VARIABLE _exitcode
-#     OUTPUT_VARIABLE Python_EXECUTABLE
-#     OUTPUT_STRIP_TRAILING_WHITESPACE)
-#   if(${_exitcode} EQUAL 0)
-#     message(STATUS "Setting Python to ${Python_EXECUTABLE}")
-#   endif()
-# endif()
-
-# Find Python with minimum PY_VERSION specified or will raise error!
-set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
-set(Python_LIBRARIES ${PYTHON_LIBRARY})
-set(Python_INCLUDE_DIRS ${PYTHON_INCLUDE_DIR})
 if(Python_EXECUTABLE)
   find_package(Python ${PY_VERSION} COMPONENTS Interpreter Development)
 else()

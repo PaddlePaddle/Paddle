@@ -25,9 +25,22 @@ endif()
 # https://cmake.org/cmake/help/v4.0/policy/CMP0026.html#cmp0026
 cmake_policy(SET CMP0026 NEW)
 cmake_policy(SET CMP0079 NEW)
+cmake_policy(SET CMP0094 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
+# Adapt old cmake name for python
+if(PYTHON_EXECUTABLE)
+  set(Python_EXECUTABLE "${PYTHON_EXECUTABLE}")
+endif()
+if(PYTHON_LIBRARY)
+  set(Python_LIBRARIES "${PYTHON_LIBRARY}")
+endif()
+if(PYTHON_INCLUDE_DIR)
+  set(Python_INCLUDE_DIRS ${PYTHON_INCLUDE_DIR})
+endif()
+set(Python_FIND_REGISTRY LAST)
 
 include(system)
 
