@@ -166,7 +166,7 @@ if(WITH_TESTING)
     add_subdirectory(standalone_executor)
     add_subdirectory(tokenizer)
     if(WITH_ONEDNN)
-      add_subdirectory(mkldnn)
+      add_subdirectory(onednn)
     endif()
   endif()
 

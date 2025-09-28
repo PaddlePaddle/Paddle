@@ -88,16 +88,22 @@ struct StringMethodClass {
                "the argument 2 of 'str.replace' should be a str"};
     return This{}.Replace(self, pattern, replacement);
   }
-
   std::string Replace(std::string self,
                       const std::string& pattern,
                       const std::string& replacement) {
-    while (true) {
-      std::size_t pos = self.find(pattern);
-      if (pos == std::string::npos) {
-        break;
+    if (pattern.empty()) {
+      std::string result;
+      for (char c : self) {
+        result += replacement;
+        result += c;
       }
-      self = self.replace(pos, pattern.size(), replacement);
+      result += replacement;
+      return result;
+    }
+    std::size_t pos = 0;
+    while ((pos = self.find(pattern, pos)) != std::string::npos) {
+      self.replace(pos, pattern.size(), replacement);
+      pos += replacement.size();
     }
     return self;
   }

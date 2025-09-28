@@ -30,7 +30,9 @@ class DepthwiseConvONEDNNPass(PassAutoScanTest):
     '''
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["depthwise_conv_onednn_pass"])
+        self.run_and_statistics(
+            quant=False, passes=["depthwise_conv_onednn_pass"]
+        )
 
     def sample_program_config(self, draw):
         # generate random number

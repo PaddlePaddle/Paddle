@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <variant>
 #include <vector>
@@ -33,6 +34,25 @@
 namespace c10 {
 #define TORCH_CHECK(COND, ...) PD_CHECK(COND, ##__VA_ARGS__);
 #define TORCH_INTERNAL_ASSERT(COND, ...) PD_CHECK(COND, ##__VA_ARGS__);
+#define TORCH_CHECK_OP(val1, val2, op)                                    \
+  do {                                                                    \
+    auto&& _val1 = (val1);                                                \
+    auto&& _val2 = (val2);                                                \
+    if (!(_val1 op _val2)) {                                              \
+      std::ostringstream _result;                                         \
+      _result << "Expected " #val1 " " #op " " #val2 " (" << _val1 << " " \
+              << #op << " " << _val2 << "), but got false";               \
+      PD_THROW(_result.str());                                            \
+    }                                                                     \
+  } while (false);
+
+// TORCH_CHECK_OP macro definitions
+#define TORCH_CHECK_EQ(val1, val2) TORCH_CHECK_OP(val1, val2, ==)
+#define TORCH_CHECK_NE(val1, val2) TORCH_CHECK_OP(val1, val2, !=)
+#define TORCH_CHECK_LE(val1, val2) TORCH_CHECK_OP(val1, val2, <=)
+#define TORCH_CHECK_LT(val1, val2) TORCH_CHECK_OP(val1, val2, <)
+#define TORCH_CHECK_GE(val1, val2) TORCH_CHECK_OP(val1, val2, >=)
+#define TORCH_CHECK_GT(val1, val2) TORCH_CHECK_OP(val1, val2, >)
 }  // namespace c10
 
 enum class C10ErrorType {
