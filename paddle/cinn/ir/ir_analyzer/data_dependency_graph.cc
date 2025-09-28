@@ -258,7 +258,7 @@ bool DataDependencyGraph::HasEdge(unsigned src_id, unsigned dst_id) {
     return false;
   };
 
-  if (out_edges_.count(src_id == 0) || in_edges_.count(dst_id) == 0) {
+  if (out_edges_.count(src_id) == 0 || in_edges_.count(dst_id) == 0) {
     return false;
   }
   return CheckEdges(dst_id, out_edges_[src_id]) &&

@@ -50,18 +50,7 @@ function(find_python_module module)
 endfunction()
 
 function(check_py_version py_version)
-  string(REPLACE "." ";" version_list ${py_version})
-  list(LENGTH version_list version_list_len)
-  if(version_list_len LESS 2)
-    message(FATAL_ERROR "Please input Python version, eg:3.9 and so on")
-  endif()
-
-  list(GET version_list 0 version_major)
-  list(GET version_list 1 version_minor)
-
-  if((version_major GREATER_EQUAL 3) AND (version_minor GREATER_EQUAL 8))
-
-  else()
+  if(py_version VERSION_LESS 3.9)
     message(FATAL_ERROR "Paddle only support Python version >=3.9 now!")
   endif()
 endfunction()
