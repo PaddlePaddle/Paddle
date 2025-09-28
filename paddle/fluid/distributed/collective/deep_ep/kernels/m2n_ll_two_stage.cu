@@ -95,9 +95,6 @@ __global__ __launch_bounds__(
   int a_num_rdma_ranks = a_num_ranks / NUM_MAX_NVL_PEERS;
   int e_start_rdma_rank = e_start_rank / NUM_MAX_NVL_PEERS;
   int e_num_rdma_ranks = e_num_ranks / NUM_MAX_NVL_PEERS;
-  // if (thread_id == 0) {
-  //   printf("[kernel][rank: %d] a_start_rank: %d, a_num_ranks: %d, e_start_rank: %d, e_num_ranks: %d\n", rank, a_start_rank, a_num_ranks, e_start_rank, e_num_ranks);
-  // }
 
   const auto rdma_rank = rank / NUM_MAX_NVL_PEERS,
              nvl_rank = rank % NUM_MAX_NVL_PEERS;
@@ -116,7 +113,7 @@ __global__ __launch_bounds__(
       kHidden * (kUseFP8 ? sizeof(__nv_fp8_storage_t) : sizeof(nv_bfloat16));
   const size_t hidden_int4 = hidden_bytes / sizeof(int4);
 
-  // index_source, hidden, (scale), nvl_num, nvl_rank0, dst_idx0, topk_weight0,
+  // index_source, hidden, (scale), nvl_valid_num, nvl_rank0, dst_idx0, topk_weight0,
   // ..., nvl_rank8, dst_idx8, topk_weight8, ...
   using vec_t = typename std::conditional<kUseFP8, int2, int4>::type;
   const size_t num_bytes_per_msg =
@@ -160,8 +157,9 @@ __global__ __launch_bounds__(
       const auto x_int4 =
           reinterpret_cast<const int4*>(x) + token_idx * hidden_bf16_int4;
       bool* rdma_send_flags_now = rdma_send_flags + token_idx * kNumRdmaRanks;
-// init rdma_send_flags
-#pragma unroll
+      
+      // init rdma_send_flags
+      #pragma unroll
       for (int flag_i = thread_id; flag_i < kNumRdmaRanks;
            flag_i += num_threads) {
         rdma_send_flags_now[flag_i] = false;
@@ -172,7 +170,7 @@ __global__ __launch_bounds__(
           reinterpret_cast<uint8_t*>(rdma_x_src_idx) + sizeof(int4));
       const auto rdma_x_scales = reinterpret_cast<float*>(
           reinterpret_cast<uint8_t*>(rdma_x_vec) + hidden_bytes);
-      // const auto index_source = rdma_x_src_idx;
+
       const auto nvl_rank_meta =
           reinterpret_cast<int*>(rdma_x_scales + (kUseFP8 ? kNumScales : 0));
 
@@ -265,37 +263,26 @@ __global__ __launch_bounds__(
               reinterpret_cast<uint64_t>(rdma_recv_x) +
               rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
               dst_cum_index * num_bytes_per_msg;
-          if (rdma_rank == dst_rdma_rank) {
-            // local copy
-            const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
-            const auto* dst_int4_ptr = reinterpret_cast<int4*>(dst_ptr);
-            UNROLLED_WARP_COPY(UNROLL_FACTOR,
-                               lane_id,
-                               num_int4_per_msg,
-                               dst_int4_ptr,
-                               src_int4_ptr,
-                               ld_nc_global,
-                               st_na_global);
+
+          // must run in RDMA!
+          if constexpr (kNumQPs > 1) {
+            nvshmemi_ibgda_put_nbi_warp<true>(
+                dst_ptr,
+                src_ptr,
+                num_bytes_per_msg,
+                dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                qp_id,
+                lane_id,
+                0);
           } else {
-            if constexpr (kNumQPs > 1) {
-              nvshmemi_ibgda_put_nbi_warp<true>(
-                  dst_ptr,
-                  src_ptr,
-                  num_bytes_per_msg,
-                  dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-                  qp_id,
-                  lane_id,
-                  0);
-            } else {
-              nvshmemi_ibgda_put_nbi_warp(
-                  dst_ptr,
-                  src_ptr,
-                  num_bytes_per_msg,
-                  dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-                  qp_id,
-                  lane_id,
-                  dst_cum_index);
-            }
+            nvshmemi_ibgda_put_nbi_warp(
+                dst_ptr,
+                src_ptr,
+                num_bytes_per_msg,
+                dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                qp_id,
+                lane_id,
+                dst_cum_index);
           }
           __syncwarp();
           lane_id == 0
@@ -434,14 +421,12 @@ __global__ __launch_bounds__(
   }
 
   // below code are only executed by MoE
-  
 
   /* RDMA Receiver and NVL Sender */
   {
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
     const int src_rdma_rank = sm_id / sms_per_rdma;
-    // Only 
-    if (src_rdma_rank >= a_start_rdma_rank and src_rdma_rank < a_start_rdma_rank + a_num_rdma_ranks) {
+    if (src_rdma_rank < kNumRdmaRanks) {
       const int sub_rdma_rank = sm_id % sms_per_rdma;
 
       const int src_rank = src_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank;
@@ -456,17 +441,19 @@ __global__ __launch_bounds__(
       int num_recv_tokens_per_rdma = -1;
       if (thread_id < kNumQPs) {
         // only read flag of attn mechine, if one machine is fast and one machine is slow, this will have hang in the last micro batch
-        auto start_time = clock64();
-        auto wait_recv_cost = clock64();
-        while ((num_recv_tokens_per_rdma = ld_acquire_sys_global(
-                  rdma_recv_count + src_rdma_rank * kNumQPs + thread_id)) ==
-              0) {
-          if (M2N_LL_HANG_DEBUG) {
-            if (thread_id == 0) {
-              wait_recv_cost = clock64() - start_time;
-              if (wait_recv_cost > M2N_NUM_HANG_CYCLES) {
-                printf("[kernel][dispatch][rdma_recv_count] wait than clock cycles: %ld\n", wait_recv_cost);
-                start_time = clock64();
+        if (src_rdma_rank >= a_start_rdma_rank and src_rdma_rank < a_start_rdma_rank + a_num_rdma_ranks) {
+          auto start_time = clock64();
+          auto wait_recv_cost = clock64();
+          while ((num_recv_tokens_per_rdma = ld_acquire_sys_global(
+                    rdma_recv_count + src_rdma_rank * kNumQPs + thread_id)) ==
+               0) {
+            if (M2N_LL_HANG_DEBUG) {
+              if (thread_id == 0) {
+                wait_recv_cost = clock64() - start_time;
+                if (wait_recv_cost > M2N_NUM_HANG_CYCLES) {
+                  printf("[kernel][dispatch][rdma_recv_count] wait than clock cycles: %ld\n", wait_recv_cost);
+                  start_time = clock64();
+                }
               }
             }
           }
@@ -709,11 +696,11 @@ __global__ __launch_bounds__(
       }
     }
   }
-  
+
   // 这里为啥需要加上这个？
   // 加上吧，放置出错啦！
   cg::this_grid().sync();
-  
+
   // TODO: 
   if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
     if (sm_id < a_num_rdma_ranks && thread_id < NUM_MAX_NVL_PEERS) {
