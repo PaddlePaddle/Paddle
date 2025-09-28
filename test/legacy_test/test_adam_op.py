@@ -125,7 +125,7 @@ class TestAdamOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True) # 喵
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)  # 喵
 
 
 class TestAdamOp1AMSGrad(TestAdamOp1):
