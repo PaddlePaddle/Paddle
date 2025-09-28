@@ -125,7 +125,7 @@ class TestDeleteRepeatedShapeCastPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -211,7 +211,7 @@ class TestDeleteRepeatedSlicePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -292,7 +292,7 @@ class TestDeleteRepeatedAddPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -375,7 +375,7 @@ class TestDeleteRepeatedScalePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -722,7 +722,7 @@ class TestDeleteRepeatedGatherPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -807,7 +807,7 @@ class TestDeleteRepeatedTransposePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],

@@ -20,10 +20,10 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/affine_channel_kernel.h"
 
 namespace phi {
 
