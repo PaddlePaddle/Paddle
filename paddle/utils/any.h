@@ -22,7 +22,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/vocab.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 // See boost/python/type_id.hpp
 // TODO(name): add BOOST_TYPEID_COMPARE_BY_NAME to config.hpp
