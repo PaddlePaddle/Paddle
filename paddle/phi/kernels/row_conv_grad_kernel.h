@@ -24,7 +24,6 @@ void RowConvGradKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& filter,
                        const DenseTensor& out_grad,
-                       int stride,
                        DenseTensor* x_grad,
                        DenseTensor* filter_grad);
 
