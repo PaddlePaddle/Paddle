@@ -14,25 +14,13 @@
 
 #pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 
 namespace phi {
 
-int get_seed(int user_seed, bool deterministic, const std::string& rng_name);
-
-template <typename T>
-void SeedKernel(const CPUContext& dev_ctx,
-                int seed,
-                bool deterministic,
-                const std::string& rng_name,
-                bool force_cpu,
-                DenseTensor* out);
-
-template <typename T>
-void SeedKernel(const GPUContext& dev_ctx,
+template <typename T, typename Context>
+void SeedKernel(const Context& dev_ctx,
                 int seed,
                 bool deterministic,
                 const std::string& rng_name,
