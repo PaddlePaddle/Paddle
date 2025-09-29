@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/grid_sample_grad_kernel.h"
 
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -611,6 +612,122 @@ void GridSampleGradKernel(const Context& dev_ctx,
   } else {
     enum_mode = Mode::bilinear;
   }
+
+#ifndef PADDLE_WITH_HIP
+  if (condCudnnGridSampler<T>(x, grid) &&
+      enum_padding_mode == PaddingMode::zeros && enum_mode == Mode::bilinear &&
+      align_corners) {
+    const int64_t N = x.dims()[0];
+    const int64_t C = x.dims()[1];
+    const int64_t H_in = x.dims()[2];
+    const int64_t W_in = x.dims()[3];
+    const int64_t H_out = grid.dims()[1];
+    const int64_t W_out = grid.dims()[2];
+
+    // cuDNN handle
+    cudnnHandle_t handle = dev_ctx.cudnn_handle();
+
+    // Create and set Tensor descriptors (NCHW) for x/y
+    cudnnTensorDescriptor_t x_desc, dx_desc, y_desc;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateTensorDescriptor(&dx_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+
+    const cudnnDataType_t cudnn_dtype =
+        std::is_same<T, float>::value ? CUDNN_DATA_FLOAT : CUDNN_DATA_DOUBLE;
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetTensor4dDescriptor(x_desc,
+                                                 CUDNN_TENSOR_NCHW,
+                                                 cudnn_dtype,
+                                                 static_cast<int>(N),
+                                                 static_cast<int>(C),
+                                                 static_cast<int>(H_in),
+                                                 static_cast<int>(W_in)));
+
+    // The shape of dx is consistent with that of x
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetTensor4dDescriptor(dx_desc,
+                                                 CUDNN_TENSOR_NCHW,
+                                                 cudnn_dtype,
+                                                 static_cast<int>(N),
+                                                 static_cast<int>(C),
+                                                 static_cast<int>(H_in),
+                                                 static_cast<int>(W_in)));
+
+    // The shape of y is consistent with out_grad
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
+                                                 CUDNN_TENSOR_NCHW,
+                                                 cudnn_dtype,
+                                                 static_cast<int>(N),
+                                                 static_cast<int>(C),
+                                                 static_cast<int>(H_out),
+                                                 static_cast<int>(W_out)));
+
+    // Spatial Transformer descriptor: specifies sampler type and output
+    // dimension (N, C, H_out, W_out)
+    cudnnSpatialTransformerDescriptor_t st_desc;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateSpatialTransformerDescriptor(&st_desc));
+    int st_dims[4] = {static_cast<int>(N),
+                      static_cast<int>(C),
+                      static_cast<int>(H_out),
+                      static_cast<int>(W_out)};
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetSpatialTransformerNdDescriptor(
+            st_desc, CUDNN_SAMPLER_BILINEAR, cudnn_dtype, 4, st_dims));
+
+    // data pointer
+    const T* x_data = x.data<T>();
+    const T* grid_data = grid.data<T>();
+    const T* dy_data = out_grad.data<T>();
+
+    T* dx_data = dev_ctx.template Alloc<T>(x_grad);
+    phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
+
+    T* dgrid_data = nullptr;
+    if (grid_grad) {
+      dgrid_data = dev_ctx.template Alloc<T>(grid_grad);
+    }
+
+    // alpha/beta
+    using AlphaBetaT = typename std::
+        conditional<std::is_same<T, float>::value, float, double>::type;
+    const AlphaBetaT one = static_cast<AlphaBetaT>(1.0);
+    const AlphaBetaT zero = static_cast<AlphaBetaT>(0.0);
+
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSpatialTfSamplerBackward(
+        handle,
+        st_desc,
+        static_cast<const void*>(&one),  // alpha (for dx)
+        x_desc,
+        static_cast<const void*>(x_data),
+        static_cast<const void*>(&zero),  // beta (for dx)
+        dx_desc,
+        static_cast<void*>(dx_data),
+        static_cast<const void*>(&one),  // alpha (for dgrid)
+        y_desc,
+        static_cast<const void*>(dy_data),
+        static_cast<const void*>(grid_data),
+        static_cast<const void*>(&zero),  // beta (for dgrid)
+        static_cast<void*>(dgrid_data)));
+
+    // resource release
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroySpatialTransformerDescriptor(st_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyTensorDescriptor(dx_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
+    return;
+  }
+#endif
 
   bool use_int32_index = x.numel() <= std::numeric_limits<int>::max() &&
                          grid.numel() <= std::numeric_limits<int>::max() &&

@@ -122,6 +122,10 @@ class FakeMicroDataset:
         assert self._is_first_stage or self._is_last_stage
         micro_batch_data = self._load_micro_batch(self._index)
         self._index += 1
+
+        if self._index >= self._acc_steps:
+            self._data = None  # clearup
+
         return micro_batch_data
 
     def _load_micro_batch(self, micro_step):
@@ -196,6 +200,15 @@ class FakeMicroDataset:
             "batch_size needs to be divisible by micro_batch_size. Currently, "
             f"batch_size = {batch_size}, micro_batch_size = {self._micro_batch_size}, accumulate_steps = {self._acc_steps}."
         )
+
+
+# A wrapper for pipeline dataser, to avoid GPU memory leaks.
+class PipelineDatasetPreprocessor:
+    def __init__(self, function):
+        self.function = function
+
+    def __call__(self):
+        return self.function()
 
 
 # Enum for specifying the pipeline parallel micro-step locations.
@@ -1002,6 +1015,9 @@ class PipelineParallel(MetaParallelBase):
         """
         for backward compatibility, wrap data to Fake FakeMicroDataset if it is of type list or tuple
         """
+        if isinstance(data, PipelineDatasetPreprocessor):
+            data = data()
+
         if (not isinstance(data, tuple)) and (not isinstance(data, list)):
             return data
 

@@ -285,7 +285,7 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=300,
             passes=["conv_eltwiseadd_bn_fuse_pass"],

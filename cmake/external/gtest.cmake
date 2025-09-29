@@ -31,6 +31,16 @@ set(GTEST_TAG release-1.8.1)
 set(GTEST_SOURCE_DIR ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
 include_directories(${GTEST_INCLUDE_DIR})
 
+# For CMake >= 4.0.0, set policy compatibility for gtest's CMake.
+set(GTEST_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "gtest: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(GTEST_POLICY_ARGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+endif()
+
 if(WIN32)
   set(GTEST_LIBRARIES
       "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest.lib"
@@ -100,6 +110,7 @@ if(WIN32)
                -Dgtest_disable_pthreads=ON
                -Dgtest_force_shared_crt=ON
                -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+               ${GTEST_POLICY_ARGS}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS
       -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}
@@ -132,6 +143,7 @@ else()
                -Dgtest_disable_pthreads=ON
                -Dgtest_force_shared_crt=ON
                -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+               ${GTEST_POLICY_ARGS}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS
       -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}

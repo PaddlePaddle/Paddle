@@ -579,7 +579,7 @@ def uniform_random_batch_size_like(
     Args:
         input (Tensor): A Tensor. Supported data types: float32, float64.
         shape (tuple|list): A python list or python tuple. The shape of the output Tensor, the data type is int.
-        dtype(np.dtype|paddle.dtype|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
+        dtype(str|paddle.dtype|np.dtype, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
         input_dim_idx (int, optional): An index used to get the input dimension value which will be used to resize the output dimension. Default  0.
         output_dim_idx (int, optional): An index used to indicate the specific dimension that will be replaced by corresponding input dimension value. Default 0.
         min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
@@ -1512,7 +1512,7 @@ def uniform(
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
-        dtype(str|np.dtype, optional): The data type of the output Tensor.
+        dtype(str|paddle.dtype|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).

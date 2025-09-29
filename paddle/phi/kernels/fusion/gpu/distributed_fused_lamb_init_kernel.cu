@@ -244,7 +244,8 @@ static DenseTensor CopyAndShareBufferForInitedTensor(
       errors::InvalidArgument("The tensor to be copied and shared "
                               "data should be have the same place."));
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) ||
+          (dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM),
       true,
       errors::InvalidArgument(
           "The tensor to be copied and shared data should be on GPU place."));

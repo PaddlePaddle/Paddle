@@ -854,6 +854,7 @@ def load_state_dict(
                 f"{key} is not replicated!"
             )
             load_dict[key] = val
+            
         load_state_dict_impl(
             load_dict,
             path,
@@ -1108,7 +1109,6 @@ def restore_unflattened_state_dict(
         tensor._clear()
 
     return final_unflattened_state_dict
-
 
 def load_state_dict_impl(
     state_dict: (

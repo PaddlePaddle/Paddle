@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <optional>
 #include <string_view>
