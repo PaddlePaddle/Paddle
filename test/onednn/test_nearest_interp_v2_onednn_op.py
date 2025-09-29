@@ -23,7 +23,7 @@ from op_test import (
 )
 
 
-def nearest_neighbor_interp_mkldnn_np(
+def nearest_neighbor_interp_onednn_np(
     X, out_h, out_w, out_size=None, actual_shape=None, data_layout='NCHW'
 ):
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
@@ -120,7 +120,7 @@ class TestNearestInterpV2ONEDNNOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = nearest_neighbor_interp_mkldnn_np(
+        output_np = nearest_neighbor_interp_onednn_np(
             input_np,
             out_h,
             out_w,
