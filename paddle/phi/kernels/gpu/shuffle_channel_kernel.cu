@@ -20,10 +20,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ShuffleChannelOpCUDAKernel(const Context& dev_ctx,
-                                const DenseTensor& x,
-                                int group,
-                                DenseTensor* out) {
+void ShuffleChannelOpKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            int group,
+                            DenseTensor* out) {
   auto input_dims = x.dims();
   auto num = input_dims[0];
   auto channel = input_dims[1];
@@ -56,6 +56,6 @@ void ShuffleChannelOpCUDAKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(shuffle_channel,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ShuffleChannelOpCUDAKernel,
+                   phi::ShuffleChannelOpKernel,
                    float,
                    double) {}
