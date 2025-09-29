@@ -2102,7 +2102,7 @@ void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void leaky_relu_grad(const Tensor& out,
                      const Tensor& out_grad,
-                     float negative_slope,
+                     double negative_slope,
                      Tensor* x_grad) {
   if (x_grad) {
     auto zero = full_scalar<T>(0.0, out.dtype());

@@ -178,7 +178,7 @@ struct XPULogFunctor : public funcs::BaseActivationFunctor<T> {
 
 template <typename T>
 struct XPULeakyReluFunctor : public funcs::BaseActivationFunctor<T> {
-  float alpha;
+  double alpha;
   typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }

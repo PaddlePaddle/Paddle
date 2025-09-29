@@ -27,6 +27,8 @@
 - softplus_double_grad
 - kthvalue_grad
 - lp_pool2d_grad
+- leaky_relu_double_grad
+- leaky_relu_grad
 - max_grad
 - mean_double_grad
 - mean_grad
