@@ -21,10 +21,12 @@
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -95,17 +97,17 @@ void AddGradStrideKernel(const Context& dev_ctx,
     }
   }
 
-  if (!x.meta().is_contiguous()) {
+  if (x.initialized() && !x.meta().is_contiguous()) {
     x_ = Tensor2Contiguous<Context>(dev_ctx, x);
   } else {
     x_ = x;
   }
-  if (!y.meta().is_contiguous()) {
+  if (y.initialized() && !y.meta().is_contiguous()) {
     y_ = Tensor2Contiguous<Context>(dev_ctx, y);
   } else {
     y_ = y;
   }
-  if (!dout.meta().is_contiguous()) {
+  if (dout.initialized() && !dout.meta().is_contiguous()) {
     dout_ = Tensor2Contiguous<Context>(dev_ctx, dout);
   } else {
     dout_ = dout;
@@ -143,17 +145,39 @@ void SubtractGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_;
   DenseTensor dout_;
 
-  if (!x.meta().is_contiguous()) {
+  if (FLAGS_use_stride_compute_kernel && x.initialized() && y.initialized() &&
+      dout.initialized()) {
+    auto meta = dout.meta();
+    if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims()) {
+      dx->set_meta(meta);
+      dx->ResetHolder(dout.Holder());
+      dx->ShareInplaceVersionCounterWith(dout);
+      phi::ScaleStrideKernel<T, Context>(dev_ctx, dout, -1, 0, false, dy);
+      return;
+    }
+    if (dx != nullptr && dy == nullptr && dx->dims() == dout.dims()) {
+      dx->set_meta(meta);
+      dx->ResetHolder(dout.Holder());
+      dx->ShareInplaceVersionCounterWith(dout);
+      return;
+    }
+    if (dy != nullptr && dx == nullptr) {
+      phi::ScaleStrideKernel<T, Context>(dev_ctx, dout, -1, 0, false, dy);
+      return;
+    }
+  }
+
+  if (x.initialized() && !x.meta().is_contiguous()) {
     x_ = Tensor2Contiguous<Context>(dev_ctx, x);
   } else {
     x_ = x;
   }
-  if (!y.meta().is_contiguous()) {
+  if (y.initialized() && !y.meta().is_contiguous()) {
     y_ = Tensor2Contiguous<Context>(dev_ctx, y);
   } else {
     y_ = y;
   }
-  if (!dout.meta().is_contiguous()) {
+  if (dout.initialized() && !dout.meta().is_contiguous()) {
     dout_ = Tensor2Contiguous<Context>(dev_ctx, dout);
   } else {
     dout_ = dout;
@@ -191,17 +215,30 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_;
   DenseTensor dout_;
 
-  if (!x.meta().is_contiguous()) {
+  if (FLAGS_use_stride_compute_kernel && x.initialized() && y.initialized() &&
+      dout.initialized()) {
+    if (dx != nullptr) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
+    }
+    if (dy != nullptr) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
+    }
+    return;
+  }
+
+  if (x.initialized() && !x.meta().is_contiguous()) {
     x_ = Tensor2Contiguous<Context>(dev_ctx, x);
   } else {
     x_ = x;
   }
-  if (!y.meta().is_contiguous()) {
+
+  if (y.initialized() && !y.meta().is_contiguous()) {
     y_ = Tensor2Contiguous<Context>(dev_ctx, y);
   } else {
     y_ = y;
   }
-  if (!dout.meta().is_contiguous()) {
+
+  if (dout.initialized() && !dout.meta().is_contiguous()) {
     dout_ = Tensor2Contiguous<Context>(dev_ctx, dout);
   } else {
     dout_ = dout;

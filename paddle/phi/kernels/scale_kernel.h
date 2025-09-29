@@ -20,6 +20,26 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 namespace phi {
 
+template <typename DataT, typename ParamT>
+struct ScaleFunctor {
+  ParamT bias;
+  ParamT scale;
+  bool bias_after_scale;
+
+  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_scale)
+      : bias(bias_data),
+        scale(scale_data),
+        bias_after_scale(is_bias_after_scale) {}
+
+  __device__ __forceinline__ DataT operator()(const DataT x) const {
+    if (bias_after_scale) {
+      return static_cast<DataT>(scale * static_cast<ParamT>(x) + bias);
+    } else {
+      return static_cast<DataT>(scale * (static_cast<ParamT>(x) + bias));
+    }
+  }
+};
+
 template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -27,6 +47,14 @@ void ScaleKernel(const Context& dev_ctx,
                  const Scalar& bias,
                  bool bias_after_scale,
                  DenseTensor* out);
+
+template <typename T, typename Context>
+void ScaleStrideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const Scalar& scale,
+                       const Scalar& bias,
+                       bool bias_after_scale,
+                       DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Scale(const Context& dev_ctx,
