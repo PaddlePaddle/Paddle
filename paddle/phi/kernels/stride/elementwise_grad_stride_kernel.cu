@@ -145,8 +145,7 @@ void SubtractGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_;
   DenseTensor dout_;
 
-  if (FLAGS_use_stride_compute_kernel && x.initialized() && y.initialized() &&
-      dout.initialized()) {
+  if (FLAGS_use_stride_compute_kernel) {
     auto meta = dout.meta();
     if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims()) {
       dx->set_meta(meta);
