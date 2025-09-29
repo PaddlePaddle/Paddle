@@ -12,10 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/uniform_random_batch_size_like_kernel.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/uniform_random_functor.h"
+
 namespace phi {
+
+template <typename T, typename Context>
+void CPUUniformRandomKernel(const Context& dev_ctx,
+                            const DenseTensor& input,
+                            const std::vector<int>& shape,
+                            int input_dim_idx,
+                            int output_dim_idx,
+                            float min,
+                            float max,
+                            int seed,
+                            int diag_num,
+                            int diag_step,
+                            float diag_val,
+                            DataType dtype,
+                            DenseTensor* out);
 
 template <typename T, typename Context>
 void GPUUniformRandomKernel(const Context& dev_ctx,
@@ -30,15 +49,6 @@ void GPUUniformRandomKernel(const Context& dev_ctx,
                             int diag_step,
                             float diag_val,
                             DataType dtype,
-                            DenseTensor* out) {
-  phi::funcs::UniformRandom<T>(
-      dev_ctx, out, seed, min, max, diag_num, diag_step, diag_val);
-}
-}  // namespace phi
+                            DenseTensor* out);
 
-PD_REGISTER_KERNEL(uniform_random_batch_size_like,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::GPUUniformRandomKernel,
-                   float,
-                   double) {}
+}  // namespace phi
