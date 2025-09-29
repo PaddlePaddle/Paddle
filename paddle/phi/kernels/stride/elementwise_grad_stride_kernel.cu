@@ -20,6 +20,8 @@
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
@@ -109,13 +111,114 @@ void AddGradStrideKernel(const Context& dev_ctx,
     dout_ = dout;
   }
 
-  auto dx_meta = dx->meta();
-  dx_meta.strides = dx_meta.calc_strides(dx->dims());
-  dx->set_meta(dx_meta);
-  auto dy_meta = dy->meta();
-  dy_meta.strides = dy_meta.calc_strides(dy->dims());
-  dy->set_meta(dy_meta);
+  if (dx) {
+    auto dx_meta = dx->meta();
+    dx_meta.strides = dx_meta.calc_strides(dx->dims());
+    dx->set_meta(dx_meta);
+  }
+
+  if (dy) {
+    auto dy_meta = dy->meta();
+    dy_meta.strides = dy_meta.calc_strides(dy->dims());
+    dy->set_meta(dy_meta);
+  }
   phi::AddGradKernel<T>(dev_ctx, x_, y_, dout_, axis, dx, dy);
+}
+
+template <typename T, typename Context>
+void SubtractGradStrideKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              int axis,
+                              DenseTensor* dx,
+                              DenseTensor* dy) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  DenseTensor y_;
+  DenseTensor dout_;
+
+  if (!x.meta().is_contiguous()) {
+    x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+  } else {
+    x_ = x;
+  }
+  if (!y.meta().is_contiguous()) {
+    y_ = Tensor2Contiguous<Context>(dev_ctx, y);
+  } else {
+    y_ = y;
+  }
+  if (!dout.meta().is_contiguous()) {
+    dout_ = Tensor2Contiguous<Context>(dev_ctx, dout);
+  } else {
+    dout_ = dout;
+  }
+
+  if (dx) {
+    auto dx_meta = dx->meta();
+    dx_meta.strides = dx_meta.calc_strides(dx->dims());
+    dx->set_meta(dx_meta);
+  }
+
+  if (dy) {
+    auto dy_meta = dy->meta();
+    dy_meta.strides = dy_meta.calc_strides(dy->dims());
+    dy->set_meta(dy_meta);
+  }
+  phi::SubtractGradKernel<T>(dev_ctx, x_, y_, dout_, axis, dx, dy);
+}
+
+template <typename T, typename Context>
+void MultiplyGradStrideKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              int axis,
+                              DenseTensor* dx,
+                              DenseTensor* dy) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  DenseTensor y_;
+  DenseTensor dout_;
+
+  if (!x.meta().is_contiguous()) {
+    x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+  } else {
+    x_ = x;
+  }
+  if (!y.meta().is_contiguous()) {
+    y_ = Tensor2Contiguous<Context>(dev_ctx, y);
+  } else {
+    y_ = y;
+  }
+  if (!dout.meta().is_contiguous()) {
+    dout_ = Tensor2Contiguous<Context>(dev_ctx, dout);
+  } else {
+    dout_ = dout;
+  }
+
+  if (dx) {
+    auto dx_meta = dx->meta();
+    dx_meta.strides = dx_meta.calc_strides(dx->dims());
+    dx->set_meta(dx_meta);
+  }
+
+  if (dy) {
+    auto dy_meta = dy->meta();
+    dy_meta.strides = dy_meta.calc_strides(dy->dims());
+    dy->set_meta(dy_meta);
+  }
+  phi::MultiplyGradKernel<T>(dev_ctx, x_, y_, dout_, axis, dx, dy);
 }
 
 }  // namespace phi
@@ -137,4 +240,32 @@ PD_REGISTER_KERNEL(add_grad,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {}
+
+PD_REGISTER_KERNEL(subtract_grad,
+                   GPU,
+                   STRIDED,
+                   phi::SubtractGradStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
+PD_REGISTER_KERNEL(multiply_grad,
+                   GPU,
+                   STRIDED,
+                   phi::MultiplyGradStrideKernel,
+                   float,
+                   phi::float16,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
 #endif
