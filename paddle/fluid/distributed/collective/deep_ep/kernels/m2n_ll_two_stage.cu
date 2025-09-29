@@ -224,11 +224,14 @@ __global__ __launch_bounds__(
         const int dst_rdma_rank = warp_id + e_start_rdma_rank;
         const int dst_rdma_expert_start = dst_rdma_rank * kNumRdmaExperts;
         const int dst_rdma_expert_end = (dst_rdma_rank + 1) * kNumRdmaExperts;
+
         const int64_t* topk_idx_now = topk_idx + token_idx * kTopk;
         const float* topk_weights_now = topk_weights + token_idx * kTopk;
+
         const auto nvl_rank_nums =
             nvl_rank_meta + dst_rdma_rank * (kTopk * 3 + 1);
         const auto nvl_rank_meta_now = nvl_rank_nums + 1;
+
         int dst_nvl_count = 0;
         for (int topk_i = 0; topk_i < kTopk; ++topk_i) {
           const int64_t expert_idx = topk_idx_now[topk_i];
@@ -236,14 +239,11 @@ __global__ __launch_bounds__(
           if (expert_idx >= dst_rdma_expert_start &&
               expert_idx < dst_rdma_expert_end) {
             if (lane_id == 0) {
-              nvl_rank_meta_now[dst_nvl_count * 3] =
-                  expert_idx % kNumRdmaExperts;  // dst_expert in dst_rdma_rank
+              nvl_rank_meta_now[dst_nvl_count * 3] = expert_idx % kNumRdmaExperts;  // dst_expert in dst_rdma_rank
               const int dst_index =
                   atomicAdd(&atomic_counter_per_expert[expert_idx], 1);
-              nvl_rank_meta_now[dst_nvl_count * 3 + 1] =
-                  dst_index;  // dst_index
-              reinterpret_cast<float*>(
-                  nvl_rank_meta_now)[dst_nvl_count * 3 + 2] = topk_weight;
+              nvl_rank_meta_now[dst_nvl_count * 3 + 1] = dst_index;  // dst_index
+              reinterpret_cast<float*>(nvl_rank_meta_now)[dst_nvl_count * 3 + 2] = topk_weight;
             }
             dst_nvl_count += 1;
           }
@@ -432,6 +432,11 @@ __global__ __launch_bounds__(
   {
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
     const int src_rdma_rank = sm_id / sms_per_rdma;
+    
+    // atomic_recv_tokens_per_rdma_expert's shape is [kNumRdmaRanks，kNumRdmaExperts]
+    // Now, atomic_recv_tokens_per_rdma_expert's shape is [kNumRdmaExperts]!
+    atomic_recv_tokens_per_rdma_expert = atomic_recv_tokens_per_rdma_expert + src_rdma_rank * kNumRdmaExperts;
+    
     if (src_rdma_rank < kNumRdmaRanks) {
       const int sub_sm_id = sm_id % sms_per_rdma;
       const int src_rank = src_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank;
@@ -538,13 +543,9 @@ __global__ __launch_bounds__(
                              ld_nc_global,
                              st_na_global);
           __syncwarp();
-          // atomic_recv_tokens_per_rdma_expert's shape is [kNumRdmaRanks，kNumRdmaExperts]
-          // we need record how many tokens are sent to different experts in this machine from different src_rdma_rank ranks!
+          // we need record how many tokens are sent to different experts in this machine!
           lane_id == 0
-              ? (atomic_add_release_global(atomic_recv_tokens_per_rdma_expert +
-                                               src_rdma_rank * kNumRdmaExperts +
-                                               rdma_local_expert_idx,
-                                           1))
+              ? (atomic_add_release_global(atomic_recv_tokens_per_rdma_expert + rdma_local_expert_idx, 1))
               : 0;
         }
       }
@@ -571,26 +572,22 @@ __global__ __launch_bounds__(
       }
       __syncthreads();
       if (sub_sm_id == 0) {
-        // need tell nvl receive how many tokens we have send from
-        // src_rdma_rank machine!
+        // need tell nvl receive how many tokens we have send from src_rdma_rank machine!
         for (int dst_rdma_local_expert_idx = thread_id;
              dst_rdma_local_expert_idx < NUM_MAX_NVL_PEERS * kNumLocalExperts;
              dst_rdma_local_expert_idx += num_threads) {
+          
           const int dst_nvl_rank = dst_rdma_local_expert_idx / kNumLocalExperts;
-          const int dst_nvl_local_expert =
-              dst_rdma_local_expert_idx % kNumLocalExperts;
+          const int dst_nvl_local_expert = dst_rdma_local_expert_idx % kNumLocalExperts;
+          
           st_release_sys_global(
               reinterpret_cast<int*>(
                   reinterpret_cast<uint8_t*>(nvl_recv_x[dst_nvl_rank]) +
                   NVL_BUFFER_X_BYTES) +
                   dst_nvl_local_expert * kNumRanks + src_rank,
-              -ld_acquire_global(atomic_recv_tokens_per_rdma_expert +
-                                 src_rdma_rank * kNumRdmaExperts +
-                                 dst_rdma_local_expert_idx) -
-                  1);
+              -ld_acquire_global(atomic_recv_tokens_per_rdma_expert + dst_rdma_local_expert_idx) - 1);
           // reset
-          *(atomic_recv_tokens_per_rdma_expert +
-            src_rdma_rank * kNumRdmaExperts + dst_rdma_local_expert_idx) = 0;
+          *(atomic_recv_tokens_per_rdma_expert + dst_rdma_local_expert_idx) = 0;
         }
         for (int reset_i = thread_id; reset_i < kNumQPs;
              reset_i += num_threads) {
