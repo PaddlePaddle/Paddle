@@ -24,15 +24,12 @@ namespace phi {
 template <typename T, typename Context>
 void StftGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const DenseTensor& win,
-                    const DenseTensor& out,
+                    const DenseTensor& window,
                     const DenseTensor& out_grad,
                     int n_fft,
                     int hop_length,
-                    int win_length,
-                    int window_strides,
-                    int n_window_strides,
-                    bool return_complex,
+                    bool normalized,
+                    bool onesided,
                     DenseTensor* x_grad);
 
 }  // namespace phi
