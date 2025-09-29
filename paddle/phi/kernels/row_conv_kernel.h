@@ -26,12 +26,4 @@ void RowConvKernel(const Context& dev_ctx,
                    const DenseTensor& filter,
                    DenseTensor* out);
 
-template <typename T, typename Context>
-void RowConvGradKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& filter,
-                       const DenseTensor& out_grad,
-                       DenseTensor* x_grad,
-                       DenseTensor* filter_grad);
-
 }  // namespace phi
