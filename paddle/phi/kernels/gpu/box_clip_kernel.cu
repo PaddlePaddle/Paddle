@@ -20,8 +20,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/mixed_vector.h"
-#include "paddle/phi/kernels/box_clip_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpu/box_clip_kernel.h"
 #include "paddle/phi/kernels/impl/box_clip_kernel_impl.h"
 
 namespace phi {
