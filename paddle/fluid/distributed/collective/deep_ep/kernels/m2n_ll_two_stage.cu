@@ -433,15 +433,12 @@ __global__ __launch_bounds__(
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
     const int src_rdma_rank = sm_id / sms_per_rdma;
     if (src_rdma_rank < kNumRdmaRanks) {
-      const int sub_rdma_rank = sm_id % sms_per_rdma;
-
+      const int sub_sm_id = sm_id % sms_per_rdma;
       const int src_rank = src_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank;
-      const auto rdma_recv_x_uint8 =
-          reinterpret_cast<uint8_t*>(rdma_recv_x) +
-          src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
-      const auto packed_rdma_recv_x_uint8 =
-          reinterpret_cast<uint8_t*>(packed_rdma_recv_x) +
-          src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
+      
+      const int rmda_offset = src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
+      const auto rdma_recv_x_uint8 = reinterpret_cast<uint8_t*>(rdma_recv_x) + rmda_offset;
+      const auto packed_rdma_recv_x_uint8 = reinterpret_cast<uint8_t*>(packed_rdma_recv_x) + rmda_offset;
 
       __shared__ int shared_num_recv_tokens[1];
       int num_recv_tokens_per_rdma = -1;
@@ -466,31 +463,33 @@ __global__ __launch_bounds__(
         }
         
         if (thread_id == 0) {
-          sub_rdma_rank == 0
+          sub_sm_id == 0
               ? packed_rdma_recv_count[src_rdma_rank] = num_recv_tokens_per_rdma
               : 0;
-          num_recv_tokens_per_rdma = -num_recv_tokens_per_rdma - 1;
-          shared_num_recv_tokens[0] = num_recv_tokens_per_rdma;
+          shared_num_recv_tokens[0] = -num_recv_tokens_per_rdma - 1;
         }
       }
       __syncthreads();
       num_recv_tokens_per_rdma = shared_num_recv_tokens[0];
-      for (int rdma_recv_token_idx = sub_rdma_rank;
+
+
+      // data is valid, begin to send these tokens through nvlink!
+      // remember these tokens are from src_rdma_rank!
+      for (int rdma_recv_token_idx = sub_sm_id;
            rdma_recv_token_idx < num_recv_tokens_per_rdma;
            rdma_recv_token_idx += sms_per_rdma) {
-        const auto rdma_recv_x_uint8_now =
-            rdma_recv_x_uint8 + rdma_recv_token_idx * num_bytes_per_msg;
-        const auto packed_rdma_recv_x_uint8_now =
-            packed_rdma_recv_x_uint8 + rdma_recv_token_idx * num_bytes_per_msg;
+        
+        const int token_offset = rdma_recv_token_idx * num_bytes_per_msg;
+        const auto rdma_recv_x_uint8_now = rdma_recv_x_uint8 + token_offset;
+        const auto packed_rdma_recv_x_uint8_now = packed_rdma_recv_x_uint8 + token_offset;
+
         const auto src_data = reinterpret_cast<int4*>(rdma_recv_x_uint8_now);
-        const auto rdma_recv_x_scales = reinterpret_cast<float*>(
-            reinterpret_cast<uint8_t*>(src_data) + sizeof(int4) + hidden_bytes);
-        const auto rdma_recv_nvl_rank_meta = reinterpret_cast<int*>(
-            rdma_recv_x_scales + (kUseFP8 ? kNumScales : 0));
-        const int dst_nvl_experts =
-            *(rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
-        const auto rdma_recv_nvl_rank_meta_now =
-            rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
+        const auto rdma_recv_x_scales = reinterpret_cast<float*>(reinterpret_cast<uint8_t*>(src_data) + sizeof(int4) + hidden_bytes);
+        const auto rdma_recv_nvl_rank_meta = reinterpret_cast<int*>(rdma_recv_x_scales + (kUseFP8 ? kNumScales : 0));
+        
+        // here must be rdma_rank!
+        const int dst_nvl_experts = *(rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
+        const auto rdma_recv_nvl_rank_meta_now = rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
 
         // Used in combine
         if (warp_id == num_warps - 1) {
@@ -506,26 +505,31 @@ __global__ __launch_bounds__(
         } 
 
         // nvl sender
+        // we need send dst_nvl_experts times for this rdma_recv_token_idx token using one sm!
         for (int loop_nvl_expert_i = warp_id;
              loop_nvl_expert_i < dst_nvl_experts;
              loop_nvl_expert_i += num_warps) {
-          const int rdma_local_expert_idx =
-              rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3];
-          const int rdma_local_expert_cumsum_index =
-              rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3 + 1];
+
+          const int rdma_local_expert_idx = rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3];
           const int dst_nvl_rank = rdma_local_expert_idx / kNumLocalExperts;
-          const int dst_nvl_local_expert =
-              rdma_local_expert_idx % kNumLocalExperts;
+          const int dst_nvl_local_expert = rdma_local_expert_idx % kNumLocalExperts;
+
+          const int rdma_local_expert_cumsum_index = rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3 + 1];
+          
+          // write to nvl_recv_x[dst_nvl_rank]
+          // whose‘s shape is [kNumLocalExperts, kNumRanks, num_max_dispatch_tokens_per_rank] in unit of num_int4_per_msg_rdma_revecier_and_nvl_sender!
+          // kNumRanks means for each expert we need to know which rank this data is from!
           const auto dst_data =
               reinterpret_cast<int4*>(nvl_recv_x[dst_nvl_rank]) +
               ((dst_nvl_local_expert * kNumRanks + src_rank) *
                    num_max_dispatch_tokens_per_rank +
                rdma_local_expert_cumsum_index) *
                   num_int4_per_msg_rdma_revecier_and_nvl_sender;
+          
           if (lane_id == 0) {
-            int* rdma_dst_cumsum_idx = reinterpret_cast<int*>(dst_data);
-            st_na_global(rdma_dst_cumsum_idx, rdma_local_expert_cumsum_index);
+            st_na_global(reinterpret_cast<int*>(dst_data), rdma_local_expert_cumsum_index);
           }
+
           UNROLLED_WARP_COPY(UNROLL_FACTOR,
                              lane_id,
                              num_int4_per_msg_rdma_to_nvl,
@@ -534,6 +538,8 @@ __global__ __launch_bounds__(
                              ld_nc_global,
                              st_na_global);
           __syncwarp();
+          // atomic_recv_tokens_per_rdma_expert's shape is [kNumRdmaRanks，kNumRdmaExperts]
+          // we need record how many tokens are sent to different experts in this machine from different src_rdma_rank ranks!
           lane_id == 0
               ? (atomic_add_release_global(atomic_recv_tokens_per_rdma_expert +
                                                src_rdma_rank * kNumRdmaExperts +
@@ -546,7 +552,7 @@ __global__ __launch_bounds__(
       thread_id == 0 ? (atomic_add_release_global(
                            atomic_nvl_sender_multi_sms + src_rdma_rank, 1))
                      : 0;
-      if (sub_rdma_rank == 0 && thread_id == 0) {
+      if (sub_sm_id == 0 && thread_id == 0) {
         auto start_time = clock64();
         auto wait_recv_cost = clock64();
         while (ld_acquire_global(atomic_nvl_sender_multi_sms + src_rdma_rank) !=
@@ -564,7 +570,9 @@ __global__ __launch_bounds__(
         atomic_nvl_sender_multi_sms[src_rdma_rank] = 0;
       }
       __syncthreads();
-      if (sub_rdma_rank == 0) {
+      if (sub_sm_id == 0) {
+        // need tell nvl receive how many tokens we have send from
+        // src_rdma_rank machine!
         for (int dst_rdma_local_expert_idx = thread_id;
              dst_rdma_local_expert_idx < NUM_MAX_NVL_PEERS * kNumLocalExperts;
              dst_rdma_local_expert_idx += num_threads) {
