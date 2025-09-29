@@ -380,3 +380,24 @@ def build_global_state_shard_info(sharded_state_dict, process_group):
     )
 
     return merge_shard_info_list(gathered_info)
+
+
+def merge_state_dict_metadata(global_state_dict_metadata):
+    assert isinstance(global_state_dict_metadata, list), (
+        "The global_state_dict should be a list."
+    )
+    out = {}
+    for state_dict in global_state_dict_metadata:
+        for key, val in state_dict.items():
+            if key not in out:
+                out[key] = []
+
+            if isinstance(val, list):
+                for item in val:
+                    if item not in out[key]:
+                        out[key].append(item)
+            else:
+                if val not in out[key]:
+                    out[key].append(val)
+
+    return out

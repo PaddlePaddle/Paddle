@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import copy
+import gc
 import json
 import math
 import os
@@ -31,7 +32,8 @@ from paddle.distributed.fleet.utils.log_util import logger
 from ..aoa.aoa_engine import (
     AOAEngine,
 )
-from .metadata import LocalTensorIndex, LocalTensorMetadata
+from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
+from .metadata_manager import MetadataManager
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
@@ -47,7 +49,9 @@ from .utils import (
     flatten_state_dict,
     get_max_id,
     is_sharded_state_dict,
+    merge_state_dict_metadata,
     minimal_nd_slice,
+    ravel_index,
 )
 
 if TYPE_CHECKING:
@@ -88,7 +92,7 @@ class ReadItem:
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
-rank_load_files_cache = None
+_metadata_manager = MetadataManager()
 
 
 def get_checkpoint_files(path, use_cache=True, unique_id=None):
@@ -308,8 +312,6 @@ def get_rank_to_read_files(rank_to_files, rank_to_local_data_files):
         rank_load_files[min_rank].append(file)
 
     cur_rank = paddle.distributed.get_rank()
-    global rank_load_files_cache
-    rank_load_files_cache = rank_load_files
     if cur_rank in rank_load_files:
         return rank_load_files[cur_rank]
     else:
@@ -414,20 +416,27 @@ def _get_rank_to_read_files(rank_to_files):
 
 
 def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
-    global rank_load_files_cache
-    file_to_rank = {
-        file: rank
-        for rank, files in rank_load_files_cache.items()
-        for file in files
-    }
-    del rank_load_files_cache
-
-    load_infos = {
-        local_tensor_index: (file_to_rank[file_name], file_name)
-        for metadata in metadata_list
-        for local_tensor_index, file_name in metadata.storage_metadata.items()
-    }
-
+    load_info = {}
+    cur_rank = paddle.distributed.get_rank()
+    for metadata in metadata_list:
+        for local_tensor_index, file_name in metadata.storage_metadata.items():
+            if file_name in local_load_files:
+                load_info[local_tensor_index] = (
+                    cur_rank,
+                    file_name,
+                )
+    load_info_list = []
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            load_info_list, load_info, process_group
+        )
+    else:
+        load_info_list.append(load_info)
+    load_infos = {}
+    for load_info in load_info_list:
+        for local_tensor_index, (rank, file_name) in load_info.items():
+            assert local_tensor_index not in load_infos
+            load_infos[local_tensor_index] = (rank, file_name)
     return load_infos
 
 
@@ -666,10 +675,6 @@ def _handle_aoa(
     assert len(metadata_files) == 1, "Only support one metadata file now."
     metadata = paddle.load(os.path.join(path, metadata_files[0]))
     state_dict_metadata = metadata.state_dict_metadata
-    origin_shard_num = metadata.origin_shard_num
-    assert origin_shard_num is not None, (
-        "When using AOA, origin_shard_num should be stored in the metadata."
-    )
 
     source_state_shard_info = {
         param_name: [
@@ -689,7 +694,6 @@ def _handle_aoa(
         source_state_shard_info=source_state_shard_info,
         destination_state_shard_info=destination_state_shard_info,
         aoa_config=aoa_config,
-        source_state_origin_shard_num=origin_shard_num,
     )
 
     src_desc_to_sharded_tensor = {}
@@ -757,7 +761,8 @@ def _handle_aoa(
         )
 
     for tensor in force_gc:
-        tensor._clear_to_zero_allocation()
+        # force GC
+        tensor._clear()
         del tensor
 
 
@@ -768,6 +773,9 @@ def _finish_unflatten(flat_shards, padding_info):
         start, end = info["slice_range"]
         src_flat = src_tensor.flatten()
         paddle.assign(src_flat[start:end], flat_shard.local_tensor)
+        # force GC
+        src_flat._clear()
+        src_tensor._clear()
     for key, flat_shard in flat_shards.items():
         flat_shard.local_tensor.flatten_()
 
@@ -893,6 +901,213 @@ def load_state_dict(
         )
 
     _finish_unflatten(flat_shards, padding_info)
+    gc.collect()
+
+
+def restore_unflattened_state_dict(
+    source_state_dict: dict[str, dict[str, Tensor]],
+    process_group,
+    worker_groups,
+):
+    global _metadata_manager
+
+    flattened_tensors = {}
+    already_unflattened_tensors = {}
+    for file_name, state_dict in source_state_dict.items():
+        for tensor_name, tensor in state_dict.items():
+            key = (tensor_name, file_name)
+            meta = _metadata_manager.local_tensor_metadata[key]
+            if meta.is_flattened:
+                flattened_tensors[key] = tensor
+            else:
+                already_unflattened_tensors[key] = tensor
+
+    direct_reshape_tensors = {}
+    direct_reshape_metas = {}
+    reshard_needed_tensors = {}
+
+    reshard_target_infos = {}
+
+    for key, local_tensor in flattened_tensors.items():
+        meta = _metadata_manager.local_tensor_metadata[key]
+
+        flat_start, flat_end = meta.flattened_range
+        slices, _, _ = minimal_nd_slice(meta.local_shape, flat_start, flat_end)
+
+        unflattened_local_shape = tuple(e - s for s, e in slices)
+        unflattened_global_offset = tuple(
+            o + s[0] for o, s in zip(meta.global_offset, slices)
+        )
+        numel_in_slice = math.prod(unflattened_local_shape)
+
+        unflattened_meta = LocalTensorMetadata(
+            local_shape=unflattened_local_shape,
+            global_shape=meta.global_shape,
+            dtype=meta.dtype,
+            global_offset=unflattened_global_offset,
+            is_flattened=False,
+            flattened_range=None,
+        )
+
+        if numel_in_slice == (flat_end - flat_start):
+            direct_reshape_tensors[key] = local_tensor.reshape_(
+                unflattened_local_shape
+            )
+            direct_reshape_metas[key] = unflattened_meta
+        else:
+            reshard_needed_tensors[key] = local_tensor
+            reshard_target_infos[key] = (
+                numel_in_slice,
+                slices,
+                unflattened_meta,
+            )
+
+    resharded_tensors = {}
+    force_gc = []
+
+    if reshard_needed_tensors:
+        source_state_dict_for_reshard = defaultdict(dict)
+        source_local_tensor_meta = defaultdict(list)
+        source_storage_meta = {}
+        destination_sharded_state_dict = {}
+        name_mapping = {}
+
+        for key, local_tensor in reshard_needed_tensors.items():
+            tensor_name, file_name = key
+            meta = _metadata_manager.local_tensor_metadata[key]
+            numel, slices, unflattened_meta = reshard_target_infos[key]
+            tensor_name_expand = (
+                f"{tensor_name}.global_offset.{meta.global_offset}"
+            )
+
+            flat_start, flat_end = meta.flattened_range
+            source_state_dict_for_reshard[file_name][tensor_name_expand] = (
+                local_tensor
+            )
+            source_local_tensor_meta[tensor_name_expand].append(
+                LocalTensorMetadata(
+                    local_shape=(flat_end - flat_start,),
+                    global_shape=(math.prod(meta.local_shape),),
+                    dtype=meta.dtype,
+                    global_offset=(flat_start,),
+                    is_flattened=False,
+                )
+            )
+            source_storage_meta[
+                LocalTensorIndex(
+                    tensor_key=tensor_name_expand, global_offset=(flat_start,)
+                )
+            ] = file_name
+
+            tmp_target_tensor = paddle.zeros((numel,), dtype=local_tensor.dtype)
+            global_offset_1d = (
+                ravel_index(tuple(s[0] for s in slices), meta.local_shape),
+            )
+
+            destination_sharded_state_dict[
+                (tensor_name_expand, global_offset_1d)
+            ] = ShardedWeight(
+                key=tensor_name_expand,
+                local_tensor=tmp_target_tensor,
+                local_shape=(numel,),
+                global_shape=(math.prod(meta.local_shape),),
+                global_offset=global_offset_1d,
+            )
+            name_mapping[key] = (tensor_name_expand, global_offset_1d)
+            force_gc.append(local_tensor)
+
+        global_state_dict_metadata, global_storage_metadata = [], []
+        paddle.distributed.all_gather_object(
+            global_state_dict_metadata, source_local_tensor_meta, process_group
+        )
+        paddle.distributed.all_gather_object(
+            global_storage_metadata, source_storage_meta, process_group
+        )
+
+        tmp_metadata = Metadata()
+        tmp_metadata.state_dict_metadata = merge_state_dict_metadata(
+            global_state_dict_metadata
+        )
+        tmp_metadata.storage_metadata = {
+            k: v for d in global_storage_metadata for k, v in d.items()
+        }
+
+        _load_state_dict(
+            target_state_dict=destination_sharded_state_dict,
+            source_state_dict=source_state_dict_for_reshard,
+            metadata_list=[tmp_metadata],
+            process_group=process_group,
+            worker_groups=worker_groups,
+        )
+
+        for key in reshard_needed_tensors:
+            target_key = name_mapping[key]
+            unflattened_meta = reshard_target_infos[key][2]
+
+            final_tensor = destination_sharded_state_dict[
+                target_key
+            ].local_tensor
+            final_tensor.reshape_(unflattened_meta.local_shape)
+            resharded_tensors[key] = final_tensor
+
+    final_unflattened_state_dict = defaultdict(dict)
+    final_local_tensor_meta = defaultdict(list)
+    final_storage_meta = {}
+
+    all_unflattened_tensors_with_meta = []
+
+    for key, tensor in already_unflattened_tensors.items():
+        all_unflattened_tensors_with_meta.append(
+            (key, tensor, _metadata_manager.local_tensor_metadata[key])
+        )
+
+    for key, tensor in direct_reshape_tensors.items():
+        all_unflattened_tensors_with_meta.append(
+            (key, tensor, direct_reshape_metas[key])
+        )
+
+    for key, tensor in resharded_tensors.items():
+        unflattened_meta = reshard_target_infos[key][2]
+        all_unflattened_tensors_with_meta.append(
+            (key, tensor, unflattened_meta)
+        )
+
+    for key, tensor, meta in all_unflattened_tensors_with_meta:
+        tensor_name, file_name = key
+        final_unflattened_state_dict[file_name][tensor_name] = tensor
+        final_local_tensor_meta[tensor_name].append(meta)
+        final_storage_meta[
+            LocalTensorIndex(
+                tensor_key=tensor_name,
+                global_offset=meta.global_offset,
+                is_flattened=False,
+                flattened_range=None,
+            )
+        ] = file_name
+
+    global_state_dict_metadata, global_storage_metadata = [], []
+    paddle.distributed.all_gather_object(
+        global_state_dict_metadata, final_local_tensor_meta, process_group
+    )
+    paddle.distributed.all_gather_object(
+        global_storage_metadata, final_storage_meta, process_group
+    )
+
+    final_metadata = Metadata()
+    final_metadata.state_dict_metadata = merge_state_dict_metadata(
+        global_state_dict_metadata
+    )
+    final_metadata.storage_metadata = {
+        k: v for d in global_storage_metadata for k, v in d.items()
+    }
+    final_metadata.flat_mapping = _metadata_manager.get_flat_mapping()
+    _metadata_manager.set_metadata_list([final_metadata])
+
+    for tensor in force_gc:
+        # force GC
+        tensor._clear()
+
+    return final_unflattened_state_dict
 
 
 def load_state_dict_impl(
@@ -911,6 +1126,7 @@ def load_state_dict_impl(
     worker_groups: list[Group] | None = None,
 ) -> None:
     with paddle.base.dygraph.guard():
+        global _metadata_manager
         assert isinstance(state_dict, dict), (
             "The state_dict should be a dictionary."
         )
@@ -953,9 +1169,12 @@ def load_state_dict_impl(
         for file in metadata_files:
             metadata_list.append(paddle.load(os.path.join(path, file)))
 
+        global _metadata_manager
+        _metadata_manager.set_metadata_list(metadata_list)
+
         rank_to_files, missing_keys, mw_name_compatibility_mapping = (
             get_rank_to_files(
-                metadata_list,
+                _metadata_manager.get_metadata_list(),
                 local_data_files,
                 flat_state_dict,
                 process_group,
@@ -1011,15 +1230,27 @@ def load_state_dict_impl(
         if use_dist:
             paddle.distributed.barrier(process_group)
 
+        if _metadata_manager.has_flattened_tensors:
+            source_state_dict = restore_unflattened_state_dict(
+                source_state_dict, process_group, worker_groups
+            )
+
         _load_state_dict(
             flat_state_dict,
             source_state_dict,
-            metadata_list,
+            _metadata_manager.get_metadata_list(),
             process_group,
             coordinator_rank,
             offload,
             worker_groups,
         )
+
+        for file_name, state_dict in source_state_dict.items():
+            for key, value in state_dict.items():
+                # force GC
+                value._clear()
+
+        del source_state_dict
 
         for flat_key, keys in mapping.items():
             if (
@@ -1333,6 +1564,12 @@ def _load_state_dict(
             coordinator_rank,
             offload,
         )
+
+    for file_name, state_dict in source_state_dict.items():
+        for key, value in state_dict.items():
+            # force GC
+            value._clear()
+    del source_state_dict
 
 
 def pre_process_and_build_comm_read_items(
