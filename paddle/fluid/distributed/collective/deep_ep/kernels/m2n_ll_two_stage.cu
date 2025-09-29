@@ -218,9 +218,10 @@ __global__ __launch_bounds__(
         }
       }
       __syncthreads();
-
-      if (warp_id < kNumRdmaRanks) {
-        const int dst_rdma_rank = warp_id;
+      
+      // Only need issue to MoE machine!
+      if (warp_id < e_num_rdma_ranks) {
+        const int dst_rdma_rank = warp_id + e_start_rdma_rank;
         const int dst_rdma_expert_start = dst_rdma_rank * kNumRdmaExperts;
         const int dst_rdma_expert_end = (dst_rdma_rank + 1) * kNumRdmaExperts;
         const int64_t* topk_idx_now = topk_idx + token_idx * kTopk;
@@ -420,9 +421,14 @@ __global__ __launch_bounds__(
     return;
   }
 
-  // below code are only executed by MoE
+  // below code are only executed by MoE machine!
 
   /* RDMA Receiver and NVL Sender */
+  // we should gurantee data in rdma_recv_x are valid in MoE machine, by while checking rdma_recv_count!
+  // and then do NVL send!
+  // rdma_recv_x's shape is [kNumRdmaRanks, num_max_dispatch_tokens_per_rank] in unit of num_bytes_per_msg!
+  // rdma_recv_count's shape is [kNumRdmaRanks, kNumQPs]
+
   {
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
     const int src_rdma_rank = sm_id / sms_per_rdma;
