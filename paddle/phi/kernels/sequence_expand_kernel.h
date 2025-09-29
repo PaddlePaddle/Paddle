@@ -27,12 +27,4 @@ void SequenceExpandKernel(const Context& dev_ctx,
                           int ref_level,
                           DenseTensor* out);
 
-template <typename T, typename Context>
-void SequenceExpandGradKernel(const Context& dev_ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& y,
-                              const DenseTensor& out_grad,
-                              int ref_level,
-                              DenseTensor* x_grad);
-
 }  // namespace phi
