@@ -14,12 +14,17 @@
 
 from __future__ import annotations
 
-import re
 import unittest
 from typing import TYPE_CHECKING
 
+from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
+    AOAShardInfoContext,
+)
 from paddle.distributed.flex_checkpoint.aoa.lexer import Lexer
 from paddle.distributed.flex_checkpoint.aoa.macros import macro_registry
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedWeightDesc,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -46,6 +51,10 @@ class MacroContext:
             "layers.1.experts.0.weight",
             "layers.1.experts.1.weight",
             "layers.0.qkv_proj.weight",
+            "layers.1.self_attn.qkv_proj.bias",
+            "layers.1.mlp.gate_up_fused_proj.bias",
+            "fused_qkv_old_test_name",
+            "layers.shared.qkv_proj.weight",
         }
 
         self.dst_keys = {
@@ -69,13 +78,49 @@ class MacroContext:
             "layers.0.q_proj.weight",
             "layers.0.k_proj.weight",
             "layers.0.v_proj.weight",
+            "layers.1.self_attn.qkv_proj.bias",
+            "layers.1.mlp.gate_up_fused_proj.bias",
+            "q_test_name",
+            "k_test_name",
+            "v_test_name",
+            "layers.0.shared.q_proj.weight",
+            "layers.0.shared.k_proj.weight",
+            "layers.0.shared.v_proj.weight",
+            "layers.1.shared.q_proj.weight",
+            "layers.1.shared.k_proj.weight",
+            "layers.1.shared.v_proj.weight",
         }
 
+        # Build _ShardInfo mapping for AOAShardInfoContext based on existing keys
+        def make_shard_info(keys: set[str], num_shards: int):
+            shard_info: dict[str, list[ShardedWeightDesc]] = {}
+            for k in keys:
+                descs: list[ShardedWeightDesc] = []
+                for i in range(num_shards):
+                    descs.append(
+                        ShardedWeightDesc(
+                            key=k,
+                            local_shape=(1,),
+                            global_shape=(num_shards,),
+                            global_offset=(i,),
+                        )
+                    )
+                shard_info[k] = descs
+            return shard_info
+
+        source_state_shard_info = make_shard_info(self.source_keys, 2)
+        destination_state_shard_info = make_shard_info(self.dst_keys, 4)
+
+        self._ctx = AOAShardInfoContext(
+            source_state_shard_info=source_state_shard_info,
+            destination_state_shard_info=destination_state_shard_info,
+        )
+
     def get_all_dst_state_keys(self) -> Iterable[str]:
-        return self.dst_keys
+        return self._ctx.get_all_dst_state_keys()
 
     def get_all_src_state_keys(self) -> Iterable[str]:
-        return self.source_keys
+        return self._ctx.get_all_src_state_keys()
 
     def get_num_hidden_layers(
         self,
@@ -83,32 +128,15 @@ class MacroContext:
         layer_id_macro_tag: str,
         left_var_check_layer_id: bool,
     ) -> int:
-        if layer_id_macro_tag not in name_with_layer_id:
-            raise ValueError(
-                f"layer_id_macro_tag '{layer_id_macro_tag}' not in name_with_layer_id '{name_with_layer_id}'"
-            )
-        prefix, suffix = name_with_layer_id.split(layer_id_macro_tag, 1)
-        pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
-        match_layer_id = set()
-        if left_var_check_layer_id:
-            for key in self.get_all_src_state_keys():
-                match = pattern.fullmatch(key)
-                if match:
-                    layer_num = int(match.group(1))
-                    match_layer_id.add(layer_num)
-        else:
-            for key in self.get_all_dst_state_keys():
-                match = pattern.fullmatch(key)
-                if match:
-                    layer_num = int(match.group(1))
-                    match_layer_id.add(layer_num)
-        return match_layer_id
+        return self._ctx.get_num_hidden_layers(
+            name_with_layer_id, layer_id_macro_tag, left_var_check_layer_id
+        )
 
     def get_src_state_shard_num(self, src_state_key: str) -> int:
-        return 2
+        return self._ctx.get_src_state_shard_num(src_state_key)
 
     def get_dst_state_shard_num(self, dst_state_key: str) -> int:
-        return 4
+        return self._ctx.get_dst_state_shard_num(dst_state_key)
 
 
 def get_macro(macro_name):
@@ -185,6 +213,23 @@ class TestLayerIdMacro2(TestMacro):
     def expected(self):
         return [
             'layers.0.qkv_proj.weight->layers.0.q_proj.weight,layer.0.k_proj.weight,layer.0.v_proj.weight\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestLayerIdMacro3(TestMacro):
+    def macro_name(self):
+        return "layer_id_macro"
+
+    def source_code(self):
+        return "layers.shared.qkv_proj.weight->layers.$LAYER_ID.shared.q_proj.weight,layer.$LAYER_ID.shared.k_proj.weight,layer.$LAYER_ID.shared.v_proj.weight\n"
+
+    def expected(self):
+        return [
+            'layers.shared.qkv_proj.weight.layer.0->layers.0.shared.q_proj.weight,layer.0.shared.k_proj.weight,layer.0.shared.v_proj.weight\n',
+            'layers.shared.qkv_proj.weight.layer.1->layers.1.shared.q_proj.weight,layer.1.shared.k_proj.weight,layer.1.shared.v_proj.weight\n',
         ]
 
     def test(self):
@@ -377,12 +422,12 @@ class TestFusedQkvOldMacro5(TestMacro):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "layers.1.self_attn.qkv_proj.bias -> layers.1.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4, axis = 0"
+        return "layers.1.self_attn.qkv_proj.bias -> layers.1.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
 
     def expected(self):
         return [
-            'layers.1.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=0',
-            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.bias, axis=0',
+            'layers.1.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=1',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.bias, axis=1',
         ]
 
     def test(self):
@@ -394,12 +439,12 @@ class TestFusedFfnMacro4(TestMacro):
         return "fused_ffn_macro"
 
     def source_code(self):
-        return "layers.1.mlp.gate_up_fused_proj.bias -> layers.1.mlp.gate_up_fused_proj.bias, fused_ffn, axis=0"
+        return "layers.1.mlp.gate_up_fused_proj.bias -> layers.1.mlp.gate_up_fused_proj.bias, fused_ffn"
 
     def expected(self):
         return [
-            'layers.1.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=0',
-            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.bias, axis=0',
+            'layers.1.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.bias, axis=1',
         ]
 
     def test(self):
