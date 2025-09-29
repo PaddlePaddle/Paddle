@@ -42,7 +42,19 @@ static __forceinline__ __device__ bool InBounds3D(
 }
 
 inline bool cudnnIsAvailable() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  // List of supported GPU device types for custom devices
+  static const char* supported_custom_devices[] = {'iluvatar_gpu', 'metax_gpu'};
+  static const int num_supported_devices = 2;
+
+  // Check if any of the supported GPU devices are available
+  for (int i = 0; i < num_supported_devices; ++i) {
+    if (phi::DeviceManager::HasDeviceType(supported_custom_devices[i])) {
+      return true;
+    }
+  }
+  return false;
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // cuDNN/MIOpen version > 0 means DNN lib loaded; require v7+ for sampler
   return phi::backends::gpu::DnnVersion() >= 7000;
 #else
