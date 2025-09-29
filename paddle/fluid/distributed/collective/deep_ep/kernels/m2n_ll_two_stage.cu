@@ -250,19 +250,19 @@ __global__ __launch_bounds__(
         lane_id == 0 ? (nvl_rank_nums[0] = dst_nvl_count) : 0;
         __syncwarp();
 
+        // dst_nvl_count > 0 means should issue message to dst_rdma_rank!
         if (dst_nvl_count > 0) {
           lane_id == 0 ? (rdma_send_flags_now[dst_rdma_rank] = true) : 0;
-          int dst_cum_index =
+          int slot_idx =
               lane_id == 0
                   ? atomicAdd(&atomic_counter_per_rdma[dst_rdma_rank], 1)
                   : 0;
-          dst_cum_index =
-              __shfl_sync(0xffffffff, dst_cum_index, 0);  // broadcast
+          slot_idx =
+              __shfl_sync(0xffffffff, slot_idx, 0);  // broadcast
           const auto src_ptr = reinterpret_cast<uint64_t>(rdma_x_src_idx);
           const auto dst_ptr =
               reinterpret_cast<uint64_t>(rdma_recv_x) +
-              rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
-              dst_cum_index * num_bytes_per_msg;
+              (rdma_rank * num_max_dispatch_tokens_per_rank + slot_idx) * num_bytes_per_msg;
 
           // must run in RDMA!
           if constexpr (kNumQPs > 1) {
@@ -282,7 +282,7 @@ __global__ __launch_bounds__(
                 dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
                 qp_id,
                 lane_id,
-                dst_cum_index);
+                slot_idx);
           }
           __syncwarp();
           lane_id == 0
