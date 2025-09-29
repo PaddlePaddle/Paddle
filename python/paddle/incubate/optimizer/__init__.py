@@ -16,7 +16,6 @@ from . import functional  # noqa: F401
 from .distributed_fused_lamb import DistributedFusedLamb  # noqa: F401
 from .gradient_merge import GradientMergeOptimizer  # noqa: F401
 from .lars_momentum import LarsMomentumOptimizer  # noqa: F401
-from .lbfgs import LBFGS
 from .lookahead import LookAhead  # noqa: F401
 from .modelaverage import ModelAverage  # noqa: F401
 from .pipeline import PipelineOptimizer  # noqa: F401
