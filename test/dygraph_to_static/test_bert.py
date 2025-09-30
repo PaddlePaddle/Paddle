@@ -16,7 +16,6 @@ import os
 import tempfile
 import time
 import unittest
-import gc
 
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
@@ -33,22 +32,6 @@ from paddle.base import core
 from paddle.base.framework import unique_name
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-try:
-    from test_resource_utils import cleanup_test_resources, batch_size_for_memory_limit
-except ImportError:
-    def cleanup_test_resources():
-        """Fallback cleanup function if utils not available."""
-        gc.collect()
-        try:
-            if paddle.device.is_compiled_with_cuda():
-                paddle.device.cuda.empty_cache()
-        except Exception:
-            pass
-    
-    def batch_size_for_memory_limit(base_batch_size, memory_limit_gb=2.0):
-        """Fallback batch size function."""
-        return base_batch_size
 
 place = (
     paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
@@ -111,26 +94,9 @@ class TestBert(Dy2StTestBase):
         self.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, 'bert.dygraph'
         )
-        
-        paddle.disable_static()
 
     def tearDown(self):
-        """Clean up test environment to prevent resource leaks and memory errors."""
-        try:
-            if hasattr(self, 'temp_dir') and self.temp_dir is not None:
-                self.temp_dir.cleanup()
-        except Exception as e:
-            import warnings
-            warnings.warn(f"Failed to cleanup temporary directory: {str(e)}")
-        
-        cleanup_test_resources()
-        
-        try:
-            if paddle.device.is_compiled_with_cuda():
-                paddle.device.cuda.empty_cache()
-                paddle.device.cuda.synchronize()
-        except Exception:
-            pass
+        self.temp_dir.cleanup()
 
     @staticmethod
     def to_static_if_need(model, to_static):
@@ -168,8 +134,6 @@ class TestBert(Dy2StTestBase):
                     labels,
                 ) = input_data
 
-                paddle.disable_static()
-                
                 next_sent_acc, mask_lm_loss, total_loss = bert(
                     src_ids=src_ids,
                     position_ids=pos_ids,
@@ -247,7 +211,6 @@ class TestBert(Dy2StTestBase):
         return pred_res
 
     def predict_dygraph(self, bert_config, data):
-        paddle.disable_static()
         with unique_name.guard():
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
@@ -281,7 +244,6 @@ class TestBert(Dy2StTestBase):
             return pred_res
 
     def predict_dygraph_jit(self, data):
-        paddle.disable_static()
         bert = paddle.jit.load(self.model_save_prefix)
         bert.eval()
 

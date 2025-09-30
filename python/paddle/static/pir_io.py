@@ -920,13 +920,15 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning(
                 "The old way to load inference model is deprecated. Please specify path_prefix."
-                " model path: {}, params path: {}".format(model_path, params_path)
+                f" model path: {model_path}, params path: {params_path}"
             )
 
         # Check if model file exists before deserializing
         if not os.path.exists(model_path):
-            raise ValueError("PIR format model file '{}' does not exist.".format(model_path))
-        
+            raise ValueError(
+                f"PIR format model file '{model_path}' does not exist."
+            )
+
         # deserialize bytes to program
         program = paddle.static.Program()
         paddle.base.core.deserialize_pir_program(model_path, program)

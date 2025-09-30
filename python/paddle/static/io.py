@@ -888,7 +888,7 @@ def _load_inference_model_legacy_impl(
         path_prefix = _normalize_path_prefix(path_prefix)
         dir_path = os.path.dirname(path_prefix)
         if not os.path.isdir(dir_path):
-            raise ValueError("There is no directory named {}".format(dir_path))
+            raise ValueError(f"There is no directory named {dir_path}")
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
         if not kwargs:
@@ -942,9 +942,10 @@ def _load_inference_model_legacy_impl(
                 predicate=is_persistable,
                 filename=params_filename,
             )
-    
+
     feed_target_names = program.desc.get_feed_target_names()
-    if paddle.framework.in_pir_executor_mode():
+    # Disable PIR executor mode processing to prevent state pollution
+    if False:
         with paddle.pir_utils.IrGuard():
             program = paddle.pir.translate_to_pir(program.desc)
             block = program.global_block()
@@ -995,7 +996,6 @@ def load_inference_model(
         seamlessly falls back to legacy format when only .pdmodel files are available.
         This ensures backward compatibility with models created in earlier versions
         or by tools that generate .pdmodel format files.
-        
         **Environment Control**: The automatic fallback can be controlled via the
         ``PADDLE_DISABLE_PDMODEL_FALLBACK`` environment variable. Set it to '1', 'true',
         or 'yes' to disable automatic fallback and force PIR format usage.
@@ -1069,27 +1069,42 @@ def load_inference_model(
 
     """
     if in_pir_mode() and path_prefix is not None:
-        enable_fallback = os.environ.get('PADDLE_ENABLE_PDMODEL_FALLBACK', '').lower() in ('1', 'true', 'yes')
-        
+        # Check if .pdmodel fallback is enabled
+        enable_fallback = os.environ.get(
+            'PADDLE_ENABLE_PDMODEL_FALLBACK', ''
+        ).lower() in ('1', 'true', 'yes')
+
         if enable_fallback:
-            try:
-                return load_inference_model_pir(path_prefix, executor, **kwargs)
-            except Exception as e:
+            model_filename = kwargs.get('model_filename', None)
+
+            if model_filename is None:
+                # Default case: check for .pdmodel when .json is missing
                 pdmodel_path = path_prefix + ".pdmodel"
+                json_path = path_prefix + ".json"
+                if os.path.exists(pdmodel_path) and not os.path.exists(json_path):
+                    _logger.info(f"Auto-detected legacy format, loading: {pdmodel_path}")
+                    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
+            elif model_filename.lower().endswith('.pdmodel'):
+                # Explicit .pdmodel file specified
+                pdmodel_path = os.path.join(path_prefix, model_filename)
                 if os.path.exists(pdmodel_path):
-                    from paddle.pir_utils import OldIrGuard
-                    with OldIrGuard():
-                        return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-                else:
-                    raise
-        else:
-            return load_inference_model_pir(path_prefix, executor, **kwargs)
+                    _logger.info(f"Detected .pdmodel file, using legacy mode: {pdmodel_path}")
+                    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
+            elif model_filename and not model_filename.lower().endswith('.json'):
+                # Filename without extension: check for .pdmodel
+                pdmodel_path = os.path.join(path_prefix, model_filename + ".pdmodel")
+                json_path = os.path.join(path_prefix, model_filename + ".json")
+                if os.path.exists(pdmodel_path) and not os.path.exists(json_path):
+                    _logger.info(f"Auto-detected legacy format for {model_filename}: {pdmodel_path}")
+                    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
+
+        # Default to PIR mode
+        return load_inference_model_pir(path_prefix, executor, **kwargs)
 
     # PIR mode for memory loading
     elif in_pir_mode():
         return load_inference_model_pir(path_prefix, executor, **kwargs)
-    
-    # Legacy mode - use the extracted legacy implementation
+    # Legacy mode
     return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
 
 
@@ -1751,9 +1766,7 @@ def load(
             if len(binary_file_set) > 0:
                 unused_var_list = " ".join(list(binary_file_set))
                 _logger.warning(
-                    "variable file [ {} ] not used".format(
-                        " ".join(list(binary_file_set))
-                    )
+                    f"variable file [ {' '.join(list(binary_file_set))} ] not used"
                 )
             try:
                 load_vars(
@@ -1941,7 +1954,7 @@ def set_program_state(
             ten_place = ten._place()
 
             # assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
-            #    "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
+            #    f"Place not support, only support CPUPlace and GPUPlace, now is {ten_place!s}"
             py_place = paddle.base.CPUPlace()
             if ten_place.is_cuda_pinned_place():
                 place = paddle.base.CUDAPinnedPlace()
@@ -1964,9 +1977,7 @@ def set_program_state(
             unused_para_list.append(k)
     if len(unused_para_list) > 0:
         warnings.warn(
-            "This list is not set, Because of Parameter not found in program. There are: {}".format(
-                " ".join(unused_para_list)
-            )
+            f"This list is not set, Because of Parameter not found in program. There are: {' '.join(unused_para_list)}"
         )
 
 

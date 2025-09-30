@@ -35,7 +35,7 @@ def _ensure_deterministic_computation():
     random.seed(1234)
     np.random.seed(1234)
     paddle.seed(1234)
-    
+
     try:
         if hasattr(paddle.framework, 'set_flags'):
             paddle.framework.set_flags({
@@ -45,9 +45,8 @@ def _ensure_deterministic_computation():
             })
     except Exception:
         pass
-    
+
     try:
-        import os
         os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
         os.environ['PYTHONHASHSEED'] = '0'
     except Exception:
@@ -261,7 +260,7 @@ class TestLlamaAuto:
 
     def init_dist_env(self):
         _ensure_deterministic_computation()
-        
+
         order = ["dp", "pp", "mp", "sep"]
         dp_degree = self.dp
         mp_degree = self.mp
@@ -409,18 +408,15 @@ class TestLlamaAuto:
     def _cleanup_resources(self):
         """Resource cleanup to prevent memory leaks and OOM issues."""
         import gc
-        import os
-        
+
         gc.collect()
-        
         try:
-            import paddle
             if paddle.device.is_compiled_with_cuda():
                 paddle.device.cuda.empty_cache()
                 paddle.device.cuda.synchronize()
         except Exception:
             pass
-        
+
         try:
             import sys
             if hasattr(sys, '_clear_type_cache'):
@@ -443,7 +439,7 @@ class TestLlamaAuto:
             if self.gradient_accumulation_steps > 1:
                 dy_losses = self.run_dynamic()
                 self._cleanup_resources()
-                
+
                 # context parallel not support static mode
                 if self.sep > 1:
                     return
@@ -455,7 +451,7 @@ class TestLlamaAuto:
             else:
                 dy_losses = self.run_llama(to_static=0)
                 self._cleanup_resources()
-                
+
                 # context parallel not support static mode
                 if self.sep > 1:
                     return

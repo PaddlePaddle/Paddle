@@ -36,7 +36,7 @@ def _ensure_deterministic_computation():
     random.seed(1234)
     np.random.seed(1234)
     paddle.seed(1234)
-    
+
     try:
         if hasattr(paddle.framework, 'set_flags'):
             paddle.framework.set_flags({
@@ -46,9 +46,8 @@ def _ensure_deterministic_computation():
             })
     except Exception:
         pass
-    
+
     try:
-        import os
         os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
         os.environ['PYTHONHASHSEED'] = '0'
     except Exception:
@@ -336,11 +335,9 @@ class TestLlamaAuto:
     def _cleanup_resources(self):
         """Non-invasive resource cleanup to prevent memory leaks and ResourceWarnings."""
         import gc
-        
+
         gc.collect()
-        
         try:
-            import paddle
             if paddle.device.is_compiled_with_cuda():
                 paddle.device.cuda.empty_cache()
                 paddle.device.cuda.synchronize()
@@ -351,7 +348,7 @@ class TestLlamaAuto:
         ckpt_path = None
         try:
             _ensure_deterministic_computation()
-            
+
             self.init_dist_env()
             ckpt_path = tempfile.TemporaryDirectory()
             tmp_ckpt_path = self.broadcast_ckpt_path(ckpt_path.name)
@@ -366,8 +363,8 @@ class TestLlamaAuto:
                     ckpt_path.cleanup()
                 except Exception as e:
                     import warnings
-                    warnings.warn(f"Failed to cleanup temporary directory: {str(e)}")
-            
+                    warnings.warn(f"Failed to cleanup temporary directory: {e!s}")
+
             self._cleanup_resources()
 
 

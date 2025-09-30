@@ -80,35 +80,15 @@ class SimplePyLayerNet(paddle.nn.Layer):
 
 class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     def setUp(self):
-        paddle.seed(SEED)
-        np.random.seed(SEED)
-        
         self.temp_dir = tempfile.TemporaryDirectory()
         self.atol = 0
         self.rtol = 1e-5
         if paddle.is_compiled_with_xpu():
             self.atol = 1e-4
             self.rtol = 1e-4
-        
-        paddle.disable_static()
 
     def tearDown(self):
-        try:
-            if hasattr(self, 'temp_dir') and self.temp_dir is not None:
-                self.temp_dir.cleanup()
-        except Exception as e:
-            import warnings
-            warnings.warn(f"Failed to cleanup temporary directory: {str(e)}")
-        
-        import gc
-        gc.collect()
-        
-        try:
-            import paddle
-            if paddle.device.is_compiled_with_cuda():
-                paddle.device.cuda.empty_cache()
-        except Exception:
-            pass
+        self.temp_dir.cleanup()
 
     @test_ast_only
     def test_save_inference_model(self):
@@ -135,14 +115,13 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             self.temp_dir.name, "test_dy2stat_inference_in_guard"
         )
 
-        os.makedirs(infer_model_dir, exist_ok=True)
-
         paddle.jit.save(
             layer=layer,
             path=infer_model_prefix,
             input_spec=[x],
             output_spec=[1],
         )
+        # Check the correctness of the inference
         dygraph_out, _ = layer(x)
         self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
         self.check_save_inference_model(
@@ -158,8 +137,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     # TODO(MarioLulab): Disable PT test until we support PIR PyLayer
     @test_ast_only
     def test_save_pylayer_model(self):
-        paddle.disable_static()
-        
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
         paddle.framework._set_expected_place(place)
@@ -186,6 +163,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             input_spec=[x],
             output_spec=[1],
         )
+        # Check the correctness of the inference
         loss_out, _ = layer(x)
 
         loss_out_numpy = float(loss_out)
@@ -214,22 +192,12 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         model_filename = "model" + PIR_INFER_MODEL_SUFFIX
         params_filename = "model" + INFER_PARAMS_SUFFIX
 
-        os.makedirs(infer_model_dir, exist_ok=True)
-        
         paddle.jit.save(
             layer=model,
             path=infer_model_prefix,
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        
-        model_file_path = infer_model_prefix + PIR_INFER_MODEL_SUFFIX
-        params_file_path = infer_model_prefix + INFER_PARAMS_SUFFIX
-        
-        if not os.path.exists(model_file_path):
-            raise RuntimeError("Failed to save model file: {}".format(model_file_path))
-        if not os.path.exists(params_file_path):
-            raise RuntimeError("Failed to save params file: {}".format(params_file_path))
         infer_out = self.load_and_run_inference(
             infer_model_dir, model_filename, params_filename, inputs
         )
@@ -243,22 +211,15 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     ):
         paddle.enable_static()
         exe = base.Executor(place)
-        
-        model_file_path = os.path.join(model_path, model_filename)
-        params_file_path = os.path.join(model_path, params_filename)
-        
-        if not os.path.exists(model_file_path):
-            raise FileNotFoundError("Model file not found: {}".format(model_file_path))
-        if not os.path.exists(params_file_path):
-            raise FileNotFoundError("Params file not found: {}".format(params_file_path))
-        
         [
             inference_program,
             feed_target_names,
             fetch_targets,
         ] = paddle.static.io.load_inference_model(
-            path_prefix=os.path.join(model_path, os.path.splitext(model_filename)[0]),
-            executor=exe
+            path_prefix=model_path,
+            executor=exe,
+            model_filename=model_filename,
+            params_filename=params_filename,
         )
         results = exe.run(
             inference_program,
@@ -271,17 +232,8 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
 
 class TestPartialProgramRaiseError(Dy2StTestBase):
-    def setUp(self):
-        paddle.disable_static()
-    
-    def tearDown(self):
-        import gc
-        gc.collect()
-    
     @test_ast_only
     def test_param_type(self):
-        paddle.disable_static()
-        
         x_data = np.random.random((20, 20)).astype('float32')
 
         net = paddle.jit.to_static(SimpleFcLayer(20))
@@ -294,6 +246,8 @@ class TestPartialProgramRaiseError(Dy2StTestBase):
         params = concrete_program.parameters
 
         concrete_program.parameters = params[0]
+        # TypeError: Type of self._params should be list or tuple,
+        # but received <class 'paddle.base.framework.EagerParamBase'>.
         with self.assertRaises(TypeError):
             pir_partial_program_from(concrete_program)
 

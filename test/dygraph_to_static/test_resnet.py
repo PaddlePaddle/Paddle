@@ -279,8 +279,6 @@ class ResNetHelper:
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        paddle.disable_static()
-        
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -292,9 +290,7 @@ class ResNetHelper:
             dataset, batch_size=batch_size, drop_last=True
         )
 
-        resnet = ResNet()
-        if to_static:
-            resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
+        resnet = paddle.jit.to_static(ResNet(), build_strategy=build_strategy)
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
         for epoch in range(epoch_num):
@@ -420,19 +416,6 @@ class ResNetHelper:
 class TestResnet(Dy2StTestBase):
     def setUp(self):
         self.resnet_helper = ResNetHelper()
-        
-        paddle.disable_static()
-    
-    def tearDown(self):
-        import gc
-        gc.collect()
-        
-        try:
-            if paddle.device.is_compiled_with_cuda():
-                paddle.device.cuda.empty_cache()
-                paddle.device.cuda.synchronize()
-        except Exception:
-            pass
 
     def train(self, to_static):
         with enable_to_static_guard(to_static):

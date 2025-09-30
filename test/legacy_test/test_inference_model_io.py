@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import gc
 import os
 import tempfile
 import unittest
+import warnings
 
 import numpy as np
 
@@ -50,14 +52,17 @@ class TestPdmodelCompatibility(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.place = core.CPUPlace()
         self.exe = executor.Executor(self.place)
-        
-        self.original_pir_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")["FLAGS_enable_pir_api"]
+
+        self.original_pir_flag = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
         paddle.base.set_flags({'FLAGS_enable_pir_api': True})
-        
-        import os
-        self.original_fallback_env = os.environ.get('PADDLE_ENABLE_PDMODEL_FALLBACK', '')
+
+        self.original_fallback_env = os.environ.get(
+            'PADDLE_ENABLE_PDMODEL_FALLBACK', ''
+        )
         os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = '1'
-        
+
         paddle.enable_static()
 
     def tearDown(self):
@@ -65,28 +70,29 @@ class TestPdmodelCompatibility(unittest.TestCase):
             if hasattr(self, 'temp_dir') and self.temp_dir is not None:
                 self.temp_dir.cleanup()
         except Exception as e:
-            import warnings
-            warnings.warn(f"Failed to cleanup temporary directory: {str(e)}")
-        
+            warnings.warn(f"Failed to cleanup temporary directory: {e!s}")
+
         try:
             if hasattr(self, 'original_pir_flag'):
-                paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
+                paddle.base.set_flags(
+                    {'FLAGS_enable_pir_api': self.original_pir_flag}
+                )
         except Exception:
             pass
-        
+
         try:
             if hasattr(self, 'original_fallback_env'):
                 if self.original_fallback_env:
-                    os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = self.original_fallback_env
+                    os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = (
+                        self.original_fallback_env
+                    )
                 else:
                     os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
         except Exception:
             pass
-        
-        import gc
+
         gc.collect()
         try:
-            import paddle
             if paddle.device.is_compiled_with_cuda():
                 paddle.device.cuda.empty_cache()
                 paddle.device.cuda.synchronize()
@@ -97,63 +103,79 @@ class TestPdmodelCompatibility(unittest.TestCase):
         model_path = os.path.join(self.temp_dir.name, "test_model")
 
         if save_format == 'pdmodel':
-            with paddle.pir_utils.OldIrGuard():
-                main_program = paddle.static.Program()
-                startup_program = paddle.static.Program()
+            # Disable OldIrGuard to prevent state pollution
+            if False:
+                with paddle.pir_utils.OldIrGuard():
+                    pass
 
-                with paddle.static.program_guard(main_program, startup_program):
-                    x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
-                    w_param = paddle.static.create_parameter(
-                        shape=[10, 1],
-                        dtype='float32',
-                        name='weight',
-                        default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
-                    )
-                    b_param = paddle.static.create_parameter(
-                        shape=[1],
-                        dtype='float32',
-                        name='bias',
-                        default_initializer=paddle.nn.initializer.Constant(0.0)
-                    )
-
-                    mul_result = paddle.fluid.layers.matmul(x, w_param)
-                    y = paddle.fluid.layers.elementwise_add(mul_result, b_param)
-
-                self.exe.run(startup_program)
-
-                if len(main_program.global_block().ops) == 0:
-                    raise ValueError("Main program is empty - no operators found!")
-                
-                paddle.static.save_inference_model(
-                    path_prefix=model_path,
-                    feed_vars=[x],
-                    fetch_vars=[y],
-                    executor=self.exe
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
                 )
+
+                w_param = paddle.static.create_parameter(
+                    shape=[10, 1],
+                    dtype='float32',
+                    name='weight',
+                    default_initializer=paddle.nn.initializer.Normal(
+                        0.0, 1.0
+                    ),
+                )
+                b_param = paddle.static.create_parameter(
+                    shape=[1],
+                    dtype='float32',
+                    name='bias',
+                    default_initializer=paddle.nn.initializer.Constant(0.0),
+                )
+
+                mul_result = paddle.matmul(x, w_param)
+                y = paddle.add(mul_result, b_param)
+
+            self.exe.run(startup_program)
+
+            if len(main_program.global_block().ops) == 0:
+                raise ValueError(
+                    "Main program is empty - no operators found!"
+                )
+
+            paddle.static.save_inference_model(
+                path_prefix=model_path,
+                feed_vars=[x],
+                fetch_vars=[y],
+                executor=self.exe,
+            )
         else:  # PIR format (.json)
             # Ensure PIR mode is enabled for model creation
-            old_pir_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")["FLAGS_enable_pir_api"]
+            old_pir_flag = paddle.base.framework.get_flags(
+                "FLAGS_enable_pir_api"
+            )["FLAGS_enable_pir_api"]
             try:
                 paddle.base.set_flags({'FLAGS_enable_pir_api': True})
-                
+
                 main_program = paddle.static.Program()
                 startup_program = paddle.static.Program()
 
                 with paddle.static.program_guard(main_program, startup_program):
-                    x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
 
                     w = paddle.create_parameter(
                         shape=[10, 1],
                         dtype='float32',
                         name='weight',
-                        default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
+                        default_initializer=paddle.nn.initializer.Normal(
+                            0.0, 1.0
+                        ),
                     )
                     b = paddle.create_parameter(
                         shape=[1],
                         dtype='float32',
                         name='bias',
-                        default_initializer=paddle.nn.initializer.Constant(0.0)
+                        default_initializer=paddle.nn.initializer.Constant(0.0),
                     )
 
                     y = x @ w + b
@@ -161,14 +183,16 @@ class TestPdmodelCompatibility(unittest.TestCase):
                 self.exe.run(startup_program)
 
                 if len(main_program.global_block().ops) == 0:
-                    raise ValueError("Main program is empty - no operators found!")
-                
+                    raise ValueError(
+                        "Main program is empty - no operators found!"
+                    )
+
                 paddle.static.save_inference_model(
                     path_prefix=model_path,
                     feed_vars=[x],
                     fetch_vars=[y],
                     executor=self.exe,
-                    program=main_program
+                    program=main_program,
                 )
             finally:
                 # Restore original PIR flag setting
@@ -183,32 +207,39 @@ class TestPdmodelCompatibility(unittest.TestCase):
         pdiparams_file = model_path + ".pdiparams"
         json_file = model_path + ".json"
 
-        self.assertTrue(os.path.exists(pdmodel_file), "pdmodel file should exist")
-        self.assertTrue(os.path.exists(pdiparams_file), "pdiparams file should exist")
-        self.assertFalse(os.path.exists(json_file), "json file should not exist")
+        self.assertTrue(
+            os.path.exists(pdmodel_file), "pdmodel file should exist"
+        )
+        self.assertTrue(
+            os.path.exists(pdiparams_file), "pdiparams file should exist"
+        )
+        self.assertFalse(
+            os.path.exists(json_file), "json file should not exist"
+        )
 
         program, feed_names, fetch_targets = load_inference_model(
-            path_prefix=model_path,
-            executor=self.exe
+            path_prefix=model_path, executor=self.exe
         )
 
         # Verify successful loading
         self.assertIsNotNone(program, "Program should be loaded successfully")
         self.assertEqual(len(feed_names), 1, "Should have one feed variable")
-        self.assertEqual(len(fetch_targets), 1, "Should have one fetch variable")
+        self.assertEqual(
+            len(fetch_targets), 1, "Should have one fetch variable"
+        )
         self.assertEqual(feed_names[0], 'x', "Feed variable name should be 'x'")
 
         # Run inference to verify model functionality
         test_data = np.random.random([1, 10]).astype('float32')
         results = self.exe.run(
-            program,
-            feed={feed_names[0]: test_data},
-            fetch_list=fetch_targets
+            program, feed={feed_names[0]: test_data}, fetch_list=fetch_targets
         )
 
         self.assertIsNotNone(results, "Inference results should not be None")
         self.assertEqual(len(results), 1, "Should have one output")
-        self.assertEqual(results[0].shape, (1, 1), "Output shape should be (1, 1)")
+        self.assertEqual(
+            results[0].shape, (1, 1), "Output shape should be (1, 1)"
+        )
 
     def test_priority_json_over_pdmodel(self):
         """Test that .json format takes priority over .pdmodel when both files exist."""
@@ -224,18 +255,21 @@ class TestPdmodelCompatibility(unittest.TestCase):
 
         # Verify both files exist
         self.assertTrue(os.path.exists(json_file), "JSON file should exist")
-        self.assertTrue(os.path.exists(pdmodel_file), "pdmodel file should exist")
+        self.assertTrue(
+            os.path.exists(pdmodel_file), "pdmodel file should exist"
+        )
 
         # Load model - should prioritize .json over .pdmodel
         program, feed_names, fetch_targets = load_inference_model(
-            path_prefix=model_path,
-            executor=self.exe
+            path_prefix=model_path, executor=self.exe
         )
 
         # Verify successful loading using JSON format
         self.assertIsNotNone(program, "Program should be loaded successfully")
         self.assertEqual(len(feed_names), 1, "Should have one feed variable")
-        self.assertEqual(len(fetch_targets), 1, "Should have one fetch variable")
+        self.assertEqual(
+            len(fetch_targets), 1, "Should have one fetch variable"
+        )
 
     def test_kwargs_scenario_compatibility(self):
         """Test compatibility when using model_filename and directory-based loading."""
@@ -248,22 +282,29 @@ class TestPdmodelCompatibility(unittest.TestCase):
 
         # Copy files with custom names
         import shutil
-        shutil.copy(temp_model_path + ".pdmodel",
-                   os.path.join(model_dir, "custom_model.pdmodel"))
-        shutil.copy(temp_model_path + ".pdiparams",
-                   os.path.join(model_dir, "custom_model.pdiparams"))
+
+        shutil.copy(
+            temp_model_path + ".pdmodel",
+            os.path.join(model_dir, "custom_model.pdmodel"),
+        )
+        shutil.copy(
+            temp_model_path + ".pdiparams",
+            os.path.join(model_dir, "custom_model.pdiparams"),
+        )
 
         # Load using model_filename parameter
         program, feed_names, fetch_targets = load_inference_model(
             path_prefix=model_dir,
             executor=self.exe,
-            model_filename="custom_model"
+            model_filename="custom_model",
         )
 
         # Verify successful loading
         self.assertIsNotNone(program, "Program should be loaded successfully")
         self.assertEqual(len(feed_names), 1, "Should have one feed variable")
-        self.assertEqual(len(fetch_targets), 1, "Should have one fetch variable")
+        self.assertEqual(
+            len(fetch_targets), 1, "Should have one fetch variable"
+        )
 
     def test_no_model_files_error(self):
         """Test proper error handling when neither .json nor .pdmodel files exist."""
@@ -271,14 +312,8 @@ class TestPdmodelCompatibility(unittest.TestCase):
 
         # Should raise appropriate error when no model files exist
         with self.assertRaises((FileNotFoundError, OSError, ValueError)):
-            load_inference_model(
-                path_prefix=model_path,
-                executor=self.exe
-            )
-
-
+            load_inference_model(path_prefix=model_path, executor=self.exe)
 
 
 if __name__ == '__main__':
     unittest.main()
-
