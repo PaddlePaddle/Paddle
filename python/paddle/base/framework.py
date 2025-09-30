@@ -202,6 +202,28 @@ def get_flags(flags: str | Sequence[str]) -> dict[str, bool | str | float]:
 
 
 @contextmanager
+def on_static_mode():
+    is_in_dygraph_mode = in_dygraph_mode()
+    paddle.enable_static()
+    try:
+        yield
+    finally:
+        if is_in_dygraph_mode:
+            paddle.disable_static()
+
+
+@contextmanager
+def on_dygraph_mode():
+    is_in_dygraph_mode = in_dygraph_mode()
+    paddle.disable_static()
+    try:
+        yield
+    finally:
+        if not is_in_dygraph_mode:
+            paddle.enable_static()
+
+
+@contextmanager
 def flag_guard(flag_name, flag_value):
     old_value = paddle.get_flags(flag_name)[flag_name]
     paddle.set_flags({flag_name: flag_value})
