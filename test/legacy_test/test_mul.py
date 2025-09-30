@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,155 +15,151 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import OpTest, get_places
+from scipy import special
 
 import paddle
-from paddle import static
+
+np.random.seed(100)
+paddle.seed(100)
 
 
-class TestMulApi(unittest.TestCase):
+def output_i0e(x):
+    return special.i0e(x)
+
+
+def ref_i0e_grad(x, dout):
+    eps = np.finfo(x.dtype).eps
+    not_tiny = abs(x) > eps
+    safe_x = np.where(not_tiny, x, eps)
+    gradx = special.i1e(x) - np.sign(x) * output_i0e(safe_x)
+    gradx = np.where(not_tiny, gradx, -1.0)
+    return dout * gradx
+
+
+class TestI0eAPI(unittest.TestCase):
+    DTYPE = "float64"
+    DATA = [0, 1, 2, 3, 4, 5]
+
+    def setUp(self):
+        self.x = np.array(self.DATA).astype(self.DTYPE)
+        self.out_ref = output_i0e(self.x)
+        self.place = get_places()
+
+    def test_api_static(self):
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    name="x", shape=self.x.shape, dtype=self.DTYPE
+                )
+                y = paddle.i0e(x)
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": self.x},
+                    fetch_list=[y],
+                )
+                np.testing.assert_allclose(self.out_ref, res[0], rtol=1e-5)
+
+        for place in self.place:
+            run(place)
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            out = paddle.i0e(x)
+
+            out_ref = output_i0e(self.x)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_empty_input_error(self):
+        for place in self.place:
+            paddle.disable_static(place)
+            x = None
+            self.assertRaises(ValueError, paddle.i0e, x)
+            paddle.enable_static()
+
+
+class TestI0eFloat32Zero2EightCase(TestI0eAPI):
+    DTYPE = "float32"
+    DATA = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+
+class TestI0eFloat32OverEightCase(TestI0eAPI):
+    DTYPE = "float32"
+    DATA = [9, 10, 11, 12]
+
+
+class TestI0eFloat64Zero2EightCase(TestI0eAPI):
+    DTYPE = "float64"
+    DATA = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+
+class TestI0eFloat64OverEightCase(TestI0eAPI):
+    DTYPE = "float64"
+    DATA = [9, 10, 11, 12]
+
+
+class TestI0eOp(OpTest):
     def setUp(self) -> None:
-        self.shape = [2, 3]
-        self.dtype = 'float32'
-        self.place = get_device_place()
+        self.op_type = "i0e"
+        self.python_api = paddle.i0e
+        self.init_config()
+        self.outputs = {"out": self.target}
 
-    def test_static_api(self):
-        paddle.enable_static()
-        x_np = np.random.rand(*self.shape).astype(self.dtype)
-        other2_np = np.random.rand(*self.shape).astype(self.dtype)
-        other3_np = np.random.rand(self.shape[0], 1).astype(self.dtype)
-        with static.program_guard(static.Program()):
-            x = paddle.static.data(name='x', shape=self.shape, dtype=self.dtype)
-            # other1 = 3.0
-            other2 = paddle.static.data(
-                name='other', shape=self.shape, dtype=self.dtype
-            )
-            other3 = paddle.static.data(
-                name='other3', shape=[self.shape[0], 1], dtype=self.dtype
-            )
-            # out1 = x.mul(other1)
-            out2 = x.mul(other2)
-            out3 = x.mul(other3)
-            exe = static.Executor(self.place)
-            outs = exe.run(
-                feed={'x': x_np, 'other': other2_np, 'other3': other3_np},
-                # fetch_list=[out1, out2, out3],
-                fetch_list=[out2, out3],
-            )
-            # np.testing.assert_allclose(
-            #     outs[0], np.multiply(x_np, other1), rtol=1e-05
-            # )
-            np.testing.assert_allclose(
-                outs[0], np.multiply(x_np, other2_np), rtol=1e-05
-            )
-            np.testing.assert_allclose(
-                outs[1], np.multiply(x_np, other3_np), rtol=1e-05
-            )
-
-    def test_dyn_api(self):
-        paddle.disable_static()
-        x_np = np.random.rand(*self.shape).astype(self.dtype)
-        other2_np = np.random.rand(*self.shape).astype(self.dtype)
-        other3_np = np.random.rand(self.shape[0], 1).astype(self.dtype)
-        x = paddle.to_tensor(x_np, place=self.place)
-        # other1 = 3.0
-        other2 = paddle.to_tensor(other2_np, place=self.place)
-        other3 = paddle.to_tensor(other3_np, place=self.place)
-        # out1 = x.mul(other1)
-        out2 = x.mul(other2)
-        out3 = x.mul(other3)
-
-        # np.testing.assert_allclose(
-        #     out1.numpy(), np.multiply(x_np, other1), rtol=1e-05
-        # )
-        np.testing.assert_allclose(
-            out2.numpy(), np.multiply(x_np, other2_np), rtol=1e-05
+    def init_config(self):
+        self.dtype = np.float64
+        zero_case = np.zeros(1).astype(self.dtype)
+        rand_case = np.random.randn(100).astype(self.dtype)
+        one2eight_case = np.random.uniform(low=1, high=8, size=100).astype(
+            self.dtype
         )
-        np.testing.assert_allclose(
-            out3.numpy(), np.multiply(x_np, other3_np), rtol=1e-05
+        over_eight_case = np.random.uniform(low=9, high=15, size=100).astype(
+            self.dtype
+        )
+        self.case = np.concatenate(
+            [zero_case, rand_case, one2eight_case, over_eight_case]
+        )
+        self.inputs = {'x': self.case}
+        self.target = output_i0e(self.inputs['x'])
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x'],
+            'out',
+            user_defined_grads=[ref_i0e_grad(self.case, 1 / self.case.size)],
+            check_pir=True,
         )
 
 
-class TestMulInplaceApi(unittest.TestCase):
+class TestI0eOp_ZeroSize(OpTest):
     def setUp(self) -> None:
-        self.shape = [2, 3]
-        self.dtype = 'float32'
+        self.__class__.op_type = "i0e"
+        self.op_type = "i0e"
+        self.python_api = paddle.i0e
+        self.init_config()
+        x = np.random.randn(3, 4, 0)
+        self.inputs = {'x': x.astype(self.dtype)}
+        self.attrs = {}
+        self.outputs = {'out': special.i0e(x)}
 
-    def test_dyn_api(self):
-        paddle.disable_static()
-        others = [
-            # 3.0,
-            paddle.to_tensor(np.random.rand(*self.shape).astype('float32')),
-            paddle.to_tensor(np.random.rand(*self.shape).astype('float32'))[
-                :, -1
-            ].unsqueeze(-1),
-        ]
-        for other in others:
-            x_np = np.random.rand(*self.shape).astype('float32')
-            x = paddle.to_tensor(x_np)
-            x.mul_(other)
-            np.testing.assert_allclose(
-                x.numpy(),
-                np.multiply(
-                    x_np,
-                    (
-                        other.numpy()
-                        if isinstance(other, paddle.Tensor)
-                        else other
-                    ),
-                ),
-                rtol=1e-05,
-            )
+    def init_config(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['x'], 'out')
 
 
-class TestMulInplaceError(unittest.TestCase):
-    def test_errors(self):
-        paddle.disable_static()
-        # test dynamic computation graph: inputs must be broadcastable
-        x_data = np.random.rand(3, 4)
-        y_data = np.random.rand(2, 3, 4)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-
-        def multiply_shape_error():
-            with paddle.no_grad():
-                x.mul_(y)
-
-        self.assertRaises(ValueError, multiply_shape_error)
-        paddle.enable_static()
-
-
-class TestMulInplaceParamDecoratorApi(unittest.TestCase):
-    def setUp(self) -> None:
-        self.shape = [2, 3]
-        self.dtype = 'float32'
-
-    def test_dyn_api(self):
-        paddle.disable_static()
-        others = [
-            # 3.0,
-            paddle.to_tensor(np.random.rand(*self.shape).astype('float32')),
-            paddle.to_tensor(np.random.rand(*self.shape).astype('float32'))[
-                :, -1
-            ].unsqueeze(-1),
-        ]
-        for other in others:
-            x_np = np.random.rand(*self.shape).astype('float32')
-            x = paddle.to_tensor(x_np)
-            x.mul_(other=other)
-            np.testing.assert_allclose(
-                x.numpy(),
-                np.multiply(
-                    x_np,
-                    (
-                        other.numpy()
-                        if isinstance(other, paddle.Tensor)
-                        else other
-                    ),
-                ),
-                rtol=1e-05,
-            )
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
