@@ -40,25 +40,23 @@ paddle_test(test_op_compat_sensible_pass SRCS op_compat_sensible_pass_test.cc
             DEPS op_compat_sensible_pass)
 
 # Fuse pass tests
-paddle_test(test_fc_fuse_pass_cc SRCS fc_fuse_pass_test.cc DEPS fc_fuse_pass
-            framework_proto)
+paddle_test(test_fc_fuse_pass_cc SRCS fc_fuse_pass_test.cc DEPS fc_fuse_pass)
 
 paddle_test(test_fc_lstm_fuse_pass_cc SRCS fc_lstm_fuse_pass_test.cc DEPS
-            fc_lstm_fuse_pass framework_proto)
+            fc_lstm_fuse_pass)
 
 paddle_test(test_fc_gru_fuse_pass_cc SRCS fc_gru_fuse_pass_test.cc DEPS
-            fc_gru_fuse_pass framework_proto)
+            fc_gru_fuse_pass)
 
 paddle_test(test_seqpool_concat_fuse_pass SRCS seqpool_concat_fuse_pass_test.cc
-            DEPS seqpool_concat_fuse_pass framework_proto)
+            DEPS seqpool_concat_fuse_pass)
 
 paddle_test(
   test_seqpool_cvm_concat_fuse_pass SRCS seqpool_cvm_concat_fuse_pass_test.cc
-  DEPS seqpool_cvm_concat_fuse_pass framework_proto)
+  DEPS seqpool_cvm_concat_fuse_pass)
 
-paddle_test(
-  test_repeated_fc_relu_fuse_pass_cc SRCS repeated_fc_relu_fuse_pass_test.cc
-  DEPS repeated_fc_relu_fuse_pass framework_proto)
+paddle_test(test_repeated_fc_relu_fuse_pass_cc SRCS
+            repeated_fc_relu_fuse_pass_test.cc DEPS repeated_fc_relu_fuse_pass)
 
 paddle_test(test_is_test_pass SRCS is_test_pass_test.cc DEPS is_test_pass)
 
@@ -144,13 +142,8 @@ if(NOT WIN32)
               sync_batch_norm_pass)
 
   paddle_test(
-    test_dense_fc_to_sparse_pass_cc
-    SRCS
-    dense_fc_to_sparse_pass_test.cc
-    DEPS
-    fc_fuse_pass
-    dense_fc_to_sparse_pass
-    framework_proto)
+    test_dense_fc_to_sparse_pass_cc SRCS dense_fc_to_sparse_pass_test.cc DEPS
+    fc_fuse_pass dense_fc_to_sparse_pass)
 
   paddle_test(
     test_dense_multihead_matmul_to_sparse_pass SRCS
