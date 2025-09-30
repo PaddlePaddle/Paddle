@@ -361,19 +361,13 @@ __global__ __launch_bounds__(
     }
 
     // ========
-    if (responsible_expert_idx < kNumExperts) {
-      const auto src_rank = responsible_expert_idx / kNumLocalExperts;
-      const auto local_expert_idx = responsible_expert_idx % kNumLocalExperts;
+    if (thread_id < kNumExperts && sm_id == 0) {
+      const auto src_rank = thread_id / kNumLocalExperts;
+      const auto local_expert_idx = thread_id % kNumLocalExperts;
       const auto recv_range =
         packed_recv_layout_range + local_expert_idx * kNumRanks;
-      
-      if (sub_warp_id == 0 && lane_id == 0)
-      {
-
       recv_range[src_rank] =
           pack2<int, int64_t>(0, 0);
-
-      }
     }
 
     if (sm_id < e_num_rdma_rank && thread_id < NUM_MAX_NVL_PEERS) {
