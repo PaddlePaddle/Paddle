@@ -146,7 +146,7 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=300,
             passes=["fc_elementwise_layernorm_fuse_pass"],

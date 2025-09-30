@@ -60,7 +60,7 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.inputs = {'X': x, 'Y': y}
 
     def set_dtype_attr(self):
-        self.attrs['mkldnn_data_type'] = "float32"
+        self.attrs['onednn_data_type'] = "float32"
 
     def setUp(self):
         self.config()
@@ -313,7 +313,7 @@ def create_bf16_test_class(parent):
             self.y_fp32 = y
 
         def set_dtype_attr(self):
-            self.attrs['mkldnn_data_type'] = "bfloat16"
+            self.attrs['onednn_data_type'] = "bfloat16"
 
         def test_check_output(self):
             self.check_output_with_place(
