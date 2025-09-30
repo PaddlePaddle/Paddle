@@ -31,6 +31,7 @@ from ...symbolic_shape.operators import (
     SYMBOLIC_UNARY_OPS,
     symbolic_not,
     symbolic_to_bool,
+    symbolic_truediv,
 )
 from ...utils import (
     NUMPY_API_SUPPORTED_DICT,
@@ -1220,6 +1221,9 @@ for unary_fn in SYMBOLIC_UNARY_OPS:
         ),
     )
 for binary_fn in SYMBOLIC_BINARY_OPS:
+    compute_fn = binary_fn
+    if binary_fn is symbolic_truediv:
+        binary_fn = operator.truediv
     register_fns = [binary_fn]
     if (
         inplace_binary_fn := non_inplace_op_to_inplace_op(binary_fn)
@@ -1233,7 +1237,7 @@ for binary_fn in SYMBOLIC_BINARY_OPS:
                 lambda fn, var, other: var.graph.call_symbolic_api(
                     fn, var, other
                 ),
-                binary_fn,
+                compute_fn,
             ),
         )
         Dispatcher.register(
@@ -1243,7 +1247,7 @@ for binary_fn in SYMBOLIC_BINARY_OPS:
                 lambda fn, var, other: var.graph.call_symbolic_api(
                     fn, var, other
                 ),
-                binary_fn,
+                compute_fn,
             ),
         )
 

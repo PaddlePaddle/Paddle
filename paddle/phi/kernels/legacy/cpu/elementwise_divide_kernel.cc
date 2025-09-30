@@ -46,11 +46,11 @@ void DivideRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::phi::bfloat16;
+// using bfloat16 = phi::bfloat16;
 
 PD_REGISTER_KERNEL(divide_raw,
                    CPU,

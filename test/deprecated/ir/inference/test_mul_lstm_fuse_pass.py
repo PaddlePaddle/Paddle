@@ -122,7 +122,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
         yield config, ["im2sequence", "fusion_lstm"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, max_duration=1000, passes=["mul_lstm_fuse_pass"]
         )
 
