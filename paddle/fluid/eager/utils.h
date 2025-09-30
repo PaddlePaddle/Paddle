@@ -379,12 +379,27 @@ static inline const std::string GenerateUniqueApiName(
     const std::string& api_name, const int64_t& call_count) {
   return api_name + std::to_string(call_count);
 }
-// const std::string& GenerateUniqueTensorName(const std::string&
-// unique_api_name,const std::string& var_name,const paddle::Tensor& tensor);
+
 void SetTensorName(const std::string& unique_api_name,
                    const std::string& var_name,
                    paddle::Tensor* tensor);
 void SetTensorName(const std::string& unique_api_name,
                    const std::string& var_name,
                    paddle::optional<paddle::Tensor>* tensor);
+void SetTensorName(const std::string& unique_api_name,
+                   const std::string& var_name,
+                   std::vector<paddle::Tensor>* tensors);
+void SetTensorName(const std::string& unique_api_name,
+                   const std::string& var_name,
+                   paddle::optional<std::vector<paddle::Tensor>>* tensors);
+void SetGradTensorName(
+    std::vector<paddle::Tensor>* tensors,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+        bwd_out_meta);
+void SetGradTensorName(
+    paddle::Tensor* tensor,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        bwd_out_meta);
 }  // namespace egr
