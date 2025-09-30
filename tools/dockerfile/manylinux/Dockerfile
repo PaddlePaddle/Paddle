@@ -14,17 +14,17 @@ ENV LANGUAGE en_US.UTF-8
 
 RUN yum -y update
 RUN yum -y install epel-release
-RUN yum install -y sudo wget curl perl util-linux xz bzip2 git patch which perl zlib-devel openssl-devel yum-utils autoconf automake make gcc-toolset-${DEVTOOLSET_VERSION}-toolchain unzip bison diffutils automake which file vim libffi-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-devel libXrender-devel  mesa-libGL-devel libICE-devel libSM-devel ncurses-devel freetype-devel libpng-devel kernel-devel kmod
+RUN yum install -y sudo wget curl perl util-linux xz bzip2 git patch which perl zlib-devel openssl-devel yum-utils autoconf automake make gcc-toolset-${DEVTOOLSET_VERSION}-toolchain unzip bison diffutils automake which file vim libffi-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-devel libXrender-devel  mesa-libGL-devel libICE-devel libSM-devel ncurses-devel freetype-devel libpng-devel kernel-devel kmod libibverbs libibverbs-devel rdma-core rdma-core-devel
 
 # Just add everything as a safe.directory for git since these will be used in multiple places with git
 RUN git config --global --add safe.directory '*'
 RUN ln -s /opt/rh/gcc-toolset-${DEVTOOLSET_VERSION}/root/usr/lib/gcc/x86_64-redhat-linux/${DEVTOOLSET_VERSION} /usr/lib/gcc/x86_64-redhat-linux/${DEVTOOLSET_VERSION}
 ENV PATH=/opt/rh/gcc-toolset-${DEVTOOLSET_VERSION}/root/usr/bin:$PATH
 
-# cmake-3.18.4
+# cmake-3.31.0
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
-ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
+RUN wget -q https://cmake.org/files/v3.31/cmake-3.31.0-linux-x86_64.tar.gz && tar -zxvf cmake-3.31.0-linux-x86_64.tar.gz && rm cmake-3.31.0-linux-x86_64.tar.gz
+ENV PATH=/home/cmake-3.31.0-linux-x86_64/bin:$PATH
 
 # go-1.15.12
 WORKDIR /home

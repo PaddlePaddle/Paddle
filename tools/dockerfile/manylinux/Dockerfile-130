@@ -39,6 +39,7 @@ RUN apt-get update --allow-unauthenticated && \
       python${PYTHON_VERSION}-dev \
       python3-pip && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
+    pip install --upgrade pip && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home
@@ -69,3 +70,16 @@ COPY python/requirements.txt /root
 RUN pip install -r /root/requirements.txt && \
     pip install -r /root/compile_requirements.txt && \
     rm -rf /root/compile_requirements.txt /root/requirements.txt
+
+RUN cd /usr/local && wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar && tar xf gdrcopy.tar && rm -rf gdrcopy.tar
+ENV GDRCOPY_HOME=/usr/local/gdrcopy
+
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:ubuntu-toolchain-r/test && \
+    apt-get update && \
+    apt-get install -y gcc-13 g++-13 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*

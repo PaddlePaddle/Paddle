@@ -300,7 +300,7 @@ function install_130 {
     # install CUDA 13.0.1 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/13.0.1/local_installers/cuda_13.0.1_580.82.07_linux.run
     chmod +x cuda_13.0.1_580.82.07_linux.run
-    ./cuda_13.0.1_580.82.07_linux.run --toolkit --driver --silent --kernel-source-path=/usr/src/kernels/4.18.0-553.75.1.el8_10.x86_64
+    ./cuda_13.0.1_580.82.07_linux.run --toolkit --driver --silent --kernel-source-path=/usr/src/kernels/4.18.0-553.76.1.el8_10.x86_64
     rm -f cuda_13.0.1_580.82.07_linux.run
     rm -f /usr/local/cuda && ln -s /usr/local/cuda-13.0 /usr/local/cuda
     rm -rf /usr/bin/nvidia-smi
