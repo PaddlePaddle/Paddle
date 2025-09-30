@@ -14,4 +14,9 @@ if(WITH_GPU OR WITH_ROCM)
     common
     lod_tensor
     graph_viz_pass)
+
+  # Set timeout for test_code_generator
+  if(WITH_TESTING AND TEST test_code_generator)
+    set_tests_properties(test_code_generator PROPERTIES TIMEOUT 120)
+  endif()
 endif()
