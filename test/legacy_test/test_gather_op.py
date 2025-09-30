@@ -102,6 +102,29 @@ class TestGatherOpFP16(TestGatherOp):
 
 
 @unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "only support compiled with CUDA.",
+)
+class TestGatherGPUCPUConsistency(unittest.TestCase):
+    def test_gpu_cpu_consistency(self):
+        with paddle.base.dygraph.guard():
+            np.random.seed(42)
+            x = np.random.rand(1000, 128).astype("float32")
+            index = np.random.randint(0, 1000, size=(100,))
+            cpu_out = paddle.gather(
+                paddle.to_tensor(x, place=paddle.CPUPlace()),
+                paddle.to_tensor(index),
+            )
+            gpu_out = paddle.gather(
+                paddle.to_tensor(x, place=paddle.CUDAPlace(0)),
+                paddle.to_tensor(index),
+            )
+            np.testing.assert_allclose(
+                cpu_out.numpy(), gpu_out.numpy(), rtol=1e-6
+            )
+
+
+@unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
     or core.cudnn_version() < 8100
     or paddle.device.cuda.get_device_capability()[0] < 8,
@@ -749,39 +772,36 @@ class API_TestGather(unittest.TestCase):
 
 class API_TestDygraphGather(unittest.TestCase):
     def test_out1(self):
-        paddle.disable_static()
-        input_1 = np.array([[1, 2], [3, 4], [5, 6]])
-        index_1 = np.array([1, 2])
-        input = paddle.to_tensor(input_1)
-        index = paddle.to_tensor(index_1)
-        output = paddle.gather(input, index)
-        output_np = output.numpy()
-        expected_output = np.array([[3, 4], [5, 6]])
-        np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard():
+            input_1 = np.array([[1, 2], [3, 4], [5, 6]])
+            index_1 = np.array([1, 2])
+            input = paddle.to_tensor(input_1)
+            index = paddle.to_tensor(index_1)
+            output = paddle.gather(input, index)
+            output_np = output.numpy()
+            expected_output = np.array([[3, 4], [5, 6]])
+            np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
 
     def test_out12(self):
-        paddle.disable_static()
-        input_1 = np.array([[1, 2], [3, 4], [5, 6]])
-        index_1 = np.array([1, 2])
-        x = paddle.to_tensor(input_1)
-        index = paddle.to_tensor(index_1)
-        output = paddle.gather(x, index, axis=0)
-        output_np = output.numpy()
-        expected_output = gather_numpy(input_1, index_1, axis=0)
-        np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard():
+            input_1 = np.array([[1, 2], [3, 4], [5, 6]])
+            index_1 = np.array([1, 2])
+            x = paddle.to_tensor(input_1)
+            index = paddle.to_tensor(index_1)
+            output = paddle.gather(x, index, axis=0)
+            output_np = output.numpy()
+            expected_output = gather_numpy(input_1, index_1, axis=0)
+            np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
 
     def test_zero_index(self):
-        paddle.disable_static()
-        x = paddle.to_tensor([[1, 2], [3, 4]])
-        index = paddle.to_tensor(np.array([]).astype('int64'))
-        for axis in range(len(x.shape)):
-            out = paddle.gather(x, index, axis)
-            expected_shape = list(x.shape)
-            expected_shape[axis] = 0
-            self.assertEqual(list(out.shape), expected_shape)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard():
+            x = paddle.to_tensor([[1, 2], [3, 4]])
+            index = paddle.to_tensor(np.array([]).astype('int64'))
+            for axis in range(len(x.shape)):
+                out = paddle.gather(x, index, axis)
+                expected_shape = list(x.shape)
+                expected_shape[axis] = 0
+                self.assertEqual(list(out.shape), expected_shape)
 
     def test_large_data(self):
         if not (paddle.is_compiled_with_cuda() or is_custom_device()):
