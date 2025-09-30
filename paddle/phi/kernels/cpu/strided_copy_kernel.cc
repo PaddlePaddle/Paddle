@@ -62,7 +62,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                        int64_t offset,
                        DenseTensor* out) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  // not support Windows
+// not support Windows
+#if !defined(_WIN32)
   if (FLAGS_use_stride_kernel && FLAGS_use_stride_compute_kernel &&
       input.place().GetType() == phi::AllocationType::CPU &&
       out->place().GetType() == phi::AllocationType::GPU &&
@@ -265,6 +266,7 @@ void StridedCopyKernel(const Context& dev_ctx,
 
     return;
   }
+#endif
 #endif
 
   phi::DenseTensorMeta meta = input.meta();
