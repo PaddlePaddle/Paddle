@@ -48,19 +48,16 @@ class TestIsFloatPoint_Compatibility(unittest.TestCase):
             )
 
     def test_dygraph_Compatibility(self):
-        paddle.disable_static()
+        with paddle.base.dygraph.guard():
+            for case in self.data:
+                np_data = case['np_data']
+                tensor = paddle.to_tensor(np_data)
 
-        for case in self.data:
-            np_data = case['np_data']
-            tensor = paddle.to_tensor(np_data)
+                result_x = paddle.is_floating_point(x=tensor)
+                result_input = paddle.is_floating_point(tensor)
 
-            result_x = paddle.is_floating_point(x=tensor)
-            result_input = paddle.is_floating_point(input=tensor)
-
-            np.testing.assert_array_equal(result_x, result_input)
-            np.testing.assert_array_equal(result_x, case['expected'])
-
-        paddle.enable_static()
+                np.testing.assert_array_equal(result_x, result_input)
+                np.testing.assert_array_equal(result_x, case['expected'])
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -69,7 +66,7 @@ class TestIsFloatPoint_Compatibility(unittest.TestCase):
             tensor = paddle.to_tensor(np_data)
 
             result_x = paddle.is_floating_point(x=tensor)
-            result_input = paddle.is_floating_point(input=tensor)
+            result_input = paddle.is_floating_point(tensor)
 
             np.testing.assert_array_equal(result_x, result_input)
             np.testing.assert_array_equal(result_x, case['expected'])
