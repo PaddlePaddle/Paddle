@@ -67,8 +67,6 @@ __global__ __launch_bounds__(
                             int* atomic_recv_tokens_per_rdma_expert,
                             int* atomic_nvl_sender_multi_sms,
                             int* atomic_counter_per_qp,
-                            int* next_clean,
-                            int num_next_clean_int,  // Not used temporarily
                             int num_tokens,
                             int num_max_dispatch_tokens_per_rank,
                             int rank,
@@ -595,10 +593,12 @@ __global__ __launch_bounds__(
   if (responsible_expert_idx < kNumExperts) {
     const auto src_rank = responsible_expert_idx / kNumLocalExperts;
     const auto local_expert_idx = responsible_expert_idx % kNumLocalExperts;
+    
+    // local_expert_idx receiveom src_rank!
+    const int recv_offset_this_warpgroup = local_expert_idx * kNumRanks + src_rank;
+
     const auto nvl_recv_x_uint8 =
-        reinterpret_cast<uint8_t*>(nvl_recv_x[nvl_rank]) +
-        (local_expert_idx * kNumRanks + src_rank) *
-            num_max_dispatch_tokens_per_rank *
+        reinterpret_cast<uint8_t*>(nvl_recv_x[nvl_rank]) + recv_offset_this_warpgroup * num_max_dispatch_tokens_per_rank *
             num_bytes_per_msg_rdma_revecier_and_nvl_sender;
     const auto recv_x_int4 = reinterpret_cast<int4*>(packed_recv_x) +
                              local_expert_idx * kNumRanks *
@@ -627,8 +627,7 @@ __global__ __launch_bounds__(
       while ((num_recv_tokens = ld_acquire_sys_global(
                   reinterpret_cast<int*>(
                       reinterpret_cast<uint8_t*>(nvl_recv_x[nvl_rank]) +
-                      NVL_BUFFER_X_BYTES) +
-                  local_expert_idx * kNumRanks + src_rank)) == 0) {
+                      NVL_BUFFER_X_BYTES) + recv_offset_this_warpgroup)) == 0) {
         if (M2N_LL_HANG_DEBUG) {
           if (thread_id == 0) {
             wait_recv_cost = clock64() - start_time;
@@ -649,8 +648,7 @@ __global__ __launch_bounds__(
       // reset nvl_recv_token_num
       *(reinterpret_cast<int*>(
             reinterpret_cast<uint8_t*>(nvl_recv_x[nvl_rank]) +
-            NVL_BUFFER_X_BYTES) +
-        local_expert_idx * kNumRanks + src_rank) = 0;
+            NVL_BUFFER_X_BYTES) + recv_offset_this_warpgroup) = 0;
     }
     asm volatile("bar.sync %0, %1;" ::"r"(warp_group_id + 2),
                  "r"(kNumWarpsPerGroup * 32));
@@ -856,8 +854,6 @@ void dispatch(void* packed_recv_x,
                                   atomic_recv_tokens_per_rdma_expert,
                                   atomic_nvl_sender_multi_sms,
                                   atomic_counter_per_qp,
-                                  next_clean,
-                                  num_next_clean_int,
                                   num_tokens,
                                   num_max_dispatch_tokens_per_rank,
                                   rank,
@@ -893,8 +889,6 @@ __global__ __launch_bounds__(
                            const int* src_info,
                            const int64_t* layout_range,
                            const bool* rdma_send_flags,
-                           int* next_clean,
-                           int num_next_clean_int,  // Not used temporarily
                            int* atomic_clean_flag,
                            int* atomic_nvl_sender_multi_sms,
                            int num_combined_tokens,
@@ -994,10 +988,16 @@ __global__ __launch_bounds__(
   
   /* NVL Sender */
   if (responsible_expert_idx < num_experts) {
+    // we will send local_expert_idx partial result to dst_rank!
+    // first 
+    // we need issue them to dst_nvl_rank through nvlink!
+    // then rdma to dst_rdma_rank / dst_rank!
+
     const auto dst_rank = responsible_expert_idx / num_local_experts;
     const auto dst_rdma_rank = dst_rank / NUM_MAX_NVL_PEERS;
     const auto dst_nvl_rank = dst_rank % NUM_MAX_NVL_PEERS;
     const auto local_expert_idx = responsible_expert_idx % num_local_experts;
+    // global_rdma_expert_idx means expert_ids in range of one machine!
     const auto global_rdma_expert_idx =
         nvl_rank * num_local_experts + local_expert_idx;
     const auto local_x = reinterpret_cast<const int4*>(x) +
@@ -1015,7 +1015,7 @@ __global__ __launch_bounds__(
     // Unpack layout
     int offset, num_tokens_to_send;
     unpack2(layout, num_tokens_to_send, offset);
-    
+
     // Attention 卡上当然要是鸡蛋啦！
     // if (rank >= 0 && rank < 16) EP_DEVICE_ASSERT(num_tokens_to_send == 0);
 
@@ -1468,8 +1468,6 @@ void combine(void* combined_x,
                                   src_info,
                                   layout_range,
                                   rdma_send_flags,
-                                  next_clean,
-                                  num_next_clean_int,
                                   atomic_clean_flag,
                                   atomic_nvl_sender_multi_sms,
                                   num_combined_tokens,
