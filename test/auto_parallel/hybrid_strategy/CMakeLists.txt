@@ -82,6 +82,14 @@ if((WITH_GPU) AND (LINUX))
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
+    test_semi_auto_parallel_no_tensor_inputs MODULES
+    test_semi_auto_parallel_no_tensor_inputs ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_semi_auto_parallel_no_tensor_inputs
+                       PROPERTIES TIMEOUT "50" LABELS "RUN_TYPE=HYBRID")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
     test_semi_auto_parallel_llama_model_vpp MODULES
     test_semi_auto_parallel_llama_model_vpp ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
