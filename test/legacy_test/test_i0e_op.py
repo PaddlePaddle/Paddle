@@ -48,7 +48,6 @@ class TestI0eAPI(unittest.TestCase):
 
     def test_api_static(self):
         def run(place):
-            paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
                     name="x", shape=self.x.shape, dtype=self.DTYPE
@@ -61,7 +60,6 @@ class TestI0eAPI(unittest.TestCase):
                     fetch_list=[y],
                 )
                 np.testing.assert_allclose(self.out_ref, res[0], rtol=1e-5)
-            paddle.disable_static()
 
         for place in self.place:
             run(place)
