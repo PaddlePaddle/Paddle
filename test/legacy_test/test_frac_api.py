@@ -54,12 +54,11 @@ class TestFracAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_api_eager(self):
-        paddle.disable_static(self.place)
-        x_tensor = paddle.to_tensor(self.x_np)
-        out = paddle.frac(x_tensor)
-        out_ref = ref_frac(self.x_np)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard(self.place):
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = paddle.frac(x_tensor)
+            out_ref = ref_frac(self.x_np)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
 
 class TestFracInt32(TestFracAPI):
