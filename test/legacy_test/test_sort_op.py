@@ -97,7 +97,9 @@ class TestSortDygraph(unittest.TestCase):
         with paddle.base.dygraph.guard(self.place):
             var_x = paddle.to_tensor(self.input_data)
             out = paddle.sort(var_x)
-            self.assertEqual((np.sort(self.input_data) == out.numpy()).all(), True)
+            self.assertEqual(
+                (np.sort(self.input_data) == out.numpy()).all(), True
+            )
 
     def test_api_1(self):
         with paddle.base.dygraph.guard(self.place):
