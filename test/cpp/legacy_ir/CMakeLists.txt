@@ -1,7 +1,4 @@
 # Legacy IR Pass Tests
-# Migrated from paddle/fluid/framework/ir/CMakeLists.txt
-
-# Basic tests
 paddle_test(node_test SRCS node_test.cc DEPS node)
 
 paddle_test(
