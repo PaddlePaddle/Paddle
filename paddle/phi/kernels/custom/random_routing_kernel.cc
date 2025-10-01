@@ -58,5 +58,5 @@ PD_REGISTER_KERNEL(random_routing,
                    phi::RandomRoutingKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

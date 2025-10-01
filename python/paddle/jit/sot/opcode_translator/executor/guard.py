@@ -224,9 +224,9 @@ def check_guard(
     fn: Callable[[CheckGuardInputT], list[StringifiedExpression]],
 ) -> Callable[[CheckGuardInputT], list[StringifiedExpression]]:
     def wrapper(self: CheckGuardInputT) -> list[StringifiedExpression]:
-        assert (
-            self.tracker.is_traceable()
-        ), "Cannot make guard from a non-tracable guard variable."
+        assert self.tracker.is_traceable(), (
+            "Cannot make guard from a non-tracable guard variable."
+        )
 
         def guard_log():
             frame_value_tracer = self.tracker.trace_value_from_frame()
@@ -246,9 +246,9 @@ def check_faster_guard(
     def wrapper(
         self: CheckGuardInputT,
     ) -> list[paddle.framework.core.GuardNodeBase]:
-        assert (
-            self.tracker.is_traceable()
-        ), "Cannot make guard from a non-tracable guard variable."
+        assert self.tracker.is_traceable(), (
+            "Cannot make guard from a non-tracable guard variable."
+        )
 
         def guard_log():
             frame_value_tracer = self.tracker.trace_value_from_frame()

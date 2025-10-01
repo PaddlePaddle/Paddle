@@ -101,7 +101,7 @@ void BincountCUDAInner(const Context& dev_ctx,
   if (input_data == nullptr) {
     phi::DDim out_dim{minlength};
     output->Resize(out_dim);
-    phi::Full<InputT, Context>(
+    phi::Full<int64_t, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
   }

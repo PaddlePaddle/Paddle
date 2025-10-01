@@ -102,9 +102,9 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         return self.return_value
 
     def RETURN_VALUE(self, instr: Instruction):
-        assert (
-            len(self.stack) == 1
-        ), f"Stack must have one element, but get {len(self.stack)} elements."
+        assert len(self.stack) == 1, (
+            f"Stack must have one element, but get {len(self.stack)} elements."
+        )
         self.return_value = self.stack.pop()
         return Stop(state="Return")
 
@@ -217,9 +217,9 @@ class OpcodeInlineGeneratorExecutor(OpcodeExecutorBase):
         return inline_for_iter_impl(self, instr)
 
     def RETURN_VALUE(self, instr: Instruction):
-        assert (
-            len(self.stack) == 1
-        ), f"Stack must have one element, but get {len(self.stack)} elements."
+        assert len(self.stack) == 1, (
+            f"Stack must have one element, but get {len(self.stack)} elements."
+        )
         self.return_value = self.stack.pop()
         return Stop(state="Return")
 

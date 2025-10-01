@@ -27,7 +27,6 @@ namespace cub = hipcub;
 
 #include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
@@ -39,7 +38,7 @@ struct CUDATypeTraits;
 
 template <>
 struct CUDATypeTraits<half> {
-  typedef phi::dtype::float16 TYPE;
+  typedef phi::float16 TYPE;
 };
 
 template <>
@@ -204,8 +203,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(
     const int head_num,
     const int seq_len,
     const phi::funcs::warp_mask_t mask) {
-#if defined(PADDLE_WITH_CUDA) && \
-    (CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) && CUDA_VERSION >= 10000)
+#if defined(PADDLE_WITH_CUDA) && CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int qk_offset = blockIdx.x * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
@@ -284,10 +282,8 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(
     const int head_num,
     const int seq_len,
     const phi::funcs::warp_mask_t mask) {
-// operator "+" of half only suppotted after cuda version 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#if defined(PADDLE_WITH_CUDA) && \
-    (CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) && CUDA_VERSION >= 10000)
+#if defined(PADDLE_WITH_CUDA) && CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
 
   int qk_offset = blockIdx.x * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
@@ -733,12 +729,12 @@ void MultiheadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
                        beta);
 }
 
-template class MultiheadGPUComputeFunctor<float>;
+template class PADDLE_API MultiheadGPUComputeFunctor<float>;
 
 // device function 'operator()' is not supported until cuda 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
-template class MultiheadGPUComputeFunctor<half>;
+#if defined(PADDLE_WITH_CUDA)
+template class PADDLE_API MultiheadGPUComputeFunctor<half>;
 #endif
 
 }  // namespace funcs

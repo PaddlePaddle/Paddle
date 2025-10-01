@@ -16,14 +16,13 @@
 
 #include <vector>
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 #define SWITCH_RESHAPE_DIMS(n)                                                \
   case n: {                                                                   \
     Eigen::DSizes<Eigen::DenseIndex, n> reshape_dims;                         \
@@ -42,17 +41,17 @@
       reduce_dims[i] = reduce_dims_vec[i];                \
     }                                                     \
     switch (reshape_size) {
-#define LOWER_SWITCH_REDUCE_DIMS                             \
-  default: {                                                 \
-    PADDLE_THROW(errors::InvalidArgument(                    \
-        "Detected reshape size: %d out of range"             \
-        "Minimum value should be larger than reduce size %d" \
-        "While maximum supported is: 5",                     \
-        reshape_size,                                        \
-        reduce_size));                                       \
-  }                                                          \
-    }                                                        \
-    break;                                                   \
+#define LOWER_SWITCH_REDUCE_DIMS                               \
+  default: {                                                   \
+    PADDLE_THROW(errors::InvalidArgument(                      \
+        "Detected reshape size: %d out of range. "             \
+        "Minimum value should be larger than reduce size %d. " \
+        "While maximum supported is: 5",                       \
+        reshape_size,                                          \
+        reduce_size));                                         \
+  }                                                            \
+    }                                                          \
+    break;                                                     \
     }
 
 namespace phi {
@@ -68,6 +67,14 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
   auto& out_tensors = dx;
 
   size_t num_ins = in_tensors.size();
+  if (dout[0] && dout[0]->numel() == 0) {
+    for (auto dx : out_tensors) {
+      if (dx)
+        Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
+    return;
+  }
 
   PADDLE_ENFORCE_GT(
       num_ins,
@@ -181,7 +188,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
 
         default: {
           PADDLE_THROW(
-              errors::InvalidArgument("Detected reduce size: %d out of range"
+              errors::InvalidArgument("Detected reduce size: %d out of range. "
                                       "While maximum supported is: 5",
                                       reduce_size));
         }
@@ -200,6 +207,6 @@ PD_REGISTER_KERNEL(broadcast_tensors_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}

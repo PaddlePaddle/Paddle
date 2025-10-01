@@ -23,5 +23,5 @@ PD_REGISTER_KERNEL(standard_gamma,
                    phi::StandardGammaKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

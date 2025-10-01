@@ -18,6 +18,9 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    is_custom_device,
 )
 from utils import dygraph_guard
 
@@ -128,8 +131,8 @@ class TestCase2(TestASGDOp):
         self.ys = self.ys.astype("float16")
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
 
 class TestCase3(TestASGDOp):
@@ -147,8 +150,8 @@ class TestCase3(TestASGDOp):
         self.params_out = convert_float_to_uint16(self.params_out)
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
 
 class TestCase4(TestASGDOp):
@@ -243,7 +246,7 @@ class TestASGDMultiPrecision(unittest.TestCase):
     def dygraph_asgd_mp(self, mp):
         paddle.disable_static()
         paddle.seed(10)
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.ASGD(
@@ -274,7 +277,7 @@ class TestASGDMultiPrecision(unittest.TestCase):
         with paddle.pir_utils.OldIrGuard():
             paddle.seed(10)
             np.random.seed(10)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             optimizer = paddle.optimizer.ASGD(batch_num=2, multi_precision=mp)
@@ -303,7 +306,7 @@ class TestASGDMultiPrecision(unittest.TestCase):
 
             if mp:
                 optimizer.amp_init(
-                    place=paddle.CUDAPlace(0),
+                    place=get_device_place(),
                     scope=paddle.static.global_scope(),
                 )
                 x = np.random.random(size=(2, 2)).astype('float16')
@@ -322,7 +325,7 @@ class TestASGDMultiPrecision(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             paddle.seed(10)
             np.random.seed(10)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -374,7 +377,7 @@ class TestASGDMultiPrecision(unittest.TestCase):
             return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_asgd_mp(mp=True)
@@ -423,7 +426,7 @@ class TestASGDSimple(unittest.TestCase):
             paddle.seed(10)
             np.random.seed(10)
 
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -470,7 +473,7 @@ class TestASGDSimple(unittest.TestCase):
             return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         out1 = self.run_dygraph()
         out2 = self.run_static()
@@ -561,7 +564,7 @@ class TestASGDValidation:
                 optimizer.clear_grad()
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         self.run_validation()
 

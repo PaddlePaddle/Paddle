@@ -97,9 +97,9 @@ class GradientMergeOptimizer:
             )
 
         assert inner_optimizer is not None, "inner optimizer can not be None"
-        assert (
-            isinstance(k_steps, int) and k_steps > 0
-        ), "k_steps should be a positive integer"
+        assert isinstance(k_steps, int) and k_steps > 0, (
+            "k_steps should be a positive integer"
+        )
 
         self.inner_optimizer = inner_optimizer
         self.k_steps = k_steps
@@ -122,12 +122,12 @@ class GradientMergeOptimizer:
         callbacks=None,
     ):
         assert isinstance(loss, Variable), "The loss should be an Variable."
-        assert (
-            parameter_list is None
-        ), "The parameter_list should be None when using GradientMergeOptimizer"
-        assert (
-            no_grad_set is None
-        ), "The no_grad_set should be None when using GradientMergeOptimizer"
+        assert parameter_list is None, (
+            "The parameter_list should be None when using GradientMergeOptimizer"
+        )
+        assert no_grad_set is None, (
+            "The no_grad_set should be None when using GradientMergeOptimizer"
+        )
 
         params_grads = self.inner_optimizer.backward(
             loss, startup_program=startup_program
@@ -152,18 +152,18 @@ class GradientMergeOptimizer:
     def _remove_op_role_var(self, param, grad):
         op_maker = core.op_proto_and_checker_maker
         op = grad.op
-        assert self._is_the_backward_op(
-            op
-        ), f'grad.op={op} is not the backward op which produces the grad={grad.name}'
+        assert self._is_the_backward_op(op), (
+            f'grad.op={op} is not the backward op which produces the grad={grad.name}'
+        )
 
         block = grad.block
         var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
-        assert (
-            param.name in var_attr
-        ), f'when using GradientMergeOptimizer, param={param.name} must be in var_attr={var_attr}'
-        assert (
-            grad.name in var_attr
-        ), f'when using GradientMergeOptimizer, grad={param.name} must be in var_attr={var_attr}'
+        assert param.name in var_attr, (
+            f'when using GradientMergeOptimizer, param={param.name} must be in var_attr={var_attr}'
+        )
+        assert grad.name in var_attr, (
+            f'when using GradientMergeOptimizer, grad={param.name} must be in var_attr={var_attr}'
+        )
 
         # remove (param, grad) from op_role_var
         var_attr.remove(param.name)
@@ -252,9 +252,9 @@ class GradientMergeOptimizer:
         # TODO(mapingshuo) support sparse embedding
         # step1: remove grad.op's op_role_var
         for param, grad in params_grads:
-            assert (
-                param.type != core.VarDesc.VarType.SELECTED_ROWS
-            ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+            assert param.type != core.VarDesc.VarType.SELECTED_ROWS, (
+                "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+            )
 
             self._remove_op_role_var(param, grad)
 

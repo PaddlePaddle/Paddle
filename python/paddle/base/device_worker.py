@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Definition of device workers."""
+
 import sys
 
 __all__ = []
@@ -626,9 +627,10 @@ class Section(DeviceWorker):
         # then runs Backward phase for all microbatches.
         # 1F1B scheduler, which runs forward phase and backward phase alternatively
         # after startup phase.
-        assert schedule_mode_str in ["F-then-B", "1F1B"], (
-            "The schedule mode " "for pipeline must be one of F-then-B or 1F1B"
-        )
+        assert schedule_mode_str in [
+            "F-then-B",
+            "1F1B",
+        ], "The schedule mode for pipeline must be one of F-then-B or 1F1B"
         schedule_mode = 0 if schedule_mode_str == "F-then-B" else 1
         section_param.schedule_mode = schedule_mode
         cfg = section_param.section_config

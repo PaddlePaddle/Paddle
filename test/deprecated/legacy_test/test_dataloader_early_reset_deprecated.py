@@ -25,7 +25,7 @@ paddle.enable_static()
 def infinite_reader():
     num = 0
     while True:
-        yield (np.ones([8, 32]) * num).astype('float32'),
+        yield ((np.ones([8, 32]) * num).astype('float32'),)
         num += 1
 
 

@@ -218,15 +218,15 @@ class RunnableProgram:
         forward_range=None,
         backward_range=None,
     ):
-        assert isinstance(
-            in_out_values, tuple
-        ), "in_out_values must be tuple with len == 3"
-        assert (
-            len(in_out_values) == 3
-        ), "in_out_values must be tuple with len == 3"
-        assert isinstance(
-            in_out_values[0], list
-        ), "in_out_values must be tuple with len == 3"
+        assert isinstance(in_out_values, tuple), (
+            "in_out_values must be tuple with len == 3"
+        )
+        assert len(in_out_values) == 3, (
+            "in_out_values must be tuple with len == 3"
+        )
+        assert isinstance(in_out_values[0], list), (
+            "in_out_values must be tuple with len == 3"
+        )
         self.program = program
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
@@ -310,15 +310,18 @@ class RunnableProgram:
         )
 
     def split_forward_backward(self):
-        assert (
-            self.has_splited is False
-        ), "Please ensure only split once! don't call split_forward_backward manually."
+        assert self.has_splited is False, (
+            "Please ensure only split once! don't call split_forward_backward manually."
+        )
         self.has_splited = True
         self.update_op_range()
-        [
-            fwd_prog,
-            bwd_prog,
-        ], prog_attr = paddle.base.libpaddle.pir.split_program(
+        (
+            [
+                fwd_prog,
+                bwd_prog,
+            ],
+            prog_attr,
+        ) = paddle.base.libpaddle.pir.split_program(
             self.program,
             self.x_values,
             self.param_values,
@@ -403,9 +406,9 @@ class RunnableProgram:
 
     @cached_property  # shouldn't changed when call this once.
     def program_attr(self):
-        assert (
-            self.finish_pass is False
-        ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
+        assert self.finish_pass is False, (
+            "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
+        )
         # can't apply pass after call this function.
         self.finish_pass = True
         fwd_map = RunnableProgram._get_name_value_map_from_program(
@@ -442,9 +445,9 @@ class RunnableProgram:
             program_attr[f"{k}_names"] = ns
 
         # Restore stop_gradient for output values
-        assert len(program_attr["fo_values"]) == len(
-            self.out_stop_gradients
-        ), "Output values and stop gradients length mismatch"
+        assert len(program_attr["fo_values"]) == len(self.out_stop_gradients), (
+            "Output values and stop gradients length mismatch"
+        )
         for v, stop_gradient in zip(
             program_attr["fo_values"], self.out_stop_gradients
         ):
@@ -471,9 +474,9 @@ class RunnableProgram:
         # Get all values again because some values has been erased.
         for value in RunnableProgram._get_program_all_values(program):
             if value.has_name:
-                assert (
-                    value._has_only_one_name()
-                ), f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
+                assert value._has_only_one_name(), (
+                    f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
+                )
         return rename_mapping
 
     @staticmethod
@@ -622,7 +625,10 @@ class ValuePreservePass:
         )
         names = paddle.utils.map_structure(
             lambda value: ValuePreservePass.attach_preserved_name(
-                value, program, value2name, name_generator  # noqa: F821
+                value,
+                program,
+                value2name,  # noqa: F821
+                name_generator,
             ),
             self.values,
         )
@@ -745,14 +751,16 @@ class PartialProgramLayer:
         self._grad_var_names = {}
 
         self._compile_time_counter = TimeCounter()
+        self._prog_attrs_map_cache = {}
 
     @staticmethod
     def run_impl(partial_program_layer, inputs, parameters, attrs):
+        prog_attrs, cuda_graph_attrs = attrs
         scope_cache_key = paddle.base.core.calc_scope_cache_key(
-            attrs["program_id"],
+            paddle.base.core.get_program_id_from_attrs(prog_attrs),
             inputs,
-            attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
-            attrs["cuda_graph_dispatch_key"],
+            cuda_graph_attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
+            cuda_graph_attrs["cuda_graph_dispatch_key"],
         )
         return _C_ops.run_program(
             PartialProgramLayer._valid_vars(inputs),
@@ -761,7 +769,8 @@ class PartialProgramLayer:
                 cache_key=scope_cache_key,
                 use_scope_cache=True,
             ),
-            attrs,
+            prog_attrs,
+            cuda_graph_attrs,
         )
 
     def __call__(self, inputs):
@@ -1192,15 +1201,24 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        return {
-            'forward_program': self.program.forward_program,
-            'backward_program': self.program.backward_program,
-            'is_test': not self.training,
-            'program_id': self.program_id,
-            'in_sot_mode': in_sot_mode,
+        prog_attr_key = (self.program_id, self.training, in_sot_mode)
+        if prog_attr_key not in self._prog_attrs_map_cache:
+            prog_attrs = {
+                'forward_program': self.program.forward_program,
+                'backward_program': self.program.backward_program,
+                'is_test': not self.training,
+                'program_id': self.program_id,
+                'in_sot_mode': in_sot_mode,
+            } | self.program.program_attr
+            self._prog_attrs_map_cache[prog_attr_key] = (
+                paddle.base.core.construct_program_attribute_map(prog_attrs)
+            )
+
+        cuda_graph_attrs = {
             'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
             'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
-        } | self.program.program_attr
+        }
+        return self._prog_attrs_map_cache[prog_attr_key], cuda_graph_attrs
 
     def _prepare_inputs(self, inputs):
         """

@@ -29,7 +29,7 @@
 
 namespace phi {
 
-TEST_API std::string VarDataTypeToString(
+PADDLE_API std::string VarDataTypeToString(
     const paddle::framework::proto::VarType::Type type);
 TEST_API extern size_t SizeOfType(paddle::framework::proto::VarType::Type type);
 
@@ -281,8 +281,7 @@ extern inline paddle::framework::proto::VarType::Type ToRealType(
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unknown complex value data type (%s), now only support complex64 "
-          "and "
-          "complex128.",
+          "and complex128.",
           VarDataTypeToString(t)));
   }
 }

@@ -173,7 +173,9 @@ def fused_swiglu_weighted_bwd(
         return _C_ops.fused_swiglu_weighted_bwd(o1, do2_s, unzipped_probs)
 
 
-def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
+def fused_transpose_split_quant(
+    x, input_scales, tokens_per_expert, pow_2_scales=False
+):
     """
     Applies fused transpose, split, and quantization operation for Mixture of Experts (MoE) models.
 
@@ -215,7 +217,7 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
             >>> x = paddle.randn([384, 512], dtype='bfloat16')
             >>> x = paddle.clip(x, min=-50, max=50)
             >>> tokens_per_expert = [128, 128, 128]
-            >>> outs, scales = F.fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=True)
+            >>> outs, scales = F.fused_transpose_split_quant(x,None, tokens_per_expert, pow_2_scales=True)
             >>> print(outs[0].shape)
             [512, 128]
             >>> print(scales[0].shape)
@@ -228,14 +230,13 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
 
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_transpose_split_quant(
-            x, tokens_per_expert, pow_2_scales
+            x, input_scales, tokens_per_expert, pow_2_scales
         )
 
 
 def fused_transpose_wlch_split_quant(
     x: Tensor, tokens_per_expert: Sequence[int], pow_2_scales: bool = False
 ) -> tuple[list[Tensor], list[Tensor]]:
-
     tokens_per_expert = [int(t) for t in tokens_per_expert]
 
     if in_dynamic_or_pir_mode():
@@ -321,7 +322,6 @@ def fp8_gemm_blockwise(
     is_a_1d_scaled: bool = True,
     is_b_1d_scaled: bool = True,
 ):
-
     assert bias is None, "Bias is not supported"
 
     if bias is None:

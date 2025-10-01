@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
-from paddle import base
-from paddle.base import core
 
 
 class TestTakeAPI(unittest.TestCase):
@@ -43,11 +42,7 @@ class TestTakeAPI(unittest.TestCase):
         self.set_mode()
         self.set_dtype()
         self.set_input()
-        self.place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_graph(self):
         paddle.enable_static()
@@ -172,11 +167,7 @@ class TestTakeModeRaisePos(unittest.TestCase):
         self.set_mode()
         self.set_dtype()
         self.set_input()
-        self.place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_index_error(self):
         """When the index is out of range,
@@ -224,11 +215,7 @@ class TestTakeModeRaiseNeg(TestTakeModeRaisePos):
         self.set_mode()
         self.set_dtype()
         self.set_input()
-        self.place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
 
 
 class TestTakeModeWrap(TestTakeAPI):
@@ -291,11 +278,7 @@ class TestTakeAPI_ZeroSize(unittest.TestCase):
         self.set_mode()
         self.set_dtype()
         self.set_input()
-        self.place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_dygraph(self):
         paddle.disable_static(self.place)

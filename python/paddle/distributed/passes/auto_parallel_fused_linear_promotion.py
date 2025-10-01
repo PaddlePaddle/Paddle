@@ -353,9 +353,9 @@ class FusedLinearPromotionPass(PassBase):
                     )
             else:
                 pass
-        assert len(forward_segments) >= len(
-            backward_segments
-        ), "The number of forward segments should be not shorter than the number of backward segments."
+        assert len(forward_segments) >= len(backward_segments), (
+            "The number of forward segments should be not shorter than the number of backward segments."
+        )
         logger.info(f"forward_segments: {forward_segments}")
         logger.info(f"backward_segments: {backward_segments}")
         return forward_segments, backward_segments
@@ -409,21 +409,21 @@ class FusedLinearPromotionPass(PassBase):
             )
             origin_matmul_output_name = origin_matmul_op.output_arg_names[0]
             origin_comm_input_name = origin_comm_op.input_arg_names[0]
-            assert (
-                origin_matmul_output_name == origin_comm_input_name
-            ), f"The 0th op output name {origin_matmul_output_name} is not equal to the 1st op input name {origin_comm_input_name}"
+            assert origin_matmul_output_name == origin_comm_input_name, (
+                f"The 0th op output name {origin_matmul_output_name} is not equal to the 1st op input name {origin_comm_input_name}"
+            )
             origin_comm_output_name = origin_comm_op.output_arg_names[0]
             origin_add_input_names = origin_add_op.input_arg_names
-            assert (
-                origin_comm_output_name == origin_add_input_names[0]
-            ), f"The 1st op output name {origin_comm_output_name} is not equal to the 2nd op input name {origin_add_input_names[0]}"
+            assert origin_comm_output_name == origin_add_input_names[0], (
+                f"The 1st op output name {origin_comm_output_name} is not equal to the 2nd op input name {origin_add_input_names[0]}"
+            )
             #  1.2 get the origin dist_attr
             origin_add_dist_attr = (
                 self._dist_context.get_op_dist_attr_for_program(origin_add_op)
             )
-            assert (
-                origin_add_dist_attr is not None
-            ), f"Origin add op {origin_add_op.type} has no dist attr"
+            assert origin_add_dist_attr is not None, (
+                f"Origin add op {origin_add_op.type} has no dist attr"
+            )
             ref_mesh = origin_add_dist_attr.process_mesh
             in_var_dist_attr = origin_add_dist_attr.get_input_dist_attr(
                 origin_add_op.input_arg_names[0]

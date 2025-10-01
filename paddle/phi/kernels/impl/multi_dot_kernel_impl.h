@@ -111,7 +111,7 @@ inline DenseTensor MatChainMul(const Context& dev_ctx,
 template <typename Context, typename T>
 std::vector<uint64_t> GetOrder(const std::vector<const DenseTensor*>& ins,
                                const std::vector<phi::DDim>& ins_dims) {
-  auto n = ins.size();
+  uint64_t n = ins.size();
   // p: save the ins shape, the ins[i] shape is (p[i], p[i+1])
   std::vector<uint64_t> p(n + 1);
   for (uint64_t i = 0; i < n; i++) {
@@ -122,7 +122,7 @@ std::vector<uint64_t> GetOrder(const std::vector<const DenseTensor*>& ins,
   // m[i, j]: save the lowest cost for multiplying ins[i...j]
   std::vector<uint64_t> m(n * n, 0);
   // define ins[i...j] means multiplying matrices from ins[i] to ins[j]
-  // order[i, j] = k, this means that ins[i...k] and ins[k...j] fist and then
+  // order[i, j] = k, this means that ins[i...k] and ins[k...j] first and then
   // multiply the resulting matrices is the optimal order for ins[i...j]
   std::vector<uint64_t> order(n * n);
   for (uint64_t l = 1; l < n; l++) {
@@ -329,7 +329,7 @@ void MultiDotGradMatChainOrder(const Context& dev_ctx,
                                std::vector<DenseTensor*>* dx) {
   auto order = GetOrder<Context, T>(ins, ins_dims);
   auto n = ins.size();
-  std::vector<DenseTensor> results(n * n);
+  std::vector<DenseTensor> results(static_cast<int64_t>(n) * n);
   MatChainMul<Context, T>(
       dev_ctx, ins, ins_dims, order, 0, n - 1, true, &results);
   MatChainMulGrad<Context, T>(

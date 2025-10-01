@@ -464,6 +464,8 @@ class MaxPool2dGradFunctor<CPUContext, T> {
 template class MaxPool2dGradFunctor<CPUContext, float>;
 template class MaxPool2dGradFunctor<CPUContext, double>;
 
+template class MaxPool2dGradFunctor<CPUContext, dtype::float16>;
+
 template class Pool2dFunctor<CPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<CPUContext, AvgPool<float>, float>;
 template class Pool2dFunctor<CPUContext, LPPool<float>, float>;
@@ -477,6 +479,24 @@ template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, LPPoolGrad<double>, double>;
 
+template class Pool2dFunctor<phi::CPUContext,
+                             MaxPool<dtype::float16>,
+                             dtype::float16>;
+template class Pool2dFunctor<phi::CPUContext,
+                             AvgPool<dtype::float16>,
+                             dtype::float16>;
+template class Pool2dFunctor<phi::CPUContext,
+                             LPPool<dtype::float16>,
+                             dtype::float16>;
+template class Pool2dGradFunctor<phi::CPUContext,
+                                 MaxPoolGrad<dtype::float16>,
+                                 dtype::float16>;
+template class Pool2dGradFunctor<phi::CPUContext,
+                                 AvgPoolGrad<dtype::float16>,
+                                 dtype::float16>;
+template class Pool2dGradFunctor<phi::CPUContext,
+                                 LPPoolGrad<dtype::float16>,
+                                 dtype::float16>;
 /*
  * Tensors are in NCDHW or NDHWC format.
  * Ksize, strides, paddings are three elements. These three elements represent
@@ -1057,6 +1077,7 @@ class MaxPool3dGradFunctor<CPUContext, T> {
 };
 template class MaxPool3dGradFunctor<CPUContext, float>;
 template class MaxPool3dGradFunctor<CPUContext, double>;
+template class MaxPool3dGradFunctor<CPUContext, dtype::float16>;
 
 template class Pool3dFunctor<CPUContext, MaxPool<float>, float>;
 template class Pool3dFunctor<CPUContext, AvgPool<float>, float>;
@@ -1067,6 +1088,21 @@ template class Pool3dFunctor<CPUContext, AvgPool<double>, double>;
 template class Pool3dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool3dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 
+template class Pool3dFunctor<phi::CPUContext,
+                             MaxPool<dtype::float16>,
+                             dtype::float16>;
+template class Pool3dFunctor<phi::CPUContext,
+                             AvgPool<dtype::float16>,
+                             dtype::float16>;
+template class Pool3dFunctor<phi::CPUContext,
+                             LPPool<dtype::float16>,
+                             dtype::float16>;
+template class Pool3dGradFunctor<phi::CPUContext,
+                                 MaxPoolGrad<dtype::float16>,
+                                 dtype::float16>;
+template class Pool3dGradFunctor<phi::CPUContext,
+                                 AvgPoolGrad<dtype::float16>,
+                                 dtype::float16>;
 /*
  * All tensors are in NCHW format.
  * Ksize, strides, paddings are two elements. These two elements represent

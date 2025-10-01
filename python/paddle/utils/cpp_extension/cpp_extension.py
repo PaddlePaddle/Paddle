@@ -20,11 +20,14 @@ import os
 import copy
 import concurrent
 import re
+import warnings
+import collections
 import setuptools
+import sys
+import paddle
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
-
 
 from .extension_utils import (
     add_compile_flag,
@@ -32,6 +35,7 @@ from .extension_utils import (
     find_ccache_home,
     find_rocm_home,
     normalize_extension_kwargs,
+    define_paddle_extension_name,
 )
 from .extension_utils import (
     is_cuda_file,
@@ -210,17 +214,17 @@ def setup(**attr: Any) -> None:
     if 'name' not in attr:
         raise ValueError(error_msg)
 
-    assert not attr['name'].endswith(
-        'module'
-    ), "Please don't use 'module' as suffix in `name` argument, "
+    assert not attr['name'].endswith('module'), (
+        "Please don't use 'module' as suffix in `name` argument, "
+    )
     "it will be stripped in setuptools.bdist_egg and cause import error."
 
     ext_modules = attr.get('ext_modules', [])
     if not isinstance(ext_modules, list):
         ext_modules = [ext_modules]
-    assert (
-        len(ext_modules) == 1
-    ), f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
+    assert len(ext_modules) == 1, (
+        f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
+    )
     # replace Extension.name with attr['name] to keep consistent with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
@@ -439,6 +443,9 @@ class BuildExtension(build_ext):
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
 
+        for extension in self.extensions:
+            define_paddle_extension_name(extension)
+
         def unix_custom_compile_single_file(
             self, obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
@@ -454,10 +461,10 @@ class BuildExtension(build_ext):
                 # nvcc or hipcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
-                        assert (
-                            ROCM_HOME is not None
-                        ), "Not found ROCM runtime, \
+                        assert ROCM_HOME is not None, (
+                            "Not found ROCM runtime, \
                             please use `export ROCM_PATH= XXX` to specify it."
+                        )
                         if CCACHE_HOME is not None:
                             hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
                             hipcc_cmd = f'{CCACHE_HOME} {hipcc_cmd}'
@@ -482,10 +489,10 @@ class BuildExtension(build_ext):
                         if isinstance(cflags, dict):
                             cflags = cflags['nvcc']
                     else:
-                        assert (
-                            CUDA_HOME is not None
-                        ), "Not found CUDA runtime, \
+                        assert CUDA_HOME is not None, (
+                            "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
+                        )
                         if CCACHE_HOME is not None:
                             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                             nvcc_cmd = f'{CCACHE_HOME} {nvcc_cmd}'
@@ -642,10 +649,10 @@ class BuildExtension(build_ext):
                 src = src_list[0]
                 obj = obj_list[0]
                 if is_cuda_file(src):
-                    assert (
-                        CUDA_HOME is not None
-                    ), "Not found CUDA runtime, \
+                    assert CUDA_HOME is not None, (
+                        "Not found CUDA runtime, \
                         please use `export CUDA_HOME= XXX` to specify it."
+                    )
 
                     nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                     if isinstance(self.cflags, dict):
@@ -760,9 +767,9 @@ class BuildExtension(build_ext):
         split_str = '.'
         name_items = ext_name.split(split_str)
         if self.no_python_abi_suffix:
-            assert (
-                len(name_items) > 2
-            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
+            assert len(name_items) > 2, (
+                f"Expected len(name_items) > 2, but received {len(name_items)}"
+            )
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -1030,12 +1037,12 @@ def load(
         extra_cxx_cflags = []
     if extra_cuda_cflags is None:
         extra_cuda_cflags = []
-    assert isinstance(
-        extra_cxx_cflags, list
-    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
-    assert isinstance(
-        extra_cuda_cflags, list
-    ), f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
+    assert isinstance(extra_cxx_cflags, list), (
+        f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
+    )
+    assert isinstance(extra_cuda_cflags, list), (
+        f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
+    )
 
     log_v(
         "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
@@ -1065,3 +1072,140 @@ def load(
     custom_op_api = _import_module_from_library(name, build_base_dir, verbose)
 
     return custom_op_api
+
+
+def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
+    """
+    Determine CUDA arch flags to use.
+
+    For an arch, say "6.1", the added compile flag will be
+    ``-gencode=arch=compute_61,code=sm_61``.
+    For an added "+PTX", an additional
+    ``-gencode=arch=compute_xx,code=compute_xx`` is added.
+    """
+    # If cflags is given, there may already be user-provided arch flags in it
+    if cflags is not None:
+        for flag in cflags:
+            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
+                continue
+            if 'arch' in flag:
+                return []
+
+    named_arches = collections.OrderedDict(
+        [
+            ('Pascal', '6.0;6.1+PTX'),
+            ('Volta+Tegra', '7.2'),
+            ('Volta', '7.0+PTX'),
+            ('Turing', '7.5+PTX'),
+            ('Ampere+Tegra', '8.7'),
+            ('Ampere', '8.0;8.6+PTX'),
+            ('Ada', '8.9+PTX'),
+            ('Hopper', '9.0+PTX'),
+            ('Blackwell+Tegra', '10.1'),
+            ('Blackwell', '10.0;12.0+PTX'),
+        ]
+    )
+
+    supported_arches = [
+        '6.0',
+        '6.1',
+        '6.2',
+        '7.0',
+        '7.2',
+        '7.5',
+        '8.0',
+        '8.6',
+        '8.7',
+        '8.9',
+        '9.0',
+        '9.0a',
+        '10.0',
+        '10.0a',
+        '10.1',
+        '10.1a',
+        '12.0',
+        '12.0a',
+    ]
+    valid_arch_strings = supported_arches + [
+        s + "+PTX" for s in supported_arches
+    ]
+
+    _arch_list = os.environ.get("PADDLE_CUDA_ARCH_LIST")
+
+    if not _arch_list:
+        warnings.warn(
+            "PADDLE_CUDA_ARCH_LIST are not set, all archs for visible cards are included for compilation. \n"
+            "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST']."
+        )
+        arch_list = []
+        dev_types = core.get_all_custom_device_type()
+        if core.is_compiled_with_cuda():
+            for dev_id in range(paddle.device.cuda.device_count()):
+                capability = paddle.device.cuda.get_device_capability(
+                    dev_id
+                )  # (major, minor)
+                arch = f"{capability[0]}.{capability[1]}"
+                if arch not in arch_list:
+                    arch_list.append(arch)
+            arch_list = sorted(arch_list)
+            if arch_list:
+                arch_list[-1] += '+PTX'
+        elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
+            for dev_id in range(paddle.device.device_count()):
+                capability = paddle.device.get_device_capability(
+                    dev_types[0], dev_id
+                )
+                arch = f"{capability[0]}.{capability[1]}"
+                if arch not in arch_list:
+                    arch_list.append(arch)
+            arch_list = sorted(arch_list)
+            if arch_list:
+                arch_list[-1] += '+PTX'
+        else:
+            raise RuntimeError(
+                "Paddle is not compiled with CUDA or Custom Device, cannot determine CUDA arch."
+            )
+    else:
+        _arch_list = _arch_list.replace(' ', ';')
+        for named_arch, archval in named_arches.items():
+            _arch_list = _arch_list.replace(named_arch, archval)
+        arch_list = _arch_list.split(';')
+
+    flags = []
+    for arch in arch_list:
+        if arch not in valid_arch_strings:
+            raise ValueError(f"Unknown CUDA arch ({arch}) or GPU not supported")
+        version = arch.split('+')[0]
+        major, minor = version.split('.')
+        num = f"{major}{minor}"
+        flags.append(f"-gencode=arch=compute_{num},code=sm_{num}")
+        if arch.endswith('+PTX'):
+            flags.append(f"-gencode=arch=compute_{num},code=compute_{num}")
+    return sorted(set(flags))
+
+
+def _get_pybind11_abi_build_flags():
+    abi_cflags = []
+    for pname in ["COMPILER_TYPE", "STDLIB", "BUILD_ABI"]:
+        pval = getattr(paddle._C, f"_PYBIND11_{pname}")
+        if pval is not None and not IS_WINDOWS:
+            abi_cflags.append(f'-DPYBIND11_{pname}=\\"{pval}\\"')
+    return abi_cflags
+
+
+def _get_num_workers(verbose: bool) -> int | None:
+    max_jobs = os.environ.get('MAX_JOBS')
+    if max_jobs is not None and max_jobs.isdigit():
+        if verbose:
+            print(
+                f'Using envvar MAX_JOBS ({max_jobs}) as the number of workers...',
+                file=sys.stderr,
+            )
+        return int(max_jobs)
+    if verbose:
+        print(
+            'Allowing ninja to set a default number of workers... '
+            '(overridable by setting the environment variable MAX_JOBS=N)',
+            file=sys.stderr,
+        )
+    return None

@@ -99,7 +99,7 @@ class TestProcessMesh:
             assert isinstance(
                 group_1d_with_name, dist.communication.group.Group
             )
-
+            assert group_1d_with_name.id == group_1d.id
             # Test case 3: Single dimension mesh with wrong dim_name
             try:
                 mesh_1d.get_group(dim_name="wrong_name")

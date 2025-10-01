@@ -54,11 +54,11 @@ HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
 
 inline void ExtractNCDWH(const DDim& dims,
                          const DataLayout& data_layout,
-                         int* N,
-                         int* C,
-                         int* D,
-                         int* H,
-                         int* W) {
+                         int64_t* N,
+                         int64_t* C,
+                         int64_t* D,
+                         int64_t* H,
+                         int64_t* W) {
   *N = dims[0];
 
   if (dims.size() == 3) {

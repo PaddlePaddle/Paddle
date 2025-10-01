@@ -20,7 +20,9 @@ from decorator_helper import prog_scope
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_places,
+    is_custom_device,
     paddle_static_guard,
 )
 
@@ -159,7 +161,7 @@ class TestSliceZerosShapeTensor(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
-            'use_mkldnn': True,
+            'use_onednn': True,
         }
 
     def config(self):
@@ -534,7 +536,8 @@ class TestSliceOp_ZeroDim(OpTest):
 
 # Test CUDA float16
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16(OpTest):
     def setUp(self):
@@ -562,14 +565,14 @@ class TestFP16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         print("core:", core.is_float16_supported(place))
         if core.is_float16_supported(place):
             self.check_grad_with_place(
@@ -583,7 +586,8 @@ class TestFP16(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16_2(OpTest):
     def setUp(self):
@@ -611,14 +615,14 @@ class TestFP16_2(OpTest):
         self.infer_flags = [1]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -941,11 +945,7 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
         self.end = 2
         self.axis = 1
 
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
         self.exe = base.Executor(self.place)
 
     def set_program_and_run(self, main_program, case_num):
@@ -1090,7 +1090,11 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
                     var = paddle.to_tensor(data)
                     sliced = var[:, 1.1:, : var.shape[1]]
 
-            self.assertRaises(Exception, test_float_in_slice_item)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) Currently, slice indices only allows None",
+                test_float_in_slice_item,
+            )
 
             def test_float_in_index():
                 with base.dygraph.guard():
@@ -1098,7 +1102,11 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
                     var = paddle.to_tensor(data)
                     sliced = var[1.1]
 
-            self.assertRaises(Exception, test_float_in_index)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) Currently, Tensor.__indices__\(\) only allows indexing by Boolean",
+                test_float_in_index,
+            )
 
     class TestInferShape(unittest.TestCase):
         def test_pir(self):
@@ -1174,7 +1182,8 @@ class TestSliceOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestImperativeCUDAPinnedInput(unittest.TestCase):
     def test_input_cuda_pinned_var(self):

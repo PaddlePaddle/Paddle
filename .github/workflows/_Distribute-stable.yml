@@ -6,6 +6,10 @@ on:
       docker_distribute_image:
         type: string
         required: true
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -26,6 +30,7 @@ defaults:
 jobs:
   build:
     name: Build
+    if: ${{ inputs.clone-can-skip != 'true' }}
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
@@ -42,9 +47,6 @@ jobs:
           WITH_MKL: "OFF"
           WITH_PYTHON: "ON"
           WITH_DISTRIBUTE: "ON"
-          WITH_PSCORE: "ON"
-          WITH_PSLIB: "OFF"
-          WITH_HETERPS: "ON"
           WITH_TESTING: "ON"
           WITH_INFERENCE_API_TEST: "OFF"
           COVERALLS_UPLOAD: "ON"
@@ -105,9 +107,6 @@ jobs:
             -e CTEST_OUTPUT_ON_FAILURE \
             -e CTEST_PARALLEL_LEVEL \
             -e WITH_GPU \
-            -e WITH_PSCORE \
-            -e WITH_PSLIB \
-            -e WITH_HETERPS \
             -e WITH_INFERENCE_API_TEST \
             -e CUDA_VISIBLE_DEVICES \
             -e GPUBOX_DEMO_INSTALL_DIR \
@@ -130,7 +129,7 @@ jobs:
           echo "Downloading Paddle.tar.gz"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz --strip-components=1
+          tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           git remote -v
           set +e
@@ -244,7 +243,6 @@ jobs:
           WITH_GPU: "ON"
           WITH_AVX: "ON"
           WITH_DISTRIBUTE: "ON"
-          WITH_HETERPS: "ON"
           WITH_TESTING: "ON"
           WITH_COVERAGE: "OFF"
           CMAKE_BUILD_TYPE: Release
@@ -291,7 +289,6 @@ jobs:
           -e WITH_GPU \
           -e WITH_AVX \
           -e WITH_DISTRIBUTE \
-          -e WITH_HETERPS \
           -e WITH_TESTING \
           -e WITH_COVERAGE \
           -e CMAKE_BUILD_TYPE \
@@ -331,6 +328,28 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/distribute_test.sh
+          '
+
+      - name: Upload and display logs
+        if: always()
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export AK=paddle
+          export SK=paddle
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
+          fi
+          cd /case_logs
+          for FILE in /case_logs/*; do
+            file=$(basename "$FILE")
+            python ${{ env.bos_file }} $file paddle-github-action/PR/Distribute-Stable/${PR_ID}/${COMMIT_ID}/logs
+            echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Distribute-Stable/${PR_ID}/${COMMIT_ID}/logs/$file"
+          done
           '
 
       - name: Terminate and delete the container

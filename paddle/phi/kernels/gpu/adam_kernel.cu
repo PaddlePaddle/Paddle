@@ -22,7 +22,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
@@ -158,32 +157,33 @@ __global__ void UpdateBetaPow(T beta1,
 }
 
 template <typename T, typename Context>
-void AdamDenseKernel(const Context& dev_ctx,
-                     const DenseTensor& param,
-                     const DenseTensor& grad,
-                     const DenseTensor& learning_rate,
-                     const DenseTensor& moment1,
-                     const DenseTensor& moment2,
-                     const paddle::optional<DenseTensor>& moment2_max,
-                     const DenseTensor& beta1_pow,
-                     const DenseTensor& beta2_pow,
-                     const paddle::optional<DenseTensor>& master_param,
-                     const paddle::optional<DenseTensor>& skip_update,
-                     const Scalar& beta1,
-                     const Scalar& beta2,
-                     const Scalar& epsilon,
-                     bool lazy_mode,
-                     int64_t min_row_size_to_use_multithread,
-                     bool multi_precision,
-                     bool use_global_beta_pow,
-                     bool amsgrad,
-                     DenseTensor* param_out,
-                     DenseTensor* moment1_out,
-                     DenseTensor* moment2_out,
-                     DenseTensor* moment2_max_out,
-                     DenseTensor* beta1_pow_out,
-                     DenseTensor* beta2_pow_out,
-                     DenseTensor* master_param_outs) {
+PADDLE_API void AdamDenseKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   const auto grad_type = grad.dtype();
 
@@ -540,8 +540,8 @@ PD_REGISTER_KERNEL(adam,
                    phi::AdamDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
@@ -566,8 +566,8 @@ PD_REGISTER_KERNEL(merged_adam,
                    phi::MergedAdamKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   // Skip beta1_pow, beta2_pow data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);

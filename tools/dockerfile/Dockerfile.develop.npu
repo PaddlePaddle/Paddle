@@ -1,9 +1,11 @@
 # Docker Image for PaddlePaddle Ascend NPU
 
-FROM <baseimg>
+FROM registry.baidubce.com/device/paddle-cpu:ubuntu20-npu-base-x86_64-gcc84
 LABEL maintainer="PaddlePaddle Authors <paddle-dev@baidu.com>"
 
-
+ARG CANN_VERSION=8.0.T113
+ARG SYSTEM=x86_64
+ARG NPU_VERSION=910b
 
 # HwHiAiUser
 RUN groupadd -g 1000 HwHiAiUser && \
@@ -11,14 +13,11 @@ RUN groupadd -g 1000 HwHiAiUser && \
 
 RUN mkdir -p /usr/local/Ascend/driver
 WORKDIR /usr/local/Ascend
-ARG CANN_VERSION
-ARG SYSTEM
-ARG NPU_VERSION
 
 # install CANN requirement
 # https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/700alpha003/softwareinstall/instg/instg_0026.html
 RUN apt-get update -y && apt-get install -y zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev libbz2-dev \
-    libxslt1-dev unzip pciutils net-tools libblas-dev gfortran libblas3 liblapack-dev liblapack3 libopenblas-dev
+    libxslt1-dev unzip pciutils net-tools libblas-dev gfortran libblas3 liblapack-dev liblapack3 libopenblas-dev zstd
 
 RUN pip3.8 install --upgrade pip setuptools wheel && \
     pip3.9 install --upgrade pip setuptools wheel && \
@@ -84,6 +83,7 @@ ENV FLAGS_use_stride_kernel=0
 ENV FLAGS_allocator_strategy=naive_best_fit
 ENV PADDLE_XCCL_BACKEND=npu
 
+# map this folder in docker run
 RUN rm -rf /usr/local/Ascend/driver
 
 # Clean

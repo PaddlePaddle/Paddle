@@ -25,8 +25,6 @@
 
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
-#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/common/memory_utils.h"
 
 #include "paddle/phi/api/include/context_pool.h"
@@ -359,8 +357,8 @@ PD_REGISTER_KERNEL(fp8_gemm_blockwise,
                    GPU,
                    ALL_LAYOUT,
                    phi::Fp8GemmBlockwiseKernel,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
                    uint8_t,
                    float,
                    double) {}

@@ -150,6 +150,8 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  std::string dump_backward_graph_path =
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 3), 3);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
     tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
@@ -158,7 +160,8 @@ static PyObject* eager_api_run_backward(PyObject* self,
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
-    egr::Backward(tensors, grad_tensors, retain_graph);
+    egr::Backward(
+        tensors, grad_tensors, retain_graph, dump_backward_graph_path);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -176,6 +179,8 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
+  auto dump_backward_graph_path =
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 8), 8);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(
           &mesh, tensors, inputs, grad_tensors, no_grad_vars)) {
@@ -196,7 +201,8 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        create_graph,
                        only_inputs,
                        allow_unused,
-                       no_grad_vars);
+                       no_grad_vars,
+                       dump_backward_graph_path);
     VLOG(4) << " in eager_api_run_partial_grad, after running egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
@@ -1353,8 +1359,8 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
     PADDLE_ENFORCE_NE(
         grad,
         nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
     if (((*grad).has_allocation() || (*grad).is_dist_tensor()) &&
         ((*grad).dtype() == phi::DataType::FLOAT16 ||
@@ -1376,6 +1382,53 @@ PyObject* eager__is_run_in_backward(PyObject* self,
 
   return ToPyObject(egr::Controller::Instance().GetIsInBackward());
 
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
+  EAGER_TRY
+  static std::vector<std::string> all_docs;
+  PyObject* func_obj = nullptr;
+  PyObject* doc_obj = nullptr;
+  PyObject* sig_obj = nullptr;
+  PyObject* annotatio_obj = nullptr;
+  if (!PyArg_ParseTuple(
+          args, "OOOO", &func_obj, &doc_obj, &sig_obj, &annotatio_obj)) {
+    return nullptr;
+  }
+  if (PyDict_Check(annotatio_obj) == false) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The 4th arg which be used to init __annotations__  must be dict in "
+        "python!"));
+    return nullptr;
+  }
+  std::string doc_string = CastPyArg2AttrString(doc_obj, 1);
+
+  if (Py_TYPE(func_obj) == &PyCFunction_Type) {
+    PyCFunctionObject* f = reinterpret_cast<PyCFunctionObject*>(func_obj);
+    if (f->m_ml->ml_doc) {
+      VLOG(6)
+          << "eager__add_doc_str will update doc for PyCFunction, original doc "
+          << f->m_ml->ml_doc;
+    }
+    all_docs.emplace_back(doc_string);
+    f->m_ml->ml_doc = all_docs.back().c_str();
+    if (func_obj->ob_type->tp_dict == nullptr) {
+      func_obj->ob_type->tp_dict = PyDict_New();
+    }
+    // if (PyDict_SetItemString(
+    //         func_obj->ob_type->tp_dict, "__text_signature__", sig_obj) < 0) {
+    //   VLOG(6) << "eager__add_doc_str add __text_signature__ failed";
+    //   return nullptr;
+    // }
+    // Py_INCREF(sig_obj);
+    if (PyDict_SetItemString(
+            func_obj->ob_type->tp_dict, "__annotations__", annotatio_obj) < 0) {
+      VLOG(6) << "eager__add_doc_str add __annotations__ failed";
+      return nullptr;
+    }
+    Py_INCREF(annotatio_obj);
+  }
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1487,6 +1540,11 @@ PyMethodDef variable_functions[] = {  // NOLINT
     {"_for_test_check_cuda_error",
      (PyCFunction)(void (*)())eager__for_test_check_cuda_error,
      METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+
+    {"_add_docstr",
+     (PyCFunction)(void (*)())eager__add_doc_str,
+     METH_VARARGS,
      nullptr},
 /**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)

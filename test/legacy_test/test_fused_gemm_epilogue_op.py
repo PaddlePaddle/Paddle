@@ -17,7 +17,14 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+    skip_check_inplace_ci,
+)
 
 import paddle
 from paddle.base import core
@@ -25,7 +32,9 @@ from paddle.incubate.nn.functional import fused_linear_activation
 
 
 def is_fused_gemm_epilogue_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+    if (
+        paddle.is_compiled_with_cuda() or is_custom_device()
+    ) and not paddle.is_compiled_with_rocm():
         return hasattr(paddle._C_ops, 'fused_gemm_epilogue')
     else:
         return False
@@ -70,15 +79,16 @@ class TestFuseGemmBase(OpTest):
     pass
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -107,9 +117,10 @@ class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpReluMMFP16):
@@ -118,9 +129,10 @@ class TestFuseGemmEpilogueOpReluMMFP32(TestFuseGemmEpilogueOpReluMMFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
@@ -129,15 +141,16 @@ class TestFuseGemmEpilogueOpReluMMFP64(TestFuseGemmEpilogueOpReluMMFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -169,9 +182,10 @@ class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP32(TestFuseGemmEpilogueOpReluMTMFP16):
@@ -180,9 +194,10 @@ class TestFuseGemmEpilogueOpReluMTMFP32(TestFuseGemmEpilogueOpReluMTMFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
@@ -191,15 +206,16 @@ class TestFuseGemmEpilogueOpReluMTMFP64(TestFuseGemmEpilogueOpReluMTMFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -231,9 +247,10 @@ class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMTFP32(TestFuseGemmEpilogueOpReluMMTFP16):
@@ -242,9 +259,10 @@ class TestFuseGemmEpilogueOpReluMMTFP32(TestFuseGemmEpilogueOpReluMMTFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
@@ -253,15 +271,16 @@ class TestFuseGemmEpilogueOpReluMMTFP64(TestFuseGemmEpilogueOpReluMMTFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -293,9 +312,10 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMTFP32(TestFuseGemmEpilogueOpReluMTMTFP16):
@@ -304,9 +324,10 @@ class TestFuseGemmEpilogueOpReluMTMTFP32(TestFuseGemmEpilogueOpReluMTMTFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
@@ -315,15 +336,16 @@ class TestFuseGemmEpilogueOpReluMTMTFP64(TestFuseGemmEpilogueOpReluMTMTFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -355,9 +377,10 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMMFP32MultiDimX(
@@ -368,9 +391,10 @@ class TestFuseGemmEpilogueOpReluMMFP32MultiDimX(
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
@@ -381,15 +405,16 @@ class TestFuseGemmEpilogueOpReluMMFP64MultiDimX(
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -421,9 +446,10 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpReluMTMFP32MultiDimX(
@@ -434,9 +460,10 @@ class TestFuseGemmEpilogueOpReluMTMFP32MultiDimX(
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
@@ -447,15 +474,16 @@ class TestFuseGemmEpilogueOpReluMTMFP64MultiDimX(
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -486,9 +514,10 @@ class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpGeluMMFP32(TestFuseGemmEpilogueOpGeluMMFP16):
@@ -497,9 +526,10 @@ class TestFuseGemmEpilogueOpGeluMMFP32(TestFuseGemmEpilogueOpGeluMMFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
@@ -508,15 +538,16 @@ class TestFuseGemmEpilogueOpGeluMMFP64(TestFuseGemmEpilogueOpGeluMMFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -547,9 +578,10 @@ class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
         )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueOpNoneMMFP32(TestFuseGemmEpilogueOpNoneMMFP16):
@@ -558,9 +590,10 @@ class TestFuseGemmEpilogueOpNoneMMFP32(TestFuseGemmEpilogueOpNoneMMFP16):
         self.atol = 1e-6
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueOpNoneMMFP64(TestFuseGemmEpilogueOpNoneMMFP16):
@@ -610,7 +643,7 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
 )
 class TestEagerFusedGemmEpilogue(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
 
     def test_case_act(self):
         paddle.disable_static()
@@ -660,7 +693,7 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
 )
 class TestEagerFusedGemmEpilogue_ZeroSize(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
 
     def test_case_act(self):
         paddle.disable_static()

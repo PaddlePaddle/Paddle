@@ -17,6 +17,7 @@ limitations under the License. */
 #include <stddef.h>  // for size_t
 
 #include <string>
+#include "paddle/common/macros.h"
 
 namespace paddle {
 namespace memory {
@@ -36,7 +37,7 @@ class SystemAllocator {
   virtual bool UseGpu() const = 0;
 };
 
-class CPUAllocator : public SystemAllocator {
+class PADDLE_API CPUAllocator : public SystemAllocator {
  public:
   virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
@@ -44,7 +45,7 @@ class CPUAllocator : public SystemAllocator {
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-class GPUAllocator : public SystemAllocator {
+class PADDLE_API GPUAllocator : public SystemAllocator {
  public:
   explicit GPUAllocator(int gpu_id) : gpu_id_(gpu_id) {}
 
@@ -57,7 +58,7 @@ class GPUAllocator : public SystemAllocator {
   int gpu_id_;
 };
 
-class CUDAPinnedAllocator : public SystemAllocator {
+class PADDLE_API CUDAPinnedAllocator : public SystemAllocator {
  public:
   virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);

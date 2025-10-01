@@ -44,8 +44,8 @@ void SequencePoolKernel(const Context& dev_ctx,
       dims[0],
       /*batch size = */ static_cast<int64_t>(lod[lod_level - 1].size() - 1),
       errors::InvalidArgument(
-          "The first dimension of Input(X) must be large than batch size."
-          "But received first dimension of Input(X) is %d, while batch"
+          "The first dimension of Input(X) must be large than batch size. "
+          "But received first dimension of Input(X) is %d, while batch "
           "size is %d.",
           dims[0],
           static_cast<int64_t>(lod[lod_level - 1].size() - 1)));

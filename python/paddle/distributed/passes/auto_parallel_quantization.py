@@ -381,9 +381,9 @@ class QuantizationPass(PassBase):
                     dist_origin_op = dist_context.get_dist_op_for_program(
                         origin_op
                     )
-                    assert (
-                        dist_origin_op is not None
-                    ), "origin op must have dist attr."
+                    assert dist_origin_op is not None, (
+                        "origin op must have dist attr."
+                    )
 
                     origin_op_dist_attr = dist_origin_op.dist_attr
                     quant_op_dist_attr.impl_idx = origin_op_dist_attr.impl_idx

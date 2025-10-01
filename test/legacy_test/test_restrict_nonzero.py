@@ -15,13 +15,15 @@
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.base import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestRestrictNonzero(unittest.TestCase):
     def test_restrict_nonzero(self):

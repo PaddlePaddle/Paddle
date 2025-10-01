@@ -58,6 +58,12 @@ def moe_gate_dispatch(
                 x, gate_logits, corr_bias, k, capacity, use_pad
             )
         else:
+            if not (
+                x.process_mesh is None and gate_logits.process_mesh is None
+            ):
+                return _C_ops.moe_gate_dispatch_auto(
+                    x, gate_logits, corr_bias, k, capacity, use_pad
+                )
             return _C_ops.moe_gate_dispatch(
                 x, gate_logits, corr_bias, k, capacity, use_pad
             )

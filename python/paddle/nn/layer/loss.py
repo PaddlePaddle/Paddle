@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Callable
 import paddle
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from .. import functional as F
 from .layers import Layer
@@ -437,6 +438,7 @@ class CrossEntropyLoss(Layer):
         self.label_smoothing = label_smoothing
         self.name = name
 
+    @ParamAliasDecorator({"label": ["target"]})
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
         ret = paddle.nn.functional.cross_entropy(
             input,

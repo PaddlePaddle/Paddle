@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -155,8 +155,8 @@ class TestEinsum(unittest.TestCase):
         if force_to_use_cpu:
             return core.CPUPlace()
         else:
-            if core.is_compiled_with_cuda():
-                return core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                return get_device_place()
             return core.CPUPlace()
 
     def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
@@ -366,8 +366,8 @@ class TestNumpyTests(unittest.TestCase):
         if force_to_use_cpu:
             return core.CPUPlace()
         else:
-            if core.is_compiled_with_cuda():
-                return core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                return get_device_place()
             return core.CPUPlace()
 
     def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
@@ -484,8 +484,8 @@ class TestNumpyTests(unittest.TestCase):
     def test_static_graph(self):
         paddle.enable_static()
         base = paddle.base
-        if base.core.is_compiled_with_cuda():
-            self.place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = base.CPUPlace()
         main = base.Program()
@@ -530,6 +530,51 @@ class TestNumpyTests(unittest.TestCase):
         expect.append(np.einsum('ijk..., ikj->...ij', c, e))
         for a, e in zip(actual, expect):
             self.check_output_equal(a, e)
+
+
+class TestContractionBroadcastGrad(unittest.TestCase):
+    def setUp(self):
+        self.place = (
+            get_device_place()
+            if (paddle.is_compiled_with_cuda() or is_custom_device())
+            else paddle.CPUPlace()
+        )
+
+    def test_case1(self):
+        with paddle.base.dygraph.guard(self.place):
+            # paddle.einsum("i, i", Tensor([2],"float32"), Tensor([1],"float32"), )
+            x_np = np.array([0.1, 0.2]).astype(np.float32)
+            y_np = np.array([0.5]).astype(np.float32)
+            except_res = np.einsum("i, i", x_np, y_np)
+            except_grad_x = np.array([0.5, 0.5]).astype(np.float32)
+            except_grad_y = np.array([0.3]).astype(np.float32)
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            y = paddle.to_tensor(y_np, stop_gradient=False)
+            res = paddle.einsum("i, i", x, y)
+            np.testing.assert_allclose(res.numpy(), except_res)
+            res.sum().backward()
+            x.grad.get_tensor()  # To check if accessing unallocated memory
+            np.testing.assert_allclose(x.grad.numpy(), except_grad_x)
+            np.testing.assert_allclose(y.grad.numpy(), except_grad_y)
+
+    def test_case2(self):
+        with paddle.base.dygraph.guard(self.place):
+            # paddle.einsum("ij,ij->j", Tensor([2, 2],"float32"), Tensor([1, 2],"float32"), )
+            x_np = np.array([[0.1, 0.2], [0.3, 0.4]]).astype(np.float32)
+            y_np = np.array([[0.5, 0.6]]).astype(np.float32)
+            except_res = np.einsum("ij,ij->j", x_np, y_np)
+            except_grad_x = np.array([[0.5, 0.6], [0.5, 0.6]]).astype(
+                np.float32
+            )
+            except_grad_y = np.array([[0.4, 0.6]]).astype(np.float32)
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            y = paddle.to_tensor(y_np, stop_gradient=False)
+            res = paddle.einsum("ij,ij->j", x, y)
+            np.testing.assert_allclose(res.numpy(), except_res)
+            res.sum().backward()
+            x.grad.get_tensor()  # To check if accessing unallocated memory
+            np.testing.assert_allclose(x.grad.numpy(), except_grad_x)
+            np.testing.assert_allclose(y.grad.numpy(), except_grad_y)
 
 
 if __name__ == "__main__":

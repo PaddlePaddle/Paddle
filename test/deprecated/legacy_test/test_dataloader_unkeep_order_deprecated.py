@@ -29,7 +29,7 @@ def create_reader(shape, batch_number):
     def __impl__():
         idx = 0
         for _ in range(batch_number):
-            yield np.ones(shape).astype('float32') * idx,
+            yield (np.ones(shape).astype('float32') * idx,)
             idx += 1
 
     return __impl__

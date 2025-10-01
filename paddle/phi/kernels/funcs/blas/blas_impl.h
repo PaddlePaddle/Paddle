@@ -22,8 +22,6 @@
 #include <limits>
 #include <vector>
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #define INT_MAX_VALUE 2147483647
@@ -66,7 +64,7 @@ struct CBlas<int16_t> {
 };
 
 template <>
-struct CBlas<phi::dtype::bfloat16> {
+struct CBlas<phi::bfloat16> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     detail::axpy(args...);
@@ -81,9 +79,9 @@ struct CBlas<phi::dtype::bfloat16> {
 
   template <typename... ARGS>
   static void VADD(int n,
-                   const phi::dtype::bfloat16 *x,
-                   const phi::dtype::bfloat16 *y,
-                   phi::dtype::bfloat16 *z) {
+                   const phi::bfloat16 *x,
+                   const phi::bfloat16 *y,
+                   phi::bfloat16 *z) {
     for (int i = 0; i < n; ++i) {
       z[i] = x[i] + y[i];
     }
@@ -91,9 +89,9 @@ struct CBlas<phi::dtype::bfloat16> {
 
   template <typename... ARGS>
   static void VMUL(int n,
-                   const phi::dtype::bfloat16 *x,
-                   const phi::dtype::bfloat16 *y,
-                   phi::dtype::bfloat16 *z) {
+                   const phi::bfloat16 *x,
+                   const phi::bfloat16 *y,
+                   phi::bfloat16 *z) {
     for (int i = 0; i < n; ++i) {
       z[i] = x[i] * y[i];
     }
@@ -101,9 +99,9 @@ struct CBlas<phi::dtype::bfloat16> {
 
   template <typename... ARGS>
   static void VSUB(int n,
-                   const phi::dtype::bfloat16 *x,
-                   const phi::dtype::bfloat16 *y,
-                   phi::dtype::bfloat16 *z) {
+                   const phi::bfloat16 *x,
+                   const phi::bfloat16 *y,
+                   phi::bfloat16 *z) {
     for (int i = 0; i < n; ++i) {
       z[i] = x[i] - y[i];
     }
@@ -364,13 +362,13 @@ struct CBlas<double> {
 };
 
 template <>
-struct CBlas<phi::dtype::complex<float>> {
+struct CBlas<phi::complex64> {
   template <typename... ARGS>
   static void AXPY(int n,
-                   const phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *X,
+                   const phi::complex64 alpha,
+                   const phi::complex64 *X,
                    const int incX,
-                   phi::dtype::complex<float> *Y,
+                   phi::complex64 *Y,
                    const int incY) {
     phi::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
   }
@@ -407,9 +405,9 @@ struct CBlas<phi::dtype::complex<float>> {
 
   template <typename... ARGS>
   static void VADD(int n,
-                   const phi::dtype::complex<float> *a,
-                   const phi::dtype::complex<float> *b,
-                   phi::dtype::complex<float> *y) {
+                   const phi::complex64 *a,
+                   const phi::complex64 *b,
+                   phi::complex64 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] + b[i];
     }
@@ -417,9 +415,9 @@ struct CBlas<phi::dtype::complex<float>> {
 
   template <typename... ARGS>
   static void VSUB(int n,
-                   const phi::dtype::complex<float> *a,
-                   const phi::dtype::complex<float> *b,
-                   phi::dtype::complex<float> *y) {
+                   const phi::complex64 *a,
+                   const phi::complex64 *b,
+                   phi::complex64 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] - b[i];
     }
@@ -427,18 +425,18 @@ struct CBlas<phi::dtype::complex<float>> {
 
   template <typename... ARGS>
   static void VMUL(int n,
-                   const phi::dtype::complex<float> *a,
-                   const phi::dtype::complex<float> *b,
-                   phi::dtype::complex<float> *y) {
+                   const phi::complex64 *a,
+                   const phi::complex64 *b,
+                   phi::complex64 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] * b[i];
     }
   }
   template <typename... ARGS>
   static void VDIV(int n,
-                   const phi::dtype::complex<float> *a,
-                   const phi::dtype::complex<float> *b,
-                   phi::dtype::complex<float> *y) {
+                   const phi::complex64 *a,
+                   const phi::complex64 *b,
+                   phi::complex64 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] / b[i];
     }
@@ -449,13 +447,13 @@ struct CBlas<phi::dtype::complex<float>> {
                    CBLAS_TRANSPOSE trans,
                    int M,
                    int N,
-                   phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *A,
+                   phi::complex64 alpha,
+                   const phi::complex64 *A,
                    int lda,
-                   const phi::dtype::complex<float> *X,
+                   const phi::complex64 *X,
                    int incx,
-                   phi::dtype::complex<float> beta,
-                   phi::dtype::complex<float> *Y,
+                   phi::complex64 beta,
+                   phi::complex64 *Y,
                    int incy) {
     const void *a_ = (const void *)(A);
     const void *x_ = (const void *)(X);
@@ -471,13 +469,13 @@ struct CBlas<phi::dtype::complex<float>> {
                    int M,
                    int N,
                    int K,
-                   phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *A,
+                   phi::complex64 alpha,
+                   const phi::complex64 *A,
                    int lda,
-                   const phi::dtype::complex<float> *B,
+                   const phi::complex64 *B,
                    int ldb,
-                   phi::dtype::complex<float> beta,
-                   phi::dtype::complex<float> *C,
+                   phi::complex64 beta,
+                   phi::complex64 *C,
                    int ldc) {
     const void *a_ = (const void *)(A);
     const void *b_ = (const void *)(B);
@@ -505,10 +503,10 @@ struct CBlas<phi::dtype::complex<float>> {
                    CBLAS_DIAG diag,
                    int M,
                    int N,
-                   phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *A,
+                   phi::complex64 alpha,
+                   const phi::complex64 *A,
                    int lda,
-                   phi::dtype::complex<float> *B,
+                   phi::complex64 *B,
                    int ldb) {
     const void *a_ = (const void *)(A);
     void *b_ = static_cast<void *>(B);
@@ -523,13 +521,13 @@ struct CBlas<phi::dtype::complex<float>> {
                          int *M,
                          int *N,
                          int *K,
-                         phi::dtype::complex<float> *alpha,
-                         const phi::dtype::complex<float> **A,
+                         phi::complex64 *alpha,
+                         const phi::complex64 **A,
                          const int *lda,
-                         const phi::dtype::complex<float> **B,
+                         const phi::complex64 **B,
                          const int *ldb,
-                         phi::dtype::complex<float> *beta,
-                         phi::dtype::complex<float> **C,
+                         phi::complex64 *beta,
+                         phi::complex64 **C,
                          const int *ldc,
                          int group_count,
                          int *group_size) {
@@ -562,13 +560,13 @@ struct CBlas<phi::dtype::complex<float>> {
 };
 
 template <>
-struct CBlas<phi::dtype::complex<double>> {
+struct CBlas<phi::complex128> {
   template <typename... ARGS>
   static void AXPY(int n,
-                   const phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *X,
+                   const phi::complex128 alpha,
+                   const phi::complex128 *X,
                    const int incX,
-                   phi::dtype::complex<double> *Y,
+                   phi::complex128 *Y,
                    const int incY) {
     phi::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
   }
@@ -605,9 +603,9 @@ struct CBlas<phi::dtype::complex<double>> {
 
   template <typename... ARGS>
   static void VADD(int n,
-                   const phi::dtype::complex<double> *a,
-                   const phi::dtype::complex<double> *b,
-                   phi::dtype::complex<double> *y) {
+                   const phi::complex128 *a,
+                   const phi::complex128 *b,
+                   phi::complex128 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] + b[i];
     }
@@ -615,9 +613,9 @@ struct CBlas<phi::dtype::complex<double>> {
 
   template <typename... ARGS>
   static void VSUB(int n,
-                   const phi::dtype::complex<double> *a,
-                   const phi::dtype::complex<double> *b,
-                   phi::dtype::complex<double> *y) {
+                   const phi::complex128 *a,
+                   const phi::complex128 *b,
+                   phi::complex128 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] - b[i];
     }
@@ -625,18 +623,18 @@ struct CBlas<phi::dtype::complex<double>> {
 
   template <typename... ARGS>
   static void VMUL(int n,
-                   const phi::dtype::complex<double> *a,
-                   const phi::dtype::complex<double> *b,
-                   phi::dtype::complex<double> *y) {
+                   const phi::complex128 *a,
+                   const phi::complex128 *b,
+                   phi::complex128 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] * b[i];
     }
   }
   template <typename... ARGS>
   static void VDIV(int n,
-                   const phi::dtype::complex<double> *a,
-                   const phi::dtype::complex<double> *b,
-                   phi::dtype::complex<double> *y) {
+                   const phi::complex128 *a,
+                   const phi::complex128 *b,
+                   phi::complex128 *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] / b[i];
     }
@@ -647,13 +645,13 @@ struct CBlas<phi::dtype::complex<double>> {
                    CBLAS_TRANSPOSE trans,
                    int M,
                    int N,
-                   phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *A,
+                   phi::complex128 alpha,
+                   const phi::complex128 *A,
                    int lda,
-                   const phi::dtype::complex<double> *X,
+                   const phi::complex128 *X,
                    int incx,
-                   phi::dtype::complex<double> beta,
-                   phi::dtype::complex<double> *Y,
+                   phi::complex128 beta,
+                   phi::complex128 *Y,
                    int incy) {
     const void *a_ = (const void *)(A);
     const void *x_ = (const void *)(X);
@@ -669,13 +667,13 @@ struct CBlas<phi::dtype::complex<double>> {
                    int M,
                    int N,
                    int K,
-                   phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *A,
+                   phi::complex128 alpha,
+                   const phi::complex128 *A,
                    int lda,
-                   const phi::dtype::complex<double> *B,
+                   const phi::complex128 *B,
                    int ldb,
-                   phi::dtype::complex<double> beta,
-                   phi::dtype::complex<double> *C,
+                   phi::complex128 beta,
+                   phi::complex128 *C,
                    int ldc) {
     const void *a_ = (const void *)(A);
     const void *b_ = (const void *)(B);
@@ -703,10 +701,10 @@ struct CBlas<phi::dtype::complex<double>> {
                    CBLAS_DIAG diag,
                    int M,
                    int N,
-                   phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *A,
+                   phi::complex128 alpha,
+                   const phi::complex128 *A,
                    int lda,
-                   phi::dtype::complex<double> *B,
+                   phi::complex128 *B,
                    int ldb) {
     const void *a_ = (const void *)(A);
     void *b_ = static_cast<void *>(B);
@@ -721,13 +719,13 @@ struct CBlas<phi::dtype::complex<double>> {
                          int *M,
                          int *N,
                          int *K,
-                         phi::dtype::complex<double> *alpha,
-                         const phi::dtype::complex<double> **A,
+                         phi::complex128 *alpha,
+                         const phi::complex128 **A,
                          const int *lda,
-                         const phi::dtype::complex<double> **B,
+                         const phi::complex128 **B,
                          const int *ldb,
-                         phi::dtype::complex<double> *beta,
-                         phi::dtype::complex<double> **C,
+                         phi::complex128 *beta,
+                         phi::complex128 **C,
                          const int *ldc,
                          int group_count,
                          int *group_size) {
@@ -818,7 +816,7 @@ struct CBlas<double> {
 };
 
 template <>
-struct CBlas<phi::dtype::complex<float>> {
+struct CBlas<phi::complex64> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     cblas_ccopy(args...);
@@ -826,10 +824,10 @@ struct CBlas<phi::dtype::complex<float>> {
 
   template <typename... ARGS>
   static void AXPY(int n,
-                   const phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *X,
+                   const phi::complex64 alpha,
+                   const phi::complex64 *X,
                    const int incX,
-                   phi::dtype::complex<float> *Y,
+                   phi::complex64 *Y,
                    const int incY) {
     cblas_caxpy(n, &alpha, X, incX, Y, incY);
   }
@@ -839,13 +837,13 @@ struct CBlas<phi::dtype::complex<float>> {
                    const CBLAS_TRANSPOSE TransA,
                    const int M,
                    const int N,
-                   const phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *A,
+                   const phi::complex64 alpha,
+                   const phi::complex64 *A,
                    const int lda,
-                   const phi::dtype::complex<float> *X,
+                   const phi::complex64 *X,
                    const int incX,
-                   const phi::dtype::complex<float> beta,
-                   phi::dtype::complex<float> *Y,
+                   const phi::complex64 beta,
+                   phi::complex64 *Y,
                    const int incY) {
     cblas_cgemv(layout, TransA, M, N, &alpha, A, lda, X, incX, &beta, Y, incY);
   }
@@ -857,13 +855,13 @@ struct CBlas<phi::dtype::complex<float>> {
                    const int M,
                    const int N,
                    const int K,
-                   const phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *A,
+                   const phi::complex64 alpha,
+                   const phi::complex64 *A,
                    const int lda,
-                   const phi::dtype::complex<float> *B,
+                   const phi::complex64 *B,
                    const int ldb,
-                   const phi::dtype::complex<float> beta,
-                   phi::dtype::complex<float> *C,
+                   const phi::complex64 beta,
+                   phi::complex64 *C,
                    const int ldc) {
     cblas_cgemm(
         layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc);
@@ -876,17 +874,17 @@ struct CBlas<phi::dtype::complex<float>> {
                    const CBLAS_DIAG diag,
                    const int M,
                    const int N,
-                   const phi::dtype::complex<float> alpha,
-                   const phi::dtype::complex<float> *A,
+                   const phi::complex64 alpha,
+                   const phi::complex64 *A,
                    const int lda,
-                   phi::dtype::complex<float> *B,
+                   phi::complex64 *B,
                    const int ldb) {
     cblas_ctrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
   }
 };
 
 template <>
-struct CBlas<phi::dtype::complex<double>> {
+struct CBlas<phi::complex128> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     cblas_zcopy(args...);
@@ -894,10 +892,10 @@ struct CBlas<phi::dtype::complex<double>> {
 
   template <typename... ARGS>
   static void AXPY(int n,
-                   const phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *X,
+                   const phi::complex128 alpha,
+                   const phi::complex128 *X,
                    const int incX,
-                   phi::dtype::complex<double> *Y,
+                   phi::complex128 *Y,
                    const int incY) {
     cblas_zaxpy(n, &alpha, X, incX, Y, incY);
   }
@@ -907,13 +905,13 @@ struct CBlas<phi::dtype::complex<double>> {
                    const CBLAS_TRANSPOSE TransA,
                    const int M,
                    const int N,
-                   const phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *A,
+                   const phi::complex128 alpha,
+                   const phi::complex128 *A,
                    const int lda,
-                   const phi::dtype::complex<double> *X,
+                   const phi::complex128 *X,
                    const int incX,
-                   const phi::dtype::complex<double> beta,
-                   phi::dtype::complex<double> *Y,
+                   const phi::complex128 beta,
+                   phi::complex128 *Y,
                    const int incY) {
     cblas_zgemv(layout, TransA, M, N, &alpha, A, lda, X, incX, &beta, Y, incY);
   }
@@ -925,13 +923,13 @@ struct CBlas<phi::dtype::complex<double>> {
                    const int M,
                    const int N,
                    const int K,
-                   const phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *A,
+                   const phi::complex128 alpha,
+                   const phi::complex128 *A,
                    const int lda,
-                   const phi::dtype::complex<double> *B,
+                   const phi::complex128 *B,
                    const int ldb,
-                   const phi::dtype::complex<double> beta,
-                   phi::dtype::complex<double> *C,
+                   const phi::complex128 beta,
+                   phi::complex128 *C,
                    const int ldc) {
     cblas_zgemm(
         layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc);
@@ -944,10 +942,10 @@ struct CBlas<phi::dtype::complex<double>> {
                    const CBLAS_DIAG diag,
                    const int M,
                    const int N,
-                   const phi::dtype::complex<double> alpha,
-                   const phi::dtype::complex<double> *A,
+                   const phi::complex128 alpha,
+                   const phi::complex128 *A,
                    const int lda,
-                   phi::dtype::complex<double> *B,
+                   phi::complex128 *B,
                    const int ldb) {
     cblas_ztrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
   }
@@ -956,7 +954,7 @@ struct CBlas<phi::dtype::complex<double>> {
 #endif
 
 template <>
-struct CBlas<phi::dtype::float16> {
+struct CBlas<phi::float16> {
   static void GEMM(...) {
     PADDLE_THROW(common::errors::Unimplemented(
         "float16 GEMM not supported on CPU, please check your code"));
@@ -1872,7 +1870,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
       dim_a.width_ % head_number,
       0,
       common::errors::InvalidArgument(
-          "The first input width must be some times the head number"
+          "The first input width must be some times the head number, "
           "but received first input width %d"
           ",  head_number %d",
           dim_a.width_,
@@ -1908,7 +1906,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
         dim_a.width_ % head_number,
         0,
         common::errors::InvalidArgument(
-            "The second input width should be some times the head number"
+            "The second input width should be some times the head number, "
             "but received second input width %d"
             ",  head_number %d",
             dim_b.width_,
@@ -2034,7 +2032,7 @@ void Blas<phi::CPUContext>::CSRMM(const char *transa,
                                   const T *alpha,
                                   const char *matdescra,
                                   const T *val,
-                                  const int *indx,
+                                  const int *index,
                                   const int *pntrb,
                                   const int *pntre,
                                   const T *b,
@@ -2049,7 +2047,7 @@ void Blas<phi::CPUContext>::CSRMM(const char *transa,
                   alpha,
                   matdescra,
                   val,
-                  indx,
+                  index,
                   pntrb,
                   pntre,
                   b,

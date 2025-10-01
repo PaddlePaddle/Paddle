@@ -17,14 +17,14 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <memory>
+#include <mutex>
+#include <queue>
 #include <vector>
-
 #include "paddle/phi/backends/xpu/forwards.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/core/xpu_cuda_stream.h"
 #endif
@@ -39,6 +39,26 @@ namespace phi {
 
 #ifdef PADDLE_WITH_XPU
 class XPUCUDAStream;
+class XPUStreamHandle {
+ public:
+  XPUStreamHandle();
+  explicit XPUStreamHandle(const int idx);
+  explicit XPUStreamHandle(const XPUPlace& place);
+  explicit XPUStreamHandle(const XPUStream xpu_stream, const int id);
+
+  void Init();
+
+  int id() const { return stream_id; }
+  XPUStream raw_stream() const { return stream; }
+  void wait_event(XPUEvent event) const;
+  void synchronize() const;
+  void record_event(XPUEvent event) const;
+  void set_stream(XPUStream stream);
+
+ private:
+  XPUStream stream;
+  int stream_id;
+};
 #endif
 
 class DenseTensor;
@@ -110,15 +130,64 @@ class XPUContext : public DeviceContext,
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
 
   XPUStream stream(int i = 0) const;
-
+  XPUStream get_stream_from_pool(int i = 0) const;
+  XPUStream get_current_stream();
   static const char* name() { return "XPUContext"; }
+  int SetCurrentStream(int idx);
+  void StreamWaitStreamInPool(int wait_stream, int record_stream) const;
+  void StreamWaitEventInPool(int wait_stream, XPUEvent event) const;
+  int get_idle_stream();
+  int get_current_stream_idx();
+  XPUStreamHandle* get_current_stream_handle();
 
  private:
   struct Impl;
+  XPUStreamHandle current_stream_handle;
   std::vector<std::unique_ptr<Impl>> impls_;
+  std::vector<bool> idle_stream_flags;
+  std::vector<XPUStream> stream_pool;
+  int current_stream_idx;
+  void add_stream_to_pool();
+  int get_stream_pool_size() const { return stream_pool.size(); }
 
   void CheckValidStreamId(int i) const;
+  void CheckValidIdxInRange(int idx, int range) const;
 };
+
+XPUContext* get_xpu_context(int device_id = -1);
+
+class XPUEventPool {
+ public:
+  XPUEventPool() = default;
+  XPUEventPool(const XPUEventPool&) = delete;
+  XPUEventPool(XPUEventPool&&) = delete;
+  ~XPUEventPool();
+
+  XPUEvent CreateEventFromPool();
+
+  static XPUEventPool& Instance();
+
+ private:
+  std::queue<XPUEvent> incomplished_events_;
+  std::mutex mtx_;
+};
+
+class XPUEventHandle {
+ public:
+  XPUEventHandle();
+  explicit XPUEventHandle(XPUStream stream);
+  void record(XPUStream stream);
+  bool query();
+  void synchronize();
+  XPUEvent get_event() const { return event_; }
+
+ private:
+  XPUEvent event_;
+};
+
+XPUStreamHandle get_current_stream_handle(int device_id = -1);
+XPUStreamHandle get_stream_handle(int device_id = -1);
+void set_current_stream(XPUStreamHandle* s);
 
 // KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
 // because we want to implement a KPS-based kernel and make it run

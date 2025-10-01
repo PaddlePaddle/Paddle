@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_phi_only,
-    test_pir_only,
     test_sot_mgs0_only,
 )
 
@@ -52,7 +51,6 @@ class TestParametersPersistentMode(Dy2StTestBase):
             outs.append(net(data))
         return outs
 
-    @test_pir_only
     def test_persistent_mode(self):
         net = NetWithParameters(10, 3)
         net.eval()
@@ -65,7 +63,6 @@ class TestParametersPersistentMode(Dy2StTestBase):
                 dy_out.numpy(), st_out.numpy(), rtol=1e-05, atol=1e-05
             )
 
-    @test_pir_only
     @test_sot_mgs0_only
     @test_phi_only
     def test_training_mode_error(self):

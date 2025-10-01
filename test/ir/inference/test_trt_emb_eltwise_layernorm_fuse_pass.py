@@ -249,7 +249,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
     def test(self):
         # this fuse need to fix, now there's no program can ran successfully
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=50,
             passes=["trt_embedding_eltwise_layernorm_fuse_pass"],
@@ -489,14 +489,18 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
             config.exp_disable_tensorrt_ops(["lookup_table"])
             config.delete_pass("trt_skip_layernorm_fuse_pass")
             config.delete_pass("preln_residual_bias_fuse_pass")
-            yield config, [
-                'lookup_table',
-                'lookup_table',
-                'lookup_table',
-                'elementwise_add',
-                'elementwise_add',
-                'layer_norm',
-            ], (1e-5, 1e-5)
+            yield (
+                config,
+                [
+                    'lookup_table',
+                    'lookup_table',
+                    'lookup_table',
+                    'elementwise_add',
+                    'elementwise_add',
+                    'layer_norm',
+                ],
+                (1e-5, 1e-5),
+            )
         else:
             config.set_trt_dynamic_shape_info(
                 {
@@ -518,21 +522,25 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
             config.exp_disable_tensorrt_ops(["lookup_table_v2"])
             config.delete_pass("trt_skip_layernorm_fuse_pass")
             config.delete_pass("preln_residual_bias_fuse_pass")
-            yield config, [
-                'lookup_table_v2',
-                'lookup_table_v2',
-                'lookup_table_v2',
-                'elementwise_add',
-                'elementwise_add',
-                'layer_norm',
-            ], (1e-5, 1e-5)
+            yield (
+                config,
+                [
+                    'lookup_table_v2',
+                    'lookup_table_v2',
+                    'lookup_table_v2',
+                    'elementwise_add',
+                    'elementwise_add',
+                    'layer_norm',
+                ],
+                (1e-5, 1e-5),
+            )
 
     def add_ignore_pass_case(self):
         pass
 
     def test(self):
         # this fuse need to fix, now there's no program can ran successfully
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=50,
             passes=["trt_embedding_eltwise_layernorm_fuse_pass"],

@@ -45,10 +45,15 @@ void RMSLnFwd(const Context &dev_ctx,
   const auto &scale_shape = scale.dims();
   int rows, cols;
   GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
-  if (scale.dtype() == phi::DataType::BFLOAT16)
+  if (scale.dtype() == phi::DataType::BFLOAT16) {
     dev_ctx.template Alloc<phi::bfloat16>(y);
-  else if (scale.dtype() == phi::DataType::FLOAT32)
+  } else if (scale.dtype() == phi::DataType::FLOAT32) {
     dev_ctx.template Alloc<float>(y);
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The dtype of scale must be FLOAT32, BFLOAT16, but got [%s]",
+        scale.dtype()));
+  }
   invvar->Resize({rows});
   dev_ctx.template Alloc<float>(invvar);
   cuda_rms_norm<T, Context>(dev_ctx, x, scale, rows, cols, epsilon, y, invvar);
@@ -71,6 +76,10 @@ void RMSLnBwd(const Context &dev_ctx,
       dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
     } else if (scale.dtype() == phi::DataType::FLOAT32) {
       dev_ctx.template Alloc<float>(scale_grad);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The dtype of scale must be FLOAT32, BFLOAT16, but got [%s]",
+          scale.dtype()));
     }
     cuda_rms_norm_gradient<T, Context>(dev_ctx,
                                        x,
@@ -110,6 +119,10 @@ void RMSLnBwd(const Context &dev_ctx,
                                          epsilon,
                                          x_grad,
                                          &scale_grad_tmp);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The dtype of scale must be FLOAT32, BFLOAT16, but got [%s]",
+          scale.dtype()));
     }
   }
 }
@@ -122,7 +135,7 @@ PD_REGISTER_KERNEL(fused_rms_norm_ext,
                    phi::RMSLnFwd,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(fused_rms_norm_ext_grad,
                    GPU,
@@ -130,4 +143,4 @@ PD_REGISTER_KERNEL(fused_rms_norm_ext_grad,
                    phi::RMSLnBwd,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

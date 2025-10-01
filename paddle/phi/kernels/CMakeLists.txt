@@ -31,6 +31,7 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "gpudnn/*.cu"
   "kps/*.cu"
+  "stride/*.cu"
   "legacy/kps/*.cu"
   "legacy/gpu/*.cu"
   "selected_rows/gpu/*.cu"

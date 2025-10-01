@@ -64,9 +64,9 @@ _SCALE_DEFAULT_VALUE = 0.001
 
 
 def _init_var_node(var_node, value, scope, place):
-    assert isinstance(
-        value, np.ndarray
-    ), 'The type of value should be numpy array.'
+    assert isinstance(value, np.ndarray), (
+        'The type of value should be numpy array.'
+    )
     assert scope is not None, 'The scope cannot be set None.'
     assert place is not None, 'The place cannot be set None.'
     tensor = scope.var(var_node.name()).get_tensor()
@@ -204,9 +204,9 @@ class QuantizationTransformPass:
             'range_abs_max',
             'moving_average_abs_max',
         ]
-        assert (
-            activation_quantize_type != 'channel_wise_abs_max'
-        ), "The activation quantization type does not support 'channel_wise_abs_max'."
+        assert activation_quantize_type != 'channel_wise_abs_max', (
+            "The activation quantization type does not support 'channel_wise_abs_max'."
+        )
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 f"Unknown activation_quantize_type : '{activation_quantize_type}'. It can only be "
@@ -249,9 +249,9 @@ class QuantizationTransformPass:
         Returns:
             None
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         if self._is_test is None:
             self._is_test = graph.is_test()
         # marked the variable which has been dequantized.
@@ -937,9 +937,9 @@ class QuantizationTransformPass:
             # loss shape must be 1 when minimize
             loss = paddle.mean(out_node)
             if not graph._for_test:
-                assert (
-                    self._optimizer
-                ), "optimizer_func must be set when graph is test graph"
+                assert self._optimizer, (
+                    "optimizer_func must be set when graph is test graph"
+                )
                 in_node.stop_gradient = False
                 optimizer = self._optimizer()
                 optimizer.minimize(loss)
@@ -1266,9 +1266,9 @@ class QuantizationFreezePass:
             original_var_name = self._original_var_name(name)
             scale_v = self._quant_var_scale_map[original_var_name]
             if original_var_name in persistable_vars:
-                assert isinstance(
-                    scale_v, list
-                ), f'The scale of parameter {original_var_name} is not a list.'
+                assert isinstance(scale_v, list), (
+                    f'The scale of parameter {original_var_name} is not a list.'
+                )
                 channel_scale = np.array(scale_v)
             else:
                 assert isinstance(scale_v, IrNode)
@@ -1351,9 +1351,9 @@ class QuantizationFreezePass:
             original_var_name = self._original_var_name(name)
             scale_v = self._quant_var_scale_map[original_var_name]
             if original_var_name in persistable_vars:
-                assert self._is_float(
-                    scale_v
-                ), f'The scale of parameter {original_var_name} is not a float.'
+                assert self._is_float(scale_v), (
+                    f'The scale of parameter {original_var_name} is not a float.'
+                )
                 scale_v = 1e-8 if scale_v == 0.0 else scale_v
                 max_range *= param_range / scale_v
             else:
@@ -1610,9 +1610,9 @@ class OutScaleForTrainingPass:
         Args:
             graph(IrGraph): the target graph.
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         if self._is_test is None:
             self._is_test = graph.is_test()
         target_ops = []
@@ -1768,9 +1768,9 @@ class OutScaleForInferencePass:
         Args:
             graph(IrGraph): the target graph.
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         op_nodes = graph.all_op_nodes()
         for op_node in op_nodes:
             if op_node.name() in self._teller_set:
@@ -1791,9 +1791,9 @@ class OutScaleForInferencePass:
 
                     scale_name = self._scale_name(var_name)
                     scale_var = self._scope.find_var(scale_name)
-                    assert (
-                        scale_var is not None
-                    ), f"Can not find {scale_name} variable in the scope"
+                    assert scale_var is not None, (
+                        f"Can not find {scale_name} variable in the scope"
+                    )
                     scale_value = np.array(scale_var.get_tensor())[0]
 
                     # For compatibility, we save output threshold by two methods.
@@ -1888,9 +1888,9 @@ class AddQuantDequantPass:
         Returns:
             None
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         if self._is_test is None:
             self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
@@ -2471,9 +2471,9 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             'range_abs_max',
             'moving_average_abs_max',
         ]
-        assert (
-            activation_quantize_type != 'channel_wise_abs_max'
-        ), "The activation quantization type does not support 'channel_wise_abs_max'."
+        assert activation_quantize_type != 'channel_wise_abs_max', (
+            "The activation quantization type does not support 'channel_wise_abs_max'."
+        )
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 f"Unknown activation_quantize_type : '{activation_quantize_type}'. It can only be "
@@ -2733,9 +2733,9 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         Returns:
             None
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         if self._is_test is None:
             self._is_test = graph.is_test()
         # marked the variable which has been dequantized.
@@ -2876,9 +2876,9 @@ class AddQuantDequantPassV2:
         Returns:
             None
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         if self._is_test is None:
             self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
@@ -3033,9 +3033,9 @@ class ReplaceFakeQuantDequantPass:
         assert self._place is not None, "place must not be None."
 
     def apply(self, graph):
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         fake_quant_dequant_ops = []
         remove_fake_quant_ops = []
         observer_out_node_names = []
@@ -3214,9 +3214,9 @@ class QuantWeightPass:
         self._quantized_ops = set()
 
     def apply(self, graph):
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         fake_quant_ops_for_weight = []
 
         fake_quant_ops = [
@@ -3343,9 +3343,9 @@ class AddQuantDequantForInferencePass:
         Args:
             graph(IrGraph): the target graph.
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         dequant_node_map = {}
         dequantized_vars_map = collections.OrderedDict()
         for op_node in graph.all_op_nodes():
@@ -3546,9 +3546,9 @@ class AddQuantDequantForResidual:
         Args:
             graph(IrGraph): the target graph.
         """
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         weight_var_names = self._all_weight_node_names(graph)
         var_node_names_with_order = self._var_name_order(graph)
         for op in graph.all_op_nodes():

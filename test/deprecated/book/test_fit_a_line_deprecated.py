@@ -180,11 +180,15 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         # The input data should be >= 0
         batch_size = 10
 
-        test_reader = paddle.batch(
-            paddle.dataset.uci_housing.test(), batch_size=batch_size
-        )
+        test_data = []
+        uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+        count = 0
+        for data in uci_housing:
+            test_data.append(data)
+            count = count + 1
+            if count >= batch_size:
+                break
 
-        test_data = next(test_reader())
         test_feat = numpy.array([data[0] for data in test_data]).astype(
             "float32"
         )
@@ -213,7 +217,7 @@ def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
     if use_cuda and not base.core.is_compiled_with_cuda():
         return
 
-    if use_bf16 and not base.core.is_compiled_with_mkldnn():
+    if use_bf16 and not base.core.is_compiled_with_onednn():
         return
 
     temp_dir = tempfile.TemporaryDirectory()

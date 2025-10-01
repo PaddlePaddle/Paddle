@@ -138,11 +138,12 @@ class TEST_API OpInfoMap {
   }
 
   void Insert(const std::string& type, const OpInfo& info) {
-    PADDLE_ENFORCE_NE(Has(type),
-                      true,
-                      common::errors::AlreadyExists(
-                          "Operator (%s) has been registered.", type));
-    map_.insert({type, info});
+    if (Has(type)) {
+      map_[type] = info;  // override ops
+      VLOG(0) << "Overriding op: " << type;
+    } else {
+      map_.insert({type, info});
+    }
   }
 
   const OpInfo& Get(const std::string& type) const {

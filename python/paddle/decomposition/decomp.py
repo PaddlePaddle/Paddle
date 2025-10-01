@@ -182,16 +182,16 @@ def _check_op_results(
                 f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
                 f'but orig_out dtype={orig_dtype} and new_out dtype={new_dtype}'
             )
-            assert (
-                -1 not in new_shape
-            ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+            assert -1 not in new_shape, (
+                f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+            )
             assert orig_shape == new_shape, (
                 f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
                 f'but orig_out shape={orig_shape} and new_out shape={new_shape}'
             )
-            assert not (orig_out is None) ^ (
-                new_out is None
-            ), "orig_out and new_out should match."
+            assert not (orig_out is None) ^ (new_out is None), (
+                "orig_out and new_out should match."
+            )
         return
 
 
@@ -261,9 +261,9 @@ def _check_op(
 
     bwd_op_input_names = bwd_op.get_input_names()
     bwd_inputs = [x.source() for x in bwd_op.operands()]
-    assert len(bwd_op_input_names) == len(
-        bwd_inputs
-    ), "backward op names do not match backward op inputs"
+    assert len(bwd_op_input_names) == len(bwd_inputs), (
+        "backward op names do not match backward op inputs"
+    )
     fwd_op_related_inputs_outputs = []
     for idx, name in enumerate(bwd_op_input_names):
         if "_grad" not in name:
@@ -417,14 +417,14 @@ def _prepare_grad_outputs(fwd_op, bwd_op):
     # check forward outputs and backward inputs
     fwd_outputs = fwd_op.results()
     fwd_output_names = fwd_op.get_output_names()
-    assert len(fwd_output_names) == len(
-        fwd_outputs
-    ), "forward op output names do not match forward op outputs"
+    assert len(fwd_output_names) == len(fwd_outputs), (
+        "forward op output names do not match forward op outputs"
+    )
     bwd_inputs = [x.source() for x in bwd_op.operands()]
     bwd_input_names = bwd_op.get_input_names()
-    assert len(bwd_input_names) == len(
-        bwd_inputs
-    ), "backward op input names do not match backward op inputs"
+    assert len(bwd_input_names) == len(bwd_inputs), (
+        "backward op input names do not match backward op inputs"
+    )
 
     # cut gradients from backward op's inputs
     fwd_inputs = [x.source() for x in fwd_op.operands()]
@@ -541,9 +541,9 @@ def _decomp_bwd_with_vjp(
                 res.append(grad_input[0])
             else:
                 res.append(pir.fake_value())
-        assert len(res) == len(
-            bwd_op.results()
-        ), "results of original backward op do not match results of decomposed backward op"
+        assert len(res) == len(bwd_op.results()), (
+            "results of original backward op do not match results of decomposed backward op"
+        )
 
         # step4: upgrade grad_var_to_var
         _upgrade_grad_var_to_var(
@@ -735,9 +735,9 @@ def _set_prim_state():
 
 
 def _reset_prim_state(state):
-    assert (
-        len(state) == 3
-    ), "state should contain fwd_prim_state, bwd_prim_state and pir_api_state"
+    assert len(state) == 3, (
+        "state should contain fwd_prim_state, bwd_prim_state and pir_api_state"
+    )
     core._set_prim_forward_enabled(state[0])
     core._set_prim_backward_enabled(state[1])
     paddle.framework.set_flags({"FLAGS_enable_pir_api": state[2]})

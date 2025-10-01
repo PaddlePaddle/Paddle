@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import get_device_place
 from utils import dygraph_guard
 
 import paddle
@@ -338,11 +339,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_ror(self):
-        place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         x_int = 5
         y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
         y = paddle.static.data("y", y_np.shape, dtype=y_np.dtype)
@@ -392,11 +389,7 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_rxor(self):
-        place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         x_int = 5
         y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
         y = paddle.static.data("y", y_np.shape, dtype=y_np.dtype)

@@ -21,7 +21,6 @@ from paddle import base
 
 
 class TestOpNameConflict(unittest.TestCase):
-
     def test_conflict(self):
         paddle.enable_static()
         main = base.Program()

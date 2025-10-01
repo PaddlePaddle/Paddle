@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -63,24 +64,40 @@ __global__ void index_elementwise_kernel(const int64_t N,
   }
 }
 
-template <typename Value>
-struct DivMod {
-  Value div, mod;
+template <int nt, int vt, typename T, typename func_t>
+__global__ void index_put_kernel(const int64_t N,
+                                 const bool accumulate,
+                                 const func_t f) {
+  const auto tid = threadIdx.x;
+  const auto nv = nt * vt;
+  auto idx = nv * blockIdx.x + tid;
+#pragma unroll
+  for (int i = 0; i < vt; i++) {
+    if (idx < N) {
+      f(idx, accumulate);
+      idx += nt;
+    }
+  }
+}
 
-  __host__ __device__ DivMod(Value div, Value mod) : div(div), mod(mod) {}
+template <typename T>
+struct DivMod {
+  T div, mod;
+
+  __host__ __device__ DivMod(T div, T mod) : div(div), mod(mod) {}
 };
 
-template <typename Value>
+template <typename T>
 struct IntDivider {
   IntDivider() = default;
-  explicit IntDivider(Value d) : divisor(d) {}
+  explicit IntDivider(T d) : divisor(d) {}
 
-  __host__ __device__ inline Value div(Value n) const { return n / divisor; }
-  __host__ __device__ inline Value mod(Value n) const { return n % divisor; }
-  __host__ __device__ inline DivMod<Value> divmod(Value n) const {
-    return DivMod<Value>(n / divisor, n % divisor);
+  __host__ __device__ inline T div(T n) const { return n / divisor; }
+  __host__ __device__ inline T mod(T n) const { return n % divisor; }
+  __host__ __device__ inline DivMod<T> divmod(T n) const {
+    return DivMod<T>(n / divisor, n % divisor);
   }
-  Value divisor;
+  T divisor;
 };
 
 template <>
@@ -122,14 +139,14 @@ struct IntDivider<unsigned int> {
   unsigned int shift;
 };
 
-template <int NARGS, typename index_t = uint32_t, bool signed_strides = false>
+template <int NARGS, typename INDEX_T = uint32_t, bool signed_strides = false>
 struct OffsetCalculator {
   using stride_t =
-      std::conditional_t<signed_strides, std::make_signed_t<index_t>, index_t>;
+      std::conditional_t<signed_strides, std::make_signed_t<INDEX_T>, INDEX_T>;
   using offset_type = std::array<stride_t, std::max<int>(NARGS, 1)>;
 
   OffsetCalculator(int dims,
-                   const int64_t* sizes,
+                   const int64_t* shape,
                    const int64_t* const* strides,
                    const int64_t* element_sizes = nullptr)
       : dims(dims) {
@@ -139,7 +156,7 @@ struct OffsetCalculator {
         common::errors::InvalidArgument(
             "Tensor has too many dims. Maximum dim is d%.", MAX_DIMS));
     for (int i = 0; i < dims; i++) {
-      sizes_[i] = IntDivider<index_t>(sizes[i]);
+      shape_[i] = IntDivider<INDEX_T>(shape[i]);
       for (int arg = 0; arg < NARGS; arg++) {
         int64_t element_size =
             (element_sizes == nullptr ? 1LL : element_sizes[arg]);
@@ -148,7 +165,7 @@ struct OffsetCalculator {
     }
   }
 
-  __host__ __device__ offset_type get(index_t linear_idx) const {
+  __host__ __device__ offset_type get(INDEX_T linear_idx) const {
     offset_type offsets;
 #pragma unroll
     for (int arg = 0; arg < NARGS; arg++) {
@@ -159,7 +176,7 @@ struct OffsetCalculator {
       if (dim == dims) {
         break;
       }
-      auto divmod = sizes_[dim].divmod(linear_idx);
+      auto divmod = shape_[dim].divmod(linear_idx);
       linear_idx = divmod.div;
 
 #pragma unroll
@@ -171,7 +188,7 @@ struct OffsetCalculator {
   }
 
   int dims;
-  IntDivider<index_t> sizes_[MAX_DIMS];
+  IntDivider<INDEX_T> shape_[MAX_DIMS];
   stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
@@ -194,6 +211,21 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
 
   return OffsetCalculator<N, uint32_t, signed_strides>(
       ndim, shape, strides_array.data());
+}
+
+template <int N, bool signed_strides = false>
+static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
+    const phi::DenseTensorIteratorBase& iter) {
+  PADDLE_ENFORCE_LE(N,
+                    iter.ntensors(),
+                    ::common::errors::InvalidArgument(
+                        "Tensor Numel must less or equal than Args"));
+  std::array<const int64_t*, N> strides;
+  for (int i = 0; i < N; i++) {
+    strides[i] = iter.operands_[i].stride_bytes.data();
+  }
+  return OffsetCalculator<N, uint32_t, signed_strides>(
+      iter.ndim(), iter.shape().data(), strides.data());
 }
 
 }  // namespace funcs

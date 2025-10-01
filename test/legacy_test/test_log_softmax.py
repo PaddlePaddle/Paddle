@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_devices,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -129,7 +135,8 @@ class TestLogSoftmaxAxisFP16OP(TestLogSoftmaxFP16OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLogSoftmaxBF16Op(OpTest):
     def setUp(self):
@@ -150,11 +157,11 @@ class TestLogSoftmaxBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -174,11 +181,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def check_api(self, axis=-1):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
@@ -208,11 +211,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def check_api(self, axis=-1, dtype=None):
         x = self.x.copy()
@@ -249,12 +248,13 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
 def _check_cuda_memory_20GB():
     if not hasattr(paddle.device.cuda, 'get_device_properties'):
         return False
-    gpu_info = paddle.device.cuda.get_device_properties(0)
+    gpu_info = paddle.device.get_device_properties(get_devices()[0])
     return gpu_info.total_memory >= 20 * (1024**3)  # 20GB
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not _check_cuda_memory_20GB(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not _check_cuda_memory_20GB(),
     "Need CUDA support and at least 20GB GPU memory",
 )
 class TestLogSoftmaxLargeOp(unittest.TestCase):

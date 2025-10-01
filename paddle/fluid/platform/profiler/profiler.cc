@@ -62,7 +62,7 @@ void SynchronizeDevice() {
 
 std::atomic<bool> Profiler::alive_{false};
 
-uint32_t Profiler::span_indx = 0;
+uint32_t Profiler::span_index = 0;
 const char* Profiler::version = "1.0.2";
 
 std::unique_ptr<Profiler> Profiler::Create(
@@ -175,8 +175,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
       new platform::ProfilerResult(std::move(tree), extra_info);
 #endif
   profiler_result_ptr->SetVersion(std::string(version));
-  profiler_result_ptr->SetSpanIndx(span_indx);
-  span_indx += 1;
+  profiler_result_ptr->SetSpanIndex(span_index);
+  span_index += 1;
   return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 

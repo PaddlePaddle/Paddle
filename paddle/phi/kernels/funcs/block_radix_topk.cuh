@@ -22,8 +22,7 @@
 #include <cub/util_ptx.cuh>
 #include <cub/util_type.cuh>
 
-namespace paddle {
-namespace framework {
+namespace phi::funcs {
 
 template <typename KeyT,
           int BLOCK_SIZE,
@@ -386,6 +385,5 @@ class BlockRadixTopKRegister {
   unsigned int top_k_mask_;
 };
 
-};  // namespace framework
-};  // namespace paddle
+}  // namespace phi::funcs
 #endif

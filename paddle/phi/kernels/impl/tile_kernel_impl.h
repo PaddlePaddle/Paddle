@@ -127,6 +127,14 @@ void TileKernel(const Context& dev_ctx,
     case 6:
       Tile<Context, T, 6>(dev_ctx, x, repeat_times_data, out);
       break;
+    case 7:
+      Tile<Context, T, 7>(dev_ctx, x, repeat_times_data, out);
+      break;
+    default:
+      PADDLE_THROW(errors::InvalidArgument(
+          "Only support tensor with rank being between 0 and 7. But "
+          "received tensor's rank = %d.",
+          rank));
   }
 }
 

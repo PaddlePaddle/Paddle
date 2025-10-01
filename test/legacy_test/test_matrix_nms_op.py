@@ -310,7 +310,6 @@ class TestMatrixNMSOpGaussian(TestMatrixNMSOp):
 
 
 class TestMatrixNMSError(unittest.TestCase):
-
     def test_errors(self):
         M = 1200
         N = 7

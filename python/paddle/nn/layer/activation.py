@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from paddle.framework import get_default_dtype
 
@@ -176,7 +176,9 @@ class GELU(Layer):
     r"""
     GELU Activation.
 
-    If approximate is True
+    approximate parameter must be True, False, "tanh", "none".
+
+    If approximate is True or "tanh"
 
     .. math::
 
@@ -189,7 +191,7 @@ class GELU(Layer):
         GELU(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
 
     Parameters:
-        approximate (bool, optional): Whether to enable approximation. Default is False.
+        approximate (str|bool, optional): Whether to enable approximation. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -208,6 +210,24 @@ class GELU(Layer):
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15865529,  0.34573123],
              [ 0.84134471,  1.39978933]])
+            >>> m = paddle.nn.GELU(False)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> m = paddle.nn.GELU("none")
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> m = paddle.nn.GELU("tanh")
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
             >>> m = paddle.nn.GELU(True)
             >>> out = m(x)
             >>> print(out)
@@ -217,7 +237,9 @@ class GELU(Layer):
     """
 
     def __init__(
-        self, approximate: bool = False, name: str | None = None
+        self,
+        approximate: Literal["tanh", "none"] | bool = False,
+        name: str | None = None,
     ) -> None:
         super().__init__()
         self._approximate = approximate
@@ -1241,6 +1263,7 @@ class Silu(Layer):
     Where :math:`x` is the input Tensor.
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
@@ -1258,17 +1281,29 @@ class Silu(Layer):
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+
+            >>> m = paddle.nn.Silu(True)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
-    def __init__(self, name: str | None = None) -> str:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> str:
         super().__init__()
         self._name = name
+        self._inplace = inplace
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.silu(x, self._name)
+        return F.silu(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
+        name_str = f'inplace={self._inplace}' + (
+            f', name={self._name}' if self._name else ''
+        )
         return name_str
 
 
@@ -1609,9 +1644,9 @@ class Softmax2D(Layer):
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        assert (
-            x.ndim == 3 or x.ndim == 4
-        ), f"Softmax2D requires a 3D or 4D tensor as input. Received: {x.ndim}D."
+        assert x.ndim == 3 or x.ndim == 4, (
+            f"Softmax2D requires a 3D or 4D tensor as input. Received: {x.ndim}D."
+        )
         return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
 
     def extra_repr(self) -> str:

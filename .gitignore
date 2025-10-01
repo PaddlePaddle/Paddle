@@ -117,7 +117,7 @@ paddle/phi/kernels/fusion/cutlass/gemm_epilogue/build
 paddle/phi/kernels/fusion/cutlass/gemm_epilogue/cutlass
 python/paddle/_typing/libs/**/*.pyi
 third_party.tar.gz
-
+python/paddle/base/dygraph/generated_tensor_methods_patch.py
 #fp8
 paddle/fluid/fp8/deep_gemm/include/cute/*
 paddle/fluid/fp8/deep_gemm/include/cutlass/*

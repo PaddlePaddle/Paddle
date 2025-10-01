@@ -34,14 +34,14 @@ jobs:
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: 'coverage'
-      bos_dir: Paddle-coverage
+      clone_dir: Paddle-coverage
 
   build-docker:
     name: Coverage build docker
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
-      bos_dir: Paddle-coverage
+      clone_dir: Paddle-coverage
       task: coverage
 
   build:
@@ -68,7 +68,6 @@ jobs:
           PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
           WITH_PIP_CUDA_LIBRARIES: "OFF"
           WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
@@ -114,7 +113,6 @@ jobs:
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
-            -e PRECISION_TEST \
             -e WITH_PIP_CUDA_LIBRARIES \
             -e WITH_FLAGCX \
             -e LITE_GIT_TAG \
@@ -142,7 +140,7 @@ jobs:
           echo "Downloading Paddle.tar.gz"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz --strip-components=1
+          tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           git remote -v
           set +e
@@ -272,7 +270,6 @@ jobs:
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
           WITH_SHARED_PHI: "ON"
@@ -315,7 +312,6 @@ jobs:
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
-            -e PRECISION_TEST \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
             -e WITH_SHARED_PHI \

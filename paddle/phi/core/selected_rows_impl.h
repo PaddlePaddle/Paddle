@@ -91,7 +91,7 @@ class SelectedRowsImpl {
    *
    * @return true if the key is exists.
    */
-  bool HasKey(int64_t key) const;
+  PADDLE_API bool HasKey(int64_t key) const;
 
   /*
    * @brief Get value by the key list.
@@ -102,15 +102,15 @@ class SelectedRowsImpl {
    * @return a list of pair which contains the non-exists key and the index in
    * the value
    */
-  void Get(const DenseTensor& ids,
-           DenseTensor* value,
-           bool auto_grown = false,
-           bool is_test = false);
+  PADDLE_API void Get(const DenseTensor& ids,
+                      DenseTensor* value,
+                      bool auto_grown = false,
+                      bool is_test = false);
 
-  void* AllocateFrom(Allocator* allocator,
-                     DataType dtype,
-                     size_t requested_size = 0,
-                     bool fake_alloc = false);
+  PADDLE_API void* AllocateFrom(Allocator* allocator,
+                                DataType dtype,
+                                size_t requested_size = 0,
+                                bool fake_alloc = false);
 
   /*
    * @brief Get the index of the key from id_to_index_ map. If the key not
@@ -123,7 +123,9 @@ class SelectedRowsImpl {
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
+  PADDLE_API int64_t AutoGrownIndex(int64_t key,
+                                    bool auto_grown,
+                                    bool is_test = false);
 
   /*
    * @brief Get the index of the key from id_to_index_ map.
@@ -137,7 +139,7 @@ class SelectedRowsImpl {
     }
   }
 
-  void SyncIndex();
+  PADDLE_API void SyncIndex();
   /*
    * @brief Get complete Dims before
    */

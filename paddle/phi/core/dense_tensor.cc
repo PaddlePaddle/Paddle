@@ -230,8 +230,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    1. Designed behaviour: DenseTensor constructed with its underlying storage_
    initialized
    2. Legacy behaviour(fluid): DenseTensor constructed using default
-   constructor, where
-                               storage_ won't be initialized until the first
+   constructor, where storage_ won't be initialized until the first
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
@@ -260,9 +259,9 @@ void DenseTensor::ResetLoD(const LegacyLoD& legacy_lod) {
   meta_.legacy_lod = legacy_lod;
 }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
-  template TEST_API const dtype* DenseTensor::data() const; \
-  template TEST_API dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)                 \
+  template PADDLE_API const dtype* DenseTensor::data() const; \
+  template PADDLE_API dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
@@ -301,7 +300,8 @@ const DeviceT& DenseTensor::storage_properties() const {
 
 template const NPUStorageProperties& DenseTensor::storage_properties() const;
 #ifdef PADDLE_WITH_DNNL
-template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
+template PADDLE_API const OneDNNStorageProperties&
+DenseTensor::storage_properties() const;
 #endif
 #ifdef PADDLE_WITH_XPU
 template const XPUStorageProperties& DenseTensor::storage_properties() const;

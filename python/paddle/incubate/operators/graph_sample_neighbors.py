@@ -157,8 +157,7 @@ def graph_sample_neighbors(
     if flag_perm_buffer:
         if perm_buffer is None:
             raise ValueError(
-                "`perm_buffer` should not be None if `flag_perm_buffer`"
-                "is True."
+                "`perm_buffer` should not be None if `flag_perm_buffer` is True."
             )
 
     if in_dynamic_or_pir_mode():

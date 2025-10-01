@@ -116,18 +116,14 @@ class MatmulVariadicTemplate:
         )
 
     def get_kernel_arg_runtime_getters(self):
-        all_kernel_arg_id_and_unique_names = (
-            self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
-        )
+        all_kernel_arg_id_and_unique_names = self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
         return ap.map(
             lambda pair: pair[0].runtime_getter,
             all_kernel_arg_id_and_unique_names,
         )
 
     def get_kernel_arg_types(self):
-        all_kernel_arg_id_and_unique_names = (
-            self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
-        )
+        all_kernel_arg_id_and_unique_names = self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
         return ap.map(
             lambda pair: pair[0].type, all_kernel_arg_id_and_unique_names
         )
@@ -151,9 +147,7 @@ class MatmulVariadicTemplate:
                 f"{type_name} {field_name}" if for_declare else f"{field_name}"
             )
 
-        all_kernel_arg_id_and_names = (
-            self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
-        )
+        all_kernel_arg_id_and_names = self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
         return ", ".join(
             ap.map(
                 declare_epilogue_arguments_field, all_kernel_arg_id_and_names
@@ -171,9 +165,7 @@ class MatmulVariadicTemplate:
             type_name = self.dtype2type_name[dtype]
             return f"{type_name} {field_name};"
 
-        generated_kernel_arg_id_and_names = (
-            self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
-        )
+        generated_kernel_arg_id_and_names = self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
         return f"\n{indent}".join(
             ap.map(
                 declare_epilogue_arguments_field,
@@ -190,9 +182,7 @@ class MatmulVariadicTemplate:
             )
             return f"{param_obj_name}.{field_name} = {var_name};"
 
-        generated_kernel_arg_id_and_names = (
-            self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
-        )
+        generated_kernel_arg_id_and_names = self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
         return f"\n{indent}".join(
             ap.map(
                 declare_epilogue_arguments_assign,

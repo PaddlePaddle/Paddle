@@ -2305,6 +2305,29 @@ class TestSundryAPI(unittest.TestCase):
         self.assertTrue(out1.shape, [2, 3])
         self.assertTrue(x1.grad.shape, [3, 3, 3])
 
+    def test_compat_slogdet(self):
+        # 2-D input
+        x = paddle.randn([3, 3])
+        x.stop_gradient = False
+        sign, logabsdet = paddle.linalg.slogdet(x)
+        loss = logabsdet.sum()
+        loss.backward()
+
+        self.assertEqual(sign.shape, [])
+        self.assertEqual(logabsdet.shape, [])
+        self.assertTrue(x.grad.shape, [3, 3])
+
+        # 3-D input
+        x1 = paddle.randn([3, 3, 3])
+        x1.stop_gradient = False
+        sign1, logabsdet1 = paddle.linalg.slogdet(x1)
+        loss1 = logabsdet1.sum()
+        loss1.backward()
+
+        self.assertTrue(sign1.shape, [3])
+        self.assertTrue(logabsdet1.shape, [3])
+        self.assertTrue(x1.grad.shape, [3, 3, 3])
+
     def test_multi_dot(self):
         a = paddle.randn([4])
         a.stop_gradient = False
@@ -2667,6 +2690,18 @@ class TestNoBackwardAPI(unittest.TestCase):
         w = paddle.to_tensor(w0, stop_gradient=False)
         emb = paddle.nn.functional.embedding(
             x=ids, weight=w, sparse=True, name="embedding"
+        )
+        self.assertEqual(emb.shape, [2])
+        res = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(emb.numpy()[i], res[i])
+
+    def test_embedding_alias(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            input=ids, weight=w, sparse=True, name="embedding"
         )
         self.assertEqual(emb.shape, [2])
         res = [5.0, 6.0]

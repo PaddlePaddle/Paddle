@@ -1330,6 +1330,21 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (scale_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(scale_grad->dims())),
+          0,
+          scale_grad);
+    if (bias_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
+    return;
+  }
   BatchNormGradFunctor<T, Context>(dev_ctx,
                                    x,
                                    scale,
@@ -1422,21 +1437,21 @@ void BatchNormDoubleGradKernel(
 
 #ifdef PADDLE_WITH_HIP
 PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::float16, GPU);
 
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 
 PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
 PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::bfloat16, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::bfloat16, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::float16, GPU);
 
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
@@ -1444,8 +1459,8 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    phi::BatchNormGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
@@ -1455,7 +1470,7 @@ PD_REGISTER_KERNEL(batch_norm_grad,
 #else
 PD_DECLARE_BN_GRAD_FUNCTOR(float, GPU);
 PD_DECLARE_BN_GRAD_FUNCTOR(double, GPU);
-PD_DECLARE_BN_GRAD_FUNCTOR(phi::dtype::float16, GPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(phi::float16, GPU);
 
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
@@ -1463,7 +1478,7 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    phi::BatchNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad

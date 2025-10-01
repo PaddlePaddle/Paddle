@@ -77,7 +77,7 @@ class TestXpuLayerNormActFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["layer_norm_act_xpu_fuse_pass"],

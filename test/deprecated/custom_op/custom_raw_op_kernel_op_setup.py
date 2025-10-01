@@ -38,7 +38,7 @@ else:
     compile_dir = os.path.join(os.environ['PADDLE_ROOT'], 'build')
 
 macros = []
-if core.is_compiled_with_mkldnn():
+if core.is_compiled_with_onednn():
     macros.append(("PADDLE_WITH_DNNL", None))
 if core.is_compiled_with_nccl():
     macros.append(("PADDLE_WITH_NCCL", None))

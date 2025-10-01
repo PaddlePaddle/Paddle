@@ -26,6 +26,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'model-benchmark'
@@ -35,7 +36,7 @@ jobs:
   model-benchmark:
     name: Benchmark test
     needs: check-bypass
-    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: model-bm
     steps:

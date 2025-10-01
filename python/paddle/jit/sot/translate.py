@@ -101,9 +101,9 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
 
     def impl(*args: P.args, **kwargs: P.kwargs) -> R:
         with StepInfoManager().step_guard(fn.__code__), SotStepProfilerGuard():
-            assert hasattr(
-                fn, "__code__"
-            ), "Target function doesn't have code for simulating."
+            assert hasattr(fn, "__code__"), (
+                "Target function doesn't have code for simulating."
+            )
             InfoCollector().clear_step_info()
             paddle.framework.core.set_eval_frame(callback)
             try:

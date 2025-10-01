@@ -94,7 +94,7 @@ class GradientAccumulator {
   inline bool HasInnerVar() const { return inner_var_ != nullptr; }
 
   // function that Sum Gradient with Previous Graph
-  void AccumulateGrad();
+  PADDLE_API void AccumulateGrad();
 
   /** [ Hook related methods ]
    *
@@ -122,9 +122,9 @@ class GradientAccumulator {
    *    parallel multi-card training.
    */
 
-  void CallGradientHooks();
+  PADDLE_API void CallGradientHooks();
 
-  void CallReduceHooks();
+  PADDLE_API void CallReduceHooks();
 
  protected:
   VariableWrapper* var_;
@@ -139,18 +139,18 @@ class EagerGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void SumGrad(std::shared_ptr<VariableWrapper> var,
-               size_t trace_id,
-               bool unchange_input) override;
+  PADDLE_API void SumGrad(std::shared_ptr<VariableWrapper> var,
+                          size_t trace_id,
+                          bool unchange_input) override;
 };
 
 class SortedGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void SumGrad(std::shared_ptr<VariableWrapper> var,
-               size_t trace_id,
-               bool unchange_input) override;
+  PADDLE_API void SumGrad(std::shared_ptr<VariableWrapper> var,
+                          size_t trace_id,
+                          bool unchange_input) override;
 
  private:
   struct SavedVarInfo {

@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import re
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -82,13 +82,14 @@ def naive_attention_impl(query, key, value, mask, scale):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11020,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.2",
 )
 class TestMemEffAttentionVariableAPI(unittest.TestCase):
     def setUp(self):
         self.name = "MemEffAPIVariable_fp32"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 1
         self.num_head = 8
         self.kv_num_head = 2
@@ -164,7 +165,7 @@ class TestMemEffAttentionVariableAPI(unittest.TestCase):
 class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
     def setUp(self):
         self.name = "MemEffAPIVariable_fp16"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 3
         self.num_head = 16
         self.kv_num_head = 2
@@ -202,7 +203,7 @@ class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "MemEffAPIVariableDtypeBF16 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
@@ -210,7 +211,7 @@ class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
 class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
     def setUp(self):
         self.name = "MemEffAPIVariable_bf16"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.kv_num_head = 2
@@ -248,13 +249,14 @@ class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11020,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.2",
 )
 class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
     def setUp(self):
         self.name = "MemEffAPIVariableStatic_fp16"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 3
         self.num_head = 16
         self.kv_num_head = 2
@@ -339,6 +341,81 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
             )
         paddle.disable_static()
         np.testing.assert_allclose(res[0], self.ref_out, rtol=5e-03, atol=1e-03)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11020,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2",
+)
+class TestMemEffAttentionVariableAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.name = "MemEffAPIVariable_fp32"
+        self.place = get_device_place()
+        self.batch_size = 0
+        self.num_head = 8
+        self.kv_num_head = 2
+        self.seq_len = 64
+        self.dim_head = 16
+        self.seq_lens = paddle.to_tensor(
+            [
+                self.seq_len,
+            ]
+            * self.batch_size,
+            "int32",
+        )
+        self.shape = (
+            self.batch_size,
+            self.num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.shape_kv = (
+            self.batch_size,
+            self.kv_num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.dtype = 'float32'
+        self.attention_mask = paddle.zeros([0, 1, 64, 1])
+        self.scale = 1.0 / np.sqrt(self.shape[-1])
+
+    def test_all(self):
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        q.stop_gradient = False
+        key = np.random.random(self.shape_kv)
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        value = np.random.random(self.shape_kv)
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        out_ = naive_attention_impl(q, k, v, self.attention_mask, self.scale)
+
+        out = variable_length_memory_efficient_attention(
+            q,
+            k,
+            v,
+            self.seq_lens,
+            self.seq_lens,
+            self.attention_mask,
+            self.scale,
+        )
+
+        for i in range(self.batch_size):
+            np.testing.assert_allclose(
+                out.numpy()[i, :, : self.seq_lens[i], :],
+                out_[i, :, : self.seq_lens[i], :],
+                rtol=5e-03,
+                atol=1e-03,
+            )
 
 
 if __name__ == '__main__':

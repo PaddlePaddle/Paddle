@@ -263,24 +263,24 @@ def set_value_converter(network, paddle_op, inputs):
 
     # calculate dims
     update_dims = updates.shape
-    assert (
-        update_dims[axes] > 0
-    ), "the update value shape[{axes}] must be greater than 0, but received {update_dims[axes]}"
-    assert (
-        input_dims[axes] > 0
-    ), "the input shape[{axes}] must be greater than 0, but received {input_dims[axes]}"
+    assert update_dims[axes] > 0, (
+        "the update value shape[{axes}] must be greater than 0, but received {update_dims[axes]}"
+    )
+    assert input_dims[axes] > 0, (
+        "the input shape[{axes}] must be greater than 0, but received {input_dims[axes]}"
+    )
     input_dims_rank = len(input_dims)
-    assert (
-        axes <= input_dims_rank
-    ), "The axes {axes} is larger than total axes {input_dims_rank}"
-    assert (
-        starts <= input_dims[axes]
-    ), "The start {starts} of dim {axes} is larger than origin shape {input_dims[axes]}"
+    assert axes <= input_dims_rank, (
+        "The axes {axes} is larger than total axes {input_dims_rank}"
+    )
+    assert starts <= input_dims[axes], (
+        "The start {starts} of dim {axes} is larger than origin shape {input_dims[axes]}"
+    )
 
     target_update_dim = (ends - 1 - starts) / steps + 1
-    assert (
-        update_dims[axes] == target_update_dim
-    ), "the {axes}th axis of update dim error, should be {target_update_dim}, but we got {update_dims[axes]}"
+    assert update_dims[axes] == target_update_dim, (
+        "the {axes}th axis of update dim error, should be {target_update_dim}, but we got {update_dims[axes]}"
+    )
 
     shape_0 = [1] * len(update_dims)
     shape_weight = trt.Weights(np.array([0], dtype=np.float32))

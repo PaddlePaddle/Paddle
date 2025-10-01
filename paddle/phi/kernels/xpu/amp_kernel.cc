@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -175,7 +174,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  DenseTensor* found_infinite) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
 
   const MPDType* scale_data = scale.data<MPDType>();
   bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);
@@ -264,7 +263,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
 
       DenseTensor float_x;
       DenseTensor float_out;
-      if (std::is_same<T, phi::dtype::float16>::value &&
+      if (std::is_same<T, phi::float16>::value &&
           (version == phi::backends::xpu::XPUVersion::XPU1)) {
         dev_ctx.template Alloc<MPDType>(&float_x, x->numel() * sizeof(MPDType));
         dev_ctx.template Alloc<MPDType>(&float_out,
@@ -316,7 +315,7 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    ALL_LAYOUT,
                    phi::UpdateLossScalingKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
   }
@@ -329,7 +328,7 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    ALL_LAYOUT,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::BOOL);
 }

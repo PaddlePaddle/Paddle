@@ -309,6 +309,12 @@ if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 luotao1 zhangbo9674 phlrain
 fi
 
+CHINESE_CHECK=$(git diff -U0 upstream/$BRANCH |grep "^+" |grep -P '[\p{Han}]')
+if [ "${CHINESE_CHECK}" != "" ] && [ "${PR_ID}" != "" ]; then
+	echo_line="Not recommended to use Chinese. You must have one RD (tianshuo78520a or swgu98 or zhangbo9674 or risemeup1) approval."
+    check_approval 1 tianshuo78520a swgu98 zhangbo9674 risemeup1
+fi
+
 ALL_ADDED_LINES=$(git diff -U0 upstream/$BRANCH |grep "^+" || true)
 ALL_PADDLE_CHECK=$(echo $ALL_ADDED_LINES |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true)
 VALID_PADDLE_CHECK=$(echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(([^,;]+,)*[^";]*errors::.[^"]*".[^";]{20,}.[^;]*\);\s' || true)
@@ -355,6 +361,13 @@ HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY=$(git diff --name-only upstream/
 if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You must have one RD (SigureMo, DrRyanHuang, zrr1999 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
     check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
+fi
+
+PY_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- python |grep "^+")
+PY_FILE_USE_TYPE_IGNORE=`echo $PY_FILE_ADDED_LINES | grep -B5 --no-group-separator ">>>\s*#\s*type:\s*ignore" || true`
+if [ "${PY_FILE_USE_TYPE_IGNORE}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You must have one RD (SigureMo(Recommend), zrr1999, gouzil) approval for using '>>> # type: ignore' skip type check in sample code.\n"
+    check_approval 1 SigureMo zrr1999 gouzil
 fi
 
 HAS_USED_AUTO_PARALLEL_ALIGN_MODE=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep -o -m 1 "auto_parallel_align_mode" || true`

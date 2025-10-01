@@ -19,8 +19,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 
 #define CUDNN_FRONTEND_UNUSED(X) ((void)X)

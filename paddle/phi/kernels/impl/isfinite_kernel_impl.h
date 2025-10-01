@@ -42,10 +42,9 @@ struct is_other_float
 // check if complex type
 template <typename T>
 struct is_complex64_or_complex128
-    : std::integral_constant<
-          bool,
-          std::is_same<T, phi::dtype::complex<float>>::value ||
-              std::is_same<T, phi::dtype::complex<double>>::value> {};
+    : std::integral_constant<bool,
+                             std::is_same<T, phi::complex64>::value ||
+                                 std::is_same<T, phi::complex128>::value> {};
 
 namespace phi {
 using Tensor = DenseTensor;
@@ -478,9 +477,9 @@ struct IsinfFunctor<phi::GPUContext, T> {
 #endif
 
 template <typename T, typename Context>
-void IsfiniteKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    DenseTensor* out) {
+PADDLE_API void IsfiniteKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               DenseTensor* out) {
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
     return;

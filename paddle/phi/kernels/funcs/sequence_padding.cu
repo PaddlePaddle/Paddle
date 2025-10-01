@@ -164,14 +164,6 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
               pad_seq_len,
               step_width,
               layout);
-    /*
-    if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
-      paddle::framework::TensorCopy(pad_tensor, dev_ctx.GetPlace(), dev_ctx,
-    seq_tensor);
-      seq_tensor->Resize(seq_tensor_dims);
-      return;
-    }
-    */
 
     const int kBlockSize = 512;
 
@@ -207,12 +199,12 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
 
 template class PaddingDenseTensorFunctor<phi::GPUContext, int>;
 template class PaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class PaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::GPUContext, float>;
 template class PaddingDenseTensorFunctor<phi::GPUContext, double>;
 
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, int>;
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs

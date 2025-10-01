@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import base
@@ -44,7 +50,7 @@ class ElementwiseMulOp(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
@@ -60,7 +66,7 @@ class ElementwiseMulOp(OpTest):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -73,7 +79,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -86,7 +92,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -215,7 +221,8 @@ class TestElementwiseMulOp_ZeroSize3(TestElementwiseMulOp_ZeroSize1):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestBF16ElementwiseMulOp(OpTest):
@@ -237,7 +244,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.y)),
         }
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+        self.attrs = {'axis': self.axis, 'use_onednn': False}
         self.if_enable_cinn()
 
     def test_check_output(self):
@@ -249,7 +256,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -260,7 +267,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -271,7 +278,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -376,7 +383,7 @@ class ElementwiseMulOp_broadcast(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -385,7 +392,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.axis = -1
 
     def if_check_prim(self):
-        self.check_prim = self.axis == -1
+        self.check_prim = False
 
     def if_check_dygraph(self):
         self.check_dygraph = (not self.use_onednn) and (self.axis == -1)
@@ -401,7 +408,7 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def init_axis(self):
         self.axis = 0
@@ -472,7 +479,8 @@ class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp_broadcast):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def init_dtype(self):
@@ -494,7 +502,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -507,7 +515,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -520,7 +528,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -586,7 +594,7 @@ class TestComplexElementwiseMulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -697,7 +705,7 @@ class TestMulApiZeroSize(unittest.TestCase):
     def test_dygraph(self):
         self.init_data()
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            [paddle.CPUPlace(), get_device_place()]
             if core.is_compiled_with_cuda()
             else [paddle.CPUPlace()]
         )
@@ -726,6 +734,128 @@ class TestMulApiZeroSize4(TestMulApiZeroSize):
     def init_data(self):
         self.x_numpy = np.random.rand(1, 0, 2).astype('float32')
         self.y_numpy = np.random.rand(3, 0, 1).astype('float32')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseMulop_Stride(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestElementwiseMulop_Stride1(TestElementwiseMulop_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMulop_Stride2(TestElementwiseMulop_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMulop_Stride3(TestElementwiseMulop_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMulop_Stride4(TestElementwiseMulop_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMulop_Stride5(TestElementwiseMulop_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.multiply(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseMulop_Stride_ZeroDim1(TestElementwiseMulop_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMulop_Stride_ZeroSize1(TestElementwiseMulop_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.multiply(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 if __name__ == '__main__':

@@ -125,7 +125,6 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         return self.dynamic_shape
 
     def sample_predictor_configs(self, program_config, run_pir=False):
-
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
@@ -151,9 +150,11 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-5, 1e-4)
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-5, 1e-4),
+        )
 
     def test(self):
         self.run_test(run_pir=True)

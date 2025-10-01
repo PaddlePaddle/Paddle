@@ -44,6 +44,7 @@ TEST(RetryAllocator, RetryAllocator) {
         new BestFitAllocator(cpu_allocation.get()));
     allocators.push_back(std::make_shared<RetryAllocator>(
         std::move(best_fit_allocator),
+        phi::CPUPlace(),
         (thread_num - 1) * (sleep_time + extra_time)));
   }
 
@@ -103,7 +104,8 @@ class DummyAllocator : public Allocator {
 TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
   size_t retry_ms = 10;
   {
-    RetryAllocator allocator(std::make_shared<DummyAllocator>(), retry_ms);
+    RetryAllocator allocator(
+        std::make_shared<DummyAllocator>(), phi::CPUPlace(), retry_ms);
     try {
       auto allocation = allocator.Allocate(100);
       ASSERT_TRUE(false);
@@ -117,7 +119,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     phi::GPUPlace p(0);
-    RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);
+    RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), p, retry_ms);
     size_t allocate_size = (static_cast<size_t>(1) << 40);  // Very large number
     try {
       auto allocation = allocator.Allocate(allocate_size);

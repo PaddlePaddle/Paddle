@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_places, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -273,7 +273,7 @@ class TestUnpool3DOpException(unittest.TestCase):
             r"The indices should have \[N, C, D, H, W\] format",
             indices_rank_error,
         )
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.assertRaisesRegex(
                 ValueError,
                 r"index should less than output",
@@ -410,7 +410,6 @@ class TestUnpool3DOpAPI_dygraph4(unittest.TestCase):
 
 
 class TestUnpool3DOpAPI_static(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():

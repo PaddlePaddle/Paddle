@@ -40,9 +40,9 @@ class TestCustomOpSemiAutoParallel(SemiAutoParallelTestBase):
         self._seed = eval(os.getenv("seed"))
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_custom_relu(self):
         shapes = [16, 4, 4]

@@ -43,5 +43,4 @@ void MeanRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    mean_raw, OneDNN, ONEDNN, phi::MeanRawKernel, float, phi::dtype::bfloat16) {
-}
+    mean_raw, OneDNN, ONEDNN, phi::MeanRawKernel, float, phi::bfloat16) {}

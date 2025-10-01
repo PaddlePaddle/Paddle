@@ -14,7 +14,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
@@ -84,6 +83,22 @@ void StridedCopyKernel(const Context& dev_ctx,
     output_data[output_offset] = input_data[input_offset];
   }
 }
+#ifdef _WIN32
+INSTANTIATE_STRIDEDCOPY_KERNEL(bool, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int64_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(float, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(double, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float16, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::bfloat16, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<float>, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<double>, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e4m3fn, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e5m2, CPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(strided_copy,
@@ -98,9 +113,9 @@ PD_REGISTER_KERNEL(strided_copy,
                    int64_t,
                    float,
                    double,
-                   ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16,
-                   ::phi::dtype::complex<float>,
-                   ::phi::dtype::complex<double>,
-                   ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

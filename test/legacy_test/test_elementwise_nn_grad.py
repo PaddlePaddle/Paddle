@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -24,7 +24,6 @@ from paddle.base import core
 
 
 class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -47,14 +46,13 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
 
 class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -79,14 +77,13 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
 
 class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -109,14 +106,13 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
 
 class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -139,8 +135,8 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -178,14 +174,13 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
 
 class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -208,8 +203,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -248,8 +243,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck2(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -288,8 +283,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck3(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -328,8 +323,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck4(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -368,8 +363,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck5(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -408,8 +403,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck6(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -449,14 +444,13 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
 
 class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -482,14 +476,13 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
 
 class TestElementwiseAddTripleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -512,8 +505,8 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -541,8 +534,8 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             with paddle.pir_utils.OldIrGuard():
                 self.func(p)
@@ -581,8 +574,8 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -610,8 +603,8 @@ class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             with paddle.pir_utils.OldIrGuard():
                 self.func(p)

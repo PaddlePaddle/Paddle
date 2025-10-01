@@ -212,7 +212,7 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
           (x_num_col_dims > 0 && y_num_col_dims > 0),
       true,
       ::common::errors::InvalidArgument(
-          "x_num_col_dims and y_num_cole_dims should both be 0 or positive"
+          "x_num_col_dims and y_num_cole_dims should both be 0 or positive, "
           "now x_num_col_dims is %d and y_num_col_dims is %d",
           x_num_col_dims,
           y_num_col_dims));
@@ -634,13 +634,13 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardData(
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding"),
       true,
-      ::common::errors::NotFound("The CudnnConvBackwardData custom_call"
+      ::common::errors::NotFound("The CudnnConvBackwardData custom_call "
                                  "must has attribute \"padding\""));
   auto padding = std::get<std::vector<int>>(attr_store.at("padding"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride"),
       true,
-      ::common::errors::NotFound("The CudnnConvBackwardData custom_call"
+      ::common::errors::NotFound("The CudnnConvBackwardData custom_call "
                                  "must has attribute \"stride\""));
   auto stride = std::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
@@ -716,13 +716,13 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvBackwardFilter(
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding"),
       true,
-      ::common::errors::NotFound("The CudnnConvBackwardFilter custom_call"
+      ::common::errors::NotFound("The CudnnConvBackwardFilter custom_call "
                                  "must has attribute \"padding\""));
   auto padding = std::get<std::vector<int>>(attr_store.at("padding"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride"),
       true,
-      ::common::errors::NotFound("The CudnnConvBackwardFilter custom_call"
+      ::common::errors::NotFound("The CudnnConvBackwardFilter custom_call "
                                  "must has attribute \"stride\""));
   auto stride = std::get<std::vector<int>>(attr_store.at("stride"));
   auto dilation = attr_store.count("dilation")
@@ -799,31 +799,31 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolForward(
   PADDLE_ENFORCE_EQ(
       attr_store.count("kernel_size"),
       true,
-      ::common::errors::NotFound("The CudnnPoolForward custom_call"
+      ::common::errors::NotFound("The CudnnPoolForward custom_call "
                                  "must has attribute \"kernel_size\""));
   auto kernel = std::get<std::vector<int>>(attr_store.at("kernel_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding_size"),
       true,
-      ::common::errors::NotFound("The CudnnPoolForward custom_call"
+      ::common::errors::NotFound("The CudnnPoolForward custom_call "
                                  "must has attribute \"padding_size\""));
   auto padding = std::get<std::vector<int>>(attr_store.at("padding_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride_size"),
       true,
-      ::common::errors::NotFound("The CudnnPoolForward custom_call"
+      ::common::errors::NotFound("The CudnnPoolForward custom_call "
                                  "must has attribute \"stride_size\""));
   auto stride = std::get<std::vector<int>>(attr_store.at("stride_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("pool_type"),
       true,
-      ::common::errors::NotFound("The CudnnPoolForward custom_call"
+      ::common::errors::NotFound("The CudnnPoolForward custom_call "
                                  "must has attribute \"pool_type\""));
   auto pool_type = std::get<std::string>(attr_store.at("pool_type"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("data_format"),
       true,
-      ::common::errors::NotFound("The CudnnPoolForward custom_call"
+      ::common::errors::NotFound("The CudnnPoolForward custom_call "
                                  "must has attribute \"data_format\""));
   std::string data_format = std::get<std::string>(attr_store.at("data_format"));
 
@@ -893,31 +893,31 @@ std::vector<ir::Expr> CustomCallArgsForCudnnPoolBackward(
   PADDLE_ENFORCE_EQ(
       attr_store.count("kernel_size"),
       true,
-      ::common::errors::NotFound("The CudnnPoolBackward custom_call"
+      ::common::errors::NotFound("The CudnnPoolBackward custom_call "
                                  "must has attribute \"kernel_size\""));
   auto kernel = std::get<std::vector<int>>(attr_store.at("kernel_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("padding_size"),
       true,
-      ::common::errors::NotFound("The CudnnPoolBackward custom_call"
+      ::common::errors::NotFound("The CudnnPoolBackward custom_call "
                                  "must has attribute \"padding_size\""));
   auto padding = std::get<std::vector<int>>(attr_store.at("padding_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("stride_size"),
       true,
-      ::common::errors::NotFound("The CudnnPoolBackward custom_call"
+      ::common::errors::NotFound("The CudnnPoolBackward custom_call "
                                  "must has attribute \"stride_size\""));
   auto stride = std::get<std::vector<int>>(attr_store.at("stride_size"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("pool_type"),
       true,
-      ::common::errors::NotFound("The CudnnPoolBackward custom_call"
+      ::common::errors::NotFound("The CudnnPoolBackward custom_call "
                                  "must has attribute \"pool_type\""));
   auto pool_type = std::get<std::string>(attr_store.at("pool_type"));
   PADDLE_ENFORCE_EQ(
       attr_store.count("data_format"),
       true,
-      ::common::errors::NotFound("The CudnnPoolBackward custom_call"
+      ::common::errors::NotFound("The CudnnPoolBackward custom_call "
                                  "must has attribute \"data_format\""));
   std::string data_format =
       std::get<std::string>(attrs.attr_store.at("data_format"));
@@ -1124,21 +1124,22 @@ std::vector<ir::Expr> CustomCallArgsForTriangularSolve(
   PADDLE_ENFORCE_EQ(
       attr_store.count("left_side"),
       true,
-      ::common::errors::NotFound("The TriangularSolve custom_call"
+      ::common::errors::NotFound("The TriangularSolve custom_call "
                                  "must has attribute \"left_side\""));
-  PADDLE_ENFORCE_EQ(attr_store.count("upper"),
-                    true,
-                    ::common::errors::NotFound("The TriangularSolve custom_call"
-                                               "must has attribute \"upper\""));
+  PADDLE_ENFORCE_EQ(
+      attr_store.count("upper"),
+      true,
+      ::common::errors::NotFound("The TriangularSolve custom_call "
+                                 "must has attribute \"upper\""));
   PADDLE_ENFORCE_EQ(
       attr_store.count("transpose_a"),
       true,
-      ::common::errors::NotFound("The TriangularSolve custom_call"
+      ::common::errors::NotFound("The TriangularSolve custom_call "
                                  "must has attribute \"transpose_a\""));
   PADDLE_ENFORCE_EQ(
       attr_store.count("unit_diagonal"),
       true,
-      ::common::errors::NotFound("The TriangularSolve custom_call"
+      ::common::errors::NotFound("The TriangularSolve custom_call "
                                  "must has attribute \"unit_diagonal\""));
 
   ir::Tensor a = inputs[0];

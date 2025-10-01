@@ -161,6 +161,7 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(phi::TensorArray);
@@ -341,9 +342,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
              }
 #else
              LOG(ERROR) << string::Sprintf(
-                 "Cannot use CustomDevice because you have installed CPU/GPU"
+                 "Cannot use CustomDevice because you have installed CPU/GPU "
                  "version PaddlePaddle.\n"
-                 "If you want to use CustomDevice, please try to install"
+                 "If you want to use CustomDevice, please try to install "
                  "CustomDevice version "
                  "PaddlePaddle by: pip install paddlepaddle\n"
                  "If you only have CPU, please change "
@@ -360,6 +361,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](const phi::CustomPlace &self) { return self.GetDeviceType(); })
       .def("__repr__", string::to_string<const phi::CustomPlace &>)
       .def("__str__", string::to_string<const phi::CustomPlace &>);
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  m.def("is_float16_supported", [](const phi::CustomPlace &place) -> bool {
+    return phi::DeviceManager::IsFloat16Supported(place);
+  });
+  m.def("is_bfloat16_supported", [](const phi::CustomPlace &place) -> bool {
+    return phi::DeviceManager::IsBFloat16Supported(place);
+  });
+#endif
   py::class_<phi::GPUPlace, phi::Place> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.

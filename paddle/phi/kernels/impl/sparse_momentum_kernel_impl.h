@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -286,7 +285,7 @@ void InnerCompute(const Context& dev_ctx,
     PADDLE_ENFORCE_GT(index->dims()[0],
                       0,
                       common::errors::InvalidArgument(
-                          "The index of sparse_momentum_op should not be empty"
+                          "The index of sparse_momentum_op should not be empty "
                           "when the index's rank is 1."));
   } else if (index->dims().size() == 2) {
     PADDLE_ENFORCE_EQ(index->dims()[1],

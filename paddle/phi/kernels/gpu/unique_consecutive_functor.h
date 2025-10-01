@@ -327,16 +327,16 @@ void IndexSelect(const Context& dev_ctx,
             index_vec[i]));
   }
 
-  for (auto i = 0; i < outer_nums; i++) {
-    auto input_start_offset = i * input_width;
-    auto output_start_offset = i * output_width;
+  for (int64_t i = 0; i < outer_nums; i++) {
+    int64_t input_start_offset = i * input_width;
+    int64_t output_start_offset = i * output_width;
 
-    for (auto j = 0; j < index_size; j++) {
+    for (int64_t j = 0; j < index_size; j++) {
       IndexT index_value = index_vec[j];
       if (index_value < 0) {
         index_value += input_dim[dim];
       }
-      for (auto k = 0; k < slice_size; k++) {
+      for (int64_t k = 0; k < slice_size; k++) {
         out_vec[output_start_offset + j * slice_size + k] =
             input_vec[input_start_offset + index_value * slice_size + k];
       }

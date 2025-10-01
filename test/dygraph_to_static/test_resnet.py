@@ -29,7 +29,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle.base import core
-from paddle.framework import use_pir_api
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -152,9 +151,9 @@ class ResNet(paddle.nn.Layer):
 
         self.layers = layers
         supported_layers = [50, 101, 152]
-        assert (
-            layers in supported_layers
-        ), f"supported layers are {supported_layers} but input layer is {layers}"
+        assert layers in supported_layers, (
+            f"supported layers are {supported_layers} but input layer is {layers}"
+        )
 
         if layers == 50:
             depth = [3, 4, 6, 3]
@@ -371,10 +370,7 @@ class ResNetHelper:
     def predict_static(self, data):
         with static_guard():
             exe = paddle.static.Executor(place)
-            if use_pir_api():
-                model_filename = self.pir_model_filename
-            else:
-                model_filename = self.model_filename
+            model_filename = self.pir_model_filename
 
             [
                 inference_program,
@@ -405,10 +401,8 @@ class ResNetHelper:
         return ret
 
     def predict_analysis_inference(self, data):
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
+
         output = PredictorTools(
             self.model_save_dir,
             model_filename,
@@ -481,12 +475,12 @@ class TestResnet(Dy2StTestBase):
 
     @test_default_mode_only
     def test_in_static_mode_mkldnn(self):
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_onednn': True})
         try:
             if paddle.base.core.is_compiled_with_mkldnn():
                 self.train(to_static=True)
         finally:
-            paddle.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_onednn': False})
 
 
 if __name__ == '__main__':

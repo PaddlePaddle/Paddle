@@ -82,7 +82,7 @@ class MlpModel(paddle.nn.Layer):
         else:
             global_input1 = global_input
         x = x + global_input1
-        y = paddle.matmul(x, self.w0)
+        y = x @ self.w0
         # forward on mesh1
         if self.run_single_process is False:
             y = dist.reshard(y, mesh1, [dist.Shard(0), dist.Shard(2)])
@@ -93,7 +93,7 @@ class MlpModel(paddle.nn.Layer):
             global_input2 = global_input
 
         y = y + global_input2
-        z = paddle.matmul(y, self.w1)
+        z = y @ self.w1
         return z
 
 
@@ -193,6 +193,7 @@ class TestSemiAutoParallelGlobalInput:
         cur_rank = paddle.distributed.get_rank()
         if self._run_static:
             dist_model = dist.to_static(model, dist_dataloader, loss_fn, opt)
+            dist_model.train()
 
             for step, (input, label) in enumerate(dist_dataloader()):
                 loss = dist_model(input, label)

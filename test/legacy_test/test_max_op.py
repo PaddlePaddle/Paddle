@@ -17,7 +17,12 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import check_out_dtype, get_places
+from op_test import (
+    check_out_dtype,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 sys.path.append("../../legacy_test")
 
@@ -31,8 +36,8 @@ from paddle.base import core
 
 class ApiMaxTest(unittest.TestCase):
     def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -156,9 +161,7 @@ class TestMaxZeroSize1(unittest.TestCase):
         self.expect_res = np.max(
             self.data, axis=tuple(self.axis), keepdims=self.keepdims
         )
-        self.places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(core.CUDAPlace(0))
+        self.places = get_places()
 
     def test_static(self):
         with static_guard():

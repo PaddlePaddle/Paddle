@@ -621,7 +621,8 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
     if (e.is_constant()) {
       std::string var_name =
           cinn::UniqName("constant" + static_cast<int>(e.get_constant()));
-      result.emplace_back(e, e, var_name, /* is_reduce = */ false);
+      result.emplace_back(
+          e, NormalizeUpperBound(e, false), var_name, /* is_reduce = */ false);
     } else if (e.As<ir::_Var_>() != nullptr) {
       ir::Expr copy_e = ir::ir_utils::IRCopy(e);
       ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
@@ -635,14 +636,17 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
           ir::Var var = x->as_var_ref();
           var_intervals.insert(
               {var->name,
-               common::CasInterval{var->lower_bound, var->upper_bound}});
+               common::CasInterval{var->lower_bound,
+                                   NormalizeUpperBound(var->upper_bound)}});
           if (var->is_reduce_axis) is_reduce = true;
         }
         return false;
       });
       common::SymbolicExprAnalyzer analyzer(var_intervals);
-      result.emplace_back(
-          analyzer.LowerBound(e), analyzer.UpperBound(e), var_name, is_reduce);
+      result.emplace_back(analyzer.LowerBound(e),
+                          NormalizeUpperBound(analyzer.UpperBound(e), false),
+                          var_name,
+                          is_reduce);
     }
   }
   return result;

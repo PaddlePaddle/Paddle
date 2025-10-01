@@ -14,7 +14,6 @@
 
 
 class DrrPass:
-
     def make_drr_ctx(self):
         drr_ctx = DrrCtx()  # noqa: F821
         drr_ctx.set_drr_pass_type(self.drr_pass_type())

@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
@@ -131,7 +130,6 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
@@ -154,18 +152,30 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
                  "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
   char* out_ptr = reinterpret_cast<char*>(output_);
-  for (int64_t idx = 0; idx < N; idx++) {
-    const auto offsets = offset_calc.cpu_get(idx);
-    char* const out_data = out_ptr + offsets[0] + slice_offset;
-    int64_t offset = 0;
-    for (int64_t i = 0; i < num_indices; i++) {
-      int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-      if (index < 0) {
-        index += sizes[i];
+  if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
+    const bool* mask_data = index[0]->data<bool>();
+    for (int64_t idx = 0; idx < N; idx++) {
+      const auto offsets = offset_calc.cpu_get(idx);
+      char* const out_data = out_ptr + offsets[0] + slice_offset;
+      if (mask_data[idx]) {
+        *reinterpret_cast<T*>(out_data) = value_T;
       }
-      offset += index * strides[i];
     }
-    *reinterpret_cast<T*>(out_data + offset) = value_T;
+  } else {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+    for (int64_t idx = 0; idx < N; idx++) {
+      const auto offsets = offset_calc.cpu_get(idx);
+      char* const out_data = out_ptr + offsets[0] + slice_offset;
+      int64_t offset = 0;
+      for (int64_t i = 0; i < num_indices; i++) {
+        int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+        if (index < 0) {
+          index += sizes[i];
+        }
+        offset += index * strides[i];
+      }
+      *reinterpret_cast<T*>(out_data + offset) = value_T;
+    }
   }
 }
 
@@ -224,13 +234,15 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                const int64_t slice_offset,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Index holds the wrong type, it holds [%s], but "
-                        "desires to be [%s].",
-                        index_type,
-                        phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(
+      index_type == phi::DataType::INT64 ||
+          (index_type == phi::DataType::BOOL && index.size() == 1),
+      true,
+      common::errors::InvalidArgument(
+          "Index holds the wrong type, it holds [%s], but "
+          "desires to be [%s].",
+          index_type,
+          phi::DataType::INT64));
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -268,10 +280,10 @@ PD_REGISTER_KERNEL(index_elementwise_put,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    CPU,
@@ -285,7 +297,7 @@ PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

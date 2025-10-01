@@ -26,7 +26,7 @@ static inline int CanonicalAxis(const int axis, const int rank) {
   return axis;
 }
 
-template <typename T = int>
+template <typename T = int64_t>
 static inline T SizeToAxis(const int axis, DDim dims) {
   T size = 1;
   for (int i = 0; i < axis; i++) {
@@ -35,7 +35,7 @@ static inline T SizeToAxis(const int axis, DDim dims) {
   return size;
 }
 
-template <typename T = int>
+template <typename T = int64_t>
 static inline T SizeFromAxis(const int axis, DDim dims) {
   T size = 1;
   for (int i = axis; i < dims.size(); i++) {
@@ -44,7 +44,7 @@ static inline T SizeFromAxis(const int axis, DDim dims) {
   return size;
 }
 
-template <typename T = int>
+template <typename T = int64_t>
 static inline T SizeOutAxis(const int axis, DDim dims) {
   T size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {

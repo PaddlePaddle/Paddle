@@ -48,7 +48,6 @@ Compilation database setup:
 http://clang.llvm.org/docs/HowToSetupToolingForLLVM.html
 """
 
-
 import argparse
 import glob
 import json
@@ -286,7 +285,7 @@ def main():
     parser.add_argument(
         '-checks',
         default=None,
-        help='checks filter, when not specified, use clang-tidy ' 'default',
+        help='checks filter, when not specified, use clang-tidy default',
     )
     parser.add_argument(
         '-config',
@@ -331,12 +330,12 @@ def main():
     parser.add_argument(
         '-format',
         action='store_true',
-        help='Reformat code ' 'after applying fixes',
+        help='Reformat code after applying fixes',
     )
     parser.add_argument(
         '-style',
         default='file',
-        help='The style of reformat ' 'code after applying fixes',
+        help='The style of reformat code after applying fixes',
     )
     parser.add_argument(
         '-p',
@@ -348,14 +347,14 @@ def main():
         dest='extra_arg',
         action='append',
         default=[],
-        help='Additional argument to append to the compiler ' 'command line.',
+        help='Additional argument to append to the compiler command line.',
     )
     parser.add_argument(
         '-extra-arg-before',
         dest='extra_arg_before',
         action='append',
         default=[],
-        help='Additional argument to prepend to the compiler ' 'command line.',
+        help='Additional argument to prepend to the compiler command line.',
     )
     parser.add_argument(
         '-quiet', action='store_true', help='Run clang-tidy in quiet mode'

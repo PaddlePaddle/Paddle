@@ -514,7 +514,7 @@ void LarsMomentumKernel(
         op_num,
         LARS_MAX_MERGED_OPS,
         errors::InvalidArgument(
-            "The maximum number of merged-ops supported is (%d), but"
+            "The maximum number of merged-ops supported is (%d), but "
             "lars op required for training this model is (%d)\n",
             LARS_MAX_MERGED_OPS,
             op_num));
@@ -678,7 +678,7 @@ PD_REGISTER_KERNEL(lars_momentum,
                    phi::LarsMomentumKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

@@ -1902,9 +1902,9 @@ class RandomPerspective(BaseTransform[_InputT, _RetT]):
     ) -> None:
         super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
-        assert (
-            0 <= distortion_scale <= 1
-        ), "distortion_scale must be between 0 and 1"
+        assert 0 <= distortion_scale <= 1, (
+            "distortion_scale must be between 0 and 1"
+        )
         assert interpolation in ['nearest', 'bilinear', 'bicubic']
         assert isinstance(fill, (numbers.Number, str, list, tuple))
 
@@ -2098,24 +2098,24 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
         keys: _TransformInputKeys | None = None,
     ) -> None:
         super().__init__(keys)
-        assert isinstance(
-            scale, (tuple, list)
-        ), "scale should be a tuple or list"
-        assert (
-            scale[0] >= 0 and scale[1] <= 1 and scale[0] <= scale[1]
-        ), "scale should be of kind (min, max) and in range [0, 1]"
-        assert isinstance(
-            ratio, (tuple, list)
-        ), "ratio should be a tuple or list"
-        assert (
-            ratio[0] >= 0 and ratio[0] <= ratio[1]
-        ), "ratio should be of kind (min, max)"
-        assert (
-            prob >= 0 and prob <= 1
-        ), "The probability should be in range [0, 1]"
-        assert isinstance(
-            value, (numbers.Number, str, tuple, list)
-        ), "value should be a number, tuple, list or str"
+        assert isinstance(scale, (tuple, list)), (
+            "scale should be a tuple or list"
+        )
+        assert scale[0] >= 0 and scale[1] <= 1 and scale[0] <= scale[1], (
+            "scale should be of kind (min, max) and in range [0, 1]"
+        )
+        assert isinstance(ratio, (tuple, list)), (
+            "ratio should be a tuple or list"
+        )
+        assert ratio[0] >= 0 and ratio[0] <= ratio[1], (
+            "ratio should be of kind (min, max)"
+        )
+        assert prob >= 0 and prob <= 1, (
+            "The probability should be in range [0, 1]"
+        )
+        assert isinstance(value, (numbers.Number, str, tuple, list)), (
+            "value should be a number, tuple, list or str"
+        )
         if isinstance(value, str) and value != "random":
             raise ValueError("value must be 'random' when type is str")
 

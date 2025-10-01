@@ -125,7 +125,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     bool topk_is_unique;
 
     using BlockRadixSelectT =
-        paddle::framework::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
+        phi::funcs::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
     __shared__ typename BlockRadixSelectT::TempStorage share_storage;
 
     BlockRadixSelectT{share_storage}.radixTopKGetThreshold(
@@ -254,7 +254,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     RandomNumGen rng(gidx, random_seed);
     float weight_keys[ITEMS_PER_THREAD];
     int neighbor_idxs[ITEMS_PER_THREAD];
-    using BlockRadixTopKT = paddle::framework::
+    using BlockRadixTopKT = phi::funcs::
         BlockRadixTopKRegister<float, BLOCK_SIZE, ITEMS_PER_THREAD, true, int>;
     __shared__ typename BlockRadixTopKT::TempStorage sort_tmp_storage;
 

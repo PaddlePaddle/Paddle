@@ -111,9 +111,9 @@ class Imdb(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert (
-                download
-            ), "data_file is not set and downloading automatically is disabled"
+            assert download, (
+                "data_file is not set and downloading automatically is disabled"
+            )
             self.data_file = _check_exists_and_download(
                 data_file, URL, MD5, 'imdb', download
             )
@@ -160,8 +160,8 @@ class Imdb(Dataset):
         return data
 
     def _load_anno(self) -> None:
-        pos_pattern = re.compile(fr"aclImdb/{self.mode}/pos/.*\.txt$")
-        neg_pattern = re.compile(fr"aclImdb/{self.mode}/neg/.*\.txt$")
+        pos_pattern = re.compile(rf"aclImdb/{self.mode}/pos/.*\.txt$")
+        neg_pattern = re.compile(rf"aclImdb/{self.mode}/neg/.*\.txt$")
 
         UNK = self.word_idx['<unk>']
 

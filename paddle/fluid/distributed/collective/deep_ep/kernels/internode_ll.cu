@@ -23,14 +23,15 @@
 #include <infiniband/mlx5dv.h>
 #include <non_abi/device/threadgroup/nvshmemi_common_device_defines.cuh>
 #include <device_host_transport/nvshmem_common_ibgda.h>
+#ifdef __NVCC__
+#include <cub/cub.cuh>
+#endif
 // clang-format on
-
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/configs.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/ibgda_device.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/launch.cuh"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-
 namespace deep_ep {
 
 namespace internode_ll {
@@ -189,7 +190,32 @@ __global__ __launch_bounds__(
       // Note(zkk)
       // create a run_deepep_loop, so I need not modify Deepep's code any more.
       int run_deepep_loop = 1;
-      if (use_expertwise_scale) {
+      if (use_expertwise_scale && kUseFP8) {  // w4afp8
+        run_deepep_loop = 0;
+        for (int ii = 0; ii < num_topk; ii++) {
+          int tmp_id = topk_idx[ii + token_idx * num_topk];
+          float scale = expertwise_scale[tmp_id];
+          for (int i = thread_id; i < hidden_bf16_int4; i += num_threads) {
+            auto int4_value = __ldg(x_int4 + i);
+            auto bf16_values = reinterpret_cast<nv_bfloat16*>(&int4_value);
+            int2 int2_value;
+            phi::AlignedVector<phi::dtype::float8_e4m3fn, 8> res_vec;
+            const float max_bound = 448.f;
+            const float min_bound = -448.f;
+            for (int j = 0; j < 8; j++) {
+              float quant_value =
+                  max_bound * scale * static_cast<float>(bf16_values[j]);
+              quant_value = quant_value > max_bound ? max_bound : quant_value;
+              quant_value = quant_value < min_bound ? min_bound : quant_value;
+              res_vec[j] = static_cast<phi::dtype::float8_e4m3fn>(quant_value);
+            }
+            phi::Store(res_vec,
+                       reinterpret_cast<phi::dtype::float8_e4m3fn*>(rdma_x) +
+                           (ii + token_idx * num_topk) * num_bytes_per_msg +
+                           sizeof(int4) + i * sizeof(res_vec));
+          }
+        }
+      } else if (use_expertwise_scale) {  // w4aint8
         run_deepep_loop = 0;
         for (int ii = 0; ii < num_topk; ii++) {
           int tmp_id = topk_idx[ii + token_idx * num_topk];
@@ -224,7 +250,7 @@ __global__ __launch_bounds__(
         // Read
         auto int4_value = __ldg(x_int4 + i);
 
-        if (kUseFP8) {
+        if (kUseFP8 && !use_expertwise_scale) {
           // Calculate local amax
           auto bf16_values = reinterpret_cast<nv_bfloat16*>(&int4_value);
           float fp32_values[kNumElemsPerRead];
@@ -502,7 +528,7 @@ LOW_LATENCY_DISPATCH_RECV:
                          st_na_global);
 
       // Copy scales
-      if (kUseFP8) {
+      if (kUseFP8 && !use_expertwise_scale) {
         const auto src_scales = reinterpret_cast<float*>(
             reinterpret_cast<uint8_t*>(src_data) + hidden_bytes);
         const auto dst_scales =

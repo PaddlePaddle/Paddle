@@ -24,5 +24,5 @@ PD_REGISTER_KERNEL(unfold_grad,
                    phi::UnfoldGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

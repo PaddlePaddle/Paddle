@@ -316,8 +316,8 @@ struct LowLatencyTwoStageLayout {
     size_t combine_recv_buffer_bytes = num_rdma_ranks *
                                        num_max_dispatch_tokens_per_rank *
                                        num_bytes_per_combine_msg;
-    size_t recv_buffer_bytes = std::max(dispatch_recv_data_buffer_bytes * 2,
-                                        combine_recv_buffer_bytes);
+    size_t recv_buffer_bytes =
+        std::max(dispatch_recv_data_buffer_bytes, combine_recv_buffer_bytes);
     EP_HOST_ASSERT(recv_buffer_bytes % sizeof(int4) == 0);
     total_bytes += recv_buffer_bytes * 2;
 
@@ -416,12 +416,16 @@ inline size_t get_low_latency_nvl_size_hint_two_stage(
   auto combine_nvl_num_bytes = num_rdma_experts * num_rdma_ranks *
                                num_max_dispatch_tokens_per_rank *
                                combine_num_bytes_per_msg;
-  const size_t signal_bytes = num_local_experts * num_ranks * sizeof(int);
-  auto nvl_num_bytes = dispatch_nvl_num_bytes + signal_bytes +
-                       combine_nvl_num_bytes + signal_bytes;
-  return ((nvl_num_bytes + NUM_BUFFER_ALIGNMENT_BYTES - 1) /
-          NUM_BUFFER_ALIGNMENT_BYTES) *
-         NUM_BUFFER_ALIGNMENT_BYTES;
+  const size_t signal_bytes = (num_local_experts * num_ranks * sizeof(int) +
+                               NUM_BUFFER_ALIGNMENT_BYTES - 1) /
+                              NUM_BUFFER_ALIGNMENT_BYTES *
+                              NUM_BUFFER_ALIGNMENT_BYTES;
+  auto max_nvl_num_bytes =
+      (std::max(dispatch_nvl_num_bytes, combine_nvl_num_bytes) +
+       NUM_BUFFER_ALIGNMENT_BYTES - 1) /
+      NUM_BUFFER_ALIGNMENT_BYTES * NUM_BUFFER_ALIGNMENT_BYTES;
+  auto nvl_num_bytes = (max_nvl_num_bytes + signal_bytes) * 2;
+  return nvl_num_bytes;
 }
 
 }  // namespace deep_ep

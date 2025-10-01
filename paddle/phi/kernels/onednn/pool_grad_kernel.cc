@@ -108,12 +108,8 @@ phi::KernelKey PoolOpGradGetKernelTypeForVar(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pool2d_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::Pool2dGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    pool2d_grad, OneDNN, ONEDNN, phi::Pool2dGradKernel, float, phi::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::PoolOpGradGetKernelTypeForVar;
   kernel->check_if_onednn_kernel_support_ = phi::Pool2dGradCheckIfOneDNNSupport;
 }

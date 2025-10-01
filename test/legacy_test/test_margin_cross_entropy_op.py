@@ -15,7 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle.base import core
@@ -150,12 +157,12 @@ class TestMarginCrossEntropyOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=1e-5, check_pir=True
+            get_device_place(), atol=1e-5, check_pir=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ["Logits"], "Loss", check_pir=True
+            get_device_place(), ["Logits"], "Loss", check_pir=True
         )
 
 
@@ -168,7 +175,7 @@ class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             ["Logits"],
             "Loss",
             numeric_grad_delta=5e-2,
@@ -186,12 +193,12 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=5e-2, check_pir=True
+            get_device_place(), atol=5e-2, check_pir=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             ["Logits"],
             "Loss",
             numeric_grad_delta=6e-1,
@@ -202,7 +209,7 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMarginCrossEntropyBF16Op(OpTest):
@@ -274,12 +281,12 @@ class TestMarginCrossEntropyBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=5e-2, check_pir=True
+            get_device_place(), atol=5e-2, check_pir=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             ["Logits"],
             "Loss",
             numeric_grad_delta=6e-1,
@@ -329,16 +336,15 @@ class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpV2(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
         paddle.framework.random._manual_program_seed(self.seed)
-        self.places = []
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.python_out_sig = ["Loss"]
@@ -501,16 +507,15 @@ class TestMarginCrossEntropyOpV4(TestMarginCrossEntropyOpV2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
         paddle.framework.random._manual_program_seed(self.seed)
-        self.places = []
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.python_api = python_api

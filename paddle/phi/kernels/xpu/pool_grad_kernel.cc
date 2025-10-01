@@ -48,7 +48,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCHW",
-      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
+      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support "
                                       "data_format is 'NCHW', but received %s",
                                       data_format));
 
@@ -213,7 +213,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCDHW",
-      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support"
+      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support "
                                       "data_format is 'NCDHW', but received %s",
                                       data_format));
   if (!dx) {
@@ -452,21 +452,13 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pool2d_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::Pool2dGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(pool3d_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::Pool3dGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    pool2d_grad, XPU, ALL_LAYOUT, phi::Pool2dGradKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(
+    pool3d_grad, XPU, ALL_LAYOUT, phi::Pool3dGradKernel, float, phi::float16) {}
 PD_REGISTER_KERNEL(max_pool2d_with_index_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

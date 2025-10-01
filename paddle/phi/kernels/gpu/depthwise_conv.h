@@ -119,9 +119,7 @@ struct DWConvParams {
 
 }  // namespace phi
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi::math {
 
 /*
  * \brief Compute the depthwise convolution which include
@@ -1011,8 +1009,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
 
 template <typename T,
           typename index_t,
-          typename std::enable_if_t<std::is_same_v<phi::dtype::float16, T>>* =
-              nullptr>
+          typename std::enable_if_t<std::is_same_v<phi::float16, T>>* = nullptr>
 __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   index_t index,
                                                   const index_t numel,
@@ -1042,10 +1039,10 @@ __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
 #endif
 }
 
-template <typename T,
-          typename index_t,
-          typename std::enable_if_t<std::is_same_v<phi::dtype::bfloat16, T>>* =
-              nullptr>
+template <
+    typename T,
+    typename index_t,
+    typename std::enable_if_t<std::is_same_v<phi::bfloat16, T>>* = nullptr>
 __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   index_t index,
                                                   const index_t numel,
@@ -1077,11 +1074,11 @@ __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
 #endif
 }
 
-template <typename T,
-          typename index_t,
-          typename std::enable_if_t<!std::is_same_v<phi::dtype::float16, T> &&
-                                    !std::is_same_v<phi::dtype::bfloat16, T>>* =
-              nullptr>
+template <
+    typename T,
+    typename index_t,
+    typename std::enable_if_t<!std::is_same_v<phi::float16, T> &&
+                              !std::is_same_v<phi::bfloat16, T>>* = nullptr>
 __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   index_t index,
                                                   const index_t numel,
@@ -1970,38 +1967,34 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
 
 template class DepthwiseConvFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvFunctor<phi::GPUContext, double, false>;
-template class DepthwiseConvFunctor<phi::GPUContext,
-                                    phi::dtype::float16,
-                                    false>;
+template class DepthwiseConvFunctor<phi::GPUContext, phi::float16, false>;
 
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, false>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext,
-                                             phi::dtype::float16,
+                                             phi::float16,
                                              false>;
 
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, false>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                              phi::dtype::float16,
+                                              phi::float16,
                                               false>;
 
 template class DepthwiseConvFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFunctor<phi::GPUContext, double, true>;
-template class DepthwiseConvFunctor<phi::GPUContext, phi::dtype::float16, true>;
+template class DepthwiseConvFunctor<phi::GPUContext, phi::float16, true>;
 
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, true>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext,
-                                             phi::dtype::float16,
+                                             phi::float16,
                                              true>;
 
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, true>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                              phi::dtype::float16,
+                                              phi::float16,
                                               true>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi::math

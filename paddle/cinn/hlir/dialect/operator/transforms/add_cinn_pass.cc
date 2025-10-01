@@ -172,6 +172,8 @@ void ApplyCinnPreprocessPass(
   if (has_dynamic_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreatePdOpToDynamicShapeCinnOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
   pass_manager->Run(program);

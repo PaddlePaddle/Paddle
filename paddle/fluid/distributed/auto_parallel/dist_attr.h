@@ -55,9 +55,9 @@ using phi::distributed::auto_parallel::OperatorDistAttrProto;
 
 constexpr const char* kDefault = "default";
 
-std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
+PADDLE_API std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
 
-class OperatorDistAttr {
+class PADDLE_API OperatorDistAttr {
  public:
   OperatorDistAttr() = default;
 
@@ -262,7 +262,8 @@ inline std::ostream& operator<<(std::ostream& os, const OperatorDistAttr& obj) {
   return os;
 }
 
-bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs);
+PADDLE_API bool operator==(const OperatorDistAttr& lhs,
+                           const OperatorDistAttr& rhs);
 
 inline bool operator!=(const OperatorDistAttr& lhs,
                        const OperatorDistAttr& rhs) {

@@ -44,8 +44,8 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   }
   // restore extra info
   ExtraInfo extra_info;
-  for (auto indx = 0; indx < node_trees_proto_->extra_info_size(); indx++) {
-    ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(indx);
+  for (auto index = 0; index < node_trees_proto_->extra_info_size(); index++) {
+    ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(index);
     extra_info.AddExtraInfo(extra_info_map.key(),
                             std::string("%s"),
                             extra_info_map.value().c_str());
@@ -130,10 +130,10 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
 // restore gpuDeviceProp
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
-  for (auto indx = 0; indx < node_trees_proto_->device_property_size();
-       indx++) {
+  for (auto index = 0; index < node_trees_proto_->device_property_size();
+       index++) {
     const DevicePropertyProto& device_property_proto =
-        node_trees_proto_->device_property(indx);
+        node_trees_proto_->device_property(index);
     device_property_map[device_property_proto.id()] =
         RestoreDeviceProperty(device_property_proto);
   }
@@ -143,9 +143,9 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   ProfilerResult* profiler_result_ptr =
       new ProfilerResult(std::move(tree), extra_info);
 #endif
-  // restore version and span indx
+  // restore version and span index
   profiler_result_ptr->SetVersion(node_trees_proto_->version());
-  profiler_result_ptr->SetSpanIndx(node_trees_proto_->span_indx());
+  profiler_result_ptr->SetSpanIndex(node_trees_proto_->span_index());
   return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 

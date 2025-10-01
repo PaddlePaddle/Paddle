@@ -295,7 +295,7 @@ def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):
     if target == "xpu" and not base.core.is_compiled_with_xpu():
         return
 
-    if use_bf16 and not base.core.is_compiled_with_mkldnn():
+    if use_bf16 and not base.core.is_compiled_with_onednn():
         return
 
     temp_dir = tempfile.TemporaryDirectory()

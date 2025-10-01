@@ -59,7 +59,7 @@ class TestElementwiseAddGradGradWithoutDDX
         this->op_type_,
         {{"Y", {"Y"}}, {"DOut", {"DOut"}}, {"DDY", {"DDY"}}},
         {{"DDOut", {"DDOut"}}},
-        {{"use_mkldnn", false}, {"axis", 0}});
+        {{"use_onednn", false}, {"axis", 0}});
     return op;
   }
 };

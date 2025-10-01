@@ -113,9 +113,9 @@ class LocalLayer(Layer):
         outputs back to distributed tensors based on the specified distribution attributes.
         """
         inputs = list(inputs)
-        assert len(inputs) == len(
-            self.grad_dist_attrs
-        ), f"The number of inputs ({len(inputs)}) does not match the number of grad_dist_attrs ({len(self.grad_dist_attrs)})."
+        assert len(inputs) == len(self.grad_dist_attrs), (
+            f"The number of inputs ({len(inputs)}) does not match the number of grad_dist_attrs ({len(self.grad_dist_attrs)})."
+        )
         for idx in range(len(inputs)):
             if inputs[idx].is_dist():
                 if self.grad_dist_attrs[idx] is None:
@@ -141,9 +141,9 @@ class LocalLayer(Layer):
 
         outputs = Layer.__call__(self, *inputs, **kwargs)
         list_outs = paddle.utils.flatten(outputs)
-        assert len(list_outs) == len(
-            self.out_dist_attrs
-        ), f"The number of outputs ({len(list_outs)}) does not match the number of distribution attributes ({len(self.out_dist_attrs)})."
+        assert len(list_outs) == len(self.out_dist_attrs), (
+            f"The number of outputs ({len(list_outs)}) does not match the number of distribution attributes ({len(self.out_dist_attrs)})."
+        )
 
         dist_outs = []
         for idx in range(len(list_outs)):

@@ -331,7 +331,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
                 'pooling_type': self.pool_type,
                 'global_pooling': self.global_pool,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_onednn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
                 'exclusive': self.exclusive,
                 'adaptive': self.adaptive,

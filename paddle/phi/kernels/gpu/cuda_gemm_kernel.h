@@ -26,7 +26,7 @@ typedef struct {
 } GemmParams;
 
 template <typename T, typename Context>
-void CudaGemm(const Context& ctx,
+void CudaGemm(const Context& dev_ctx,
               const DenseTensor& input,
               const DenseTensor& w,
               DenseTensor* output);

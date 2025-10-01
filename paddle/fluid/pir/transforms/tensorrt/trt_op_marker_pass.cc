@@ -1768,7 +1768,7 @@ class BilinearInterpV2Pattern
       if (scale.size() <= 1) {
         if (!op->HasAttribute("out_h") || !op->HasAttribute("out_w")) {
           VLOG(3) << "BilinearInterpV2 doesn't have scale_tensor and the scale "
-                     "size <=1 and without"
+                     "size <=1 and without "
                      "out_h / out_w, it will return false";
           return false;
         }
@@ -2895,7 +2895,7 @@ class LinearInterpOpPattern
         if (!op->HasAttribute("out_w")) {
           VLOG(3)
               << "pd_op.linear_interp doesn't have scale_tensor and the scale "
-                 "size <=1 and without"
+                 "size <=1 and without "
                  "out_w, it will return false";
           return false;
         }

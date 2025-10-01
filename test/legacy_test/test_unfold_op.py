@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -161,9 +167,36 @@ class TestUnfoldFP16Op(TestUnfoldOp):
         self.dtype = np.float16
 
 
+class TestUnfoldZeroSize(TestUnfoldOp):
+    """
+    This is for test on unfold Op with zero size input
+    """
+
+    def init_data(self):
+        self.batch_size = 3
+        self.input_channels = 0
+        self.input_height = 20
+        self.input_width = 20
+        self.kernel_sizes = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1, 1, 1]
+        self.dilations = [1, 1]
+        input_shape = [
+            self.batch_size,
+            self.input_channels,
+            self.input_height,
+            self.input_width,
+        ]
+        if self.dtype == np.uint16:
+            as_type = self.np_dtype
+        else:
+            as_type = self.dtype
+        self.x = np.random.rand(*input_shape).astype(as_type)
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestUnfoldBF16Op(TestUnfoldOp):
@@ -196,7 +229,7 @@ class TestUnfoldBF16Op(TestUnfoldOp):
         self.set_data()
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.outputs['Y'] = convert_float_to_uint16(self.outputs['Y'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_pir=True)

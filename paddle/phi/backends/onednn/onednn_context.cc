@@ -27,7 +27,7 @@ namespace phi {
 
 OneDNNContextThreadLocals::Body::Body()
     : cur_engine(dnnl::engine::kind::cpu, 0), cur_stream(cur_engine) {
-  cur_mkldnn_session_id = kMKLDNNSessionID_Default;
+  cur_onednn_session_id = kONEDNNSessionID_Default;
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
   cur_paddle_data_layout = DataLayout::kNCHW;
@@ -49,11 +49,11 @@ OneDNNContextThreadLocals::Body::~Body() {  // NOLINT
   dev_ctx->ResetBlobMap(exec_ptr_);
 }
 
-void OneDNNContextThreadLocals::Body::set_cur_mkldnn_session_id(size_t sid) {
-  cur_mkldnn_session_id = sid;
+void OneDNNContextThreadLocals::Body::set_cur_onednn_session_id(size_t sid) {
+  cur_onednn_session_id = sid;
 }
-size_t OneDNNContextThreadLocals::Body::get_cur_mkldnn_session_id() {
-  return cur_mkldnn_session_id;
+size_t OneDNNContextThreadLocals::Body::get_cur_onednn_session_id() {
+  return cur_onednn_session_id;
 }
 
 void OneDNNContextThreadLocals::Body::set_cur_input_shape_str(
@@ -171,11 +171,11 @@ struct OneDNNContext::Impl {
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
     BlobMap* pMap = p_blobmap_.get();
     auto map_it =
-        pMap->find(OneDNNContext::tls().cur_mkldnn_session_id);  // NOLINT
+        pMap->find(OneDNNContext::tls().cur_onednn_session_id);  // NOLINT
     if (map_it == pMap->end()) {
       PADDLE_THROW(common::errors::NotFound(
-          "OneDNNContext don't find cur_mkldnn_session_id: %d.",
-          OneDNNContext::tls().cur_mkldnn_session_id));
+          "OneDNNContext don't find cur_onednn_session_id: %d.",
+          OneDNNContext::tls().cur_onednn_session_id));
     }
     return map_it->second->size();
   }
@@ -185,7 +185,7 @@ struct OneDNNContext::Impl {
     BlobPtr_t<ShapeBlob> sBlob = nullptr;
     BlobPtr_t<KeyBlob> pBlob = nullptr;
 
-    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();  // NOLINT
+    int sid = OneDNNContext::tls().get_cur_onednn_session_id();  // NOLINT
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 
@@ -208,7 +208,7 @@ struct OneDNNContext::Impl {
       // In cache clearing mode, cur_input_shape_cache_capacity defines
       // max pblob capacity
       if ((static_cast<size_t>(sid) ==
-           OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing) &&
+           OneDNNContextThreadLocals::kONEDNNSessionID_CacheClearing) &&
           !sBlob->empty() &&
           (sBlob->size() >=
            static_cast<size_t>(
@@ -255,7 +255,7 @@ struct OneDNNContext::Impl {
     BlobPtr_t<ShapeBlob> sBlob = nullptr;
     BlobPtr_t<KeyBlob> pBlob = nullptr;
 
-    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();  // NOLINT
+    int sid = OneDNNContext::tls().get_cur_onednn_session_id();  // NOLINT
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 

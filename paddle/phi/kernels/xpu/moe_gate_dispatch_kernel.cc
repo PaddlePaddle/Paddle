@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/moe_gate_dispatch_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -92,7 +93,7 @@ void moe_dispatch_fwd(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void MoeGradDispatchKernel(const Context &dev_ctx,
+void MoeGateDispatchKernel(const Context &dev_ctx,
                            const DenseTensor &x,
                            const DenseTensor &gate_logits,
                            const paddle::optional<DenseTensor> &corr_bias,
@@ -130,7 +131,7 @@ void MoeGradDispatchKernel(const Context &dev_ctx,
 PD_REGISTER_KERNEL(moe_gate_dispatch,
                    XPU,
                    ALL_LAYOUT,
-                   phi::MoeGradDispatchKernel,
+                   phi::MoeGateDispatchKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

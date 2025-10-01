@@ -80,7 +80,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
     logits_grad->ShareDataWith(softmax);
   }
 
-  int blocks = NumBlocks(N * D);
+  int64_t blocks = NumBlocks(N * D);
   int threads = kNumCUDAThreads;
   const auto& label_type = label.dtype();
 
@@ -133,5 +133,5 @@ PD_REGISTER_KERNEL(margin_cross_entropy_grad,
                    phi::MarginCrossEntropyGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

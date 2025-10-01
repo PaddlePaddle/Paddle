@@ -103,9 +103,9 @@ class DpEstimationSearch(SearchAlgo):
             )
             tuner_cfg["candidates"]["dp_degree"] = [1]
         self.all_tasks = search_by_dp_estimation(tuner_cfg)
-        assert (
-            len(self.all_tasks) > 0
-        ), "Unable to perform single dp estimation search."
+        assert len(self.all_tasks) > 0, (
+            "Unable to perform single dp estimation search."
+        )
 
     def search_once(self, history_cfgs):
         new_cfg = None
@@ -146,9 +146,9 @@ class CustomizeSearch(SearchAlgo):
         super().__init__(tuner_cfg)
         self.idx = 0
         self.configs_csv = tuner_cfg.get("configs_csv", None)
-        assert os.path.exists(
-            self.configs_csv
-        ), "configs_csv file is necessary in CustomizeSearch mode."
+        assert os.path.exists(self.configs_csv), (
+            "configs_csv file is necessary in CustomizeSearch mode."
+        )
         self.all_tasks = load_configs_from_csv(self.configs_csv)
 
     def search_once(self, history_cfgs):

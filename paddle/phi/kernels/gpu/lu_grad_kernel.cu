@@ -22,13 +22,13 @@
 // HIP not support cusolver in LUKernel
 PD_REGISTER_KERNEL(lu_grad, GPU, ALL_LAYOUT, phi::LUGradKernel, float, double) {
 }
-#else
+#else  // PADDLE_WITH_CUDA
 PD_REGISTER_KERNEL(lu_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::LUGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-#endif  // PADDLE_WITH_HIP
+                   phi::complex64,
+                   phi::complex128) {}
+#endif

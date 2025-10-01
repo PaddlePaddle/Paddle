@@ -72,6 +72,7 @@ from ....symbolic_shape.constraints import (
 from ....symbolic_shape.operators import (
     symbolic_not,
     symbolic_to_bool,
+    symbolic_truediv,
 )
 from ....symbolic_shape.symbolic_value import (
     SymbolicBool,
@@ -216,9 +217,9 @@ class ConstantVariable(VariableBase):
         return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
 
     def bool_not(self):
-        assert isinstance(
-            self.get_py_value(), bool
-        ), "Bool_not can only be applied to a bool variable."
+        assert isinstance(self.get_py_value(), bool), (
+            "Bool_not can only be applied to a bool variable."
+        )
         return ConstantVariable(
             not bool(self.get_py_value()), self.graph, DummyTracker([self])
         )
@@ -287,9 +288,9 @@ class ConstantVariable(VariableBase):
         """
         if isinstance(value, ConstantVariable):
             return value
-        assert isinstance(
-            value, ConstTypes
-        ), f"value: {value},type: {type(value)}"
+        assert isinstance(value, ConstTypes), (
+            f"value: {value},type: {type(value)}"
+        )
         return ConstantVariable(value, graph, ConstTracker(value))
 
 
@@ -439,13 +440,13 @@ class TensorVariable(VariableBase):
         self.value = None
         self.meta = meta
         dynamic_axes: list[int] = []
+        self.var_name = self.var_name_generator.next()
         if (
             ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
             and self.tracker.is_traceable()
             and not self.meta.is_null()
         ):
             dynamic_axes = self.analyse_dynamic_axes(tracker)
-        self.var_name = self.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
         self.meta = self.meta.with_dynamic_axes(self.var_name, dynamic_axes)
         self.origin_meta = self.meta
@@ -985,16 +986,16 @@ class SymbolicVariable(VariableBase):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
         if isinstance(value_or_meta, MetaInfoOrNull):
-            assert (
-                not value_or_meta.is_null()
-            ), "MetaInfoOrNull should not be null"
+            assert not value_or_meta.is_null(), (
+                "MetaInfoOrNull should not be null"
+            )
             assert len(value_or_meta.unwrap_unsafe().shape) == 0
             self.value = get_symbolic_from_meta(value_or_meta)
             self.meta = value_or_meta
         else:
-            assert isinstance(
-                value_or_meta, SymbolicInt
-            ), f"Unsupported type {type(value_or_meta)} for SymbolicVariable"
+            assert isinstance(value_or_meta, SymbolicInt), (
+                f"Unsupported type {type(value_or_meta)} for SymbolicVariable"
+            )
             self.value = value_or_meta
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
@@ -1018,15 +1019,15 @@ class SymbolicVariable(VariableBase):
     def add_constraint(self, constraint: SymbolicConstraint):
         constraint_node, constraint_extern_vars = constraint
         for extern_var in constraint_extern_vars.values():
-            assert isinstance(
-                extern_var, SymbolicVariable
-            ), f"SymbolicVariable.add_constraint() got {extern_var}."
-            assert (
-                extern_var.value.is_backed()
-            ), "Only backed symbol is supported."
-            assert (
-                extern_var.tracker.is_traceable()
-            ), "Only traceable symbol is supported."
+            assert isinstance(extern_var, SymbolicVariable), (
+                f"SymbolicVariable.add_constraint() got {extern_var}."
+            )
+            assert extern_var.value.is_backed(), (
+                "Only backed symbol is supported."
+            )
+            assert extern_var.tracker.is_traceable(), (
+                "Only traceable symbol is supported."
+            )
         self.constraints.append(constraint)
 
     def to_constant(self):
@@ -1082,9 +1083,9 @@ class SymbolicVariable(VariableBase):
                 )
             )
         value = self.tracker.op(*input_values)
-        assert isinstance(
-            value, (bool, int, float)
-        ), f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
+        assert isinstance(value, (bool, int, float)), (
+            f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
+        )
         return value
 
     def get_example_value(
@@ -1112,9 +1113,9 @@ class SymbolicVariable(VariableBase):
                 )
             )
         value = self.tracker.op(*input_values)
-        assert isinstance(
-            value, (bool, int, float)
-        ), f"SymbolicVariable.get_example_value() should return bool, int or float, but got {type(value)}"
+        assert isinstance(value, (bool, int, float)), (
+            f"SymbolicVariable.get_example_value() should return bool, int or float, but got {type(value)}"
+        )
         return value
 
     def create_constraint_tree(
@@ -1127,9 +1128,9 @@ class SymbolicVariable(VariableBase):
         extern_vars = {}
         num_sym = 0
         for input in tracker.inputs:
-            assert isinstance(
-                input, (ConstantVariable, SymbolicVariable)
-            ), f"SymbolicVariable.create_constraint_tree() got {input}."
+            assert isinstance(input, (ConstantVariable, SymbolicVariable)), (
+                f"SymbolicVariable.create_constraint_tree() got {input}."
+            )
             if isinstance(input, ConstantVariable):
                 input_nodes.append(ConstantConstraintNode(input.get_py_value()))
             else:
@@ -1155,7 +1156,7 @@ class SymbolicVariable(VariableBase):
         elif tracker.op is operator.mul:
             assert len(input_nodes) == 2
             return MulConstraintNode(*input_nodes), extern_vars
-        elif tracker.op is operator.truediv:
+        elif tracker.op is symbolic_truediv:
             assert len(input_nodes) == 2
             return TrueDivConstraintNode(*input_nodes), extern_vars
         elif tracker.op is operator.floordiv:
@@ -1257,15 +1258,9 @@ class SymbolicVariable(VariableBase):
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-        from ..executor_cache import OpcodeExecutorCache
 
         expr_node = self.tracker.guard_tree_expr_node()
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        # TODO(zrr1999): symbolic_inputs need frame_value_tracer.inlined_expr
-        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
-            self.graph.pycode_gen._origin_code
-        )
-        assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         if self.need_guard_value:
             log(3, f"Need guard value for {self} in {expr_node}\n")
@@ -1294,16 +1289,9 @@ class SymbolicVariable(VariableBase):
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-        from ..executor_cache import OpcodeExecutorCache
-
         # NOTE(zrr1999): SymbolicVariable is not supported in faster guard mode
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
-            self.graph.pycode_gen._origin_code
-        )
-
-        assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         if self.need_guard_value:
             log(3, f"Need guard value for {self} in {frame_value_tracer}\n")
@@ -1385,8 +1373,6 @@ class SymbolicVariable(VariableBase):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
             return None
         if isinstance(value, SymbolicInt):
-            if value.is_backed():
-                return SymbolicVariable(value, graph, tracker)
             tensor_shape_source_result = (
                 SymbolicVariable.find_tensor_shape_source(tracker)
             )

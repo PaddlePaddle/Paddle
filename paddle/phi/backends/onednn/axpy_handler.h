@@ -53,7 +53,7 @@ class OneDNNAXPYHandler {
   // Private implementation idiom to hide dependency on oneDNN headers.
   class Impl;
   // We need custom deleter, since the compiler is unable to parameterize
-  // an allocator's default deleter due to incomple type.
+  // an allocator's default deleter due to incomplete type.
   std::unique_ptr<Impl, void (*)(Impl*)> pimpl_;
 };
 }  // namespace funcs

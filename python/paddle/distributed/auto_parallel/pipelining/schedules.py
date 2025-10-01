@@ -26,6 +26,9 @@ from typing import (
     NamedTuple,
 )
 
+from paddle import nn
+from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
+
 if TYPE_CHECKING:
     from .stage import _PipelineStageBase
 
@@ -222,7 +225,14 @@ class _PipelineSchedule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def step(self, *args, target=None, losses: list | None = None, **kwargs):
+    def step(
+        self,
+        *args,
+        target=None,
+        losses: list | None = None,
+        return_output: bool = False,
+        **kwargs,
+    ):
         """
         Run one iteration of the pipeline schedule with *whole-batch* input.
         Will chunk the input into microbatches automatically, and go through the
@@ -359,7 +369,14 @@ class PipelineScheduleSingle(_PipelineSchedule):
             self._stage._prepare_backward_infra(self._n_microbatches, loss)
         self._stage_initialized = True
 
-    def step(self, *args, target=None, losses: list | None = None, **kwargs):
+    def step(
+        self,
+        *args,
+        target=None,
+        losses: list | None = None,
+        return_output: bool = False,
+        **kwargs,
+    ):
         """
         Run one iteration of the pipeline schedule with *whole-batch* input.
         Will chunk the input into microbatches automatically, and go through the
@@ -387,10 +404,10 @@ class PipelineScheduleSingle(_PipelineSchedule):
         self._step_microbatches(args_split, kwargs_split, targets_split, losses)
 
         # Return merged results per original format
-        if self._stage.is_last:
-            return self._merge_outputs(self._stage.output_chunks)
-        else:
-            return None
+        if return_output:
+            if self._stage.is_last:
+                return self._merge_outputs(self._stage.output_chunks)
+        return None
 
 
 def _batch_p2p(p2p_ops: list[dist.P2POp], desc: str | None = None):
@@ -470,7 +487,9 @@ class ScheduleFThenB(PipelineScheduleSingle):
                 for work in works.values():
                     work.wait()
 
-                output = self._stage.forward_one_chunk(i, arg_mbs[i], kwarg_mbs[i])  # type: ignore[index]
+                output = self._stage.forward_one_chunk(
+                    i, arg_mbs[i], kwarg_mbs[i]
+                )
 
                 ops = self._stage.get_fwd_send_ops(i)
                 works = _sorted_batch_p2p(ops, desc="fwd_send")
@@ -526,6 +545,104 @@ class ScheduleFThenB(PipelineScheduleSingle):
         self._stage._sync_shared_param_grads()
 
 
+class PipelineChunk(nn.Layer):
+    def __init__(self, layers=None, is_first=False, is_last=False):
+        super().__init__()
+        assert not (is_first and is_last), (
+            "Pipeline stage cannot be both first and last."
+        )
+        self.layers = layers
+        self.is_first = is_first
+        self.is_last = is_last
+
+    def forward(self, *args, **kwargs):
+        if self.is_first:
+            input_ids = kwargs.get("input_ids")
+            attention_mask = kwargs.get("attention_mask")
+            position_ids = kwargs.get("position_ids")
+            outputs = (input_ids, attention_mask, position_ids)
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+            return outputs
+        elif self.is_last:
+            outputs = args
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+        else:
+            outputs = args
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+        return outputs
+
+
+def _manual_model_split(model, stage_idx, group, mode, pp_degree):
+    num_hidden_layers = model.config.num_hidden_layers
+    virtual_pp_degree = model.config.virtual_pp_degree if mode == "VPP" else 1
+    chunk_size = num_hidden_layers // virtual_pp_degree // pp_degree
+    chunk_num = virtual_pp_degree * pp_degree
+    layer_lists = model.layers
+
+    def _build_stage(model, stage_idx, group):
+        new_model = None
+        if stage_idx == 0:
+            new_model = PipelineChunk(
+                layer_lists[:chunk_size], is_first=True, is_last=False
+            )
+        elif stage_idx == chunk_num - 1:
+            new_model = PipelineChunk(
+                layer_lists[
+                    stage_idx * chunk_size : (stage_idx + 1) * chunk_size
+                ],
+                is_first=False,
+                is_last=True,
+            )
+        else:
+            new_model = PipelineChunk(
+                layer_lists[
+                    stage_idx * chunk_size : (stage_idx + 1) * chunk_size
+                ],
+                is_first=False,
+                is_last=False,
+            )
+        stage = PipelineStage(new_model, stage_idx, chunk_num, group=group)
+        return stage
+
+    stages = []
+    for i in range(virtual_pp_degree):
+        stage = _build_stage(model, stage_idx + i * pp_degree, group)
+        stages.append(stage)
+    return stages
+
+
+def get_pipeline_schedule(model, acc_steps, loss_fn, mode, pp_degree, group):
+    assert mode in [
+        "VPP",
+        "1F1B",
+        "FThenB",
+    ], (
+        f"Invalid pipeline schedule mode: {mode}, must be one of ['VPP', '1F1B', 'FThenB']"
+    )
+    stages = _manual_model_split(model, group.rank, group, mode, pp_degree)
+    if mode == "VPP":
+        schedule = ScheduleVPP(
+            stages, n_microbatches=acc_steps, loss_fn=loss_fn
+        )
+    elif mode == "1F1B":
+        schedule = Schedule1F1B(
+            stages[0], n_microbatches=acc_steps, loss_fn=loss_fn
+        )
+    else:
+        schedule = ScheduleFThenB(
+            stages[0], n_microbatches=acc_steps, loss_fn=loss_fn
+        )
+    return schedule
+
+
 class Schedule1F1B(PipelineScheduleSingle):
     """
     The 1F1B schedule.
@@ -577,7 +694,9 @@ class Schedule1F1B(PipelineScheduleSingle):
                 recv_work.wait()
 
             # Compute
-            output = self._stage.forward_one_chunk(fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index])  # type: ignore[index]
+            output = self._stage.forward_one_chunk(
+                fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index]
+            )
 
             # Clear previous chunk's forward sends (hopefully they have well
             # finished, otherwise, we are heavily communication bound, in which
@@ -639,7 +758,9 @@ class Schedule1F1B(PipelineScheduleSingle):
                 fuse_work.wait()
 
             # Now do the fwd
-            output = self._stage.forward_one_chunk(fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index])  # type: ignore[index]
+            output = self._stage.forward_one_chunk(
+                fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index]
+            )
 
             # Compute loss
             self._maybe_compute_loss(
@@ -772,7 +893,14 @@ class PipelineScheduleMulti(_PipelineSchedule):
                     )
         self._stages_initialized = True
 
-    def step(self, *args, target=None, losses: list | None = None, **kwargs):
+    def step(
+        self,
+        *args,
+        target=None,
+        losses: list | None = None,
+        return_output: bool = False,
+        **kwargs,
+    ):
         """
         Run one iteration of the pipeline schedule with *whole-batch* input.
         Will chunk the input into microbatches automatically, and go through the
@@ -799,9 +927,10 @@ class PipelineScheduleMulti(_PipelineSchedule):
         self._step_microbatches(args_split, kwargs_split, targets_split, losses)
 
         # Return merged results per original format
-        for stage in self._stages:
-            if stage.is_last:
-                return self._merge_outputs(stage.output_chunks)
+        if return_output:
+            for stage in self._stages:
+                if stage.is_last:
+                    return self._merge_outputs(stage.output_chunks)
         # Does not contain the last stage
         return None
 
@@ -854,9 +983,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                     computation_type = action.computation_type
                     mb_index = action.microbatch_index
                     stage_index = action.stage_index
-                    assert (
-                        mb_index is not None
-                    ), "All currently supported action types require valid microbatch_index"
+                    assert mb_index is not None, (
+                        "All currently supported action types require valid microbatch_index"
+                    )
                     if computation_type == _ActType.FORWARD:
                         # perform forward computation
                         stage = stage_index_to_stage[stage_index]
@@ -916,9 +1045,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                         computation_type = prev_rank_action.computation_type
                         mb_index = prev_rank_action.microbatch_index
                         stage_index = prev_rank_action.stage_index
-                        assert (
-                            mb_index is not None
-                        ), "All currently supported action types require valid microbatch_index"
+                        assert mb_index is not None, (
+                            "All currently supported action types require valid microbatch_index"
+                        )
                         # Only handle sends for the forward from a previous rank
                         if computation_type == _ActType.FORWARD:
                             # If not the last stage, then receive fwd activations
@@ -947,9 +1076,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                         computation_type = next_rank_action.computation_type
                         mb_index = next_rank_action.microbatch_index
                         stage_index = next_rank_action.stage_index
-                        assert (
-                            mb_index is not None
-                        ), "All currently supported action types require valid microbatch_index"
+                        assert mb_index is not None, (
+                            "All currently supported action types require valid microbatch_index"
+                        )
                         # Only handle receives for the backwards from a next rank
                         if computation_type in (FORWARD, BACKWARD_WEIGHT):
                             # Next rank doing forward or weight update has no influence for the current rank backward recv

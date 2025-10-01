@@ -39,8 +39,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
   // SetAttrMap
-  void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
-    attrs_ = attrs;
+  void SetAttrMap(const paddle::framework::AttributeMap &prog_attrs,
+                  const paddle::framework::AttributeMap &cuda_graph_attrs) {
+    prog_attrs_ = prog_attrs;
+    cuda_graph_attrs_ = cuda_graph_attrs;
   }
 
   void SetFwdX(const std::vector<paddle::Tensor> &tensors) { x_ = tensors; }
@@ -77,7 +79,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::framework::Scope *> step_scope_;
 
   // Attribute Map
-  paddle::framework::AttributeMap attrs_;
+  paddle::framework::AttributeMap prog_attrs_;
+  paddle::framework::AttributeMap cuda_graph_attrs_;
 
   int64_t place_hash_key_;
 

@@ -27,7 +27,6 @@ logger = get_logger(logging.INFO)
 
 
 class PipelinePassBase(PassBase):
-
     # Pipeline stages
     RECV_FORWARD = "recv_forward"
     SEND_BACKWARD = "send_backward"

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -152,8 +152,10 @@ class TestGroupNormAPIV2_With_NLC(unittest.TestCase):
         shape = (2, 4, 6)
         np.random.seed(10)
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and core.op_support_gpu("group_norm"):
+            places.append(get_device_place())
 
         for place in places:
             paddle.disable_static(place)
@@ -243,7 +245,7 @@ class TestGroupNormAPIV2_With_NDHWC(unittest.TestCase):
 class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
         # fp16 only supported in cuda
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shapes = [
@@ -286,7 +288,7 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NCL_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 6, 4)
@@ -327,7 +329,7 @@ class TestGroupNormAPIV2_With_NCL_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NCDHW_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 6, 4, 2, 2)
@@ -368,7 +370,7 @@ class TestGroupNormAPIV2_With_NCDHW_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NLC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 4, 6)
@@ -409,7 +411,7 @@ class TestGroupNormAPIV2_With_NLC_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NHWC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 4, 2, 6)
@@ -450,7 +452,7 @@ class TestGroupNormAPIV2_With_NHWC_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NDHWC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 4, 2, 2, 6)

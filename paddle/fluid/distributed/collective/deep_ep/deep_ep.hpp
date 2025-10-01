@@ -81,10 +81,9 @@ struct Buffer {
   // After IPC/NVSHMEM synchronization, this flag will be true
   bool available = false;
 
-  // Task fifo
-  int head = 0;
-  int* task_fifo_ptrs[NUM_MAX_NVL_PEERS] = {nullptr};
-  int** task_fifo_ptrs_gpu = nullptr;
+  // Barrier signals
+  int* barrier_signal_ptrs[NUM_MAX_NVL_PEERS] = {nullptr};
+  int** barrier_signal_ptrs_gpu = nullptr;
 
   // Workspace
   void* workspace = nullptr;
@@ -100,9 +99,6 @@ struct Buffer {
   // Host-side RDMA-level MoE info
   volatile int* moe_recv_rdma_counter = nullptr;
   int* moe_recv_rdma_counter_mapped = nullptr;
-
- private:
-  void move_fifo_slots(int num_slots = 1);
 
  public:
   Buffer(int rank,
@@ -255,6 +251,12 @@ struct Buffer {
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
                                 int hidden,
                                 int num_experts);
+  void clean_low_latency_two_stage_buffer(int num_max_dispatch_tokens_per_rank,
+                                          int hidden,
+                                          int num_experts,
+                                          int num_topk,
+                                          int num_ranks,
+                                          bool use_fp8);
   void barrier_all();
 
 #ifdef PADDLE_WITH_NVSHMEM
@@ -298,6 +300,7 @@ struct Buffer {
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
+             deep_ep::detail::Tensor,
              std::optional<EventHandle>,
              std::optional<std::function<void()>>>
   low_latency_dispatch_two_stage(const deep_ep::detail::Tensor& x,
@@ -314,6 +317,7 @@ struct Buffer {
              std::optional<std::function<void()>>>
   low_latency_combine_two_stage(
       const deep_ep::detail::Tensor& x,
+      const deep_ep::detail::Tensor& rdma_recv_x,
       const deep_ep::detail::Tensor& topk_idx,
       const deep_ep::detail::Tensor& topk_weights,
       const deep_ep::detail::Tensor& src_info,
@@ -467,6 +471,7 @@ struct Buffer {
              paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
+             paddle::Tensor,
              std::optional<EventHandle>,
              std::optional<std::function<void()>>>
   low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
@@ -483,6 +488,7 @@ struct Buffer {
              std::optional<std::function<void()>>>
   low_latency_combine_two_stage_api(
       const paddle::Tensor& x,
+      const paddle::Tensor& rdma_recv_x,
       const paddle::Tensor& topk_idx,
       const paddle::Tensor& topk_weights,
       const paddle::Tensor& src_info,

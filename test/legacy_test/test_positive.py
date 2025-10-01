@@ -20,7 +20,6 @@ import paddle
 
 
 class TestPositiveApi(unittest.TestCase):
-
     def setUp(self):
         paddle.disable_static()
         self.shape = [2, 3, 4, 5]

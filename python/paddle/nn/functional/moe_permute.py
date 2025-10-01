@@ -31,6 +31,7 @@ def moe_permute(
     num_experts: int,
     tokens_per_expert: list,
     padding_alignment: int,
+    do_gather: bool = True,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     r"""
@@ -67,6 +68,7 @@ def moe_permute(
             assigned to the corresponding expert.
         padding_alignment (int): Tokens alignment requirement for expert buffers (in bytes).
             Must be a power of 2. Typical values are 16, 32 or 64 for optimal memory access.
+        do_gather(bool): Decide whether do actual tokens gather operation or not, default is True.
         name (str|None, optional): Name prefix for the operation (optional).
             Default: None
 
@@ -133,6 +135,7 @@ def moe_permute(
             num_experts,
             tokens_per_expert,
             padding_alignment,
+            do_gather,
         )
         return (
             hidden_states_unzipped,

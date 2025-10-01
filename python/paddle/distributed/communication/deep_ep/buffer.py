@@ -133,7 +133,7 @@ class Buffer:
             # Make sure QP depth is always larger than the number of on-flight WRs, so that we can skip WQ slot check
             os.environ['NVSHMEM_QP_DEPTH'] = '1024'
             # NOTES: NVSHMEM initialization requires at least 256 MiB
-            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2 ** 29}'
+            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2**29}'
 
             nvshmem_unique_ids = []
             if (low_latency_mode and self.rank == 0) or (
@@ -278,9 +278,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 32, 720, 12, 128),
             160: Config(Buffer.num_sms, 28, 720, 12, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     @staticmethod
@@ -306,9 +306,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 2, 720, 8, 128),
             160: Config(Buffer.num_sms, 2, 720, 8, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     # noinspection PyTypeChecker
@@ -837,6 +837,36 @@ class Buffer:
             num_max_dispatch_tokens_per_rank, hidden, num_experts
         )
 
+    def clean_low_latency_two_stage_buffer(
+        self,
+        num_max_dispatch_tokens_per_rank: int,
+        hidden: int,
+        num_experts: int,
+        num_topk: int,
+        num_ranks: int,
+        use_fp8: bool,
+    ) -> None:
+        """
+        As low-latency two-stage kernels require part of the buffer to be zero-initialized, so it is vital to clean the buffer
+            if the buffer is dirty at some time.
+        For example, after running the normal dispatch/combine, you must run this function before executing any
+            low-latency kernel.
+
+        Arguments:
+            num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
+            hidden: the hidden dimension of each token.
+            num_experts: the number of all experts.
+            num_topk: the number of moe topk.
+        """
+        self.runtime.clean_low_latency_two_stage_buffer(
+            num_max_dispatch_tokens_per_rank,
+            hidden,
+            num_experts,
+            num_topk,
+            num_ranks,
+            use_fp8,
+        )
+
     # noinspection PyTypeChecker
     def low_latency_dispatch(
         self,
@@ -924,7 +954,11 @@ class Buffer:
             packed_recv_layout_range,
         )
         return (
-            (packed_recv_x, packed_recv_x_scales) if use_fp8 else packed_recv_x,
+            (
+                (packed_recv_x, packed_recv_x_scales)
+                if use_fp8 and expertwise_scale is None
+                else packed_recv_x
+            ),
             packed_recv_count,
             handle,
             EventOverlap(event, tensors_to_record if async_finish else None),
@@ -1065,6 +1099,7 @@ class Buffer:
         (
             packed_recv_x,
             packed_recv_x_scales,
+            packed_recv_rdma_x,
             packed_recv_count,
             packed_rdma_recv_count,
             packed_recv_src_info,
@@ -1083,6 +1118,7 @@ class Buffer:
             return_recv_hook,
         )
         handle = (
+            packed_recv_rdma_x,
             packed_recv_src_info,
             packed_recv_layout_range,
             rdma_send_flags,
@@ -1097,6 +1133,7 @@ class Buffer:
             topk_weights,
             packed_recv_x,
             packed_recv_x_scales,
+            packed_recv_rdma_x,
             packed_recv_count,
             packed_rdma_recv_count,
             packed_recv_src_info,
@@ -1153,6 +1190,7 @@ class Buffer:
             hook: the receiving hook function (valid only if `return_recv_hook` is set).
         """
         (
+            packed_recv_rdma_x,
             src_info,
             layout_range,
             rdma_send_flags,
@@ -1163,6 +1201,7 @@ class Buffer:
         ) = handle
         combined_x, event, hook = self.runtime.low_latency_combine_two_stage(
             x,
+            packed_recv_rdma_x,
             topk_idx,
             topk_weights,
             src_info,
@@ -1178,6 +1217,7 @@ class Buffer:
         )
         tensors_to_record = (
             x,
+            packed_recv_rdma_x,
             topk_idx,
             topk_weights,
             src_info,

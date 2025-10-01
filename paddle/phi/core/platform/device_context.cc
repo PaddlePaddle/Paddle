@@ -85,7 +85,8 @@ template <typename DevCtx>
 inline std::unique_ptr<DeviceContext> CreateDeviceContext(
     const phi::Place& p,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority) {
+    int stream_priority,
+    bool set_to_default_stream) {
   using PtrType = std::unique_ptr<DeviceContext>;
 
   DevCtx* dev_ctx = ConstructDevCtx<DevCtx>(p, stream_priority);
@@ -93,6 +94,11 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
   if (p.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+#if defined(PADDLE_WITH_CUDA)
+    if (set_to_default_stream) {
+      cuda_ctx->SetStream(static_cast<phi::gpuStream_t>(cudaStreamDefault));
+    }
+#endif
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ctx,
         common::errors::InvalidArgument(
@@ -155,7 +161,8 @@ inline void EmplaceDeviceContext(
         place_to_device_context,
     const phi::Place& place,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority) {
+    int stream_priority,
+    bool set_to_default_stream) {
   // lazy evaluation. i.e., only create device context at first `Get`
   place_to_device_context->emplace(
       place,
@@ -163,7 +170,8 @@ inline void EmplaceDeviceContext(
                  CreateDeviceContext<DevCtx>,
                  place,
                  disable_setting_default_stream_for_allocator,
-                 stream_priority));
+                 stream_priority,
+                 set_to_default_stream));
 }
 
 void EmplaceDeviceContexts(
@@ -171,7 +179,8 @@ void EmplaceDeviceContexts(
         place_to_device_context,
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority) {
+    int stream_priority,
+    bool set_to_default_stream) {
   PADDLE_ENFORCE_GT(
       places.size(),
       0,
@@ -189,13 +198,15 @@ void EmplaceDeviceContexts(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
+          /*unused*/ stream_priority,
+          set_to_default_stream);
 #else
       EmplaceDeviceContext<phi::CPUContext>(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
+          /*unused*/ stream_priority,
+          set_to_default_stream);
 #endif
     } else if (place.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -203,7 +214,8 @@ void EmplaceDeviceContexts(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          stream_priority);
+          stream_priority,
+          set_to_default_stream);
 #else
       PADDLE_THROW(
           common::errors::Unimplemented("GPUPlace is not supported. Please "
@@ -215,7 +227,8 @@ void EmplaceDeviceContexts(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
+          /*unused*/ stream_priority,
+          set_to_default_stream);
 #else
       PADDLE_THROW(
           common::errors::Unimplemented("XPUPlace is not supported. Please "
@@ -227,7 +240,8 @@ void EmplaceDeviceContexts(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
+          /*unused*/ stream_priority,
+          set_to_default_stream);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
           "XPUPinnedPlace is not supported. Please re-compile with WITH_XPU "
@@ -239,7 +253,8 @@ void EmplaceDeviceContexts(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
+          /*unused*/ stream_priority,
+          set_to_default_stream);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
           "CustomPlace is not supported. Please re-compile with "
@@ -252,7 +267,8 @@ void EmplaceDeviceContexts(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
+          /*unused*/ stream_priority,
+          set_to_default_stream);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
           "GPUPlace is not supported. Please re-compile with WITH_GPU "
@@ -264,7 +280,8 @@ void EmplaceDeviceContexts(
           place_to_device_context,
           place,
           disable_setting_default_stream_for_allocator,
-          /*unused*/ stream_priority);
+          /*unused*/ stream_priority,
+          set_to_default_stream);
 #else
       PADDLE_THROW(
           common::errors::Unimplemented("IPUPlace is not supported. Please "

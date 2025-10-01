@@ -26,6 +26,7 @@ void MultiplexKernel(const Context& dev_ctx,
                      const DenseTensor& ids,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
   for (size_t i = 0; i < ins.size(); ++i) {
     PADDLE_ENFORCE_GT(
         ins[i]->numel(),
@@ -63,5 +64,5 @@ PD_REGISTER_KERNEL(multiplex,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateDepthwiseConvMKLDNNPass();
+IR_API std::unique_ptr<Pass> CreateDepthwiseConvONEDNNPass();
 
 }  // namespace pir

@@ -40,6 +40,8 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
 
+#include "paddle/phi/core/memory/malloc.h"
+
 namespace paddle {
 
 using DeviceContextPool = experimental::DeviceContextPool;
@@ -65,40 +67,6 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
   PADDLE_ENFORCE_NOT_NULL(impl_,
                           common::errors::InvalidArgument(
                               "TensorImpl with nullptr is not supported"));
-}
-
-Tensor::Tensor(const Place &place) {
-  LOG_FIRST_N(WARNING, 1)
-      << "The Tensor(place) constructor is deprecated since version "
-         "2.3, and will be removed in version 2.4! Please use "
-         "`paddle::empty/full` method to create a new "
-         "Tensor instead. "
-         "Reason: A legal tensor cannot be constructed only based on "
-         "the `place`, and datatype, shape, layout, etc. is also "
-         "required.";
-  DefaultAllocator alloc(place);
-  impl_ = std::make_shared<phi::DenseTensor>(
-      &alloc,
-      phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                           common::make_ddim({}),
-                           phi::DataLayout::NCHW));
-}
-
-Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
-  LOG_FIRST_N(WARNING, 1)
-      << "The Tensor(place, shape) constructor is deprecated since "
-         "version 2.3, and will be removed in version 2.4! Please use "
-         "`paddle::empty/full` method to create a new "
-         "Tensor instead. "
-         "Reason: A legal tensor cannot be constructed only based on "
-         "the `place` and `shape`, and datatype, layout, etc. is also "
-         "required.";
-  DefaultAllocator alloc(place);
-  impl_ = std::make_shared<phi::DenseTensor>(
-      &alloc,
-      phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                           common::make_ddim({shape}),
-                           phi::DataLayout::NCHW));
 }
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
@@ -157,6 +125,9 @@ DataType Tensor::type() const { return impl_->dtype(); }
 phi::DataLayout Tensor::layout() const { return impl_->layout(); }
 
 bool Tensor::is_dense_tensor() const {
+  if (impl_ == nullptr) {
+    return false;
+  }
   return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_dist_tensor() const {
@@ -394,6 +365,14 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
 
 const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
 
+#ifdef PADDLE_WITH_XPU
+
+void Tensor::record_stream(XPUStream stream) const {
+  paddle::memory::RecordStream(
+      std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->Holder(), stream);
+}
+
+#endif
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
 }
@@ -549,7 +528,7 @@ bool Tensor::is_contiguous() const {
   }
 }
 
-Tensor Tensor::contiguous() {
+Tensor Tensor::contiguous() const {
   if (is_dense_tensor() || is_dist_tensor()) {
     phi::DenseTensor *dense_tensor = nullptr;
     if (is_dist_tensor()) {

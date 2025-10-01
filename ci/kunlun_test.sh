@@ -159,9 +159,10 @@ set +x
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
             pip install -e .
+            pip install numpy==1.24.4 pypdfium2
 
             #install paddle x dependency
-            paddlex --install PaddleClas
+            paddlex --install PaddleClas -y
 
             #download paddle dataset
             wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset

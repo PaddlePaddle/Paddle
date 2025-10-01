@@ -56,7 +56,7 @@ inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     const uint64_t rows,
     const uint64_t cols,
     const int vec_size) {
-  const uint64_t tmp_cols = cols / vec_size;
+  const uint64_t tmp_cols = cols / static_cast<uint64_t>(vec_size);
   // NOTE(wangxi): We set max_block_size to 512, for `FusedResidualDropoutBias`
   // needs too many register resources. If data_type is float16, CUDA
   // error(701) will occur when block_size is 1024. Which error is
@@ -64,25 +64,25 @@ inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   // occur because it did not have appropriate resources.
   // Of course, this kernel can be optimized later to reduce the use
   // of registers.
-  const int threads =
+  const uint64_t threads =
       std::max(static_cast<uint64_t>(32),
                std::min(tmp_cols,
                         static_cast<uint64_t>(
                             std::min(dev_ctx.GetMaxThreadsPerBlock(), 512))));
-
-  const int blocks_x =
-      std::max(static_cast<uint64_t>(1), (tmp_cols + threads - 1) / threads);
+  const uint64_t blocks_x = std::min(
+      static_cast<uint64_t>(65536),
+      std::max(static_cast<uint64_t>(1), (tmp_cols + threads - 1) / threads));
   uint64_t blocks_y = std::max(static_cast<uint64_t>(1), rows);
   int blocks_z = 1;
-  if (blocks_y > 65536) {
+  if (blocks_y >= 65536) {
     blocks_z = 1024;
     blocks_y = (blocks_y + blocks_z - 1) / blocks_z;
-    blocks_y = blocks_y > 65536 ? 65535 : blocks_y;
+    blocks_y = blocks_y >= 65536 ? 65535 : blocks_y;
   }
   phi::backends::gpu::GpuLaunchConfig config;
-  config.block_per_grid.x = blocks_x;
-  config.block_per_grid.y = blocks_y;
-  config.block_per_grid.z = blocks_z;
+  config.block_per_grid.x = static_cast<uint32_t>(blocks_x);
+  config.block_per_grid.y = static_cast<uint32_t>(blocks_y);
+  config.block_per_grid.z = static_cast<uint32_t>(blocks_z);
   config.thread_per_block.x = threads;
   return config;
 }

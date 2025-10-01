@@ -24,6 +24,7 @@ Steps to transpile pserver:
 4. append sum ops that should run on current server instance.
 5. add listen_and_serv op
 """
+
 import collections
 
 from paddle import framework

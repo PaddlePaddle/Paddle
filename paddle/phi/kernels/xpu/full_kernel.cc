@@ -16,9 +16,6 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -49,13 +46,12 @@ void FullKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void FullKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const IntArray& shape,
-    const Scalar& val,
-    DataType dtype,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void FullKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                            const IntArray& shape,
+                                            const Scalar& val,
+                                            DataType dtype,
+                                            DenseTensor* out) {
+  using T = phi::complex64;
   out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
 
@@ -96,7 +92,7 @@ void FullLikeKernel(const Context& dev_ctx,
     using XPUInTDType = typename XPUTypeTrait<T>::Type;
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
+        typename std::conditional<std::is_same<T, phi::float16>::value,
                                   float,
                                   T>::type>::type;
 
@@ -164,8 +160,8 @@ PD_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(full_like,
                    XPU,
@@ -174,12 +170,13 @@ PD_REGISTER_KERNEL(full_like,
                    float,
                    double,
                    uint8_t,
+                   int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -191,8 +188,8 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -207,7 +204,7 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }

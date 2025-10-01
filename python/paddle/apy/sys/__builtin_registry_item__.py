@@ -16,7 +16,6 @@ import __builtin__
 
 
 class RegistryEntry:
-
     def __init__(self):
         self.__tag_name__ = None
         self.__nice__ = None
@@ -48,7 +47,6 @@ class RegistryEntry:
 
 
 class RegistryObject:
-
     def __init__(self, tag_name, nice):
         self.tag_name = tag_name
         self.nice = nice
@@ -56,7 +54,6 @@ class RegistryObject:
 
 
 class RegisterItemDecorator:
-
     def __init__(self, register_obj):
         self.register_obj = register_obj
 

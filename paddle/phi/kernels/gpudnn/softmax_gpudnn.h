@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -48,12 +46,12 @@ class VecT4<float> {
   using Type = int4;
 };
 template <>
-class VecT4<phi::dtype::float16> {
+class VecT4<phi::float16> {
  public:
   using Type = int2;
 };
 template <>
-class VecT4<phi::dtype::bfloat16> {
+class VecT4<phi::bfloat16> {
  public:
   using Type = int2;
 };
@@ -72,12 +70,12 @@ class VecT2<float> {
   using Type = int2;
 };
 template <>
-class VecT2<phi::dtype::float16> {
+class VecT2<phi::float16> {
  public:
   using Type = int;
 };
 template <>
-class VecT2<phi::dtype::bfloat16> {
+class VecT2<phi::bfloat16> {
  public:
   using Type = int;
 };
@@ -646,7 +644,9 @@ __global__ void WarpSoftmaxBackward(T* dst,
   constexpr IndexType kBatchSize = (kDimCeil <= 128) ? 2 : 1;
   constexpr IndexType kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
   IndexType element_count_v = element_count / kVSize;
-  IndexType first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  IndexType first_batch =
+      (static_cast<int64_t>(blockDim.y) * blockIdx.x + threadIdx.y) *
+      kBatchSize;
   IndexType local_batches = min(batch_size - first_batch, kBatchSize);
 
   // max index to read
@@ -844,8 +844,8 @@ static void GetGridDim(int64_t high_dim,
   int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
   int max_threads_per_mp =
       phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
-  int max_threads = max_threads_per_mp * max_mp;
-  int num_threads = block.x * block.y;
+  int64_t max_threads = max_threads_per_mp * max_mp;
+  int64_t num_threads = static_cast<int64_t>(block.x) * block.y;
   int64_t max_num_blocks = max_threads / num_threads;
 
   int64_t grid_x = (low_dim + block.x - 1) / block.x;
@@ -889,9 +889,10 @@ __global__ void NormalSoftmaxForward(T* output,
   const IndexType mid_stride = low_dim;
   for (IndexType high_id = blockIdx.y; high_id < high_dim;
        high_id += gridDim.y) {
-    for (IndexType low_id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (IndexType low_id =
+             static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
          low_id < low_dim;
-         low_id += blockDim.x * gridDim.x) {
+         low_id += static_cast<int64_t>(blockDim.x) * gridDim.x) {
       const IndexType input_offset = high_id * high_stride + low_id;
 
       // 1. reduce max
@@ -948,9 +949,10 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
   const IndexType mid_stride = low_dim;
   for (IndexType high_id = blockIdx.y; high_id < high_dim;
        high_id += gridDim.y) {
-    for (IndexType low_id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (IndexType low_id =
+             static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
          low_id < low_dim;
-         low_id += blockDim.x * gridDim.x) {
+         low_id += static_cast<int64_t>(blockDim.x) * gridDim.x) {
       const IndexType grad_offset = high_id * high_stride + low_id;
 
       // 1. reduce sum
@@ -1111,7 +1113,7 @@ void LaunchSoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   int64_t remaining = tensor_dims[0];
   int dim = tensor_dims[1];
   int64_t batch_size = std::numeric_limits<int32_t>::max() / dim;
-  int offset = batch_size * dim;
+  int64_t offset = batch_size * dim;
   while (remaining > 0) {
     tensor_dims[0] = std::min<int64_t>(remaining, batch_size);
     SoftmaxForwardCudnnKernel<T>(
@@ -1189,7 +1191,7 @@ void LaunchSoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
   int64_t remaining = tensor_dims[0];
   int dim = tensor_dims[1];
   int64_t batch_size = std::numeric_limits<int32_t>::max() / dim;
-  int offset = batch_size * dim;
+  int64_t offset = batch_size * dim;
   while (remaining > 0) {
     tensor_dims[0] = std::min<int64_t>(remaining, batch_size);
     SoftmaxBackwardCudnnKernel<T>(dev_ctx,
@@ -1223,7 +1225,7 @@ void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
 
 #if CUDNN_VERSION < 8100
 template <>
-inline void LaunchSoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
+inline void LaunchSoftmaxForwardCudnnKernel<phi::bfloat16>(
     const GPUContext& dev_ctx,
     const DenseTensor& x,
     const int axis,
@@ -1234,7 +1236,7 @@ inline void LaunchSoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
       "8100."));
 }
 template <>
-inline void LaunchSoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
+inline void LaunchSoftmaxBackwardCudnnKernel<phi::bfloat16>(
     const GPUContext& dev_ctx,
     const DenseTensor& out,
     const DenseTensor& dout,
@@ -1253,7 +1255,7 @@ bool UseCudnnSoftmax(const GPUContext& dev_ctx,
                      bool last_dim) {
   bool cudnn_available = dev_ctx.cudnn_handle();
   if (!dev_ctx.cudnn_handle()) {
-    if (std::is_same<T, phi::dtype::bfloat16>::value) {
+    if (std::is_same<T, phi::bfloat16>::value) {
 #if CUDNN_VERSION < 8100
       cudnn_available = false;
 #endif
@@ -1375,7 +1377,7 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
   IndexType N = tensor_dims[0];
   IndexType dim = tensor_dims[1];
-  int D = tensor_dims[2];
+  IndexType D = tensor_dims[2];
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true) ||

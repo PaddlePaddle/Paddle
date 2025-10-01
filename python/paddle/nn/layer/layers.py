@@ -51,6 +51,10 @@ from paddle.base.framework import (
     paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    build_sharded_state_dict,
+)
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -65,12 +69,16 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-_ForwardPreHook = Callable[
-    ["Layer", Tensor], Tensor
-]  # (layer, input) -> transformed_input
-_ForwardPostHook = Callable[
-    ["Layer", Tensor, Tensor], Tensor
-]  # (layer, input, output) -> transformed_output
+_ForwardPreHook = Union[
+    Callable[["Layer", Tensor], Tensor],  # (layer, input) -> transformed_input
+    Callable[["Layer", Tensor, dict[str, Any]], tuple[Tensor, dict[str, Any]]],
+]
+_ForwardPostHook = Union[
+    Callable[
+        ["Layer", Tensor, Tensor], Tensor
+    ],  # (layer, input, output) -> transformed_output
+    Callable[["Layer", Tensor, dict[str, Any], Tensor], Tensor],
+]
 _StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
 _StateDictHook = Callable[[_StateDict], None]
 
@@ -347,17 +355,22 @@ class HookRemoveHelper:
         self._hook_id = HookRemoveHelper.next_hook_id
         HookRemoveHelper.next_hook_id += 1
 
-        self._extra_hooks_ref = None
+        self._extra_hooks_ref: tuple = ()
         if extra_hook_dict is not None:
-            self._extra_hooks_ref = weakref.ref(extra_hook_dict)
+            if isinstance(extra_hook_dict, list):
+                self._extra_hooks_ref = tuple(
+                    weakref.ref(d) for d in extra_hook_dict
+                )
+            else:
+                self._extra_hooks_ref = (weakref.ref(extra_hook_dict),)
 
     def remove(self) -> None:
         hooks = self._hooks_ref()
         if hooks is not None and self._hook_id in hooks:
             del hooks[self._hook_id]
 
-        if self._extra_hooks_ref is not None:
-            extra_hooks = self._extra_hooks_ref()
+        for ref in self._extra_hooks_ref:
+            extra_hooks = ref()
             if extra_hooks is not None and self._hook_id in extra_hooks:
                 del extra_hooks[self._hook_id]
 
@@ -450,6 +463,12 @@ class Layer:
             OrderedDict()
         )
         self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
+            int, bool
+        ] = OrderedDict()
+        self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
+            int, bool
+        ] = OrderedDict()
+        self._forward_post_hooks_always_called: typing.OrderedDict[
             int, bool
         ] = OrderedDict()
 
@@ -661,7 +680,12 @@ class Layer:
         return self._full_name
 
     def register_forward_post_hook(
-        self, hook: _ForwardPostHook
+        self,
+        hook: _ForwardPostHook,
+        *,
+        prepend: bool = False,
+        with_kwargs: bool = False,
+        always_call: bool = False,
     ) -> HookRemoveHelper:
         """
 
@@ -674,6 +698,16 @@ class Layer:
 
         Parameters:
             hook(function): a function registered as a forward post-hook
+            prepend (bool): If ``True``, the provided ``hook`` will be fired
+                before all existing ``forward_post`` hooks on this
+                :class:`paddle.nn.Layer`.
+                Default: ``False``
+            with_kwargs (bool): If ``True``, the ``hook`` will be passed the
+                kwargs given to the forward function.
+                Default: ``False``
+            always_call (bool): If ``True`` the ``hook`` will be run regardless of
+                whether an exception is raised while calling the Module.
+                Default: ``False``
 
         Returns:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
@@ -710,12 +744,37 @@ class Layer:
                 >>> assert (out0.numpy() == (out1.numpy()) * 2).any()
 
         """
-        hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
+        hook_remove_helper = HookRemoveHelper(
+            self._forward_post_hooks,
+            extra_hook_dict=[
+                self._forward_post_hooks_with_kwargs_flag,
+                self._forward_post_hooks_always_called,
+            ],
+        )
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
+        if with_kwargs:
+            self._forward_post_hooks_with_kwargs_flag[
+                hook_remove_helper._hook_id
+            ] = True
+        if always_call:
+            self._forward_post_hooks_always_called[
+                hook_remove_helper._hook_id
+            ] = True
+        if prepend:
+            self._forward_post_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
         return hook_remove_helper
 
+    # [aliases]
+    register_forward_hook = register_forward_post_hook
+
     def register_forward_pre_hook(
-        self, hook: _ForwardPreHook, *, with_kwargs: bool = False
+        self,
+        hook: _ForwardPreHook,
+        *,
+        prepend: bool = False,
+        with_kwargs: bool = False,
     ) -> HookRemoveHelper:
         """
 
@@ -730,6 +789,13 @@ class Layer:
 
         Parameters:
             hook(function): a function registered as a forward pre-hook
+            prepend (bool): If ``True``, the provided ``hook`` will be fired
+                before all existing ``forward_pre`` hooks on this
+                :class:`paddle.nn.Layer`.
+                Default: ``False``
+            with_kwargs (bool): If true, the ``hook`` will be passed the kwargs
+                given to the forward function.
+                Default: ``False``
 
         Returns:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
@@ -776,6 +842,11 @@ class Layer:
             self._forward_pre_hooks_with_kwargs_flag[
                 hook_remove_helper._hook_id
             ] = True
+
+        if prepend:
+            self._forward_pre_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
         return hook_remove_helper
 
     def create_parameter(
@@ -785,6 +856,7 @@ class Layer:
         dtype: DTypeLike | None = None,
         is_bias: bool = False,
         default_initializer: Initializer | None = None,
+        device: PlaceLike | None = None,
     ) -> Tensor:
         """Create parameters for this layer.
 
@@ -798,6 +870,7 @@ class Layer:
             default_initializer(Initializer, optional): the default initializer for this parameter.
                 If set None, default initializer will be set to paddle.nn.initializer.Xavier and paddle.nn.initializer.Constant
                 for non-bias and bias parameter, respectively. Default: None.
+            device(PlaceLike, optional): the device place for the parameter. Default: None.
 
         Returns:
             :Tensor, created parameter.
@@ -835,7 +908,7 @@ class Layer:
         if isinstance(temp_attr, str) and temp_attr == "":
             temp_attr = None
         return self._helper.create_parameter(
-            temp_attr, shape, dtype, is_bias, default_initializer
+            temp_attr, shape, dtype, is_bias, default_initializer, device=device
         )
 
     @deprecated(
@@ -1516,48 +1589,91 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs: Any, **kwargs: Any) -> Any:
+        outputs = None
+        called_always_called_hooks = set()
 
-        for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
-            if hook_id in self._forward_pre_hooks_with_kwargs_flag:
-                args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
-                if args_kwargs_result is not None:
-                    if (
-                        isinstance(args_kwargs_result, tuple)
-                        and len(args_kwargs_result) == 2
-                    ):
-                        inputs, kwargs = args_kwargs_result
-                    else:
-                        raise RuntimeError(
-                            "forward pre-hook must return None or a tuple "
-                            f"of (new_args, new_kwargs), but got {args_kwargs_result}."
-                        )
+        def inner():
+            nonlocal outputs, inputs, kwargs
+
+            for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
+                if hook_id in self._forward_pre_hooks_with_kwargs_flag:
+                    args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
+                    if args_kwargs_result is not None:
+                        if (
+                            isinstance(args_kwargs_result, tuple)
+                            and len(args_kwargs_result) == 2
+                        ):
+                            inputs, kwargs = args_kwargs_result
+                        else:
+                            raise RuntimeError(
+                                "forward pre-hook must return None or a tuple "
+                                f"of (new_args, new_kwargs), but got {args_kwargs_result}."
+                            )
+                else:
+                    hook_result = forward_pre_hook(self, inputs)
+                    if hook_result is not None:
+                        if not isinstance(hook_result, tuple):
+                            hook_result = (hook_result,)
+                        inputs = hook_result
+
+            if not self._built:
+                self._build_once(*inputs, **kwargs)
+
+                self._built = True
+
+            if in_profiler_mode():
+                with profiler.RecordEvent(
+                    self.__class__.__name__, profiler.TracerEventType.Forward
+                ):
+                    outputs = self.forward(*inputs, **kwargs)
             else:
-                hook_result = forward_pre_hook(self, inputs)
+                with name_struct(self.__class__.__name__):
+                    outputs = self.forward(*inputs, **kwargs)
+
+            for hook_id, forward_post_hook in self._forward_post_hooks.items():
+                # mark that always_called_hook to be run
+                if hook_id in self._forward_post_hooks_always_called:
+                    called_always_called_hooks.add(hook_id)
+
+                if hook_id in self._forward_post_hooks_with_kwargs_flag:
+                    hook_result = forward_post_hook(
+                        self, inputs, kwargs, outputs
+                    )
+                else:
+                    hook_result = forward_post_hook(self, inputs, outputs)
+
                 if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result,)
-                    inputs = hook_result
+                    outputs = hook_result
 
-        if not self._built:
-            self._build_once(*inputs, **kwargs)
+            return outputs
 
-            self._built = True
+        try:
+            return inner()
+        except Exception:
+            for hook_id, forward_post_hook in self._forward_post_hooks.items():
+                if (
+                    hook_id in self._forward_post_hooks_always_called
+                ) and hook_id not in called_always_called_hooks:
+                    try:
+                        if hook_id in self._forward_post_hooks_with_kwargs_flag:
+                            hook_result = forward_post_hook(
+                                self, inputs, kwargs, outputs
+                            )
+                        else:
+                            hook_result = forward_post_hook(
+                                self, inputs, outputs
+                            )
 
-        if in_profiler_mode():
-            with profiler.RecordEvent(
-                self.__class__.__name__, profiler.TracerEventType.Forward
-            ):
-                outputs = self.forward(*inputs, **kwargs)
-        else:
-            with name_struct(self.__class__.__name__):
-                outputs = self.forward(*inputs, **kwargs)
-
-        for forward_post_hook in self._forward_post_hooks.values():
-            hook_result = forward_post_hook(self, inputs, outputs)
-            if hook_result is not None:
-                outputs = hook_result
-
-        return outputs
+                        if hook_result is not None:
+                            outputs = hook_result
+                    except Exception as e:
+                        warnings.warn(
+                            "forward hook with ``always_call=True`` raised an exception "
+                            f"that was silenced as another error was raised in forward: {e!s}"
+                        )
+                        continue
+            # raise exception raised in try block
+            raise
 
     def __call__(self, *inputs: Any, **kwargs: Any) -> Any:
         if (
@@ -1698,9 +1814,9 @@ class Layer:
                 self._parameters[name] = None
 
             if len(self._loaddict_holder) > 0:
-                assert (
-                    parameter.name in self._loaddict_holder
-                ), f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
+                assert parameter.name in self._loaddict_holder, (
+                    f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
+                )
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
 
@@ -1811,9 +1927,9 @@ class Layer:
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             if len(self._loaddict_holder) > 0:
-                assert (
-                    value.name in self._loaddict_holder
-                ), f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
+                assert value.name in self._loaddict_holder, (
+                    f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
+                )
 
                 value.set_value(self._loaddict_holder[value.name])
 
@@ -2157,6 +2273,44 @@ class Layer:
             keep_vars=keep_vars,
         )
 
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ) -> ShardedStateDict:
+        """Recursively builds a sharded state dictionary for the model and its sub-layers.
+
+        Args:
+            structured_name_prefix: Prefix to prepend to all tensor names for hierarchical naming.
+
+        Returns:
+            Dictionary mapping tensor names to ShardedWeight.
+            The dictionary contains both the current layer's parameters and all sub-layer parameters.
+        """
+        sharded_state_dict = {}
+        # Get current layer's state dict (without sub-layers)
+        state_dict = self.state_dict(
+            structured_name_prefix="",  # We handle prefixing ourselves
+            include_sublayers=False,
+        )
+
+        # Convert to sharded state dict
+        current_sharded_dict = build_sharded_state_dict(
+            state_dict=state_dict,
+            shard_rules=None,  # No tensor parallelism rules by default
+            prefix=structured_name_prefix,
+        )
+        sharded_state_dict.update(current_sharded_dict)
+
+        # Recursively process sub-layers
+        for layer_name, layer_item in self._sub_layers.items():
+            if layer_item is not None:
+                sub_sharded = layer_item.sharded_state_dict(
+                    structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
+                )
+                sharded_state_dict.update(sub_sharded)
+
+        return sharded_state_dict
+
     @framework.deprecate_stat_dict
     def set_state_dict(
         self,
@@ -2297,6 +2451,7 @@ class Layer:
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
+        non_blocking: bool | None = None,
     ) -> Self:
         '''
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
@@ -2310,6 +2465,9 @@ class Layer:
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+
+            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
 
         Returns:
             self
@@ -2358,6 +2516,7 @@ class Layer:
             device=device,
             dtype=dtype,
             blocking=blocking,
+            non_blocking=non_blocking,
             include_sublayers=True,
             floating_only=False,
         )
@@ -2464,6 +2623,7 @@ class Layer:
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
+        non_blocking: bool | None = None,
         include_sublayers: bool = True,
         floating_only: bool = False,
     ):
@@ -2480,6 +2640,9 @@ class Layer:
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
 
+            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
+
             include_sublayers(bool, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
 
             floating_only(bool, optional): If True, only cast all floating point parameters and buffers of Layer by the give device, dtype and blocking.
@@ -2489,7 +2652,12 @@ class Layer:
 
         '''
 
-        if device is None and dtype is None and blocking is None:
+        if (
+            device is None
+            and dtype is None
+            and blocking is None
+            and non_blocking is None
+        ):
             return self
 
         if device is not None:
@@ -2514,9 +2682,17 @@ class Layer:
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
+
+        if non_blocking is None:
+            non_blocking = False
+        else:
+            assert isinstance(non_blocking, bool), (
+                "non_blocking value error, must be the True, False or None"
+            )
+        blocking = False if not blocking or non_blocking else True
 
         def transform(t, device, dtype, blocking):
             if floating_only and (not paddle.is_floating_point(t)):

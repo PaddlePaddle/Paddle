@@ -225,9 +225,9 @@ def unsqueeze_converter(network, paddle_op, inputs):
     x = inputs[0]
     input_dims = x.shape
     axes = get_input_constant_value(paddle_op, inputs, 1)
-    assert (
-        len(axes) > 0
-    ), f"axes size should be > 0 in when convert unsqueeze op in TensorRT, but received len(axes) = {len(axes)}."
+    assert len(axes) > 0, (
+        f"axes size should be > 0 in when convert unsqueeze op in TensorRT, but received len(axes) = {len(axes)}."
+    )
 
     should_unsqueeze = [False] * (len(input_dims) + len(axes))
     cur_out_rank = len(input_dims)
@@ -464,9 +464,9 @@ def slice_converter(network, paddle_op, inputs):
 
     starts = get_input_constant_value(paddle_op, inputs, 1)
     if starts is not None:
-        assert len(starts) == len(
-            axes
-        ), f"The size of this starts: {len(starts)} must be equal to the axes: {len(axes)}."
+        assert len(starts) == len(axes), (
+            f"The size of this starts: {len(starts)} must be equal to the axes: {len(axes)}."
+        )
         for idx in range(len(axes)):
             if starts[idx] < 0:
                 starts_tensor[axes[idx]] = trt_max(
@@ -521,9 +521,9 @@ def slice_converter(network, paddle_op, inputs):
 
     ends = get_input_constant_value(paddle_op, inputs, 2)
     if ends is not None:
-        assert len(ends) == len(
-            axes
-        ), f"The size of this ends: {len(ends)} must be equal to the axes: {len(axes)}."
+        assert len(ends) == len(axes), (
+            f"The size of this ends: {len(ends)} must be equal to the axes: {len(axes)}."
+        )
         for idx in range(len(axes)):
             if ends[idx] < 0:
                 ends_tensor[axes[idx]] = trt_max(
@@ -1400,9 +1400,9 @@ def pad3d_converter(network, paddle_op, inputs):
     else:
         input_dim = len(input_tensor.shape)
         pad_size = paddings.shape[0]
-        assert (
-            input_dim * 2 - 4 == pad_size
-        ), f"Expected paddings size is {input_dim * 2 - 4}, but received {pad_size}."
+        assert input_dim * 2 - 4 == pad_size, (
+            f"Expected paddings size is {input_dim * 2 - 4}, but received {pad_size}."
+        )
 
         shuffle_index = [4, 2, 0, 5, 3, 1]
         shuffle_inputs = [

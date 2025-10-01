@@ -194,7 +194,6 @@ def calc_triplet_margin_loss(
 
 
 class TestTripletMarginLoss(unittest.TestCase):
-
     def test_TripletMarginLoss(self):
         shape = (2, 2)
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)

@@ -56,7 +56,7 @@ if(WIN32)
 
 endif()
 
-if(NOT WITH_MKLDNN
+if(NOT WITH_ONEDNN
    AND NOT TENSORRT_FOUND
    AND NOT WITH_GPU)
   foreach(target ${TEST_INFERENCE_CPU_UT})

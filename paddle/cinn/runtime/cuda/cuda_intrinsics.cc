@@ -225,6 +225,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(popc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(trunc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(exp)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT32(abs)
 
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT32
 
@@ -237,6 +238,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(popc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(trunc)
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(exp)
+  REGISTER_EXTERN_FUNC_1_IN_1_INT64(abs)
 
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT64
 
@@ -429,14 +431,6 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 }
 
 CINN_REGISTER_HELPER(cinn_cuda_host_api) {
-  using cinn::runtime::cuda::cinn_get_value_in_cuda_kernel_args;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_get_value_in_cuda_kernel_args,
-                              cinn::common::DefaultHostTarget())
-      .SetRetType<int64_t>()
-      .AddInputType<void *>()  // args
-      .AddInputType<int>()     // index
-      .End();
-
   using cinn::runtime::cuda::cinn_get_item_in_cuda_kernel_args;
   REGISTER_EXTERN_FUNC_HELPER(cinn_get_item_in_cuda_kernel_args,
                               cinn::common::DefaultHostTarget())

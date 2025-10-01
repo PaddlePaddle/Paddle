@@ -122,13 +122,19 @@ static PyObject *eager_api_run_program(PyObject *self,
                                                Params_info.second,
                                                Params_allocator);
     }
-    framework::AttributeMap attrs;
-    VLOG(6) << "Start PIR ConstructAttrMapFromPyArgs";
-    ConstructAttrMapForRunProgram("run_program", args, 3, attrs);
+    VLOG(6) << "Start PIR GetProgramAttributesMapPtrFromPyArgs";
+    auto prog_attrs_ptr =
+        GetProgramAttributesMapPtrFromPyArgs("run_program", args, 3);
+    VLOG(6) << "Finish PIR GetProgramAttributesMapPtrFromPyArgs";
 
-    VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
+    VLOG(6) << "Start PIR ConstructCudaGraphAttrMapForRunProgram";
+    paddle::framework::AttributeMap cuda_graph_attrs;
+    ConstructCudaGraphAttrMapForRunProgram(
+        "run_program", args, 4, cuda_graph_attrs);
+    VLOG(6) << "Finish PIR ConstructCudaGraphAttrMapForRunProgram";
     tstate = PyEval_SaveThread();
-    auto out = egr::to_static::run_program_ad_func(X, Params, OutScope, attrs);
+    auto out = egr::to_static::run_program_ad_func(
+        X, Params, OutScope, *prog_attrs_ptr, cuda_graph_attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(out);

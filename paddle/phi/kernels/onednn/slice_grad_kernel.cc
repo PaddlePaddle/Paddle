@@ -85,11 +85,7 @@ void SliceGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(slice_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::SliceGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    slice_grad, OneDNN, ONEDNN, phi::SliceGradKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::SliceGradCheckIfOneDNNSupport;
 }

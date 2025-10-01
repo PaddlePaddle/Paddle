@@ -61,9 +61,9 @@ class DnnWorkspaceHandle {
    *  running the function. Currently this function is only used when cudnn
    *  exhaustive searching and callers have to guarantee that the input function
    *  is host blocking */
-  void RunFuncSync(const std::function<void(void*)>& cudnn_func,
-                   size_t required_workspace_bytes,
-                   bool use_cached_allocation = true);
+  PADDLE_API void RunFuncSync(const std::function<void(void*)>& cudnn_func,
+                              size_t required_workspace_bytes,
+                              bool use_cached_allocation = true);
 
   inline size_t WorkspaceSize() {
     if (allocation_ == nullptr) {
@@ -72,7 +72,7 @@ class DnnWorkspaceHandle {
     return allocation_->size();
   }
 
-  void ResetWorkspace();
+  PADDLE_API void ResetWorkspace();
 
   TEST_API void ReallocWorkspace(size_t required_workspace_bytes);
 
@@ -193,6 +193,11 @@ class PADDLE_API GPUContext : public DeviceContext,
   /*! \brief  Set nccl communicators. */
   void set_nccl_comm(ncclComm_t comm);
 
+  // NOTE: External users manage resources. Used in inference scenarios.
+  // The Set interface is for inference only, DeviceContext will mark the
+  // resource as external, and will not delete any resource when destructing.
+  void SetStream(gpuStream_t);
+
  public:
   // NOTE: DeviceContext hold resources. Used in training scenarios.
   // The interface used by the training scene, DeviceContext will initialize
@@ -220,11 +225,6 @@ class PADDLE_API GPUContext : public DeviceContext,
   void SetCUDAStream(CUDAStream*, bool clear = true);
 
  protected:
-  // NOTE: External users manage resources. Used in inference scenarios.
-  // The Set interface is for inference only, DeviceContext will mark the
-  // resource as external, and will not delete any resource when destructing.
-  void SetStream(gpuStream_t);
-
   void SetEigenDevice(Eigen::GpuDevice*);
   void SetEigenDevice(std::function<Eigen::GpuDevice*()>&&);
 
@@ -298,8 +298,8 @@ class GPUPinnedContext
     : public DeviceContext,
       public phi::TypeInfoTraits<DeviceContext, GPUPinnedContext> {
  public:
-  GPUPinnedContext();
-  explicit GPUPinnedContext(GPUPinnedPlace place);
+  PADDLE_API GPUPinnedContext();
+  PADDLE_API explicit GPUPinnedContext(GPUPinnedPlace place);
 
   const Place& GetPlace() const override;
 

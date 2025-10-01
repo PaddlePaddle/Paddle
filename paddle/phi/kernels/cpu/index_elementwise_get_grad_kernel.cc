@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_grad_kernel.h"
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
@@ -76,8 +75,8 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& dev_ctx,
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           std::vector<int64_t>(),
-                           std::vector<int64_t>(),
+                           common::vectorize<int64_t>(value.dims()),
+                           common::vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -131,6 +130,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const std::vector<int64_t>& index_strides,
                                    const int64_t slice_offset,
                                    const bool accumulate,
+                                   const bool is_combined,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
@@ -172,7 +172,7 @@ PD_REGISTER_KERNEL(index_elementwise_get_grad,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

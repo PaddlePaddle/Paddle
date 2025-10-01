@@ -44,7 +44,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
                     common::errors::InvalidArgument(
                         "source level is used to describe candidate set"
                         ", so it's element should less than level_1 length. "
-                        "And the value of source"
+                        "And the value of source "
                         "level is %d. ",
                         level_1.size() - 1));
   PADDLE_ENFORCE_EQ(level_1.back(),

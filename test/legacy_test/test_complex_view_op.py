@@ -33,7 +33,7 @@ def ref_view_as_real(x):
     return np.stack([x.real, x.imag], -1)
 
 
-class TestViewAsComplexOp(OpTest):
+class TestAsComplexOp(OpTest):
     def setUp(self):
         self.op_type = "as_complex"
         self.python_api = paddle.as_complex
@@ -53,7 +53,7 @@ class TestViewAsComplexOp(OpTest):
         )
 
 
-class TestViewAsRealOp(OpTest):
+class TestAsRealOp(OpTest):
     def setUp(self):
         self.op_type = "as_real"
         real = np.random.randn(10, 10).astype("float64")
@@ -75,7 +75,7 @@ class TestViewAsRealOp(OpTest):
         )
 
 
-class TestViewAsComplexAPI(unittest.TestCase):
+class TestAsComplexAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(10, 10, 2)
         self.out = ref_view_as_complex(self.x)
@@ -98,7 +98,7 @@ class TestViewAsComplexAPI(unittest.TestCase):
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
-class TestViewAsRealAPI(unittest.TestCase):
+class TestAsRealAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(10, 10) + 1j * np.random.randn(10, 10)
         self.out = ref_view_as_real(self.x)
@@ -121,7 +121,7 @@ class TestViewAsRealAPI(unittest.TestCase):
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
-class TestViewAsRealAPI_ZeroSize(unittest.TestCase):
+class TestAsRealAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(10, 0) + 1j * np.random.randn(10, 0)
         self.out = ref_view_as_real(self.x)
@@ -133,6 +133,51 @@ class TestViewAsRealAPI_ZeroSize(unittest.TestCase):
                 x_tensor.stop_gradient = False
                 out = paddle.as_real(x_tensor)
                 np.testing.assert_allclose(self.out, out.numpy(), rtol=1e-05)
+                out.sum().backward()
+                np.testing.assert_allclose(x_tensor.grad.shape, x_tensor.shape)
+
+
+class TestViewAsComplexAPI(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(10, 10, 2)
+        self.out = ref_view_as_complex(self.x)
+
+    def test_dygraph(self):
+        with dygraph.guard():
+            x = paddle.to_tensor(self.x)
+            out = paddle.view_as_complex(x)
+            out_np = out.numpy()
+            self.assertEqual(out.data_ptr(), x.data_ptr())
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+class TestViewAsRealAPI(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(10, 10) + 1j * np.random.randn(10, 10)
+        self.out = ref_view_as_real(self.x)
+
+    def test_dygraph(self):
+        with dygraph.guard():
+            x = paddle.to_tensor(self.x)
+            out = paddle.view_as_real(x)
+            out_np = out.numpy()
+            self.assertEqual(out.data_ptr(), x.data_ptr())
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+class TestViewAsRealAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(10, 0) + 1j * np.random.randn(10, 0)
+        self.out = ref_view_as_real(self.x)
+
+    def test_dygraph(self):
+        for place in get_places():
+            with dygraph.guard(place):
+                x_tensor = paddle.to_tensor(self.x)
+                x_tensor.stop_gradient = False
+                out = paddle.view_as_real(x_tensor)
+                np.testing.assert_allclose(self.out, out.numpy(), rtol=1e-05)
+                self.assertEqual(out.data_ptr(), x_tensor.data_ptr())
                 out.sum().backward()
                 np.testing.assert_allclose(x_tensor.grad.shape, x_tensor.shape)
 

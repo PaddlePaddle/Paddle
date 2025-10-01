@@ -130,7 +130,6 @@ class CUDAGraphState(IntEnum):
 
 
 class TransformOptions:
-
     class ToStaticMode(Flag):
         SOT = auto()
         AST = auto()
@@ -640,6 +639,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         argdefs=callable_func.__defaults__,
         closure=get_new_closure(dyfunc, callable_func),
     )
+    new_fn.__kwdefaults__ = callable_func.__kwdefaults__
 
     return new_fn, f.name
 
@@ -791,9 +791,9 @@ class GetterSetterHelper:
         if vars is None:
             return ()
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
@@ -805,9 +805,9 @@ class GetterSetterHelper:
         if vars is None:
             return
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         vars = list(vars)
         indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):
@@ -1049,7 +1049,7 @@ def patch_method_guard(
 
 def extract_tensor_dynamic_dims(
     tensor: paddle.Tensor,
-) -> tuple[int]:
+) -> tuple[int, ...]:
     """
     Extract dynamic dimensions from a paddle.Tensor.
     Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
@@ -1060,7 +1060,7 @@ def extract_tensor_dynamic_dims(
         )
 
     if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
-        return []
+        return ()
 
     dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
     if not isinstance(dynamic_dims, tuple):

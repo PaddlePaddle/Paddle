@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/context_pool.h"
 
 #ifdef PADDLE_WITH_XPU
 #include <cuda.h>
@@ -100,8 +101,8 @@ struct XPUContext::Impl {
   }
 
   // Set external stream for context
-  void SetStream(void* stream) {
-    if (context_->xpu_stream != nullptr && stream_owned_) {
+  void SetStream(void* stream, bool clear = true) {
+    if (clear && context_->xpu_stream != nullptr && stream_owned_) {
       xpu_stream_destroy(context_->xpu_stream);
     }
     stream_owned_ = false;
@@ -343,7 +344,21 @@ XPUContext::XPUContext() : DeviceContext() {
   } else {
     impls_.push_back(std::make_unique<Impl>());
     impls_[0]->Init(get_gm_size(0), get_l3_size(0));
+    stream_pool.push_back(impls_[0]->context_->get_stream());
+    idle_stream_flags.push_back(false);
+    current_stream_handle =
+        XPUStreamHandle(impls_[0]->context_->get_stream(), 0);
+    if (std::getenv("XPU_DEFAULT_STREAM_NUMBER") != nullptr) {
+      int default_num_stream = atoi(std::getenv("XPU_DEFAULT_STREAM_NUMBER"));
+      for (int i = 0; i < default_num_stream; i++) {
+        XPUStream s;
+        PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&s));
+        stream_pool.push_back(s);
+        idle_stream_flags.push_back(true);
+      }
+    }
   }
+  current_stream_idx = 0;
 }
 
 XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
@@ -362,10 +377,18 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
       impls_.push_back(std::make_unique<Impl>(place));
       impls_[i]->Init(get_gm_size(i), get_l3_size(i));
     }
+    stream_pool.push_back(impls_[0]->context_->get_stream());
+    idle_stream_flags.push_back(false);
   } else {
     impls_.push_back(std::make_unique<Impl>(place));
     impls_[0]->Init(get_gm_size(0), get_l3_size(0));
+    stream_pool.push_back(impls_[0]->context_->get_stream());
+    idle_stream_flags.push_back(false);
+    current_stream_handle =
+        XPUStreamHandle(impls_[0]->context_->get_stream(), 0);
   }
+
+  current_stream_idx = 0;
 }
 
 XPUContext::~XPUContext() = default;
@@ -380,6 +403,9 @@ XPUStream XPUContext::stream(int i) const {
 void XPUContext::SetStream(void* stream, int i) {
   CheckValidStreamId(i);
   impls_[i]->SetStream(stream);
+  if (i == 0) {
+    current_stream_handle.set_stream(static_cast<XPUStream>(stream));
+  }
 }
 
 void XPUContext::CheckValidStreamId(int i) const {
@@ -394,6 +420,21 @@ void XPUContext::CheckValidStreamId(int i) const {
       errors::InvalidArgument("The stream index should be less than the number "
                               "of stream used (%d), but got %d",
                               GetStreamNum(),
+                              i));
+}
+
+void XPUContext::CheckValidIdxInRange(int i, int i_max) const {
+  PADDLE_ENFORCE_GE(
+      i,
+      0,
+      errors::InvalidArgument(
+          "The stream index must be greater than or equal to 0."));
+  PADDLE_ENFORCE_LT(
+      i,
+      i_max,
+      errors::InvalidArgument("The stream index should be less than the number "
+                              "of stream used (%d), but got %d",
+                              i_max,
                               i));
 }
 
@@ -462,26 +503,251 @@ void XPUContext::StreamWaitEvent(XPUEvent event, int s) const {
 void XPUContext::StreamWaitStream(int wait_stream, int record_stream) const {
   CheckValidStreamId(wait_stream);
   CheckValidStreamId(record_stream);
-  XPUEvent event;
-  int r = xpu_event_create(&event);
-  PADDLE_ENFORCE_XRE_SUCCESS(r);
+  XPUEvent event = XPUEventPool::Instance().CreateEventFromPool();
   RecordEvent(event, record_stream);
   StreamWaitEvent(event, wait_stream);
-  r = xpu_event_destroy(event);
-  PADDLE_ENFORCE_XRE_SUCCESS(r);
-
   impls_[record_stream]->ClearStashedMemory();
 }
 
 int64_t XPUContext::GetStreamNum() const { return impls_.size(); }
 
+int XPUContext::SetCurrentStream(int idx) {
+  int prev_stream_idx = current_stream_idx;
+  if (prev_stream_idx != idx) {
+    impls_[0]->SetStream(stream_pool[idx]);
+    current_stream_handle.set_stream(stream_pool[idx]);
+    current_stream_idx = idx;
+    idle_stream_flags[prev_stream_idx] = true;
+    idle_stream_flags[current_stream_idx] = false;
+  }
+  return prev_stream_idx;
+}
+
+void XPUContext::StreamWaitStreamInPool(int wait_stream,
+                                        int record_stream) const {
+  CheckValidIdxInRange(wait_stream, stream_pool.size());
+  CheckValidIdxInRange(record_stream, stream_pool.size());
+  XPUEvent event = XPUEventPool::Instance().CreateEventFromPool();
+  int r = xpu_event_record(event, stream_pool[record_stream]);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+  r = xpu_stream_wait_event(stream_pool[wait_stream], event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUContext::StreamWaitEventInPool(int wait_stream, XPUEvent event) const {
+  CheckValidIdxInRange(wait_stream, stream_pool.size());
+  int r = xpu_stream_wait_event(stream_pool[wait_stream], event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+int XPUContext::get_idle_stream() {
+  bool found_idle_stream = false;
+  int stream_idx = 0;
+  int num_streams = idle_stream_flags.size();
+  for (; stream_idx < num_streams; stream_idx++) {
+    if (idle_stream_flags[stream_idx]) {
+      found_idle_stream = true;
+      break;
+    }
+  }
+  if (found_idle_stream) {
+    idle_stream_flags[stream_idx] = false;
+    return stream_idx;
+  } else {
+    add_stream_to_pool();
+    return stream_pool.size() - 1;
+  }
+}
+
+void XPUContext::add_stream_to_pool() {
+  XPUStream s;
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&s));
+  stream_pool.push_back(s);
+  idle_stream_flags.push_back(false);
+}
+
+XPUStream XPUContext::get_stream_from_pool(int idx) const {
+  PADDLE_ENFORCE_GE(
+      idx,
+      0,
+      errors::InvalidArgument(
+          "The stream index must be greater than or equal to 0."));
+  PADDLE_ENFORCE_LT(
+      idx,
+      stream_pool.size(),
+      errors::InvalidArgument("The stream index should be less than the number "
+                              "of stream used (%d), but got %d",
+                              stream_pool.size(),
+                              idx));
+  return stream_pool[idx];
+}
+
+int XPUContext::get_current_stream_idx() { return current_stream_idx; }
 void XPUContext::AddStashedMemory(int stream, const DenseTensor& tensor) {
   CheckValidStreamId(stream);
   impls_[stream]->AddStashedMemory(tensor);
 }
 
+XPUStream XPUContext::get_current_stream() { return impls_[0]->stream(); }
+
+XPUStreamHandle* XPUContext::get_current_stream_handle() {
+  if (impls_[0]->context_->get_stream() == nullptr) {
+    XPUStream s;
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&s));
+    impls_[0]->SetStream(s);
+    stream_pool[current_stream_idx] = s;
+    current_stream_handle.set_stream(s);
+  }
+  return &current_stream_handle;
+}
+
 void XPUContext::Init() { impls_[0]->Init(); }
 
+XPUContext* get_xpu_context(int device_id) {
+  auto place_tmp = phi::XPUPlace(
+      device_id > -1 ? device_id : phi::backends::xpu::GetXPUCurrentDeviceId());
+  phi::XPUContext* dev_ctx = static_cast<phi::XPUContext*>(
+      phi::DeviceContextPool::Instance().Get(place_tmp));
+
+  return dev_ctx;
+}
+
+XPUStreamHandle::XPUStreamHandle() {}
+
+XPUStreamHandle::XPUStreamHandle(const int idx) {
+  auto* dev_ctx = phi::get_xpu_context();
+  stream_id = idx;
+  stream = dev_ctx->get_stream_from_pool(stream_id);
+}
+
+XPUStreamHandle::XPUStreamHandle(const phi::XPUPlace& place) {
+  phi::XPUContext* dev_ctx = static_cast<phi::XPUContext*>(
+      phi::DeviceContextPool::Instance().Get(place));
+  stream_id = dev_ctx->get_idle_stream();
+  stream = dev_ctx->get_stream_from_pool(stream_id);
+}
+
+XPUStreamHandle::XPUStreamHandle(const XPUStream xpu_stream, const int id) {
+  stream = xpu_stream;
+  stream_id = id;
+}
+
+void XPUStreamHandle::Init() {
+  auto* dev_ctx = phi::get_xpu_context();
+  stream_id = dev_ctx->get_idle_stream();
+  stream = dev_ctx->get_stream_from_pool(stream_id);
+}
+
+void XPUStreamHandle::wait_event(XPUEvent event) const {
+  int r = xpu_stream_wait_event(stream, event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUStreamHandle::synchronize() const {
+  int r = xpu_wait(stream);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUStreamHandle::set_stream(XPUStream stream_) { stream = stream_; }
+
+void XPUStreamHandle::record_event(XPUEvent event) const {
+  int r = xpu_event_record(event, stream);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+XPUStreamHandle get_current_stream_handle(int device_id) {
+  auto* dev_ctx = get_xpu_context(device_id);
+  return *dev_ctx->get_current_stream_handle();
+}
+
+XPUStreamHandle get_stream_handle(int device_id) {
+  auto* dev_ctx = get_xpu_context(device_id);
+  return XPUStreamHandle(dev_ctx->get_idle_stream());
+}
+
+void set_current_stream(XPUStreamHandle* s) {
+  auto* dev_ctx = get_xpu_context();
+  dev_ctx->SetStream(s->raw_stream(), 0);
+}
+
+XPUEventPool& XPUEventPool::Instance() {
+  static XPUEventPool pool;
+  return pool;
+}
+
+XPUEventPool::~XPUEventPool() {
+  const auto& DestroyEvent = [](XPUEvent event) {
+    int r = xpu_event_destroy(event);
+    PADDLE_ENFORCE_XRE_SUCCESS(r);
+  };
+  const auto& CheckComplishAndDestroy = [&](XPUEvent event) -> bool {
+    if (xpu_event_query(event) == XPU_SUCCESS) {
+      DestroyEvent(event);
+      return true;
+    } else {
+      return false;
+    }
+  };
+  std::unique_lock<std::mutex> lock(mtx_);
+  while (!incomplished_events_.empty()) {
+    XPUEvent event = incomplished_events_.front();
+    if (!CheckComplishAndDestroy(event)) {
+      LOG(ERROR) << "failed on destroying event when destroying event pool.";
+    }
+    incomplished_events_.pop();
+  }
+}
+
+XPUEvent XPUEventPool::CreateEventFromPool() {
+  std::unique_lock<std::mutex> lock(mtx_);
+
+  const auto& CreateNewEvent = [&]() -> XPUEvent {
+    XPUEvent new_event;
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_event_create(&new_event));
+    incomplished_events_.push(new_event);
+    return new_event;
+  };
+
+  const auto& CreateNewOrReuseEvent = [&]() -> XPUEvent {
+    XPUEvent front_event = incomplished_events_.front();
+    incomplished_events_.pop();
+    incomplished_events_.push(front_event);
+    if (xpu_event_query(front_event) == XPU_SUCCESS) {
+      return front_event;
+    }
+    return CreateNewEvent();
+  };
+
+  if (incomplished_events_.empty()) {
+    return CreateNewEvent();
+  }
+  return CreateNewOrReuseEvent();
+}
+
+XPUEventHandle::XPUEventHandle() {
+  event_ = XPUEventPool::Instance().CreateEventFromPool();
+}
+XPUEventHandle::XPUEventHandle(XPUStream stream) {
+  event_ = XPUEventPool::Instance().CreateEventFromPool();
+  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_record(event_, stream));
+}
+
+void XPUEventHandle::record(XPUStream stream) {
+  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_query(event_));
+  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_record(event_, stream));
+}
+
+bool XPUEventHandle::query() {
+  int result = xpu_event_query(event_);
+  if (result == XPU_SUCCESS) {
+    return true;
+  }
+  return false;
+}
+
+void XPUEventHandle::synchronize() {
+  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_wait(event_));
+}
 #if defined(PADDLE_WITH_XPU)
 XPUPinnedContext::XPUPinnedContext() {
   eigen_device_ = std::make_unique<Eigen::DefaultDevice>();

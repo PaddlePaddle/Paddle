@@ -25,7 +25,7 @@ import numpy as np
 import paddle
 from paddle.base.framework import IrGraph
 from paddle.framework import core
-from paddle.static.quantization import QuantInt8MkldnnPass
+from paddle.static.quantization import QuantInt8OnednnPass
 
 paddle.enable_static()
 
@@ -120,7 +120,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         acc5 = float(correct_5) / float(total)
         return acc1, acc5
 
-    def _prepare_for_fp32_mkldnn(self, graph):
+    def _prepare_for_fp32_onednn(self, graph):
         ops = graph.all_op_nodes()
         for op_node in ops:
             name = op_node.name()
@@ -190,12 +190,12 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             if self._debug:
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
             if transform_to_int8:
-                mkldnn_int8_pass = QuantInt8MkldnnPass(
+                onednn_int8_pass = QuantInt8OnednnPass(
                     _scope=inference_scope, _place=place
                 )
-                graph = mkldnn_int8_pass.apply(graph)
+                graph = onednn_int8_pass.apply(graph)
             else:
-                graph = self._prepare_for_fp32_mkldnn(graph)
+                graph = self._prepare_for_fp32_onednn(graph)
 
             inference_program = graph.to_program()
 
@@ -283,17 +283,17 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         assert fp32_acc1 - int8_acc1 <= threshold
 
     def test_graph_transformation(self):
-        if not core.is_compiled_with_mkldnn():
+        if not core.is_compiled_with_onednn():
             return
 
         quant_model_path = test_case_args.quant_model
-        assert (
-            quant_model_path
-        ), 'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        assert quant_model_path, (
+            'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        )
         data_path = test_case_args.infer_data
-        assert (
-            data_path
-        ), 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        assert data_path, (
+            'The dataset path cannot be empty. Please, use the --infer_data option.'
+        )
         batch_size = test_case_args.batch_size
         batch_num = test_case_args.batch_num
         skip_batch_num = test_case_args.skip_batch_num

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 
@@ -430,9 +430,7 @@ class TestSlogDeterminantAPIComplex(unittest.TestCase):
         self.x = np.vectorize(complex)(
             np.random.random(self.shape), np.random.random(self.shape)
         ).astype(self.dtype)
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.out_grad = (
             np.array([1 + 0j, 1 + 0j] * 3 * 3)
             .reshape(2, 3, 3)
@@ -502,9 +500,7 @@ class TestSlogDeterminantAPIComplex2(TestSlogDeterminantAPIComplex):
         self.x = np.vectorize(complex)(
             np.random.random(self.shape), np.random.random(self.shape)
         ).astype(self.dtype)
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.out_grad = np.array([3 + 0j, 3 + 0j] * 6).reshape(2, 6)
         self.x_grad_ref_dy = self.get_numeric_grad(
             self.x, self.shape, self.out_grad

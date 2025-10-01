@@ -32,6 +32,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 namespace paddle::framework {
 namespace {
@@ -72,7 +73,7 @@ Executor::~Executor() {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  platform::ClearMKLDNNCache(place_, this);
+  platform::ClearONEDNNCache(place_, this);
 #endif
 }
 
@@ -184,10 +185,10 @@ void Executor::Run(const ProgramDesc& pdesc,
   phi::RecordEvent record_run(
       "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn) EnableONEDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
   platform::RegisterModelLayout(ctx->ops_, place_);
 #endif
   RunPreparedContext(
@@ -330,9 +331,9 @@ void Executor::Run(const ProgramDesc& program,
   phi::RecordEvent record_run(
       "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn) EnableONEDNN(program);
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
 #endif
   bool has_feed_ops =
       has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
@@ -592,19 +593,21 @@ void Executor::RunPreparedContext(
   }
 }
 
-void Executor::EnableMKLDNN(const ProgramDesc& program) {
+void Executor::EnableONEDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_DNNL
   VLOG(3) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
-      if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op))
+      if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op)) {
         op->SetAttr("use_mkldnn", true);
+        op->SetAttr("use_onednn", true);
+      }
     }
   }
 #else
   LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_ONEDNN option";
+      << "'ONEDNN' is not supported, Please re-compile with WITH_ONEDNN option";
 #endif
 }
 }  // namespace paddle::framework

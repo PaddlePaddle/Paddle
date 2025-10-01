@@ -136,5 +136,5 @@ PD_REGISTER_KERNEL(group_norm,
                    ALL_LAYOUT,
                    phi::GroupNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

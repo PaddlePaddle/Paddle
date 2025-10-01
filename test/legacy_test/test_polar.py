@@ -131,5 +131,43 @@ class TestPolarAPI_ZeroSize2(TestPolarAPI_ZeroSize):
         self.angle = np.random.random([0, 1])
 
 
+class TestPolarOut(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = [3, 4]
+        self.abs_np = np.random.rand(*self.shape).astype(np.float32)
+        self.angle_np = np.random.rand(*self.shape).astype(np.float32)
+        self.test_types = ["out"]
+
+    def do_test(self, test_type):
+        abs_t = paddle.to_tensor(self.abs_np, stop_gradient=False)
+        angle_t = paddle.to_tensor(self.angle_np, stop_gradient=False)
+
+        if test_type == 'raw':
+            result = paddle.polar(abs_t, angle_t)
+            result.real().mean().backward()
+            return result, abs_t.grad, angle_t.grad
+        elif test_type == 'out':
+            out = paddle.empty(self.shape, dtype='complex64')
+            out.stop_gradient = False
+            paddle.polar(abs_t, angle_t, out=out)
+            out.real().mean().backward()
+            return out, abs_t.grad, angle_t.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_out(self):
+        out_std, abs_grad_std, angle_grad_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, abs_grad, angle_grad = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-6)
+            np.testing.assert_allclose(
+                abs_grad.numpy(), abs_grad_std.numpy(), rtol=1e-6
+            )
+            np.testing.assert_allclose(
+                angle_grad.numpy(), angle_grad_std.numpy(), rtol=1e-6
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

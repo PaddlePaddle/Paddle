@@ -37,7 +37,12 @@ def get_inandout(A_shape, b_shape, trans="N", dtype="float64"):
     np.random.seed(2025)
     A = np.random.random(A_shape).astype(dtype)
     b = np.random.random(b_shape).astype(dtype)
-    x_grad = paddle.to_tensor(np.random.random(b_shape).astype(dtype))
+    x_grad_np = np.random.random(b_shape).astype(dtype)
+    if 'complex' in dtype:
+        A += 1j * np.random.random(A_shape).astype(dtype)
+        b += 1j * np.random.random(b_shape).astype(dtype)
+        x_grad_np += 1j * np.random.random(b_shape).astype(dtype)
+    x_grad = paddle.to_tensor(x_grad_np)
     paddle_A = paddle.to_tensor(A)
     lu, pivots = paddle.linalg.lu(paddle_A)
     if trans == "N":  # Ax = b
@@ -180,6 +185,30 @@ class TestLuSolveOp5(TestLuSolveOp):
         self.dtype = "float64"
 
 
+# complex64
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
+class TestLuSolveOp6(TestLuSolveOp):
+    def init_value(self):
+        self.A_shape = [10, 10]
+        self.b_shape = [10, 10]
+        self.trans = "T"
+        self.dtype = "complex64"
+
+
+# complex128
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
+class TestLuSolveOp7(TestLuSolveOp):
+    def init_value(self):
+        self.A_shape = [10, 10]
+        self.b_shape = [10, 10]
+        self.trans = "T"
+        self.dtype = "complex128"
+
+
 class TestLuSolveOpAPI(unittest.TestCase):
     def setUp(self):
         self.init_value()
@@ -318,6 +347,32 @@ class TestLuSolveOpAPI8(TestLuSolveOpAPI):
         self.b_shape = [10, 5]
         self.trans = "T"
         self.dtype = "float64"
+        self.rtol = 1e-05
+
+
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
+class TestLuSolveOpAPI9(TestLuSolveOpAPI):
+    def init_value(self):
+        # Ax = b
+        self.A_shape = [10, 10]
+        self.b_shape = [10, 5]
+        self.trans = "N"
+        self.dtype = "complex64"
+        self.rtol = 0.001
+
+
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
+class TestLuSolveOpAPI10(TestLuSolveOpAPI):
+    def init_value(self):
+        # Ax = b
+        self.A_shape = [10, 10]
+        self.b_shape = [10, 5]
+        self.trans = "N"
+        self.dtype = "complex128"
         self.rtol = 1e-05
 
 

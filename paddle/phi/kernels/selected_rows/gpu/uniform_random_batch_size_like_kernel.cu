@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/uniform_random_functor.h"
@@ -61,4 +58,4 @@ PD_REGISTER_KERNEL(uniform_random_batch_size_like_sr,
                    phi::sr::GPUUniformRandomKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

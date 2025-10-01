@@ -31,6 +31,8 @@ void MultiHeadAttentionVariableForwardKernel(
     const int pre_cache_length,
     DenseTensor* output) {
   dev_ctx.template Alloc<T>(output);
+  if (output->numel() == 0) return;
+
   Params params{};
   // [B, N, S, H]
   params.seq_lens = seq_lens.data<int>();
@@ -65,7 +67,8 @@ void MultiHeadAttentionVariableForwardKernel(
   params.causal = causal;
   params.pre_cache_length = pre_cache_length;
 
-  if (mask) {
+  // if the mask is 0-size tensor, we don't need to set mask_ptr
+  if (mask && mask.get().numel() > 0) {
     // [B, 1, S, D]
     auto mask_tensor = mask.get();
     int64_t mask_num_heads = mask_tensor.dims()[1];
@@ -129,7 +132,7 @@ PD_REGISTER_KERNEL(variable_length_memory_efficient_attention,
                    ALL_LAYOUT,
                    phi::fusion::MultiHeadAttentionVariableForwardKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetDataType(phi::DataType::INT32);
 }

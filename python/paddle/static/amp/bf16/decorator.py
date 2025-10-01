@@ -173,9 +173,9 @@ class OptimizerWithMixedPrecision:
                 >>> run_example_code()
 
         """
-        assert (
-            self._train_program is not None
-        ), "Please call the minimize method first."
+        assert self._train_program is not None, (
+            "Please call the minimize method first."
+        )
         if self._use_pure_bf16:
             cast_parameters_to_bf16(
                 place, self._train_program, scope, self._to_bf16_var_names

@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any, SupportsIndex, Union
 import numpy as np
 
 import paddle
+from paddle.distributed import fleet
+from paddle.distributed.collective import _get_group_map
 from paddle.distributed.communication.group import is_initialized
 from paddle.framework import core
 
@@ -158,28 +160,28 @@ class ProcessMesh(core.ProcessMesh):
         self._shape = list(self._mesh.shape)
         self._process_ids = self._mesh.flatten().tolist()
 
-        assert all(
-            isinstance(p, int) for p in self._process_ids
-        ), "All elements of the mesh must be integer"
-        assert (
-            min(self._process_ids) >= 0
-        ), 'All elements of the mesh must be >= 0.'
+        assert all(isinstance(p, int) for p in self._process_ids), (
+            "All elements of the mesh must be integer"
+        )
+        assert min(self._process_ids) >= 0, (
+            'All elements of the mesh must be >= 0.'
+        )
         unique_process_ids = set(self._process_ids)
-        assert len(unique_process_ids) == len(
-            self._process_ids
-        ), 'All elements of the mesh must be unique.'
+        assert len(unique_process_ids) == len(self._process_ids), (
+            'All elements of the mesh must be unique.'
+        )
 
         if dim_names is not None:
-            assert len(dim_names) == len(
-                self._shape
-            ), "The length of dims_names must be same as the shape of the mesh."
+            assert len(dim_names) == len(self._shape), (
+                "The length of dims_names must be same as the shape of the mesh."
+            )
             self._dim_names = copy.deepcopy(dim_names)
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
         unique_dim_names = set(self._dim_names)
-        assert len(unique_dim_names) == len(
-            self._dim_names
-        ), f'All dim_names {dim_names} must be unique.'
+        assert len(unique_dim_names) == len(self._dim_names), (
+            f'All dim_names {dim_names} must be unique.'
+        )
 
         # Follow the requirement for using pybind11
         core.ProcessMesh.__init__(
@@ -294,9 +296,9 @@ class ProcessMesh(core.ProcessMesh):
         dim_name: str,
         index: slice | tuple[slice, ...] | SupportsIndex | None = None,
     ) -> ProcessMesh:
-        assert (
-            dim_name in self._dim_names
-        ), f'{dim_name} is not a valid dim name.'
+        assert dim_name in self._dim_names, (
+            f'{dim_name} is not a valid dim name.'
+        )
         index_axis = self._dim_names.index(dim_name)
         new_order = [index_axis] + [
             i for i in range(len(self._dim_names)) if i != index_axis
@@ -442,8 +444,28 @@ class ProcessMesh(core.ProcessMesh):
                     f"{dim_name} not in the dimension names {self._dim_names}"
                 )
             else:
-                pg = paddle.distributed.new_group(self._process_ids)
-                return pg
+                if hasattr(fleet.fleet, "_hcg"):
+                    hcg = fleet.get_hybrid_communicate_group()
+                    if hcg is not None:
+                        parallel_group_map = {
+                            "pp": hcg.get_pipe_parallel_group,
+                            "dp": hcg.get_data_parallel_group,
+                            "mp": hcg.get_model_parallel_group,
+                            "sep": hcg.get_sep_parallel_group,
+                            "sharding": hcg.get_sharding_parallel_group,
+                        }
+
+                        if dim_name not in parallel_group_map:
+                            raise ValueError(
+                                f"{dim_name} is not a valid dim name."
+                            )
+
+                        return parallel_group_map[dim_name]()
+                group_map = _get_group_map()
+                for group in group_map.values():
+                    if set(group.ranks) == set(self._process_ids):
+                        return group
+                return paddle.distributed.new_group(self._process_ids)
         else:
             if dim_name not in self._dim_names:
                 raise ValueError(

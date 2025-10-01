@@ -78,5 +78,11 @@ void LuSolveKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    lu_solve, CPU, ALL_LAYOUT, phi::LuSolveKernel, float, double) {}
+PD_REGISTER_KERNEL(lu_solve,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LuSolveKernel,
+                   float,
+                   double,
+                   phi::complex64,
+                   phi::complex128) {}
