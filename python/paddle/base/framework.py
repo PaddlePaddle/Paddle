@@ -213,17 +213,6 @@ def on_static_mode(*, force_static: bool = False):
 
 
 @contextmanager
-def on_dygraph_mode(*, force_dygraph: bool = False):
-    is_in_dygraph_mode = in_dygraph_mode()
-    paddle.disable_static()
-    try:
-        yield
-    finally:
-        if not is_in_dygraph_mode or force_dygraph:
-            paddle.enable_static()
-
-
-@contextmanager
 def flag_guard(flag_name, flag_value):
     old_value = paddle.get_flags(flag_name)[flag_name]
     paddle.set_flags({flag_name: flag_value})
