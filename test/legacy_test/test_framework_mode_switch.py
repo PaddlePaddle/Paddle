@@ -1,8 +1,12 @@
 # test/legacy_test/test_framework_mode_switch.py
 import unittest
+
 import paddle
-from paddle.base.framework import in_dygraph_mode
-from paddle.base.framework import on_static_mode, on_dygraph_mode
+from paddle.base.framework import (
+    in_dygraph_mode,
+    on_dygraph_mode,
+    on_static_mode,
+)
 
 
 class TestModeSwitchCtx(unittest.TestCase):
