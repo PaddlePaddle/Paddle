@@ -118,19 +118,18 @@ class TestMulInplaceApi(unittest.TestCase):
 
 class TestMulInplaceError(unittest.TestCase):
     def test_errors(self):
-        paddle.disable_static()
-        # test dynamic computation graph: inputs must be broadcastable
-        x_data = np.random.rand(3, 4)
-        y_data = np.random.rand(2, 3, 4)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
+        with paddle.base.dygraph.guard():
+            # test dynamic computation graph: inputs must be broadcastable
+            x_data = np.random.rand(3, 4)
+            y_data = np.random.rand(2, 3, 4)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
 
-        def multiply_shape_error():
-            with paddle.no_grad():
-                x.mul_(y)
+            def multiply_shape_error():
+                with paddle.no_grad():
+                    x.mul_(y)
 
-        self.assertRaises(ValueError, multiply_shape_error)
-        paddle.enable_static()
+            self.assertRaises(ValueError, multiply_shape_error)
 
 
 class TestMulInplaceParamDecoratorApi(unittest.TestCase):

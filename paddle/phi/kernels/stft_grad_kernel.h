@@ -12,13 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/stft_grad_kernel.h"
+#pragma once
+
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/stft_grad_kernel_impl.h"
 #include "paddle/phi/kernels/stft_kernel.h"
 
-PD_REGISTER_KERNEL(
-    stft_grad, GPU, ALL_LAYOUT, phi::StftGradKernel, float, double) {
-  kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
-}
+namespace phi {
+
+template <typename T, typename Context>
+void StftGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& window,
+                    const DenseTensor& out_grad,
+                    int n_fft,
+                    int hop_length,
+                    bool normalized,
+                    bool onesided,
+                    DenseTensor* x_grad);
+
+}  // namespace phi
