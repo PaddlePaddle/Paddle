@@ -208,7 +208,7 @@ def on_static_mode(*, force_static: bool = False):
     try:
         yield
     finally:
-        if is_in_dygraph_mode or force_static:
+        if not force_static or is_in_dygraph_mode:
             paddle.disable_static()
 
 
