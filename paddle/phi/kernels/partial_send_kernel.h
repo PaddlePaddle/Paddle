@@ -12,31 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/partial_send_kernel.h"
+#pragma once
+
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/phi/core/kernel_registry.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#endif
+
+#ifdef PADDLE_WITH_GPU
+#include "glog/logging.h"
+#include "paddle/phi/core/distributed/utils.h"
+#endif
+
 namespace phi {
+
 template <typename T, typename Context>
-void PartialSendKernel(const Context& dev_ctx UNUSED,
-                       const DenseTensor& x UNUSED,
-                       int peer UNUSED,
-                       int num UNUSED,
-                       int id UNUSED) {
+void PartialSendKernelCPU(const Context& dev_ctx UNUSED,
+                          const DenseTensor& x UNUSED,
+                          int peer UNUSED,
+                          int num UNUSED,
+                          int id UNUSED) {
   PADDLE_THROW(common::errors::Unavailable(
       "Do not support partial_send for cpu kernel now."));
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(partial_send,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::PartialSendKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::float16) {}
