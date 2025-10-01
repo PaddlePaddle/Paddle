@@ -765,9 +765,7 @@ class TestGatherGPUCPUConsistency(unittest.TestCase):
             paddle.to_tensor(x, place=paddle.CUDAPlace(0)),
             paddle.to_tensor(index),
         )
-        np.testing.assert_allclose(
-            cpu_out.numpy(), gpu_out.numpy(), rtol=1e-6
-        )
+        np.testing.assert_allclose(cpu_out.numpy(), gpu_out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
 
