@@ -25,8 +25,6 @@
 
 namespace phi {
 
-constexpr int64_t kNoPadding = -1;
-
 template <typename T, typename Context>
 void LookupTableGradKernel(const Context &dev_ctx,
                            const DenseTensor &w,
