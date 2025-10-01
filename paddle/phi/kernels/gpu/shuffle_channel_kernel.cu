@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/shuffle_channel_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,10 +21,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ShuffleChannelOpKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            int group,
-                            DenseTensor* out) {
+void ShuffleChannelOpCUDAKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                int group,
+                                DenseTensor* out) {
   auto input_dims = x.dims();
   auto num = input_dims[0];
   auto channel = input_dims[1];
@@ -56,6 +57,6 @@ void ShuffleChannelOpKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(shuffle_channel,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ShuffleChannelOpKernel,
+                   phi::ShuffleChannelOpCUDAKernel,
                    float,
                    double) {}
