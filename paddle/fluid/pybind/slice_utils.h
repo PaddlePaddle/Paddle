@@ -198,7 +198,7 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
       replacement_shape = common::vectorize<int64_t>(indices_list[dim].dims());
 
       idx_shape_vec.push_back(shape_vec[dim]);
-      idx_stride_vec.push_back(stride_vec[dim] * element_size_bytes);
+      idx_stride_vec.push_back(element_size_bytes);
     }
   }
 
