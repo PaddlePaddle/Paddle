@@ -763,6 +763,64 @@ class PyLayerBlockContextManager {
   PyLayerBlockContextManager() = default;
 };
 
+int DLPackFromPyObject(void *py_obj,
+                       DLManagedTensorVersioned **out,
+                       void **env_stream) {
+  try {
+    py::handle handle(static_cast<PyObject *>(py_obj));
+    paddle::Tensor tensor = handle.cast<paddle::Tensor>();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    if (env_stream != nullptr && tensor.is_gpu()) {
+      int device_index = tensor.place().GetDeviceId();
+      *env_stream = platform::get_current_stream(device_index)->raw_stream();
+    }
+#endif
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackToPyObject(DLManagedTensorVersioned *src, void **py_obj_out) {
+  try {
+    phi::DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
+    paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(dense_tensor));
+    egr::EagerUtils::autograd_meta(&tensor)->SetPersistable(false);
+    *py_obj_out = ToPyObject(tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackTensorAllocator(::DLTensor *prototype,
+                          ::DLManagedTensorVersioned **out,
+                          void *error_ctx,
+                          void (*SetError)(void *error_ctx,
+                                           const char *kind,
+                                           const char *message)) {
+  try {
+    phi::IntArray shape(prototype->shape, prototype->ndim);
+    phi::Place place(paddle::framework::DLDeviceToPlace(prototype->device));
+    phi::DataType dtype =
+        paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
+    paddle::Tensor tensor = paddle::empty(shape, dtype, place);
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    SetError(error_ctx, "DLPackTensorAllocator", e.what());
+    return -1;
+  }
+}
+
 // NOTE: use to load file by Mmap
 enum MMapLoadModes {
   ALLOCATOR_MAPPED_SHARED = 1,
@@ -1771,6 +1829,18 @@ PYBIND11_MODULE(libpaddle, m) {
     ::DLDevice dl_device = PlaceToDLDevice(place);
     return py::make_tuple(static_cast<int>(dl_device.device_type),
                           dl_device.device_id);
+  });
+
+  m.def("dlpack_from_pyobject_ptr", []() -> int64_t {
+    return reinterpret_cast<int64_t>(DLPackFromPyObject);
+  });
+
+  m.def("dlpack_to_pyobject_ptr", []() -> int64_t {
+    return reinterpret_cast<int64_t>(DLPackToPyObject);
+  });
+
+  m.def("dlpack_tensor_allocator_ptr", []() -> int64_t {
+    return reinterpret_cast<int64_t>(DLPackTensorAllocator);
   });
 
   m.def("from_dlpack", [](py::object data) {

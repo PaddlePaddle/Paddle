@@ -265,7 +265,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
       framework::TransToProtoVarType(dtype));
 }
 
-phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
+phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
   phi::Place place;
   if (dl_device.device_type == kDLCPU) {
     place = phi::CPUPlace();
@@ -279,7 +279,7 @@ phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
   return place;
 }
 
-DLDevice PlaceToDLDevice(const phi::Place &place) {
+::DLDevice PlaceToDLDevice(const phi::Place &place) {
   return phi::VisitPlace(place, internal::DLDeviceVisitor());
 }
 
