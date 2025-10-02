@@ -38,7 +38,7 @@ function(inference_analysis_python_api_int8_test_custom_warmup_batch_size
                                           ${filename})
 endfunction()
 
-function(inference_analysis_python_api_int8_test_mkldnn target model_dir
+function(inference_analysis_python_api_int8_test_onednn target model_dir
          data_path filename)
   _inference_analysis_python_api_int8_test(${target} ${model_dir} ${data_path}
                                            ${filename} True)
@@ -225,7 +225,7 @@ endif()
 
 # Since the tests for Quant & INT8 comparison support only testing on Linux
 # with MKL-DNN, we remove it here to not test it on other systems.
-list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy
+list(REMOVE_ITEM TEST_OPS test_onednn_int8_quantization_strategy
      quant_int8_image_classification_comparison quant_int8_nlp_comparison)
 
 #TODO(wanghaoshuang): Fix this unittest failed on GCC8.

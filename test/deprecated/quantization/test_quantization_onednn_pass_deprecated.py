@@ -184,7 +184,7 @@ class TestONEDNNTransformBasedFreezePass(unittest.TestCase):
                     marked_nodes.add(op)
             test_graph.draw(
                 '.',
-                'test_mkldnn'
+                'test_onednn'
                 + dev_name
                 + activation_quant_type
                 + '_'
@@ -194,11 +194,11 @@ class TestONEDNNTransformBasedFreezePass(unittest.TestCase):
         onednn_program = test_graph.to_program()
 
         # Check the transformation weights of conv2d and mul
-        conv_w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
-        mul_w_mkldnn = np.array(scope.find_var('fc_0.w_0').get_tensor())
+        conv_w_onednn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
+        mul_w_onednn = np.array(scope.find_var('fc_0.w_0').get_tensor())
         # Check if weights are still integer
-        self.assertFalse(self.isinteger(np.sum(conv_w_mkldnn)))
-        self.assertFalse(self.isinteger(np.sum(mul_w_mkldnn)))
+        self.assertFalse(self.isinteger(np.sum(conv_w_onednn)))
+        self.assertFalse(self.isinteger(np.sum(mul_w_onednn)))
 
         # Check if the conv2d output and mul output are correctly linked to fake_dequantize's
         # output
@@ -206,12 +206,12 @@ class TestONEDNNTransformBasedFreezePass(unittest.TestCase):
         if not for_ci:
             print(
                 '{}: {}'.format(
-                    'w_mkldnn'
+                    'w_onednn'
                     + dev_name
                     + activation_quant_type
                     + '_'
                     + weight_quant_type,
-                    np.sum(mul_w_mkldnn),
+                    np.sum(mul_w_onednn),
                 )
             )
 
