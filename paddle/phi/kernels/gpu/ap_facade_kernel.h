@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/ap_facade_kernel.h"
-#include "paddle/common/enforce.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#pragma once
+
+#include <string>
+#include <vector>
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -28,22 +28,6 @@ void ApFacadeKernel(const Context& dev_ctx,
                     const std::string& infer_meta_func_name,
                     const std::string& infer_symbolic_func_name,
                     const std::string& serialized_attributes,
-                    std::vector<DenseTensor*> outs) {
-  PADDLE_THROW(
-      common::errors::Unimplemented("ap_facade has no kernel registered."));
-}
+                    std::vector<DenseTensor*> outs);
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(ap_facade,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ApFacadeKernel,
-                   float,
-                   double,
-                   int,
-                   phi::bfloat16,
-                   phi::float16,
-                   int64_t,
-                   phi::complex64,
-                   phi::complex128) {}
