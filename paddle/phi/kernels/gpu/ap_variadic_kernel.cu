@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/ap_variadic_kernel.h"
+#include "paddle/ap/include/axpr/data_type_util.h"
+#include "paddle/ap/include/kernel_dispatch/ap_variadic_kernel.h"
+#include "paddle/ap/include/paddle/phi/device_ctx.h"
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/ap/include/axpr/data_type_util.h"
-#include "paddle/ap/include/kernel_dispatch/ap_variadic_kernel.h"
-#include "paddle/ap/include/paddle/phi/device_ctx.h"
 
 namespace phi {
 
