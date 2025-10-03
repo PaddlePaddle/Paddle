@@ -285,14 +285,21 @@ void IndexPutGradKernel_V2(const Context& dev_ctx,
     } else {
       out_grad_ = out_grad;
     }
-    auto x_grad_meta = x.meta();
-    x_grad_meta.dims = x_grad->dims();
-    x_grad_meta.strides = x_grad_meta.calc_strides(x_grad->dims());
-    x_grad->set_meta(x_grad_meta);
-    auto value_grad_meta = value.meta();
-    value_grad_meta.dims = value_grad->dims();
-    value_grad_meta.strides = value_grad_meta.calc_strides(value_grad->dims());
-    value_grad->set_meta(value_grad_meta);
+    if (x_grad) {
+      auto x_grad_meta = x.meta();
+      x_grad_meta.dims = x_grad->dims();
+      x_grad_meta.strides = x_grad_meta.calc_strides(x_grad->dims());
+      x_grad->set_meta(x_grad_meta);
+    }
+
+    if (value_grad) {
+      auto value_grad_meta = value.meta();
+      value_grad_meta.dims = value_grad->dims();
+      value_grad_meta.strides =
+          value_grad_meta.calc_strides(value_grad->dims());
+      value_grad->set_meta(value_grad_meta);
+    }
+
     phi::IndexPutGradKernel<T, Context>(
         dev_ctx, x, indices, value, out_grad_, accumulate, x_grad, value_grad);
     return;
