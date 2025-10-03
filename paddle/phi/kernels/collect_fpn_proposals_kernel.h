@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/collect_fpn_proposals_kernel.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/collect_fpn_proposals_kernel_impl.h"
+#pragma once
 
-PD_REGISTER_KERNEL(collect_fpn_proposals,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::CollectFpnProposalsOpKernel,
-                   float,
-                   double) {
-  kernel->InputAt(2).SetDataType(phi::DataType::INT32);
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
-}
+#include <vector>
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+template <typename T, typename Context>
+void GPUCollectFpnProposalsOpKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& multi_level_rois,
+    const std::vector<const DenseTensor*>& multi_level_scores,
+    const paddle::optional<std::vector<const DenseTensor*>>&
+        multi_level_rois_num,
+    int post_nms_topn,
+    DenseTensor* fpn_rois_out,
+    DenseTensor* rois_num_out);
+}  // namespace phi
