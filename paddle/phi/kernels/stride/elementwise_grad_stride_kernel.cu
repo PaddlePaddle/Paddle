@@ -217,10 +217,34 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
   if (FLAGS_use_stride_compute_kernel && x.initialized() && y.initialized() &&
       dout.initialized()) {
     if (dx != nullptr) {
-      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
+      DenseTensor dx_tmp;
+      MetaTensor meta_input_x(dout);
+      MetaTensor meta_input_y(y);
+      MetaTensor meta_out(&dx_tmp);
+      ElementwiseInferMeta(meta_input_x, meta_input_y, &meta_out);
+      if (dx_tmp.dims() == dx->dims()) {
+        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
+      } else {
+        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, &dx_tmp);
+        std::vector<int64_t> tmp_dims = {axis};
+        phi::SumStrideKernel<T, Context>(
+            dev_ctx, dx_tmp, phi::IntArray(tmp_dims), x.dtype(), true, dx);
+      }
     }
     if (dy != nullptr) {
-      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
+      DenseTensor dy_tmp;
+      MetaTensor meta_input_x(dout);
+      MetaTensor meta_input_y(x);
+      MetaTensor meta_out(&dy_tmp);
+      ElementwiseInferMeta(meta_input_x, meta_input_y, &meta_out);
+      if (dy_tmp.dims() == dy->dims()) {
+        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
+      } else {
+        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, &dy_tmp);
+        std::vector<int64_t> tmp_dims = {axis};
+        phi::SumStrideKernel<T, Context>(
+            dev_ctx, dy_tmp, phi::IntArray(tmp_dims), y.dtype(), true, dy);
+      }
     }
     return;
   }
