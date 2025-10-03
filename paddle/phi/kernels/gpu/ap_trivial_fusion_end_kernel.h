@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/ap_trivial_fusion_end_kernel.h"
-#include "paddle/common/enforce.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#pragma once
+
+#include <vector>
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -24,22 +23,6 @@ template <typename T, typename Context>
 void ApTrivialFusionEndKernel(
     const Context& dev_ctx,
     const paddle::optional<std::vector<const DenseTensor*>>& xs,
-    DenseTensor* out) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "pd_op.ap_trivial_fusion_end has no kernel registered."));
-}
+    DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(ap_trivial_fusion_end,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ApTrivialFusionEndKernel,
-                   float,
-                   double,
-                   int,
-                   phi::bfloat16,
-                   phi::float16,
-                   int64_t,
-                   phi::complex64,
-                   phi::complex128) {}
