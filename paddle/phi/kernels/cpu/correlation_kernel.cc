@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/correlation_kernel.h"
 #include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
 namespace phi {
