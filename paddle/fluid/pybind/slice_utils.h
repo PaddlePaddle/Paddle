@@ -1037,6 +1037,28 @@ static void DealWithIndex(const int pos_of_new_dim,
     if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
       indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
     }
+
+    // Handle negative indices for advanced indexing
+    if (indice.defined() && (indice.dtype() == paddle::DataType::INT64 ||
+                             indice.dtype() == paddle::DataType::INT32)) {
+      // Convert negative indices to positive indices
+      // For each dimension, if the index is negative, add the dimension size
+      auto dims = transed_sub_tensor->dims();
+      if (dims.size() > 0) {
+        int64_t dim_size = dims[0];  // First dimension size
+        // Create a tensor with the dimension size for broadcasting
+        auto dim_size_tensor = full_ad_func(
+            {1}, dim_size, paddle::DataType::INT64, indice.place());
+
+        // Handle negative indices: if index < 0, add dim_size
+        auto negative_mask =
+            less_than_ad_func(indice, zeros_like_ad_func(indice));
+        auto positive_indices = where_ad_func(
+            negative_mask, add_ad_func(indice, dim_size_tensor), indice);
+        indice = positive_indices;
+      }
+    }
+
     transed_index_int64->push_back(indice);
   }
 }
