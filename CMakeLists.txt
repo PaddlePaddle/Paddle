@@ -373,9 +373,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.8)
-elseif(${PY_VERSION} VERSION_LESS 3.8)
-  message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
+  set(PY_VERSION 3.9)
+elseif(${PY_VERSION} VERSION_LESS 3.9)
+  message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 

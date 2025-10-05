@@ -172,7 +172,6 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   block.x = 512;
-
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
@@ -274,11 +273,11 @@ void MoePermuteKernel(const Context &dev_ctx,
   DenseTensor expert_offset_tensor;
   expert_offset_tensor.Resize({MAX_NUM_EXPERTS});
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
-  cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                  expert_offset,
-                  sizeof(int) * MAX_NUM_EXPERTS,
-                  cudaMemcpyHostToDevice,
-                  dev_ctx.stream());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
+                                             expert_offset,
+                                             sizeof(int) * MAX_NUM_EXPERTS,
+                                             cudaMemcpyHostToDevice,
+                                             dev_ctx.stream()));
   const int output_rows = tokens_cumulated;
   const int topk_calculated = expert_routemap_topk.dims()[1];
   X_unzipped->Resize({output_rows, cols});
@@ -294,30 +293,31 @@ void MoePermuteKernel(const Context &dev_ctx,
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
 
   for (int i = 0; i < num_experts; i++) {
-    int next_expert_offset =
+    int64_t next_expert_offset =
         i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-    int invalid_rows =
+    int64_t invalid_rows =
         next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-    cudaMemsetAsync(X_unzipped_ptr + cur_expert_end * cols * sizeof(T),
-                    0,
-                    sizeof(T) * invalid_rows * cols,
-                    dev_ctx.stream());
+    int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemsetAsync(X_unzipped_ptr + cur_expert_end * cols * sizeof(T),
+                        0,
+                        sizeof(T) * invalid_rows * cols,
+                        dev_ctx.stream()));
   }
   if (XScale) {
     auto XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
     for (int i = 0; i < num_experts; i++) {
-      int next_expert_offset =
+      int64_t next_expert_offset =
           i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-      int invalid_rows =
+      int64_t invalid_rows =
           next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-      int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-      cudaMemsetAsync(
+      int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
           XScale_unzipped_ptr + cur_expert_end * quanted_cols * sizeof(float),
           0,
           sizeof(float) * invalid_rows * quanted_cols,
-          dev_ctx.stream());
+          dev_ctx.stream()));
     }
   }
 
@@ -325,15 +325,16 @@ void MoePermuteKernel(const Context &dev_ctx,
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());
 
   for (int i = 0; i < num_experts; i++) {
-    int next_expert_offset =
+    int64_t next_expert_offset =
         i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-    int invalid_rows =
+    int64_t invalid_rows =
         next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    int cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-    cudaMemsetAsync(token_prob_unzipped_ptr + cur_expert_end * sizeof(float),
-                    0,
-                    sizeof(float) * invalid_rows,
-                    dev_ctx.stream());
+    int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+        token_prob_unzipped_ptr + cur_expert_end * sizeof(float),
+        0,
+        sizeof(float) * invalid_rows,
+        dev_ctx.stream()));
   }
   if (X.numel() == 0) return;
   const int cumsum_blocknum =

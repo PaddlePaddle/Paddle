@@ -683,15 +683,21 @@ def _handle_aoa(
     for key, val in load_dict.items():
         desc = build_shard_desc(val)
         destination_state_shard_info[key].append(desc)
-    dst_sharded_shard_info_list = []
-    paddle.distributed.all_gather_object(
-        dst_sharded_shard_info_list,
-        dict(destination_state_shard_info),
-        process_group,
-    )
-    destination_state_shard_info = merge_shard_info_list(
-        dst_sharded_shard_info_list
-    )
+
+    use_dist = paddle.distributed.get_world_size() > 1
+
+    if use_dist:
+        dst_sharded_shard_info_list = []
+        paddle.distributed.all_gather_object(
+            dst_sharded_shard_info_list,
+            dict(destination_state_shard_info),
+            process_group,
+        )
+        destination_state_shard_info = merge_shard_info_list(
+            dst_sharded_shard_info_list
+        )
+    else:
+        destination_state_shard_info = dict(destination_state_shard_info)
 
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
@@ -841,21 +847,10 @@ def load_state_dict(
                 f"{key} is not replicated!"
             )
             load_dict[key] = val
-        load_state_dict_impl(
-            load_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-        )
-        return
-
-    flat_shards, nonflat_shards = _split_flat_shards(state_dict)
-    load_dict, padding_info = _unflatten_shards(flat_shards)
-    load_dict.update(nonflat_shards)
+    else:
+        flat_shards, nonflat_shards = _split_flat_shards(state_dict)
+        load_dict, padding_info = _unflatten_shards(flat_shards)
+        load_dict.update(nonflat_shards)
 
     if aoa_config is not None:
         _handle_aoa(
@@ -879,7 +874,8 @@ def load_state_dict(
             safetensors,
         )
 
-    _finish_unflatten(flat_shards, padding_info)
+    if use_dist:
+        _finish_unflatten(flat_shards, padding_info)
 
 
 def load_state_dict_impl(

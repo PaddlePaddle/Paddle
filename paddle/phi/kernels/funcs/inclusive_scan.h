@@ -37,10 +37,10 @@ template <typename T>
 struct IsComplex : public std::false_type {};
 
 template <>
-struct IsComplex<::phi::complex64> : public std::true_type {};
+struct IsComplex<phi::complex64> : public std::true_type {};
 
 template <>
-struct IsComplex<::phi::complex128> : public std::true_type {};
+struct IsComplex<phi::complex128> : public std::true_type {};
 
 template <typename InputIterator, typename OutputIterator, typename BinaryOp>
 static void CubInclusiveScan(InputIterator x_iter,
