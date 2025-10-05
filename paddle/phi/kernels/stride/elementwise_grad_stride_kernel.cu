@@ -226,9 +226,17 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
         phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
       } else {
         phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, &dx_tmp);
+
+        DenseTensor dx_tmp_;
+        if (dx_tmp.initialized() && !dx_tmp.meta().is_contiguous()) {
+          dx_tmp_ = Tensor2Contiguous<Context>(dev_ctx, dx_tmp);
+        } else {
+          dx_tmp_ = dx_tmp;
+        }
+
         std::vector<int64_t> tmp_dims = {axis};
-        phi::SumStrideKernel<T, Context>(
-            dev_ctx, dx_tmp, phi::IntArray(tmp_dims), x.dtype(), true, dx);
+        phi::SumKernel<T, Context>(
+            dev_ctx, dx_tmp_, phi::IntArray(tmp_dims), x.dtype(), true, dx);
       }
     }
     if (dy != nullptr) {
@@ -241,9 +249,17 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
         phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
       } else {
         phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, &dy_tmp);
+
+        DenseTensor dy_tmp_;
+        if (dy_tmp.initialized() && !dy_tmp.meta().is_contiguous()) {
+          dy_tmp_ = Tensor2Contiguous<Context>(dev_ctx, dy_tmp);
+        } else {
+          dy_tmp_ = dy_tmp;
+        }
+
         std::vector<int64_t> tmp_dims = {axis};
-        phi::SumStrideKernel<T, Context>(
-            dev_ctx, dy_tmp, phi::IntArray(tmp_dims), y.dtype(), true, dy);
+        phi::SumKernel<T, Context>(
+            dev_ctx, dy_tmp_, phi::IntArray(tmp_dims), y.dtype(), true, dy);
       }
     }
     return;

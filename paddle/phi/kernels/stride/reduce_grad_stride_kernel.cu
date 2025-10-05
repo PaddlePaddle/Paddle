@@ -23,6 +23,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
+#include "paddle/phi/kernels/unsqueeze_kernel.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
@@ -41,6 +42,39 @@ phi::DenseTensor Tensor2Contiguous(const Context& dev_ctx,
                            dev_ctx, tensor, &dense_out);
                      }));
   return dense_out;
+}
+
+template <typename Context>
+phi::DenseTensor CheckMultipleUnsqueeze(const Context& dev_ctx,
+                                        const DenseTensor& out_grad,
+                                        const IntArray& dims,
+                                        const int ndim,
+                                        bool keep_dim) {
+  phi::DenseTensor res = out_grad;
+  if (dims.size() == 0) return res;
+  std::vector<bool> axes(ndim, false);
+
+  for (int i = 0; i < dims.size(); i++) {
+    int tmp_dim = dims[i] >= 0 ? dims[i] : ndim + dims[i];
+    axes[tmp_dim] = true;
+  }
+
+  // printf("axes\n");
+  // for (int i=0; i<axes.size(); i++) {
+  //   if (axes[i]) printf("true ");
+  //   else printf("false ");
+  // }
+  // printf("\n");
+
+  for (int i = 0; i < axes.size(); i++) {
+    phi::DenseTensor tmp;
+    if (axes[i]) {
+      UnsqueezeStridedKernel(dev_ctx, res, IntArray({i}), &tmp);
+      res = tmp;
+    }
+  }
+
+  return res;
 }
 
 void ExpandStrideKernel(const std::vector<int64_t>& self_dims,
@@ -97,18 +131,62 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
-  DenseTensor x_;
   DenseTensor out_grad_;
 
-  if (FLAGS_use_stride_compute_kernel) {
+  if (FLAGS_use_stride_compute_kernel && out_grad.dims().size() > 0) {
+    // printf("out grad shape\n");
+    // for (int i=0; i<out_grad.dims().size(); i++) {
+    //   printf("%d ", out_grad.dims()[i]);
+    // }
+    // printf("\n");
+
+    // printf("x shape\n");
+    // for (int i=0; i<x.dims().size(); i++) {
+    //   printf("%d ", x.dims()[i]);
+    // }
+    // printf("\n");
+
+    // printf("x_grad shape\n");
+    // for (int i=0; i<x_grad->dims().size(); i++) {
+    //   printf("%d ", x_grad->dims()[i]);
+    // }
+    // printf("\n");
+
+    // printf("dims\n");
+    // for (int i=0; i<dims.size(); i++) {
+    //   printf("%d ", dims[i]);
+    // }
+    // printf("\n");
+
+    phi::DenseTensor out_tmp = CheckMultipleUnsqueeze<Context>(
+        dev_ctx, out_grad, dims, x.dims().size(), keep_dim);
+
     std::vector<int64_t> out_dims;
     std::vector<int64_t> out_strides;
 
-    ExpandStrideKernel(common::vectorize<int64_t>(out_grad.dims()),
-                       common::vectorize<int64_t>(out_grad.strides()),
+    // printf("out tmp shape\n");
+    // for (int i=0; i<out_tmp.dims().size(); i++) {
+    //   printf("%d ", out_tmp.dims()[i]);
+    // }
+    // printf("\n");
+
+    ExpandStrideKernel(common::vectorize<int64_t>(out_tmp.dims()),
+                       common::vectorize<int64_t>(out_tmp.strides()),
                        common::vectorize<int64_t>(x.dims()),
                        &out_dims,
                        &out_strides);
+
+    // printf("after expand dims\n");
+    // for (int i=0; i<out_dims.size(); i++) {
+    //   printf("%d ", out_dims[i]);
+    // }
+    // printf("\n");
+
+    // printf("after expand strides\n");
+    // for (int i=0; i<out_strides.size(); i++) {
+    //   printf("%d ", out_strides[i]);
+    // }
+    // printf("\n");
 
     auto meta = out_grad.meta();
     meta.dims = DDim(out_dims.data(), static_cast<int>(out_dims.size()));
@@ -122,11 +200,8 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  if (!x.meta().is_contiguous()) {
-    x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-  } else {
-    x_ = x;
-  }
+  // if x is contiguous is not relevant to sum_grad computation
+
   if (!out_grad.meta().is_contiguous()) {
     out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad);
   } else {
@@ -137,7 +212,7 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
   x_grad_meta.strides = x_grad_meta.calc_strides(x_grad->dims());
   x_grad->set_meta(x_grad_meta);
   phi::ReduceSumGradKernel<T>(
-      dev_ctx, x_, out_grad_, dims, keep_dim, reduce_all, x_grad);
+      dev_ctx, x, out_grad_, dims, keep_dim, reduce_all, x_grad);
 }
 
 }  // namespace phi
