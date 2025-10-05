@@ -26,7 +26,7 @@ from paddle.base import core
 
 
 @skip_check_grad_ci(
-    reason="mul_mkldnn_op does not implement grad operator, check_grad is not required."
+    reason="mul_onednn_op does not implement grad operator, check_grad is not required."
 )
 class TestONEDNNMulOpS8S8(OpTest):
     def setUp(self):

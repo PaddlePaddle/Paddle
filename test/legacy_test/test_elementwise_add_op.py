@@ -770,14 +770,15 @@ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
         self.y_numpy = np.random.rand(3, 4).astype('float')
 
     def test_broadcast_success(self):
-        paddle.disable_static()
-        self.init_data()
-        x = paddle.to_tensor(self.x_numpy)
-        y = paddle.to_tensor(self.y_numpy)
-        inplace_result = x.add_(y)
-        numpy_result = self.x_numpy + self.y_numpy
-        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            x = paddle.to_tensor(self.x_numpy)
+            y = paddle.to_tensor(self.y_numpy)
+            inplace_result = x.add_(y)
+            numpy_result = self.x_numpy + self.y_numpy
+            self.assertEqual(
+                (inplace_result.numpy() == numpy_result).all(), True
+            )
 
 
 class TestAddInplaceBroadcastSuccess2(TestAddInplaceBroadcastSuccess):
@@ -798,16 +799,15 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
     def test_broadcast_errors(self):
-        paddle.disable_static()
-        self.init_data()
-        x = paddle.to_tensor(self.x_numpy)
-        y = paddle.to_tensor(self.y_numpy)
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            x = paddle.to_tensor(self.x_numpy)
+            y = paddle.to_tensor(self.y_numpy)
 
-        def broadcast_shape_error():
-            x.add_(y)
+            def broadcast_shape_error():
+                x.add_(y)
 
-        self.assertRaises(ValueError, broadcast_shape_error)
-        paddle.enable_static()
+            self.assertRaises(ValueError, broadcast_shape_error)
 
 
 class TestAddInplaceBroadcastError2(TestAddInplaceBroadcastError):
@@ -885,57 +885,52 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
             self.assertTrue(c.dtype == core.DataType.FLOAT32)
 
     def test_dygraph_add(self):
-        paddle.disable_static()
-        a = 1.5
-        b = paddle.full([2], True, dtype='bool')
-        # special case: scalar + tensor(bool)
-        c = a + b
-        self.assertTrue(c.dtype == paddle.float32)
+        with paddle.base.dygraph.guard():
+            a = 1.5
+            b = paddle.full([2], True, dtype='bool')
+            # special case: scalar + tensor(bool)
+            c = a + b
+            self.assertTrue(c.dtype == paddle.float32)
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float64)
-        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+            np_a = np.random.random((2, 3, 4)).astype(np.float64)
+            np_b = np.random.random((2, 3, 4)).astype(np.float64)
 
-        tensor_a = paddle.to_tensor(np_a, dtype="float32")
-        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+            tensor_a = paddle.to_tensor(np_a, dtype="float32")
+            tensor_b = paddle.to_tensor(np_b, dtype="float32")
 
-        # normal case: tensor + tensor
-        expect_out = np_a + np_b
-        actual_out = tensor_a + tensor_b
-        np.testing.assert_allclose(actual_out, expect_out)
+            # normal case: tensor + tensor
+            expect_out = np_a + np_b
+            actual_out = tensor_a + tensor_b
+            np.testing.assert_allclose(actual_out, expect_out)
 
-        # normal case: tensor + scalar
-        expect_out = np_a + 1
-        actual_out = tensor_a + 1
-        np.testing.assert_allclose(actual_out, expect_out)
+            # normal case: tensor + scalar
+            expect_out = np_a + 1
+            actual_out = tensor_a + 1
+            np.testing.assert_allclose(actual_out, expect_out)
 
-        # normal case: scalar + tenor
-        expect_out = 1 + np_a
-        actual_out = 1 + tensor_a
-        np.testing.assert_allclose(actual_out, expect_out)
-
-        paddle.enable_static()
+            # normal case: scalar + tenor
+            expect_out = 1 + np_a
+            actual_out = 1 + tensor_a
+            np.testing.assert_allclose(actual_out, expect_out)
 
 
 class TestElementwiseAddop1(unittest.TestCase):
     def test_dygraph_add(self):
-        paddle.disable_static()
+        with paddle.base.dygraph.guard():
+            np_a = np.random.random((2, 3, 4)).astype(np.float32)
+            np_b = np.random.random((2, 3, 4)).astype(np.float32)
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float32)
-        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+            tensor_a = paddle.to_tensor(np_a, dtype="float32")
+            tensor_b = paddle.to_tensor(np_b, dtype="float32")
 
-        tensor_a = paddle.to_tensor(np_a, dtype="float32")
-        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+            # normal case: nparray + tenor
+            expect_out = np_a + np_b
+            actual_out = np_a + tensor_b
+            np.testing.assert_allclose(actual_out, expect_out)
 
-        # normal case: nparray + tenor
-        expect_out = np_a + np_b
-        actual_out = np_a + tensor_b
-        np.testing.assert_allclose(actual_out, expect_out)
-
-        # normal case: tensor + nparray
-        actual_out = tensor_a + np_b
-        np.testing.assert_allclose(actual_out, expect_out)
-
-        paddle.enable_static()
+            # normal case: tensor + nparray
+            actual_out = tensor_a + np_b
+            np.testing.assert_allclose(actual_out, expect_out)
 
 
 class TestTensorAddNumpyScalar(unittest.TestCase):
