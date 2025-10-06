@@ -2224,6 +2224,10 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
                          true,
                          "Whether use Stride_Compute_Kernel.");
 
+PHI_DEFINE_EXPORTED_bool(force_stride_compute_kernel_out_con,
+                         true,
+                         "Whether use Stride_Compute_Kernel.");
+
 /**
  * Allocator related FLAG
  * Name: FLAGS_deep_ep_comm_prealloc_in_mb

@@ -70,26 +70,141 @@ void AddGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_;
   DenseTensor dout_;
 
-  if (FLAGS_use_stride_compute_kernel) {
+  // avoid inplace
+  if (FLAGS_use_stride_compute_kernel && !dx->IsSharedBufferWith(dout)) {
+    printf("enter add grad stride\n");
     auto meta = dout.meta();
+
+    printf("axis:%d\n", axis);
+
+    printf("out grad shape\n");
+    for (int i = 0; i < dout.dims().size(); i++) {
+      printf("%d ", dout.dims()[i]);
+    }
+    printf("\n");
+
+    printf("out grad stride\n");
+    for (int i = 0; i < dout.strides().size(); i++) {
+      printf("%d ", dout.strides()[i]);
+    }
+    printf("\n");
+
+    printf("out grad offset:%d\n", dout.offset());
+
+    printf("x shape\n");
+    for (int i = 0; i < x.dims().size(); i++) {
+      printf("%d ", x.dims()[i]);
+    }
+    printf("\n");
+
+    printf("x stride\n");
+    for (int i = 0; i < x.strides().size(); i++) {
+      printf("%d ", x.strides()[i]);
+    }
+    printf("\n");
+
+    printf("y shape\n");
+    for (int i = 0; i < y.dims().size(); i++) {
+      printf("%d ", y.dims()[i]);
+    }
+    printf("\n");
+
+    printf("y stride\n");
+    for (int i = 0; i < y.strides().size(); i++) {
+      printf("%d ", y.strides()[i]);
+    }
+    printf("\n");
+
+    printf("x_grad shape\n");
+    for (int i = 0; i < dx->dims().size(); i++) {
+      printf("%d ", dx->dims()[i]);
+    }
+    printf("\n");
+
+    printf("x_grad stride\n");
+    for (int i = 0; i < dx->strides().size(); i++) {
+      printf("%d ", dx->strides()[i]);
+    }
+    printf("\n");
+
+    printf("y_grad shape\n");
+    for (int i = 0; i < dy->dims().size(); i++) {
+      printf("%d ", dy->dims()[i]);
+    }
+    printf("\n");
+
+    printf("y_grad stride\n");
+    for (int i = 0; i < dy->strides().size(); i++) {
+      printf("%d ", dy->strides()[i]);
+    }
+    printf("\n");
+
+    if (dx->dtype() != dout.dtype()) {
+      printf("auto promote dx\n");
+    }
+
+    if (dy->dtype() != dout.dtype()) {
+      printf("auto promote dy\n");
+    }
+
+    if (dx->IsSharedBufferWith(dout)) {
+      printf("dx inplace out\n");
+    }
+
+    if (dy->IsSharedBufferWith(dout)) {
+      printf("dy inplace out\n");
+    }
+    // auto x_meta = dx->meta();
+    // x_meta.strides = meta.calc_strides(dx->dims());
+    // dx->set_meta(x_meta);
+
+    // auto y_meta = dy->meta();
+    // y_meta.strides = meta.calc_strides(dy->dims());
+    // dx->set_meta(y_meta);
 
     if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims() &&
         dy->dims() == dout.dims()) {
+      printf("branch 1\n");
       dx->set_meta(meta);
       dx->ResetHolder(dout.Holder());
       dx->ShareInplaceVersionCounterWith(dout);
       dy->set_meta(meta);
       dy->ResetHolder(dout.Holder());
       dy->ShareInplaceVersionCounterWith(dout);
+      printf("after x_grad shape\n");
+      for (int i = 0; i < dx->dims().size(); i++) {
+        printf("%d ", dx->dims()[i]);
+      }
+      printf("\n");
+
+      printf("after x_grad stride\n");
+      for (int i = 0; i < dx->strides().size(); i++) {
+        printf("%d ", dx->strides()[i]);
+      }
+      printf("\n");
+
+      printf("after y_grad shape\n");
+      for (int i = 0; i < dy->dims().size(); i++) {
+        printf("%d ", dy->dims()[i]);
+      }
+      printf("\n");
+
+      printf("after y_grad stride\n");
+      for (int i = 0; i < dy->strides().size(); i++) {
+        printf("%d ", dy->strides()[i]);
+      }
+      printf("\n");
       return;
     }
     if (dx != nullptr && dy == nullptr && dx->dims() == dout.dims()) {
+      printf("branch 2\n");
       dx->set_meta(meta);
       dx->ResetHolder(dout.Holder());
       dx->ShareInplaceVersionCounterWith(dout);
       return;
     }
     if (dy != nullptr && dx == nullptr && dy->dims() == dout.dims()) {
+      printf("branch 3\n");
       dy->set_meta(meta);
       dy->ResetHolder(dout.Holder());
       dy->ShareInplaceVersionCounterWith(dout);
@@ -146,6 +261,7 @@ void SubtractGradStrideKernel(const Context& dev_ctx,
   DenseTensor dout_;
 
   if (FLAGS_use_stride_compute_kernel) {
+    printf("enter sub grad stride\n");
     auto meta = dout.meta();
     if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims()) {
       dx->set_meta(meta);
@@ -216,6 +332,7 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
 
   if (FLAGS_use_stride_compute_kernel && dout.initialized() &&
       dout.numel() != 0) {
+    printf("enter mul grad\n");
     auto broadcast_dim = dout.dims();
     if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr &&
         broadcast_dim == dx->dims() && broadcast_dim == dy->dims()) {

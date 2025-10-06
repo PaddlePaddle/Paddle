@@ -51,7 +51,7 @@ phi::DenseTensor CheckMultipleUnsqueeze(const Context& dev_ctx,
                                         const int ndim,
                                         bool keep_dim) {
   phi::DenseTensor res = out_grad;
-  if (dims.size() == 0) return res;
+  if (dims.size() == 0 || keep_dim || ndim == 0) return res;
   std::vector<bool> axes(ndim, false);
 
   for (int i = 0; i < dims.size(); i++) {
@@ -134,29 +134,29 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
   DenseTensor out_grad_;
 
   if (FLAGS_use_stride_compute_kernel && out_grad.dims().size() > 0) {
-    // printf("out grad shape\n");
-    // for (int i=0; i<out_grad.dims().size(); i++) {
-    //   printf("%d ", out_grad.dims()[i]);
-    // }
-    // printf("\n");
+    printf("out grad shape\n");
+    for (int i = 0; i < out_grad.dims().size(); i++) {
+      printf("%d ", out_grad.dims()[i]);
+    }
+    printf("\n");
 
-    // printf("x shape\n");
-    // for (int i=0; i<x.dims().size(); i++) {
-    //   printf("%d ", x.dims()[i]);
-    // }
-    // printf("\n");
+    printf("x shape\n");
+    for (int i = 0; i < x.dims().size(); i++) {
+      printf("%d ", x.dims()[i]);
+    }
+    printf("\n");
 
-    // printf("x_grad shape\n");
-    // for (int i=0; i<x_grad->dims().size(); i++) {
-    //   printf("%d ", x_grad->dims()[i]);
-    // }
-    // printf("\n");
+    printf("x_grad shape\n");
+    for (int i = 0; i < x_grad->dims().size(); i++) {
+      printf("%d ", x_grad->dims()[i]);
+    }
+    printf("\n");
 
-    // printf("dims\n");
-    // for (int i=0; i<dims.size(); i++) {
-    //   printf("%d ", dims[i]);
-    // }
-    // printf("\n");
+    printf("dims\n");
+    for (int i = 0; i < dims.size(); i++) {
+      printf("%d ", dims[i]);
+    }
+    printf("\n");
 
     phi::DenseTensor out_tmp = CheckMultipleUnsqueeze<Context>(
         dev_ctx, out_grad, dims, x.dims().size(), keep_dim);
@@ -164,11 +164,11 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
     std::vector<int64_t> out_dims;
     std::vector<int64_t> out_strides;
 
-    // printf("out tmp shape\n");
-    // for (int i=0; i<out_tmp.dims().size(); i++) {
-    //   printf("%d ", out_tmp.dims()[i]);
-    // }
-    // printf("\n");
+    printf("out tmp shape\n");
+    for (int i = 0; i < out_tmp.dims().size(); i++) {
+      printf("%d ", out_tmp.dims()[i]);
+    }
+    printf("\n");
 
     ExpandStrideKernel(common::vectorize<int64_t>(out_tmp.dims()),
                        common::vectorize<int64_t>(out_tmp.strides()),
@@ -176,17 +176,17 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
                        &out_dims,
                        &out_strides);
 
-    // printf("after expand dims\n");
-    // for (int i=0; i<out_dims.size(); i++) {
-    //   printf("%d ", out_dims[i]);
-    // }
-    // printf("\n");
+    printf("after expand dims\n");
+    for (int i = 0; i < out_dims.size(); i++) {
+      printf("%d ", out_dims[i]);
+    }
+    printf("\n");
 
-    // printf("after expand strides\n");
-    // for (int i=0; i<out_strides.size(); i++) {
-    //   printf("%d ", out_strides[i]);
-    // }
-    // printf("\n");
+    printf("after expand strides\n");
+    for (int i = 0; i < out_strides.size(); i++) {
+      printf("%d ", out_strides[i]);
+    }
+    printf("\n");
 
     auto meta = out_grad.meta();
     meta.dims = DDim(out_dims.data(), static_cast<int>(out_dims.size()));
@@ -208,11 +208,15 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
     out_grad_ = out_grad;
   }
 
+  printf("enter sum grad conti\n");
+
   auto x_grad_meta = x_grad->meta();
   x_grad_meta.strides = x_grad_meta.calc_strides(x_grad->dims());
   x_grad->set_meta(x_grad_meta);
   phi::ReduceSumGradKernel<T>(
       dev_ctx, x, out_grad_, dims, keep_dim, reduce_all, x_grad);
+
+  printf("out sum grad conti\n");
 }
 
 }  // namespace phi
