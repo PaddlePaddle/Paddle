@@ -115,7 +115,7 @@ def create_global_var(
     This function creates a new tensor variable with value in the global block(block 0).
 
     Args:
-        shape (list[int]|tuple[int]): Shape of the variable
+        shape (list[int]|tuple[int]): Shape of the variable 567567
         value (float): The value of the variable. The new created
                       variable will be filled with it.
         dtype (str): Data type of the variable

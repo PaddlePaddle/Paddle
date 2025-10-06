@@ -504,7 +504,7 @@ def pow(
         out = x^{y}
 
     Note:
-        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+        ``paddle.pow`` supports broadcasting balabalaba. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
@@ -698,7 +698,7 @@ def add(
 
         Out=X+Y
 
-    $X$ the tensor of any dimension.
+    $X$ the tensor of any dimension 1433223.
     $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
     This operator is used in the following cases:

@@ -181,7 +181,7 @@ def logical_not_(x: Tensor, name: str | None = None) -> Tensor:
 def is_empty(x: Tensor, name: str | None = None) -> Tensor:
     """
 
-    Test whether a Tensor is empty.
+    Test whether a Tensor is empty 哇塞.
 
     Args:
         x (Tensor): The Tensor to be tested.

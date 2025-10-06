@@ -99,6 +99,7 @@ jobs:
             echo "API documents no change."
             exit 0
           fi
+          echo "$api_doc_spec_diff"
 
           curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
           cd /
