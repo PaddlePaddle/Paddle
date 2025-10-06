@@ -45,8 +45,8 @@ void AMaxStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -83,8 +83,8 @@ void AMinStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -120,7 +120,7 @@ void MaxStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -158,8 +158,8 @@ void MinStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -195,7 +195,7 @@ void ProdStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -239,7 +239,7 @@ void AllStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -302,7 +302,7 @@ void AnyStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -342,88 +342,88 @@ void AnyStrideKernel(const Context& dev_ctx,
   return;
 }
 
-// template <typename T, typename Context>
-// void SumStrideKernel(const Context& dev_ctx,
-//                      const DenseTensor& x,
-//                      const IntArray& dims,
-//                      DataType out_dtype,
-//                      bool keep_dim,
-//                      DenseTensor* out) {
-//   bool reduce_all = recompute_reduce_all(x, dims);
-//   if (!FLAGS_use_stride_kernel) {
-//     PADDLE_THROW(common::errors::Fatal(
-//         "FLAGS_use_stride_kernel is closed. Strided kernel "
-//         "be called, something wrong has happened!"));
-//   }
+template <typename T, typename Context>
+void SumStrideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const IntArray& dims,
+                     DataType out_dtype,
+                     bool keep_dim,
+                     DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
 
-//   DenseTensor x_;
-//   if (!FLAGS_use_stride_compute_kernel) {
-//     if (!x.meta().is_contiguous()) {
-//       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-//     } else {
-//       x_ = x;
-//     }
-//   } else {
-//     x_ = x;
-//   }
-//   if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
-//     auto meta = out->meta();
-//     meta.strides = meta.calc_strides(out->dims());
-//     out->set_meta(meta);
-//     phi::SumKernel<T, Context>(dev_ctx, x_, dims, out_dtype, keep_dim, out);
-//     return;
-//   }
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || out->dims().size() > 0) {
+    if (!x.meta().is_contiguous()) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
 
-//   if (out_dtype == DataType::UNDEFINED && out->dtype() != x_.dtype()) {
-//     out_dtype = out->dtype();
-//   }
-//   if (x_.numel() == 0) {
-//     dev_ctx.template Alloc<T>(out);
-//     if (out_dtype == DataType::INT64) {
-//       FullKernel<int64_t, Context>(
-//           dev_ctx,
-//           phi::IntArray(common::vectorize(out->dims())),
-//           0,
-//           out_dtype,  // not used
-//           out);
-//     } else {
-//       FullKernel<T, Context>(dev_ctx,
-//                              phi::IntArray(common::vectorize(out->dims())),
-//                              0,
-//                              out_dtype,  // not used
-//                              out);
-//     }
-//     return;
-//   }
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::SumKernel<T, Context>(dev_ctx, x_, dims, out_dtype, keep_dim, out);
+    return;
+  }
 
-//   if (x.dtype() == phi::DataType::BFLOAT16 &&
-//       out_dtype == phi::DataType::FLOAT32) {
-//     phi::dtype::bfloat16 ident = static_cast<phi::dtype::bfloat16>(0);
-//     ReduceStrideImpl<phi::dtype::bfloat16, Context, kps::AddFunctor>(
-//         dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
-//     *out = phi::Cast<phi::dtype::bfloat16>(dev_ctx, x_, out_dtype);
-//   } else if (out_dtype != phi::DataType::UNDEFINED && out_dtype !=
-//   x_.dtype()) {
-//     auto tmp_tensor = phi::Cast<T>(dev_ctx, x_, out_dtype);
-//     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
-//         phi::DataType::INT32,
-//         phi::DataType::INT64,
-//         phi::DataType::FLOAT16,
-//         phi::DataType::BFLOAT16,
-//         out_dtype,
-//         "ReduceStrideImpl",
-//         ([&] {
-//           data_t ident = static_cast<data_t>(0);
-//           ReduceStrideImpl<data_t, Context, kps::AddFunctor>(
-//               dev_ctx, tmp_tensor, dims.GetData(), keep_dim, ident, out);
-//         }));
-//   } else {
-//     T ident = static_cast<T>(0);
-//     ReduceStrideImpl<T, Context, kps::AddFunctor>(
-//         dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
-//   }
-//   return;
-// }
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x_.dtype()) {
+    out_dtype = out->dtype();
+  }
+  if (x_.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (out_dtype == DataType::INT64) {
+      FullKernel<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out->dims())),
+          0,
+          out_dtype,  // not used
+          out);
+    } else {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::IntArray(common::vectorize(out->dims())),
+                             0,
+                             out_dtype,  // not used
+                             out);
+    }
+    return;
+  }
+
+  if (x.dtype() == phi::DataType::BFLOAT16 &&
+      out_dtype == phi::DataType::FLOAT32) {
+    phi::dtype::bfloat16 ident = static_cast<phi::dtype::bfloat16>(0);
+    ReduceStrideImpl<phi::dtype::bfloat16, Context, kps::AddFunctor>(
+        dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
+    *out = phi::Cast<phi::dtype::bfloat16>(dev_ctx, x_, out_dtype);
+  } else if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x_, out_dtype);
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
+        phi::DataType::INT32,
+        phi::DataType::INT64,
+        phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
+        out_dtype,
+        "ReduceStrideImpl",
+        ([&] {
+          data_t ident = static_cast<data_t>(0);
+          ReduceStrideImpl<data_t, Context, kps::AddFunctor>(
+              dev_ctx, tmp_tensor, dims.GetData(), keep_dim, ident, out);
+        }));
+  } else {
+    T ident = static_cast<T>(0);
+    ReduceStrideImpl<T, Context, kps::AddFunctor>(
+        dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
+  }
+  return;
+}
 
 template <typename T, typename Context>
 void MeanStrideKernel(const Context& dev_ctx,
@@ -439,7 +439,7 @@ void MeanStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -550,24 +550,24 @@ PD_REGISTER_KERNEL(all,
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-// PD_REGISTER_KERNEL(sum,
-//                    GPU,
-//                    STRIDED,
-//                    phi::SumStrideKernel,
-//                    bool,
-//                    float,
-//                    double,
-//                    phi::float16,
-//                    phi::bfloat16,
-//                    int16_t,
-//                    int,
-//                    int64_t,
-//                    uint8_t,
-//                    int8_t,
-//                    phi::complex64,
-//                    phi::complex128) {
-//   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-// }
+PD_REGISTER_KERNEL(sum,
+                   GPU,
+                   STRIDED,
+                   phi::SumStrideKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   int16_t,
+                   int,
+                   int64_t,
+                   uint8_t,
+                   int8_t,
+                   phi::complex64,
+                   phi::complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(mean,
                    GPU,
