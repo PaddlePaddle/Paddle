@@ -214,55 +214,27 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_;
   DenseTensor dout_;
 
-  if (FLAGS_use_stride_compute_kernel && x.initialized() && y.initialized() &&
-      dout.initialized()) {
-    if (dx != nullptr) {
-      DenseTensor dx_tmp;
-      MetaTensor meta_input_x(dout);
-      MetaTensor meta_input_y(y);
-      MetaTensor meta_out(&dx_tmp);
-      ElementwiseInferMeta(meta_input_x, meta_input_y, &meta_out);
-      if (dx_tmp.dims() == dx->dims()) {
-        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
-      } else {
-        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, &dx_tmp);
-
-        DenseTensor dx_tmp_;
-        if (dx_tmp.initialized() && !dx_tmp.meta().is_contiguous()) {
-          dx_tmp_ = Tensor2Contiguous<Context>(dev_ctx, dx_tmp);
-        } else {
-          dx_tmp_ = dx_tmp;
-        }
-
-        std::vector<int64_t> tmp_dims = {axis};
-        phi::SumKernel<T, Context>(
-            dev_ctx, dx_tmp_, phi::IntArray(tmp_dims), x.dtype(), true, dx);
-      }
+  if (FLAGS_use_stride_compute_kernel && dout.initialized() &&
+      dout.numel() != 0) {
+    auto broadcast_dim = dout.dims();
+    if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr &&
+        broadcast_dim == dx->dims() && broadcast_dim == dy->dims()) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
+      return;
     }
-    if (dy != nullptr) {
-      DenseTensor dy_tmp;
-      MetaTensor meta_input_x(dout);
-      MetaTensor meta_input_y(x);
-      MetaTensor meta_out(&dy_tmp);
-      ElementwiseInferMeta(meta_input_x, meta_input_y, &meta_out);
-      if (dy_tmp.dims() == dy->dims()) {
-        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
-      } else {
-        phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, &dy_tmp);
 
-        DenseTensor dy_tmp_;
-        if (dy_tmp.initialized() && !dy_tmp.meta().is_contiguous()) {
-          dy_tmp_ = Tensor2Contiguous<Context>(dev_ctx, dy_tmp);
-        } else {
-          dy_tmp_ = dy_tmp;
-        }
-
-        std::vector<int64_t> tmp_dims = {axis};
-        phi::SumKernel<T, Context>(
-            dev_ctx, dy_tmp_, phi::IntArray(tmp_dims), y.dtype(), true, dy);
-      }
+    if (y.initialized() && dx != nullptr && dy == nullptr &&
+        broadcast_dim == dx->dims()) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
+      return;
     }
-    return;
+
+    if (x.initialized() && dy != nullptr && dx == nullptr &&
+        broadcast_dim == dy->dims()) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
+      return;
+    }
   }
 
   if (x.initialized() && !x.meta().is_contiguous()) {
