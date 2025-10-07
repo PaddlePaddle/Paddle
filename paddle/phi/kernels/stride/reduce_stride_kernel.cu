@@ -45,8 +45,8 @@ void AMaxStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -62,6 +62,8 @@ void AMaxStrideKernel(const Context& dev_ctx,
     phi::AMaxKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
+
+  // printf("enter amax stride\n");
 
   T ident = std::numeric_limits<T>::lowest();
   ReduceStrideImpl<T, Context, kps::MaxFunctor>(
@@ -83,8 +85,8 @@ void AMinStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -99,6 +101,8 @@ void AMinStrideKernel(const Context& dev_ctx,
     phi::AMinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
+
+  // printf("enter amin stride\n");
 
   T ident = std::numeric_limits<T>::max();
   ReduceStrideImpl<T, Context, kps::MinFunctor>(
@@ -120,7 +124,7 @@ void MaxStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -137,6 +141,8 @@ void MaxStrideKernel(const Context& dev_ctx,
     phi::MaxKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
+
+  // printf("enter max stride\n");
 
   T ident = std::numeric_limits<T>::lowest();
   ReduceStrideImpl<T, Context, kps::MaxFunctor>(
@@ -158,8 +164,8 @@ void MinStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -174,6 +180,8 @@ void MinStrideKernel(const Context& dev_ctx,
     phi::MinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
+
+  // printf("enter min stride\n");
 
   T ident = std::numeric_limits<T>::max();
   ReduceStrideImpl<T, Context, kps::MinFunctor>(
@@ -195,7 +203,7 @@ void ProdStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -211,6 +219,8 @@ void ProdStrideKernel(const Context& dev_ctx,
     phi::ProdKernel<T, Context>(dev_ctx, x_, dims, keep_dim, reduce_all, out);
     return;
   }
+
+  // printf("enter prod stride\n");
 
   if (x_.numel() == 0) {
     // fill with 1.
@@ -239,7 +249,7 @@ void AllStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -255,6 +265,8 @@ void AllStrideKernel(const Context& dev_ctx,
     phi::AllKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
+
+  // printf("enter all stride\n");
 
   if (x_.numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
@@ -302,7 +314,7 @@ void AnyStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -318,6 +330,8 @@ void AnyStrideKernel(const Context& dev_ctx,
     phi::AnyKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
+
+  // printf("enter any stride\n");
 
   auto out_dtype = phi::DataType::BOOL;
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
@@ -357,7 +371,7 @@ void SumStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || out->dims().size() > 0) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -366,6 +380,7 @@ void SumStrideKernel(const Context& dev_ctx,
   } else {
     x_ = x;
   }
+
   if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
@@ -438,7 +453,7 @@ void MeanStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -454,6 +469,8 @@ void MeanStrideKernel(const Context& dev_ctx,
     phi::MeanKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
+
+  // printf("enter mean stride\n");
 
   if (x_.numel() == 0) {
     phi::Full<T, Context>(
