@@ -97,7 +97,6 @@ jobs:
           api_doc_spec_diff=$(python tools/diff_api.py paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc || true)
           if [ -z "$api_doc_spec_diff" ]; then
             echo "API documents no change."
-            echo "" > /tmp/api_doc_diff.txt
             exit 0
           fi
           # Save diff to a file for the next step
@@ -112,7 +111,13 @@ jobs:
       - name: Generate Comment Body
         id: generate_comment
         run: |
-          comment_body=$(docker exec -t ${{ env.container_name }} python /paddle/tools/generate_doc_comment.py /tmp/api_doc_diff.txt ${{ env.PR_ID }})
+          comment_body=$(docker exec -t ${{ env.container_name }} /bin/bash -c '
+          if [ ! -f "/tmp/api_doc_diff.txt" ]; then
+            echo ""
+            exit 0
+          fi
+          python /paddle/tools/generate_doc_comment.py /tmp/api_doc_diff.txt ${{ env.PR_ID }}
+          ')
           echo "comment_body<<EOF" >> $GITHUB_OUTPUT
           echo "$comment_body" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
