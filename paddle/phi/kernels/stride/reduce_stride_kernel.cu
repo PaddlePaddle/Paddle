@@ -63,8 +63,6 @@ void AMaxStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  // printf("enter amax stride\n");
-
   T ident = std::numeric_limits<T>::lowest();
   ReduceStrideImpl<T, Context, kps::MaxFunctor>(
       dev_ctx, x_, dims, keep_dim, ident, out);
@@ -101,8 +99,6 @@ void AMinStrideKernel(const Context& dev_ctx,
     phi::AMinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
-
-  // printf("enter amin stride\n");
 
   T ident = std::numeric_limits<T>::max();
   ReduceStrideImpl<T, Context, kps::MinFunctor>(
@@ -142,8 +138,6 @@ void MaxStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  // printf("enter max stride\n");
-
   T ident = std::numeric_limits<T>::lowest();
   ReduceStrideImpl<T, Context, kps::MaxFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
@@ -181,8 +175,6 @@ void MinStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  // printf("enter min stride\n");
-
   T ident = std::numeric_limits<T>::max();
   ReduceStrideImpl<T, Context, kps::MinFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
@@ -219,8 +211,6 @@ void ProdStrideKernel(const Context& dev_ctx,
     phi::ProdKernel<T, Context>(dev_ctx, x_, dims, keep_dim, reduce_all, out);
     return;
   }
-
-  // printf("enter prod stride\n");
 
   if (x_.numel() == 0) {
     // fill with 1.
@@ -265,8 +255,6 @@ void AllStrideKernel(const Context& dev_ctx,
     phi::AllKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
-
-  // printf("enter all stride\n");
 
   if (x_.numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
@@ -330,8 +318,6 @@ void AnyStrideKernel(const Context& dev_ctx,
     phi::AnyKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
-
-  // printf("enter any stride\n");
 
   auto out_dtype = phi::DataType::BOOL;
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
@@ -469,8 +455,6 @@ void MeanStrideKernel(const Context& dev_ctx,
     phi::MeanKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
   }
-
-  // printf("enter mean stride\n");
 
   if (x_.numel() == 0) {
     phi::Full<T, Context>(
