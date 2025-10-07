@@ -90,7 +90,6 @@ namespace phi {
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
     }                                                                         \
-    printf("elementwise stride kernel\n");                                    \
     LaunchBinaryElementwiseStrideKernel<T, Context>(                          \
         dev_ctx, x_, y_, funcs::functor_name##Functor<T>(), -1, out);         \
   }
@@ -154,8 +153,6 @@ void AddStrideKernel(const Context& dev_ctx,
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
   }
-
-  printf("elementwise add stride kernel\n");
 
   if (x_.dtype() == phi::DataType::FLOAT32 &&
       y_.dtype() == phi::DataType::BFLOAT16) {
@@ -238,8 +235,6 @@ void ScaleStrideKernel(const Context& dev_ctx,
                               "be called, something wrong has happened!"));
   }
 
-  printf("elementwise scale kernel\n");
-
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -257,24 +252,6 @@ void ScaleStrideKernel(const Context& dev_ctx,
       x_,
       ScaleFunctor<T, MT>(scale.to<MT>(), bias.to<MT>(), bias_after_scale),
       out);
-
-  printf("after force conti output dims\n");
-  // for (int i=0; i<out->dims().size(); i++) {
-  //   printf("%d ", out->dims()[i]);
-  // }
-  // printf("\n");
-
-  // printf("after force conti output strides\n");
-  // for (int i=0; i<out->strides().size(); i++) {
-  //   printf("%d ", out->strides()[i]);
-  // }
-  // printf("\n");
-
-  if (out->meta().is_contiguous()) {
-    printf("True\n");
-  } else {
-    printf("False\n");
-  }
 }
 
 template <typename T, typename Context>

@@ -63,7 +63,7 @@ void AMaxStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter amax stride\n");
+  // printf("enter amax stride\n");
 
   T ident = std::numeric_limits<T>::lowest();
   ReduceStrideImpl<T, Context, kps::MaxFunctor>(
@@ -102,7 +102,7 @@ void AMinStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter amin stride\n");
+  // printf("enter amin stride\n");
 
   T ident = std::numeric_limits<T>::max();
   ReduceStrideImpl<T, Context, kps::MinFunctor>(
@@ -142,7 +142,7 @@ void MaxStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter max stride\n");
+  // printf("enter max stride\n");
 
   T ident = std::numeric_limits<T>::lowest();
   ReduceStrideImpl<T, Context, kps::MaxFunctor>(
@@ -181,7 +181,7 @@ void MinStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter min stride\n");
+  // printf("enter min stride\n");
 
   T ident = std::numeric_limits<T>::max();
   ReduceStrideImpl<T, Context, kps::MinFunctor>(
@@ -220,7 +220,7 @@ void ProdStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter prod stride\n");
+  // printf("enter prod stride\n");
 
   if (x_.numel() == 0) {
     // fill with 1.
@@ -266,7 +266,7 @@ void AllStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter all stride\n");
+  // printf("enter all stride\n");
 
   if (x_.numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
@@ -331,7 +331,7 @@ void AnyStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter any stride\n");
+  // printf("enter any stride\n");
 
   auto out_dtype = phi::DataType::BOOL;
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
@@ -385,13 +385,13 @@ void SumStrideKernel(const Context& dev_ctx,
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
-    printf("enter sum conti\n");
+    // printf("enter sum conti\n");
     phi::SumKernel<T, Context>(dev_ctx, x_, dims, out_dtype, keep_dim, out);
-    printf("out sum conti\n");
+    // printf("out sum conti\n");
     return;
   }
 
-  printf("enter sum stride\n");
+  // printf("enter sum stride\n");
 
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x_.dtype()) {
     out_dtype = out->dtype();
@@ -474,7 +474,7 @@ void MeanStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  printf("enter mean stride\n");
+  // printf("enter mean stride\n");
 
   if (x_.numel() == 0) {
     phi::Full<T, Context>(
