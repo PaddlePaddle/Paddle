@@ -86,14 +86,8 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Doc build
-        id: doc_build
         run: |
-          CHANGES_FLAG_FILE="${{ github.workspace }}/has_changes.txt"
-          rm -f ${CHANGES_FLAG_FILE}
-
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          FLAG_FILE_IN_CONTAINER="/paddle/has_changes.txt"
-
           rm -rf  * .[^.]*
           echo "Downloading build.tar.gz from cfs"
           cp ${CFS_DIR}/build_bos/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz .
@@ -103,7 +97,7 @@ jobs:
           api_doc_spec_diff=$(python tools/diff_api.py paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc || true)
           if [ -z "$api_doc_spec_diff" ]; then
             echo "API documents no change."
-            echo "false" > ${FLAG_FILE_IN_CONTAINER}
+            echo "" > /tmp/api_doc_diff.txt
             exit 0
           fi
           # Save diff to a file for the next step
@@ -113,18 +107,9 @@ jobs:
           cd /
           source ${{ github.workspace }}/../../../proxy
           bash "/tmp/entrypoint.sh"
-          echo "true" > ${FLAG_FILE_IN_CONTAINER}
           '
-          if [ -f "${CHANGES_FLAG_FILE}" ]; then
-            has_changes_value=$(cat ${CHANGES_FLAG_FILE})
-            echo "Detected API change status: ${has_changes_value}"
-            echo "has_changes=${has_changes_value}" >> $GITHUB_OUTPUT
-          else
-            echo "Error: The change flag file was not created by the container. Defaulting to no changes."
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
+
       - name: Generate Comment Body
-        if: steps.doc_build.outputs.has_changes == 'true'
         id: generate_comment
         run: |
           comment_body=$(docker exec -t ${{ env.container_name }} python /paddle/tools/generate_doc_comment.py /tmp/api_doc_diff.txt ${{ env.PR_ID }})
@@ -133,7 +118,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Save comment artifacts
-        if: steps.doc_build.outputs.has_changes == 'true' && steps.generate_comment.outputs.comment_body != ''
+        if: steps.generate_comment.outputs.comment_body != ''
         run: |
           echo "${{ steps.generate_comment.outputs.comment_body }}" > comment_body.txt
           echo "${{ env.PR_ID }}" > pr_number.txt
@@ -142,7 +127,7 @@ jobs:
           echo "${{ env.PR_ID }}"
 
       - name: Upload comment artifacts
-        if: steps.doc_build.outputs.has_changes == 'true' && steps.generate_comment.outputs.comment_body != ''
+        if: steps.generate_comment.outputs.comment_body != ''
         uses: actions/upload-artifact@v4
         with:
           name: doc-preview-comment
