@@ -88,7 +88,12 @@ jobs:
       - name: Doc build
         id: doc_build
         run: |
+          CHANGES_FLAG_FILE="${{ github.workspace }}/has_changes.txt"
+          rm -f ${CHANGES_FLAG_FILE}
+
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          FLAG_FILE_IN_CONTAINER="/paddle/has_changes.txt"
+
           rm -rf  * .[^.]*
           echo "Downloading build.tar.gz from cfs"
           cp ${CFS_DIR}/build_bos/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz .
@@ -98,10 +103,9 @@ jobs:
           api_doc_spec_diff=$(python tools/diff_api.py paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc || true)
           if [ -z "$api_doc_spec_diff" ]; then
             echo "API documents no change."
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "false" > ${FLAG_FILE_IN_CONTAINER}
             exit 0
           fi
-          echo "has_changes=true" >> $GITHUB_OUTPUT
           # Save diff to a file for the next step
           echo "$api_doc_spec_diff" > /tmp/api_doc_diff.txt
 
@@ -109,7 +113,16 @@ jobs:
           cd /
           source ${{ github.workspace }}/../../../proxy
           bash "/tmp/entrypoint.sh"
+          echo "true" > ${FLAG_FILE_IN_CONTAINER}
           '
+          if [ -f "${CHANGES_FLAG_FILE}" ]; then
+            has_changes_value=$(cat ${CHANGES_FLAG_FILE})
+            echo "Detected API change status: ${has_changes_value}"
+            echo "has_changes=${has_changes_value}" >> $GITHUB_OUTPUT
+          else
+            echo "Error: The change flag file was not created by the container. Defaulting to no changes."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
       - name: Generate Comment Body
         if: steps.doc_build.outputs.has_changes == 'true'
         id: generate_comment
