@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import tempfile
 
 import numpy as np
 
@@ -68,7 +69,7 @@ class SimpleMLPTransWeight(Layer):
 class TestLoadStateDictTransposeLogic:
     def __init__(self):
         self.aoa_config = {"aoa_statements": [os.getenv("aoa_statements")]}
-        self.ckpt_path = "./state_dict_trans"
+        self.ckpt_path = tempfile.TemporaryDirectory().name
 
     def run_test(self):
         self.run_save_state_dict()

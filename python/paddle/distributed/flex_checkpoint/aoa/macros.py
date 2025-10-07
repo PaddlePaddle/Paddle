@@ -100,10 +100,11 @@ def star_macro(tokens, expression, context):
             allkeys = (
                 context.get_all_dst_state_keys()
                 if not pre_rarrow
-                else context.get_all_dst_state_keys()
+                else context.get_all_src_state_keys()
             )
             assert len(allkeys) != 0, (
-                f"No keys found with prefix {prefix} and suffix {suffix}!"
+                f"No keys found with prefix '{prefix}' and suffix '{suffix}' in "
+                f"{'destination_state_shard_info' if not pre_rarrow else 'source_state_shard_info'}, please check!"
             )
             keys = list(_sort_keys_by_numeric_part(prefix, suffix, allkeys))
             for key in keys:
@@ -150,6 +151,56 @@ def layer_id_macro(tokens, expression, context):
                     )
                 elif token.value not in GLOBAL_ATTRIBUTE_KEYWORDS:
                     expr += f"{token.value}.layer.{layer_id}"
+                else:
+                    expr += token.value
+            else:
+                expr += token.value
+        expanded_expressions.append(expr)
+
+    return expanded_expressions
+
+
+@macro(name='layer_id_offset_macro', priority=1)
+def layer_id_offset_macro(tokens, expression, context):
+    LAYER_ID_OFFSET_MACRO_TAG = "$LAYER_ID_OFFSET"
+    if LAYER_ID_OFFSET_MACRO_TAG not in expression:
+        return expression
+
+    name_with_layer_id_offset = next(
+        (
+            token.value
+            for token in tokens
+            if token.type == TokenType.IDENTIFIER
+            and LAYER_ID_OFFSET_MACRO_TAG in token.value
+        ),
+        None,
+    )
+    assert name_with_layer_id_offset, "No $LAYER_ID_OFFSET found in NAME tokens"
+
+    match_layer_id_offset = context.get_num_hidden_layers(
+        name_with_layer_id_offset, LAYER_ID_OFFSET_MACRO_TAG
+    )
+    expanded_expressions = []
+
+    match_layer_id_offset = sorted(match_layer_id_offset)
+
+    for layer_id in match_layer_id_offset:
+        expr = ""
+        before_rarrow = True
+        for token in tokens:
+            if token.type == TokenType.RARROW:
+                before_rarrow = False
+            if before_rarrow:
+                cur_layer_id = layer_id
+            else:
+                cur_layer_id = layer_id - 1
+            if token.type == TokenType.IDENTIFIER:
+                if LAYER_ID_OFFSET_MACRO_TAG in token.value:
+                    expr += token.value.replace(
+                        LAYER_ID_OFFSET_MACRO_TAG, str(cur_layer_id)
+                    )
+                elif token.value not in GLOBAL_ATTRIBUTE_KEYWORDS:
+                    expr += f"{token.value}.layer.{cur_layer_id}"
                 else:
                     expr += token.value
             else:
