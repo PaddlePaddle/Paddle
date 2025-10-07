@@ -25,27 +25,29 @@ def resolve_string_to_obj(path: str):
     Recursively resolves a string path to a Python object.
     Handles modules, functions, classes, and methods.
     """
-    if not path or '.' not in path:
-        try:
-            return importlib.import_module(path)
-        except ImportError:
-            return None
+    if not path:
+        return None
 
+    # First, try to import the entire path as a module (e.g., "paddle" or "paddle.autograd").
     try:
-        # First, try to import the whole path as a module
         return importlib.import_module(path)
     except ImportError:
-        # If that fails, it must be an object within a module.
-        # Split off the last part and try to resolve the parent.
+        # If the import fails, it might be an object within a module.
+        # If there's no dot, it was a failed top-level import, so we can't proceed.
+        if "." not in path:
+            return None
+
+        # Split the path into its parent and the final object name.
+        # e.g., "paddle.Tensor" -> parent="paddle", child="Tensor"
         parent_path, child_name = path.rsplit('.', 1)
         parent_obj = resolve_string_to_obj(parent_path)
-        if parent_obj is not None:
-            try:
-                return getattr(parent_obj, child_name)
-            except AttributeError:
-                return None
-        else:
+
+        # If the parent object could not be resolved, we can't find the child.
+        if parent_obj is None:
             return None
+
+        # Use getattr with a default value to safely get the child object.
+        return getattr(parent_obj, child_name, None)
 
 
 def generate_comment_body(doc_diff, pr_id):
@@ -59,13 +61,14 @@ def generate_comment_body(doc_diff, pr_id):
     # - paddle.autograd.backward (ArgSpec(...), ('document', ...))
     # + paddle.autograd.backward (ArgSpec(...), ('document', ...))
     apis = sorted(
-        set(
-            re.findall(r"^[+-]\s*([a-zA-Z0-9_.]+)\s*\(", doc_diff, re.MULTILINE)
-        )
+        set(re.findall(r"^[+]\s*([a-zA-Z0-9_.]+)\s*\(", doc_diff, re.MULTILINE))
     )
 
     for api in apis:
         api_obj = resolve_string_to_obj(api)
+
+        if api_obj is None:
+            raise ValueError(f"Could not resolve API path: {api}")
 
         api_path = api.replace('.', '/')
         url = f"{base_url}/{api_path}_en.html"
@@ -80,12 +83,12 @@ def generate_comment_body(doc_diff, pr_id):
         output_lines.append(f"- [{api}]({url})")
 
     if not output_lines:
-        return "本次 PR 未检测到 API 文档变更。"
+        return ""
 
     comment_body = """<details>
 <summary>📚 因为涉及修改 api docstring，生成本次 PR 文档预览链接 (点击展开)</summary>
 
-以下是本次 PR 中变更文档的预览链接：
+以下是本次 PR 中新增或变更文档的预览链接：
 
 {}
 
