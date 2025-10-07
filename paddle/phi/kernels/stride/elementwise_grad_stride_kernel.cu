@@ -150,7 +150,8 @@ void SubtractGradStrideKernel(const Context& dev_ctx,
 
   if (FLAGS_use_stride_compute_kernel) {
     auto meta = dout.meta();
-    if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims()) {
+    if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims() &&
+        dy->dims() == dout.dims()) {
       dx->set_meta(meta);
       dx->ResetHolder(dout.Holder());
       dx->ShareInplaceVersionCounterWith(dout);
@@ -163,7 +164,7 @@ void SubtractGradStrideKernel(const Context& dev_ctx,
       dx->ShareInplaceVersionCounterWith(dout);
       return;
     }
-    if (dy != nullptr && dx == nullptr) {
+    if (dy != nullptr && dx == nullptr && dy->dims() == dout.dims()) {
       phi::ScaleStrideKernel<T, Context>(dev_ctx, dout, -1, 0, false, dy);
       return;
     }

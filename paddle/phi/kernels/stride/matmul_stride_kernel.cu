@@ -112,6 +112,12 @@ void MatmulStrideKernel(const Context &dev_ctx,
   DenseTensor x_;
   DenseTensor y_;
 
+  // if (out && (out->IsSharedBufferWith(x) || out->IsSharedBufferWith(y))) {
+  //   printf("inplace found\n");
+  // } else {
+  //   printf("inplace not found\n");
+  // }
+
   // if (!FLAGS_use_stride_compute_kernel) {
   if (!x.meta().is_contiguous()) {
     x_ = Tensor2Contiguous<Context>(dev_ctx, x);
@@ -165,6 +171,8 @@ void MatmulStrideKernel(const Context &dev_ctx,
   // }
   // printf("\n");
 
+  // printf("x offset:%d\n", x.offset());
+
   // printf("y dims\n");
   // for (int i=0; i<y.dims().size(); i++) {
   //   printf("%d ", y.dims()[i]);
@@ -176,6 +184,10 @@ void MatmulStrideKernel(const Context &dev_ctx,
   //   printf("%d ", y.strides()[i]);
   // }
   // printf("\n");
+
+  // printf("y offset:%d\n", y.offset());
+
+  // printf("out offset:%d\n", out->offset());
 
   // DenseTensor x_trans_res;
 
@@ -246,26 +258,54 @@ void MatmulStrideKernel(const Context &dev_ctx,
   //                                                            &y_shape,
   //                                                            &y_stride,
   //                                                            &y_axis)) {
-  //   printf("y trans axis\n");
-  //   for (int i=0; i<y_axis.size(); i++) {
-  //     printf("%d ", y_axis[i]);
-  //   }
-  //   printf("\n");
+  //   // printf("y trans axis\n");
+  //   // for (int i=0; i<y_axis.size(); i++) {
+  //   //   printf("%d ", y_axis[i]);
+  //   // }
+  //   // printf("\n");
   //   auto y_trans_dims = y_axis.size();
   //   if (y_axis[y_trans_dims - 1] == y_trans_dims - 2 &&
   //       y_axis[y_trans_dims - 2] == y_trans_dims - 1) {
   //     printf("trans y\n");
-  //     transpose_y = !transpose_y;
+  //     // transpose_y = !transpose_y;
   //     // y_meta.dims = y_shape;
   //     // y_meta.strides = y_stride;
   //     // y_.set_meta(y_meta);
-  //   DenseTensor tmp_tensor = y_;
-  //   phi::DenseTensorMeta tmp_meta = y_.meta();
-  //   tmp_meta.strides = y_stride;
-  //   tmp_meta.dims = y_shape;
-  //   tmp_tensor.set_meta(tmp_meta);
-  //   TransposeStridedKernel<Context>(dev_ctx, tmp_tensor, y_axis,
-  //   &y_trans_res); } else {
+
+  //   printf("trans y shape\n");
+  // for (int i=0; i<y_shape.size(); i++) {
+  //   printf("%d ", y_shape[i]);
+  // }
+  // printf("\n");
+
+  //   printf("trans y_stride\n");
+  // for (int i=0; i<y_stride.size(); i++) {
+  //   printf("%d ", y_stride[i]);
+  // }
+  // printf("\n");
+
+  //   // transpose_y = !transpose_y;
+  //   // DenseTensor tmp_tensor = y_;
+  //   // phi::DenseTensorMeta tmp_meta = y_.meta();
+  //   // tmp_meta.strides = y_stride;
+  //   // tmp_meta.dims = y_shape;
+  //   // y_trans_res.set_meta(tmp_meta);
+  //   // TransposeStridedKernel<Context>(dev_ctx, y_, y_axis, &y_trans_res);
+  //   y_trans_res = Tensor2Contiguous<Context>(dev_ctx, y_);
+
+  // printf("y_ after trans dims\n");
+  // for (int i=0; i<y_trans_res.dims().size(); i++) {
+  //   printf("%d ", y_trans_res.dims()[i]);
+  // }
+  // printf("\n");
+
+  // printf("y_ after trans strides\n");
+  // for (int i=0; i<y_trans_res.strides().size(); i++) {
+  //   printf("%d ", y_trans_res.strides()[i]);
+  // }
+  // printf("\n");
+
+  //   } else {
   //     y_trans_res = y_;
   //   }
   // printf("y_ dims\n");
@@ -289,22 +329,22 @@ void MatmulStrideKernel(const Context &dev_ctx,
   // }
 
   // printf("y_ final dims\n");
-  // for (int i=0; i<y_.dims().size(); i++) {
-  //   printf("%d ", y_.dims()[i]);
+  // for (int i=0; i<y_trans_res.dims().size(); i++) {
+  //   printf("%d ", y_trans_res.dims()[i]);
   // }
   // printf("\n");
 
   // printf("y_ final strides\n");
-  // for (int i=0; i<y_.strides().size(); i++) {
-  //   printf("%d ", y_.strides()[i]);
+  // for (int i=0; i<y_trans_res.strides().size(); i++) {
+  //   printf("%d ", y_trans_res.strides()[i]);
   // }
   // printf("\n");
 
   // auto meta = out->meta();
   // meta.strides = meta.calc_strides(out->dims());
   // out->set_meta(meta);
-  // phi::MatmulKernel<T, Context>(dev_ctx, x_, y_trans_res, transpose_x,
-  // transpose_y, out);
+  // phi::MatmulKernel<T, Context>(dev_ctx, x_trans_res, y_trans_res,
+  // transpose_x, transpose_y, out);
 }
 
 }  // namespace phi
