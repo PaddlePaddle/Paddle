@@ -36,14 +36,6 @@ void SumKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out);
 
-// template <typename T, typename Context>
-// void SumStrideKernel(const Context& dev_ctx,
-//                      const DenseTensor& x,
-//                      const IntArray& dims,
-//                      DataType out_dtype,
-//                      bool keep_dim,
-//                      DenseTensor* out);
-
 template <typename T, typename Context>
 DenseTensor Sum(const Context& dev_ctx,
                 const DenseTensor& x,

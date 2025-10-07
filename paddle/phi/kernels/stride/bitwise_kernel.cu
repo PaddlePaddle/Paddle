@@ -141,8 +141,11 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
     }                                                                         \
   }
 
+#if defined(__NVCC__)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(LeftShift)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(RightShift)
+#endif
+
 #undef DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP
 
 template <typename T, typename Context>
@@ -219,6 +222,7 @@ PD_REGISTER_KERNEL(bitwise_xor,
                    int,
                    int64_t) {}
 
+#if defined(__NVCC__)
 PD_REGISTER_KERNEL(bitwise_left_shift,
                    GPU,
                    STRIDED,
@@ -238,6 +242,7 @@ PD_REGISTER_KERNEL(bitwise_right_shift,
                    int16_t,
                    int,
                    int64_t) {}
+#endif
 
 PD_REGISTER_KERNEL(bitwise_not,
                    GPU,

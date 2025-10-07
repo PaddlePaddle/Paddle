@@ -24,6 +24,7 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_kernel_out_con);
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
@@ -105,6 +106,11 @@ void InplaceLogicalKernelStrideImpl(const Context &dev_ctx,
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
+    if (FLAGS_force_stride_compute_kernel_out_con) {                          \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+    }                                                                         \
     if (out->IsSharedWith(x_)) {                                              \
       InplaceLogicalKernelStrideImpl<T,                                       \
                                      Context,                                 \
@@ -146,6 +152,11 @@ void LogicalNotStrideKernel(const Context &dev_ctx,
     out->set_meta(meta);
     phi::LogicalNotKernel<T, Context>(dev_ctx, x_, out);
     return;
+  }
+  if (FLAGS_force_stride_compute_kernel_out_con) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
   if (!out->IsSharedWith(x_)) {
     LaunchLogicalNotStrideKernel<T, Context>(

@@ -227,7 +227,6 @@ inline AdvancedIndex<T, Context>::AdvancedIndex(
     indices_int64.push_back(indice);
   }
 
-  // phi::DenseTensor src = self;
   std::vector<phi::DenseTensor*> indices_list = indices_int64;
 
   uint32_t element_size_bytes = phi::SizeOf(self.dtype());
