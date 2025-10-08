@@ -15,15 +15,9 @@
 #pragma once
 
 #ifdef __CUDACC__
-// #ifdef WITH_CINN
-#define PADDLE_WITH_CUDA
-// #endif
 #include <cuda.h>
 #endif
 #ifdef __HIPCC__
-// #ifdef WITH_CINN
-#define PADDLE_WITH_HIP
-// #endif
 #include <hip/hip_runtime.h>
 #endif
 

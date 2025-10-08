@@ -274,7 +274,7 @@ void Compiler::CompileToPtx() {
     if (include_dir_str.empty()) {
       include_dir_str = dir;
     } else {
-      include_dir_str += ":" + dir;
+      include_dir_str += " -I " + dir;
     }
   }
 

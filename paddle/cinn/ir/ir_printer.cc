@@ -150,7 +150,7 @@ void IrPrinter::Visit(const FloatImm *x) {
     } else {
       ss << "(float16)";
       ss << std::setprecision(std::numeric_limits<float16>::max_digits10);
-      ss << static_cast<float16>(x->value) << "f";
+      ss << static_cast<float>(x->value) << ".f";
     }
   } else if (x->type().is_bfloat16()) {
     if (std::isinf(x->value)) {

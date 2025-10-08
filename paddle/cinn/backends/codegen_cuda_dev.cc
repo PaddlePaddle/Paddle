@@ -21,6 +21,7 @@ const std::string CodeGenCudaDev::general_source_header_ =  // NOLINT
 #pragma once
 #include <cstdint>
 #define CINN_WITH_CUDA
+#define PADDLE_WITH_CUDA
 #include "bfloat16.h"
 #include "float16.h"
 #include "float8_e4m3fn.h"
@@ -45,9 +46,11 @@ const std::string CodeGenCudaDev::source_header_ =  // NOLINT
 #pragma once
 #include <cinn_with_cuda_h>
 
+#define PADDLE_WITH_CUDA
 #include <bfloat16_h>
 #include <cstdint>
 #include <float16_h>
+#include <float8_e4m3fn_h>
 using cinn::common::bfloat16;
 using cinn::common::float16;
 using cinn::common::float8_e4m3fn;

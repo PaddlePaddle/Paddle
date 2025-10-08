@@ -32,7 +32,7 @@ if(NOT DEFINED ENV{runtime_include_dir})
         "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
     set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
     add_definitions(
-      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda:${PADDLE_SOURCE_DIR}";
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda:${PADDLE_SOURCE_DIR}/paddle/common:${PADDLE_SOURCE_DIR}";
     )
   elseif(WITH_ROCM)
     message(
@@ -40,7 +40,7 @@ if(NOT DEFINED ENV{runtime_include_dir})
         "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
     set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
     add_definitions(
-      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip:${PADDLE_SOURCE_DIR}"
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip:${PADDLE_SOURCE_DIR}/paddle/common:${PADDLE_SOURCE_DIR}"
     )
   endif()
 endif()
