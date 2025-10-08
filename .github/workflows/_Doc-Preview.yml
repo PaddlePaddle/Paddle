@@ -126,7 +126,7 @@ jobs:
         run: |
           echo "${{ steps.generate_comment.outputs.comment_body }}" > comment_body.txt
           echo "${{ env.PR_ID }}" > pr_number.txt
-          # [TODO] remove it after test.
+          # [TODO] remove it after test
           echo "${{ steps.generate_comment.outputs.comment_body }}"
           echo "${{ env.PR_ID }}"
 
