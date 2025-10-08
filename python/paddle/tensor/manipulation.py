@@ -6584,7 +6584,7 @@ def as_complex(x: Tensor, name: str | None = None) -> Tensor:
 
 
 def as_real(x: Tensor, name: str | None = None) -> Tensor:
-    """Transform a complex tensor to a real tensor.
+    """Transform a complex tensor to a real tensor 1433223.
 
     The data type of the input tensor is 'complex64' or 'complex128', and the data
     type of the returned tensor is 'float32' or 'float64', respectively.
