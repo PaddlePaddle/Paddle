@@ -408,6 +408,17 @@ void combine(void* combined_x,
              bool dispatch_use_fp8,
              int next_buffer_id);
 
+void clean_low_latency_buffer_two_stage(void** buffer_ptrs_gpu,
+                                        const size_t max_nvl_num_bytes,
+                                        const size_t signal_bytes,
+                                        const int nvl_rank,
+                                        const int num_experts,
+                                        int* clean_0,
+                                        int num_clean_int_0,
+                                        int* clean_1,
+                                        int num_clean_int_1,
+                                        cudaStream_t stream);
+
 }  // namespace internode_ll_two_stage
 
 #endif  // PADDLE_WITH_NVSHMEM

@@ -25,7 +25,7 @@ void ClipByNormKernel(const Context& dev_ctx,
                       const DenseTensor& in,
                       float max_norm,
                       DenseTensor* output) {
-  return ClipByNormFunctor<T, Context>(dev_ctx, in, max_norm, output);
+  ClipByNormFunctor<T, Context>(dev_ctx, in, max_norm, output);
 }
 
 }  // namespace phi

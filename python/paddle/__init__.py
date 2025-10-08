@@ -79,10 +79,14 @@ from .framework import (
 from .framework.dtype import (
     bfloat16,
     bool,
+    cdouble,
+    cfloat,
     complex64,
     complex128,
+    double,
     dtype,
     finfo,
+    float,
     float8_e4m3fn,
     float8_e4m3fnuz,
     float8_e5m2,
@@ -91,6 +95,7 @@ from .framework.dtype import (
     float16,
     float32,
     float64,
+    half,
     iinfo,
     int8,
     int16,
@@ -99,6 +104,8 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint32,
+    uint64,
 )
 
 if typing.TYPE_CHECKING:
@@ -233,7 +240,9 @@ from .device import (  # noqa: F401
     PaddleStream as Stream,
     device_guard,
     get_cudnn_version,
+    get_default_device,
     get_device,
+    get_device_module,
     is_compiled_with_cinn,
     is_compiled_with_cuda,
     is_compiled_with_custom_device,
@@ -962,7 +971,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
-get_default_device = get_device
+
 
 __all__ = [
     'block_diag',
@@ -972,6 +981,8 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint32',
+    'uint64',
     'int8',
     'int16',
     'int32',
@@ -981,11 +992,16 @@ __all__ = [
     'float8_e5m2',
     'float8_e5m2fnuz',
     'float8_e8m0fnu',
+    'half',
     'float16',
+    'float',
     'float32',
     'float64',
+    'double',
     'bfloat16',
     'bool',
+    'cfloat',
+    'cdouble',
     'complex64',
     'complex128',
     'pstring',

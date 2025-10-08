@@ -3818,7 +3818,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
   m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
   m.def("get_cublas_switch", phi::AllowTF32Cublas);
   m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);

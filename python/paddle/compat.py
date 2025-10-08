@@ -17,8 +17,10 @@
 # This is a standalone implementation.
 
 import sys
+import types
 import warnings
 from contextlib import contextmanager
+from typing import Any
 
 from .tensor.compat import (
     Unfold,
@@ -47,6 +49,59 @@ __all__ = [
 ]
 
 
+def warning_about_fake_interface(name: str):
+    warnings.warn(
+        f"The interface '{name}' is a fake implementation for torch compatibility. "
+        "It does not have the actual functionality of PyTorch. "
+        "Please refer to the PaddlePaddle documentation for equivalent functionality.",
+        category=UserWarning,
+        stacklevel=2,
+    )
+
+
+def create_fake_class(name, attrs: dict[str, Any]):
+    """Create a fake class with the given name and attributes."""
+    new_fn = lambda *args, **kwargs: warning_about_fake_interface(name)
+    attrs["__init__"] = new_fn
+    return type(name, (), attrs)
+
+
+def create_fake_function(name):
+    """Create a fake function with the given name and implementation."""
+    fn = lambda *args, **kwargs: warning_about_fake_interface(name)
+    fn.__name__ = name
+    return fn
+
+
+class ProxyModule(types.ModuleType):
+    def __init__(
+        self,
+        original_module: types.ModuleType,
+        proxy_name: str,
+        overrides: dict[str, Any],
+    ):
+        super().__init__(proxy_name)
+        self._original_module = original_module
+        self._proxy_name = proxy_name
+        self._overrides = overrides
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self._overrides:
+            return self._overrides[name]
+        return getattr(self._original_module, name)
+
+
+GLOBAL_OVERRIDES = {
+    "torch.Generator": create_fake_class(
+        "Generator", {"manual_seed": create_fake_function("manual_seed")}
+    ),
+}
+
+
+def _is_torch_module(name: str) -> bool:
+    return name == "torch" or name.startswith("torch.")
+
+
 class TorchProxyMetaFinder:
     """
     PyTorch compatibility layer for PaddlePaddle.
@@ -57,7 +112,7 @@ class TorchProxyMetaFinder:
     """
 
     def find_spec(self, fullname, path, target=None):
-        if fullname != "torch" and not fullname.startswith("torch."):
+        if not _is_torch_module(fullname):
             return None
 
         import importlib
@@ -67,6 +122,11 @@ class TorchProxyMetaFinder:
         # Map the requested torch fullname to the corresponding paddle fullname.
         module_name = fullname.replace("torch", "paddle", 1)
         source_module = importlib.import_module(module_name)
+        overrides = {
+            k.removeprefix(f"{fullname}."): v
+            for k, v in GLOBAL_OVERRIDES.items()
+            if k.startswith(f"{fullname}.")
+        }
 
         is_pkg = hasattr(source_module, "__path__")
 
@@ -77,9 +137,7 @@ class TorchProxyMetaFinder:
 
             def create_module(self, spec):
                 # Create a new module object that will act as the "torch..." module.
-                import types
-
-                mod = types.ModuleType(self._target_name)
+                mod = ProxyModule(self._source, self._target_name, overrides)
                 # Preserve file/path information for tooling/debugging.
                 mod.__file__ = getattr(self._source, "__file__", None)
                 if is_pkg:
@@ -112,15 +170,15 @@ TORCH_PROXY_FINDER = TorchProxyMetaFinder()
 
 
 def enable_torch_proxy():
-    """ """
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
 
 def disable_torch_proxy():
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
-        if 'torch' in sys.modules:
-            del sys.modules['torch']
+        for name in list(sys.modules):
+            if _is_torch_module(name):
+                del sys.modules[name]
         return
     warnings.warn("torch proxy is not installed.")
 

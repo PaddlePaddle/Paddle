@@ -33,7 +33,9 @@ void CorrelationKernel(const Context& dev_ctx,
                        int stride2,
                        int corr_type_multiply,
                        DenseTensor* out) {
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  bool is_gpu_place =
+      (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) ||
+      (dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM);
   PADDLE_ENFORCE_EQ(
       is_gpu_place,
       true,

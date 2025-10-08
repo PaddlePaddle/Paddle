@@ -51,6 +51,23 @@ static std::vector<std::string> GetNvidiaAllIncludePath(
   std::vector<std::string> include_paths;
   const std::string delimiter = "/";
   // Expand this list if necessary.
+#if CUDA_VERSION >= 13000 && defined(__linux__)
+  const std::vector<std::string> sub_modules = {"cu13",
+                                                "cublas",
+                                                "cuda_cupti",
+                                                "cudnn",
+                                                "cufft",
+                                                "cufile",
+                                                "cusparse",
+                                                "cusparselt",
+                                                "cusolver",
+                                                "cuda_nvrtc",
+                                                "curand",
+                                                "nccl",
+                                                "nvjitlink",
+                                                "nvtx",
+                                                "cuda_runtime"};
+#else
   const std::vector<std::string> sub_modules = {"cuda_cccl",
                                                 "cublas",
                                                 "cudnn",
@@ -60,11 +77,17 @@ static std::vector<std::string> GetNvidiaAllIncludePath(
                                                 "cuda_nvrtc",
                                                 "curand",
                                                 "cuda_runtime"};
+#endif
   for (auto& sub_module : sub_modules) {
     std::string path =
         nvidia_package_dir + delimiter + sub_module + delimiter + "include";
     include_paths.push_back(path);
   }
+#if CUDA_VERSION >= 13000 && defined(__linux__)
+  include_paths.push_back(nvidia_package_dir + delimiter + "cu13/include/cccl");
+  include_paths.push_back(nvidia_package_dir + delimiter +
+                          "cu13/include/nvtx3");
+#endif
   return include_paths;
 }
 
@@ -153,7 +176,11 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   } else {
     compile_options.push_back("-arch=compute_" + cc);
   }
+#if CUDA_VERSION >= 13000 && defined(__linux__)
+  compile_options.push_back("-std=c++17");
+#else
   compile_options.push_back("-std=c++14");
+#endif
   compile_options.push_back("-default-device");
 
   if (include_headers) {  // prepare include headers

@@ -713,7 +713,7 @@ def _as_lodtensor(data, place, dtype=None):
     Args:
         data(numpy.ndarray|list|tuple|scalar): a instance of array, scalar, list or tuple
         data(core.Place): the place of created tensor
-        dtype(core.VarDesc.VarType|str): the expected data type of created tensor
+        dtype(str|paddle.dtype|np.dtype, optional): the expected data type of created tensor
 
     Returns:
         DenseTensor

@@ -258,3 +258,43 @@ TEST(compat_basic_test, BasicCase) {
               << std::endl;
   }
 }
+
+TEST(TestDevice, DeviceAPIsOnCUDA) {
+  // Test device related APIs on CUDA if available
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (at::cuda::is_available()) {
+    at::TensorBase cuda_tensor = at::ones(
+        {2, 3}, c10::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+
+    // Test device()
+    ASSERT_EQ(cuda_tensor.device().type(), at::DeviceType::CUDA);
+
+    // Test get_device()
+    ASSERT_EQ(cuda_tensor.get_device(), 0);  // Assuming single GPU with index 0
+
+    // Test is_cpu()/is_cuda()
+    ASSERT_FALSE(cuda_tensor.is_cpu());
+    ASSERT_TRUE(cuda_tensor.is_cuda());
+
+    // Test options()
+    auto options = cuda_tensor.options();
+    ASSERT_EQ(options.device().type(), at::DeviceType::CUDA);
+  }
+#endif
+}
+
+TEST(TestDevice, DeviceAPIsOnCPU) {
+  // Test device related APIs on CPU
+  at::TensorBase cpu_tensor = at::ones({2, 3}, at::kFloat);
+
+  // Test device()
+  ASSERT_EQ(cpu_tensor.device().type(), at::DeviceType::CPU);
+
+  // Test is_cpu()/is_cuda()
+  ASSERT_TRUE(cpu_tensor.is_cpu());
+  ASSERT_FALSE(cpu_tensor.is_cuda());
+
+  // Test options()
+  auto options = cpu_tensor.options();
+  ASSERT_EQ(options.device().type(), at::DeviceType::CPU);
+}
