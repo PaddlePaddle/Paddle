@@ -113,7 +113,6 @@ jobs:
         run: |
           comment_body=$(docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ ! -f "/tmp/api_doc_diff.txt" ]; then
-            echo ""
             exit 0
           fi
           python /paddle/tools/generate_doc_comment.py /tmp/api_doc_diff.txt ${{ env.PR_ID }}
