@@ -42,21 +42,6 @@ COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
-
-template <typename T, typename Context, typename Functor>
-void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
-                                         const DenseTensor &x,
-                                         const DenseTensor &y,
-                                         Functor func,
-                                         int axis,
-                                         DenseTensor *out) {
-  std::vector<const DenseTensor *> inputs = {&x, &y};
-  std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  BinaryStrideBroadcastKernel<T, Context>(
-      dev_ctx, inputs, &outputs, func, axis);
-}
-
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name, functor_name)          \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(const Context &dev_ctx,                             \
@@ -240,12 +225,6 @@ void ScaleStrideKernel(const Context &dev_ctx,
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     dev_ctx.template Alloc<T>(out);
     return;
-  }
-
-  if (FLAGS_force_stride_compute_kernel_out_con) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
   }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
