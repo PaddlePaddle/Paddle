@@ -153,6 +153,14 @@ void LogicalNotStrideKernel(const Context &dev_ctx,
     phi::LogicalNotKernel<T, Context>(dev_ctx, x_, out);
     return;
   }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
   if (FLAGS_force_stride_compute_contig_out) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());

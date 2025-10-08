@@ -2246,5 +2246,5 @@ PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
  */
 PHI_DEFINE_EXPORTED_bool(
     force_stride_compute_contig_out,
-    false,
+    true,
     "Whether force Stride_Compute_Kernel output contiguous.");
