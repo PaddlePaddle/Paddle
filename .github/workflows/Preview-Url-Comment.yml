@@ -46,7 +46,7 @@ jobs:
         with:
           issue-number: ${{ steps.artifacts-data.outputs.pr_number }}
           comment-author: 'github-actions[bot]'
-          body-includes: '本次 PR 文档预览链接'
+          body-includes: 'Preview documentation links for API changes in this PR'
 
       - name: Create or update comment
         if: steps.download.outcome == 'success'

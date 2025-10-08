@@ -86,9 +86,9 @@ def generate_comment_body(doc_diff, pr_id):
         return ""
 
     comment_body = """<details>
-<summary>📚 因为涉及修改 api docstring，生成本次 PR 文档预览链接 (点击展开)</summary>
+<summary>📚 Preview documentation links for API changes in this PR (Click to expand)</summary>
 
-以下是本次 PR 中新增或变更文档的预览链接：
+The following are preview links for new or modified API documentation in this PR:
 
 {}
 
