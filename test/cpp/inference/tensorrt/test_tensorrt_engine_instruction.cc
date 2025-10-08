@@ -85,20 +85,64 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
       nvinfer1::DataType::kFLOAT, raw_bias, size);
   auto *x = engine->DeclareInput(
       "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims4{-1, 1, 1, 1});
-  auto *fc_layer = TRT_ENGINE_ADD_LAYER(
-      engine, FullyConnected, *x, size, weight.get(), bias.get());
-  PADDLE_ENFORCE_NOT_NULL(fc_layer,
-                          common::errors::InvalidArgument(
-                              "TRT fully connected layer building failed."));
+  auto *flatten_layer = engine->network()->addShuffle(*x);
+  PADDLE_ENFORCE_NOT_NULL(
+      flatten_layer,
+      common::errors::InvalidArgument(
+          "TRT shuffle layer building failed when preparing input."));
+  flatten_layer->setReshapeDimensions(nvinfer1::Dims2{-1, 1});
 
-  engine->DeclareOutput(fc_layer, 0, "y");
+  auto *weight_layer = TRT_ENGINE_ADD_LAYER(
+      engine, Constant, nvinfer1::Dims2{1, 1}, weight.get());
+  PADDLE_ENFORCE_NOT_NULL(
+      weight_layer,
+      common::errors::InvalidArgument(
+          "TRT constant layer building failed for weight."));
+
+  auto *bias_layer =
+      TRT_ENGINE_ADD_LAYER(engine, Constant, nvinfer1::Dims2{1, 1}, bias.get());
+  PADDLE_ENFORCE_NOT_NULL(bias_layer,
+                          common::errors::InvalidArgument(
+                              "TRT constant layer building failed for bias."));
+
+  auto *matmul_layer = TRT_ENGINE_ADD_LAYER(engine,
+                                            MatrixMultiply,
+                                            *flatten_layer->getOutput(0),
+                                            nvinfer1::MatrixOperation::kNONE,
+                                            *weight_layer->getOutput(0),
+                                            nvinfer1::MatrixOperation::kNONE);
+  PADDLE_ENFORCE_NOT_NULL(matmul_layer,
+                          common::errors::InvalidArgument(
+                              "TRT matrix multiply layer building failed."));
+
+  auto *add_layer = TRT_ENGINE_ADD_LAYER(engine,
+                                         ElementWise,
+                                         *matmul_layer->getOutput(0),
+                                         *bias_layer->getOutput(0),
+                                         nvinfer1::ElementWiseOperation::kSUM);
+  PADDLE_ENFORCE_NOT_NULL(add_layer,
+                          common::errors::InvalidArgument(
+                              "TRT elementwise add layer building failed."));
+
+  auto *reshape_layer = engine->network()->addShuffle(*add_layer->getOutput(0));
+  PADDLE_ENFORCE_NOT_NULL(
+      reshape_layer,
+      common::errors::InvalidArgument(
+          "TRT shuffle layer building failed when restoring output shape."));
+  reshape_layer->setReshapeDimensions(nvinfer1::Dims4{-1, 1, 1, 1});
+
+  engine->DeclareOutput(reshape_layer, 0, "y");
   std::vector<std::string> input_names = {"x", ""};
   std::vector<std::string> output_names = {"y"};
   std::vector<std::vector<int64_t>> outputs_shape = {{1}};
   std::vector<phi::DataType> outputs_dtype = {phi::DataType::FLOAT32};
   LOG(INFO) << "freeze network";
   engine->FreezeNetwork();
+#if IS_TRT_VERSION_GE(8600)
+  ASSERT_EQ(engine->engine()->getNbIOTensors(), 2);
+#else
   ASSERT_EQ(engine->engine()->getNbBindings(), 2);
+#endif
   nvinfer1::IHostMemory *serialized_engine_data = engine->Serialize();
 
   std::ofstream outFile("engine_serialized_data.bin", std::ios::binary);
@@ -417,7 +461,11 @@ TEST(PluginTest, test_generic_plugin) {
   std::vector<phi::DataType> outputs_dtype = {phi::DataType::FLOAT32};
   LOG(INFO) << "freeze network";
   engine->FreezeNetwork();
+#if IS_TRT_VERSION_GE(8600)
+  ASSERT_EQ(engine->engine()->getNbIOTensors(), 2);
+#else
   ASSERT_EQ(engine->engine()->getNbBindings(), 2);
+#endif
   nvinfer1::IHostMemory *serialized_engine_data = engine->Serialize();
   std::ofstream outFile("engine_serialized_data.bin", std::ios::binary);
   outFile.write(static_cast<const char *>(serialized_engine_data->data()),
