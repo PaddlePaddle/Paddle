@@ -2221,7 +2221,7 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
  * Note: Whether use Stride_Compute_Kernel.
  */
 PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
-                         true,
+                         false,
                          "Whether use Stride_Compute_Kernel.");
 
 /**
@@ -2246,5 +2246,5 @@ PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
  */
 PHI_DEFINE_EXPORTED_bool(
     force_stride_compute_contig_out,
-    true,
+    false,
     "Whether force Stride_Compute_Kernel output contiguous.");
