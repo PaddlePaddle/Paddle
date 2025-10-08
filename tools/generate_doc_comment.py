@@ -86,7 +86,7 @@ def generate_comment_body(doc_diff, pr_id):
         return ""
 
     comment_body = """> [!CAUTION]
-> If you are not familiar with the changes in this PR (especially if `generate_doc_comment.py` or `_Doc-Preview.yml` has been modified), please do NOT randomly click the links below!
+> If you are not familiar with the changes in this PR (especially if 'generate_doc_comment.py' or '_Doc-Preview.yml' has been modified), please do NOT randomly click the links below!
 
 <details>
 <summary>📚 Preview documentation links for API changes in this PR (Click to expand)</summary>
