@@ -85,8 +85,8 @@ def generate_comment_body(doc_diff, pr_id):
     if not output_lines:
         return ""
 
-    comment_body = """> [!CAUTION]
-> If you are not familiar with the changes in this PR (especially if 'generate_doc_comment.py' or '_Doc-Preview.yml' has been modified), please do NOT randomly click the links below!
+    comment_body = """> [!NOTE]
+> 请等待 **Doc-Preview** 流水线运行完成后再点击预览链接，否则可能会看到旧版本内容。
 
 <details>
 <summary>📚 Preview documentation links for API changes in this PR (Click to expand)</summary>
