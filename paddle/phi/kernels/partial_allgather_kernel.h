@@ -20,13 +20,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PartialAllGatherOpCPUKernel(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 int nranks,
-                                 int rank,
-                                 DenseTensor* out);
-
-template <typename T, typename Context>
 void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
                                   const DenseTensor& x_in,
                                   int nranks,
