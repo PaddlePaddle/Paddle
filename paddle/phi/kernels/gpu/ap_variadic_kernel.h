@@ -20,10 +20,6 @@
 
 namespace phi {
 
-template <typename Context>
-void AllocateOutTensors(const Context& dev_ctx,
-                        const std::vector<DenseTensor*>& outs);
-
 template <typename T, typename Context>
 void ApVariadicKernel(const Context& dev_ctx,
                       const std::vector<const DenseTensor*>& xs,
