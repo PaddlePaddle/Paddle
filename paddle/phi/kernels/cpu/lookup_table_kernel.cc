@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/lookup_table_kernel.h"
 #include <string>
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"

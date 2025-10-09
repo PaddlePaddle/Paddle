@@ -22,8 +22,6 @@
 
 namespace phi {
 
-constexpr int64_t kNoPadding = -1;
-
 template <typename T, typename Context>
 void LookupTableCUDAKernel(const Context &dev_ctx,
                            const DenseTensor &w,
@@ -42,24 +40,5 @@ void LookupTableCUDAKernel(const Context &dev_ctx,
                            const std::vector<std::string> &epmap,
                            const std::vector<int64_t> &height_sections,
                            DenseTensor *out);
-
-template <typename T, typename Context>
-void LookupTableKernel(const Context &dev_ctx,
-                       const DenseTensor &w,
-                       const DenseTensor &ids_in,
-                       bool is_sparse,
-                       bool is_distributed,
-                       int64_t padding_idx,
-                       bool remote_prefetch,
-                       const std::string &entry_config,
-                       bool is_test,
-                       const std::string &entry,
-                       const std::string &table_class,
-                       const std::vector<std::string> &table_names,
-                       int trainer_id,
-                       bool grad_inplace,
-                       const std::vector<std::string> &epmap,
-                       const std::vector<int64_t> &height_sections,
-                       DenseTensor *out);
 
 }  // namespace phi
