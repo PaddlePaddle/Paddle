@@ -311,6 +311,23 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
   }
 };
 
+struct DistTensorTypeParserBuilder : ArgsIterator<DistTensorTypeParserBuilder> {
+  bool result = true;
+
+  explicit DistTensorTypeParserBuilder(){};
+
+  void operator()(const paddle::Tensor& x);
+  void operator()(const paddle::optional<paddle::Tensor>& x);
+  void operator()(const std::vector<paddle::Tensor>& x);
+  void operator()(const paddle::optional<std::vector<paddle::Tensor>>& x);
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
 struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
   const phi::distributed::ProcessMesh* mesh = nullptr;
 
@@ -343,6 +360,11 @@ bool InputsContainDistTensor(const phi::distributed::ProcessMesh** mesh,
 }
 
 template <typename... Args>
+bool AllInputsAreDistTensor(const Args&... args) {
+  return DistTensorTypeParserBuilder().apply(args...).result;
+}
+
+template <typename... Args>
 void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
                                   Args&... args) {
   PADDLE_ENFORCE_NE(
@@ -354,6 +376,32 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 
 void ConvertToDistTensor(paddle::Tensor* x,
                          const phi::distributed::ProcessMesh* mesh);
+
+struct DistTensorPtrBuilder : ArgsIterator<DistTensorPtrBuilder> {
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+
+  explicit DistTensorPtrBuilder(const phi::distributed::ProcessMesh* m)
+      : mesh(m) {
+    PADDLE_ENFORCE_NE(
+        m,
+        nullptr,
+        common::errors::InvalidArgument(
+            "Input mesh of DistTensorPtrBuilder() shouldn't be nullptr."));
+  }
+
+  std::shared_ptr<paddle::Tensor> builder(const paddle::Tensor& x);
+  std::shared_ptr<paddle::Tensor> operator()(const paddle::Tensor& x);
+  std::shared_ptr<paddle::optional<paddle::Tensor>> operator()(
+      const paddle::optional<paddle::Tensor>& x);
+  std::shared_ptr<std::vector<paddle::Tensor>> operator()(
+      const std::vector<paddle::Tensor>& x);
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  std::shared_ptr<T> operator()(const T& x) {
+    // do nothing
+  }
+};
 
 void inline CUDAErrorCheck(const std::string& check_tag) {
 #ifdef PADDLE_WITH_CUDA
