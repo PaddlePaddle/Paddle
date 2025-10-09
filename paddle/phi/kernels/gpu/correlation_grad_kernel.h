@@ -20,15 +20,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void CorrelationCUDAGradKernel(const Context &dev_ctx,
-                           const DenseTensor &input1,
-                           const DenseTensor &input2,
-                           const DenseTensor &out_grad,
-                           int pad_size,
-                           int kernel_size,
-                           int max_displacement,
-                           int stride1,
-                           int stride2,
-                           int corr_type_multiply,
-                           DenseTensor *input1_grad,
-                           DenseTensor *input2_grad);
+                               const DenseTensor &input1,
+                               const DenseTensor &input2,
+                               const DenseTensor &out_grad,
+                               int pad_size,
+                               int kernel_size,
+                               int max_displacement,
+                               int stride1,
+                               int stride2,
+                               int corr_type_multiply,
+                               DenseTensor *input1_grad,
+                               DenseTensor *input2_grad);
 }  // namespace phi
