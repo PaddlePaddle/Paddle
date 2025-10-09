@@ -43,15 +43,18 @@ static __forceinline__ __device__ bool InBounds3D(
 
 inline bool cudnnIsAvailable() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-  // List of supported GPU device types for custom devices
-  static const char* supported_custom_devices[] = {'iluvatar_gpu', 'metax_gpu'};
-  static const int num_supported_devices = 2;
+  // Get all custom device types
+  auto custom_device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 
-  // Check if any of the supported GPU devices are available
-  for (int i = 0; i < num_supported_devices; ++i) {
-    if (phi::DeviceManager::HasDeviceType(supported_custom_devices[i])) {
-      return true;
-    }
+  // Use the first custom device type
+  if (!custom_device_types.empty()) {
+    const std::string& device_type = custom_device_types[0];
+    // Get current device ID for this device type
+    int device_id = phi::DeviceManager::GetDevice(device_type);
+    // Create place for the current device
+    phi::Place place(phi::CustomPlace(device_type, device_id));
+    // Check if this device has DNN support
+    return phi::DeviceManager::IsDnnAvailable(place);
   }
   return false;
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
