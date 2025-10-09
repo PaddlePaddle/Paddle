@@ -109,7 +109,7 @@ class TestConvTransposeOnednnFusePass(PassAutoScanTest):
         yield config, ['conv2d_transpose_bias'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_duration=300,
             passes=["conv_transpose_bias_onednn_fuse_pass"],

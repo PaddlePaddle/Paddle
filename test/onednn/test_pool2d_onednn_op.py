@@ -29,7 +29,7 @@ from test_pool2d_op import (
 )
 
 
-def create_test_mkldnn_use_ceil_class(parent):
+def create_test_onednn_use_ceil_class(parent):
     class TestONEDNNPool2DUseCeilCase(parent):
         def init_kernel_type(self):
             self.use_onednn = True
@@ -46,12 +46,12 @@ def create_test_mkldnn_use_ceil_class(parent):
     globals()[cls_name] = TestONEDNNPool2DUseCeilCase
 
 
-create_test_mkldnn_use_ceil_class(TestPool2D_Op)
-create_test_mkldnn_use_ceil_class(TestCase1)
-create_test_mkldnn_use_ceil_class(TestCase2)
+create_test_onednn_use_ceil_class(TestPool2D_Op)
+create_test_onednn_use_ceil_class(TestCase1)
+create_test_onednn_use_ceil_class(TestCase2)
 
 
-def create_test_mkldnn_class(parent):
+def create_test_onednn_class(parent):
     class TestONEDNNCase(parent):
         def init_kernel_type(self):
             self.use_onednn = True
@@ -65,12 +65,12 @@ def create_test_mkldnn_class(parent):
     globals()[cls_name] = TestONEDNNCase
 
 
-create_test_mkldnn_class(TestPool2D_Op)
-create_test_mkldnn_class(TestCase1)
-create_test_mkldnn_class(TestCase2)
-create_test_mkldnn_class(TestCase3)
-create_test_mkldnn_class(TestCase4)
-create_test_mkldnn_class(TestCase5)
+create_test_onednn_class(TestPool2D_Op)
+create_test_onednn_class(TestCase1)
+create_test_onednn_class(TestCase2)
+create_test_onednn_class(TestCase3)
+create_test_onednn_class(TestCase4)
+create_test_onednn_class(TestCase5)
 
 
 class TestAvgPoolAdaptive(TestPool2D_Op):

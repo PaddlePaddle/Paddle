@@ -158,7 +158,7 @@ class TestInplaceOpPass(PassAutoScanTest):
         pass
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=["inplace_op_var_pass"],
         )

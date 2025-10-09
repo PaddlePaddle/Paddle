@@ -300,7 +300,7 @@ class StreamContext(_PaddleStreamGuard):
 
 def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
     """
-    Return the random number generator state of the specified device as a ByteTensor.
+    Return the random number generator state of the specified device.
 
     Args:
         device (DeviceLike, optional): The device to retrieve the RNG state from.
@@ -308,7 +308,7 @@ def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
             Can be a device object, integer device ID, or device string.
 
     Returns:
-        core.GeneratorState: The current RNG state of the specified device, represented as a ByteTensor.
+        core.GeneratorState: The current RNG state of the specified device.
 
     Examples:
         .. code-block:: python
