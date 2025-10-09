@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/dense_tensor_meta.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/lod.h"
 #include "paddle/phi/core/storage_properties.h"
