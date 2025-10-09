@@ -22,28 +22,6 @@
 
 namespace phi {
 
-struct Box {
-  float x, y, w, h;
-};
-
-struct Detection {
-  Box bbox;
-  int classes;
-  float* prob;
-  float* mask;
-  float objectness;
-  int sort_class;
-  int max_prob_class_index;
-};
-
-struct TensorInfo {
-  int bbox_count_host;  // record bbox numbers
-  int bbox_count_max_alloc{50};
-  float* bboxes_dev_ptr;
-  float* bboxes_host_ptr;
-  int* bbox_count_device_ptr;  // Box counter in gpu memory, used by atomicAdd
-};
-
 template <typename T, typename Context>
 void YoloBoxPostKernel(const Context& dev_ctx,
                        const DenseTensor& boxes0,
