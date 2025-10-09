@@ -196,7 +196,6 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
       dst_data_ic = dst_data_ic + col_block_ic;
     }
     // fill core
-    size_t copy_size = sizeof(T) * (output_width - plw - prw);
     for (int oh = 0; oh < output_height; ++oh) {
       const T* im_data_start =
           im_data + (oh - plh > 0 ? oh - plh : 0) * im_width;
@@ -210,7 +209,18 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
             continue;
           }
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(dst_data + plw, src_data, copy_size);
+            // Safe memcpy for filter_width == 1 case
+            int want = output_width - plw - prw;
+            int avail = im_width;
+            int n = std::max(0, std::min(want, avail));
+            if (n > 0) {
+              std::memcpy(dst_data + plw, src_data, sizeof(T) * n);
+            }
+            // Zero any shortfall
+            int shortfall = want - n;
+            if (shortfall > 0) {
+              std::memset(dst_data + plw + n, 0, sizeof(T) * shortfall);
+            }
           } else {
             for (int kow = 0; kow < output_width - plw - prw; ++kow) {
               int im_row = oh - plh + kh;
