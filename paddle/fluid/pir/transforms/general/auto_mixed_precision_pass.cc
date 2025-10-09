@@ -128,7 +128,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
 
   bool CanApplyOn(pir::Operation* op) const override {
     return op->num_regions() > 0 && op->isa<pir::ModuleOp>() &&
-           place_ == paddle::PlaceType::kGPU &&
+           phi::is_gpu_place(place_) &&
            (precision_mode_ == phi::DataType::FLOAT16 ||
             precision_mode_ == phi::DataType::BFLOAT16);
   }
