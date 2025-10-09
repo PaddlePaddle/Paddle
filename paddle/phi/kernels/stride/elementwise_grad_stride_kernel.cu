@@ -74,13 +74,15 @@ void AddGradStrideKernel(const Context& dev_ctx,
   bool inplace_add = false;
   if (dx && dx->IsSharedBufferWith(dout)) inplace_add = true;
 
-  if (FLAGS_use_stride_compute_kernel && !inplace_add) {
+  if (FLAGS_use_stride_compute_kernel) {
     auto meta = dout.meta();
     if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims() &&
         dy->dims() == dout.dims()) {
       dx->set_meta(meta);
-      dx->ResetHolder(dout.Holder());
-      dx->ShareInplaceVersionCounterWith(dout);
+      if (!inplace_add) {
+        dx->ResetHolder(dout.Holder());
+        dx->ShareInplaceVersionCounterWith(dout);
+      }
       dy->set_meta(meta);
       dy->ResetHolder(dout.Holder());
       dy->ShareInplaceVersionCounterWith(dout);
@@ -88,8 +90,10 @@ void AddGradStrideKernel(const Context& dev_ctx,
     }
     if (dx != nullptr && dy == nullptr && dx->dims() == dout.dims()) {
       dx->set_meta(meta);
-      dx->ResetHolder(dout.Holder());
-      dx->ShareInplaceVersionCounterWith(dout);
+      if (!inplace_add) {
+        dx->ResetHolder(dout.Holder());
+        dx->ShareInplaceVersionCounterWith(dout);
+      }
       return;
     }
     if (dy != nullptr && dx == nullptr && dy->dims() == dout.dims()) {

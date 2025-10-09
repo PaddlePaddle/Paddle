@@ -34,7 +34,7 @@
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
-COMMON_DECLARE_bool(force_stride_compute_kernel_out_con);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
 
@@ -96,7 +96,7 @@ void LaunchCompareStrideKernel(const Context &dev_ctx,
                                 "be called, something wrong has happened!")); \
     }                                                                         \
                                                                               \
-    if (FLAGS_force_stride_compute_kernel_out_con) {                          \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \

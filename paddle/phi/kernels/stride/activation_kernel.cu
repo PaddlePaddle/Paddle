@@ -34,7 +34,7 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
-COMMON_DECLARE_bool(force_stride_compute_kernel_out_con);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
 #define DEFINE_CUDA_ACTIVATION_STRIDE_OP(name, functor_class)                 \
@@ -69,7 +69,7 @@ namespace phi {
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
-    if (FLAGS_force_stride_compute_kernel_out_con) {                          \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
@@ -135,7 +135,7 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
-    if (FLAGS_force_stride_compute_kernel_out_con) {                          \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
@@ -188,7 +188,7 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
                                 "Kernel using DenseTensorIterator "            \
                                 "be called, something wrong has happened!"));  \
     }                                                                          \
-    if (FLAGS_force_stride_compute_kernel_out_con) {                           \
+    if (FLAGS_force_stride_compute_contig_out) {                               \
       auto meta = out->meta();                                                 \
       meta.strides = meta.calc_strides(out->dims());                           \
       out->set_meta(meta);                                                     \
@@ -249,7 +249,7 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
                                 "Kernel using DenseTensorIterator "            \
                                 "be called, something wrong has happened!"));  \
     }                                                                          \
-    if (FLAGS_force_stride_compute_kernel_out_con) {                           \
+    if (FLAGS_force_stride_compute_contig_out) {                               \
       auto meta = out->meta();                                                 \
       meta.strides = meta.calc_strides(out->dims());                           \
       out->set_meta(meta);                                                     \
@@ -313,7 +313,7 @@ void RoundStrideKernel(const Context &dev_ctx,
                               "be called, something wrong has happened!"));
   }
 
-  if (FLAGS_force_stride_compute_kernel_out_con) {
+  if (FLAGS_force_stride_compute_contig_out) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -357,7 +357,7 @@ void HardSwishStrideKernel(const Context &dev_ctx,
                               "be called, something wrong has happened!"));
   }
 
-  if (FLAGS_force_stride_compute_kernel_out_con) {
+  if (FLAGS_force_stride_compute_contig_out) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -430,7 +430,7 @@ void AbsStrideKernel(const Context &dev_ctx,
                               "be called, something wrong has happened!"));
   }
 
-  if (FLAGS_force_stride_compute_kernel_out_con) {
+  if (FLAGS_force_stride_compute_contig_out) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);

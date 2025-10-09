@@ -24,7 +24,7 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
-COMMON_DECLARE_bool(force_stride_compute_kernel_out_con);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 namespace phi {
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name)                        \
   template <typename T, typename Context>                                     \
@@ -67,7 +67,7 @@ namespace phi {
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
-    if (FLAGS_force_stride_compute_kernel_out_con) {                          \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
@@ -122,7 +122,7 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
-    if (FLAGS_force_stride_compute_kernel_out_con) {                          \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
@@ -180,7 +180,7 @@ void BitwiseNotStrideKernel(const Context &dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
-  if (FLAGS_force_stride_compute_kernel_out_con) {
+  if (FLAGS_force_stride_compute_contig_out) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);

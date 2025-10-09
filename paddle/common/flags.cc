@@ -2224,7 +2224,7 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
                          true,
                          "Whether use Stride_Compute_Kernel.");
 
-PHI_DEFINE_EXPORTED_bool(force_stride_compute_kernel_out_con,
+PHI_DEFINE_EXPORTED_bool(force_stride_compute_contig_out,
                          true,
                          "Whether use Stride_Compute_Kernel.");
 

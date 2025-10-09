@@ -28,6 +28,7 @@
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
 
@@ -61,6 +62,19 @@ void AMaxStrideKernel(const Context& dev_ctx,
     out->set_meta(meta);
     phi::AMaxKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   T ident = std::numeric_limits<T>::lowest();
@@ -98,6 +112,19 @@ void AMinStrideKernel(const Context& dev_ctx,
     out->set_meta(meta);
     phi::AMinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   T ident = std::numeric_limits<T>::max();
@@ -138,6 +165,19 @@ void MaxStrideKernel(const Context& dev_ctx,
     return;
   }
 
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   T ident = std::numeric_limits<T>::lowest();
   ReduceStrideImpl<T, Context, kps::MaxFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
@@ -175,6 +215,19 @@ void MinStrideKernel(const Context& dev_ctx,
     return;
   }
 
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   T ident = std::numeric_limits<T>::max();
   ReduceStrideImpl<T, Context, kps::MinFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
@@ -210,6 +263,19 @@ void ProdStrideKernel(const Context& dev_ctx,
     out->set_meta(meta);
     phi::ProdKernel<T, Context>(dev_ctx, x_, dims, keep_dim, reduce_all, out);
     return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   if (x_.numel() == 0) {
@@ -254,6 +320,19 @@ void AllStrideKernel(const Context& dev_ctx,
     out->set_meta(meta);
     phi::AllKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   if (x_.numel() == 0) {
@@ -319,6 +398,19 @@ void AnyStrideKernel(const Context& dev_ctx,
     return;
   }
 
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   auto out_dtype = phi::DataType::BOOL;
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
@@ -373,6 +465,19 @@ void SumStrideKernel(const Context& dev_ctx,
     out->set_meta(meta);
     phi::SumKernel<T, Context>(dev_ctx, x_, dims, out_dtype, keep_dim, out);
     return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x_.dtype()) {
@@ -454,6 +559,19 @@ void MeanStrideKernel(const Context& dev_ctx,
     out->set_meta(meta);
     phi::MeanKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
     return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   if (x_.numel() == 0) {
