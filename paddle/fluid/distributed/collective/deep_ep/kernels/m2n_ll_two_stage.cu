@@ -632,7 +632,6 @@ LOW_LATENCY_DISPATCH_RECV:
   if (responsible_expert_idx < kNumExperts) {
     const auto src_rank = responsible_expert_idx / kNumLocalExperts;
     const auto local_expert_idx = responsible_expert_idx % kNumLocalExperts;
-
     // local_expert_idx receiveom src_rank!
     const int recv_offset_this_warpgroup =
         local_expert_idx * kNumRanks + src_rank;
@@ -1144,6 +1143,8 @@ __global__ __launch_bounds__(
 
   /* NVL Receiver / NVL Reducer */
   {
+    // receive data from nvlink and do reduce!
+    // then issue the result !
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
     const int deal_rdma_rank = sm_id / sms_per_rdma;
     if (deal_rdma_rank < kNumRdmaRanks) {
