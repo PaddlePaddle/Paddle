@@ -64,6 +64,19 @@ class TestTorchProxy(unittest.TestCase):
         with self.assertRaises(ModuleNotFoundError):
             import torch
 
+        with paddle.compat.use_torch_proxy_guard():
+            import torch
+
+            self.assertIs(torch.cos, paddle.cos)
+            with paddle.compat.use_torch_proxy_guard(enable=False):
+                with self.assertRaises(ModuleNotFoundError):
+                    import torch
+                with paddle.compat.use_torch_proxy_guard(enable=True):
+                    import torch
+
+        with self.assertRaises(ModuleNotFoundError):
+            import torch
+
     @paddle.compat.use_torch_proxy_guard()
     def test_use_torch_inside_inner_function(self):
         result = use_torch_inside_inner_function()
