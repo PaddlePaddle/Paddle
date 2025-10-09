@@ -54,8 +54,17 @@ struct TensorCheckerVisitor {
   }
 
   template <typename T>
-  typename std::enable_if<std::is_floating_point<T>::value>::type apply()
-      const {
+  typename std::enable_if<std::is_floating_point<T>::value &&
+                          !std::is_same<T, phi::dtype::float16>::value &&
+                          !std::is_same<T, phi::dtype::bfloat16>::value>::type
+  apply() const {
+    do_check<T>();
+  }
+
+  template <typename T>
+  typename std::enable_if<std::is_same<T, phi::dtype::float16>::value ||
+                          std::is_same<T, phi::dtype::bfloat16>::value>::type
+  apply() const {
     do_check<T>();
   }
 
