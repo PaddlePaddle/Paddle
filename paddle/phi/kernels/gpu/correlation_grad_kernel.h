@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CorrelationGradKernel(const Context &dev_ctx,
+void CorrelationCUDAGradKernel(const Context &dev_ctx,
                            const DenseTensor &input1,
                            const DenseTensor &input2,
                            const DenseTensor &out_grad,
