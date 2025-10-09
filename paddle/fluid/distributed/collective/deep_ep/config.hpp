@@ -427,11 +427,12 @@ inline size_t get_low_latency_nvl_size_hint_two_stage(
                               NUM_BUFFER_ALIGNMENT_BYTES *
                               NUM_BUFFER_ALIGNMENT_BYTES;
 
-  auto nvl_num_bytes = dispatch_nvl_num_bytes + signal_bytes +
-                       combine_nvl_num_bytes + signal_bytes;
-  return ((nvl_num_bytes + NUM_BUFFER_ALIGNMENT_BYTES - 1) /
-          NUM_BUFFER_ALIGNMENT_BYTES) *
-         NUM_BUFFER_ALIGNMENT_BYTES;
+  auto max_nvl_num_bytes =
+      (std::max(dispatch_nvl_num_bytes, combine_nvl_num_bytes) +
+       NUM_BUFFER_ALIGNMENT_BYTES - 1) /
+      NUM_BUFFER_ALIGNMENT_BYTES * NUM_BUFFER_ALIGNMENT_BYTES;
+  auto nvl_num_bytes = (max_nvl_num_bytes + signal_bytes) * 2;
+  return nvl_num_bytes;
 }
 
 }  // namespace deep_ep
