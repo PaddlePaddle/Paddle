@@ -238,6 +238,7 @@ struct LowLatencyLayout {
     total_bytes += signaling_buffer_bytes * 2;
 
     // Symmetric complete signaling buffers
+    // Note(ZKK): this is only used in M2N!
     size_t recv_complete_buffer_bytes = 2 * M2N_NUM_MAX_MICRO_BATCHES * num_ranks * sizeof(int);
     total_bytes += recv_complete_buffer_bytes * 2;
 
@@ -335,6 +336,7 @@ struct LowLatencyTwoStageLayout {
     total_bytes += signaling_buffer_bytes * 2;
 
     // Symmetric complete signaling buffers
+    // Note(ZKK): this is only used in M2N!
     size_t recv_complete_buffer_bytes = 2 * M2N_NUM_MAX_MICRO_BATCHES * num_ranks * sizeof(int);
     total_bytes += recv_complete_buffer_bytes * 2;
 
@@ -426,7 +428,6 @@ inline size_t get_low_latency_nvl_size_hint_two_stage(
                                NUM_BUFFER_ALIGNMENT_BYTES - 1) /
                               NUM_BUFFER_ALIGNMENT_BYTES *
                               NUM_BUFFER_ALIGNMENT_BYTES;
-
   auto max_nvl_num_bytes =
       (std::max(dispatch_nvl_num_bytes, combine_nvl_num_bytes) +
        NUM_BUFFER_ALIGNMENT_BYTES - 1) /
