@@ -20,25 +20,6 @@
 
 namespace phi {
 
-template <typename T>
-void cal_aux_loss(const T* gate_prob,
-                  const int64_t row_gate_prob, /*seq_len*/
-                  const int64_t col_gate_prob, /*expert_num*/
-                  const int64_t* dispatch_mask,
-                  const int64_t row_dispatch_mask,
-                  const int64_t col_dispatch_mask,
-                  const T* tokens_mask,
-                  const bool* dispatch_tokens_mask,
-                  const int64_t dispatch_tokens_mask_len, /*global_seq_len*/
-                  const int64_t num_experts,              /*global_num_experts*/
-                  const bool use_group,
-                  const int64_t moe_k,
-                  const float clip_min,
-                  T* l_aux_loss, /*output*/
-                  T* seqlen_float,
-                  T* ce,
-                  cudaStream_t stream);
-
 template <typename T, typename Context>
 void CalAuxLossKernel(const Context& dev_ctx,
                       const DenseTensor& gate_prob,
