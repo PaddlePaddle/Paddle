@@ -20,11 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SeedKernel(const Context& dev_ctx,
-                int seed,
-                bool deterministic,
-                const std::string& rng_name,
-                bool force_cpu,
-                DenseTensor* out);
+void GPUSeedKernel(const Context& dev_ctx,
+                   int seed,
+                   bool deterministic,
+                   const std::string& rng_name,
+                   bool force_cpu,
+                   DenseTensor* out);
 
 }  // namespace phi
