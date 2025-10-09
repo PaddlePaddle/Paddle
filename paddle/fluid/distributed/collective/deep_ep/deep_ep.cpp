@@ -140,8 +140,10 @@ Buffer::Buffer(int rank,
   // Create 32 MiB workspace
   // Note(ZKK):  here we allocate more(2 * M2N_NUM_WORKSPACE) to support M2N!
   // Later we will opitimize here!
-  CUDA_CHECK(cudaMalloc(&workspace, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES));
-  CUDA_CHECK(cudaMemsetAsync(workspace, 0, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES, comm_stream));
+  CUDA_CHECK(
+      cudaMalloc(&workspace, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES));
+  CUDA_CHECK(cudaMemsetAsync(
+      workspace, 0, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES, comm_stream));
 
   // MoE counter
   CUDA_CHECK(
@@ -2361,10 +2363,16 @@ Buffer::m2n_low_latency_dispatch_two_stage(
   // fixed buffer, 0 for dispatch, 1 for combine
   auto buffer = layout.buffers[0];
   auto next_buffer = layout.buffers[1];
-  auto dispatch_workspace = reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(workspace) + m2n_ll_dipatch_workspace_idx * NUM_WORKSPACE_BYTES);
-  m2n_ll_dipatch_workspace_idx = (m2n_ll_dipatch_workspace_idx + 1) % M2N_NUM_WORKSPACE;
-  auto dispatch_rdma_recv_complete = buffer.dispatch_rdma_recv_complete_buffer + m2n_ll_dispatch_recv_complete_idx * num_ranks;
-  m2n_ll_dispatch_recv_complete_idx = (m2n_ll_dispatch_recv_complete_idx + 1) % M2N_NUM_MAX_MICRO_BATCHES;
+  auto dispatch_workspace = reinterpret_cast<void*>(
+      reinterpret_cast<uint8_t*>(workspace) +
+      m2n_ll_dispatch_workspace_idx * NUM_WORKSPACE_BYTES);
+  m2n_ll_dispatch_workspace_idx =
+      (m2n_ll_dispatch_workspace_idx + 1) % M2N_NUM_WORKSPACE;
+  auto dispatch_rdma_recv_complete =
+      buffer.dispatch_rdma_recv_complete_buffer +
+      m2n_ll_dispatch_recv_complete_idx * num_ranks;
+  m2n_ll_dispatch_recv_complete_idx =
+      (m2n_ll_dispatch_recv_complete_idx + 1) % M2N_NUM_MAX_MICRO_BATCHES;
 
   // Wait previous tasks to be finished
   // NOTES: the hook mode will always use the default stream
@@ -2378,11 +2386,11 @@ Buffer::m2n_low_latency_dispatch_two_stage(
   if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
     stream_wait(launch_stream, compute_stream);
   }
-  
+
   if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
     stream_wait(compute_stream, launch_stream);
   }
-  
+
   auto return_x_dtype = phi::DataType::BFLOAT16;
   if (use_fp8) {
     return_x_dtype = phi::DataType::FLOAT8_E4M3FN;
@@ -2427,8 +2435,8 @@ Buffer::m2n_low_latency_dispatch_two_stage(
       paddle::experimental::empty({num_ranks / NUM_MAX_NVL_PEERS,
                                    num_max_dispatch_tokens_per_rank,
                                    num_bytes_per_msg},
-                                   phi::DataType::UINT8,
-                                   phi::GPUPlace(device_id)));
+                                  phi::DataType::UINT8,
+                                  phi::GPUPlace(device_id)));
 
   // Allocate column-majored scales
   auto packed_recv_x_scales = std::optional<deep_ep::detail::Tensor>();
@@ -2453,52 +2461,53 @@ Buffer::m2n_low_latency_dispatch_two_stage(
   // Kernel launch
   auto next_clean_meta = next_buffer.clean_meta();
   auto launcher = [=](int phases) {
-    m2n_ll_two_stage::dispatch(
-        packed_recv_x.data_ptr(),
-        packed_recv_x_scales_ptr,
-        packed_rdma_recv_x.data_ptr(),
-        packed_recv_src_info.data_ptr<int>(),
-        packed_recv_layout_range.data_ptr<int64_t>(),
-        packed_recv_count.data_ptr<int>(),
-        packed_rdma_recv_count.data_ptr<int>(),
-        rdma_send_flags.data_ptr<bool>(),
-        buffer.dispatch_rdma_recv_data_buffer,
-        buffer.dispatch_rdma_recv_count_buffer,
-        dispatch_rdma_recv_complete,
-        buffer.dispatch_rdma_send_buffer,
-        buffer_ptrs_gpu,
-        x.data_ptr(),
-        topk_idx.data_ptr<int64_t>(),
-        topk_weights.data_ptr<float>(),
-        next_clean_meta.first,
-        next_clean_meta.second,
-        num_tokens,
-        hidden,
-        num_max_dispatch_tokens_per_rank,
-        num_topk,
-        num_experts,
-        rank,
-        num_ranks,
-        a_start_rank,
-        a_num_ranks,
-        e_start_rank,
-        e_num_ranks,
-        use_fp8,
-        dispatch_workspace,
-        launch_stream,
-        phases);
+    m2n_ll_two_stage::dispatch(packed_recv_x.data_ptr(),
+                               packed_recv_x_scales_ptr,
+                               packed_rdma_recv_x.data_ptr(),
+                               packed_recv_src_info.data_ptr<int>(),
+                               packed_recv_layout_range.data_ptr<int64_t>(),
+                               packed_recv_count.data_ptr<int>(),
+                               packed_rdma_recv_count.data_ptr<int>(),
+                               rdma_send_flags.data_ptr<bool>(),
+                               buffer.dispatch_rdma_recv_data_buffer,
+                               buffer.dispatch_rdma_recv_count_buffer,
+                               dispatch_rdma_recv_complete,
+                               buffer.dispatch_rdma_send_buffer,
+                               buffer_ptrs_gpu,
+                               x.data_ptr(),
+                               topk_idx.data_ptr<int64_t>(),
+                               topk_weights.data_ptr<float>(),
+                               next_clean_meta.first,
+                               next_clean_meta.second,
+                               num_tokens,
+                               hidden,
+                               num_max_dispatch_tokens_per_rank,
+                               num_topk,
+                               num_experts,
+                               rank,
+                               num_ranks,
+                               a_start_rank,
+                               a_num_ranks,
+                               e_start_rank,
+                               e_num_ranks,
+                               use_fp8,
+                               dispatch_workspace,
+                               launch_stream,
+                               phases);
   };
 
   // TODO(Zhenyu Li): supports async/return_recv_hook
   launcher(return_recv_hook
-            ? LOW_LATENCY_SEND_PHASE
-            : (LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
+               ? LOW_LATENCY_SEND_PHASE
+               : (LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
 
   // Wait streams
   // std::optional<EventHandle> event;
   // if (async) {
-  //   // NOTES: we must ensure the all tensors will not be deallocated before the
-  //   // stream-wait happens, so in Python API, we must wrap all tensors into the
+  //   // NOTES: we must ensure the all tensors will not be deallocated before
+  //   the
+  //   // stream-wait happens, so in Python API, we must wrap all tensors into
+  //   the
   //   // event handle.
   //   event = EventHandle(launch_stream);
   // } else if (!return_recv_hook) {
@@ -2519,15 +2528,17 @@ Buffer::m2n_low_latency_dispatch_two_stage(
 
   // Receiver callback
   std::optional<std::function<EventHandle()>> recv_hook = std::nullopt;
-  if (return_recv_hook) recv_hook = [=]() {
-    // stream_wait(launch_stream, compute_stream); 
-    launcher(LOW_LATENCY_RECV_PHASE); 
-    // stream_wait(compute_stream, launch_stream);
+  if (return_recv_hook)
+    recv_hook = [=]() {
+      // stream_wait(launch_stream, compute_stream);
+      launcher(LOW_LATENCY_RECV_PHASE);
+      // stream_wait(compute_stream, launch_stream);
 
-    // if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
-    //   stream_wait(compute_stream, launch_stream);
-    // }
-    return EventHandle(launch_stream);}; 
+      // if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
+      //   stream_wait(compute_stream, launch_stream);
+      // }
+      return EventHandle(launch_stream);
+    };
 
   return {packed_recv_x,
           packed_recv_x_scales,
@@ -2602,10 +2613,16 @@ Buffer::m2n_low_latency_combine_two_stage(
   auto dispatch_buffer = layout.buffers[0];
   auto buffer = layout.buffers[1];
   auto next_buffer = layout.buffers[0];
-  auto combine_workspace = reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(workspace) + (M2N_NUM_WORKSPACE + m2n_ll_combine_workspace_idx) * NUM_WORKSPACE_BYTES);
-  m2n_ll_combine_workspace_idx = (m2n_ll_combine_workspace_idx + 1) % M2N_NUM_WORKSPACE;
-  auto combine_rdma_recv_complete = buffer.combine_rdma_recv_complete_buffer + m2n_ll_combine_recv_complete_idx * num_ranks;
-  m2n_ll_combine_recv_complete_idx = (m2n_ll_combine_recv_complete_idx + 1) % M2N_NUM_MAX_MICRO_BATCHES;
+  auto combine_workspace = reinterpret_cast<void*>(
+      reinterpret_cast<uint8_t*>(workspace) +
+      (M2N_NUM_WORKSPACE + m2n_ll_combine_workspace_idx) * NUM_WORKSPACE_BYTES);
+  m2n_ll_combine_workspace_idx =
+      (m2n_ll_combine_workspace_idx + 1) % M2N_NUM_WORKSPACE;
+  auto combine_rdma_recv_complete =
+      buffer.combine_rdma_recv_complete_buffer +
+      m2n_ll_combine_recv_complete_idx * num_ranks;
+  m2n_ll_combine_recv_complete_idx =
+      (m2n_ll_combine_recv_complete_idx + 1) % M2N_NUM_MAX_MICRO_BATCHES;
 
   // Wait previous tasks to be finished
   // NOTES: the hook mode will always use the default stream
@@ -2619,7 +2636,7 @@ Buffer::m2n_low_latency_combine_two_stage(
   if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
     stream_wait(launch_stream, compute_stream);
   }
-  
+
   if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
     stream_wait(compute_stream, launch_stream);
   }
@@ -2640,49 +2657,50 @@ Buffer::m2n_low_latency_combine_two_stage(
   // Kernel launch
   auto next_clean_meta = next_buffer.clean_meta();
   auto launcher = [=](int phases) {
-    m2n_ll_two_stage::combine(
-        combined_x.data_ptr(),
-        buffer.combine_rdma_recv_data_buffer,
-        buffer.combine_rdma_recv_flag_buffer,
-        buffer.combine_rdma_send_buffer,
-        combine_rdma_recv_complete,
-        rdma_recv_x.data_ptr(),
-        dispatch_rdma_recv_count.data_ptr<int>(),
-        buffer_ptrs_gpu,
-        x.data_ptr(),
-        topk_idx.data_ptr<int64_t>(),
-        topk_weights.data_ptr<float>(),
-        src_info.data_ptr<int>(),
-        layout_range.data_ptr<int64_t>(),
-        rdma_send_flags.data_ptr<bool>(),
-        next_clean_meta.first,
-        next_clean_meta.second,
-        num_combined_tokens,
-        hidden,
-        num_max_dispatch_tokens_per_rank,
-        num_topk,
-        num_experts,
-        rank,
-        num_ranks,
-        a_start_rank,
-        a_num_ranks,
-        e_start_rank,
-        e_num_ranks,
-        combine_workspace,
-        launch_stream,
-        phases,
-        dispatch_use_fp8);
+    m2n_ll_two_stage::combine(combined_x.data_ptr(),
+                              buffer.combine_rdma_recv_data_buffer,
+                              buffer.combine_rdma_recv_flag_buffer,
+                              buffer.combine_rdma_send_buffer,
+                              combine_rdma_recv_complete,
+                              rdma_recv_x.data_ptr(),
+                              dispatch_rdma_recv_count.data_ptr<int>(),
+                              buffer_ptrs_gpu,
+                              x.data_ptr(),
+                              topk_idx.data_ptr<int64_t>(),
+                              topk_weights.data_ptr<float>(),
+                              src_info.data_ptr<int>(),
+                              layout_range.data_ptr<int64_t>(),
+                              rdma_send_flags.data_ptr<bool>(),
+                              next_clean_meta.first,
+                              next_clean_meta.second,
+                              num_combined_tokens,
+                              hidden,
+                              num_max_dispatch_tokens_per_rank,
+                              num_topk,
+                              num_experts,
+                              rank,
+                              num_ranks,
+                              a_start_rank,
+                              a_num_ranks,
+                              e_start_rank,
+                              e_num_ranks,
+                              combine_workspace,
+                              launch_stream,
+                              phases,
+                              dispatch_use_fp8);
   };
   // TODO(Zhenyu Li): supports async/return_recv_hook
   launcher(return_recv_hook
-              ? LOW_LATENCY_SEND_PHASE
-              : (LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
+               ? LOW_LATENCY_SEND_PHASE
+               : (LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
 
   // Wait streams
   // std::optional<EventHandle> event;
   // if (async) {
-  //   // NOTES: we must ensure the all tensors will not be deallocated before the
-  //   // stream-wait happens, so in Python API, we must wrap all tensors into the
+  //   // NOTES: we must ensure the all tensors will not be deallocated before
+  //   the
+  //   // stream-wait happens, so in Python API, we must wrap all tensors into
+  //   the
   //   // event handle.
   //   event = EventHandle(launch_stream);
   // } else if (!return_recv_hook) {
@@ -2695,22 +2713,24 @@ Buffer::m2n_low_latency_combine_two_stage(
     // stream-wait happens, so in Python API, we must wrap all tensors into the
     // event handle.
     event = EventHandle(launch_stream);
-  } 
+  }
   // // stream_wait(launch_stream, compute_stream);
   // if (rank >= e_start_rank && rank < e_start_rank + e_num_ranks) {
   //   stream_wait(compute_stream, launch_stream);
   // }
   // Receiver callback
   std::optional<std::function<EventHandle()>> recv_hook = std::nullopt;
-  if (return_recv_hook) recv_hook = [=]() { 
-    // stream_wait(launch_stream, compute_stream);
-    launcher(LOW_LATENCY_RECV_PHASE); 
-    // stream_wait(compute_stream, launch_stream);
-    // stream_wait(launch_stream, compute_stream);
-    // if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
-    //   stream_wait(compute_stream, launch_stream);
-    // }
-    return EventHandle(launch_stream);};
+  if (return_recv_hook)
+    recv_hook = [=]() {
+      // stream_wait(launch_stream, compute_stream);
+      launcher(LOW_LATENCY_RECV_PHASE);
+      // stream_wait(compute_stream, launch_stream);
+      // stream_wait(launch_stream, compute_stream);
+      // if (rank >= a_start_rank && rank < a_start_rank + a_num_ranks) {
+      //   stream_wait(compute_stream, launch_stream);
+      // }
+      return EventHandle(launch_stream);
+    };
 
   // Return values
   return {combined_x, event, recv_hook};
@@ -3189,35 +3209,37 @@ std::tuple<paddle::Tensor,
            paddle::Tensor,
            std::optional<EventHandle>,
            std::optional<std::function<EventHandle()>>>
-Buffer::m2n_low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
-                                           const paddle::Tensor& topk_idx,
-                                           const paddle::Tensor& topk_weights,
-                                           int num_max_dispatch_tokens_per_rank,
-                                           int num_experts,
-                                           int a_start_rank,
-                                           int a_num_ranks,
-                                           int e_start_rank,
-                                           int e_num_ranks,
-                                           bool use_fp8,
-                                           bool async,
-                                           bool return_recv_hook) {
+Buffer::m2n_low_latency_dispatch_two_stage_api(
+    const paddle::Tensor& x,
+    const paddle::Tensor& topk_idx,
+    const paddle::Tensor& topk_weights,
+    int num_max_dispatch_tokens_per_rank,
+    int num_experts,
+    int a_start_rank,
+    int a_num_ranks,
+    int e_start_rank,
+    int e_num_ranks,
+    bool use_fp8,
+    bool async,
+    bool return_recv_hook) {
 #ifdef PADDLE_WITH_NVSHMEM
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(topk_idx);
   const auto& topk_weights_ = ConvertPaddleTensorToDetailTensor(topk_weights);
 
-  auto res = m2n_low_latency_dispatch_two_stage(x_,
-                                            topk_idx_,
-                                            topk_weights_,
-                                            num_max_dispatch_tokens_per_rank,
-                                            num_experts,
-                                            a_start_rank,
-                                            a_num_ranks,
-                                            e_start_rank,
-                                            e_num_ranks,
-                                            use_fp8,
-                                            async,
-                                            return_recv_hook);
+  auto res =
+      m2n_low_latency_dispatch_two_stage(x_,
+                                         topk_idx_,
+                                         topk_weights_,
+                                         num_max_dispatch_tokens_per_rank,
+                                         num_experts,
+                                         a_start_rank,
+                                         a_num_ranks,
+                                         e_start_rank,
+                                         e_num_ranks,
+                                         use_fp8,
+                                         async,
+                                         return_recv_hook);
 
   auto packed_recv_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
 
@@ -3297,23 +3319,23 @@ Buffer::m2n_low_latency_combine_two_stage_api(
   }
 
   auto res = m2n_low_latency_combine_two_stage(x_,
-                                           rdma_recv_x_,
-                                           topk_idx_,
-                                           topk_weights_,
-                                           src_info_,
-                                           layout_range_,
-                                           rdma_send_flags_,
-                                           dispatch_rdma_recv_count_,
-                                           num_max_dispatch_tokens_per_rank,
-                                           num_experts,
-                                           a_start_rank,
-                                           a_num_ranks,
-                                           e_start_rank,
-                                           e_num_ranks,
-                                           dispatch_use_fp8,
-                                           async,
-                                           return_recv_hook,
-                                           out_);
+                                               rdma_recv_x_,
+                                               topk_idx_,
+                                               topk_weights_,
+                                               src_info_,
+                                               layout_range_,
+                                               rdma_send_flags_,
+                                               dispatch_rdma_recv_count_,
+                                               num_max_dispatch_tokens_per_rank,
+                                               num_experts,
+                                               a_start_rank,
+                                               a_num_ranks,
+                                               e_start_rank,
+                                               e_num_ranks,
+                                               dispatch_use_fp8,
+                                               async,
+                                               return_recv_hook,
+                                               out_);
 
   auto combined_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
   const auto& event = std::get<1>(res);
