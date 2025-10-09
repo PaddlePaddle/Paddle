@@ -86,8 +86,9 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
         break;
       }
     }
+  }
 
-    if (!FLAGS_use_stride_compute_kernel || invalid_stride) {
+  if (!FLAGS_use_stride_compute_kernel || invalid_stride) {
       DenseTensor out_grad_;
       if (!out_grad.meta().is_contiguous()) {
         out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad);
@@ -130,7 +131,6 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
       NarrowStrideKernel<Context>(
           dev_ctx, grad_val, axis, accumulate - size, size, outs[i]);
     }
-  }
 }
 
 }  // namespace phi
