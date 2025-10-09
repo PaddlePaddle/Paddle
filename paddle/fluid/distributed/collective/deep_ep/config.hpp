@@ -239,7 +239,8 @@ struct LowLatencyLayout {
 
     // Symmetric complete signaling buffers
     // Note(ZKK): this is only used in M2N!
-    size_t recv_complete_buffer_bytes = 2 * M2N_NUM_MAX_MICRO_BATCHES * num_ranks * sizeof(int);
+    size_t recv_complete_buffer_bytes =
+        2 * M2N_NUM_MAX_MICRO_BATCHES * num_ranks * sizeof(int);
     total_bytes += recv_complete_buffer_bytes * 2;
 
     // Assign pointers
@@ -256,7 +257,8 @@ struct LowLatencyLayout {
           // dispatch_rdma_recv_complete_buffer!
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * 2 + recv_complete_buffer_bytes * i),
+                            signaling_buffer_bytes * 2 +
+                            recv_complete_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * 2 + recv_buffer_bytes * i),
           advance<int*>(rdma_buffer,
@@ -265,7 +267,8 @@ struct LowLatencyLayout {
           // combine_rdma_recv_complete_buffer!
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * 2 + recv_complete_buffer_bytes * i),
+                            signaling_buffer_bytes * 2 +
+                            recv_complete_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * i),
           num_bytes_per_combine_msg};
     }
@@ -337,7 +340,8 @@ struct LowLatencyTwoStageLayout {
 
     // Symmetric complete signaling buffers
     // Note(ZKK): this is only used in M2N!
-    size_t recv_complete_buffer_bytes = 2 * M2N_NUM_MAX_MICRO_BATCHES * num_ranks * sizeof(int);
+    size_t recv_complete_buffer_bytes =
+        2 * M2N_NUM_MAX_MICRO_BATCHES * num_ranks * sizeof(int);
     total_bytes += recv_complete_buffer_bytes * 2;
 
     // Assign pointers
@@ -352,7 +356,8 @@ struct LowLatencyTwoStageLayout {
           // dispatch_rdma_recv_complete_buffer!
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * 2 + recv_complete_buffer_bytes * i),
+                            signaling_buffer_bytes * 2 +
+                            recv_complete_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * 2 + recv_buffer_bytes * i),
           advance<int*>(rdma_buffer,
@@ -361,7 +366,8 @@ struct LowLatencyTwoStageLayout {
           // combine_rdma_recv_complete_buffer!
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * 2 + recv_complete_buffer_bytes * i),
+                            signaling_buffer_bytes * 2 +
+                            recv_complete_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * i),
           num_bytes_per_combine_msg};
     }
