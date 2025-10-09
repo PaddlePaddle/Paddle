@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include "paddle/phi/kernels/lookup_table_grad_kernel.h"
 #include <string>
 #include <vector>
 
@@ -24,8 +24,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-
-constexpr int64_t kNoPadding = -1;
 
 template <typename T, typename Context>
 void LookupTableGradKernel(const Context &dev_ctx,
