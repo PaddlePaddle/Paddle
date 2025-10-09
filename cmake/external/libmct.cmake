@@ -78,7 +78,7 @@ endif()
 
 file(
   WRITE ${LIBMCT_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(LIBMCT)\n" "cmake_minimum_required(VERSION 3.0)\n"
+  "PROJECT(LIBMCT)\n" "cmake_minimum_required(VERSION 3.5)\n"
   "install(DIRECTORY ./include ./lib \n"
   "        DESTINATION ${LIBMCT_DST_DIR})\n")
 

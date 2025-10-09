@@ -290,7 +290,7 @@ class ForwardAPI(BaseAPI):
                     + f"""
 {code_indent}  kernel_out->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
 {code_indent}  kernel_out->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][0]]});
-{code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
+{code_indent}  VLOG(5) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
                 )
 
         elif len(out_dtype_list) > 1:
@@ -411,7 +411,7 @@ class ForwardAPI(BaseAPI):
                             + f"""
     {code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
     {code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
-    {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
+    {code_indent}  VLOG(5) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
                         )
                     else:
                         raise ValueError(

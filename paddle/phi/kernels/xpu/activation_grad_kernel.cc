@@ -330,8 +330,16 @@ struct XPUReluGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* out,
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
+    auto relu_grad_func = [](xpu::Context* context,
+                             const XPUType* /*x_data*/,
+                             const XPUType* y_data,
+                             const XPUType* y_grad,
+                             XPUType* x_grad,
+                             int64_t len) -> int {
+      return xpu::relu_grad<XPUType>(context, y_data, y_grad, x_grad, len);
+    };
     int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::relu_grad<XPUType>);
+        dev_ctx, x, out, dout, dx, relu_grad_func);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
   }
 };
@@ -367,7 +375,7 @@ struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
     XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
 
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      if (!std::is_same<T, ::phi::bfloat16>::value) {
+      if (!std::is_same<T, phi::bfloat16>::value) {
         // use fast_silu_grad if NOT bf16
         int r = xpu::fast_silu_grad(
             dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());

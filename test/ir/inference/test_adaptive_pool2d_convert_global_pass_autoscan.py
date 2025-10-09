@@ -98,7 +98,7 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
         if sys.platform == 'win32':
             max_example = 10
             min_success_num = 4
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=max_example,
             passes=["adaptive_pool2d_convert_global_pass"],

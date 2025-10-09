@@ -19,7 +19,7 @@ runs:
       name: Check Bypass
       env:
         CI_TEAM_MEMBERS: '["tianshuo78520a", "swgu98", "risemeup1", "XieYunshen","luotao1"]'
-      uses: PFCCLab/ci-bypass@v1
+      uses: PFCCLab/ci-bypass@v2
       with:
         github-token: ${{ inputs.github-token }}
         non-pull-request-event-strategy: 'never-skipped'
