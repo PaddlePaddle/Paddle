@@ -215,9 +215,9 @@
   } else if (num_warp_groups == 8) {                                   \
     constexpr int kNumWarpGroups = 8;                                  \
     __VA_ARGS__                                                        \
-  } else if (num_warp_groups == 12) {                                   \
-    constexpr int kNumWarpGroups = 12;                                  \
+  } else if (num_warp_groups == 12) {                                  \
+    constexpr int kNumWarpGroups = 12;                                 \
     __VA_ARGS__                                                        \
-  }else {                                                             \
+  } else {                                                             \
     EP_HOST_ASSERT(false && "Unsupported num_warp_groups");            \
   }
