@@ -442,7 +442,41 @@ def _convert_to_place(device: PlaceLike) -> Place:
     return place
 
 
-def set_device(device: str) -> PlaceLike:
+class device:
+    r"""Context-manager that changes the selected device.
+
+    Args:
+        device (paddle.Place, int or str): device index to select.
+
+    Examples:
+        .. code-block:: python
+            >>> import
+
+            >>> print(paddle.device.get_device())  # gpu:0
+            >>> with device("cpu"):
+            ...     print(paddle.device.get_device())  # cpu
+            >>> print(paddle.device.get_device())
+    """
+
+    def __init__(self, device: Place | int | str | None = None):
+        self.place = device_to_place(device)
+        self.prev_place_str = "-1"
+
+    def __enter__(self):
+        self.prev_place_str = get_device()
+        set_device(self.place)
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> bool | None:
+        set_device(self.prev_place_str)
+        return False
+
+
+def set_device(device: PlaceLike | int) -> PlaceLike:
     """
 
     Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
@@ -450,7 +484,7 @@ def set_device(device: str) -> PlaceLike:
     which the OP will run.
 
     Args:
-        device(str): This parameter determines the specific running device.
+        device(str, Place or int): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
             where ``x`` is the index of the GPUs, XPUs or NPUs.
 
@@ -469,7 +503,7 @@ def set_device(device: str) -> PlaceLike:
             >>> data = paddle.stack([x1,x2], axis=1)
 
     """
-    place = _convert_to_place(device)
+    place = device_to_place(device)
     framework._set_expected_place(place)
     return place
 

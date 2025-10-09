@@ -347,5 +347,21 @@ class TestExternalStream(unittest.TestCase):
         )
 
 
+class TestDeviceDvice(unittest.TestCase):
+    def test_device_device(self):
+        current = paddle.device.get_device()
+        with paddle.device.device("cpu"):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
+
+
+class TestCudaDvice(unittest.TestCase):
+    def test_device_device(self):
+        current = paddle.device.get_device()
+        with paddle.cuda.device("cpu"):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -23,6 +23,7 @@ from paddle import base, core, device as paddle_device, framework
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
+    device as device,
     is_available as _device_is_available,
     is_current_stream_capturing as _is_current_stream_capturing,
     manual_seed_all as device_manual_seed_all,
@@ -799,4 +800,5 @@ __all__ = [
     "manual_seed_all",
     "get_rng_state",
     "set_rng_state",
+    "device",
 ]
