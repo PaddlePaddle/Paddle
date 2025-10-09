@@ -314,7 +314,7 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
 struct DistTensorTypeParserBuilder : ArgsIterator<DistTensorTypeParserBuilder> {
   bool result = true;
 
-  explicit DistTensorTypeParserBuilder(){};
+  DistTensorTypeParserBuilder() {}
 
   void operator()(const paddle::Tensor& x);
   void operator()(const paddle::optional<paddle::Tensor>& x);
@@ -326,7 +326,7 @@ struct DistTensorTypeParserBuilder : ArgsIterator<DistTensorTypeParserBuilder> {
   void operator()(const T& x) {
     // do nothing
   }
-};
+}
 
 struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
   const phi::distributed::ProcessMesh* mesh = nullptr;
