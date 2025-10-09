@@ -326,7 +326,7 @@ struct DistTensorTypeParserBuilder : ArgsIterator<DistTensorTypeParserBuilder> {
   void operator()(const T& x) {
     // do nothing
   }
-}
+};
 
 struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
   const phi::distributed::ProcessMesh* mesh = nullptr;
