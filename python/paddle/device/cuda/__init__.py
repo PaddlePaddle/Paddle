@@ -719,3 +719,60 @@ def get_device_capability(
     """
     prop = get_device_properties(device)
     return prop.major, prop.minor
+
+
+def get_rng_state(device: _CudaPlaceLike | None = None) -> core.GeneratorState:
+    r'''
+    Get the random state for the default generator.
+
+    Returns:
+        Tensor: The random state tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.get_rng_state()
+
+    '''
+    place = paddle.device.device_to_place(device)
+    if isinstance(place, core.CPUPlace):
+        return core.default_cpu_generator().get_state()
+    return core.default_cuda_generator(place.get_device_id()).get_state()
+
+
+def set_rng_state(
+    new_state: core.GeneratorState, device: _CudaPlaceLike | None = None
+) -> None:
+    """
+    Set the random number generator state of the specified device.
+
+    Args:
+        new_state (core.GeneratorState): The desired RNG state to set.
+            This should be a state object previously obtained from ``get_rng_state()``.
+        device (DeviceLike, optional): The device to set the RNG state for.
+            If not specified, uses the current default device (as returned by ``paddle.framework._current_expected_place_()``).
+            Can be a device object, integer device ID, or device string.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> # Save RNG state
+            >>> state = paddle.device.get_rng_state()
+            >>> # Do some random operations
+            >>> x = paddle.randn([2, 3])
+            >>> # Restore RNG state
+            >>> paddle.device.set_rng_state(state)
+    """
+    place = paddle.device.device_to_place(device)
+    if isinstance(place, core.CPUPlace):
+        core.default_cpu_generator().set_state(new_state)
+    else:
+        core.default_cuda_generator(place.get_device_id()).set_state(new_state)

@@ -96,7 +96,7 @@ void SetValueImpl(const Context& dev_ctx,
   value_tensor.Resize(phi::make_ddim(value_shape));
 
   auto expand_shape = phi::vectorize<int64_t>(slice_dims_for_assign);
-  for (size_t i = 0; i <= expand_shape.size(); i++) {
+  for (size_t i = 0; i < expand_shape.size(); i++) {
     if (expand_shape[i] == 0) expand_shape[i] = 1;
   }
   if (expand_shape.empty()) expand_shape.push_back(1);

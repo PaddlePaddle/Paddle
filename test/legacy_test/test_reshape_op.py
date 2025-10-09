@@ -618,7 +618,6 @@ class TestReshapeOpError(unittest.TestCase):
         self.reshape = paddle.reshape
 
     def _test_errors(self):
-        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.
             def test_x_type():
@@ -662,7 +661,6 @@ class TestReshapeOpError(unittest.TestCase):
                 self.reshape(x3, [-1, -2, 5])
 
             self.assertRaises(AssertionError, test_shape_3)
-        paddle.disable_static()
 
     def test_paddle_api_error(self):
         self._set_paddle_api()
@@ -725,34 +723,32 @@ class TestReshapeZeroTensor(unittest.TestCase):
 
 class TestReshapeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
-        paddle.disable_static()
-        x = paddle.rand([])
-        x.stop_gradient = False
+        with paddle.base.dygraph.guard():
+            x = paddle.rand([])
+            x.stop_gradient = False
 
-        out = paddle.reshape(x, [1])
-        out.retain_grads()
-        out.backward()
-        self.assertEqual(x.grad.shape, [])
-        self.assertEqual(out.shape, [1])
-        self.assertEqual(out.grad.shape, [1])
+            out = paddle.reshape(x, [1])
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(x.grad.shape, [])
+            self.assertEqual(out.shape, [1])
+            self.assertEqual(out.grad.shape, [1])
 
-        out = paddle.reshape(x, [-1, 1])
-        out.retain_grads()
-        out.backward()
-        self.assertEqual(x.grad.shape, [])
-        self.assertEqual(out.shape, [1, 1])
-        self.assertEqual(out.grad.shape, [1, 1])
+            out = paddle.reshape(x, [-1, 1])
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(x.grad.shape, [])
+            self.assertEqual(out.shape, [1, 1])
+            self.assertEqual(out.grad.shape, [1, 1])
 
-        x = paddle.rand([1])
-        x.stop_gradient = False
-        out = paddle.reshape(x, [])
-        out.retain_grads()
-        out.backward()
-        self.assertEqual(x.grad.shape, [1])
-        self.assertEqual(out.shape, [])
-        self.assertEqual(out.grad.shape, [])
-
-        paddle.enable_static()
+            x = paddle.rand([1])
+            x.stop_gradient = False
+            out = paddle.reshape(x, [])
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(x.grad.shape, [1])
+            self.assertEqual(out.shape, [])
+            self.assertEqual(out.grad.shape, [])
 
     def test_static(self):
         main_prog = base.Program()

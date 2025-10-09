@@ -596,7 +596,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                         to[i]->offset(),
                         to[i]);
         delete from[i];
-        return;
+        continue;
       }
 #endif
     }
