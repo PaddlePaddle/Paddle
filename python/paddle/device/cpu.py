@@ -146,3 +146,36 @@ def max_memory_allocated(device: _CPUPlaceLike | None = None) -> int:
         "The API paddle.device.max_memory_allocated is not supported in CPU PaddlePaddle. "
         "Please reinstall PaddlePaddle with GPU or XPU support to call this API."
     )
+
+
+def max_memory_reserved(device: _CPUPlaceLike | None = None) -> int:
+    r"""
+    The API max_memory_reserved is not supported in CPU PaddlePaddle.
+    Please reinstall PaddlePaddle with GPU or XPU support to call this API.
+    """
+    raise ValueError(
+        "The API paddle.device.max_memory_reserved is not supported in CPU PaddlePaddle. "
+        "Please reinstall PaddlePaddle with GPU or XPU support to call this API."
+    )
+
+
+def reset_max_memory_allocated(device: _CPUPlaceLike | None = None) -> None:
+    r"""
+    The API reset_max_memory_allocated is not supported in CPU PaddlePaddle.
+    Please reinstall PaddlePaddle with GPU or XPU support to call this API.
+    """
+    raise ValueError(
+        "The API paddle.device.reset_max_memory_allocated is not supported in CPU PaddlePaddle. "
+        "Please reinstall PaddlePaddle with GPU or XPU support to call this API."
+    )
+
+
+def reset_max_memory_reserved(device: _CPUPlaceLike | None = None) -> None:
+    r"""
+    The API reset_max_memory_reserved is not supported in CPU PaddlePaddle.
+    Please reinstall PaddlePaddle with GPU or XPU support to call this API.
+    """
+    raise ValueError(
+        "The API paddle.device.reset_max_memory_reserved is not supported in CPU PaddlePaddle. "
+        "Please reinstall PaddlePaddle with GPU or XPU support to call this API."
+    )

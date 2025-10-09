@@ -598,7 +598,7 @@ def manual_seed(seed: int) -> None:
 
     Examples:
         .. code-block:: python
-
+            >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
             >>> paddle.device.manual_seed(102)
             >>> # paddle.cuda.manual_seed(102) is equivalent to paddle.device.manual_seed(102)

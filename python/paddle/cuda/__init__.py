@@ -677,6 +677,79 @@ def max_memory_allocated(device: DeviceLike = None) -> int:
     return paddle_device.max_memory_allocated(device)
 
 
+def max_memory_reserved(device: DeviceLike = None) -> int:
+    '''
+    Return the peak size of memory that is held by the allocator of the given device.
+
+    Args:
+        device(paddle.Place|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Return:
+        int: The peak size of memory that is held by the allocator of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> max_memory_reserved_size = paddle.cuda.max_memory_reserved(paddle.CUDAPlace(0))
+            >>> max_memory_reserved_size = paddle.cuda.max_memory_reserved(0)
+            >>> max_memory_reserved_size = paddle.cuda.max_memory_reserved("gpu:0")
+    '''
+    return paddle_device.max_memory_reserved(device)
+
+
+def reset_max_memory_allocated(device: DeviceLike | None = None) -> None:
+    '''
+    Reset the peak size of memory that is allocated to tensor of the given device.
+
+    Args:
+        device(paddle.Place|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.cuda.reset_max_memory_allocated(paddle.CUDAPlace(0))
+            >>> paddle.cuda.reset_max_memory_allocated(0)
+            >>> paddle.cuda.reset_max_memory_allocated("gpu:0")
+    '''
+
+    return paddle_device.reset_max_memory_allocated(device)
+
+
+def reset_max_memory_reserved(device: DeviceLike | None = None) -> None:
+    '''
+    Reset the peak size of memory that is held by the allocator of the given device.
+
+    Args:
+        device(paddle.Place|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> paddle.cuda.reset_max_memory_reserved(paddle.CUDAPlace(0))
+            >>> paddle.cuda.reset_max_memory_reserved(0)
+            >>> paddle.cuda.reset_max_memory_reserved("gpu:0")
+    '''
+    return paddle_device.reset_max_memory_reserved(device)
+
+
 def memory_reserved(device: DeviceLike = None) -> int:
     """
     Return the current device memory managed by the caching allocator in bytes for a given device.

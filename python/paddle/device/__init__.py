@@ -127,6 +127,9 @@ else:
             get_rng_state,
             manual_seed,
             max_memory_allocated,
+            max_memory_reserved,
+            reset_max_memory_allocated,
+            reset_max_memory_reserved,
             set_rng_state,
         )
 
