@@ -79,22 +79,12 @@ void GetBinaryNotations(const std::vector<int64_t>& x_shape,
 }
 
 SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
-  if (x.dist_attr().is_co_shard()) {
-    TensorDistAttr x_dist_attr_src = x.dist_attr();
-    std::vector<std::vector<int64_t>> dims_mapping =
-        x_dist_attr_src.multi_dims_mapping();
-    TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
-    out_dist_attr.set_dims_mapping(dims_mapping);
-    TensorDistAttr x_dst_dist_attr =
-        CopyTensorDistAttrForOutput(x_dist_attr_src);
-    x_dst_dist_attr.set_dims_mapping(dims_mapping);
-    return {{x_dst_dist_attr}, {out_dist_attr}};
-  }
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(x_ndim,
                     x_dims_mapping.size(),
                     common::errors::InvalidArgument(
@@ -110,13 +100,15 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
 
   // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
-  std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
+  const auto& axis_sizes = GetAxesSizes({{x_axes, x_shape}});
+  const auto& mesh_shape = x_dist_attr_src.process_mesh().shape();
+  std::pair<std::string, std::vector<std::vector<int64_t>>> axes_sharding_info(
       x_axes, x_dims_mapping);
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({axes_sharding_info});
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
+      ShardingMergeForTensors({axes_sharding_info}, axis_sizes, mesh_shape);
 
   // step2.2: Infer output dims mapping from merged input dims mapping
-  std::vector<int64_t> out_dims_mapping =
+  std::vector<std::vector<int64_t>> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
@@ -145,7 +137,8 @@ SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(x_ndim,
                     x_dims_mapping.size(),
                     common::errors::InvalidArgument(
@@ -161,13 +154,16 @@ SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
 
   // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
-  std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
+
+  const auto& axis_sizes = GetAxesSizes({{x_axes, x_shape}});
+  const auto& mesh_shape = x_dist_attr_src.process_mesh().shape();
+  std::pair<std::string, std::vector<std::vector<int64_t>>> axes_sharding_info(
       x_axes, x_dims_mapping);
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({axes_sharding_info});
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
+      ShardingMergeForTensors({axes_sharding_info}, axis_sizes, mesh_shape);
 
   // step2.2: Infer output dims mapping from merged input dims mapping
-  std::vector<int64_t> out_dims_mapping =
+  std::vector<std::vector<int64_t>> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
@@ -195,7 +191,8 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
   auto out_shape = common::vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
   TensorDistAttr out_dist_attr_src = out.dist_attr();
-  std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> out_dims_mapping =
+      out_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
@@ -220,13 +217,14 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
 
   // Step2: Sharding Propagation
   // Step2.1: Merge output shardings
-  std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
+  const auto& axis_sizes = GetAxesSizes({{out_axes, out_shape}});
+  const auto& mesh_shape = out_dist_attr_src.process_mesh().shape();
+  std::pair<std::string, std::vector<std::vector<int64_t>>> axes_sharding_info(
       out_axes, out_dims_mapping);
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({axes_sharding_info});
-
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
+      ShardingMergeForTensors({axes_sharding_info}, axis_sizes, mesh_shape);
   // step2.2: Infer input dims mapping from merged input dims mapping
-  std::vector<int64_t> x_dims_mapping =
+  std::vector<std::vector<int64_t>> x_dims_mapping =
       GetDimsMappingForAxes(x_axes, axis_to_dim_map);
   auto x_dist_attr = CopyTensorDistAttrForOutput(out_dist_attr_src);
   x_dist_attr.set_dims_mapping(x_dims_mapping);
@@ -474,13 +472,13 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
 }
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& out_grad) {
   auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
-  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().multi_dims_mapping());
   return {{dist_attr}, {dist_attr}};
 }
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out_grad) {
   auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
-  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().multi_dims_mapping());
   return {{dist_attr, dist_attr}, {dist_attr}};
 }
 
@@ -488,7 +486,7 @@ SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out,
                                        const DistMetaTensor& out_grad) {
   auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
-  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().multi_dims_mapping());
   return {{dist_attr, dist_attr, dist_attr}, {dist_attr}};
 }
 

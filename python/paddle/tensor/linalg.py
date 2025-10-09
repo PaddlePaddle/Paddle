@@ -3428,19 +3428,21 @@ def lu_solve(
         Tensor, the same data type as the `b` and `lu`.
 
     Examples:
-        >>> import paddle
-        >>> import numpy as np
+        .. code-block:: python
 
-        >>> A = paddle.to_tensor([[3, 1], [1, 2]], dtype="float64")
-        >>> b = paddle.to_tensor([[9, 8], [9, 8]], dtype="float64")
-        >>> lu, p = paddle.linalg.lu(A)
-        >>> x = paddle.lu_solve(b, lu, p)
-        >>> paddle.allclose(A @ x, b)
+            >>> import paddle
+            >>> import numpy as np
 
-        >>> print(x)
-        Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
-        [[1.80000000, 1.60000000],
-        [3.60000000, 3.20000000]])
+            >>> A = paddle.to_tensor([[3, 1], [1, 2]], dtype="float64")
+            >>> b = paddle.to_tensor([[9, 8], [9, 8]], dtype="float64")
+            >>> lu, p = paddle.linalg.lu(A)
+            >>> x = paddle.linalg.lu_solve(b, lu, p)
+            >>> paddle.allclose(A @ x, b)
+
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[1.80000000, 1.60000000],
+            [3.60000000, 3.20000000]])
     """
     if b.ndim < 2:
         raise ValueError(

@@ -243,10 +243,11 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
   if (unzipped_tokens.numel() == 0) return;  // 0-size tensor
   void *zipped_probs_topk_ptr =
       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
-  cudaMemsetAsync(zipped_probs_topk_ptr,
-                  0,
-                  sizeof(float) * total_zipped_tokens_num * topk,
-                  dev_ctx.stream());
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(zipped_probs_topk_ptr,
+                      0,
+                      sizeof(float) * int64_t(total_zipped_tokens_num) * topk,
+                      dev_ctx.stream()));
 
   dispatch_tokens_zip<T, Context>(dev_ctx,
                                   unzipped_tokens,

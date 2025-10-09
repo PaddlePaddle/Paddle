@@ -343,7 +343,7 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
 
     auto xpu_context = dev_ctx.x_context();
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      if (!std::is_same<T, ::phi::bfloat16>::value) {
+      if (!std::is_same<T, phi::bfloat16>::value) {
         // use fast_swish if NOT bf16
         int r = xpu::fast_silu(
             xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);

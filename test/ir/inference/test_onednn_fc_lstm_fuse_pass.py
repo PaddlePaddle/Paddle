@@ -116,7 +116,7 @@ class TestOneDNNFCLstmFusePass(PassAutoScanTest):
         yield config, ['fusion_lstm'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=[
                 'onednn_placement_pass',

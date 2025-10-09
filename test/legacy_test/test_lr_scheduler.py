@@ -464,21 +464,6 @@ def polynomial_lr(
         (1 - float(epoch_num) / float(decay_steps)) ** power
     ) + end_lr
 
-    def get_lr(self):
-        if self.last_epoch == 0:
-            return self.base_lr
-        elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
-            return (
-                self.last_lr
-                + (self.base_lr - self.eta_min)
-                * (1 - math.cos(math.pi / self.T_max))
-                / 2
-            )
-
-        return (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / (
-            1 + math.cos(math.pi * (self.last_epoch - 1) / self.T_max)
-        ) * (self.last_lr - self.eta_min) + self.eta_min
-
 
 cosine_annealing_lr_current = None
 

@@ -56,7 +56,7 @@ test_einsum_op
 test_einsum_v2
 test_elementwise_floordiv_op
 test_elementwise_mul_onednn_op
-test_expand_v2_mkldnn_op
+test_expand_v2_onednn_op
 test_exponential_op
 test_fleet_launch_async
 test_fleet_launch_cloud
@@ -125,7 +125,7 @@ test_normal_inplace
 test_ormqr
 test_pad3d_op
 test_partial_concat_op
-test_pool2d_mkldnn_op
+test_pool2d_onednn_op
 test_post_training_quantization_mobilenetv1
 test_post_training_quantization_resnet50
 test_prim_jit
@@ -148,8 +148,8 @@ test_rnn_cells
 test_setitem
 test_sink_decomp
 test_slice
-test_slice_mkldnn_op
-test_softmax_bf16_mkldnn_op
+test_slice_onednn_op
+test_softmax_bf16_onednn_op
 test_sparse_conv_op
 test_sparse_conv_op_static_build
 test_sparse_copy_op
@@ -171,7 +171,7 @@ test_sparse_transpose_op
 test_sparse_unary_op
 test_sparse_utils_op
 test_spectral_op
-test_squeeze2_mkldnn_op
+test_squeeze2_onednn_op
 test_squeeze_excitation_fuse_pass
 test_standalone_executor
 test_standalone_executor_log_deps

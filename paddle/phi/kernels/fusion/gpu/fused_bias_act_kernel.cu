@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_bias_act_kernel.h"
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"

@@ -292,8 +292,7 @@ function(merge_static_libs TARGET_NAME)
       POST_BUILD
       COMMENT "Merge and generate static lib: lib${TARGET_NAME}.a"
       COMMAND ${CMAKE_AR} -M < ${mri_file}
-      COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>" DEPENDS
-              ${mri_file}
+      COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>"
       VERBATIM)
   endif()
 

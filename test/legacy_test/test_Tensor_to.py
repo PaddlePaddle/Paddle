@@ -47,7 +47,7 @@ class TensorToTest(unittest.TestCase):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
         if base.core.is_compiled_with_cuda() or is_custom_device():
-            places.append("gpu:0")
+            places.append(get_device(True))
             places.append(get_device())
         if base.core.is_compiled_with_xpu():
             places.append("xpu:0")
@@ -72,7 +72,7 @@ class TensorToTest(unittest.TestCase):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
         if base.core.is_compiled_with_cuda() or is_custom_device():
-            places.append("gpu:0")
+            places.append(get_device(True))
             places.append(get_device())
         if base.core.is_compiled_with_xpu():
             places.append("xpu:0")

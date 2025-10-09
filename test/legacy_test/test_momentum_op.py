@@ -578,17 +578,15 @@ class TestMomentumV2(unittest.TestCase):
             rms_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1
-            )
             exe = base.Executor(place)
             exe.run(startup)
-            for data in train_reader():
+            uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+            for data in uci_housing:
                 exe.run(
                     main,
                     feed={
-                        'x': data[0][0].astype('float32'),
-                        'y': data[0][1].astype('float32'),
+                        'x': data[0].astype('float32'),
+                        'y': data[1].astype('float32'),
                     },
                     fetch_list=fetch_list,
                 )
@@ -740,17 +738,15 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             momentum_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1
-            )
             exe = base.Executor(place)
             exe.run(startup)
-            for data in train_reader():
+            uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+            for data in uci_housing:
                 exe.run(
                     main,
                     feed={
-                        'x': data[0][0].astype('float32'),
-                        'y': data[0][1].astype('float32'),
+                        'x': data[0].astype('float32'),
+                        'y': data[1].astype('float32'),
                     },
                     fetch_list=fetch_list,
                 )
