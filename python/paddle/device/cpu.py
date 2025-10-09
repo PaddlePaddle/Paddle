@@ -135,3 +135,14 @@ def manual_seed(seed: int) -> None:
     """
     seed = int(seed)
     core.default_cpu_generator().manual_seed(seed)
+
+
+def max_memory_allocated(device: _CPUPlaceLike | None = None) -> int:
+    r"""
+    The API max_memory_allocated is not supported in CPU PaddlePaddle.
+    Please reinstall PaddlePaddle with GPU or XPU support to call this API.
+    """
+    raise ValueError(
+        "The API paddle.device.max_memory_allocated is not supported in CPU PaddlePaddle. "
+        "Please reinstall PaddlePaddle with GPU or XPU support to call this API."
+    )

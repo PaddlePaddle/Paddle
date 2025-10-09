@@ -27,6 +27,25 @@ def is_custom_device():
     return False
 
 
+class TestMaxMemoryAllocatedCPU(unittest.TestCase):
+    def test_max_memory_allocated_raises_on_cpu(self):
+        if (
+            core.is_compiled_with_cuda()
+            or is_custom_device()
+            or core.is_compiled_with_xpu()
+        ):
+            pass
+        else:
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.cuda.max_memory_allocated()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.device.max_memory_allocated()
+
+
 class TestDeviceAPIs(unittest.TestCase):
     """Test paddle.device APIs across different hardware types."""
 
@@ -161,6 +180,23 @@ class TestDeviceAPIs(unittest.TestCase):
         self.assertGreaterEqual(mem3, 0)
 
         mem7 = paddle.device.max_memory_allocated(paddle.CUDAPlace(0))
+        self.assertIsInstance(mem7, int)
+        self.assertGreaterEqual(mem7, 0)
+
+        # Test max_memory_allocated with different input types
+        mem1 = paddle.cuda.max_memory_allocated()
+        self.assertIsInstance(mem1, int)
+        self.assertGreaterEqual(mem1, 0)
+
+        mem2 = paddle.cuda.max_memory_allocated('gpu:0')
+        self.assertIsInstance(mem2, int)
+        self.assertGreaterEqual(mem2, 0)
+
+        mem3 = paddle.cuda.max_memory_allocated(0)
+        self.assertIsInstance(mem3, int)
+        self.assertGreaterEqual(mem3, 0)
+
+        mem7 = paddle.cuda.max_memory_allocated(paddle.CUDAPlace(0))
         self.assertIsInstance(mem7, int)
         self.assertGreaterEqual(mem7, 0)
 

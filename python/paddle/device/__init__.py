@@ -126,6 +126,7 @@ else:
             device_count,
             get_rng_state,
             manual_seed,
+            max_memory_allocated,
             set_rng_state,
         )
 

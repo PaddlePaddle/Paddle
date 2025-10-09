@@ -25,7 +25,7 @@ from paddle.device import (
     _device_to_paddle as _device_to_paddle,
     device,
     is_available as _device_is_available,
-    is_bf16_supported as is_bf16_supported,
+    is_bf16_supported,
     is_current_stream_capturing as _is_current_stream_capturing,
     manual_seed,
     manual_seed_all as device_manual_seed_all,
@@ -647,6 +647,36 @@ def memory_allocated(device: DeviceLike = None) -> int:
     return paddle_device.memory_allocated(device)
 
 
+def max_memory_allocated(device: DeviceLike = None) -> int:
+    '''
+    Return the peak size of memory that is allocated to tensor of the given device.
+
+    Note:
+        The size of memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need.
+        For instance, a float32 0-D Tensor with shape [] will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Return:
+        int: The peak size of memory that is allocated to tensor of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+            >>> max_memory_allocated_size = paddle.cuda.max_memory_allocated(paddle.CUDAPlace(0))
+            >>> max_memory_allocated_size = paddle.cuda.max_memory_allocated(0)
+            >>> max_memory_allocated_size = paddle.cuda.max_memory_allocated("gpu:0")
+    '''
+    return paddle_device.max_memory_allocated(device)
+
+
 def memory_reserved(device: DeviceLike = None) -> int:
     """
     Return the current device memory managed by the caching allocator in bytes for a given device.
@@ -805,4 +835,5 @@ __all__ = [
     "device",
     "is_bf16_supported",
     "manual_seed",
+    "max_memory_allocated",
 ]
