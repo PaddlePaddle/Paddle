@@ -32,11 +32,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PartialSendKernelCPU(const Context& dev_ctx UNUSED,
-                          const DenseTensor& x UNUSED,
-                          int peer UNUSED,
-                          int num UNUSED,
-                          int id UNUSED) {
+void PartialSendKernel(const Context& dev_ctx UNUSED,
+                       const DenseTensor& x UNUSED,
+                       int peer UNUSED,
+                       int num UNUSED,
+                       int id UNUSED) {
   PADDLE_THROW(common::errors::Unavailable(
       "Do not support partial_send for cpu kernel now."));
 }
