@@ -1010,6 +1010,71 @@ void DistTensorTypeParser::operator()(
   }
 }
 
+void CheckInputsNeedConvertDistTensor::operator()(const paddle::Tensor& x) {
+  if (x.defined()) {
+    if (x.is_dist_tensor()) {
+      *mesh =
+          &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                ->process_mesh());
+      have_dist = true;
+    } else if (x.is_dense_tensor()) {
+      have_dense = true;
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const paddle::optional<paddle::Tensor>& x) {
+  if (x) {
+    if (x.get_ptr()->defined()) {
+      if (x.get_ptr()->is_dist_tensor()) {
+        *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      x.get_ptr()->impl())
+                      ->process_mesh());
+        have_dist = true;
+      } else if (x.get_ptr()->is_dense_tensor()) {
+        have_dense = true;
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const std::vector<paddle::Tensor>& x) {
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.defined()) {
+        if (t.is_dist_tensor()) {
+          *mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+          have_dist = true;
+        } else if (t.is_dense_tensor()) {
+          have_dense = true;
+        }
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const paddle::optional<std::vector<paddle::Tensor>>& x) {
+  if (x) {
+    if (x.get_ptr()->empty()) return;
+    for (auto& t : *(x.get_ptr())) {
+      if (!t.defined()) continue;
+      if (t.is_dist_tensor()) {
+        *mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+        have_dist = true;
+      } else if (t.is_dense_tensor()) {
+        have_dense = true;
+      }
+    }
+  }
+}
+
 void DistTensorConverter::convert(paddle::Tensor* x) {
   ConvertToDistTensor(x, mesh);
 }
