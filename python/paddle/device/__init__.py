@@ -73,6 +73,7 @@ if core.is_compiled_with_cuda():
         empty_cache,
         get_device_properties as _get_device_properties,
         get_rng_state,
+        manual_seed,
         max_memory_allocated,
         max_memory_reserved,
         memory_allocated,
@@ -88,6 +89,7 @@ elif core.is_compiled_with_xpu():
         device_count,
         empty_cache,
         get_rng_state,
+        manual_seed,
         max_memory_allocated,
         max_memory_reserved,
         memory_allocated,
@@ -109,6 +111,7 @@ else:
             empty_cache,
             get_device_properties as _get_device_properties,
             get_rng_state,
+            manual_seed,
             max_memory_allocated,
             max_memory_reserved,
             memory_allocated,
@@ -122,6 +125,7 @@ else:
         from .cpu import (
             device_count,
             get_rng_state,
+            manual_seed,
             set_rng_state,
         )
 
@@ -167,6 +171,7 @@ __all__ = [
     'set_rng_state',
     'device',
     'is_bf16_supported',
+    'manual_seed',
 ]
 
 _cudnn_version = None

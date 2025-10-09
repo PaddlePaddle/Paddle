@@ -570,3 +570,32 @@ def set_rng_state(
         core.default_cpu_generator().set_state(new_state)
     else:
         core.default_custom_device_generator(place).set_state(new_state)
+
+
+def manual_seed(seed: int) -> None:
+    r"""Set the seed for generating random numbers for the current Device.
+
+    .. warning::
+        If you are working with a multi-Device model, this function is insufficient
+        to get determinism.  To seed all Devices, use :func:`manual_seed_all`.
+
+    Sets the seed for global default generator, which manages the random number generation.
+
+    Args:
+        seed(int): The random seed to set.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.manual_seed(102)
+            >>> # paddle.cuda.manual_seed(102) is equivalent to paddle.device.manual_seed(102)
+            >>> paddle.cuda.manual_seed(102)
+
+    """
+    seed = int(seed)
+    place = paddle.framework._current_expected_place()
+    core.default_custom_device_generator(place).manual_seed(seed)
