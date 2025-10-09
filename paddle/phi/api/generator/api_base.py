@@ -1524,24 +1524,32 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
 {code_indent}  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
+{code_indent}  VLOG(1) << "xxx ----------------- after  GetDeviceContextByBackend";
 {input_tensors}
+{code_indent}  VLOG(1) << "xxx ----------------- after  input_tensors";
 {output_create}
+{code_indent}  VLOG(1) << "xxx ----------------- after  output_create";
 {pre_save_stride}
+{code_indent}  VLOG(1) << "xxx ----------------- after  pre_save_stride";
 {code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
 {code_indent}  if(phi::RecordEvent::IsEnabled()){{
 {code_indent}    infer_shape_record_event = new phi::RecordEvent(\"{self.api} infer_meta\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
+{code_indent}  VLOG(1) << "xxx ----------------- after  RecordEvent : ";
 {self.gene_infer_meta(kernel_output_names, code_indent)}
 {code_indent}  if(infer_shape_record_event != nullptr){{
 {code_indent}    delete infer_shape_record_event;
 {code_indent}  }}
+{code_indent}  VLOG(1) << "xxx ----------------- after  infer_shape_record_event";
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  phi::RecordEvent* kernel_record_event = nullptr;
 {code_indent}  if(phi::RecordEvent::IsEnabled()){{
 {code_indent}    kernel_record_event = new phi::RecordEvent(\"{kernel_name} kernel launch\", phi::TracerEventType::DygraphKernelLaunch, 1);
 {code_indent}  }}
+{code_indent}  VLOG(1) << "xxx ----------------- after  kernel_fn RecordEvent";
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  VLOG(1) << "xxx ----------------- after  kernel_fn";
 {code_indent}  if (FLAGS_benchmark) {{
 {code_indent}      dev_ctx->Wait();
 {code_indent}      std::cout << \"{kernel_name} kernel run finish.\" << std::endl;
