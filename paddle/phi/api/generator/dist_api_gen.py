@@ -2139,8 +2139,7 @@ class DistForwardAPI(ForwardAPI):
         # 1. doesn't support initialize ops now
         # 2. doesn't support stride/view api
         # 3. only for general forward and backward
-        # 4. doesn't support double grad and triple grad
-        # 5. for multi kernels functions, doesn't support sparse kernel
+        # 4. for multi kernels functions, doesn't support sparse kernel
         if len(self.kernel['func']) > 1:
             kernel_dispatch_code = ''
             dist_branch_code = ""
@@ -2151,8 +2150,6 @@ class DistForwardAPI(ForwardAPI):
                     and '_sr' not in kernel_name
                     and len(self.inputs['names']) > 0
                     and self.check_argument_whether_support_auto_parallel()
-                    and not self.api.endswith("_double_grad")
-                    and not self.api.endswith("_triple_grad")
                 ):
                     dist_branch_code += self.generate_auto_parallel_branch()
             kernel_dispatch_code += dist_branch_code
@@ -2173,8 +2170,6 @@ class DistForwardAPI(ForwardAPI):
             if (
                 len(self.inputs['names']) > 0
                 and self.check_argument_whether_support_auto_parallel()
-                and not self.api.endswith("_double_grad")
-                and not self.api.endswith("_triple_grad")
             ):
                 dist_branch_code = self.generate_auto_parallel_branch()
             return API_IMPL_TEMPLATE.format(
