@@ -27,7 +27,7 @@
 #include <cuda_bf16.h>
 #endif
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
+#if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && CUDA_VERSION >= 7050
 #define PADDLE_CUDA_FP16
 #define CINN_CUDA_FP16
 #include <cuda_fp16.h>

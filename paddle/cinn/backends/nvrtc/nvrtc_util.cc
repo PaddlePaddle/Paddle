@@ -188,10 +188,11 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     auto cinn_headers = FindCINNRuntimeIncludePaths();
     std::vector<std::string> include_paths;
     for (auto& header : cuda_headers) {
-      VLOG(5) << "add include-path: " << header;
+      VLOG(5) << "add cuda include-path: " << header;
       include_paths.push_back("--include-path=" + header);
     }
     for (auto& header : cinn_headers) {
+      VLOG(5) << "add cinn include-path: " << header;
       include_paths.push_back("--include-path=" + header);
     }
     compile_options.insert(
