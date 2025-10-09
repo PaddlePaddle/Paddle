@@ -25,6 +25,7 @@ from paddle.device import (
     _device_to_paddle as _device_to_paddle,
     device as device,
     is_available as _device_is_available,
+    is_bf16_supported as is_bf16_supported,
     is_current_stream_capturing as _is_current_stream_capturing,
     manual_seed_all as device_manual_seed_all,
     stream_guard as _PaddleStreamGuard,
@@ -801,4 +802,5 @@ __all__ = [
     "get_rng_state",
     "set_rng_state",
     "device",
+    "is_bf16_supported",
 ]

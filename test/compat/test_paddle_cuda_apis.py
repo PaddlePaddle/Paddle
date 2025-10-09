@@ -464,5 +464,18 @@ class TestSetDevice(TestCase):
         self.assertIn("Unsupported device type", str(context.exception))
 
 
+class TestBf16Supported(unittest.TestCase):
+    def test_is_bf16_supported(self):
+        self.assertIsInstance(paddle.cuda.is_bf16_supported(), bool)
+        self.assertIsInstance(paddle.device.is_bf16_supported(), bool)
+        self.assertIsInstance(paddle.device.is_bf16_supported(True), bool)
+        self.assertIsInstance(paddle.cuda.is_bf16_supported(False), bool)
+        if not (
+            paddle.cuda.is_available() and paddle.core.is_compiled_with_cuda()
+        ):
+            self.assertFalse(paddle.cuda.is_bf16_supported())
+            self.assertFalse(paddle.device.is_bf16_supported())
+
+
 if __name__ == '__main__':
     unittest.main()

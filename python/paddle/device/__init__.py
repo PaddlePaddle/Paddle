@@ -166,6 +166,7 @@ __all__ = [
     'get_rng_state',
     'set_rng_state',
     'device',
+    'is_bf16_supported',
 ]
 
 _cudnn_version = None
@@ -451,10 +452,14 @@ class device:
 
     Examples:
         .. code-block:: python
-            >>> import
+            >>> import paddle
 
             >>> print(paddle.device.get_device())  # gpu:0
-            >>> with device("cpu"):
+            >>> with paddle.device.device("cpu"):
+            ...     print(paddle.device.get_device())  # cpu
+
+            >>> # paddle.cuda.device is an alias of paddle.device.device
+            >>> with paddle.cuda.device("cpu"):
             ...     print(paddle.device.get_device())  # cpu
             >>> print(paddle.device.get_device())
     """
@@ -474,6 +479,40 @@ class device:
         traceback: types.TracebackType | None,
     ) -> bool | None:
         set_device(self.prev_place_str)
+        return False
+
+
+def is_bf16_supported(including_emulation: bool = True) -> bool:
+    """
+    Return a bool indicating if the current CUDA/ROCm device supports dtype bfloat16.
+
+    Args:
+        including_emulation (bool = True): Whether to treat software-emulated BF16 as supported; if False, only native hardware BF16 support is considered.
+
+    Returns:
+        bool: A boolean value which indicates whether the current CUDA/ROCm device supports dtype bfloat16.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.device.is_bf16_supported()
+            >>> # paddle.cuda.is_bf16_supported() is an alias of paddle.device.is_bf16_supported()
+            >>> paddle.cuda.is_bf16_supported()
+
+    """
+    if not is_available() or not core.is_compiled_with_cuda():
+        return False
+    if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
+        return True
+    if not including_emulation:
+        return False
+    try:
+        paddle.ones(shape=[1], dtype='bfloat16')
+        return True
+    except Exception:
         return False
 
 
