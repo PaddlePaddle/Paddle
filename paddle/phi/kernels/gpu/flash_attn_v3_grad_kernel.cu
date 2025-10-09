@@ -1027,11 +1027,9 @@ void FlashMaskV2GradBaseKernel(
                 ? 64
                 : (is_causal && softcap || is_flashmask > 0.0 ? 96 : 128)
           : (head_size_rounded <= 128
-                 ? (is_flashmask && !is_causal)
-                       ? 64
-                       : (is_causal || is_local || is_flashmask || softcap > 0.0
-                              ? 64
-                              : 80)
+                 ? (is_causal || is_local || softcap > 0.0
+                        ? 64
+                        : 64)
                  : 64);
 
   int const kBlockM_sm80 = head_size_rounded <= 64 ? 128 : 64;
@@ -1041,7 +1039,7 @@ void FlashMaskV2GradBaseKernel(
                  : (arch == 86 || arch == 89 ? kBlockM_sm86 : kBlockM_sm80);
   int const kBlockN_sm90 =
       head_size_rounded <= 64 && (is_flashmask && !is_causal) ? 96
-      : head_size_rounded <= 128 ? (is_flashmask && !is_causal) ? 64 : 128
+      : head_size_rounded <= 128 ? 128
                                  : (head_size_rounded <= 192 ? 96 : 80);
   int const kBlockN_sm80 =
       head_size_rounded <= 128 ? 128 : (head_size_rounded <= 192 ? 80 : 64);
