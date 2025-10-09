@@ -27,7 +27,7 @@ class LeakyReluOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get attrs
-    double alpha = PADDLE_GET_CONST(double, op_desc.GetAttr("alpha"));
+    float alpha = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
     nvinfer1::ILayer* output_layer = nullptr;
 
 #if IS_TRT_VERSION_GE(5100)
