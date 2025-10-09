@@ -3954,6 +3954,7 @@ class ShardDataloader:
         return len(self._dataloader)
 
     def __iter__(self):
+        # Reset iterator state to allow restarting iteration
         self.iter = None
         return self
 
@@ -4113,6 +4114,7 @@ class ShardDataloader:
         return self._get_batch(batch_data)
 
     def __call__(self):
+        # Reset iterator state to allow restarting iteration
         self.iter = None
         return self
 
