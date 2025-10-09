@@ -86,6 +86,7 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
         break;
       }
     }
+
   }
 
   if (!FLAGS_use_stride_compute_kernel || invalid_stride) {
