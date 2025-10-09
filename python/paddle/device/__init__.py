@@ -165,6 +165,7 @@ __all__ = [
     'get_device_capability',
     'get_rng_state',
     'set_rng_state',
+    'device',
 ]
 
 _cudnn_version = None
