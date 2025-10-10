@@ -20,12 +20,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/indexing.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
+#include "paddle/phi/kernels/index_put_grad_kernel.h"
 #include "paddle/phi/kernels/index_put_kernel.h"
 #include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
 
@@ -247,12 +249,110 @@ void IndexPutKernel_V2(const Context& dev_ctx,
       dev_ctx, x_, indices, value_, accumulate, out);
 }
 
+template <typename T, typename Context>
+void IndexPutGradKernel_V2(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const std::vector<const DenseTensor*>& indices,
+                           const DenseTensor& value,
+                           const DenseTensor& out_grad,
+                           bool accumulate,
+                           DenseTensor* x_grad,
+                           DenseTensor* value_grad) {
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    // Fill value_grad with 0.
+    if (value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(value_grad->dims())),
+          0,
+          value_grad);
+    }
+    return;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      value.dtype(),
+      common::errors::InvalidArgument(
+          "The data type of tensor value must be same to the data type "
+          "of tensor x."));
+
+  DenseTensor out_grad_;
+  if (!FLAGS_use_stride_compute_kernel || value_grad) {
+    if (!out_grad.meta().is_contiguous()) {
+      out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad);
+    } else {
+      out_grad_ = out_grad;
+    }
+    if (x_grad) {
+      auto x_grad_meta = x.meta();
+      x_grad_meta.dims = x_grad->dims();
+      x_grad_meta.strides = x_grad_meta.calc_strides(x_grad->dims());
+      x_grad->set_meta(x_grad_meta);
+    }
+
+    if (value_grad) {
+      auto value_grad_meta = value.meta();
+      value_grad_meta.dims = value_grad->dims();
+      value_grad_meta.strides =
+          value_grad_meta.calc_strides(value_grad->dims());
+      value_grad->set_meta(value_grad_meta);
+    }
+
+    phi::IndexPutGradKernel<T, Context>(
+        dev_ctx, x, indices, value, out_grad_, accumulate, x_grad, value_grad);
+    return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (x_grad) {
+    if (accumulate) {
+      auto meta = out_grad.meta();
+      x_grad->set_meta(meta);
+      x_grad->ResetHolder(out_grad.Holder());
+      x_grad->ShareInplaceVersionCounterWith(out_grad);
+    } else {
+      DenseTensor value_zero;
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(value.dims())),
+                            0,
+                            &value_zero);
+      LaunchIndexPutKernel_V2<T, Context>(
+          dev_ctx, out_grad, indices, value_zero, false, x_grad);
+    }
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(index_put,
                    GPU,
                    STRIDED,
                    phi::IndexPutKernel_V2,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
+PD_REGISTER_KERNEL(index_put_grad,
+                   GPU,
+                   STRIDED,
+                   phi::IndexPutGradKernel_V2,
                    float,
                    double,
                    int,
