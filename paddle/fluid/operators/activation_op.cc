@@ -337,7 +337,7 @@ REGISTER_OP_VERSION(softplus).AddCheckpoint(
          " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
          " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
     paddle::framework::compatible::OpVersionDesc()
-        .NewAttr("beta", "The beta value of the new formula", 1.0)
-        .NewAttr("threshold", "The threshold value of the new formula", 20.0));
+        .NewAttr("beta", "The beta value of the new formula", 1.0f)
+        .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
 
 /* ========================================================================== */

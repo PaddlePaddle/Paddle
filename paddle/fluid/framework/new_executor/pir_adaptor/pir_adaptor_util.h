@@ -321,13 +321,14 @@ void BuildPhiContext(pir::Operation* op,
     } else if (attr_type_name == "pir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::FloatAttribute>().data());
     } else if (attr_type_name == "pir::DoubleAttribute") {
-      if (attr_map[t].isa<pir::FloatAttribute>()) {
-        const auto val = attr_map[t].dyn_cast<pir::FloatAttribute>().data();
-        ctx->EmplaceBackAttr(static_cast<double>(val));
-      } else {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<pir::DoubleAttribute>().data());
-      }
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::DoubleAttribute>().data());
+      // if (attr_map[t].isa<pir::FloatAttribute>()) {
+      //   const auto val = attr_map[t].dyn_cast<pir::FloatAttribute>().data();
+      //   ctx->EmplaceBackAttr(static_cast<double>(val));
+      // } else {
+      //   ctx->EmplaceBackAttr(
+      //       attr_map[t].dyn_cast<pir::DoubleAttribute>().data());
+      // }
     } else if (attr_type_name == "pir::BoolAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::BoolAttribute>().data());
     } else if (attr_type_name == "pir::StrAttribute") {
