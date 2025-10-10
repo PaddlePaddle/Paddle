@@ -892,7 +892,7 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
     VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
     if ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get())) {{
       if ({}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->meta().is_contiguous()) {{
-        auto tmp = *(std::dynamic_pointer_cast<phi::DenseTensor>({}.impl()));
+        auto tmp = paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())));
         auto holder = tmp.MoveMemoryHolder();
         std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->ResetHolder(holder);
         std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->set_meta(tmp.meta());

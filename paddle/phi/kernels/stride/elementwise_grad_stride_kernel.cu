@@ -214,12 +214,20 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
+  bool invalid_stride = false;
+  if (IsComplexType(x.dtype())) {
+    invalid_stride = true;
+  }
+  if (IsComplexType(y.dtype())) {
+    invalid_stride = true;
+  }
+
   DenseTensor x_;
   DenseTensor y_;
   DenseTensor dout_;
 
   if (FLAGS_use_stride_compute_kernel && dout.initialized() &&
-      dout.numel() != 0) {
+      dout.numel() != 0 && !invalid_stride) {
     auto broadcast_dim = dout.dims();
     if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr &&
         broadcast_dim == dx->dims() && broadcast_dim == dy->dims()) {
