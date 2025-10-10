@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "custom_raw_op_kernel_op.h"  // NOLINT
-#include <iostream>
+#pragma once
 
-void ReluGPUForward(const phi::DenseTensor &x, phi::DenseTensor *y) {
-  custom_raw_op::ReluForward(x, y);
-}
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+template <typename T, typename Context>
+void CConcatKernel(const Context& dev_ctx,
+                   const DenseTensor& x_in,
+                   int rank,
+                   int nranks,
+                   int ring_id,
+                   bool use_calc_stream,
+                   bool use_model_parallel,
+                   DenseTensor* out);
+}  // namespace phi

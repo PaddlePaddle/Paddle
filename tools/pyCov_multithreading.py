@@ -51,7 +51,6 @@ def getPyCovResult(params):
     path = f'{rootPath}/build/pytest/{ut}'
     os.system(f'cd {path} && coverage combine `ls python-coverage.data.*`')
     os.system(f'cd {path} && pwd && coverage xml -i -o python-coverage.xml')
-    xml_path = f'{path}/python-coverage.xml'
     os.system(f"python2.7 {rootPath}/tools/analysisPyXml.py {rootPath} {ut}")
     endTime = int(time.time())
     print('pyCov Time: %s' % (endTime - startTime))
