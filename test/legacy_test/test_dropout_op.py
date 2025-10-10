@@ -96,7 +96,7 @@ class TestDropoutOp(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=False, check_pir=True)
+        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
