@@ -3939,25 +3939,28 @@ struct SoftPlusOpTranscriber : public OpTranscriber {
       }
       auto legacy_attr_name =
           op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
-      VLOG(10) << "[op: " << op_desc.Type()
-               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      std::cout << "[op: " << op_desc.Type()
+                << "][attr] from: " << legacy_attr_name << " to: " << info.name
+                << std::endl;
       if (op_desc.HasAttr(legacy_attr_name)) {
         paddle::framework::Attribute legacy_attr =
             op_desc.GetAttr(legacy_attr_name);
-        VLOG(10) << "attribute in " << op_desc.Type()
-                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        std::cout << "attribute in " << op_desc.Type()
+                  << " name: " << legacy_attr_name << " " << legacy_attr.index()
+                  << std::endl;
         pir::Attribute new_attr =
             attribute_translator(info.type_name, legacy_attr);
         if (legacy_attr_name == "beta" || legacy_attr_name == "threshold") {
-          new_attr = pir::DoubleAttribute::get(
+          attribute_map[info.name] = pir::DoubleAttribute::get(
               ctx,
               static_cast<double>(
                   new_attr.dyn_cast<pir::FloatAttribute>().data()));
-        }
-        attribute_map[info.name] = new_attr;
-        if (!new_attr) {
-          VLOG(0) << "empty attribute in " << op_desc.Type()
-                  << " name: " << info.name;
+        } else {
+          attribute_map[info.name] = new_attr;
+          if (!new_attr) {
+            VLOG(0) << "empty attribute in " << op_desc.Type()
+                    << " name: " << info.name;
+          }
         }
       } else {
         VLOG(10) << "attribute in " << op_desc.Type()
