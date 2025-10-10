@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_dropout_residual_layer_norm_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -102,7 +103,7 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasDropoutResidualLnKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 #else
@@ -112,7 +113,7 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm,
                    phi::fusion::FusedBiasDropoutResidualLnKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 #endif

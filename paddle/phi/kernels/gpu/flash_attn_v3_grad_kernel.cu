@@ -15,7 +15,6 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -984,7 +983,7 @@ void FlashMaskV2GradBaseKernel(
       head_size % 8,
       0,
       common::errors::InvalidArgument("head_size should be a multiple of 8"));
-  int const max_headdim = get_max_headdim();
+  int const max_headdim = flashmaskv2_get_max_headdim();
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,
@@ -1015,26 +1014,25 @@ void FlashMaskV2GradBaseKernel(
   is_causal = window_size_left < 0 && window_size_right == 0;
 
   int const arch = dprops.major * 10 + dprops.minor;
-  int const head_size_rounded = round_up_headdim(head_size);
+  int const head_size_rounded = flashmaskv2_round_up_headdim(head_size);
   // Very important that these match the kernel configs
   bool const is_local =
       (window_size_left >= 0 || window_size_right >= 0) && !is_causal;
   bool const is_flashmask = startend_row_indices_.is_initialized();
+
   int const kBlockM_sm90 =
       head_size_rounded <= 64
           ? (is_flashmask && !is_causal)
                 ? 64
                 : (is_causal && softcap || is_flashmask > 0.0 ? 96 : 128)
-          : (head_size_rounded <= 96
-                 ? 64
-                 : (head_size_rounded <= 128
-                        ? (is_flashmask && !is_causal)
+          : (head_size_rounded <= 128
+                 ? (is_flashmask && !is_causal)
+                       ? 64
+                       : (is_causal || is_local || is_flashmask || softcap > 0.0
                               ? 64
-                              : (is_causal || is_local || is_flashmask ||
-                                         softcap > 0.0
-                                     ? 64
-                                     : 80)
-                        : 64));
+                              : 80)
+                 : 64);
+
   int const kBlockM_sm80 = head_size_rounded <= 64 ? 128 : 64;
   int const kBlockM_sm86 = head_size_rounded <= 192 ? 64 : 32;
   int const kBlockM =

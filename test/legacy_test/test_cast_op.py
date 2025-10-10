@@ -22,6 +22,7 @@ from op_test import (
     convert_float_to_uint16,
     convert_uint16_to_float,
     get_places,
+    is_custom_device,
 )
 
 import paddle
@@ -124,7 +125,11 @@ class TestCastOpFp32ToFp16(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (
+        (paddle.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+        or paddle.is_compiled_with_rocm()
+    ),
     "BFP16 test runs only on CUDA",
 )
 class TestCastOpBf16ToFp32(OpTest):
@@ -159,7 +164,11 @@ class TestCastOpBf16ToFp32(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (
+        (paddle.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+        or paddle.is_compiled_with_rocm()
+    ),
     "BFP16 test runs only on CUDA",
 )
 class TestCastOpFp32ToBf16(OpTest):

@@ -105,7 +105,7 @@ def sparse_coo_tensor(
         shape(list|tuple|None, optional): The shape of the sparse tensor also represents the shape of
             original dense tensor. If not provided the smallest shape will be inferred to
             hold all elements.
-        dtype(str|np.dtype|None, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
+        dtype(str|paddle.dtype|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data``
             except for python float number which gets dtype from ``get_default_type`` .
@@ -242,7 +242,7 @@ def sparse_csr_tensor(
         shape(list|tuple, optional): The shape of the sparse tensor also represents the shape of
             original dense tensor.
             hold all elements.
-        dtype(str|np.dtype|None, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
+        dtype(str|paddle.dtype|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data``
             except for python float number which gets dtype from ``get_default_type`` .

@@ -274,6 +274,8 @@ class ProcessGroupFlagcx final : public ProcessGroupWithStream {
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
+  std::unordered_map<uintptr_t, flagcxStream_t> stream_map_;
+  std::unordered_map<uintptr_t, flagcxHandlerGroup_t> handler_map_;
 
   uint64_t comm_seq_{0};
   std::unordered_map<std::string, uint64_t> p2p_comm_seq_;
@@ -290,6 +292,7 @@ class ProcessGroupFlagcx final : public ProcessGroupWithStream {
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
       allocation_stream_pairs_;
   flagcxComm_t flagcx_comm_{nullptr};
+  flagcxHandlerGroup_t flagcx_handler_{nullptr};
   std::string store_key_;
 
   // For coalescing tensors processing (eg. batch_isend_irecv)

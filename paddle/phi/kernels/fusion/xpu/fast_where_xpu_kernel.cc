@@ -77,5 +77,5 @@ PD_REGISTER_KERNEL(fast_where_xpu,
                    ALL_LAYOUT,
                    phi::fusion::FastWhereXPUKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int) {}

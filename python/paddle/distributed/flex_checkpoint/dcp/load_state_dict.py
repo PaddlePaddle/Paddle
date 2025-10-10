@@ -25,9 +25,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-from paddle.base.framework import (
-    _current_expected_place,
-)
 from paddle.distributed.communication.group import is_initialized
 from paddle.distributed.fleet.utils.log_util import logger
 
@@ -38,6 +35,7 @@ from .metadata import LocalTensorIndex, LocalTensorMetadata
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
+    make_replicated_sharded_weight,
 )
 from .utils import (
     assign_sharded_slice,
@@ -59,13 +57,32 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ReadItem:
-    local_tensor_index: LocalTensorIndex
-    rank: int
+    """
+    A communication operation for a Tensor between ranks.
+
+    Attributes:
+        tensor_name (str): Name of the tensor.
+        src_global_offset (tuple[int]): Global offset in the source tensor.
+        dst_global_offset (tuple[int] | None): Global offset in the destination tensor.
+        dst_rank (list[int]): Destination ranks.
+        src_rank (int): Source rank.
+        dst_local_offset (tuple[int]): Local offset in the destination tensor partition.
+        src_local_offset (tuple[int]): Local offset in the source tensor partition.
+        slice_shape (tuple[int]): Shape of the slice to transfer.
+        file_name (str): The name of the file from which the source tensor is read on the source rank.
+        dtype (str): Data type of the tensor.
+    """
+
+    tensor_name: str
+    src_global_offset: tuple[int]
+    dst_global_offset: tuple[int] | None
+    dst_rank: list[int]
+    src_rank: int
+    dst_local_offset: tuple[int]
+    src_local_offset: tuple[int]
+    slice_shape: tuple[int]
+    file_name: str
     dtype: str
-    cur_offset: tuple[int]
-    storage_offset: tuple[int]
-    lengths: tuple[int]
-    global_offset: tuple[int, ...] | None
 
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
@@ -393,14 +410,14 @@ def _get_rank_to_read_files(rank_to_files):
 
 def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
     load_info = {}
+    cur_rank = paddle.distributed.get_rank()
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
             if file_name in local_load_files:
                 load_info[local_tensor_index] = (
-                    paddle.distributed.get_rank(),
+                    cur_rank,
                     file_name,
                 )
-
     load_info_list = []
     if use_dist:
         paddle.distributed.all_gather_object(
@@ -466,7 +483,9 @@ def not_overlap(
     return False
 
 
-def get_read_items(metadata_list, state_dict, process_group, use_dist):
+def get_read_items(
+    metadata_list, state_dict, process_group, use_dist, load_infos
+):
     storage_state_dict_metadata = {}
     for metadata in metadata_list:
         for (
@@ -479,7 +498,6 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
 
     read_items = []
     global_shape = None
-    logger.debug(f"storage_state_dict_metadata:{storage_state_dict_metadata}")
     for tensor_key, val in state_dict.items():
         tensor_name = None
         if isinstance(val, paddle.Tensor):
@@ -527,7 +545,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
             global_offset, local_shape, dtype, global_shape
         )
         assert tensor_name in storage_state_dict_metadata, (
-            f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
+            f"tensor_key:{tensor_name} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
         )
 
         for storage_local_tensor_metadata in storage_state_dict_metadata[
@@ -542,16 +560,22 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                 tensor_name,
                 tuple(storage_local_tensor_metadata.global_offset),
             )
+            src_rank, file_name = load_infos[storage_local_tensor_index]
             read_items.append(
                 ReadItem(
-                    storage_local_tensor_index,
-                    paddle.distributed.get_rank(),
-                    storage_local_tensor_metadata.dtype,
-                    tuple(cur_offsets),
-                    tuple(storage_offsets),
-                    tuple(lengths),
-                    global_offset,
-                )
+                    tensor_name=tensor_name,
+                    src_global_offset=tuple(
+                        storage_local_tensor_metadata.global_offset
+                    ),
+                    dst_global_offset=global_offset,
+                    dst_rank=[paddle.distributed.get_rank()],
+                    src_rank=src_rank,
+                    dst_local_offset=tuple(cur_offsets),
+                    src_local_offset=tuple(storage_offsets),
+                    slice_shape=tuple(lengths),
+                    file_name=file_name,
+                    dtype=storage_local_tensor_metadata.dtype,
+                ),
             )
 
     global_read_items = []
@@ -659,15 +683,21 @@ def _handle_aoa(
     for key, val in load_dict.items():
         desc = build_shard_desc(val)
         destination_state_shard_info[key].append(desc)
-    dst_sharded_shard_info_list = []
-    paddle.distributed.all_gather_object(
-        dst_sharded_shard_info_list,
-        dict(destination_state_shard_info),
-        process_group,
-    )
-    destination_state_shard_info = merge_shard_info_list(
-        dst_sharded_shard_info_list
-    )
+
+    use_dist = paddle.distributed.get_world_size() > 1
+
+    if use_dist:
+        dst_sharded_shard_info_list = []
+        paddle.distributed.all_gather_object(
+            dst_sharded_shard_info_list,
+            dict(destination_state_shard_info),
+            process_group,
+        )
+        destination_state_shard_info = merge_shard_info_list(
+            dst_sharded_shard_info_list
+        )
+    else:
+        destination_state_shard_info = dict(destination_state_shard_info)
 
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
@@ -707,6 +737,8 @@ def _handle_aoa(
                 local_tensor = paddle.empty(
                     src_desc.local_shape, dtype=tgt_shard.local_tensor.dtype
                 )
+                if local_tensor.place != tgt_shard.local_tensor.place:
+                    local_tensor = local_tensor.to(tgt_shard.local_tensor.place)
                 new_load_dict[idx] = ShardedWeight(
                     key=src_desc.key,
                     local_tensor=local_tensor,
@@ -815,21 +847,10 @@ def load_state_dict(
                 f"{key} is not replicated!"
             )
             load_dict[key] = val
-        load_state_dict_impl(
-            load_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-        )
-        return
-
-    flat_shards, nonflat_shards = _split_flat_shards(state_dict)
-    load_dict, padding_info = _unflatten_shards(flat_shards)
-    load_dict.update(nonflat_shards)
+    else:
+        flat_shards, nonflat_shards = _split_flat_shards(state_dict)
+        load_dict, padding_info = _unflatten_shards(flat_shards)
+        load_dict.update(nonflat_shards)
 
     if aoa_config is not None:
         _handle_aoa(
@@ -853,7 +874,8 @@ def load_state_dict(
             safetensors,
         )
 
-    _finish_unflatten(flat_shards, padding_info)
+    if use_dist:
+        _finish_unflatten(flat_shards, padding_info)
 
 
 def load_state_dict_impl(
@@ -949,6 +971,8 @@ def load_state_dict_impl(
             rank_to_files, rank_to_local_data_files
         )
 
+        logger.info(f"Rank {cur_rank}: loading files from {local_load_files}.")
+
         source_state_dict = {}
         for file in local_load_files:
             if offload:
@@ -987,168 +1011,290 @@ def load_state_dict_impl(
             tmp[keys[-1]] = flat_state_dict[flat_key]
 
 
+def slice_tensor(tensor, slice_begin, slice_shape):
+    # If slice_shape is empty, the tensor is 0-dimensional (scalar); return it as is.
+    if len(slice_shape) == 0:
+        assert len(tensor.shape) == 0, (
+            "Only 0-dimensional tensor supports empty slice_shape."
+        )
+        return tensor
+    slice_end = [
+        start + length for start, length in zip(slice_begin, slice_shape)
+    ]
+    axes = list(range(tensor.ndim))
+    return paddle.slice(tensor, axes=axes, starts=slice_begin, ends=slice_end)
+
+
+def get_target_tensor(target_state_dict, read_item):
+    use_dist = True if paddle.distributed.get_world_size() > 1 else False
+    if any(isinstance(k, tuple) for k in target_state_dict):
+        key = (read_item.tensor_name, read_item.dst_global_offset)
+    else:
+        key = read_item.tensor_name
+    target_tensor = (
+        target_state_dict[key]._local_value()
+        if use_dist and target_state_dict[key].is_dist()
+        else target_state_dict[key]
+    )
+    return target_tensor
+
+
+def process_local_copy_tasks(
+    local_tasks, cur_rank, source_state_dict, target_state_dict
+):
+    """
+    Complete local copy tasks.
+    """
+    logger.debug(
+        f"Rank {cur_rank} starting local copy for {len(local_tasks)} tasks."
+    )
+    for task in local_tasks:
+        if task.src_rank != cur_rank:
+            continue
+
+        src_tensor = source_state_dict[task.file_name][task.tensor_name]
+        dst_tensor = get_target_tensor(target_state_dict, task)
+
+        src_chunk_tensor = slice_tensor(
+            src_tensor, task.src_local_offset, task.slice_shape
+        )
+
+        dst_chunk_tensor = slice_tensor(
+            dst_tensor, task.dst_local_offset, task.slice_shape
+        )
+        if src_chunk_tensor.place == dst_chunk_tensor.place:
+            paddle.assign(src_chunk_tensor, dst_chunk_tensor)
+            logger.debug(f"Local copy (same device) for task {task}.")
+        else:
+            tmp = (
+                src_chunk_tensor.cuda()
+                if dst_chunk_tensor.place.is_gpu_place()
+                else src_chunk_tensor.cpu()
+            )
+            paddle.assign(tmp, dst_chunk_tensor)
+            del tmp
+            logger.debug(f"Local copy (cross device) for task {task}.")
+
+
+def split_read_items(
+    read_items: list[ReadItem],
+) -> (list[ReadItem], list[ReadItem]):
+    local_read_items = []
+    comm_read_items = []
+
+    for item in read_items:
+        assert len(item.dst_rank) == 1, (
+            "Before read_items is split, each ReadItem describes a communication task between one rank and another."
+        )
+        if item.src_rank == item.dst_rank[0]:
+            local_read_items.append(item)
+        else:
+            comm_read_items.append(item)
+
+    return local_read_items, comm_read_items
+
+
+def schedule_comm_read_items(
+    comm_read_items: list[ReadItem],
+) -> dict[str, list[ReadItem]]:
+    # Step 1: Group by tensor_name
+    tensor_groups = defaultdict(list)
+    for item in comm_read_items:
+        tensor_groups[item.tensor_name].append(item)
+
+    scheduled_items = defaultdict(list)
+
+    # Step 2: For each tensor_name group, further group by all attributes except dst_rank
+    for tensor_name, items in tensor_groups.items():
+        grouped_items = defaultdict(list)
+        for item in items:
+            key = (
+                item.src_global_offset,
+                item.dst_global_offset,
+                item.src_rank,
+                item.dst_local_offset,
+                item.src_local_offset,
+                item.slice_shape,
+                item.file_name,
+                item.dtype,
+            )
+            grouped_items[key].append(item)
+
+        # Step 3: Combine items with the same key into a single ReadItem with all dst_ranks
+        for key, grouped_item in grouped_items.items():
+            combined_dst_rank = []
+            for item in grouped_item:
+                combined_dst_rank.extend(item.dst_rank)
+            combined_dst_rank = list(
+                set(combined_dst_rank)
+            )  # Remove duplicates
+
+            # Create a new ReadItem with combined dst_ranks
+            scheduled_item = ReadItem(
+                tensor_name=tensor_name,
+                src_global_offset=key[0],
+                dst_global_offset=key[1],
+                dst_rank=combined_dst_rank,
+                src_rank=key[2],
+                dst_local_offset=key[3],
+                src_local_offset=key[4],
+                slice_shape=key[5],
+                file_name=key[6],
+                dtype=key[7],
+            )
+            scheduled_items[tensor_name].append(scheduled_item)
+
+    return scheduled_items
+
+
 def _load_state_dict(
-    target_state_dict: (
-        dict[str, Tensor]
-        | dict[str, ShardedWeight]
-        | dict[tuple[str, tuple[int, ...]], ShardedWeight]
-    ),
-    source_state_dict: dict[str : dict[str:Tensor]],
+    target_state_dict: dict,
+    source_state_dict: dict,
     metadata_list,
     process_group=None,
     coordinator_rank=0,
     offload=False,
-) -> None:
-    with paddle.base.dygraph.guard():
-        use_dist = True if paddle.distributed.get_world_size() > 1 else False
+):
+    use_dist = paddle.distributed.get_world_size() > 1
+    cur_rank = paddle.distributed.get_rank() if use_dist else 0
 
-        local_load_files = list(source_state_dict.keys())
-        # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
-        load_infos = get_load_infos(
-            metadata_list, local_load_files, process_group, use_dist
-        )
-        # read_items: [ReadItem(local_tensor_index, rank, cur_offsets, storage_offsets, lengths)],
-        # slice the storage local tensor in (storage_offsets, lengths) to assign the current tensor in (cur_offsets, lengths) in rank.
-        read_items = get_read_items(
-            metadata_list, target_state_dict, process_group, use_dist
-        )
-        copied_target_state_dict = {}
-        for key, value in target_state_dict.items():
-            if isinstance(value, ShardedWeight):
-                copied_target_state_dict[key] = value.local_tensor
-            else:
-                copied_target_state_dict[key] = value
+    if offload:
+        for file_name, state_dict in source_state_dict.items():
+            source_state_dict[file_name] = {
+                k: paddle.to_tensor(v, place=paddle.CPUPlace())
+                if isinstance(v, np.ndarray)
+                else v
+                for k, v in state_dict.items()
+            }
 
-        state_dict_in_cpu = {}
-        idx = 0
-        assert not any(
-            isinstance(k, tuple) for k in copied_target_state_dict
-        ) or all(isinstance(k, tuple) for k in copied_target_state_dict), (
-            "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
+    local_load_files = list(source_state_dict.keys())
+    logger.info("Start generating global ReadItems..")
+    load_infos = get_load_infos(
+        metadata_list, local_load_files, process_group, use_dist
+    )
+
+    read_items = get_read_items(
+        metadata_list, target_state_dict, process_group, use_dist, load_infos
+    )
+
+    local_read_items, comm_read_items = split_read_items(read_items)
+
+    logger.info(f"Generated {len(comm_read_items)} communication tasks.")
+    logger.info(f"Generated {len(local_read_items)} local tasks.")
+
+    processed_target_state_dict = {
+        k: v.local_tensor if isinstance(v, ShardedWeight) else v
+        for k, v in target_state_dict.items()
+    }
+    has_tuple_key = any(
+        isinstance(k, tuple) for k in processed_target_state_dict
+    )
+    has_non_tuple_key = any(
+        not isinstance(k, tuple) for k in processed_target_state_dict
+    )
+    assert not (has_tuple_key and has_non_tuple_key), (
+        "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
+    )
+
+    if not use_dist:
+        assert len(comm_read_items) == 0, (
+            "No communication task is needed when not using distributed training."
         )
-        logger.info(f"readitem num: {len(read_items)}.")
+
+    process_local_copy_tasks(
+        local_read_items,
+        cur_rank,
+        source_state_dict,
+        processed_target_state_dict,
+    )
+
+    logger.info(
+        f"Rank {cur_rank} finished local copy and entered communication phase."
+    )
+
+    if len(comm_read_items) == 0:
+        return
+    paddle.distributed.barrier(process_group)
+
+    tasks = schedule_comm_read_items(comm_read_items)
+
+    logger.info(
+        f"Communication tasks generated successfully, total {len(tasks)} tasks!"
+    )
+
+    for tensor_name, read_items in tasks.items():
+        logger.debug(f"Beginning to send/recv tasks for tensor {tensor_name}.")
+
+        source_tensors = {}
+        destination_tensors = {}
         for item in read_items:
-            if any(isinstance(k, tuple) for k in copied_target_state_dict):
-                key = (item.local_tensor_index.tensor_key, item.global_offset)
+            logger.debug(f"Beginning to send/recv task {item}.")
+            if item.src_rank == cur_rank:
+                src_tensor = source_state_dict[item.file_name][item.tensor_name]
+                if not src_tensor.place.is_gpu_place():
+                    src_tensor = src_tensor.cuda()
+                source_tensors[(tensor_name, item.file_name)] = src_tensor
+            elif cur_rank in item.dst_rank:
+                dst_tensor = get_target_tensor(
+                    processed_target_state_dict, item
+                )
+                if not dst_tensor.place.is_gpu_place():
+                    gpu_dst_tensor = dst_tensor.cuda()
+                    gpu_dst_tensor.need_copy_to_cpu = True
+                    gpu_dst_tensor.target_tensor = dst_tensor
+                    destination_tensors[
+                        (tensor_name, cur_rank, item.dst_global_offset)
+                    ] = gpu_dst_tensor
+                else:
+                    gpu_dst_tensor = dst_tensor
+                    gpu_dst_tensor.target_tensor = dst_tensor
+                    destination_tensors[
+                        (tensor_name, cur_rank, item.dst_global_offset)
+                    ] = dst_tensor
+
+        for item in read_items:
+            logger.debug(f"Beginning to send/recv task {item}.")
+            if item.src_rank == cur_rank:
+                src_tensor = source_tensors[(tensor_name, item.file_name)]
+                src_chunk_tensor = slice_tensor(
+                    src_tensor, item.src_local_offset, item.slice_shape
+                )
+                buffer_tensor = src_chunk_tensor.contiguous()
+            elif cur_rank in item.dst_rank:
+                dst_tensor = destination_tensors[
+                    (tensor_name, cur_rank, item.dst_global_offset)
+                ]
+                dst_chunk_tensor = slice_tensor(
+                    dst_tensor, item.dst_local_offset, item.slice_shape
+                )
+                buffer_tensor = paddle.zeros_like(dst_chunk_tensor)
+                paddle.assign(dst_chunk_tensor, buffer_tensor)
+
             else:
-                key = item.local_tensor_index.tensor_key
-            if key in copied_target_state_dict:
-                if copied_target_state_dict[key].place.is_cpu_place():
-                    state_dict_in_cpu[key] = copied_target_state_dict[key]
-                    copied_target_state_dict[key] = copied_target_state_dict[
-                        key
-                    ].cuda()
-            assert item.local_tensor_index in load_infos, (
-                f"read item:{item}, load_infos:{load_infos}"
+                buffer_tensor = paddle.zeros(item.slice_shape, item.dtype)
+
+            paddle.distributed.broadcast(
+                buffer_tensor, src=item.src_rank, group=process_group
             )
+            if cur_rank in item.dst_rank:
+                paddle.assign(buffer_tensor, dst_chunk_tensor)
+            del buffer_tensor
 
-            logger.debug(f"read item: {item}")
-            src_rank, file_name = load_infos[item.local_tensor_index]
-            storage_chunk_tensor = None
-            cur_chunk_tensor = None
-            # The src rank need to load the state_dict.
-            if src_rank == paddle.distributed.get_rank():
-                assert file_name in source_state_dict
-                storage_state_dict = source_state_dict[file_name]
-                assert item.local_tensor_index.tensor_key in storage_state_dict
-                storage_local_tensor = storage_state_dict[
-                    item.local_tensor_index.tensor_key
-                ]
-
-                if offload:
-                    storage_local_tensor = paddle.to_tensor(
-                        storage_local_tensor, place=_current_expected_place()
-                    )
-
-                storage_offsets = item.storage_offset
-                storage_lengths = item.lengths
-                storage_ends = [
-                    storage_offset + storage_length
-                    for storage_offset, storage_length in zip(
-                        storage_offsets, storage_lengths
-                    )
-                ]
-                # The storage_chunk_tensor and storage_local_tensor share the same memory.
-                if len(storage_lengths) > 0:
-                    storage_chunk_tensor = paddle.slice(
-                        storage_local_tensor,
-                        list(range(len(storage_lengths))),
-                        storage_offsets,
-                        storage_ends,
-                    )
-                else:
-                    storage_chunk_tensor = storage_local_tensor
-            # The read item rank need to be assigned
-            if item.rank == paddle.distributed.get_rank():
-                assert key in copied_target_state_dict, (
-                    f"item:{item}, state_dict:{copied_target_state_dict}"
-                )
-
-                cur_local_tensor = (
-                    copied_target_state_dict[key]._local_value()
-                    if use_dist and copied_target_state_dict[key].is_dist()
-                    else copied_target_state_dict[key]
-                )
-
-                cur_offsets = item.cur_offset
-                cur_lengths = item.lengths
-                cur_ends = [
-                    cur_offset + cur_length
-                    for cur_offset, cur_length in zip(cur_offsets, cur_lengths)
-                ]
-                # The cur_chunk_tensor and cur_local_tensor share the same memory.
-                if len(cur_lengths) > 0:
-                    cur_chunk_tensor = paddle.slice(
-                        cur_local_tensor,
-                        list(range(len(cur_lengths))),
-                        cur_offsets,
-                        cur_ends,
-                    )
-                else:
-                    cur_chunk_tensor = cur_local_tensor
+        for dst_tensor in destination_tensors.values():
+            if hasattr(dst_tensor, 'need_copy_to_cpu'):
+                target_tensor = dst_tensor.target_tensor
+                paddle.assign(dst_tensor.cpu(), target_tensor)
             else:
-                # Why we use item.dtype: In static mode, the state_dict maybe incomplete in pp, the dtype is stored in advance.
-                cur_chunk_tensor = paddle.zeros(
-                    item.lengths,
-                    item.dtype,
-                )
+                target_tensor = dst_tensor.target_tensor
+                paddle.assign(dst_tensor, target_tensor)
+            del dst_tensor
 
-            # Src_rank represents the rank of data read from ckpt, item_rank is the rank of the parameter of the data to be loaded.
-            if src_rank == item.rank:
-                if src_rank == paddle.distributed.get_rank():
-                    # Assign value locally: in the case of src_rank is cur_rank, it means that the ckpt and the parameters to be loaded are both in the current node.
-                    paddle.assign(storage_chunk_tensor, cur_chunk_tensor)
-            else:
-                # Assign value remotely: src_rank broadcasts the ckpt, and the parameters to be loaded receive the data broadcast by src_rank.
-                if src_rank == paddle.distributed.get_rank():
-                    storage_chunk_tensor = storage_chunk_tensor.contiguous()
-                    paddle.distributed.broadcast(
-                        storage_chunk_tensor, src=src_rank, group=process_group
-                    )
-                else:
-                    # The memory hold by cur_chunk_tensor may be non-contiguous, and the broadcast API does not support this type of tensor.
-                    tmp_tensor = paddle.assign(cur_chunk_tensor)
-                    paddle.distributed.broadcast(
-                        tmp_tensor, src=src_rank, group=process_group
-                    )
-                    paddle.assign(tmp_tensor, cur_chunk_tensor)
-            if key in state_dict_in_cpu and (
-                (
-                    idx + 1 < len(read_items)
-                    and read_items[idx + 1].local_tensor_index.tensor_key != key
-                )
-                or idx + 1 == len(read_items)
-            ):
-                paddle.assign(
-                    copied_target_state_dict[key].cpu(), target_state_dict[key]
-                )
-                t = copied_target_state_dict[key]
-                copied_target_state_dict[key] = t.cpu()
-                del t
-            idx = idx + 1
+        del source_tensors
 
-            if use_dist:
-                paddle.distributed.barrier(process_group)
+        if use_dist:
+            paddle.distributed.barrier(process_group)
+
+    logger.info("All communication tasks completed.")
 
 
 def compute_global_shape(local_tensor_indices):
@@ -1292,17 +1438,24 @@ def divide_positions(m, n):
     return positions
 
 
+def endswith(key, prefix_list):
+    for prefix in prefix_list:
+        if key.endswith(prefix):
+            return True
+    return False
+
+
 def merge_sharded_state_dict(
     load_path: str,
     save_path: str,
     prefix: str | None = None,
     safetensor_prefix: str = 'model',
+    skip_postfix_list: list = [],
     process_group: Group | None = None,
     unique_id: int | None = None,
     offload: bool = False,
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
-    file_num: int = 1,
 ) -> None:
     """
     Load the distributed checkpoint and merge it to unsharded state_dict then save as safetensors.
@@ -1314,19 +1467,19 @@ def merge_sharded_state_dict(
             ...
             model-00008-of-00008.safetensors
             model.safetensors.index.json
-        model is safetensor_prefix; 00008 is file_num.
+        model is safetensor_prefix; 00008 is file_num which same ad dist total_size.
 
     Args:
         load_path(str): The directory to load checkpoint files.
         save_path(str): The directory to save merged_checkpoint files.
         prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
         safetensor_prefix(str): The safetensors file prefix e.g., Default 'model'.
+        skip_postfix_list(list(str)): The skip postfix list of state_dict key. e.g., ['moment1_0', 'beta1_pow_acc_0'], Default [].
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
         aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
         safetensors(bool): Whether to use safetensors format. Default is False.
-        file_num(int): The number of files to split the merged_checkpoint into.
     Returns:
         None.
 
@@ -1389,6 +1542,18 @@ def merge_sharded_state_dict(
 
     for metadata in metadata_list:
         state_dict_metadata = metadata.state_dict_metadata
+        origin_size = len(state_dict_metadata)
+        rm_key_list = []
+        for key in state_dict_metadata.keys():
+            if endswith(key, skip_postfix_list):
+                rm_key_list.append(key)
+        for key in rm_key_list:
+            state_dict_metadata.pop(key)
+        cur_size = len(state_dict_metadata)
+        logger.info(
+            f"state_dict_metadata origin_size: {origin_size}, cur_size: {cur_size} skip {origin_size - cur_size}"
+        )
+
         positions = divide_positions(len(state_dict_metadata), file_num)
         rank = paddle.distributed.get_rank()
 
@@ -1404,7 +1569,12 @@ def merge_sharded_state_dict(
                 t = paddle.zeros(global_shape, dtype=local_tensor_meta[0].dtype)
                 if offload:
                     t = t.cpu()
-                local_state_dict_to_save[tensor_key] = t
+                local_state_dict_to_save[tensor_key] = (
+                    make_replicated_sharded_weight(
+                        key=tensor_key,
+                        tensor=t,
+                    )
+                )
             else:
                 continue
 
@@ -1476,6 +1646,13 @@ def merge_sharded_state_dict(
                 key
             )  # Add new key and remove the old one
 
+    for key, value in local_state_dict_to_save.items():
+        if isinstance(value, ShardedWeight):
+            value_to_save = value.local_tensor
+            local_state_dict_to_save[key] = value_to_save
+    logger.info(
+        f"rank :{rank} , SaveSafetensor.local_state_dict_to_save.size :{len(local_state_dict_to_save)}"
+    )
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )

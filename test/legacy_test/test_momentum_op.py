@@ -16,7 +16,14 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_devices, get_places
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    get_devices,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -169,7 +176,8 @@ class TestMomentumOp2(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLarsMomentumOpWithMP(OpTest):
     def setUp(self):
@@ -247,8 +255,8 @@ class TestLarsMomentumOpWithMP(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        if core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, check_dygraph=False)
 
@@ -523,8 +531,8 @@ class TestSparseMomentumOpWithMultiPrecision(unittest.TestCase):
         self.use_nesterov = False
 
     def test_sparse_momentum(self):
-        if core.is_compiled_with_cuda():
-            self.check_with_place(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_with_place(get_device_place())
 
 
 class TestSparseMomentumOpWithMultiPrecision2(
@@ -570,17 +578,15 @@ class TestMomentumV2(unittest.TestCase):
             rms_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1
-            )
             exe = base.Executor(place)
             exe.run(startup)
-            for data in train_reader():
+            uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+            for data in uci_housing:
                 exe.run(
                     main,
                     feed={
-                        'x': data[0][0].astype('float32'),
-                        'y': data[0][1].astype('float32'),
+                        'x': data[0].astype('float32'),
+                        'y': data[1].astype('float32'),
                     },
                     fetch_list=fetch_list,
                 )
@@ -732,17 +738,15 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             momentum_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1
-            )
             exe = base.Executor(place)
             exe.run(startup)
-            for data in train_reader():
+            uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+            for data in uci_housing:
                 exe.run(
                     main,
                     feed={
-                        'x': data[0][0].astype('float32'),
-                        'y': data[0][1].astype('float32'),
+                        'x': data[0].astype('float32'),
+                        'y': data[1].astype('float32'),
                     },
                     fetch_list=fetch_list,
                 )
@@ -969,10 +973,10 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 multi_precision=use_amp,
             )
         for idx in range(5):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)

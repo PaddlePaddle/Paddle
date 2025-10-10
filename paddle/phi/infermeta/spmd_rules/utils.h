@@ -44,7 +44,8 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
 
 std::unordered_map<std::string, int64_t> GetAxesSizes(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        axes_to_size);
+        axes_to_size,
+    bool with_broadcast = false);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A replicated dimension could be merged by any sharded dimension.
@@ -70,6 +71,24 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     const std::vector<int64_t>& mesh_shape,
     const bool merge_conflicts = true);
 
+std::unordered_map<std::string, std::vector<int64_t>>
+ShardingMergeForTensorsMatmul(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts = true);
+
+std::unordered_map<std::string, std::vector<int64_t>>
+ShardingMergeForTensorsElementWise(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts = true);
+
 // Intend to use for generating the TensorDistAttr of output based on the input
 // activation TensorDistAttr. The process_mesh, batch_dim, dynamic_dim are
 // copied with annotated is forced to False, and dims_mapping is leave to be
@@ -84,6 +103,11 @@ TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
 // tensor. Input are
 std::vector<int64_t> ResoluteOutputPartialDimension(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const std::string& tensor_axes);
+
+std::vector<int64_t> ResoluteOutputPartialDimension(
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        axis_to_dim_map,
     const std::string& tensor_axes);
 
 // Construct a DistAttr from the incoming DistAttr corresponding to the
@@ -227,10 +251,14 @@ void DebugInfoForInferSpmd(const std::string& rule_name,
                            const SpmdInfo& infer_result);
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const ArgDistAttr& grad);
+                                       const ArgDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape);
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const TensorDistAttr& grad);
+                                       const TensorDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape);
 
 TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
                                        const TensorDistAttr& grad);

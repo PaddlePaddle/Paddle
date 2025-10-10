@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -27,6 +28,7 @@ class TestNetWithDtype(unittest.TestCase):
         self.init_dtype()
 
     def run_net_on_place(self, place):
+        paddle.enable_static()
         main = base.Program()
         startup = base.Program()
         with base.program_guard(main, startup):
@@ -41,14 +43,12 @@ class TestNetWithDtype(unittest.TestCase):
             sgd_optimizer.minimize(avg_cost)
 
         fetch_list = [avg_cost]
-        train_reader = paddle.batch(
-            paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE
-        )
         feeder = base.DataFeeder(place=place, feed_list=[x, y])
         exe = base.Executor(place)
         exe.run(startup)
-        for data in train_reader():
-            exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+        uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+        for data in uci_housing:
+            exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
             # the main program is runnable, the datatype is fully supported
             break
 
@@ -60,9 +60,9 @@ class TestNetWithDtype(unittest.TestCase):
         self.run_net_on_place(place)
 
     def test_gpu(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         self.run_net_on_place(place)
 
 

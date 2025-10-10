@@ -33,7 +33,7 @@ class TestPartialSumOp(OpTest):
         self.python_api = partial_sum_wrapper
         self.init_kernel_type()
         self.init_para()
-        if self.length is -1:
+        if self.length == -1:
             end_index = self.column
         else:
             end_index = self.start_index + self.length

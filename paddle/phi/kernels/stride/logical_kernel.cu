@@ -77,14 +77,13 @@ void InplaceLogicalKernelStrideImpl(const Context &dev_ctx,
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -131,8 +130,8 @@ void LogicalNotStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -160,25 +159,22 @@ void LogicalNotStrideKernel(const Context &dev_ctx,
 }
 
 }  // namespace phi
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+
 #define REGISTER_LOGICAL_CUDA_STRIDE_KERNEL(logical_and, func_type) \
   PD_REGISTER_KERNEL(logical_and,                                   \
                      GPU,                                           \
                      STRIDED,                                       \
                      phi::Logical##func_type##StrideKernel,         \
                      float,                                         \
-                     phi::dtype::float16,                           \
-                     phi::dtype::bfloat16,                          \
+                     phi::float16,                                  \
+                     phi::bfloat16,                                 \
                      double,                                        \
                      bool,                                          \
                      int64_t,                                       \
                      int,                                           \
                      int8_t,                                        \
-                     phi::dtype::complex<float>,                    \
-                     phi::dtype::complex<double>,                   \
+                     phi::complex64,                                \
+                     phi::complex128,                               \
                      int16_t) {                                     \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);           \
   }

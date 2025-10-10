@@ -583,3 +583,103 @@ TEST(test_torch_library, TestConstRefParameterFix) {
   auto result = impl_it->second.call_with_args(function_args);
   ASSERT_TRUE(result.get_value().is_none());  // void function returns None
 }
+
+TEST(test_torch_library, TestClassRegistryHasClass) {
+  auto qualified_name = "example_library::TestClass";
+  const auto& class_registry = torch::ClassRegistry::instance();
+  bool has_class = class_registry.has_class(qualified_name);
+  ASSERT_TRUE(has_class);
+}
+
+TEST(test_torch_library, TestClassRegistryHasNonExistentClass) {
+  auto qualified_name = "example_library::NonExistentClass";
+  const auto& class_registry = torch::ClassRegistry::instance();
+  bool has_class = class_registry.has_class(qualified_name);
+  ASSERT_FALSE(has_class);
+}
+
+TEST(test_torch_library, TestClassRegistryPrintAllClasses) {
+  const auto& class_registry = torch::ClassRegistry::instance();
+  class_registry.print_all_classes();
+}
+
+TEST(test_torch_library, TestOperatorRegistryHasOperator) {
+  auto qualified_name = "example_library::mymuladd";
+  const auto& operator_registry = torch::OperatorRegistry::instance();
+  bool has_operator = operator_registry.has_operator(qualified_name);
+  ASSERT_TRUE(has_operator);
+}
+
+TEST(test_torch_library, TestOperatorRegistryHasNonExistentOperator) {
+  auto qualified_name = "example_library::non_existent_op";
+  const auto& operator_registry = torch::OperatorRegistry::instance();
+  bool has_operator = operator_registry.has_operator(qualified_name);
+  ASSERT_FALSE(has_operator);
+}
+
+TEST(test_torch_library, TestOperatorRegistryPrintAllOperators) {
+  const auto& operator_registry = torch::OperatorRegistry::instance();
+  operator_registry.print_all_operators();
+}
+
+TEST(test_torch_library, TestLibraryPrintInfo) {
+  torch::Library lib("example_library_test_print_info");
+  lib.print_info();
+}
+
+TEST(test_torch_library, TestIValueNone) {
+  torch::IValue ival = torch::IValue();
+  ASSERT_TRUE(ival.is_none());
+  ASSERT_EQ(ival.to_repr(), "None");
+  ASSERT_EQ(ival.type_string(), "None");
+}
+
+TEST(test_torch_library, TestIValueBool) {
+  torch::IValue ival = true;
+  ASSERT_TRUE(ival.is_bool());
+  ASSERT_EQ(ival.to_repr(), "true");
+  ASSERT_EQ(ival.type_string(), "Bool");
+}
+
+TEST(test_torch_library, TestIValueInt) {
+  torch::IValue ival = 42;
+  ASSERT_TRUE(ival.is_int());
+  ASSERT_EQ(ival.to_repr(), "42");
+  ASSERT_EQ(ival.type_string(), "Int");
+}
+
+TEST(test_torch_library, TestIValueDouble) {
+  torch::IValue ival = 3.14;
+  ASSERT_TRUE(ival.is_double());
+  ASSERT_TRUE(ival.to_repr().find("3.14") != std::string::npos);
+  ASSERT_EQ(ival.type_string(), "Double");
+}
+
+TEST(test_torch_library, TestIValueString) {
+  torch::IValue ival = std::string("hello");
+  ASSERT_TRUE(ival.is_string());
+  ASSERT_EQ(ival.to_repr(), "\"hello\"");
+  ASSERT_EQ(ival.type_string(), "String");
+}
+
+TEST(test_torch_library, TestIValueTensor) {
+  at::Tensor tensor = at::ones({2, 2}, at::kFloat);
+  torch::IValue ival = tensor;
+  ASSERT_TRUE(ival.is_tensor());
+  ASSERT_EQ(ival.type_string(), "Tensor");
+}
+
+TEST(test_torch_library, TestIValueList) {
+  std::vector<torch::IValue> vec = {1, 2, 3};
+  torch::IValue ival = torch::IValue(vec);
+  ASSERT_TRUE(ival.is_list());
+  ASSERT_EQ(ival.to_repr(), "[1, 2, 3]");
+  ASSERT_EQ(ival.type_string(), "List");
+}
+
+TEST(test_torch_library, TestIValueTuple) {
+  torch::IValue ival = torch::IValue(std::make_tuple(1, true, "three"));
+  ASSERT_TRUE(ival.is_tuple());
+  ASSERT_EQ(ival.to_repr(), "(1, true, \"three\")");
+  ASSERT_EQ(ival.type_string(), "Tuple");
+}

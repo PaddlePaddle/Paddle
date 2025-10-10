@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/concat_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/concat_grad_kernel_impl.h"
 
@@ -33,7 +31,7 @@ PD_REGISTER_KERNEL(concat_grad,
                    int16_t,
                    uint8_t,
                    phi::float16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {}

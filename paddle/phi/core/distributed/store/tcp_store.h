@@ -24,9 +24,11 @@
 #endif
 
 #include <array>
+#include <atomic>
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <unordered_map>
 
@@ -42,19 +44,44 @@ enum class Command { ADD, GET, CHECK, SET, WAIT, STOP };
 
 namespace detail {
 
-class MasterDaemon {
+// Abstract base class to handle thread state for TCPStoreMasterDaemon.
+// Contains the windows/unix implementations to signal a
+// shutdown sequence for the thread
+class DaemonThread {
  public:
-  static std::unique_ptr<MasterDaemon> start(SocketType listen_socket,
-                                             int nranks,
-                                             int timeout);
+  DaemonThread() = default;
+  virtual ~DaemonThread() = 0;
+  void start();
+
+ protected:
+  void cleanup();
+  virtual void run() = 0;
+  virtual void stop() = 0;
+  bool is_running();
+
+ private:
+  std::atomic<bool> is_running_{false};
+  std::thread daemonThread_{};
+};
+
+std::unique_ptr<DaemonThread> create_libuv_tcpstore(const std::uint16_t& port);
+
+class MasterDaemon : public DaemonThread {
+ public:
+  static std::unique_ptr<MasterDaemon> createDaemon(SocketType listen_socket,
+                                                    int nranks,
+                                                    int timeout);
   MasterDaemon() = delete;
   explicit MasterDaemon(SocketType listen_socket,
                         int nranks,
                         int stop_check_timeout);
-  ~MasterDaemon();
+  ~MasterDaemon() override;
+
+ protected:
+  void run() override;
+  void stop() override{};
 
  private:
-  void run();
   void ProcessCommands(std::vector<struct pollfd>* p_fds);
   void _do_add(SocketType socket);
   void _do_wait(SocketType socket);
@@ -86,10 +113,11 @@ class TCPServer {
   TCPServer() = default;
   static std::unique_ptr<TCPServer> create(std::uint16_t port,
                                            int nranks,
-                                           int stop_check_timeout);
+                                           int stop_check_timeout,
+                                           bool use_libuv);
 
  private:
-  std::unique_ptr<MasterDaemon> _master_daemon;
+  std::unique_ptr<DaemonThread> _master_daemon;
 };
 
 class TCPClient {

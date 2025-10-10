@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/complex_grad_kernel.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/complex_grad_kernel_impl.h"
 

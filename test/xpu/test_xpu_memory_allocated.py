@@ -53,5 +53,39 @@ class TestMemoryAllocated(unittest.TestCase):
                 memory_allocated()
 
 
+class TestMemoryAllocated_paddle_device(unittest.TestCase):
+    def test_memory_allocated(self, device=None):
+        if core.is_compiled_with_xpu():
+            tensor = paddle.zeros(shape=[256])
+            alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one
+            memory_allocated_size = paddle.device.memory_allocated(device)
+            self.assertEqual(memory_allocated_size, alloc_size)
+
+    def test_memory_allocated_for_all_places(self):
+        if core.is_compiled_with_xpu():
+            xpu_num = paddle.device.device_count()
+            for i in range(xpu_num):
+                paddle.device.set_device("xpu:" + str(i))
+                self.test_memory_allocated(core.XPUPlace(i))
+                self.test_memory_allocated(i)
+                self.test_memory_allocated("xpu:" + str(i))
+
+    def test_memory_allocated_exception(self):
+        if core.is_compiled_with_xpu():
+            wrong_device = [
+                core.CPUPlace(),
+                paddle.device.device_count() + 1,
+                -2,
+                0.5,
+                "xpu1",
+            ]
+            for device in wrong_device:
+                with self.assertRaises(BaseException):  # noqa: B017
+                    paddle.device.memory_allocated(device)
+        else:
+            with self.assertRaises(ValueError):
+                paddle.device.memory_allocated()
+
+
 if __name__ == "__main__":
     unittest.main()

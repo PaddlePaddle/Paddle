@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#  #The file has been adapted from pytorch project
+#  #Licensed under  BSD-style license -
+#  https://github.com/pytorch/pytorch/blob/main/LICENSE
+
 from __future__ import annotations
 
 import types

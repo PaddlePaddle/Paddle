@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/concat_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -129,7 +127,7 @@ PD_REGISTER_KERNEL(concat,
                    int16_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {}

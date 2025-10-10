@@ -22,8 +22,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
@@ -139,35 +137,36 @@ __global__ void UpdateBetaPowKernel(MT beta1,
 }
 
 template <typename T, typename Context>
-void AdamwDenseKernel(const Context& dev_ctx,
-                      const DenseTensor& param,
-                      const DenseTensor& grad,
-                      const DenseTensor& learning_rate,
-                      const DenseTensor& moment1,
-                      const DenseTensor& moment2,
-                      const paddle::optional<DenseTensor>& moment2_max,
-                      const DenseTensor& beta1_pow,
-                      const DenseTensor& beta2_pow,
-                      const paddle::optional<DenseTensor>& master_param,
-                      const paddle::optional<DenseTensor>& skip_update,
-                      const Scalar& beta1,
-                      const Scalar& beta2,
-                      const Scalar& epsilon,
-                      float lr_ratio,
-                      float coeff,
-                      bool with_decay,
-                      bool lazy_mode,
-                      int64_t min_row_size_to_use_multithread,
-                      bool multi_precision,
-                      bool use_global_beta_pow,
-                      bool amsgrad,
-                      DenseTensor* param_out,
-                      DenseTensor* moment1_out,
-                      DenseTensor* moment2_out,
-                      DenseTensor* moment2_max_out,
-                      DenseTensor* beta1_pow_out,
-                      DenseTensor* beta2_pow_out,
-                      DenseTensor* master_param_outs) {
+PADDLE_API void AdamwDenseKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    float lr_ratio,
+    float coeff,
+    bool with_decay,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPDType coeff_ = static_cast<MPDType>(coeff);
   MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);

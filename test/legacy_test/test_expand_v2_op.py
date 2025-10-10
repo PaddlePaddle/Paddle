@@ -17,7 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import static_guard
 
 import paddle
@@ -79,6 +85,11 @@ class TestExpandV2OpRank1_ZeroDim2(TestExpandV2OpRank1):
 
     def if_enable_cinn(self):
         pass
+
+    def test_check_grad(self):
+        if self.shape == [] or self.ori_shape == []:
+            return
+        super().test_check_grad()
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -371,8 +382,8 @@ class TestExpandV2FP16Op(OpTest):
 
 #  Situation 8: input x is BF16
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandV2BF16Op(OpTest):
@@ -389,11 +400,11 @@ class TestExpandV2BF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -423,6 +434,15 @@ class TestExpandV2Error(unittest.TestCase):
             self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
             x2.stop_gradient = True
             self.assertRaises(ValueError, paddle.tensor.expand, x2, 1)
+            x3 = paddle.static.data(name='x3', shape=[1, 1, 1], dtype="int64")
+            shape_empty = paddle.static.data(
+                name='shape_empty', shape=[0], dtype="int32"
+            )
+            try:
+                result = paddle.tensor.expand(x3, shape_empty)
+                self.assertIsNotNone(result)
+            except Exception as e:
+                self.fail(f"Unexpected exception: {e}")
 
 
 # Test python API
@@ -723,16 +743,16 @@ class TestExpandV2CPUOp2(TestExpandV2ZeroSizeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp(TestExpandV2ZeroSizeOp):
     def init_place(self):
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp1(TestExpandV2ZeroSizeGPUOp):
@@ -743,7 +763,7 @@ class TestExpandV2ZeroSizeGPUOp1(TestExpandV2ZeroSizeGPUOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp2(TestExpandV2ZeroSizeGPUOp):

@@ -31,7 +31,7 @@ PD_REGISTER_KERNEL(numel,
                    float,
                    double,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }

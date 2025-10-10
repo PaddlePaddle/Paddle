@@ -120,6 +120,8 @@ void FullLikeKernel(const Context& dev_ctx,
 }
 #ifdef _WIN32
 INSTANTIATE_FULL_KERNEL(float, GPUContext)
+INSTANTIATE_FULL_KERNEL(int, GPUContext)
+INSTANTIATE_FULL_KERNEL(int64_t, GPUContext)
 #endif
 }  // namespace phi
 
@@ -135,8 +137,8 @@ PD_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::float16,
                    phi::bfloat16,
                    phi::complex64,
@@ -154,7 +156,7 @@ PD_REGISTER_KERNEL(full_like,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::float16,
                    phi::bfloat16,
                    phi::complex64,

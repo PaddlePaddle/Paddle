@@ -33,6 +33,20 @@ def parse_plain_list(s: str, sep=",") -> list[str]:
         return [item.strip() for item in s.strip().split(sep)]
 
 
+def IsUsePredefinedOut(position_list: list) -> bool:
+    """
+    Determine whether all forwards are Tensors, including outputs and positions, And the length is between [1,7].
+    The number 7 represents that the multi out mechanism currently supports a maximum of 7 output tensors.
+    """
+    if not position_list:
+        return False
+
+    is_all_tensor = all(pos == "Tensor" for pos in position_list)
+    length = len(position_list)
+
+    return is_all_tensor and 1 <= length <= 7
+
+
 class BaseAPI:
     def __init__(self, api_item_yaml):
         self.api = self.get_api_name(api_item_yaml)
@@ -254,13 +268,19 @@ class BaseAPI:
             not grad_flag
             and not inplace_flag
             and append_predefined_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
             and self.api != "empty_like"
         ):
-            declare_args.append(
-                "paddle::optional<Tensor*> predefined_out = paddle::none"
-            )
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                declare_args.append(
+                    f"paddle::optional<{type_str}> predefined_out = paddle::none"
+                )
 
         return ", ".join(declare_args)
 
@@ -275,11 +295,19 @@ class BaseAPI:
             not grad_flag
             and not inplace_flag
             and append_predefined_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
             and self.api != "empty_like"
         ):
-            define_args.append("paddle::optional<Tensor*> predefined_out")
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                define_args.append(
+                    f"paddle::optional<{type_str}> predefined_out"
+                )
 
         return ", ".join(define_args)
 
@@ -1485,14 +1513,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}      *target_ptr = *{kernel_out}.at(i);
 {code_indent}    }}"""
         return f"""
-{code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+{code_indent}  VLOG(4) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  if (FLAGS_low_precision_op_list) {{
 {code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
 {code_indent}  }}
-{code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
+{code_indent}  VLOG(4) << "{kernel_name} kernel: " << kernel;
 {code_indent}  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
 {code_indent}  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);

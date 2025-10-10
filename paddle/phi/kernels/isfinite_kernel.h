@@ -31,10 +31,10 @@ DEFINE_ISFINITE_KERNEL(IsfiniteKernel)
 #ifdef _WIN32
 #define INSTANTIATE_ISFINITE_KERNEL_Isinf(type, context) \
   template PADDLE_API void IsinfKernel<type, context>(   \
-      const context&, const DenseTensor&, DenseTensor*);
+      const context&, const DenseTensor&, DenseTensor*)
 
 #define INSTANTIATE_ISFINITE_KERNEL_Isnan(type, context) \
   template PADDLE_API void IsnanKernel<type, context>(   \
-      const context&, const DenseTensor&, DenseTensor*);
+      const context&, const DenseTensor&, DenseTensor*)
 #endif
 }  // namespace phi

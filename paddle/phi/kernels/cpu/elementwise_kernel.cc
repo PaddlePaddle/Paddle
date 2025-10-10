@@ -14,8 +14,6 @@
 
 #include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -56,6 +54,24 @@ void FloorDivideKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   int axis = -1;
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  int axis = -1;
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {  // NOLINT
+    funcs::ElementwiseCompute<funcs::TruncDivideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::TruncDivideFunctor<T>(), out, axis);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseTruncDivideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::InverseTruncDivideFunctor<T>(), out, axis);
+  }
 }
 
 template <typename T, typename Context>
@@ -129,9 +145,6 @@ void NextafterKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
-
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::bfloat16;
 
@@ -182,6 +195,19 @@ PD_REGISTER_KERNEL(floor_divide,
                    double,
                    phi::float16,
                    phi::bfloat16) {}
+PD_REGISTER_KERNEL(trunc_divide,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TruncDivideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int32_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    CPU,
                    ALL_LAYOUT,

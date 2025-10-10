@@ -1939,9 +1939,9 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
   phi::DenseTensor workspace;
   workspace.Resize({30 * 1024 * 1024});
   dev_ctx.template Alloc<int8_t>(&workspace);
-  dev_ctx.template Alloc<phi::dtype::float16>(out);
+  dev_ctx.template Alloc<phi::float16>(out);
 
-  CublasLtMatmulFP8<phi::dtype::float16>(dev_ctx, x, y, &workspace, out);
+  CublasLtMatmulFP8<phi::float16>(dev_ctx, x, y, &workspace, out);
 }
 
 template <typename Context>
@@ -1956,7 +1956,7 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
                         bool transpose_y) {}
 
 template <typename Context, typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::float8_e4m3fn>::value>::type
+typename std::enable_if<std::is_same<T, phi::float8_e4m3fn>::value>::type
 DispatchMatmulKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
@@ -1972,8 +1972,7 @@ DispatchMatmulKernel(const Context& dev_ctx,
 #endif
 
 template <typename Context, typename T>
-typename std::enable_if<
-    !std::is_same<T, phi::dtype::float8_e4m3fn>::value>::type
+typename std::enable_if<!std::is_same<T, phi::float8_e4m3fn>::value>::type
 DispatchMatmulKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,

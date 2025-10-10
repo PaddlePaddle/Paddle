@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16, get_device_place, is_custom_device
 from simple_nets import init_data, simple_fc_net
 
 import paddle
@@ -126,36 +126,39 @@ class TestPrintOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
         self.dtype = 'float32'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.x_tensor = base.core.DenseTensor()
         tensor_np = np.random.random(size=(2, 3)).astype(self.dtype)
         self.x_tensor.set(tensor_np, self.place)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestPrintOpGPUFP16(TestPrintOpCPU):
     def setUp(self):
         self.dtype = 'float16'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.x_tensor = base.core.DenseTensor()
         tensor_np = np.random.random(size=(2, 3)).astype(self.dtype)
         self.x_tensor.set(tensor_np, self.place)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestPrintOpGPUBFP16(TestPrintOpCPU):
     def setUp(self):
         self.dtype = 'bfloat16'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.x_tensor = base.core.DenseTensor()
         tensor_np = convert_float_to_uint16(np.random.random(size=(2, 3)))
         self.x_tensor.set(tensor_np, self.place)
@@ -175,7 +178,7 @@ class TestPrintOpBackward(unittest.TestCase):
             print_ops = [op for op in main.blocks[0].ops if op.type == 'print']
             assert len(print_ops) == 2, "The number of print op should be 2"
 
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(startup)
 
@@ -189,7 +192,7 @@ class TestPrintOpBackward(unittest.TestCase):
     #
 
     def test_fw_bw(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_backward(use_cuda=True)
         self.check_backward(use_cuda=False)
 

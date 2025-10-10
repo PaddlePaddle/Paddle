@@ -363,26 +363,21 @@ void DivideGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    add_grad, OneDNN, ONEDNN, phi::AddGradKernel, float, phi::dtype::bfloat16) {
-}
+    add_grad, OneDNN, ONEDNN, phi::AddGradKernel, float, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(subtract_grad,
                    OneDNN,
                    ONEDNN,
                    phi::SubtractGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(multiply_grad,
                    OneDNN,
                    ONEDNN,
                    phi::MultiplyGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(divide_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::DivideGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    divide_grad, OneDNN, ONEDNN, phi::DivideGradKernel, float, phi::bfloat16) {}

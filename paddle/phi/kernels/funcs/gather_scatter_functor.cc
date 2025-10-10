@@ -64,6 +64,17 @@ class ReduceMin {
 };
 static ReduceMin reduce_min;
 
+template <typename T>
+inline T IntFloorDiv(T a, T b) {
+  if ((a < 0) != (b < 0)) {
+    // compute div and mod at the same time can be optimized by compilers
+    const auto quot = a / b;
+    const auto rem = a % b;
+    return rem ? quot - 1 : quot;
+  }
+  return a / b;
+}
+
 /**
  * A divmod free solution for faster offset mapping. This class only do the
  * necessary multiplication, therefore the computation and memory access should
@@ -336,14 +347,24 @@ struct cpu_gather_scatter_functor {
       if (include_self) {
         for (int i = 0; i < self_size; i++) {
           if (!nums_of_elements[i]) continue;
-          self_data[i] =
-              self_data[i] / static_cast<tensor_t>(nums_of_elements[i] + 1);
+          if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
+            self_data[i] = IntFloorDiv(
+                self_data[i], static_cast<tensor_t>(nums_of_elements[i] + 1));
+          } else {
+            self_data[i] =
+                self_data[i] / static_cast<tensor_t>(nums_of_elements[i] + 1);
+          }
         }
       } else {
         for (int i = 0; i < self_size; i++) {
           if (!nums_of_elements[i]) continue;
-          self_data[i] =
-              self_data[i] / static_cast<tensor_t>(nums_of_elements[i]);
+          if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
+            self_data[i] = IntFloorDiv(
+                self_data[i], static_cast<tensor_t>(nums_of_elements[i]));
+          } else {
+            self_data[i] =
+                self_data[i] / static_cast<tensor_t>(nums_of_elements[i]);
+          }
         }
       }
     }
