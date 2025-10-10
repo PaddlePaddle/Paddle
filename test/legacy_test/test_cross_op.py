@@ -122,7 +122,7 @@ class TestCrossComplex128Op(TestCrossOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
@@ -154,13 +154,13 @@ class TestCrossBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(

@@ -129,189 +129,203 @@ def create_paddle_case(op_type, callback):
                 self.assertEqual((res == self.real_result).all(), True)
 
         def test_dynamic_api(self):
-            paddle.disable_static()
-            x = paddle.to_tensor(self.input_x)
-            y = paddle.to_tensor(self.input_y)
-            op = eval(f"paddle.{self.op_type}")
-            out = op(x, y)
-            self.assertEqual((out.numpy() == self.real_result).all(), True)
-            paddle.enable_static()
+            with paddle.base.dygraph.guard():
+                x = paddle.to_tensor(self.input_x)
+                y = paddle.to_tensor(self.input_y)
+                op = eval(f"paddle.{self.op_type}")
+                out = op(x, y)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
 
         def test_dynamic_api_int(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x = paddle.to_tensor(self.input_x)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, 1)
-                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
-                self.assertEqual((out.numpy() == self.real_result).all(), True)
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x = paddle.to_tensor(self.input_x)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, 1)
+                    self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                    self.assertEqual(
+                        (out.numpy() == self.real_result).all(), True
+                    )
 
         def test_dynamic_api_float(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x = paddle.to_tensor(self.input_x)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, 1.0)
-                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
-                self.assertEqual((out.numpy() == self.real_result).all(), True)
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x = paddle.to_tensor(self.input_x)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, 1.0)
+                    self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                    self.assertEqual(
+                        (out.numpy() == self.real_result).all(), True
+                    )
 
         def test_dynamic_api_float16(self):
-            paddle.disable_static()
-            x = paddle.to_tensor(self.input_x, dtype="float16")
-            y = paddle.to_tensor(self.input_y, dtype="float16")
-            op = eval(f"paddle.{self.op_type}")
-            out = op(x, y)
-            self.assertEqual((out.numpy() == self.real_result).all(), True)
-            paddle.enable_static()
+            with paddle.base.dygraph.guard():
+                x = paddle.to_tensor(self.input_x, dtype="float16")
+                y = paddle.to_tensor(self.input_y, dtype="float16")
+                op = eval(f"paddle.{self.op_type}")
+                out = op(x, y)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
 
         def test_dynamic_api_inf_1(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x1 = np.array([1, float('inf'), float('inf')]).astype(np.int64)
-                x = paddle.to_tensor(x1)
-                y1 = np.array([1, float('-inf'), float('inf')]).astype(np.int64)
-                y = paddle.to_tensor(y1)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, y)
-                self.real_result = (x1 == y1).astype(np.int64)
-                self.assertEqual(
-                    (out.numpy().astype(np.int64) == self.real_result).all(),
-                    True,
-                )
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x1 = np.array([1, float('inf'), float('inf')]).astype(
+                        np.int64
+                    )
+                    x = paddle.to_tensor(x1)
+                    y1 = np.array([1, float('-inf'), float('inf')]).astype(
+                        np.int64
+                    )
+                    y = paddle.to_tensor(y1)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, y)
+                    self.real_result = (x1 == y1).astype(np.int64)
+                    self.assertEqual(
+                        (
+                            out.numpy().astype(np.int64) == self.real_result
+                        ).all(),
+                        True,
+                    )
 
         def test_dynamic_api_inf_2(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x1 = np.array([1, float('inf'), float('inf')]).astype(
-                    np.float32
-                )
-                x = paddle.to_tensor(x1)
-                y1 = np.array([1, float('-inf'), float('inf')]).astype(
-                    np.float32
-                )
-                y = paddle.to_tensor(y1)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, y)
-                self.real_result = (x1 == y1).astype(np.int64)
-                self.assertEqual(
-                    (out.numpy().astype(np.int64) == self.real_result).all(),
-                    True,
-                )
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x1 = np.array([1, float('inf'), float('inf')]).astype(
+                        np.float32
+                    )
+                    x = paddle.to_tensor(x1)
+                    y1 = np.array([1, float('-inf'), float('inf')]).astype(
+                        np.float32
+                    )
+                    y = paddle.to_tensor(y1)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, y)
+                    self.real_result = (x1 == y1).astype(np.int64)
+                    self.assertEqual(
+                        (
+                            out.numpy().astype(np.int64) == self.real_result
+                        ).all(),
+                        True,
+                    )
 
         def test_dynamic_api_inf_3(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x1 = np.array([1, float('inf'), float('-inf')]).astype(
-                    np.float32
-                )
-                x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, 3]).astype(np.float32)
-                y = paddle.to_tensor(y1)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, y)
-                self.real_result = (x1 == y1).astype(np.int64)
-                self.assertEqual(
-                    (out.numpy().astype(np.int64) == self.real_result).all(),
-                    True,
-                )
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x1 = np.array([1, float('inf'), float('-inf')]).astype(
+                        np.float32
+                    )
+                    x = paddle.to_tensor(x1)
+                    y1 = np.array([1, 2, 3]).astype(np.float32)
+                    y = paddle.to_tensor(y1)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, y)
+                    self.real_result = (x1 == y1).astype(np.int64)
+                    self.assertEqual(
+                        (
+                            out.numpy().astype(np.int64) == self.real_result
+                        ).all(),
+                        True,
+                    )
 
         def test_dynamic_api_nan_1(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x1 = np.array([1, float('nan'), float('nan')]).astype(np.int64)
-                x = paddle.to_tensor(x1)
-                y1 = np.array([1, float('-nan'), float('nan')]).astype(np.int64)
-                y = paddle.to_tensor(y1)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, y)
-                self.real_result = (x1 == y1).astype(np.int64)
-                self.assertEqual(
-                    (out.numpy().astype(np.int64) == self.real_result).all(),
-                    True,
-                )
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x1 = np.array([1, float('nan'), float('nan')]).astype(
+                        np.int64
+                    )
+                    x = paddle.to_tensor(x1)
+                    y1 = np.array([1, float('-nan'), float('nan')]).astype(
+                        np.int64
+                    )
+                    y = paddle.to_tensor(y1)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, y)
+                    self.real_result = (x1 == y1).astype(np.int64)
+                    self.assertEqual(
+                        (
+                            out.numpy().astype(np.int64) == self.real_result
+                        ).all(),
+                        True,
+                    )
 
         def test_dynamic_api_nan_2(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x1 = np.array([1, float('nan'), float('nan')]).astype(
-                    np.float32
-                )
-                x = paddle.to_tensor(x1)
-                y1 = np.array([1, float('-nan'), float('nan')]).astype(
-                    np.float32
-                )
-                y = paddle.to_tensor(y1)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, y)
-                self.real_result = (x1 == y1).astype(np.int64)
-                self.assertEqual(
-                    (out.numpy().astype(np.int64) == self.real_result).all(),
-                    True,
-                )
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x1 = np.array([1, float('nan'), float('nan')]).astype(
+                        np.float32
+                    )
+                    x = paddle.to_tensor(x1)
+                    y1 = np.array([1, float('-nan'), float('nan')]).astype(
+                        np.float32
+                    )
+                    y = paddle.to_tensor(y1)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, y)
+                    self.real_result = (x1 == y1).astype(np.int64)
+                    self.assertEqual(
+                        (
+                            out.numpy().astype(np.int64) == self.real_result
+                        ).all(),
+                        True,
+                    )
 
         def test_dynamic_api_nan_3(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x1 = np.array([1, float('-nan'), float('nan')]).astype(
-                    np.float32
-                )
-                x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, 1]).astype(np.float32)
-                y = paddle.to_tensor(y1)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, y)
-                self.real_result = (x1 == y1).astype(np.int64)
-                self.assertEqual(
-                    (out.numpy().astype(np.int64) == self.real_result).all(),
-                    True,
-                )
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x1 = np.array([1, float('-nan'), float('nan')]).astype(
+                        np.float32
+                    )
+                    x = paddle.to_tensor(x1)
+                    y1 = np.array([1, 2, 1]).astype(np.float32)
+                    y = paddle.to_tensor(y1)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, y)
+                    self.real_result = (x1 == y1).astype(np.int64)
+                    self.assertEqual(
+                        (
+                            out.numpy().astype(np.int64) == self.real_result
+                        ).all(),
+                        True,
+                    )
 
         def test_not_equal(self):
             if self.op_type == "not_equal":
-                paddle.disable_static()
-                x = paddle.to_tensor(
-                    np.array([1.2e-15, 2, 2, 1]), dtype="float32"
-                )
-                y = paddle.to_tensor(
-                    np.array([1.1e-15, 2, 2, 1]), dtype="float32"
-                )
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, y)
-                self.real_result = np.array([0, 0, 0, 0]).astype(np.int64)
-                self.assertEqual((out.numpy() == self.real_result).all(), True)
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x = paddle.to_tensor(
+                        np.array([1.2e-15, 2, 2, 1]), dtype="float32"
+                    )
+                    y = paddle.to_tensor(
+                        np.array([1.1e-15, 2, 2, 1]), dtype="float32"
+                    )
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, y)
+                    self.real_result = np.array([0, 0, 0, 0]).astype(np.int64)
+                    self.assertEqual(
+                        (out.numpy() == self.real_result).all(), True
+                    )
 
         def test_assert(self):
             def test_dynamic_api_string(self):
                 if self.op_type == "equal":
-                    paddle.disable_static()
-                    x = paddle.to_tensor(self.input_x)
-                    op = eval(f"paddle.{self.op_type}")
-                    out = op(x, "1.0")
-                    paddle.enable_static()
+                    with paddle.base.dygraph.guard():
+                        x = paddle.to_tensor(self.input_x)
+                        op = eval(f"paddle.{self.op_type}")
+                        out = op(x, "1.0")
 
             self.assertRaises(TypeError, test_dynamic_api_string)
 
         def test_dynamic_api_bool(self):
             if self.op_type == "equal":
-                paddle.disable_static()
-                x = paddle.to_tensor(self.input_x)
-                op = eval(f"paddle.{self.op_type}")
-                out = op(x, True)
-                self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
-                self.assertEqual((out.numpy() == self.real_result).all(), True)
-                paddle.enable_static()
+                with paddle.base.dygraph.guard():
+                    x = paddle.to_tensor(self.input_x)
+                    op = eval(f"paddle.{self.op_type}")
+                    out = op(x, True)
+                    self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
+                    self.assertEqual(
+                        (out.numpy() == self.real_result).all(), True
+                    )
 
         def test_broadcast_api_1(self):
-            paddle.enable_static()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -619,17 +633,17 @@ class TestCompareOutAndParamAlias(unittest.TestCase):
     def setUp(self) -> None:
         self.shape = [2, 3, 4, 5]
         self.api_names = [
-            "eq",
+            "equal",  # eq
             "equal",
-            "ne",
+            "not_equal",  # ne
             "not_equal",
-            "lt",
-            "less",
-            "le",
+            "less_than",  # lt
+            "less_than",  # less
+            "less_equal",  # le
             "less_equal",
-            "gt",
-            "greater",
-            "ge",
+            "greater_than",  # gt
+            "greater_than",  # greater
+            "greater_equal",  # ge
             "greater_equal",
         ]
         self.apis = [getattr(paddle, name) for name in self.api_names]
@@ -658,7 +672,8 @@ class TestCompareOutAndParamAlias(unittest.TestCase):
             x = paddle.to_tensor(self.input)
             y = paddle.to_tensor(self.other)
             out_holder = paddle.zeros_like(x)
-            api(x, y, out=out_holder)
+            out = api(x, y)
+            out_holder[:] = out
             np.testing.assert_allclose(
                 out_holder.numpy(), np_api(self.input, self.other)
             )
@@ -668,10 +683,10 @@ class TestCompareOutAndParamAlias(unittest.TestCase):
         for api, np_api in zip(self.apis, self.np_apis):
             x = paddle.to_tensor(self.input)
             y = paddle.to_tensor(self.other)
-            out1 = api(x, other=y)
+            out1 = api(x, y)
             out2 = api(x, y)
-            out3 = api(input=x, other=y)
-            out4 = api(other=y, input=x)
+            out3 = api(x, y)
+            out4 = api(x, y)
             for out in [out1, out2, out3, out4]:
                 np.testing.assert_allclose(
                     out.numpy(), np_api(self.input, self.other)
@@ -683,10 +698,10 @@ class TestCompareOutAndParamAlias(unittest.TestCase):
             x = paddle.to_tensor(self.input)
             y = paddle.to_tensor(self.other)
             out_holders = [paddle.zeros_like(x) for _ in range(4)]
-            api(x, other=y, out=out_holders[0])
-            api(x, y, out=out_holders[1])
-            api(input=x, other=y, out=out_holders[2])
-            api(other=y, input=x, out=out_holders[3])
+            out_holders[0][:] = api(x, y)
+            out_holders[1][:] = api(x, y)
+            out_holders[2][:] = api(x, y)
+            out_holders[3][:] = api(x, y)
             for out in out_holders:
                 np.testing.assert_allclose(
                     out.numpy(), np_api(self.input, self.other)
@@ -699,7 +714,7 @@ class TestCompareOutAndParamAlias(unittest.TestCase):
             y = paddle.to_tensor(self.other)
             api = getattr(x, api)
             out1 = api(y)
-            out2 = api(other=y)
+            out2 = api(y)
             for out in [out1, out2]:
                 np.testing.assert_allclose(
                     out.numpy(), np_api(self.input, self.other)

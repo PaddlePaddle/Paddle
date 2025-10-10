@@ -216,6 +216,98 @@ strided_op_list = {
     "unsqueeze",
     "view_shape",
     "view_dtype",
+}
+
+strided_compute_op_list = {
+    # elementwise
+    "add",
+    "subtract",
+    "multiply",
+    "divide",
+    "copysign",
+    "remainder",
+    "maximum",
+    "minimum",
+    "floor_divide",
+    "heaviside",
+    "fmax",
+    "fmin",
+    # reduce
+    "amax",
+    "amin",
+    "max",
+    "min",
+    "prod",
+    "any",
+    "all",
+    "sum",
+    "mean",
+    # logical
+    "bitwise_and",
+    "bitwise_or",
+    "bitwise_xor",
+    "bitwise_left_shift",
+    "bitwise_right_shift",
+    "bitwise_not",
+    # compare
+    "less_than",
+    "less_equal",
+    "greater_than",
+    "greater_equal",
+    "equal",
+    "not_equal",
+    # bitwise
+    "bitwise_and",
+    "bitwise_or",
+    "bitwise_xor",
+    "bitwise_left_shift",
+    "bitwise_right_shift",
+    "bitwise_not",
+    # activation
+    "abs",
+    "cos",
+    "sin",
+    "tan",
+    "acos",
+    "asin",
+    "atan",
+    "sinh",
+    "cosh",
+    "asinh",
+    "acosh",
+    "atanh",
+    "tanh",
+    "hardtanh",
+    "leaky_relu",
+    "mish",
+    "silu",
+    "softplus",
+    "softsign",
+    "sigmoid",
+    "logsigmoid",
+    "hard_shrink",
+    "softshrink",
+    "celu",
+    "elu",
+    "hardsigmoid",
+    "selu",
+    "hardwish",
+    "reciprocal",
+    "sqrt",
+    "rsqrt",
+    "square",
+    "log",
+    "log2",
+    "log10",
+    "log1p",
+    "exp",
+    "expm1",
+    "round",
+    "floor",
+    "ceil"
+    # indexing
+    "index_put",
+    # others
     "matmul",
 }
 
@@ -234,7 +326,6 @@ strided_op_need_flags_check_list = {
     "unbind_",
     "view_shape_",
     "view_dtype_",
-    "matmul_",
 }
 
 
@@ -651,6 +742,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(check_cuda_error);
 static std::string separator = "==========================";
 {}
@@ -1352,6 +1444,20 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         if (forward_api_name in strided_op_list) or for_backward:
             self.inputs_call_list_tmp = None
             self.node_creation_pre_contiguous_str = ""
+        elif forward_api_name in strided_compute_op_list:
+            self.inputs_call_list_tmp = self.inputs_call_list
+            pre_contiguous_list = []
+            for name, (ttype, pos) in forward_inputs_position_map.items():
+                if name in need_pre_contiguous_set:
+                    pre_contiguous_list.append(
+                        f"{indent}const auto& {name}_tmp = (!FLAGS_use_stride_compute_kernel && require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
+                    )
+                    self.inputs_call_list_tmp[pos] = (
+                        self.inputs_call_list_tmp[pos] + '_tmp'
+                    )
+            self.node_creation_pre_contiguous_str = "\n".join(
+                pre_contiguous_list
+            )
         else:
             self.inputs_call_list_tmp = self.inputs_call_list
             pre_contiguous_list = []
