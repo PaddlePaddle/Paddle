@@ -55,6 +55,8 @@ class MacroContext:
             "layers.1.mlp.gate_up_fused_proj.bias",
             "fused_qkv_old_test_name",
             "layers.shared.qkv_proj.weight",
+            "layers.5.experts.0.up_gate_proj.weight",
+            "layers.5.experts.1.up_gate_proj.weight",
         }
 
         self.dst_keys = {
@@ -89,6 +91,10 @@ class MacroContext:
             "layers.1.shared.q_proj.weight",
             "layers.1.shared.k_proj.weight",
             "layers.1.shared.v_proj.weight",
+            "layers.5.experts.0.gate_proj.weight",
+            "layers.5.experts.1.gate_proj.weight",
+            "layers.5.experts.0.up_proj.weight",
+            "layers.5.experts.1.up_proj.weight",
         }
 
         # Build _ShardInfo mapping for AOAShardInfoContext based on existing keys
@@ -126,10 +132,16 @@ class MacroContext:
         self,
         name_with_layer_id: str,
         layer_id_macro_tag: str,
-        left_var_check_layer_id: bool,
     ) -> int:
         return self._ctx.get_num_hidden_layers(
-            name_with_layer_id, layer_id_macro_tag, left_var_check_layer_id
+            name_with_layer_id, layer_id_macro_tag
+        )
+
+    def get_num_experts(
+        self, name_with_expert_id: str, expert_id_macro_tag: str
+    ) -> set:
+        return self._ctx.get_num_experts(
+            name_with_expert_id, expert_id_macro_tag
         )
 
     def get_src_state_shard_num(self, src_state_key: str) -> int:
@@ -191,23 +203,6 @@ class TestLayerIdMacro(TestMacro):
         return "layer_id_macro"
 
     def source_code(self):
-        return "layers.$LAYER_ID.experts.0.weight -> test_layer_id, axis = 1"
-
-    def expected(self):
-        return [
-            'layers.0.experts.0.weight->test_layer_id.layer.0,axis=1\n',
-            'layers.1.experts.0.weight->test_layer_id.layer.1,axis=1\n',
-        ]
-
-    def test(self):
-        self.start_macro_test()
-
-
-class TestLayerIdMacro2(TestMacro):
-    def macro_name(self):
-        return "layer_id_macro"
-
-    def source_code(self):
         return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight\n"
 
     def expected(self):
@@ -219,17 +214,17 @@ class TestLayerIdMacro2(TestMacro):
         self.start_macro_test()
 
 
-class TestLayerIdMacro3(TestMacro):
+class Test_expert_id_Macro(TestMacro):
     def macro_name(self):
-        return "layer_id_macro"
+        return "expert_id_macro"
 
     def source_code(self):
-        return "layers.shared.qkv_proj.weight->layers.$LAYER_ID.shared.q_proj.weight,layer.$LAYER_ID.shared.k_proj.weight,layer.$LAYER_ID.shared.v_proj.weight\n"
+        return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight"
 
     def expected(self):
         return [
-            'layers.shared.qkv_proj.weight.layer.0->layers.0.shared.q_proj.weight,layer.0.shared.k_proj.weight,layer.0.shared.v_proj.weight\n',
-            'layers.shared.qkv_proj.weight.layer.1->layers.1.shared.q_proj.weight,layer.1.shared.k_proj.weight,layer.1.shared.v_proj.weight\n',
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight\n',
         ]
 
     def test(self):
@@ -422,12 +417,12 @@ class TestFusedQkvOldMacro5(TestMacro):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "layers.1.self_attn.qkv_proj.bias -> layers.1.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
+        return "layers.1.self_attn.qkv_proj.bias -> layers.1.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4, axis = 0"
 
     def expected(self):
         return [
-            'layers.1.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=1',
-            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.bias, axis=1',
+            'layers.1.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=0',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.bias, axis=0',
         ]
 
     def test(self):
@@ -439,12 +434,12 @@ class TestFusedFfnMacro4(TestMacro):
         return "fused_ffn_macro"
 
     def source_code(self):
-        return "layers.1.mlp.gate_up_fused_proj.bias -> layers.1.mlp.gate_up_fused_proj.bias, fused_ffn"
+        return "layers.1.mlp.gate_up_fused_proj.bias -> layers.1.mlp.gate_up_fused_proj.bias, fused_ffn, axis = 0"
 
     def expected(self):
         return [
-            'layers.1.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=1',
-            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.bias, axis=1',
+            'layers.1.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=0',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.bias, axis=0',
         ]
 
     def test(self):
