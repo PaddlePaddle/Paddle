@@ -84,11 +84,17 @@ def generate_comment_body(doc_diff, pr_id):
     if not output_lines:
         return ""
 
-    comment_body = """> [!NOTE]
-> Please wait for the **Doc-Preview** workflow to complete before clicking the preview links below, otherwise you may see outdated content.
-
-<details>
+    comment_body = """<details>
 <summary>📚 Preview documentation links for API changes in this PR (Click to expand)</summary>
+
+<table>
+<tr>
+<td>
+ℹ️ <b>Preview Notice</b><br>
+Please wait for the <code>Doc-Preview</code> workflow to complete before clicking the preview links below, otherwise you may see outdated content.
+</td>
+</tr>
+</table>
 
 The following are preview links for new or modified API documentation in this PR:
 
