@@ -24,7 +24,6 @@ import paddle.static
 from paddle import nn
 
 paddle.enable_static()
-import sys
 
 from op_test import (
     OpTest,
@@ -34,8 +33,6 @@ from op_test import (
     get_places,
     is_custom_device,
 )
-
-sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
 from testsuite import create_op
 
