@@ -81,5 +81,12 @@ INSTANTIATE_ISFINITE_KERNEL_Isinf(int, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(int64_t, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::float16, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::bfloat16, CPUContext);
+
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(float, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(double, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(int, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(int64_t, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(phi::float16, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(phi::bfloat16, CPUContext);
 }  // namespace phi
 #endif
