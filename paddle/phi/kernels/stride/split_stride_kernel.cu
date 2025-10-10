@@ -49,6 +49,7 @@ void SplitStridedGPUKernel(const Context& dev_ctx,
       x_ = x;
     }
     SplitKernel<T, Context>(dev_ctx, x_, sections, axis_scalar, outs);
+    return;
   }
 
   int64_t num = static_cast<int64_t>(outs.size());
