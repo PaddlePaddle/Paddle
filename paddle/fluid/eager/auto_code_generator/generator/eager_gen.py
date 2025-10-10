@@ -312,7 +312,6 @@ strided_compute_op_list = {
     "index_put",
     # others
     "matmul",
-    "concat",
     "split",
     "expand",
 }
