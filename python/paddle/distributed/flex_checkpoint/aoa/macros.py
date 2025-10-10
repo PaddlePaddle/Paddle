@@ -134,10 +134,12 @@ def layer_id_macro(tokens, expression, context):
 
     assert name_with_layer_id, "No $LAYER_ID found in NAME tokens"
     assert all(
-        (t.type != TokenType.IDENTIFIER) or (LAYER_ID_MACRO_TAG in t.value)
+        (t.type != TokenType.IDENTIFIER)
+        or (LAYER_ID_MACRO_TAG in t.value)
+        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
         for t in tokens
     ), (
-        f"All IDENTIFIER tokens must contain {LAYER_ID_MACRO_TAG} when a NAME with it is present."
+        f"All IDENTIFIER tokens must contain {LAYER_ID_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
     )
 
     match_layer_id = context.get_num_hidden_layers(
@@ -182,10 +184,12 @@ def expert_id_macro(tokens, expression, context):
 
     assert name_with_expert_id, "No $EXPERT_ID found in NAME tokens"
     assert all(
-        (t.type != TokenType.IDENTIFIER) or (EXPERT_ID_MACRO_TAG in t.value)
+        (t.type != TokenType.IDENTIFIER)
+        or (EXPERT_ID_MACRO_TAG in t.value)
+        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
         for t in tokens
     ), (
-        f"All IDENTIFIER tokens must contain {EXPERT_ID_MACRO_TAG} when a NAME with it is present."
+        f"All IDENTIFIER tokens must contain {EXPERT_ID_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
     )
 
     match_expert_id = context.get_num_experts(

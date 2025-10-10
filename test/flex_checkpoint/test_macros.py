@@ -446,5 +446,38 @@ class TestFusedFfnMacro4(TestMacro):
         self.start_macro_test()
 
 
+class TestLayerIdMacro_with_Fused_qkv_old_macro(TestMacro):
+    def macro_name(self):
+        return "layer_id_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4\n"
+
+    def expected(self):
+        return [
+            'layers.0.qkv_proj.weight->layers.0.q_proj.weight,layer.0.k_proj.weight,layer.0.v_proj.weight,fused_qkv_old,num_heads=8,num_key_value_groups=4\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class Test_expert_id_Macro_with_Fused_ffn_macro(TestMacro):
+    def macro_name(self):
+        return "expert_id_macro"
+
+    def source_code(self):
+        return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight, fused_ffn"
+
+    def expected(self):
+        return [
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight,fused_ffn\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight,fused_ffn\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
 if __name__ == "__main__":
     unittest.main()
