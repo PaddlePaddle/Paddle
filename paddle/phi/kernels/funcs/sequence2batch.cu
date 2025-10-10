@@ -31,7 +31,7 @@ __global__ void CopyMatrixRowsKernel(const T* src,
     int dst_idx = is_src_index ? id : index[id];
     const T* src_data = src + src_idx * width;
     T* dst_data = dst + dst_idx * width;
-    for (int i = idx; i < width; i += BlockDimX) {
+    for (int64_t i = idx; i < width; i += BlockDimX) {
       dst_data[i] = src_data[i];
     }
     id += BlockDimY * GridDimX;

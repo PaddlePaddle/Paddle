@@ -19,7 +19,7 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest, get_device_place, is_custom_device
+from op_test import OpTest, get_device, get_device_place, is_custom_device
 
 import paddle
 import paddle.inference as paddle_infer
@@ -296,8 +296,10 @@ class TestTensorMinlength(unittest.TestCase):
                     self.save_path + '.pdmodel', self.save_path + '.pdiparams'
                 )
 
-            if paddle.is_compiled_with_cuda() or is_custom_device():
+            if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
+            elif is_custom_device():
+                config.enable_custom_device(get_device(), "custom_device")
             else:
                 config.disable_gpu()
 

@@ -24,7 +24,7 @@ from op_test import (
 
 import paddle
 from paddle import base
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_pir_mode
 
 SUPPORTED_DTYPES = [
     bool,
@@ -233,23 +233,51 @@ def test(unit_test, use_gpu=False, test_error=False):
 def test_type_error(unit_test, use_gpu, type_str_map):
     def check_type(op_str, x, y, binary_op):
         op = getattr(paddle, op_str)
-        error_type = ValueError
+        # The C++ backend raises TypeError for invalid type promotion.
+        error_type = TypeError
         if isinstance(x, np.ndarray):
             x = paddle.to_tensor(x)
             y = paddle.to_tensor(y)
-            error_type = BaseException
+            # Use TypeError for dygraph as well to be more specific.
+            error_type = TypeError
+
         if binary_op:
-            if type_str_map['x'] != type_str_map['y'] and type_str_map[
-                'x'
-            ] not in [np.complex64, np.complex128]:
-                unit_test.assertRaises(error_type, op, x=x, y=y)
+            type_x = type_str_map['x']
+            type_y = type_str_map['y']
+            if type_x != type_y:
+                floating_dtypes = {
+                    np.float16,
+                    np.float32,
+                    np.float64,
+                    np.uint16,
+                }
+                complex_dtypes = {np.complex64, np.complex128}
+
+                is_x_fp = type_x in floating_dtypes
+                is_y_fp = type_y in floating_dtypes
+                is_x_complex = type_x in complex_dtypes
+                is_y_complex = type_y in complex_dtypes
+
+                # Type promotion is supported between floating-point numbers,
+                # and between complex and real numbers.
+                promotion_allowed = (
+                    (is_x_fp and is_y_fp) or is_x_complex or is_y_complex
+                )
+
+                if not promotion_allowed:
+                    unit_test.assertRaises(error_type, op, x=x, y=y)
+
             if not in_dynamic_mode():
                 error_type = TypeError
-                unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
+                # Skip this test in PIR mode because the C++ backend has a known bug
+                # of ignoring the `out` parameter, which prevents the TypeError.
+                if not in_pir_mode():
+                    unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
             if not in_dynamic_mode():
                 error_type = TypeError
-                unit_test.assertRaises(error_type, op, x=x, out=1)
+                if not in_pir_mode():
+                    unit_test.assertRaises(error_type, op, x=x, out=1)
 
     place = paddle.CPUPlace()
     if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):

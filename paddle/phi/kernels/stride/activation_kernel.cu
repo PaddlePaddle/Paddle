@@ -34,6 +34,8 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
+
 namespace phi {
 #define DEFINE_CUDA_ACTIVATION_STRIDE_OP(name, functor_class)                 \
   template <typename T, typename Context>                                     \
@@ -67,6 +69,12 @@ namespace phi {
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+    }                                                                         \
+                                                                              \
     LaunchUnaryElementwiseStrideKernel<T, Context>(                           \
         dev_ctx, x_, funcs::functor_class<T>(), out);                         \
   }
@@ -127,6 +135,11 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+    }                                                                         \
     using U =                                                                 \
         typename std::conditional_t<std::is_integral<T>::value, float, T>;    \
     LaunchUnaryElementwiseStrideKernel<U, Context>(                           \
@@ -175,6 +188,12 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
                                 "Kernel using DenseTensorIterator "            \
                                 "be called, something wrong has happened!"));  \
     }                                                                          \
+    if (FLAGS_force_stride_compute_contig_out) {                               \
+      auto meta = out->meta();                                                 \
+      meta.strides = meta.calc_strides(out->dims());                           \
+      out->set_meta(meta);                                                     \
+    }                                                                          \
+                                                                               \
     funcs::functor_class<T> functor;                                           \
     auto attrs = functor.GetAttrs();                                           \
     *(attrs[0].second) = attr;                                                 \
@@ -230,6 +249,12 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
                                 "Kernel using DenseTensorIterator "            \
                                 "be called, something wrong has happened!"));  \
     }                                                                          \
+    if (FLAGS_force_stride_compute_contig_out) {                               \
+      auto meta = out->meta();                                                 \
+      meta.strides = meta.calc_strides(out->dims());                           \
+      out->set_meta(meta);                                                     \
+    }                                                                          \
+                                                                               \
     funcs::functor_class<T> functor;                                           \
     auto attrs = functor.GetAttrs();                                           \
     *(attrs[0].second) = attr1;                                                \
@@ -287,6 +312,13 @@ void RoundStrideKernel(const Context &dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   funcs::CudaRoundFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = decimals;
@@ -324,6 +356,13 @@ void HardSwishStrideKernel(const Context &dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   funcs::CudaHardSwishFunctor<T> functor;
   float threshold = 6;
   float scale = 6;
@@ -390,6 +429,13 @@ void AbsStrideKernel(const Context &dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   auto functor = CudaAbsFunctor<T>();
   LaunchUnaryElementwiseStrideKernel<phi::dtype::Real<T>, Context>(
       dev_ctx, x_, functor, out);
