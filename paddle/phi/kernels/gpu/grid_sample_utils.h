@@ -16,6 +16,9 @@
 
 #include <limits.h>
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 namespace phi {
 
 enum class Mode {
