@@ -3449,8 +3449,10 @@ USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(bitwise_and);
 USE_TRT_CONVERTER(bitwise_or);
 USE_TRT_CONVERTER(size);
+#if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
 USE_TRT_CONVERTER(einsum)
+#endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
@@ -3527,8 +3529,10 @@ USE_TRT_CONVERTER(acosh);
 USE_TRT_CONVERTER(atanh);
 USE_TRT_CONVERTER(ceil);
 USE_TRT_CONVERTER(floor);
+#if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(round);
 USE_TRT_CONVERTER(sign);
+#endif
 USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(prompt_tuning_emb_eltwise_layernorm);
