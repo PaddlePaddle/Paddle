@@ -2,7 +2,7 @@ name: Codestyle-Check
 
 on:
   pull_request:
-    branches: ["develop"]
+    branches: ["develop", "fleety_12"]
 
 jobs:
   pre-commit:
