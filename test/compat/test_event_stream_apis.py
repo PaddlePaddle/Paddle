@@ -362,7 +362,6 @@ class TestEventAPIs(unittest.TestCase):
         self.device = "gpu:0"
         paddle.device.set_device(self.device)
 
-        # 所有待测 Event API
         self.event_classes = [
             ("paddle.Event", paddle.Event),
             ("paddle.cuda.Event", paddle.cuda.Event),
@@ -375,16 +374,13 @@ class TestEventAPIs(unittest.TestCase):
                 start = EventCls(enable_timing=True)
                 end = EventCls(enable_timing=True)
 
-                # 记录起始时间
                 start.record()
 
-                # 模拟 GPU 工作负载
                 x = paddle.randn([2048, 2048], dtype="float32")
                 y = paddle.randn([2048, 2048], dtype="float32")
                 z = paddle.matmul(x, y)
                 _ = z.mean()
 
-                # 记录结束时间
                 end.record()
                 end.synchronize()
 
