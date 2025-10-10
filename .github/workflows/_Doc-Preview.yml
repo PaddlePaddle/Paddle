@@ -111,7 +111,7 @@ jobs:
       - name: Generate Comment Body
         id: generate_comment
         run: |
-          comment_body=$(docker exec -t ${{ env.container_name }} /bin/bash -c '
+          comment_body=$(docker exec ${{ env.container_name }} /bin/bash -c '
           if [ ! -f "/tmp/api_doc_diff.txt" ]; then
             exit 0
           fi
@@ -121,14 +121,19 @@ jobs:
           echo "$comment_body" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+          if [ -n "$comment_body" ]; then
+            echo "::group::📝 Generated Comment Preview"
+            echo "$comment_body"
+            echo "::endgroup::"
+          else
+            echo "::notice::No comment generated"
+          fi
+
       - name: Save comment artifacts
         if: steps.generate_comment.outputs.comment_body != ''
         run: |
           echo "${{ steps.generate_comment.outputs.comment_body }}" > comment_body.txt
           echo "${{ env.PR_ID }}" > pr_number.txt
-          # [TODO] remove it after test
-          echo "${{ steps.generate_comment.outputs.comment_body }}"
-          echo "${{ env.PR_ID }}"
 
       - name: Upload comment artifacts
         if: steps.generate_comment.outputs.comment_body != ''
