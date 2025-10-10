@@ -116,6 +116,9 @@ class TestEventStreamAPIs(unittest.TestCase):
         prev_stream = paddle.device.set_stream(stream1)
         self.assertIsInstance(prev_stream, paddle.device.Stream)
 
+        prev_stream = paddle.cuda.set_stream(stream1)
+        self.assertIsInstance(prev_stream, paddle.cuda.Stream)
+
         # Test Event.record() with default stream
         event1.record()
         # Query result may be True immediately for some devices

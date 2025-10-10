@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Union
 import paddle
 from paddle import base, core, device as paddle_device, framework
 from paddle.device import (
-    PaddleStream as Stream,
+    Stream,
     _device_to_paddle as _device_to_paddle,
     device,
     is_available as _device_is_available,
@@ -30,6 +30,7 @@ from paddle.device import (
     manual_seed,
     manual_seed_all as device_manual_seed_all,
     reset_peak_memory_stats,
+    set_stream,
     stream_guard as _PaddleStreamGuard,
 )
 
@@ -903,6 +904,7 @@ __all__ = [
     "memory_allocated",
     "memory_reserved",
     "set_device",
+    "set_stream",
     "manual_seed_all",
     "get_rng_state",
     "set_rng_state",

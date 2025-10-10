@@ -1138,13 +1138,14 @@ class Stream:
     '''
 
     A device stream wrapper around StreamBase.
+    paddle.cuda.Stream() is equivalent to paddle.device.Stream().
 
     Args:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         priority(int, optional): priority of the CUDA stream. Can be either
-            1 (high priority) or 2 (low priority). By default, streams have
+            1 or -1 (high priority) or 0 or 2 (low priority). By default, streams have
             priority 2.
 
     Returns:
@@ -1165,11 +1166,12 @@ class Stream:
     '''
 
     stream_base: _InitStreamBase
-    device: PlaceLike
+    device: PlaceLike | int
+    _priority_map: dict[int, int] = {-1: 1, 0: 2, 1: 1, 2: 2}
 
     def __init__(
         self,
-        device: PlaceLike | None = None,
+        device: PlaceLike | int | None = None,
         priority: int = 2,
         stream_base: _InitStreamBase | None = None,
     ) -> None:
@@ -1185,13 +1187,7 @@ class Stream:
                     "stream_base should be CUDAStream, XPUStream, CustomDeviceStream"
                 )
             return
-
-        if device is None:
-            self.device = paddle.framework._current_expected_place_()
-        elif isinstance(device, str):
-            self.device = paddle.device._convert_to_place(device)
-        else:
-            self.device = device
+        self.device = device_to_place(device)
 
         device_id = (
             self.device.get_device_id()
@@ -1203,7 +1199,7 @@ class Stream:
             if hasattr(self.device, 'get_device_type')
             else None
         )
-
+        priority = self._priority_map.get(priority, 2)
         self.stream_base = _create_stream_base(
             device_id=device_id,
             priority=priority,
@@ -1385,40 +1381,6 @@ def _device_to_paddle(
         return dev
 
 
-class PaddleStream(Stream):
-    """Wrapper class for Paddle CUDA/XPU Stream, supporting standard device/priority handling.
-
-    This class inherits from the base `Stream` (renamed to `StreamBase` to avoid naming conflict)
-    and adds:
-    1. Unified device string conversion via `_device_to_paddle`
-    2. Priority mapping for user-friendly priority values
-    3. Clear parameter validation and error handling
-
-    Attributes:
-        _priority_map (dict[int, int]): Mapping from user-facing priority values to Paddle internal priority codes.
-            - User input: -1 (high priority), 0/2 (low priority), 1 (high priority)
-            - Internal code: 1 (high), 2 (low)
-    """
-
-    _priority_map: dict[int, int] = {-1: 1, 0: 2, 1: 1, 2: 2}
-
-    def __init__(
-        self,
-        device: paddle.CUDAPlace | paddle.CustomPlace | int | str | None = None,
-        priority: int = 0,
-        *args,
-        **kwargs,
-    ):
-        paddle_device = _device_to_paddle(device)
-        paddle_priority = self._priority_map.get(priority, 2)
-        super().__init__(
-            device=paddle_device,
-            priority=paddle_priority,
-            *args,
-            **kwargs,
-        )
-
-
 def current_stream(device: PlaceLike | None = None) -> Stream:
     '''
 
@@ -1493,6 +1455,7 @@ def set_stream(stream: Stream) -> Stream:
 
             >>> paddle.set_device('custom_cpu')
             >>> s = paddle.device.Stream()
+            >>> # paddle.cuda.set_stream(s) is equivalent to paddle.device.set_stream(s)
             >>> paddle.device.set_stream(s)
 
     '''

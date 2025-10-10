@@ -234,7 +234,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
-    PaddleStream as Stream,
+    Stream,
     device_guard,
     get_cudnn_version,
     get_default_device,
