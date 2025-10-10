@@ -25,12 +25,12 @@ namespace cub = hipcub;
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
-#include "paddle/phi/kernels/collect_fpn_proposals_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
+#include "paddle/phi/kernels/gpu/collect_fpn_proposals_kernel.h"
 #include "paddle/phi/kernels/impl/collect_fpn_proposals_kernel_impl.h"
 #include "paddle/utils/optional.h"
 
