@@ -235,6 +235,12 @@ void ScaleStrideKernel(const Context &dev_ctx,
                               "be called, something wrong has happened!"));
   }
 
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     dev_ctx.template Alloc<T>(out);
     return;
