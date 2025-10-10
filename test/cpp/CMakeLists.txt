@@ -16,15 +16,3 @@ add_subdirectory(compat)
 if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
-
-if(WIN32 AND WITH_ONNXRUNTIME)
-  add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ONNXRUNTIME_SHARED_LIB}"
-            "${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll"
-    DEPENDS onnxruntime
-    COMMENT "Copying onnxruntime.dll to build/test/cpp")
-
-  add_custom_target(copy_onnxruntime ALL
-                    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
-endif()

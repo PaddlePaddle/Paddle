@@ -498,6 +498,9 @@ class HybridParallelOptimizer:
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
 
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Starting mp params sync")
+
         # syc param and master weight after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
@@ -506,10 +509,16 @@ class HybridParallelOptimizer:
                     p, src_rank, mp_group, mp_configs.sync_mode
                 )
 
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Finished mp params sync")
+            get_sync_logger().info("Starting mp moments sync")
+
         # Moment sync after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
                 self.syc_moment(p, src_rank, mp_group, mp_configs.sync_mode)
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Finished mp moments sync")
 
     def _get_pp_sync_params(self, parameters_list):
         pp_group = self._hcg.get_pipe_parallel_group()
@@ -524,12 +533,15 @@ class HybridParallelOptimizer:
         if pp_configs and (pp_configs.sync_param or pp_configs.sync_moment):
             params = sorted(
                 [p for p in parameters_list if self._pp_filter_fn(p)],
-                key=lambda p: p.name,
+                key=lambda p: p.color["shared_weight_name"],
             )
         return params, pp_configs
 
     def _sync_pp_params_and_moments(self, params, pp_configs):
         pp_group = self._hcg.get_pipe_parallel_group()
+
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Starting pp param and master weight sync")
 
         # syc param and master weight after opt
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_param:
@@ -546,6 +558,10 @@ class HybridParallelOptimizer:
                     p, src_rank, broadcast_group, pp_configs.sync_mode
                 )
 
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Starting pp param and master weight sync")
+            get_sync_logger().info("Finished pp moments sync")
+
         # Moment sync after opt
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_moment:
             for p in params:
@@ -557,6 +573,9 @@ class HybridParallelOptimizer:
                 self.syc_moment(
                     p, src_rank, broadcast_group, pp_configs.sync_mode
                 )
+
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Finished pp moments sync")
 
     def _get_mp_sync_params(self, parameters_list):
         mp_group = self._hcg.get_model_parallel_group()

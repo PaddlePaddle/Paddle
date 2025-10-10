@@ -30,6 +30,7 @@ defaults:
 jobs:
   build-docker:
     name: Coverage build docker
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     outputs:
       docker_coverage_image: ${{ steps.build-docker-images.outputs.docker_coverage_image }}
     runs-on:
