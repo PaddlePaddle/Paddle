@@ -353,5 +353,58 @@ class TestEventStreamTimingFunctionality(unittest.TestCase):
             self.assertGreater(elapsed_time, 0)  # Should take some time
 
 
+class TestEventAPIs(unittest.TestCase):
+    """Unified test for paddle.Event, paddle.device.Event, and paddle.cuda.Event."""
+
+    def setUp(self):
+        if not paddle.device.is_compiled_with_cuda():
+            self.skipTest("This test requires CUDA.")
+        self.device = "gpu:0"
+        paddle.device.set_device(self.device)
+
+        # 所有待测 Event API
+        self.event_classes = [
+            ("paddle.Event", paddle.Event),
+            ("paddle.cuda.Event", paddle.cuda.Event),
+        ]
+
+    def test_event_timing_consistency(self):
+        """Check timing consistency across different Event APIs."""
+        for name, EventCls in self.event_classes:
+            with self.subTest(api=name):
+                start = EventCls(enable_timing=True)
+                end = EventCls(enable_timing=True)
+
+                # 记录起始时间
+                start.record()
+
+                # 模拟 GPU 工作负载
+                x = paddle.randn([2048, 2048], dtype="float32")
+                y = paddle.randn([2048, 2048], dtype="float32")
+                z = paddle.matmul(x, y)
+                _ = z.mean()
+
+                # 记录结束时间
+                end.record()
+                end.synchronize()
+
+                elapsed = start.elapsed_time(end)
+                self.assertIsInstance(elapsed, (int, float))
+                self.assertGreater(
+                    elapsed,
+                    0.0,
+                    f"{name} should measure positive elapsed time.",
+                )
+
+    def test_event_methods_available(self):
+        """Ensure all Event variants expose expected methods."""
+        for name, EventCls in self.event_classes:
+            with self.subTest(api=name):
+                e = EventCls(enable_timing=True)
+                self.assertTrue(hasattr(e, "record"))
+                self.assertTrue(hasattr(e, "synchronize"))
+                self.assertTrue(hasattr(e, "elapsed_time"))
+
+
 if __name__ == '__main__':
     unittest.main()

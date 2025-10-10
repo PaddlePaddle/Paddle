@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Union
 import paddle
 from paddle import base, core, device as paddle_device, framework
 from paddle.device import (
+    Event,
     Stream,
     _device_to_paddle as _device_to_paddle,
     device,
@@ -913,4 +914,5 @@ __all__ = [
     "manual_seed",
     "max_memory_allocated",
     "reset_peak_memory_stats",
+    "Event",
 ]

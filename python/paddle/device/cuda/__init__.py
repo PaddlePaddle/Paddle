@@ -779,7 +779,7 @@ def set_rng_state(
 
 
 def manual_seed(seed: int) -> None:
-    r"""Set the seed for generating random numbers for the current Device.
+    """Set the seed for generating random numbers for the current Device.
 
     .. warning::
         If you are working with a multi-Device model, this function is insufficient

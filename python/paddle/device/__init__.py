@@ -563,7 +563,7 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     return place
 
 
-def get_device() -> str:
+def get_device(input: paddle.Tensor = None) -> str | int:
     """
 
     This function can get the current global device of the program is running.
@@ -571,6 +571,18 @@ def get_device() -> str:
     set, it will return a string which is 'gpu:x' when cuda is available or it
     will return a string which is 'cpu' when cuda is not available.
 
+    Returns:
+        if input is Tensor, this function will return the device ID where the given Tensor is located.
+        int:
+            - -1, if the Tensor is on CPU.
+            - The device ID (e.g., 0, 1, ...) if the Tensor is on GPU.
+
+        if input is not Tensor, this function will return the device name where the program is running.
+        str:
+            - 'cpu': If the program is running on CPU.
+            - 'gpu:x': If the program is running on GPU, where `x` is the index of the GPU.
+            - 'xpu:x': If the program is running on XPU, where `x` is the index of the XPU.
+            - 'npu:x': If the program is running on NPU, where `x` is the index of
     Examples:
 
         .. code-block:: python
@@ -578,7 +590,16 @@ def get_device() -> str:
             >>> import paddle
             >>> device = paddle.device.get_device()
 
+            >>> x_cpu = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+            >>> id = paddle.get_device(x_cpu) # -1
+
+
+
     """
+    if isinstance(input, paddle.Tensor):
+        if 'cpu' in str(input.place):
+            return -1
+        return input.place.gpu_device_id()
     device = ''
     place = framework._current_expected_place_()
     if isinstance(place, core.CPUPlace):
@@ -612,6 +633,25 @@ def get_default_device() -> paddle.device:
             print(paddle.get_default_device())
     """
     return paddle.device(get_device().replace("gpu", "cuda"))
+
+
+def set_default_device(device: PlaceLike | int) -> None:
+    """
+    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
+    This function can specify the global device which the OP will run.
+
+    Args:
+        device(str, Place or int): This parameter determines the specific running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
+            where ``x`` is the index of the GPUs, XPUs or NPUs.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.set_device("cpu")
+    """
+    set_device(device)
 
 
 def get_all_device_type() -> list[str]:
