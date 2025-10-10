@@ -87,7 +87,6 @@ void ExpandStrideKernel(const std::vector<int64_t>& self_dims,
   std::vector<int64_t> expandedSizes(ndim, 0);
   std::vector<int64_t> expandedStrides(ndim, 0);
 
-  // create a new geometry for the tensors
   for (int64_t i = ndim - 1; i >= 0; --i) {
     int64_t offset = ndim - 1 - i;
     int64_t dim = tensor_dim - 1 - offset;
@@ -194,22 +193,17 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
   }
 
   // if x is contiguous is not relevant to sum_grad computation
-
   if (!out_grad.meta().is_contiguous()) {
     out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad);
   } else {
     out_grad_ = out_grad;
   }
 
-  // printf("enter sum grad conti\n");
-
   auto x_grad_meta = x_grad->meta();
   x_grad_meta.strides = x_grad_meta.calc_strides(x_grad->dims());
   x_grad->set_meta(x_grad_meta);
   phi::ReduceSumGradKernel<T>(
       dev_ctx, x, out_grad_, dims, keep_dim, reduce_all, x_grad);
-
-  // printf("out sum grad conti\n");
 }
 
 }  // namespace phi

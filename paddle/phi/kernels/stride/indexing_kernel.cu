@@ -305,6 +305,13 @@ void IndexPutGradKernel_V2(const Context& dev_ctx,
     return;
   }
 
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
   if (x_grad) {
     if (accumulate) {
       auto meta = out_grad.meta();

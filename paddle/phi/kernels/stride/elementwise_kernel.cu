@@ -45,10 +45,10 @@ COMMON_DECLARE_bool(force_stride_compute_contig_out);
 namespace phi {
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name, functor_name)          \
   template <typename T, typename Context>                                     \
-  void name##StrideKernel(const Context& dev_ctx,                             \
-                          const DenseTensor& x,                               \
-                          const DenseTensor& y,                               \
-                          DenseTensor* out) {                                 \
+  void name##StrideKernel(const Context &dev_ctx,                             \
+                          const DenseTensor &x,                               \
+                          const DenseTensor &y,                               \
+                          DenseTensor *out) {                                 \
     if (!FLAGS_use_stride_kernel) {                                           \
       PADDLE_THROW(common::errors::Fatal(                                     \
           "FLAGS_use_stride_kernel is closed. Strided kernel "                \
@@ -108,10 +108,10 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(FMin, FMin)
 #undef DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP
 
 template <typename T, typename Context>
-void AddStrideKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     DenseTensor* out) {
+void AddStrideKernel(const Context &dev_ctx,
+                     const DenseTensor &x,
+                     const DenseTensor &y,
+                     DenseTensor *out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -199,12 +199,12 @@ struct ScaleFunctor {
 };
 
 template <typename T, typename Context>
-void ScaleStrideKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const Scalar& scale,
-                       const Scalar& bias,
+void ScaleStrideKernel(const Context &dev_ctx,
+                       const DenseTensor &x,
+                       const Scalar &scale,
+                       const Scalar &bias,
                        bool bias_after_scale,
-                       DenseTensor* out) {
+                       DenseTensor *out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -255,11 +255,11 @@ void ScaleStrideKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FullStrideKernel(const Context& dev_ctx,
-                      const IntArray& shape,
-                      const Scalar& val,
+void FullStrideKernel(const Context &dev_ctx,
+                      const IntArray &shape,
+                      const Scalar &val,
                       DataType dtype,
-                      DenseTensor* out) {
+                      DenseTensor *out) {
   auto meta = out->meta();
   meta.strides = meta.calc_strides(out->dims());
   out->set_meta(meta);
@@ -267,14 +267,15 @@ void FullStrideKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FullLikeStrideKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const Scalar& val,
+void FullLikeStrideKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          const Scalar &val,
                           DataType dtype,
-                          DenseTensor* out) {
+                          DenseTensor *out) {
   // Is this correct?
   // In fact, both ones_like and full_like can only generate contiguous tensors,
-  // which differs from others, where both strides and shapes are considered.
+  // which differs from common sense, where both strides and shapes are
+  // considered.
   auto meta = out->meta();
   meta.strides = meta.calc_strides(out->dims());
   out->set_meta(meta);

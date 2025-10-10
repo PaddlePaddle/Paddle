@@ -184,9 +184,19 @@ def disable_torch_proxy():
 
 
 @contextmanager
-def use_torch_proxy_guard():
-    enable_torch_proxy()
-    try:
-        yield
-    finally:
+def use_torch_proxy_guard(enable: bool = True):
+    already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
+    if enable == already_has_torch_proxy:
+        return
+    if enable:
+        enable_torch_proxy()
+        try:
+            yield
+        finally:
+            disable_torch_proxy()
+    else:
         disable_torch_proxy()
+        try:
+            yield
+        finally:
+            enable_torch_proxy()
