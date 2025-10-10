@@ -304,11 +304,16 @@ strided_compute_op_list = {
     "expm1",
     "round",
     "floor",
-    "ceil"
+    "ceil",
+    "scale",
+    "full",
+    "full_like",
     # indexing
     "index_put",
     # others
     "matmul",
+    "concat",
+    "split",
 }
 
 strided_op_need_flags_check_list = {
