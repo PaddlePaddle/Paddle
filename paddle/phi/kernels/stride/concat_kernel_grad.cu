@@ -52,54 +52,6 @@ void NarrowStrideKernel(const Context& dev_ctx,
     start = start + cur_size;
   }
 
-  // auto start_val = begin;
-  // auto end_val = start + length;
-
-  // const auto& ndim = x.dims().size();
-  // auto sizes = x.dims();
-  // auto strides = x.strides();
-
-  // if (start_val < 0) {
-  //   start_val += sizes[dim];
-  // }
-  // if (end_val < 0) {
-  //   end_val += sizes[dim];
-  // }
-  // if (start_val < 0) {
-  //   start_val = 0;
-  // } else if (start_val >= sizes[dim]) {
-  //   start_val = sizes[dim];
-  // }
-  // if (end_val < start_val) {
-  //   end_val = start_val;
-  // } else if (end_val >= sizes[dim]) {
-  //   end_val = sizes[dim];
-  // }
-
-  // int64_t storage_offset = static_cast<int64_t>(x.offset()) + start_val *
-  // strides[dim]; auto len = end_val - start_val; sizes[dim] = len;
-
-  // printf("slice as_stride shape\n");
-  // for (int i=0; i<sizes.size(); i++) {
-  //   printf("%ld ", sizes[i]);
-  // }
-  // printf("\n");
-
-  // printf("slice as_stride stride\n");
-  // for (int i=0; i<strides.size(); i++) {
-  //   printf("%ld ", strides[i]);
-  // }
-  // printf("\n");
-
-  // auto meta = out->meta();
-  // meta.offset = storage_offset;
-  // meta.dims = sizes;
-  // meta.strides = strides;
-  // out->set_meta(meta);
-  // out->ResetHolder(x.Holder());
-  // out->ShareInplaceVersionCounterWith(x);
-  // printf("after meta set\n");
-
   SliceStridedKernel<Context>(dev_ctx,
                               x,
                               {dim},
@@ -122,21 +74,11 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
-  // printf("x shape\n");
-  // for (int i = 0; i < x.size(); i++) {
-  //   auto& shape = x[i]->dims();
-  //   for (int j = 0; j < shape.size(); j++) {
-  //     printf("%d ", shape[j]);
-  //   }
-  //   printf("\n");
-  // }
-
   bool invalid_stride = false;
 
   for (int i = 0; i < x.size(); i++) {
     if (x[i]) {
       if (IsComplexType(x[i]->dtype())) {
-        // printf("x is complex\n");
         invalid_stride = true;
         break;
       }
@@ -148,18 +90,24 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
   }
 
   if (!FLAGS_use_stride_compute_kernel || invalid_stride) {
-    // printf("enter common concat grad\n");
     DenseTensor out_grad_;
     if (!out_grad.meta().is_contiguous()) {
       out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad);
     } else {
       out_grad_ = out_grad;
     }
+
+    for (int i = 0; i < x_grad.size(); i++) {
+      if (x_grad[i]) {
+        auto meta = x_grad[i]->meta();
+        meta.strides = meta.calc_strides(x_grad[i]->dims());
+        x_grad[i]->set_meta(meta);
+      }
+    }
+
     ConcatGradKernel<T, Context>(dev_ctx, x, out_grad_, axis_scalar, x_grad);
     return;
   }
-
-  // printf("enter stride concat grad\n");
 
   auto outs = x_grad;
   {
@@ -177,30 +125,16 @@ void ConcatGradStrideKernel(const Context& dev_ctx,
   auto axis = axis_scalar.to<int>();
   axis = funcs::ComputeAxis(static_cast<int64_t>(axis),
                             static_cast<int64_t>(x[0]->dims().size()));
-  // printf("axis:%d\n", axis);
-  // get output tensor that the name is not kEmptyVarName
   std::vector<DenseTensor*> outputs;
-  // if the out_grad.numel() == 0 ,the all x and x_grad must be zero size
-  // tensor, so just return
   if (out_grad.numel() == 0) {
     return;
   }
 
   int64_t accumulate = 0;
-  // printf("enter here\n");
   for (int i = 0; i < x.size(); i++) {
-    // printf("out grad:%d\n", i);
     auto& shape = x[i]->dims();
-    // for (int j = 0; j < shape.size(); j++) {
-    //   printf("%d ", shape[j]);
-    // }
-    // printf("\n");
     const auto& size = shape[axis];
-    // printf("size:%d\n", size);
     accumulate += size;
-    // printf("accumulate:%d\n", accumulate);
-    // printf("axis:%d\n", axis);
-    // printf("accumulate - size:%d\n", accumulate - size);
     if (outs[i]) {
       NarrowStrideKernel<Context>(
           dev_ctx, out_grad, axis, accumulate - size, size, outs[i]);

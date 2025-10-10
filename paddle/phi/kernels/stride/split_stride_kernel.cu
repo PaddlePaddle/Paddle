@@ -48,6 +48,15 @@ void SplitStridedGPUKernel(const Context& dev_ctx,
     } else {
       x_ = x;
     }
+
+    for (int i = 0; i < outs.size(); i++) {
+      if (outs[i]) {
+        auto meta = outs[i]->meta();
+        meta.strides = meta.calc_strides(outs[i]->dims());
+        outs[i]->set_meta(meta);
+      }
+    }
+
     SplitKernel<T, Context>(dev_ctx, x_, sections, axis_scalar, outs);
     return;
   }
