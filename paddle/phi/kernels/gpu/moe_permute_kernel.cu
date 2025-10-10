@@ -301,7 +301,6 @@ void MoePermuteKernel(const Context &dev_ctx,
       reinterpret_cast<void *>(XScale_unzipped->data<float>());
 
   // -------- Memset all padding area to zero, with regard to do_gather
-  // ----------
   auto memset_invalid_rows =
       [&](auto *ptr, int64_t element_size, int64_t stride) {
         for (int i = 0; i < num_experts; i++) {
