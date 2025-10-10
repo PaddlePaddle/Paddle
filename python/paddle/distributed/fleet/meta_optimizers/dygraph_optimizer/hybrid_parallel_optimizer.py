@@ -498,6 +498,8 @@ class HybridParallelOptimizer:
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
 
+        if self.processed_steps < g_profile_optimizer_details_steps:
+            get_sync_logger().info("Starting mp params sync")
         # syc param and master weight after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
