@@ -30,6 +30,36 @@ void ExpandStrideKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const IntArray& shape,
                         DenseTensor* out) {
+  bool invalid_stride = false;
+  if (x.numel() <= 0 || !x.IsInitialized() || x.dims().size() > 7) {
+    invalid_stride = true;
+  }
+  if (out->numel() <= 0) {
+    invalid_stride = true;
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || invalid_stride) {
+    if (!x.meta().is_contiguous()) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::ExpandKernel<T, Context>(dev_ctx, x_, shape, out);
+    return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
   if (expand_shape.empty()) {
@@ -50,32 +80,47 @@ void ExpandStrideKernel(const Context& dev_ctx,
   auto out_shape = vec_in_dims;
   bool has_zero_dim = false;
   for (size_t i = 0; i < out_shape.size(); ++i) {
-    if (expand_shape[i] == 0) {
-      return;
+    if (i < diff) {
+      PADDLE_ENFORCE_GE(
+          expand_shape[i],
+          0,
+          common::errors::InvalidArgument(
+              "The expanded size (%d) for non-existing dimensions must be "
+              "positive for expand_v2 op.",
+              expand_shape[i]));
+      if (expand_shape[i] == 0) has_zero_dim = true;
+      out_shape[i] = expand_shape[i];
+    } else if (expand_shape[i] == -1) {
+      out_shape[i] = vec_in_dims[i];
+    } else if (expand_shape[i] == 0) {
+      PADDLE_ENFORCE_EQ(
+          vec_in_dims[i] == 1 || vec_in_dims[i] == expand_shape[i],
+          true,
+          common::errors::InvalidArgument(
+              "The %d-th dimension of input tensor (%d) must match or be "
+              "broadcastable to the corresponding dimension (%d) in shape.",
+              i,
+              vec_in_dims[i],
+              expand_shape[i]));
+      out_shape[i] = 0;
+      has_zero_dim = true;
+    } else if (expand_shape[i] > 0) {
+      PADDLE_ENFORCE_EQ(
+          vec_in_dims[i] == 1 || vec_in_dims[i] == expand_shape[i],
+          true,
+          common::errors::InvalidArgument(
+              "The %d-th dimension of input tensor (%d) must match or be "
+              "broadcastable to the corresponding dimension (%d) in shape.",
+              i,
+              vec_in_dims[i],
+              expand_shape[i]));
+      out_shape[i] = expand_shape[i];
     }
   }
 
-  DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.dims().size() == 0 ||
-      x.dims().size() > 7) {
-    if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-    } else {
-      x_ = x;
-    }
-
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-    phi::ExpandKernel<T, Context>(dev_ctx, x_, shape, out);
+  if (has_zero_dim) {
+    dev_ctx.template Alloc<T>(out);
     return;
-  }
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
   }
 
   std::vector<int64_t> out_dims;
