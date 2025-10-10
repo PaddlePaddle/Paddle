@@ -237,12 +237,6 @@ struct LowLatencyLayout {
                                              combine_recv_flag_buffer_bytes);
     total_bytes += signaling_buffer_bytes * 2;
 
-    // Symmetric complete signaling buffers
-    // Note(ZKK): this is only used in M2N!
-    size_t recv_complete_buffer_bytes =
-        2 * M2N_NUM_MAX_MICRO_BATCHES * num_ranks * sizeof(int);
-    total_bytes += recv_complete_buffer_bytes * 2;
-
     // Assign pointers
     // NOTES: we still leave some space for distinguishing dispatch/combine
     // buffer, so you may see some parameters are duplicated
@@ -254,21 +248,19 @@ struct LowLatencyLayout {
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
                             signaling_buffer_bytes * i),
-          // dispatch_rdma_recv_complete_buffer!
-          advance<int*>(rdma_buffer,
-                        send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * 2 +
-                            recv_complete_buffer_bytes * i),
+          // Note(ZKK): dispatch_rdma_recv_complete_buffer is only used in M2N!
+          // so here we symbolically add a 0 to it
+          advance<int*>(rdma_buffer, 0),
+
           advance(rdma_buffer, send_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * 2 + recv_buffer_bytes * i),
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
                             signaling_buffer_bytes * i),
-          // combine_rdma_recv_complete_buffer!
-          advance<int*>(rdma_buffer,
-                        send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * 2 +
-                            recv_complete_buffer_bytes * i),
+          // Note(ZKK): combine_rdma_recv_complete_buffer is only used in M2N!
+          // so here we symbolically add a 0 to it
+          advance<int*>(rdma_buffer, 0),
+
           advance(rdma_buffer, send_buffer_bytes * i),
           num_bytes_per_combine_msg};
     }
