@@ -312,9 +312,8 @@ strided_compute_op_list = {
     "index_put",
     # others
     "matmul",
-    # may cause e2e performance degradation
-    # "concat",
-    # "split",
+    "concat",
+    "split",
 }
 
 strided_op_need_flags_check_list = {
