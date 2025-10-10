@@ -29,13 +29,27 @@ paddle.seed(2023)
 
 
 def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
+    if paddle.is_compiled_with_cuda():
+        result = os.popen("nvcc --version").read()
+        regex = r'release (\S+),'
+        match = re.search(regex, result)
+        if match:
+            num = str(match.group(1))
+            integer, decimal = num.split('.')
+            return int(integer) * 1000 + int(float(decimal) * 10)
+        else:
+            return -1
+    elif is_custom_device():
+        return 13000
+    else:
+        return -1
+
+
+def get_cuda_arch():
+    if paddle.is_compiled_with_cuda():
+        return paddle.device.cuda.get_device_capability()[0]
+    elif is_custom_device():
+        return 13000
     else:
         return -1
 
@@ -205,7 +219,7 @@ class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
+    or get_cuda_arch() < 8,
     "MemEffAPIVariableDtypeBF16 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):

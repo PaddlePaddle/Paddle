@@ -3081,7 +3081,7 @@ def tensor_split(
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/tensor_split/tensor_split-5.png
 
         .. code-block:: python
-            :name: tensor-spilt-example-5
+            :name: tensor-split-example-5
 
             >>> import paddle
 

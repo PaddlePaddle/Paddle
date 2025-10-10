@@ -411,64 +411,63 @@ class TestElementwiseOp0SizeInput(TestElementwiseOp):
 
 class TestMaximumOutAndAlias(unittest.TestCase):
     def test_dygraph(self):
-        paddle.disable_static()
-        np.random.seed(2024)
-        x = paddle.to_tensor(
-            np.random.randn(5, 7).astype('float32'), stop_gradient=False
-        )
-        # shift y to avoid ties for stable gradient routing
-        y = paddle.to_tensor(
-            (np.random.randn(5, 7) + 0.1).astype('float32'), stop_gradient=False
-        )
-
-        def run_case(case_type):
-            out_buf = paddle.zeros_like(x)
-            out_buf.stop_gradient = False
-
-            if case_type == 'return':
-                z = paddle.maximum(x, y)
-            elif case_type == 'input_out':
-                paddle.maximum(x, y, out=out_buf)
-                z = out_buf
-            elif case_type == 'both_return':
-                z = paddle.maximum(input=x, other=y, out=out_buf)
-            elif case_type == 'both_input_out':
-                _ = paddle.maximum(input=x, other=y, out=out_buf)
-                z = out_buf
-            else:
-                raise AssertionError
-
-            ref = paddle._C_ops.maximum(x, y)
-            np.testing.assert_allclose(
-                z.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+        with paddle.base.dygraph.guard():
+            np.random.seed(2024)
+            x = paddle.to_tensor(
+                np.random.randn(5, 7).astype('float32'), stop_gradient=False
+            )
+            # shift y to avoid ties for stable gradient routing
+            y = paddle.to_tensor(
+                (np.random.randn(5, 7) + 0.1).astype('float32'),
+                stop_gradient=False,
             )
 
-            loss = (z * 2).mean()
-            loss.backward()
-            return z.numpy(), x.grad.numpy(), y.grad.numpy()
+            def run_case(case_type):
+                out_buf = paddle.zeros_like(x)
+                out_buf.stop_gradient = False
 
-        z1, gx1, gy1 = run_case('return')
-        x.clear_gradient()
-        y.clear_gradient()
-        z2, gx2, gy2 = run_case('input_out')
-        x.clear_gradient()
-        y.clear_gradient()
-        z3, gx3, gy3 = run_case('both_return')
-        x.clear_gradient()
-        y.clear_gradient()
-        z4, gx4, gy4 = run_case('both_input_out')
+                if case_type == 'return':
+                    z = paddle.maximum(x, y)
+                elif case_type == 'input_out':
+                    paddle.maximum(x, y, out=out_buf)
+                    z = out_buf
+                elif case_type == 'both_return':
+                    z = paddle.maximum(input=x, other=y, out=out_buf)
+                elif case_type == 'both_input_out':
+                    _ = paddle.maximum(input=x, other=y, out=out_buf)
+                    z = out_buf
+                else:
+                    raise AssertionError
 
-        np.testing.assert_allclose(z1, z2, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(z1, z3, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(z1, z4, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(gx1, gx2, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(gx1, gx3, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(gx1, gx4, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(gy1, gy2, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(gy1, gy3, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(gy1, gy4, rtol=1e-6, atol=1e-6)
+                ref = paddle._C_ops.maximum(x, y)
+                np.testing.assert_allclose(
+                    z.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+                )
 
-        paddle.enable_static()
+                loss = (z * 2).mean()
+                loss.backward()
+                return z.numpy(), x.grad.numpy(), y.grad.numpy()
+
+            z1, gx1, gy1 = run_case('return')
+            x.clear_gradient()
+            y.clear_gradient()
+            z2, gx2, gy2 = run_case('input_out')
+            x.clear_gradient()
+            y.clear_gradient()
+            z3, gx3, gy3 = run_case('both_return')
+            x.clear_gradient()
+            y.clear_gradient()
+            z4, gx4, gy4 = run_case('both_input_out')
+
+            np.testing.assert_allclose(z1, z2, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(z1, z3, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(z1, z4, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(gx1, gx2, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(gx1, gx3, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(gx1, gx4, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(gy1, gy2, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(gy1, gy3, rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(gy1, gy4, rtol=1e-6, atol=1e-6)
 
     def test_static(self):
         paddle.enable_static()

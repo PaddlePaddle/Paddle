@@ -802,7 +802,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   }
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
-  if (FLAGS_use_stride_kernel) {
+  if (FLAGS_use_stride_kernel && self_tensor.is_contiguous()) {
     std::vector<paddle::Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -1302,7 +1302,8 @@ static void ApplyGetitem(const int index_size,
       }
     }
 
-    if (FLAGS_use_stride_kernel && !has_empty_index) {
+    if (FLAGS_use_stride_kernel && !has_empty_index &&
+        self_tensor->is_contiguous()) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, *self_tensor, *transed_tensor, *transed_index)) {

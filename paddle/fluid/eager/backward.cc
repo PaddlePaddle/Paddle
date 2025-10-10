@@ -508,7 +508,8 @@ std::vector<paddle::Tensor> RunBackward(
           auto* next_node = next_node_shared.get();
 
           // Construct backward graph for debug
-          if (need_debug_backward_graph) {
+          if (need_debug_backward_graph && grad_output_tensor.defined() &&
+              grad_output_tensor.has_allocation()) {
             std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
             if (!dot.ContainsNode(dot_next_node_label)) {
               if (next_node->name() == "GradNodeAccumulation") {
@@ -539,11 +540,14 @@ std::vector<paddle::Tensor> RunBackward(
 
           VLOG(7) << "RunBackward: Sum or Move grad inputs for edge slot: "
                   << edge_rank.first << ", rank: " << edge_rank.second;
-          VLOG(6) << "RunBackward: Add grad_output_tensor to GradTensorHolder, "
-                     "grad_output_tensor info "
-                  << grad_output_tensor.place() << ","
-                  << grad_output_tensor.dtype() << ", ("
-                  << grad_output_tensor.dims() << ")";
+          VLOG_IF(6,
+                  grad_output_tensor.defined() &&
+                      grad_output_tensor.has_allocation())
+              << "RunBackward: Add grad_output_tensor to GradTensorHolder, "
+              << "grad_output_tensor info " << grad_output_tensor.place() << ","
+              << grad_output_tensor.dtype() << ", ("
+              << grad_output_tensor.dims() << ")";
+
           node_input_buffers_dict[next_node]->add(edge_rank.first,
                                                   edge_rank.second,
                                                   grad_output_tensor,
