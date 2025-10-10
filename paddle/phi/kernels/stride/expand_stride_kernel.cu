@@ -56,7 +56,8 @@ void ExpandStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  if (!FLAGS_use_stride_compute_kernel || x.dims().size() == 0 ||
+      x.dims().size() > 7) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -82,12 +83,6 @@ void ExpandStrideKernel(const Context& dev_ctx,
 
   int64_t ndim = static_cast<int64_t>(expand_shape.size());
   int64_t tensor_dim = static_cast<int64_t>(x.dims().size());
-
-  if (tensor_dim == 0) {
-    out_dims = expand_shape;
-    out_strides = std::vector<int64_t>(ndim, 0);
-    return;
-  }
 
   std::vector<int64_t> expandedSizes(ndim, 0);
   std::vector<int64_t> expandedStrides(ndim, 0);

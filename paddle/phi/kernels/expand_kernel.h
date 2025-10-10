@@ -26,10 +26,4 @@ void ExpandKernel(const Context& dev_ctx,
                   const IntArray& shape,
                   DenseTensor* out);
 
-template <typename T, typename Context>
-void ExpandStrideKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const IntArray& shape,
-                        DenseTensor* out);
-
 }  // namespace phi

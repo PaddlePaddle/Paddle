@@ -20,7 +20,6 @@
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/as_strided_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
-#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
@@ -71,6 +70,45 @@ phi::DenseTensor CheckMultipleUnsqueeze(const Context& dev_ctx,
   return res;
 }
 
+void ExpandStrideKernel(const std::vector<int64_t>& self_dims,
+                        const std::vector<int64_t>& self_strides,
+                        const std::vector<int64_t>& expand_sizes,
+                        std::vector<int64_t>* out_dims,
+                        std::vector<int64_t>* out_strides) {
+  int64_t ndim = static_cast<int64_t>(expand_sizes.size());
+  int64_t tensor_dim = static_cast<int64_t>(self_dims.size());
+
+  if (tensor_dim == 0) {
+    *out_dims = expand_sizes;
+    *out_strides = std::vector<int64_t>(ndim, 0);
+    return;
+  }
+
+  std::vector<int64_t> expandedSizes(ndim, 0);
+  std::vector<int64_t> expandedStrides(ndim, 0);
+
+  for (int64_t i = ndim - 1; i >= 0; --i) {
+    int64_t offset = ndim - 1 - i;
+    int64_t dim = tensor_dim - 1 - offset;
+    int64_t size = (dim >= 0) ? self_dims[dim] : 1;
+    int64_t stride = (dim >= 0) ? self_strides[dim]
+                                : expandedSizes[i + 1] * expandedStrides[i + 1];
+    int64_t targetSize = expand_sizes[i];
+    if (targetSize == -1) {
+      targetSize = size;
+    }
+    if (size != targetSize) {
+      size = targetSize;
+      stride = 0;
+    }
+    expandedSizes[i] = size;
+    expandedStrides[i] = stride;
+  }
+
+  *out_dims = expandedSizes;
+  *out_strides = expandedStrides;
+}
+
 template <typename T, typename Context>
 void ReduceSumGradStrideKernel(const Context& dev_ctx,
                                const DenseTensor& x,
@@ -91,8 +129,24 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
     phi::DenseTensor out_tmp = CheckMultipleUnsqueeze<Context>(
         dev_ctx, out_grad, dims, x.dims().size(), keep_dim);
 
-    phi::ExpandStrideKernel<T, Context>(
-        dev_ctx, out_tmp, phi::IntArray(common::vectorize(x.dims())), x_grad);
+    std::vector<int64_t> out_dims;
+    std::vector<int64_t> out_strides;
+
+    ExpandStrideKernel(common::vectorize<int64_t>(out_tmp.dims()),
+                       common::vectorize<int64_t>(out_tmp.strides()),
+                       common::vectorize<int64_t>(x.dims()),
+                       &out_dims,
+                       &out_strides);
+
+    auto meta = out_grad.meta();
+    meta.dims = DDim(out_dims.data(), static_cast<int>(out_dims.size()));
+    meta.strides =
+        DDim(out_strides.data(), static_cast<int>(out_strides.size()));
+
+    x_grad->set_meta(meta);
+    x_grad->ResetHolder(out_grad.Holder());
+    x_grad->ShareInplaceVersionCounterWith(out_grad);
+
     return;
   }
 

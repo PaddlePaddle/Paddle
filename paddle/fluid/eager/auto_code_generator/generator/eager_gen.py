@@ -314,6 +314,7 @@ strided_compute_op_list = {
     "matmul",
     "concat",
     "split",
+    "expand",
 }
 
 strided_op_need_flags_check_list = {
