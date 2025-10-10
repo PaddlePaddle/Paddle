@@ -203,6 +203,8 @@ GradNodePyLayer::operator()(
       grad_out;
   grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
+    VLOG(8) << "forward_input_tensor_is_duplicable[" << i
+            << "] = " << ctx->forward_input_tensor_is_duplicable[i];
     if (i < outputs_size) {
       PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
       if (this->OutputMeta()[i][0].IsStopGradient()) {
