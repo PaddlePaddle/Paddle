@@ -34,7 +34,6 @@ from paddle.autograd.ir_backward import grad
 from paddle.base import Program, Scope, core, program_guard
 from paddle.base.executor import scope_guard
 from paddle.decomposition import decompose
-from paddle.incubate.autograd import primapi
 
 
 def dropout_wrapper(
@@ -1415,10 +1414,6 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
         self.places = get_places()
 
     def check_static_result(self, place):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
-            dropout,
-        )
-
         with static.program_guard(static.Program(), static.Program()):
             paddle.seed(0)
             input = static.data(name="input", shape=[40, 40], dtype="float32")
