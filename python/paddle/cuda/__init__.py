@@ -29,6 +29,7 @@ from paddle.device import (
     is_current_stream_capturing as _is_current_stream_capturing,
     manual_seed,
     manual_seed_all as device_manual_seed_all,
+    reset_peak_memory_stats,
     stream_guard as _PaddleStreamGuard,
 )
 
@@ -909,4 +910,5 @@ __all__ = [
     "is_bf16_supported",
     "manual_seed",
     "max_memory_allocated",
+    "reset_peak_memory_stats",
 ]

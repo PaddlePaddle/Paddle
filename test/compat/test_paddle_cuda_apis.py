@@ -470,9 +470,7 @@ class TestBf16Supported(unittest.TestCase):
         self.assertIsInstance(paddle.device.is_bf16_supported(), bool)
         self.assertIsInstance(paddle.device.is_bf16_supported(True), bool)
         self.assertIsInstance(paddle.cuda.is_bf16_supported(False), bool)
-        if not (
-            paddle.cuda.is_available() and paddle.core.is_compiled_with_cuda()
-        ):
+        if should_skip_tests():
             self.assertFalse(paddle.cuda.is_bf16_supported())
             self.assertFalse(paddle.device.is_bf16_supported())
 

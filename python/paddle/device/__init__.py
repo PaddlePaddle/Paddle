@@ -176,6 +176,7 @@ __all__ = [
     'device',
     'is_bf16_supported',
     'manual_seed',
+    'reset_peak_memory_stats',
 ]
 
 _cudnn_version = None
@@ -512,7 +513,12 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
             >>> paddle.cuda.is_bf16_supported()
 
     """
-    if not is_available() or not core.is_compiled_with_cuda():
+    if not (
+        is_available()
+        or is_compiled_with_cuda()
+        or is_compiled_with_xpu()
+        or is_compiled_with_custom_device()
+    ):
         return False
     if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
         return True
@@ -1756,6 +1762,27 @@ def manual_seed_all(seed: int) -> None:
 
     """
     paddle.seed(seed)
+
+
+def reset_peak_memory_stats(device: PlaceLike | int | None = None) -> None:
+    """
+    Resets all devices' peak memory statistics.
+
+    This method resets the peak memory usage recorded for each device during the execution of the program.
+    It sets the peak memory usage back to zero for all devices.
+
+    Example:
+        >>> # doctest: +REQUIRES(env:GPU)
+        >>> import paddle
+        >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+
+        >>> # paddle.cuda.reset_max_memory_allocated() is equivalent to paddle.device.reset_max_memory_allocated()
+
+        >>> paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
+        >>> paddle.device.reset_max_memory_allocated(0)
+        >>> paddle.device.reset_max_memory_allocated("gpu:0")
+    """
+    reset_max_memory_allocated()
 
 
 class Device(str):
