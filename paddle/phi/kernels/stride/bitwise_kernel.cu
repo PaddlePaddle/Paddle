@@ -25,32 +25,6 @@
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 namespace phi {
-
-template <typename T, typename Context, typename Functor>
-void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
-                                         const DenseTensor &x,
-                                         const DenseTensor &y,
-                                         Functor func,
-                                         int axis,
-                                         DenseTensor *out) {
-  std::vector<const DenseTensor *> inputs = {&x, &y};
-  std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  BinaryStrideBroadcastKernel<T, Context>(
-      dev_ctx, inputs, &outputs, func, axis);
-}
-
-template <typename T, typename Context, typename Functor>
-void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
-                                        const DenseTensor &x,
-                                        Functor func,
-                                        DenseTensor *out) {
-  std::vector<const DenseTensor *> inputs = {&x};
-  std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
-}
-
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name)                        \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(const Context &dev_ctx,                             \
