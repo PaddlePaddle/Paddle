@@ -18,6 +18,8 @@
 
 namespace phi {
 
+namespace fusion {
+
 template <typename T, typename Context>
 void FusedLayerNormKernel(const Context& dev_ctx,
                           const DenseTensor& x,
@@ -36,4 +38,6 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                           DenseTensor* residual_out,
                           DenseTensor* mean,
                           DenseTensor* variance);
+
+}  // namespace fusion
 }  // namespace phi

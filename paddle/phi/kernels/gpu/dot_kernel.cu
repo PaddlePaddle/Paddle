@@ -56,8 +56,8 @@ void DotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(dot,
                    GPU,

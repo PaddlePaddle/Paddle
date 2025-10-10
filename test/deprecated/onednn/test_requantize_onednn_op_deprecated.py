@@ -15,7 +15,7 @@
 import sys
 import unittest
 
-sys.path.append("../../mkldnn")
+sys.path.append("../../onednn")
 import numpy as np
 from onednn_op_test import format_reorder
 from op_test import OpTest

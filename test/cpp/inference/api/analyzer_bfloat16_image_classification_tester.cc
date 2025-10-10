@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-PD_DEFINE_bool(enable_mkldnn, true, "Enable ONEDNN");
+PD_DEFINE_bool(enable_onednn, true, "Enable ONEDNN");
 
 namespace paddle {
 namespace inference {
@@ -33,7 +33,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_num_threads);
-  if (!FLAGS_enable_mkldnn) cfg->DisableONEDNN();
+  if (!FLAGS_enable_onednn) cfg->DisableONEDNN();
 }
 
 TEST(Analyzer_bfloat16_image_classification, bfloat16) {
@@ -46,9 +46,9 @@ TEST(Analyzer_bfloat16_image_classification, bfloat16) {
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInputs(&input_slots_all);
-  if (FLAGS_enable_mkldnn && FLAGS_enable_bf16 &&
+  if (FLAGS_enable_onednn && FLAGS_enable_bf16 &&
       phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16)) {
-    b_cfg.EnableMkldnnBfloat16();
+    b_cfg.EnableOnednnBfloat16();
   } else {
     FLAGS_enable_bf16 = false;
   }

@@ -200,7 +200,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         return hx_acc, ctc_acc, fps
 
     def test_lstm_model(self):
-        if not core.is_compiled_with_mkldnn():
+        if not core.is_compiled_with_onednn():
             return
 
         fp32_model = test_case_args.fp32_model
