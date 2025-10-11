@@ -1589,6 +1589,7 @@ def monkey_patch_tensor():
         ("__c_dlpack_from_pyobject__", core.dlpack_from_pyobject_ptr()),
         ("__c_dlpack_to_pyobject__", core.dlpack_to_pyobject_ptr()),
         ("__c_dlpack_tensor_allocator__", core.dlpack_tensor_allocator_ptr()),
+        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

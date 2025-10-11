@@ -34,10 +34,12 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type);
 phi::Place DLDeviceToPlace(const ::DLDevice& device);
 ::DLDevice PlaceToDLDevice(const phi::Place& place);
 
-TEST_API DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
-                                   uint64_t flags = 0);
+TEST_API ::DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
+                                     uint64_t flags = 0);
 ::DLManagedTensorVersioned* ToDLPackVersioned(const phi::DenseTensor& src,
                                               uint64_t flags = 0);
+void ToDLPackNonOwningImpl(const phi::DenseTensor& tensor,
+                           ::DLTensor& out);  // NOLINT
 TEST_API phi::DenseTensor FromDLPack(::DLManagedTensor* src);
 phi::DenseTensor FromDLPackVersioned(::DLManagedTensorVersioned* src);
 
