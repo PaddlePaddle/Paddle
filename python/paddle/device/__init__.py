@@ -513,22 +513,10 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
             >>> paddle.cuda.is_bf16_supported()
 
     """
-    if not (
-        is_available()
-        or is_compiled_with_cuda()
-        or is_compiled_with_xpu()
-        or is_compiled_with_custom_device()
-    ):
-        return False
-    if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
-        return True
-    if not including_emulation:
-        return False
-    try:
-        paddle.ones(shape=[1], dtype='bfloat16')
-        return True
-    except Exception:
-        return False
+    # including_emulation is not used here, but kept for compatibility with the original implementation
+    return core.is_bfloat16_supported(
+        paddle.framework._current_expected_place()
+    )
 
 
 def set_device(device: PlaceLike | int) -> PlaceLike:

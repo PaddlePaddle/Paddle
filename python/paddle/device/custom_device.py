@@ -578,6 +578,7 @@ def manual_seed(seed: int) -> None:
     .. warning::
         If you are working with a multi-Device model, this function is insufficient
         to get determinism.  To seed all Devices, use :func:`manual_seed_all`.
+        If current Device is CPU, this function will set the seed of the default CPU generator.
 
     Sets the seed for global default generator, which manages the random number generation.
 
@@ -597,4 +598,7 @@ def manual_seed(seed: int) -> None:
     """
     seed = int(seed)
     place = paddle.framework._current_expected_place()
-    core.default_custom_device_generator(place).manual_seed(seed)
+    if isinstance(place, core.CPUPlace):
+        core.default_cpu_generator().manual_seed(seed)
+    else:
+        core.default_custom_device_generator(place).manual_seed(seed)
