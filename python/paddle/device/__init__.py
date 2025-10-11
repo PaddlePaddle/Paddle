@@ -1712,7 +1712,7 @@ class nvtx:
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_push("test") is equivalent to paddle.cuda.nvtx.range_push("test")
-                >>> paddle.device.nvtx.range_push("test"):
+                >>> paddle.device.nvtx.range_push("test")
 
         """
         paddle.framework.core.nvprof_nvtx_push(msg)
@@ -1726,7 +1726,7 @@ class nvtx:
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
-                >>> paddle.device.nvtx.range_pop():
+                >>> paddle.device.nvtx.range_pop()
         """
         paddle.framework.core.nvprof_nvtx_pop()
 
