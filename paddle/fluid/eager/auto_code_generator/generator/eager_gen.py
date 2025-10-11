@@ -243,12 +243,10 @@ strided_compute_op_list = {
     "sum",
     "mean",
     # logical
-    "bitwise_and",
-    "bitwise_or",
-    "bitwise_xor",
-    "bitwise_left_shift",
-    "bitwise_right_shift",
-    "bitwise_not",
+    "logical_and",
+    "logical_or",
+    "logical_xor",
+    "logical_not",
     # compare
     "less_than",
     "less_equal",
