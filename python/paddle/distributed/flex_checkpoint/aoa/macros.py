@@ -15,6 +15,7 @@
 
 import math
 import re
+from itertools import product
 
 from .lexer import Token, TokenType
 
@@ -55,6 +56,10 @@ GLOBAL_ATTRIBUTE_KEYWORDS = [
     'num_heads',
     'num_key_value_groups',
     'permute',
+]
+
+EXTRA_SUFFIX = [
+    "^T",
 ]
 
 
@@ -117,105 +122,6 @@ def star_macro(tokens, expression, context):
     return new_expression
 
 
-@macro(name='layer_id_macro', priority=1)
-def layer_id_macro(tokens, expression, context):
-    LAYER_ID_MACRO_TAG = "$LAYER_ID"
-    if LAYER_ID_MACRO_TAG not in expression:
-        return expression
-
-    name_with_layer_id = next(
-        (
-            token.value
-            for token in tokens
-            if token.type == TokenType.IDENTIFIER
-            and LAYER_ID_MACRO_TAG in token.value
-        ),
-        None,
-    )
-
-    assert name_with_layer_id, "No $LAYER_ID found in NAME tokens"
-    assert all(
-        (t.type != TokenType.IDENTIFIER)
-        or (LAYER_ID_MACRO_TAG in t.value)
-        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
-        for t in tokens
-    ), (
-        f"All IDENTIFIER tokens must contain {LAYER_ID_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
-    )
-
-    match_layer_id = context.get_num_hidden_layers(
-        name_with_layer_id, LAYER_ID_MACRO_TAG
-    )
-    expanded_expressions = []
-
-    match_layer_id = sorted(match_layer_id)
-
-    for layer_id in match_layer_id:
-        expr = ""
-        for token in tokens:
-            if token.type == TokenType.IDENTIFIER:
-                if LAYER_ID_MACRO_TAG in token.value:
-                    expr += token.value.replace(
-                        LAYER_ID_MACRO_TAG, str(layer_id)
-                    )
-                else:
-                    expr += token.value
-            else:
-                expr += token.value
-        expanded_expressions.append(expr)
-
-    return expanded_expressions
-
-
-@macro(name='expert_id_macro', priority=1)
-def expert_id_macro(tokens, expression, context):
-    EXPERT_ID_MACRO_TAG = "$EXPERT_ID"
-    if EXPERT_ID_MACRO_TAG not in expression:
-        return expression
-
-    name_with_expert_id = next(
-        (
-            token.value
-            for token in tokens
-            if token.type == TokenType.IDENTIFIER
-            and EXPERT_ID_MACRO_TAG in token.value
-        ),
-        None,
-    )
-
-    assert name_with_expert_id, "No $EXPERT_ID found in NAME tokens"
-    assert all(
-        (t.type != TokenType.IDENTIFIER)
-        or (EXPERT_ID_MACRO_TAG in t.value)
-        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
-        for t in tokens
-    ), (
-        f"All IDENTIFIER tokens must contain {EXPERT_ID_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
-    )
-
-    match_expert_id = context.get_num_experts(
-        name_with_expert_id, EXPERT_ID_MACRO_TAG
-    )
-    expanded_expressions = []
-
-    match_expert_id = sorted(match_expert_id)
-
-    for expert_id in match_expert_id:
-        expr = ""
-        for token in tokens:
-            if token.type == TokenType.IDENTIFIER:
-                if EXPERT_ID_MACRO_TAG in token.value:
-                    expr += token.value.replace(
-                        EXPERT_ID_MACRO_TAG, str(expert_id)
-                    )
-                else:
-                    expr += token.value
-            else:
-                expr += token.value
-        expanded_expressions.append(expr)
-    return expanded_expressions
-
-
 @macro(name='layer_id_offset_macro', priority=1)
 def layer_id_offset_macro(tokens, expression, context):
     LAYER_ID_OFFSET_MACRO_TAG = "$LAYER_ID_OFFSET"
@@ -232,6 +138,14 @@ def layer_id_offset_macro(tokens, expression, context):
         None,
     )
     assert name_with_layer_id_offset, "No $LAYER_ID_OFFSET found in NAME tokens"
+    assert all(
+        (t.type != TokenType.IDENTIFIER)
+        or (LAYER_ID_OFFSET_MACRO_TAG in t.value)
+        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
+        for t in tokens
+    ), (
+        f"All IDENTIFIER tokens must contain {LAYER_ID_OFFSET_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
+    )
 
     match_layer_id_offset = context.get_num_hidden_layers(
         name_with_layer_id_offset, LAYER_ID_OFFSET_MACRO_TAG
@@ -637,8 +551,8 @@ def transpose_macro(tokens, expression, context):
     return results
 
 
-@macro(name='fused_qkv', priority=4)
-def fused_qkv(tokens, expression, context):
+@macro(name='fused_qkv_macro', priority=4)
+def fused_qkv_macro(tokens, expression, context):
     FUSED_QKV_TAG = "fused_qkv"
     if not any(tkn.value == FUSED_QKV_TAG for tkn in tokens):
         return expression
@@ -740,3 +654,111 @@ def fused_qkv(tokens, expression, context):
 
     else:
         return expression
+
+
+class IDMatcher:
+    def __init__(self, source_keys: list[str], extra_suffixes: list[str]):
+        self.source_keys = set(source_keys)
+        self._placeholder_pattern = re.compile(r'(\$[A-Z_][A-Z0-9_]*)')
+        self.extra_suffixes = sorted(extra_suffixes, key=lambda x: (-len(x), x))
+
+    def _remove_extra_suffixes(self, key: str) -> str:
+        for sfx in self.extra_suffixes:
+            if key.endswith(sfx):
+                key = key[: -len(sfx)]
+                break
+        return key
+
+    def _pattern_to_regex(self, pattern: str) -> tuple[re.Pattern, list[str]]:
+        placeholders = sorted(set(self._placeholder_pattern.findall(pattern)))
+        regex_str = re.escape(pattern)
+        for ph in placeholders:
+            group_name = ph[1:]
+            regex_str = regex_str.replace(
+                re.escape(ph), f'(?P<{group_name}>\\d+)'
+            )
+        return re.compile(f'^{regex_str}$'), [ph[1:] for ph in placeholders]
+
+    def _substitute_ids(self, pattern: str, id_dict: dict[str, int]) -> str:
+        key = pattern
+        for ph, value in id_dict.items():
+            key = key.replace(f'${ph}', str(value))
+        return key
+
+    def find_matches(self, pattern: str) -> dict[str, list[int]]:
+        pattern = self._remove_extra_suffixes(pattern)
+        regex, ph_names = self._pattern_to_regex(pattern)
+        id_values = {ph: set() for ph in ph_names}
+        for key in self.source_keys:
+            match = regex.match(key)
+            if match:
+                for k, v in match.groupdict().items():
+                    id_values[k].add(int(v))
+        return {k: sorted(vs) for k, vs in id_values.items()}
+
+
+@macro(name='id_macro', priority=1)
+def id(tokens, expression, context):
+    ID_MACRO_TAG = "$"
+    if ID_MACRO_TAG not in expression:
+        return expression
+
+    name_with_id = next(
+        (
+            token.value
+            for token in tokens
+            if token.type == TokenType.IDENTIFIER
+            and ID_MACRO_TAG in token.value
+        ),
+        None,
+    )
+
+    assert name_with_id is not None, "No $ID found in NAME tokens"
+    all_src_state_keys = context.get_all_src_state_keys()
+    id_matcher = IDMatcher(all_src_state_keys, EXTRA_SUFFIX)
+    valid_id_combos = id_matcher.find_matches(name_with_id)
+
+    from collections import Counter
+
+    def dict_list_equal_unordered(
+        d1: dict[str, list[int]], d2: dict[str, list[int]]
+    ) -> bool:
+        if set(d1.keys()) != set(d2.keys()):
+            return False
+        for k in d1:
+            if Counter(d1[k]) != Counter(d2[k]):
+                return False
+        return True
+
+    for tkn in tokens:
+        if tkn.type == TokenType.RARROW:
+            break
+        if tkn.type == TokenType.IDENTIFIER and ID_MACRO_TAG in tkn.value:
+            assert dict_list_equal_unordered(
+                id_matcher.find_matches(tkn.value), valid_id_combos
+            )
+
+    def dict_cartesian_tuples(d: dict[str, list[int]]):
+        keys = list(d.keys())
+        value_lists = [d[k] for k in keys]
+        for prod in product(*value_lists):
+            yield tuple(zip(keys, prod))
+
+    results = []
+    id_combs = dict_cartesian_tuples(valid_id_combos)
+    id_combs = sorted(id_combs)
+    for id_comb in id_combs:
+        cur_statement = ""
+        for tkn in tokens:
+            tkn_val = tkn.value
+            if tkn.type == TokenType.IDENTIFIER and ID_MACRO_TAG in tkn.value:
+                for id_tag, id_val in id_comb:
+                    tkn_val = tkn_val.replace(
+                        ID_MACRO_TAG + id_tag, str(id_val)
+                    )
+                cur_statement += tkn_val
+            else:
+                cur_statement += tkn_val
+        results.append(cur_statement)
+
+    return results

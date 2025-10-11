@@ -215,7 +215,7 @@ class TensorBuffer:
 
 def full_param(
     model: Layer,
-    aoa_config: dict[str : list[str]] | None = None,
+    aoa_config: dict[str, list[str]] | None = None,
     process_group: Group | None = None,
 ):
     cur_rank = paddle.distributed.get_rank()

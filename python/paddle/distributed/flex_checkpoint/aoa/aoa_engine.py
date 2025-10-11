@@ -126,23 +126,6 @@ class AOAShardInfoContext:
                 match_layer_id.add(layer_num)
         return match_layer_id
 
-    def get_num_experts(
-        self, name_with_expert_id: str, expert_id_macro_tag: str
-    ) -> set:
-        if expert_id_macro_tag not in name_with_expert_id:
-            raise ValueError(
-                f"expert_id_macro_tag '{expert_id_macro_tag}' not in name_with_expert_id '{name_with_expert_id}'"
-            )
-        prefix, suffix = name_with_expert_id.split(expert_id_macro_tag, 1)
-        pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
-        match_expert_id = set()
-        for key in self.get_all_src_state_keys():
-            match = pattern.fullmatch(key)
-            if match:
-                expert_num = int(match.group(1))
-                match_expert_id.add(expert_num)
-        return match_expert_id
-
     def get_src_state_shard_num(self, src_state_key: str) -> int:
         model_state_key, opt_state_name = split_optimizer_state_key(
             src_state_key
@@ -667,10 +650,11 @@ class AOAEngine:
 
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
-            assert src_var.dtype == target.dtype, (
-                "Direct assignment of Tensors with different types is prohibited in AOA. "
-                "If you want to achieve this functionality, please use the cast semantics provided by AOA."
-            )
+            if src_var.dtype != target.dtype:
+                assert pp_list is not None and target.dtype in str(pp_list), (
+                    "Direct assignment of Tensors with different types is prohibited in AOA. "
+                    "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+                )
 
             src_global_shape = src_var.shape
 
@@ -693,7 +677,7 @@ class AOAEngine:
                 src_local_shape,
                 tuple(src_global_shape),
                 src_global_offset,
-                target.dtype,
+                src_var.dtype,
             )
             target_sharded_weight = ShardedWeightDesc(
                 target_key,
