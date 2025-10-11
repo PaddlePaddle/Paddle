@@ -118,6 +118,11 @@ cc_test(
   SRCS strided_memcpy_test.cc
   DEPS phi common)
 
+cc_test(
+  test_isfinite_kernel
+  SRCS test_isfinite_kernel.cc
+  DEPS gtest phi common)
+
 if(WIN32)
   cc_test(
     sequence_padding_test

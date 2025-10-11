@@ -119,7 +119,10 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   layer->setInput(1, *shape);
   PADDLE_ENFORCE_NOT_NULL(
       layer,
-      common::errors::InvalidArgument("TRT shuffle layer building failed."));
+      common::errors::InvalidArgument(
+          "TensorRT returned nullptr while constructing the dynamic shuffle "
+          "layer for input 'input'. Verify that the supplied runtime shape is "
+          "compatible with the network definition."));
   engine_->DeclareOutput(layer, 0, "y");
   engine_->FreezeNetwork();
 #if IS_TRT_VERSION_GE(8600)
@@ -302,7 +305,10 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
   LOG(INFO) << "create weights";
   PADDLE_ENFORCE_NOT_NULL(
       fc_layer,
-      common::errors::InvalidArgument("TRT SPMM layer building failed."));
+      common::errors::InvalidArgument(
+          "TensorRT returned a null layer when constructing the sparse "
+          "matrix-multiply plugin. Ensure the SpMM plugin is registered and "
+          "the weight/bias dimensions are valid."));
 
   engine_->DeclareOutput(fc_layer, 0, "y");
   engine_->FreezeNetwork();
@@ -440,9 +446,12 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
                                                /*flag_varseqlen*/ false);
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
-  PADDLE_ENFORCE_NOT_NULL(layer,
-                          common::errors::InvalidArgument(
-                              "TRT fused_token_prune layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      layer,
+      common::errors::InvalidArgument(
+          "TensorRT could not add the fused_token_prune plugin layer. "
+          "Confirm the dynamic plugin is registered and the input tensor "
+          "shapes (attn/x/mask/new_mask) follow the expected layout."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
   for (size_t i = 0; i < 2; i++) {
     layer->getOutput(i)->setName(output_tensor_names[i].c_str());
@@ -642,9 +651,12 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
                                                /*flag_varseqlen*/ false);
   std::vector<nvinfer1::ITensor *> itensors = {attn, x, mask, new_mask};
   auto *layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
-  PADDLE_ENFORCE_NOT_NULL(layer,
-                          common::errors::InvalidArgument(
-                              "TRT fused_token_prune layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      layer,
+      common::errors::InvalidArgument(
+          "TensorRT could not add the fused_token_prune plugin layer. "
+          "Confirm the half-precision plugin registration and input tensor "
+          "layouts (attn/x/mask/new_mask) are valid."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
   for (size_t i = 0; i < 2; i++) {
     layer->getOutput(i)->setName(output_tensor_names[i].c_str());
@@ -987,9 +999,12 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
       TRT_ENGINE_ADD_LAYER(engine_, Dequantize, *gn_tensor, *dqscale_tensor);
   dq_layer->setAxis(1);
 
-  PADDLE_ENFORCE_NOT_NULL(groupnorm_layer,
-                          common::errors::InvalidArgument(
-                              "TRT GN plugin layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+    groupnorm_layer,
+    common::errors::InvalidArgument(
+      "TensorRT failed to create the group-normalization plugin layer. "
+      "Ensure the plugin is registered and the provided scale/bias/"
+      "group parameters are consistent."));
 
   engine_->DeclareOutput(dq_layer, 0, "y");
   engine_->FreezeNetwork();
