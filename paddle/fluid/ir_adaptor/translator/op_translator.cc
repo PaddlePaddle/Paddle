@@ -4086,5 +4086,6 @@ OpTranslator::OpTranslator() {
 
   special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
   special_handlers["softplus"] = SoftPlusOpTranscriber();
+  special_handlers["softplus_grad"] = SoftPlusOpTranscriber();
 }
 }  // namespace paddle::translator

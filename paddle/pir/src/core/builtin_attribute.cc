@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include <iostream>
 
 namespace pir {
 
@@ -20,7 +21,11 @@ bool BoolAttribute::data() const { return storage()->data(); }
 
 float FloatAttribute::data() const { return storage()->data(); }
 
-double DoubleAttribute::data() const { return storage()->data(); }
+double DoubleAttribute::data() const {
+  std::cout << "DoubleAttribute::data()" << std::endl;
+  std::cout << "testtest: " << storage()->data() << std::endl;
+  return storage()->data();
+}
 
 int32_t Int32Attribute::data() const { return storage()->data(); }
 
