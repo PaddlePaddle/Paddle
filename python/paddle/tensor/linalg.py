@@ -2011,6 +2011,7 @@ def t_(input, name=None):
         return out
 
 
+@ParamAliasDecorator({"axis": ["dim"]})
 def cross(
     x: Tensor,
     y: Tensor,
