@@ -89,6 +89,7 @@ class LaplaceDataset(paddle.io.Dataset):
     def __getitem__(self, index):
         x = np.linspace(0, 0.9, 10)
         y = np.linspace(0, 0.9, 10)
+        np.random.seed(index)  # 可选：确保可重复性
         bc_value = np.random.rand(36).reshape(36, 1).astype('float32')
 
         domain_space = []
@@ -100,8 +101,9 @@ class LaplaceDataset(paddle.io.Dataset):
                     bc_index.append(i + 10 * j)
         domain_space = np.array(domain_space, dtype='float32')
         bc_index = np.array(bc_index, dtype='int64')
-
-        return domain_space, bc_index, bc_value
+        # 根据 index 返回单个输入点及其相关信息（示例：返回第 index % 100 个点）
+        idx = index % len(domain_space)
+        return domain_space[idx], bc_index, bc_value
 
     def __len__(self):
         return self.num_sample
