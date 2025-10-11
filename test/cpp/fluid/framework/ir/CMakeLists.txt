@@ -39,7 +39,7 @@ cc_test(
   SRCS op_compat_sensible_pass_test.cc
   DEPS op_compat_sensible_pass)
 
-# Fuse pass tests
+# Fusion pass tests
 cc_test(
   test_fc_fuse_pass_cc
   SRCS fc_fuse_pass_test.cc
