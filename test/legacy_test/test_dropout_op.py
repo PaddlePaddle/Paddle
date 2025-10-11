@@ -1847,9 +1847,7 @@ class TestCompositeDropout(unittest.TestCase):
                     )
                     if core._is_fwd_prim_enabled():
                         # primapi.to_prim(mp.blocks)
-                        [output] = decompose(
-                            mp, [output]
-                        )
+                        [output] = decompose(mp, [output])
                     grad = paddle.static.gradients(output, input_)[0]
                     if self.dtype == "bfloat16":
                         output = paddle.cast(output, "float32")
