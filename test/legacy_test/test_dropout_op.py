@@ -1848,7 +1848,7 @@ class TestCompositeDropout(unittest.TestCase):
                     if core._is_fwd_prim_enabled():
                         # primapi.to_prim(mp.blocks)
                         [output] = decompose(
-                            mp, [output], whitelist={"pd_op.dropout"}
+                            mp, [output]
                         )
                     grad = paddle.static.gradients(output, input_)[0]
                     if self.dtype == "bfloat16":
