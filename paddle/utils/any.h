@@ -21,7 +21,6 @@
 #include <memory>
 #include <type_traits>
 #include <typeinfo>
-#include "paddle/phi/core/vocab/string_array.h"
 namespace phi {
 class DenseTensor;
 struct DenseTensorMeta;
