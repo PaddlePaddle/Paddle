@@ -41,6 +41,7 @@ void DotKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto out_data = out->data<T>();
   if (out->dims().size() == 0) {
+#ifdef PADDLE_WITH_CUDA
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>) {
       auto eigen_out = phi::EigenScalar<T>::From(*out);
       auto eigen_x = phi::EigenVector<T>::Flatten(x);
@@ -60,7 +61,14 @@ void DotKernel(const Context& dev_ctx,
       auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
       blas.CUDOT(n, x_data, incx, y_data, incy, out_data);
     }
+#else
+    auto eigen_out = phi::EigenScalar<T>::From(*out);
+    auto eigen_x = phi::EigenVector<T>::Flatten(x);
+    auto eigen_y = phi::EigenVector<T>::Flatten(y);
 
+    auto& dev = *dev_ctx.eigen_device();
+    eigen_out.device(dev) = (eigen_x * eigen_y).sum();
+#endif
   } else {
     auto eigen_out = phi::EigenVector<T>::From(*out);
     auto eigen_x = phi::EigenMatrix<T>::From(x);
