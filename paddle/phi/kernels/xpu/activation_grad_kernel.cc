@@ -226,7 +226,7 @@ template <typename T>
 struct XPULeakyReluGradFunctor
     : public funcs::BaseActivationFunctor<T, double> {
   double alpha;
-  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  typename funcs::BaseActivationFunctor<T, double>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
 
