@@ -125,7 +125,7 @@ cc_test(
   SRCS generate_pass_test.cc
   DEPS generate_pass pass_desc_proto)
 
-# Delete/Clean pass tests
+# Delete/Cleanup pass tests
 cc_test(
   test_delete_op_device_pass
   SRCS delete_op_device_pass_test.cc
