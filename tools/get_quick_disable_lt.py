@@ -103,6 +103,9 @@ def download_file():
             external_xpu = external_xpu + "|" + local_list
         disabled_ut_list = disabled_ut_list + "|" + external_xpu
 
+    # change mkldnn to onednn tests
+    disabled_ut_list = disabled_ut_list.replace("_mkldnn", "_onednn")
+
     print(disabled_ut_list)
     sys.exit(0)
 

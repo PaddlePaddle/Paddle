@@ -14,20 +14,20 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
-template <typename T, typename IndexT = int>
-void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
+template <typename T, typename Context, typename IndexT = int>
+void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*>& index,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
-                                  const std::vector<int64_t>& index_stride,
+                                  const std::vector<int64_t>& index_strides,
                                   const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
@@ -36,20 +36,15 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
-
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
-
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
-    strides[i] = index_stride[i];
+    strides[i] = index_strides[i];
   }
-
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
-
   funcs::IndexGetStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
@@ -63,9 +58,6 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
-
   const int64_t N = output->numel();
   PADDLE_ENFORCE_GE(
       N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
@@ -73,37 +65,53 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
       N,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
-  constexpr int nt = 128;
-  constexpr int vt = 4;
-  const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = dev_ctx.stream();
 
-  using dtype = funcs::OpaqueType<sizeof(T)>;
+  dev_ctx.template Alloc<T>(output);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  using XPUTypeIndexT = typename XPUTypeTrait<IndexT>::Type;
+
+  // passed vector params for XPU
+  std::vector<const XPUTypeIndexT*> index_ptrs_vec;
+  std::vector<int64_t> index_numel_vec;
+  for (int i = 0; i < num_indices; i++) {
+    // since XPU WRAPPER_CHECK_PTR only supports original GM ptrs, so we pass
+    // the IndexT* type ptrs, which is different from the CPU/GPU's char* ptr.
+    index_ptrs_vec.push_back(
+        reinterpret_cast<const XPUTypeIndexT*>(index[i]->data<IndexT>()));
+    // index_numel_vec is for the length of WRAPPER_CHECK_PTR
+    index_numel_vec.push_back(index[i]->numel());
+  }
+  std::vector<int64_t> sizes_vec =
+      std::vector<int64_t>(sizes.begin(), sizes.begin() + num_indices);
+  std::vector<int64_t> orig_strides_vec =
+      std::vector<int64_t>(strides.begin(), strides.begin() + num_indices);
+  std::vector<std::vector<int64_t>> strides_vec_vec =
+      std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
 
   const char* in_ptr =
       reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-  funcs::index_elementwise_with_tensor_kernel<nt, vt>
-      <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
-        const char* const in_data = in_ptr + offsets[1];
 
-        int64_t offset = 0;
-#pragma unroll
-        for (int64_t i = 0; i < num_indices; i++) {
-          int64_t index =
-              *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          if (index < 0) {
-            index += sizes[i];
-          }
-          offset += index * strides[i];
-        }
+  // for checkptr and checksum in XPU
+  int64_t data_size_in = input.Holder()->size() - input.meta().offset;
+  int64_t data_size_out = output->Holder()->size() - output->meta().offset;
 
-        *reinterpret_cast<dtype*>(out_data) =
-            *reinterpret_cast<const dtype*>(in_data + offset);
-      });
+  bool is_get = true;
+  int r = xpu::index_elementwise_tensor<XPUType, XPUTypeIndexT>(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUType*>(in_ptr),  // XPU ptr
+      reinterpret_cast<XPUType*>(out_ptr),       // XPU ptr
+      index_ptrs_vec,                            // vec of XPU ptrs
+      index_numel_vec,                           // CPU vec
+      desired_shape,                             // CPU vec
+      sizes_vec,                                 // CPU vec
+      orig_strides_vec,                          // CPU vec
+      strides_vec_vec,                           // CPU vec
+      N,                                         // int64_t
+      data_size_in,                              // int64_t
+      data_size_out,                             // int64_t
+      is_get);                                   // true for get, false for put
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_elementwise_tensor_get");
 }
 
 template <typename T, typename Context>
@@ -113,7 +121,7 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
                                const std::vector<int64_t>& input_dims,
                                const std::vector<int64_t>& input_strides,
                                const std::vector<int64_t>& index_dims,
-                               const std::vector<int64_t>& index_stride,
+                               const std::vector<int64_t>& index_strides,
                                const int64_t slice_offset,
                                const bool accumulate,
                                const bool is_combined,
@@ -132,25 +140,23 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
     std::vector<int64_t> output_dims(input_dims);
     out->Resize(phi::make_ddim(output_dims));
   }
-
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
-
-  GPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
-                                           x,
-                                           index,
-                                           input_dims,
-                                           input_strides,
-                                           index_dims,
-                                           index_stride,
-                                           slice_offset,
-                                           out);
+  XPUIndexElementwiseGetKernel<T, Context, int64_t>(dev_ctx,
+                                                    x,
+                                                    index,
+                                                    input_dims,
+                                                    input_strides,
+                                                    index_dims,
+                                                    index_strides,
+                                                    slice_offset,
+                                                    out);
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(index_elementwise_get,
-                   GPU,
+                   XPU,
                    ALL_LAYOUT,
                    phi::IndexElementwiseGetKernel,
                    bool,
@@ -162,6 +168,4 @@ PD_REGISTER_KERNEL(index_elementwise_get,
                    int16_t,
                    uint8_t,
                    phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
+                   phi::bfloat16) {}
