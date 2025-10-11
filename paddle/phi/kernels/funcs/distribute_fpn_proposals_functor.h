@@ -55,7 +55,7 @@ inline std::vector<size_t> GetLodFromRoisNum(const Context& dev_ctx,
       rois_num_data = cpu_tensor.data<int>();
     }
     rois_lod.push_back(static_cast<size_t>(0));
-    for (int i = 0; i < rois_num->numel(); ++i) {
+    for (size_t i = 0; i < rois_num->numel(); ++i) {
       rois_lod.push_back(rois_lod.back() +
                          static_cast<size_t>(rois_num_data[i]));
     }
