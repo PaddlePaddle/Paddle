@@ -190,7 +190,7 @@ struct XPULogFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct XPULeakyReluFunctor : public funcs::BaseActivationFunctor<T> {
+struct XPULeakyReluFunctor : public funcs::BaseActivationFunctor<T, double> {
   double alpha;
   typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
