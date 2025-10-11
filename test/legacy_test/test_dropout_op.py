@@ -1862,7 +1862,7 @@ class TestCompositeDropout(unittest.TestCase):
                 mps.append(mp)
         for i in range(len(self.places)):
             self.assertTrue(
-                'dropout' not in [op.name() for op in mps[i].global_block().ops]
+                'pd_op.dropout' not in [op.name() for op in mps[i].global_block().ops]
             )
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
