@@ -155,7 +155,7 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
         PADDLE_ENFORCE_NE(src_iter,
                           node_to_id.end(),
                           common::errors::NotFound(
-                              "(%s) is not found in edge_to_id.", edge_src));
+                              "(%s) is not found in node_to_id.", edge_src));
         auto &edge_dst = nodes[1];
         auto dst_iter = node_to_id.find(edge_dst);
         PADDLE_ENFORCE_NE(dst_iter,
