@@ -34,7 +34,7 @@ void ExpandStrideKernel(const Context& dev_ctx,
   if (x.numel() <= 0 || !x.IsInitialized() || x.dims().size() > 7) {
     invalid_stride = true;
   }
-  if (out->numel() <= 0) {
+  if (out->numel() <= 0 || out->dims().size() > 7) {
     invalid_stride = true;
   }
 
