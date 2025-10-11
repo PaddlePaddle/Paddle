@@ -16,8 +16,8 @@
 
 #include <dlpack/dlpack.h>
 
-#include "paddle/common/macros.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -32,11 +32,11 @@ using Deleter = std::function<void(void*)>;
 phi::Place DLDeviceToPlace(const DLDevice& device);
 DLDevice PlaceToDLDevice(const phi::Place& place);
 
-PADDLE_API DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
-                                     uint64_t flags = 0);
+TEST_API DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
+                                   uint64_t flags = 0);
 DLManagedTensorVersioned* ToDLPackVersioned(const phi::DenseTensor& src,
                                             uint64_t flags = 0);
-PADDLE_API phi::DenseTensor FromDLPack(DLManagedTensor* src);
+TEST_API phi::DenseTensor FromDLPack(DLManagedTensor* src);
 phi::DenseTensor FromDLPackVersioned(DLManagedTensorVersioned* src);
 
 // A traits to support both DLManagedTensor and DLManagedTensorVersioned
