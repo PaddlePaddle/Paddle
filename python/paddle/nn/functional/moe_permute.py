@@ -137,6 +137,9 @@ def moe_permute(
             padding_alignment,
             do_gather,
         )
+        if not do_gather:
+            hidden_states_unzipped = None
+            scale_unzipped = None
         return (
             hidden_states_unzipped,
             zipped_expertwise_rowmap,

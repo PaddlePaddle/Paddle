@@ -280,11 +280,19 @@ void MoePermuteKernel(const Context &dev_ctx,
                                              dev_ctx.stream()));
   const int output_rows = tokens_cumulated;
   const int topk_calculated = expert_routemap_topk.dims()[1];
-  X_unzipped->Resize({output_rows, cols});
+
+  if (do_gather) {
+    X_unzipped->Resize({output_rows, cols});
+  } else {
+    X_unzipped->Resize({0});
+  }
+
   token_prob_unzipped->Resize({output_rows});
-  if (XScale) {
+  if (XScale && do_gather) {
     const int quanted_cols = XScale.get_ptr()->dims()[1];
     XScale_unzipped->Resize({output_rows, quanted_cols});
+  } else {
+    XScale_unzipped->Resize({0});
   }
   dev_ctx.template Alloc<float>(XScale_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
@@ -292,19 +300,21 @@ void MoePermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(token_prob_unzipped);
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
 
-  for (int i = 0; i < num_experts; i++) {
-    int64_t next_expert_offset =
-        i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-    int64_t invalid_rows =
-        next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMemsetAsync(X_unzipped_ptr + cur_expert_end * cols * sizeof(T),
-                        0,
-                        sizeof(T) * invalid_rows * cols,
-                        dev_ctx.stream()));
+  if (do_gather) {
+    for (int i = 0; i < num_experts; i++) {
+      int64_t next_expert_offset =
+          i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
+      int64_t invalid_rows =
+          next_expert_offset - expert_offset[i] - tokens_per_expert[i];
+      int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(X_unzipped_ptr + cur_expert_end * cols * sizeof(T),
+                          0,
+                          sizeof(T) * invalid_rows * cols,
+                          dev_ctx.stream()));
+    }
   }
-  if (XScale) {
+  if (XScale && do_gather) {
     auto XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
     for (int i = 0; i < num_experts; i++) {
