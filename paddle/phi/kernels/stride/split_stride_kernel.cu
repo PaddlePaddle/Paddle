@@ -41,7 +41,7 @@ void SplitStridedGPUKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
-  if (!FLAGS_use_stride_compute_kernel || sections.size() > 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
     DenseTensor x_;
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
