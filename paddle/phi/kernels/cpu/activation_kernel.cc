@@ -72,6 +72,22 @@ namespace phi {
         dev_ctx, x, out, functor);                          \
   }
 
+#define DEFINE_CPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(        \
+    name, functor_class, attr1, attr2)                      \
+  template <typename T, typename Context>                   \
+  void name##Kernel(const Context& dev_ctx,                 \
+                    const DenseTensor& x,                   \
+                    double attr1,                           \
+                    double attr2,                           \
+                    DenseTensor* out) {                     \
+    funcs::functor_class<T> functor;                        \
+    auto attrs = functor.GetAttrs();                        \
+    *(attrs[0].second) = attr1;                             \
+    *(attrs[1].second) = attr2;                             \
+    ActivationImpl<T, T, Context, funcs::functor_class<T>>( \
+        dev_ctx, x, out, functor);                          \
+  }
+
 DEFINE_CPU_ACTIVATION_KERNEL(Sin, SinFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Cos, CosFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Tan, TanFunctor)
@@ -115,6 +131,10 @@ DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CELUFunctor, alpha)
 
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh, HardTanhFunctor, t_min, t_max)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(Softplus,
+                                            SoftplusFunctor,
+                                            beta,
+                                            threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      HardSigmoidFunctor,
                                      slope,
@@ -123,20 +143,6 @@ DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold,
                                      value)
-
-template <typename T, typename Context>
-void SoftplusKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    double beta,
-                    double threshold,
-                    DenseTensor* out) {
-  funcs::SoftplusFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = beta;
-  *(attrs[1].second) = threshold;
-  ActivationImpl<T, T, Context, funcs::SoftplusFunctor<T>>(
-      dev_ctx, x, out, functor);
-}
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,

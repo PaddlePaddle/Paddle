@@ -90,6 +90,22 @@ void ActivationGPUImpl(const Context& dev_ctx,
         dev_ctx, x, out, functor);                          \
   }
 
+#define DEFINE_GPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(        \
+    name, functor_class, attr1, attr2)                      \
+  template <typename T, typename Context>                   \
+  void name##Kernel(const Context& dev_ctx,                 \
+                    const DenseTensor& x,                   \
+                    double attr1,                           \
+                    double attr2,                           \
+                    DenseTensor* out) {                     \
+    funcs::functor_class<T> functor;                        \
+    auto attrs = functor.GetAttrs();                        \
+    *(attrs[0].second) = attr1;                             \
+    *(attrs[1].second) = attr2;                             \
+    ActivationGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, x, out, functor);                          \
+  }
+
 DEFINE_GPU_ACTIVATION_KERNEL(Cos, CudaCosFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Tan, CudaTanFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Acos, CudaAcosFunctor)
@@ -138,6 +154,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
                                      t_min,
                                      t_max)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(Softplus,
+                                            CudaSoftplusFunctor,
+                                            beta,
+                                            threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      CudaHardSigmoidFunctor,
                                      slope,
@@ -148,19 +168,6 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
                                      threshold,
                                      value)
 
-template <typename T, typename Context>
-void SoftplusKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    double beta,
-                    double threshold,
-                    DenseTensor* out) {
-  funcs::CudaSoftplusFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = beta;
-  *(attrs[1].second) = threshold;
-  ActivationGPUImpl<T, Context, funcs::CudaSoftplusFunctor<T>>(
-      dev_ctx, x, out, functor);
-}
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,
