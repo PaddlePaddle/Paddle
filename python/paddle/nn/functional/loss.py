@@ -1911,6 +1911,7 @@ def ctc_loss(
     blank: int = 0,
     reduction: _ReduceMode = 'mean',
     norm_by_times: bool = False,
+    zero_infinity: bool = False,
 ) -> Tensor:
     """
 
@@ -1927,6 +1928,7 @@ def ctc_loss(
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default: 0.
         reduction (str, optional): Indicate how to average the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default: ``'mean'``.
         norm_by_times (bool, optional): Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'. Default: False.
+        zero_infinity (bool, optional): If True, set infinite loss to zero. Default: False.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``log_probs``.
@@ -2041,6 +2043,11 @@ def ctc_loss(
     loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
+
+    if zero_infinity:
+        loss_out = paddle.where(paddle.isinf(loss_out),
+                                paddle.zeros_like(loss_out),
+                                loss_out)
 
     loss_out = paddle.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
