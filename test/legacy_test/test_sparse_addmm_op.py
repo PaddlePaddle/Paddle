@@ -25,13 +25,18 @@ paddle.set_default_dtype('float64')
 
 
 def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
+    if paddle.is_compiled_with_cuda():
+        result = os.popen("nvcc --version").read()
+        regex = r'release (\S+),'
+        match = re.search(regex, result)
+        if match:
+            num = str(match.group(1))
+            integer, decimal = num.split('.')
+            return int(integer) * 1000 + int(float(decimal) * 10)
+        else:
+            return -1
+    elif is_custom_device():
+        return 13000
     else:
         return -1
 

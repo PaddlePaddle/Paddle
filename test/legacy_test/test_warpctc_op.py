@@ -17,8 +17,6 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
-
-sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax
 
 import paddle
