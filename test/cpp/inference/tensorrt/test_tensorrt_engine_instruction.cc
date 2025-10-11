@@ -89,21 +89,29 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   PADDLE_ENFORCE_NOT_NULL(
       flatten_layer,
       common::errors::InvalidArgument(
-          "TRT shuffle layer building failed when preparing input."));
+          "Unable to build the TensorRT shuffle layer for the input tensor "
+          "'x'. "
+          "This usually indicates the TensorRT network failed to allocate the "
+          "intermediate reshape layer."));
   flatten_layer->setReshapeDimensions(nvinfer1::Dims2{-1, 1});
 
   auto *weight_layer = TRT_ENGINE_ADD_LAYER(
       engine, Constant, nvinfer1::Dims2{1, 1}, weight.get());
   PADDLE_ENFORCE_NOT_NULL(
       weight_layer,
-      common::errors::InvalidArgument(
-          "TRT constant layer building failed for weight."));
+      common::errors::InvalidArgument("TensorRT failed to create the constant "
+                                      "layer for parameter 'weight'. "
+                                      "Please confirm the TensorRT builder "
+                                      "supports constant initialisation "
+                                      "for the provided weight shape."));
 
   auto *bias_layer =
       TRT_ENGINE_ADD_LAYER(engine, Constant, nvinfer1::Dims2{1, 1}, bias.get());
-  PADDLE_ENFORCE_NOT_NULL(bias_layer,
-                          common::errors::InvalidArgument(
-                              "TRT constant layer building failed for bias."));
+  PADDLE_ENFORCE_NOT_NULL(
+      bias_layer,
+      common::errors::InvalidArgument(
+          "TensorRT failed to create the constant layer for parameter 'bias'. "
+          "Check whether the provided bias data matches the expected shape."));
 
   auto *matmul_layer = TRT_ENGINE_ADD_LAYER(engine,
                                             MatrixMultiply,
@@ -111,24 +119,31 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
                                             nvinfer1::MatrixOperation::kNONE,
                                             *weight_layer->getOutput(0),
                                             nvinfer1::MatrixOperation::kNONE);
-  PADDLE_ENFORCE_NOT_NULL(matmul_layer,
-                          common::errors::InvalidArgument(
-                              "TRT matrix multiply layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      matmul_layer,
+      common::errors::InvalidArgument(
+          "TensorRT returned a null matrix-multiply layer while fusing the "
+          "fully-connected op. Verify the network input ranks and TensorRT "
+          "version."));
 
   auto *add_layer = TRT_ENGINE_ADD_LAYER(engine,
                                          ElementWise,
                                          *matmul_layer->getOutput(0),
                                          *bias_layer->getOutput(0),
                                          nvinfer1::ElementWiseOperation::kSUM);
-  PADDLE_ENFORCE_NOT_NULL(add_layer,
-                          common::errors::InvalidArgument(
-                              "TRT elementwise add layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      add_layer,
+      common::errors::InvalidArgument(
+          "TensorRT could not construct the elementwise-add layer for bias "
+          "fusion. Ensure the bias tensor uses broadcastable dimensions."));
 
   auto *reshape_layer = engine->network()->addShuffle(*add_layer->getOutput(0));
   PADDLE_ENFORCE_NOT_NULL(
       reshape_layer,
       common::errors::InvalidArgument(
-          "TRT shuffle layer building failed when restoring output shape."));
+          "TensorRT could not emit the final shuffle layer to restore the "
+          "output shape. Confirm the shape tensor and inferred dimensions are "
+          "valid."));
   reshape_layer->setReshapeDimensions(nvinfer1::Dims4{-1, 1, 1, 1});
 
   engine->DeclareOutput(reshape_layer, 0, "y");
@@ -264,7 +279,10 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   layer->setInput(1, *shape);
   PADDLE_ENFORCE_NOT_NULL(
       layer,
-      common::errors::InvalidArgument("TRT shuffle layer building failed."));
+      common::errors::InvalidArgument(
+          "TensorRT failed to construct the dynamic shuffle layer that "
+          "consumes the runtime shape tensor. Please check the provided "
+          "shape binding."));
   engine->DeclareOutput(layer, 0, "y");
   engine->FreezeNetwork();
 
@@ -445,14 +463,19 @@ TEST(PluginTest, test_generic_plugin) {
       creator->createPlugin("pir_generic_plugin", plugin_collection.get());
   PADDLE_ENFORCE_NOT_NULL(
       generic_plugin,
-      common::errors::InvalidArgument("TRT create generic plugin failed."));
+      common::errors::InvalidArgument(
+          "TensorRT plugin registry returned nullptr while creating "
+          "'pir_generic_plugin'. Verify the plugin has been registered before "
+          "building the engine."));
   std::vector<nvinfer1::ITensor *> plugin_inputs;
   plugin_inputs.emplace_back(x);
   auto plugin_layer = engine->network()->addPluginV2(
       plugin_inputs.data(), plugin_inputs.size(), *generic_plugin);
-  PADDLE_ENFORCE_NOT_NULL(plugin_layer,
-                          common::errors::InvalidArgument(
-                              "TRT generic plugin layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      plugin_layer,
+      common::errors::InvalidArgument(
+          "TensorRT failed to add the generic plugin layer to the network. "
+          "Ensure the plugin inputs match the expected TensorRT types."));
 
   engine->DeclareOutput(plugin_layer, 0, "y");
   std::vector<std::string> input_names = {"x"};
