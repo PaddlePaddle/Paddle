@@ -648,10 +648,11 @@ class AOAEngine:
 
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
-            assert src_var.dtype == target.dtype, (
-                "Direct assignment of Tensors with different types is prohibited in AOA. "
-                "If you want to achieve this functionality, please use the cast semantics provided by AOA."
-            )
+            if src_var.dtype != target.dtype:
+                assert pp_list is not None and target.dtype in str(pp_list), (
+                    "Direct assignment of Tensors with different types is prohibited in AOA. "
+                    "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+                )
 
             src_global_shape = src_var.shape
 
@@ -674,7 +675,7 @@ class AOAEngine:
                 src_local_shape,
                 tuple(src_global_shape),
                 src_global_offset,
-                target.dtype,
+                src_var.dtype,
             )
             target_sharded_weight = ShardedWeightDesc(
                 target_key,
