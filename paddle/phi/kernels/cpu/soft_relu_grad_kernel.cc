@@ -32,6 +32,7 @@
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/soft_relu_grad_kernel.h"
 
 namespace phi {
 

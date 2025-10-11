@@ -305,7 +305,7 @@ class TestTensor(unittest.TestCase):
             isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
         )
 
-        if core.is_compiled_with_cuda() or is_custom_device():
+        if core.is_compiled_with_cuda():
             place = get_device_place()
             self.assertTrue(
                 isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
@@ -319,6 +319,11 @@ class TestTensor(unittest.TestCase):
                 isinstance(
                     tensor._mutable_data(places[0], dtype), numbers.Integral
                 )
+            )
+        elif is_custom_device():
+            place = get_device_place()
+            self.assertTrue(
+                isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
             )
 
     def test_tensor_set_fp16(self):
@@ -334,13 +339,18 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(tensor_dtype, paddle.float16)
         np.testing.assert_array_equal(np.array(tensor), array)
 
-        if core.is_compiled_with_cuda() or is_custom_device():
+        if core.is_compiled_with_cuda():
             place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.float16)
             np.testing.assert_array_equal(np.array(tensor), array)
 
             place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.float16)
+            np.testing.assert_array_equal(np.array(tensor), array)
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.float16)
             np.testing.assert_array_equal(np.array(tensor), array)
@@ -358,13 +368,18 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(tensor_dtype, paddle.int16)
         np.testing.assert_array_equal(np.array(tensor), array)
 
-        if core.is_compiled_with_cuda() or is_custom_device():
+        if core.is_compiled_with_cuda():
             place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.int16)
             np.testing.assert_array_equal(np.array(tensor), array)
 
             place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.int16)
+            np.testing.assert_array_equal(np.array(tensor), array)
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.int16)
             np.testing.assert_array_equal(np.array(tensor), array)
@@ -378,13 +393,18 @@ class TestTensor(unittest.TestCase):
         self.assertEqual([2, 200, 300], tensor.shape())
         np.testing.assert_array_equal(np.array(tensor), list_array)
 
-        if core.is_compiled_with_cuda() or is_custom_device():
+        if core.is_compiled_with_cuda():
             place = get_device_place()
             tensor.set(list_array, place)
             self.assertEqual([2, 200, 300], tensor.shape())
             np.testing.assert_array_equal(np.array(tensor), list_array)
 
             place = core.CUDAPinnedPlace()
+            tensor.set(list_array, place)
+            self.assertEqual([2, 200, 300], tensor.shape())
+            np.testing.assert_array_equal(np.array(tensor), list_array)
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(list_array, place)
             self.assertEqual([2, 200, 300], tensor.shape())
             np.testing.assert_array_equal(np.array(tensor), list_array)
@@ -423,7 +443,7 @@ class TestTensor(unittest.TestCase):
             tensor._get_complex128_element(0), 42.1 + 42.1j
         )
 
-        if core.is_compiled_with_cuda() or is_custom_device():
+        if core.is_compiled_with_cuda():
             place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.complex128)
@@ -433,6 +453,14 @@ class TestTensor(unittest.TestCase):
             )
 
             place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.complex128)
+            tensor._set_complex128_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                tensor._get_complex128_element(0), 42.1 + 42.1j
+            )
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.complex128)
             tensor._set_complex128_element(0, 42.1 + 42.1j)
@@ -459,7 +487,7 @@ class TestTensor(unittest.TestCase):
             np.complex64(42.1 + 42.1j),
         )
 
-        if core.is_compiled_with_cuda() or is_custom_device():
+        if core.is_compiled_with_cuda():
             place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.complex64)
@@ -470,6 +498,15 @@ class TestTensor(unittest.TestCase):
             )
 
             place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.complex64)
+            tensor._set_complex64_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                np.complex64(tensor._get_complex64_element(0)),
+                np.complex64(42.1 + 42.1j),
+            )
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.complex64)
             tensor._set_complex64_element(0, 42.1 + 42.1j)

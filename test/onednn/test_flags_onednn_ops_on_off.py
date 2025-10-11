@@ -22,7 +22,7 @@ import unittest
 class TestFlagsUseOnednn(unittest.TestCase):
     def setUp(self):
         self._python_interp = sys.executable
-        self._python_interp += " check_flags_mkldnn_ops_on_off.py"
+        self._python_interp += " check_flags_onednn_ops_on_off.py"
 
         self.env = os.environ.copy()
         self.env["DNNL_VERBOSE"] = "1"
