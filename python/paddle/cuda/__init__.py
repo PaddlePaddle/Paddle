@@ -26,7 +26,20 @@ from paddle.device import (
     is_available as _device_is_available,
     is_current_stream_capturing as _is_current_stream_capturing,
     manual_seed_all as device_manual_seed_all,
+    nvtx,
     stream_guard as _PaddleStreamGuard,
+)
+from paddle.tensor.creation import (
+    BFloat16Tensor,
+    BoolTensor,
+    ByteTensor,
+    CharTensor,
+    DoubleTensor,
+    FloatTensor,
+    HalfTensor,
+    IntTensor,
+    LongTensor,
+    ShortTensor,
 )
 
 if TYPE_CHECKING:
@@ -799,4 +812,15 @@ __all__ = [
     "manual_seed_all",
     "get_rng_state",
     "set_rng_state",
+    'FloatTensor',
+    'DoubleTensor',
+    'HalfTensor',
+    'BFloat16Tensor',
+    'ByteTensor',
+    'CharTensor',
+    'ShortTensor',
+    'IntTensor',
+    'LongTensor',
+    'BoolTensor',
+    'nvtx',
 ]
