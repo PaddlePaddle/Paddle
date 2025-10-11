@@ -42,14 +42,13 @@ class ActivationOpConverter : public OpConverter {
     auto op_pair = ops.find(op_type_);
     nvinfer1::IActivationLayer* layer = nullptr;
     if (op_type_ == "softplus") {
-      const double beta =
-          op_desc.HasAttr("beta")
-              ? PADDLE_GET_CONST(double, op_desc.GetAttr("beta"))
-              : 1.0;
-      const double threshold =
+      const float beta = op_desc.HasAttr("beta")
+                             ? PADDLE_GET_CONST(float, op_desc.GetAttr("beta"))
+                             : 1.0f;
+      const float threshold =
           op_desc.HasAttr("threshold")
-              ? PADDLE_GET_CONST(double, op_desc.GetAttr("threshold"))
-              : 20.0;
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("threshold"))
+              : 20.0f;
       auto* layer_clip = TRT_ENGINE_ADD_LAYER(
           engine_, Activation, *input_tensor, nvinfer1::ActivationType::kCLIP);
       layer_clip->setAlpha(-3.40282e+038);
