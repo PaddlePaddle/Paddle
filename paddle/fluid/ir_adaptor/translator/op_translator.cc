@@ -4020,6 +4020,7 @@ OpTranslator::OpTranslator() {
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["leaky_relu"] = LeakyReLUOpTranscriber();
+  special_handlers["leaky_relu_grad"] = LeakyReLUOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
   special_handlers["conv3d"] = Conv3dOpTranscriber();
   special_handlers["cross_entropy_with_softmax"] =
