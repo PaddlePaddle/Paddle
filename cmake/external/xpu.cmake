@@ -34,9 +34,9 @@ set(XPU_FFT_LIB_NAME "libcufft.so")
 add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "dev/20250909")
+  set(XPU_XHPC_BASE_DATE "dev/20251007")
 endif()
-set(XPU_XCCL_BASE_VERSION "3.0.3.1") # For XRE5
+set(XPU_XCCL_BASE_VERSION "3.0.3.3") # For XRE5
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20250507/xpu3")
 endif()
@@ -190,7 +190,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
 
 file(
   WRITE ${XPU_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(XPU)\n" "cmake_minimum_required(VERSION 3.0)\n"
+  "PROJECT(XPU)\n" "cmake_minimum_required(VERSION 3.5)\n"
   "install(DIRECTORY xpu/include xpu/lib \n"
   "        DESTINATION ${XPU_INSTALL_DIR})\n")
 

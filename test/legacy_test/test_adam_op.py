@@ -311,7 +311,7 @@ class TestAdamOpMultipleStepsAMSGrad(TestAdamOpMultipleSteps):
             self.no_check_set = None
 
 
-def adam_step(inputs, attributes):
+def adam_step(inputs, attributes, weight_decay=False):
     '''
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
@@ -319,6 +319,11 @@ def adam_step(inputs, attributes):
     :return tuple: tuple of output param, moment1, moment2, moment2_max
     beta1 power accumulator and beta2 power accumulator
     '''
+    if weight_decay and attributes.get("with_decay", False):
+        param = inputs['Param']
+        lr = inputs['LearningRate']
+        decay = 1.0 - lr * attributes["coeff"]
+        param = param * decay
     param = inputs['Param']
     grad = inputs['Grad']
     moment1 = inputs['Moment1']
@@ -340,59 +345,6 @@ def adam_step(inputs, attributes):
         beta2 = inputs['Beta2Tensor'][0]
 
     amsgrad = attributes['amsgrad']
-
-    moment1_out = beta1 * moment1 + (1 - beta1) * grad
-    moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
-
-    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-
-    if amsgrad:
-        moment2_max_out = np.maximum(moment2_out, moment2_max)
-        param_out = param - lr_t * (
-            moment1_out / (np.sqrt(moment2_max_out) + epsilon)
-        )
-    else:
-        moment2_max_out = np.empty_like(moment2_out)
-        param_out = param - lr_t * (
-            moment1_out / (np.sqrt(moment2_out) + epsilon)
-        )
-
-    return param_out, moment1_out, moment2_out, moment2_max_out
-
-
-def adamw_step(inputs, attributes):
-    '''
-    Simulate one step of the adam optimizer
-    :param inputs: dict of inputs
-    :param attributes: dict of attributes
-    :return tuple: tuple of output param, moment1, moment2, moment2_max,
-    beta1 power accumulator and beta2 power accumulator
-    '''
-    param = inputs['Param']
-    grad = inputs['Grad']
-    moment1 = inputs['Moment1']
-    moment2 = inputs['Moment2']
-    moment2_max = inputs['Moment2Max']
-    lr = inputs['LearningRate']
-    beta1_pow = inputs['Beta1Pow']
-    beta2_pow = inputs['Beta2Pow']
-
-    epsilon = attributes['epsilon']
-    coeff = attributes["coeff"]
-    if attributes.get("with_decay", False):
-        decay = 1.0 - lr * coeff
-        param2 = param * decay
-        param = param2.copy()
-    if 'beta1' in attributes:
-        beta1 = attributes['beta1']
-    else:
-        beta1 = inputs['Beta1Tensor'][0]
-    if 'beta2' in attributes:
-        beta2 = attributes['beta2']
-    else:
-        beta2 = inputs['Beta2Tensor'][0]
-
-    amsgrad = attributes["amsgrad"]
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
@@ -577,8 +529,7 @@ class TestSparseAdamOp(unittest.TestCase):
             actual = actual.reshape([actual.size])
             np_array = np_array.reshape([np_array.size])
 
-            for i in range(np_array.size):
-                self.assertLess((actual[i] - np_array[i]), 0.00001)
+            np.testing.assert_allclose(actual, np_array, atol=2e-5)
 
     def test_sparse_adam(self):
         for place in get_places():

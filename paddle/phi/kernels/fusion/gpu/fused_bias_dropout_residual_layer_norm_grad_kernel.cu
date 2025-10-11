@@ -27,6 +27,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_dropout_residual_layer_norm_grad_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
 namespace phi {

@@ -207,7 +207,7 @@ class PRChecker:
         filetype = ''
         if f.endswith('.h') or f.endswith('.cc') or f.endswith('.cu'):
             filetype = 'cc'
-        if f.endswith('.py'):
+        elif f.endswith('.py'):
             filetype = 'py'
         else:
             return []

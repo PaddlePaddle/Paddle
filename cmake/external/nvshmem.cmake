@@ -53,7 +53,12 @@ else()
       extern_nvshmem)
 endif()
 
-set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/patches/nvshmem/nvshmem.patch)
+if(CUDA_VERSION VERSION_GREATER_EQUAL 13)
+  set(NVSHMEM_PATCH_PATH
+      ${PADDLE_SOURCE_DIR}/patches/nvshmem/nvshmem_cuda13.patch)
+else()
+  set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/patches/nvshmem/nvshmem.patch)
+endif()
 set(NVSHMEM_PATCH_COMMAND
     git init && git config --global --add safe.directory ${NVSHMEM_SOURCE_DIR}
     && git config user.name "PaddlePaddle" && git config user.email

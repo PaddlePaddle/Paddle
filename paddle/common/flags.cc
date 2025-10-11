@@ -737,11 +737,21 @@ PHI_DEFINE_EXPORTED_int32(
     "summary will be shown."
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
+/**
+ * Debug related FLAG
+ * Name: dump_grad_node_forward_stack_path
+ * Since Version: 3.2.1
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump grad node forward call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
+                           "",
+                           "Dump grad node forward call stack to the dir path");
 
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");
-
 /**
  * Debug related FLAG
  * Name: sort_sum_gradient
@@ -2225,3 +2235,16 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
 PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
                           0,
                           "Whether use prealloc for deepep communication.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_force_stride_compute_contig_out
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether force Stride_Compute_Kernel output contiguous.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    force_stride_compute_contig_out,
+    false,
+    "Whether force Stride_Compute_Kernel output contiguous.");

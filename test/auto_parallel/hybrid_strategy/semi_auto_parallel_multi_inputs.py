@@ -179,6 +179,7 @@ class TestSemiAutoParallelMultiInputs:
         cur_rank = paddle.distributed.get_rank()
         if self._run_static:
             dist_model = dist.to_static(model, dist_dataloader, loss_fn, opt)
+            dist_model.train()
 
             for step, data in enumerate(dist_dataloader()):
                 input1, input2 = data["inputs"]

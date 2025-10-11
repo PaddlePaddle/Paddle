@@ -75,10 +75,10 @@ PADDLE_API void GpuMemoryUsage(size_t *available, size_t *total);
 
 //! Get the available memory to allocate, which is the size of available gpu
 //! minus reserving.
-size_t GpuAvailableMemToAlloc();
+PADDLE_API size_t GpuAvailableMemToAlloc();
 
 //! Get the maximum allocation size of current GPU device.
-size_t GpuMaxAllocSize();
+PADDLE_API size_t GpuMaxAllocSize();
 
 //! Get the initial allocation size of current GPU device.
 size_t GpuInitAllocSize();
@@ -87,7 +87,7 @@ size_t GpuInitAllocSize();
 size_t GpuReallocSize();
 
 //! Get the minimum chunk size for GPU buddy allocator.
-size_t GpuMinChunkSize();
+PADDLE_API size_t GpuMinChunkSize();
 
 //! Get the maximum chunk size for GPU buddy allocator.
 size_t GpuMaxChunkSize();
@@ -129,13 +129,13 @@ PADDLE_API void GpuDestroyStream(gpuStream_t stream);
 PADDLE_API void GpuDeviceSync();
 
 //! CudaMalloc with recorded info
-gpuError_t RecordedGpuMalloc(void **ptr,
-                             size_t size,
-                             int dev_id,
-                             bool malloc_managed_memory = false);
+PADDLE_API gpuError_t RecordedGpuMalloc(void **ptr,
+                                        size_t size,
+                                        int dev_id,
+                                        bool malloc_managed_memory = false);
 
 //! CudaFree with recorded info
-void RecordedGpuFree(void *p, size_t size, int dev_id);
+PADDLE_API void RecordedGpuFree(void *p, size_t size, int dev_id);
 
 //! CudaMalloc with recorded info
 gpuError_t RecordedGpuMallocAsync(void **ptr,
@@ -163,29 +163,29 @@ CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
 #endif
 
 //! Get available and total gpu memory with considering limitation
-bool RecordedGpuMemGetInfo(size_t *avail,
-                           size_t *total,
-                           size_t *actual_avail,
-                           size_t *actual_total,
-                           int dev_id);
+PADDLE_API bool RecordedGpuMemGetInfo(size_t *avail,
+                                      size_t *total,
+                                      size_t *actual_avail,
+                                      size_t *actual_total,
+                                      int dev_id);
 
 //! Get recorded cudaMalloc size. If record is disabled, return 0.
-uint64_t RecordedGpuMallocSize(int dev_id);
+PADDLE_API uint64_t RecordedGpuMallocSize(int dev_id);
 
 uint64_t RecordedGpuLimitSize(int dev_id);
 
-bool IsGpuMallocRecorded(int dev_id);
+PADDLE_API bool IsGpuMallocRecorded(int dev_id);
 
 //! Empty idle cached memory held by the allocator.
 PADDLE_API void EmptyCache(void);
 
-bool IsGPUManagedMemorySupported(int dev_id);
+PADDLE_API bool IsGPUManagedMemorySupported(int dev_id);
 
-bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id);
+PADDLE_API bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id);
 
 //! Get the primitive pointer return from cudaMalloc, just implemented with
 //! testing, do not use for release
-void *GetGpuBasePtr(void *ptr, int dev_id);
+PADDLE_API void *GetGpuBasePtr(void *ptr, int dev_id);
 
 }  // namespace platform
 }  // namespace paddle

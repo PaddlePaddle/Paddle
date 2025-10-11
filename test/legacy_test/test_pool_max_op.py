@@ -476,8 +476,10 @@ create_test_bf16_class(TestCastAdaptive2d)
 
 
 def skip_unit_test():
+    if is_custom_device():
+        return False
     return (
-        not (core.is_compiled_with_cuda() or is_custom_device())
+        not core.is_compiled_with_cuda()
         or not core.is_compiled_with_cudnn_frontend()
         or paddle.device.cuda.get_device_capability()[0] < 8
     )

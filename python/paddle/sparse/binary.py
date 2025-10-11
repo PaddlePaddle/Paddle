@@ -58,9 +58,6 @@ _pir_int_dtype_ = {
 
 def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
-    Note:
-        This API is only supported from ``CUDA 11.0`` .
-
     Applies matrix multiplication of two Tensors.
 
     The supported input/output Tensor type are as follows:
@@ -140,9 +137,6 @@ def masked_matmul(
     x: Tensor, y: Tensor, mask: Tensor, name: str | None = None
 ) -> Tensor:
     """
-    Note:
-        This API is only supported from ``CUDA 11.3`` .
-
     Applies matrix multiplication of two Dense Tensors.
 
     The supported input/output Tensor layout are as follows:
@@ -206,9 +200,6 @@ def masked_matmul(
 
 def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
     """
-    Note:
-        This API is only supported from ``CUDA 11.0`` .
-
     Applies matrix-vector product of Sparse Matrix 'x' and Dense vector 'vec' .
 
     The supported input/output Tensor layout are as follows:

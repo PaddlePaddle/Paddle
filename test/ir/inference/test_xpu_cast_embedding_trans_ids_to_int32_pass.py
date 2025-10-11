@@ -83,7 +83,7 @@ class TestXpuCastEmbeddingTransIdsToInt32Pass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["cast_embedding_trans_ids_to_int32_pass"],

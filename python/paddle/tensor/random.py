@@ -579,7 +579,7 @@ def uniform_random_batch_size_like(
     Args:
         input (Tensor): A Tensor. Supported data types: float32, float64.
         shape (tuple|list): A python list or python tuple. The shape of the output Tensor, the data type is int.
-        dtype(np.dtype|paddle.dtype|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
+        dtype(str|paddle.dtype|np.dtype, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
         input_dim_idx (int, optional): An index used to get the input dimension value which will be used to resize the output dimension. Default  0.
         output_dim_idx (int, optional): An index used to indicate the specific dimension that will be replaced by corresponding input dimension value. Default 0.
         min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
@@ -1512,7 +1512,7 @@ def uniform(
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
-        dtype(str|np.dtype, optional): The data type of the output Tensor.
+        dtype(str|paddle.dtype|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
@@ -1845,6 +1845,62 @@ def randint(
         return out
 
 
+def random_(
+    x: Tensor,
+    from_: int = 0,
+    to: int | None = None,
+    *,
+    generator: None = None,
+) -> Tensor:
+    """
+    Fills self tensor with numbers sampled from the discrete uniform distribution over [from, to - 1].
+    If not specified, the values are usually only bounded by self tensor’s data type. However,
+    for floating point types, if unspecified, range will be [0, 2^mantissa] to ensure that every value is representable.
+
+    Args:
+        from (int, optional): The lower bound on the range of random values to generate. Default is 0.
+        to (int|None, optional): The upper bound on the range of random values to generate. Default is None.
+        generator (None): Placeholder for random number generator (currently not implemented, reserved for future use).
+
+    Returns:
+        Tensor, A Tensor filled with random integers from a discrete uniform
+        distribution in the range [``from``, ``to``).
+
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros([3], dtype=paddle.int32)
+            >>> x.random_(0, 10)
+    """
+    dtype = x.dtype
+    if to is None:
+        if from_ == 0:
+            if paddle.is_floating_point(x):
+                if dtype == paddle.float32:
+                    mantissa = 24
+                elif dtype == paddle.float64:
+                    mantissa = 53
+                elif dtype == paddle.float16:
+                    mantissa = 11
+                else:
+                    mantissa = 8
+                to = 2**mantissa
+            else:
+                to = paddle.iinfo(dtype).max
+        else:
+            to = from_
+            from_ = 0
+
+    if from_ >= to:
+        raise ValueError(
+            f"random_ expects 'from' to be less than 'to', but got from={from_} >= to={to}"
+        )
+    return _C_ops.random_(x, from_, to)
+
+
 def randint_like(
     x: Tensor,
     low: int = 0,
@@ -2069,7 +2125,14 @@ def randint_like(
 
 
 def randperm(
-    n: int, dtype: DTypeLike = "int64", name: str | None = None
+    n: int,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> Tensor:
     """
     Returns a 1-D Tensor filled with random permutation values from 0
@@ -2083,6 +2146,10 @@ def randperm(
         name (str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+        out(Tensor, optional): The output tensor.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor, A 1-D Tensor filled with random permutation values from 0
@@ -2108,11 +2175,38 @@ def randperm(
             >>> #doctest: -SKIP
 
     """
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
+
     if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.randperm(n, dtype, _current_expected_place())
+        tensor = _C_ops.randperm(n, dtype, device, out=out)
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        if pin_memory and in_dynamic_mode():
+            tensor = tensor.pin_memory()
+        return tensor
     else:
         if n < 1:
             raise ValueError(

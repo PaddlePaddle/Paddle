@@ -25,6 +25,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 
+#ifdef PADDLE_WITH_CUDA
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -58,3 +60,5 @@ class CUDAVirtualMemAllocator : public Allocator {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif
