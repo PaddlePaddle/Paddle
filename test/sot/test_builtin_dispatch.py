@@ -458,7 +458,7 @@ def test_native_code_function():
     res5 = paddle.base.libpaddle.is_compiled_with_custom_device("npu")
     res6 = paddle.base.libpaddle.is_compiled_with_ipu()
     res7 = paddle.base.libpaddle.is_compiled_with_xpu()
-    res8 = paddle.base.libpaddle.is_compiled_with_mkldnn()
+    res8 = paddle.base.core.is_compiled_with_onednn()
     res9 = paddle.base.libpaddle.is_compiled_with_nccl()
     res10 = paddle.base.libpaddle.is_compiled_with_mpi()
     res11 = paddle.base.libpaddle.is_compiled_with_mpi_aware()
