@@ -721,7 +721,8 @@ class PADDLE_API Tensor final {
    * Tensor name: used to adapt original execution mechanism and debug analysis
    * in the development of new dygraph.
    */
-  std::string name_{""};
+  std::string name_{"Tensor_" +
+                    std::to_string(reinterpret_cast<uintptr_t>(this))};
 
  public:
   // Tensor C++ APIs
