@@ -44,6 +44,15 @@ inline void im2col_common(const phi::DenseTensor& im,
   int output_width = col->dims()[4];
   int channels_col = im_channels * filter_height * filter_width;
 
+  // Convert dimensions to 64-bit to prevent overflow in arithmetic operations
+  const int64_t im_channels64 = im_channels;
+  const int64_t im_height64 = im_height;
+  const int64_t im_width64 = im_width;
+  const int64_t filter_height64 = filter_height;
+  const int64_t filter_width64 = filter_width;
+  const int64_t output_height64 = output_height;
+  const int64_t output_width64 = output_width;
+
   const T* im_data = im.data<T>();
   T* col_data = col->data<T>();
   for (int c = 0; c < channels_col; ++c) {
@@ -54,20 +63,26 @@ inline void im2col_common(const phi::DenseTensor& im,
       int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
       for (int w = 0; w < output_width; ++w) {
         int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
-        int col_idx = (c * output_height + h) * output_width + w;
+
+        // Calculate col_idx using 64-bit arithmetic to prevent overflow
+        int64_t col_idx64 =
+            ((int64_t)c * output_height64 + h) * output_width64 + w;
 
         // Check bounds first to avoid buffer overflow in im_idx calculation
         if (im_row_idx < 0 || im_row_idx >= im_height || im_col_idx < 0 ||
             im_col_idx >= im_width) {
-          col_data[col_idx] = static_cast<T>(0);
+          *(col_data + col_idx64) = static_cast<T>(0);
         } else {
-          int im_idx;
+          int64_t im_idx64;
           if (data_layout != DataLayout::kNHWC) {
-            im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
+            im_idx64 = ((int64_t)c_im * im_height64 + im_row_idx) * im_width64 +
+                       im_col_idx;
           } else {
-            im_idx = (im_row_idx * im_width + im_col_idx) * im_channels + c_im;
+            im_idx64 = ((int64_t)im_row_idx * im_width64 + im_col_idx) *
+                           im_channels64 +
+                       c_im;
           }
-          col_data[col_idx] = im_data[im_idx];
+          *(col_data + col_idx64) = *(im_data + im_idx64);
         }
       }
     }
