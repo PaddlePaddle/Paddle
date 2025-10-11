@@ -3948,25 +3948,18 @@ struct SoftPlusOpTranscriber : public OpTranscriber {
                  << " name: " << legacy_attr_name << " " << legacy_attr.index();
         pir::Attribute new_attr =
             attribute_translator(info.type_name, legacy_attr);
-
-        if (info.name == "beta") {
-          attribute_map[info.name] = pir::DoubleAttribute::get(ctx, 1.0);
+        if (legacy_attr_name == "beta" || legacy_attr_name == "threshold") {
+          attribute_map[info.name] = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        } else {
+          attribute_map[info.name] = new_attr;
+          if (!new_attr) {
+            VLOG(0) << "empty attribute in " << op_desc.Type()
+                    << " name: " << info.name;
+          }
         }
-        if (info.name == "threshold") {
-          attribute_map[info.name] = pir::DoubleAttribute::get(ctx, 20.0);
-        }
-        // if (legacy_attr_name == "beta" || legacy_attr_name == "threshold") {
-        //   attribute_map[info.name] = pir::DoubleAttribute::get(
-        //       ctx,
-        //       static_cast<double>(
-        //           new_attr.dyn_cast<pir::FloatAttribute>().data()));
-        // } else {
-        //   attribute_map[info.name] = new_attr;
-        //   if (!new_attr) {
-        //     VLOG(0) << "empty attribute in " << op_desc.Type()
-        //             << " name: " << info.name;
-        //   }
-        // }
       } else {
         VLOG(10) << "attribute in " << op_desc.Type()
                  << " name: " << legacy_attr_name << " doesn't exist";
@@ -4091,5 +4084,6 @@ OpTranslator::OpTranslator() {
 
   special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
   special_handlers["softplus"] = SoftPlusOpTranscriber();
+  special_handlers["softplus_grad"] = SoftPlusOpTranscriber();
 }
 }  // namespace paddle::translator
