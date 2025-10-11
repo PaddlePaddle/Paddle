@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import convert_float_to_uint16
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
