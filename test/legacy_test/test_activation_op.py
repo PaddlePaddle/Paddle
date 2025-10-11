@@ -4794,6 +4794,54 @@ class TestPow(TestActivation):
         )
 
 
+class TestPowFp64_Comp(OpTest):
+    def setUp(self):
+        self.op_type = "pow"
+        # test forward decomposition correctness
+        self.prim_op_type = "comp"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.init_dtype()
+        self.init_shape()
+        self.if_enable_cinn()
+
+        np.random.seed(2025)
+        x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        factor = 1.3
+        out = np.power(x, factor)
+
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {'factor': factor}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad(self):
+        # Gradient check must be done in FP64 for pow op
+        # due to framework requirement.
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=False,
+            check_pir=True,
+            check_prim_pir=False,
+            max_relative_error=1e-2,
+            numeric_grad_delta=2e-2,
+        )
+
+    def init_dtype(self):
+        # Pow op gradient check must use FP64 precision.
+        # This is enforced by Paddle's OpTest tearDownClass.
+        self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = [11, 17]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
 class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
