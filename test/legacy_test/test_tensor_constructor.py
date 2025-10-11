@@ -198,8 +198,6 @@ class TestBoolTensor(TestFloatTensor):
         self.api = paddle.BoolTensor
 
 
-import unittest
-
 dtype_map = {
     "Bool": ("bool", paddle.bool),
     "Byte": ("uint8", paddle.uint8),
@@ -212,25 +210,22 @@ dtype_map = {
 }
 
 prefixes = [
-    "paddle",  # paddle.BoolTensor
     "paddle.device",  # paddle.device.BoolTensor
     "paddle.cuda",  # paddle.cuda.BoolTensor
 ]
 
 
-# 动态创建测试类
 for prefix in prefixes:
     for name, (np_dtype, paddle_dtype) in dtype_map.items():
         class_name = f"Test_{prefix.replace('.', '_')}_{name}Tensor"
 
-        # 动态生成 set_api_and_type
         def make_set_api_and_type(
             api_path, np_dtype=np_dtype, paddle_dtype=paddle_dtype
         ):
             def _func(self):
                 self.dtype = paddle_dtype
                 self.np_dtype = np_dtype
-                # 从字符串解析 API 引用
+
                 components = api_path.split('.')
                 mod = __import__(
                     '.'.join(components[:-1]), fromlist=[components[-1]]
@@ -241,14 +236,12 @@ for prefix in prefixes:
 
         api_path = f"{prefix}.{name}Tensor"
 
-        # 创建测试类
         test_cls = type(
             class_name,
             (TestFloatTensor,),
             {"set_api_and_type": make_set_api_and_type(api_path)},
         )
 
-        # 注册到全局命名空间（unittest 会自动发现）
         globals()[class_name] = test_cls
 
 if __name__ == "__main__":
