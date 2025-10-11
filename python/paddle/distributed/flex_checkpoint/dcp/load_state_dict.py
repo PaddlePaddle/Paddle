@@ -45,6 +45,7 @@ from .utils import (
     build_shard_desc,
     check_unique_id,
     compute_local_shape_and_global_offset,
+    create_hf_ckpt_metadata,
     flat_range_in_min_slice,
     flatten_state_dict,
     get_max_id,
@@ -108,6 +109,36 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
         for file in accessible_files
         if file.endswith(f"{unique_id}.metadata")
     ]
+
+    safetensors_files = [
+        file for file in accessible_files if file.endswith(".safetensors")
+    ]
+
+    if len(safetensors_files) > 0:
+        logger.info(
+            f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
+        )
+        metadata_files = [
+            file
+            for file in accessible_files
+            if file.endswith(".auto_generated.metadata")
+        ]
+        if len(metadata_files) == 0:
+            logger.info(
+                f"No metadata file found in the checkpoint directory: {path}. Creating one now."
+            )
+            create_hf_ckpt_metadata(path)
+            accessible_files = os.listdir(path)
+            metadata_files = [
+                file
+                for file in accessible_files
+                if file.endswith(".auto_generated.metadata")
+            ]
+            logger.info(
+                f"Created metadata file: {metadata_files[0]} successfully."
+            )
+        return (metadata_files, safetensors_files)
+
     assert len(metadata_files) > 0, (
         f"No metadata file ends with '{unique_id}.metadata' found in the checkpoint directory: {path}."
     )
@@ -664,8 +695,11 @@ def _handle_aoa(
     unique_id,
     offload,
     aoa_config,
+    safetensors,
 ):
     metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
+    print("=========> metadata_files  ")
+    print(metadata_files)
     assert len(metadata_files) == 1, "Only support one metadata file now."
     metadata = paddle.load(os.path.join(path, metadata_files[0]))
     state_dict_metadata = metadata.state_dict_metadata
@@ -737,13 +771,14 @@ def _handle_aoa(
                 dst_to_src_desc_mapping[dst_desc] = src_desc
 
     load_state_dict_impl(
-        new_load_dict,
-        path,
-        process_group,
-        worker_groups,
-        coordinator_rank,
-        unique_id,
-        offload,
+        state_dict=new_load_dict,
+        path=path,
+        process_group=process_group,
+        coordinator_rank=coordinator_rank,
+        unique_id=unique_id,
+        offload=offload,
+        safetensors=safetensors,
+        worker_groups=worker_groups,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -834,15 +869,15 @@ def load_state_dict(
 
     if not is_sharded_state_dict(state_dict):
         load_state_dict_impl(
-            state_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-            worker_groups,
+            state_dict=state_dict,
+            path=path,
+            process_group=process_group,
+            coordinator_rank=coordinator_rank,
+            unique_id=unique_id,
+            offload=offload,
+            mw_name_compatibility=mw_name_compatibility,
+            safetensors=safetensors,
+            worker_groups=worker_groups,
         )
         return
 
@@ -853,16 +888,17 @@ def load_state_dict(
                 f"{key} is not replicated!"
             )
             load_dict[key] = val
+
         load_state_dict_impl(
-            load_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-            worker_groups,
+            state_dict=load_dict,
+            path=path,
+            process_group=process_group,
+            coordinator_rank=coordinator_rank,
+            unique_id=unique_id,
+            offload=offload,
+            mw_name_compatibility=mw_name_compatibility,
+            safetensors=safetensors,
+            worker_groups=worker_groups,
         )
         return
 
@@ -885,18 +921,19 @@ def load_state_dict(
             unique_id,
             offload,
             aoa_config,
+            safetensors,
         )
     else:
         load_state_dict_impl(
-            load_dict,
-            path,
-            process_group,
-            coordinator_rank,
-            unique_id,
-            offload,
-            mw_name_compatibility,
-            safetensors,
-            worker_groups,
+            state_dict=load_dict,
+            path=path,
+            process_group=process_group,
+            coordinator_rank=coordinator_rank,
+            unique_id=unique_id,
+            offload=offload,
+            mw_name_compatibility=mw_name_compatibility,
+            safetensors=safetensors,
+            worker_groups=worker_groups,
         )
     _finish_unflatten(flat_shards, padding_info)
 
@@ -1689,7 +1726,7 @@ def _load_state_dict_single_group(
                 )
                 if not dst_tensor.place.is_gpu_place():
                     gpu_dst_tensor = dst_tensor.cuda()
-                    gpu_dst_tensor.need_copy_to_cpu = True
+                    gpu_dst_tensor.need_cross_device_copy = True
                     gpu_dst_tensor.target_tensor = dst_tensor
                     destination_tensors[
                         (tensor_name, cur_rank, item.dst_global_offset)
@@ -1730,9 +1767,9 @@ def _load_state_dict_single_group(
             del buffer_tensor
 
         for dst_tensor in destination_tensors.values():
-            if hasattr(dst_tensor, 'need_copy_to_cpu'):
+            if getattr(dst_tensor, 'need_cross_device_copy', False):
                 target_tensor = dst_tensor.target_tensor
-                paddle.assign(dst_tensor.cpu(), target_tensor)
+                target_tensor.copy_(dst_tensor)
             else:
                 target_tensor = dst_tensor.target_tensor
                 paddle.assign(dst_tensor, target_tensor)
@@ -1794,7 +1831,7 @@ def _load_state_dict_multi_group(
                 )
                 if not dst_tensor.place.is_gpu_place():
                     gpu_dst_tensor = dst_tensor.cuda()
-                    gpu_dst_tensor.need_copy_to_cpu = True
+                    gpu_dst_tensor.need_cross_device_copy = True
                     gpu_dst_tensor.target_tensor = dst_tensor
                     destination_tensors[
                         (tensor_name, cur_rank, item.dst_global_offset)
@@ -1840,9 +1877,9 @@ def _load_state_dict_multi_group(
             del buffer_tensor
 
         for dst_tensor in destination_tensors.values():
-            if hasattr(dst_tensor, 'need_copy_to_cpu'):
+            if getattr(dst_tensor, 'need_cross_device_copy', False):
                 target_tensor = dst_tensor.target_tensor
-                paddle.assign(dst_tensor.cpu(), target_tensor)
+                target_tensor.copy_(dst_tensor)
             else:
                 target_tensor = dst_tensor.target_tensor
                 paddle.assign(dst_tensor, target_tensor)
