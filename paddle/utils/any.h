@@ -24,7 +24,9 @@
 #include "paddle/phi/core/vocab/string_array.h"
 namespace phi {
 class DenseTensor;
-}
+struct DenseTensorMeta;
+}  // namespace phi
+
 // See boost/python/type_id.hpp
 // TODO(name): add BOOST_TYPEID_COMPARE_BY_NAME to config.hpp
 #if (defined(__GNUC__) && __GNUC__ >= 3) || defined(_AIX) || \
