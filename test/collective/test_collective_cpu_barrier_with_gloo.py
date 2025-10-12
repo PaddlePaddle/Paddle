@@ -105,7 +105,10 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
             jobs.append(p)
             p.start()
         for proc in jobs:
-            proc.join()
+            proc.join(timeout=10)
+            if proc.is_alive():
+                proc.terminate()
+                proc.join()
         for _, v in procs_out_dict.items():
             self.assertTrue(v > sleep_time)
 
