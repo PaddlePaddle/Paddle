@@ -374,18 +374,10 @@ void Tensor::record_stream(XPUStream stream) const {
 
 #endif
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
-  if (impl_ != nullptr) {
-    // if the impl_ has been set , the name_ should be reset to empty string
-    name_ = "";
-  }
   impl_ = impl;
 }
 
 void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
-  if (impl_ != nullptr) {
-    // if the impl_ has been set , the name_ should be reset to empty string
-    name_ = "";
-  }
   impl_ = std::move(impl);
 }
 
