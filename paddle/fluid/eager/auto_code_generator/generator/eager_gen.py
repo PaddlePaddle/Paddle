@@ -311,6 +311,7 @@ strided_compute_op_list = {
     # others
     "matmul",
     "split",
+    "split_with_num",
     "expand",
 }
 
