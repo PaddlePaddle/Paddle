@@ -23,7 +23,6 @@ from amp_base_models import build_while_model
 import paddle
 
 
-#
 class TestOpStatsEager(unittest.TestCase):
     def _check_result(self, dtype):
         # Returned the dict.
