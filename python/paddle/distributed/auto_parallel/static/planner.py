@@ -90,23 +90,60 @@ class PlanFilter:
 
     @staticmethod
     def check_dims_mapping_for_special_op(op, op_dist_attr, vars):
-        # NOTE: Those ops has some partition limits, and will be solved when corresponding dist op implemented in the future.
-        if (
-            op.type == "elementwise_add"
-            or op.type == 'layer_norm'
-            or op.type == "softmax_with_cross_entropy"
-        ):
-            for name in op.input_arg_names:
-                for item in op_dist_attr.get_input_dims_mapping(name):
-                    if item != -1:
+        if op.type == "elementwise_add":
+            input_names = op.input_arg_names
+            if len(input_names) == 2:
+                in0_shape = vars[input_names[0]].shape
+                in1_shape = vars[input_names[1]].shape
+                dim_offset = len(in0_shape) - len(in1_shape)
+                for i in range(len(in1_shape)):
+                    idx0 = i + dim_offset
+                    idx1 = i
+                    dm0 = op_dist_attr.get_input_dims_mapping(input_names[0])[
+                        idx0
+                    ]
+                    dm1 = op_dist_attr.get_input_dims_mapping(input_names[1])[
+                        idx1
+                    ]
+                    if (
+                        in0_shape[idx0] != in1_shape[idx1]
+                        and dm0 != -1
+                        and dm1 != -1
+                        and dm0 == dm1
+                    ):
                         return False
-            for name in op.output_arg_names:
-                for item in op_dist_attr.get_output_dims_mapping(name):
-                    if item != -1:
-                        return False
-        if op.type == "lookup_table_v2":
+            return True
+
+        elif op.type == "layer_norm":
+            normalized_shape = op.attr("begin_norm_axis")
+            x_shape = vars[op.input("X")[0]].shape
+            reduce_dim_start = len(x_shape) - normalized_shape
+            dims_mapping = op_dist_attr.get_input_dims_mapping(op.input("X")[0])
+            output_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                op.output("Y")[0]
+            )
+            for i in range(reduce_dim_start, len(x_shape)):
+                if dims_mapping[i] != -1:
+                    return False
+            for i in range(reduce_dim_start):
+                if dims_mapping[i] != output_dims_mapping[i]:
+                    return False
+            return True
+
+        elif op.type == "softmax_with_cross_entropy":
+            label_shape = vars[op.input("Label")[0]].shape
+            logits_shape = vars[op.input("Logits")[0]].shape
+            class_dim = len(logits_shape) - 1
+            dims_mapping = op_dist_attr.get_input_dims_mapping(
+                op.input("Logits")[0]
+            )
+            if dims_mapping[class_dim] != -1:
+                return False
+            return True
+
+        elif op.type == "lookup_table_v2":
             for name in op.input_arg_names:
-                if name == 'pos_embeddings':
+                if name == "pos_embeddings":
                     for item in op_dist_attr.get_input_dims_mapping(name):
                         if item != -1:
                             return False
