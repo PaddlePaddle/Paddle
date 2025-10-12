@@ -31,29 +31,6 @@ import paddle.distributed as dist
 from paddle.io import BatchSampler, DataLoader, Dataset
 
 
-def _ensure_deterministic_computation():
-    """Ensure deterministic computation for numerical stability in tests."""
-    random.seed(1234)
-    np.random.seed(1234)
-    paddle.seed(1234)
-
-    try:
-        if hasattr(paddle.framework, 'set_flags'):
-            paddle.framework.set_flags({
-                'FLAGS_cudnn_deterministic': True,
-                'FLAGS_use_mkldnn': False,
-                'FLAGS_cpu_deterministic': True
-            })
-    except Exception:
-        pass
-
-    try:
-        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-        os.environ['PYTHONHASHSEED'] = '0'
-    except Exception:
-        pass
-
-
 class Config:
     vocab_size = 320
     hidden_size = 8
@@ -332,40 +309,16 @@ class TestLlamaAuto:
 
         return global_ckpt_path
 
-    def _cleanup_resources(self):
-        """Non-invasive resource cleanup to prevent memory leaks and ResourceWarnings."""
-        import gc
-
-        gc.collect()
-        try:
-            if paddle.device.is_compiled_with_cuda():
-                paddle.device.cuda.empty_cache()
-                paddle.device.cuda.synchronize()
-        except Exception:
-            pass
-
     def run_test_cases(self):
-        ckpt_path = None
-        try:
-            _ensure_deterministic_computation()
-
-            self.init_dist_env()
-            ckpt_path = tempfile.TemporaryDirectory()
-            tmp_ckpt_path = self.broadcast_ckpt_path(ckpt_path.name)
-            loss = self.run_dy2static(tmp_ckpt_path)
-            if int(dist.get_rank()) in [2, 3, 6, 7]:
-                assert len(loss[0]) == len(loss[1])
-                for i in range(len(loss[0])):
-                    assert loss[0][i] == loss[1][i]
-        finally:
-            if ckpt_path is not None:
-                try:
-                    ckpt_path.cleanup()
-                except Exception as e:
-                    import warnings
-                    warnings.warn(f"Failed to cleanup temporary directory: {e!s}")
-
-            self._cleanup_resources()
+        self.init_dist_env()
+        ckpt_path = tempfile.TemporaryDirectory()
+        tmp_ckpt_path = self.broadcast_ckpt_path(ckpt_path.name)
+        loss = self.run_dy2static(tmp_ckpt_path)
+        if int(dist.get_rank()) in [2, 3, 6, 7]:
+            assert len(loss[0]) == len(loss[1])
+            for i in range(len(loss[0])):
+                assert loss[0][i] == loss[1][i]
+        ckpt_path.cleanup()
 
 
 if __name__ == '__main__':
