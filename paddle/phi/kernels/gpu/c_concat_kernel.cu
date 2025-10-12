@@ -17,6 +17,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/c_concat_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

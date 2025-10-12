@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
 import numpy as np
@@ -24,8 +23,6 @@ from op_test import (
     get_places,
     is_custom_device,
 )
-
-sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
 from utils import static_guard
 

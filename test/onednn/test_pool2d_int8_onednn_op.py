@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_pool2d_op import TestPool2D_Op, max_pool2D_forward_naive
 
 from paddle.base import core
