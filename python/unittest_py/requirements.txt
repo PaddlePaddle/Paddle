@@ -20,3 +20,4 @@ xdoctest==1.3.0
 ubelt==1.3.3 # just for xdoctest
 mypy==1.17.1
 soundfile
+apache-tvm-ffi @ git+https://github.com/apache/tvm-ffi.git@22a78943b78306a73011757fa635afa9dce35114
