@@ -137,6 +137,7 @@ class TestLlamaAuto:
         np.random.seed(1024)
         random.seed(1024)
 
+    #
     def check_program_equal(self, program_a, program_b):
         assert program_a.num_ops() == program_b.num_ops(), (
             f'The number of ops between two programs is different: {program_a.num_ops()} vs {program_b.num_ops()}.'
