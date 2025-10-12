@@ -14,10 +14,10 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_GPU_INPUT(x) \
-  PADDLE_ENFORCE_EQ(       \
-      x.is_gpu(),          \
-      true,                \
+#define CHECK_GPU_INPUT(x)                                         \
+  PADDLE_ENFORCE_EQ(                                               \
+      x.is_gpu(),                                                  \
+      true,                                                        \
       common::errors::InvalidArgument("Input tensor `x` must be a" \
                                       "GPU Tensor."));
 
