@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
+from typing import TYPE_CHECKING
 
 import numpy as np
 import tvm_ffi.cpp
-from tvm_ffi import Module
 
 import paddle
+
+if TYPE_CHECKING:
+    from tvm_ffi import Module
 
 
 class TestTVMFFIEnvStream(unittest.TestCase):
