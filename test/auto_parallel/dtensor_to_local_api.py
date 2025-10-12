@@ -53,6 +53,7 @@ class TestDtensorToLocalAPI:
         tensor3.register_hook(self.check_grad_mesh(None, None))
         tensor3.backward()
 
+    #
     def check_grad_mesh(self, org_mesh, org_placements):
         def _check_mesh(grad):
             if hasattr(grad, "process_mesh") and hasattr(grad, "placements"):
