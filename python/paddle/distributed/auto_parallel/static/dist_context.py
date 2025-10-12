@@ -495,19 +495,12 @@ class DistributedContext:
         self._dist_ops_for_program[inner_serial_op_id] = dist_op
 
     def get_dist_tensor_for_program(self, serial_tensor):
-        serial_tensor_id = serial_tensor.desc.id()
+        serial_tensor_id = serial_tensor.desc.original_id()
         dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id, None)
         if dist_tensor:
             return dist_tensor
         else:
-            serial_tensor_id = serial_tensor.desc.original_id()
-            dist_tensor = self._dist_tensors_for_program.get(
-                serial_tensor_id, None
-            )
-            if dist_tensor:
-                return dist_tensor
-            else:
-                return None
+            return None
 
     def get_dist_tensor_for_graph(self, serial_tensor_node):
         serial_tensor_node_id = _node_id(serial_tensor_node)
