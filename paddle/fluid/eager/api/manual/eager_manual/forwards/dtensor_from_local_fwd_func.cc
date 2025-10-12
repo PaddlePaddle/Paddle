@@ -97,7 +97,12 @@ paddle::Tensor dtensor_from_local_ad_function(
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(input, 0);
+    if (input_autograd_meta) {
+      grad_node->SetGradOutMeta(input, 0);
+      egr::EagerUtils::SetEdge(input_autograd_meta, grad_node);
+    }else{
+      grad_node->SetGradOutMeta(input, 0);
+    }
     // SetOutRank & SetHistory & SetGradInMeta
     if (out_autograd_meta) {
       egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);
