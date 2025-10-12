@@ -1000,12 +1000,14 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        if len(out_dims_mapping) < 1:
+            return False
         if is_dim_shard(out_dims_mapping[-1]):
             return False
-        # Other dimensions must be replicate except the batch dimension
-        for mapping in out_dims_mapping[1:-1]:
-            if is_dim_shard(mapping):
-                return False
+        if is_valid_list_index(out_dims_mapping, -2) and is_dim_shard(
+            out_dims_mapping[-2]
+        ):
+            return False
         return True
 
     def is_auto_compatible(self, dist_op):
