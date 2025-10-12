@@ -944,8 +944,7 @@ def _load_inference_model_legacy_impl(
             )
 
     feed_target_names = program.desc.get_feed_target_names()
-    # Disable PIR executor mode processing to prevent state pollution
-    if False:
+    if paddle.framework.in_pir_executor_mode():
         with paddle.pir_utils.IrGuard():
             program = paddle.pir.translate_to_pir(program.desc)
             block = program.global_block()

@@ -925,7 +925,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # Check if model file exists before deserializing
         if not os.path.exists(model_path):
-            raise ValueError(
+            raise FileNotFoundError(
                 f"PIR format model file '{model_path}' does not exist."
             )
 

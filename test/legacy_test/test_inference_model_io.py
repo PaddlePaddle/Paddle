@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gc
 import os
 import shutil
 import tempfile
@@ -67,31 +66,12 @@ class TestPdmodelCompatibility(unittest.TestCase):
         paddle.enable_static()
 
     def tearDown(self):
-        try:
-            self.temp_dir.cleanup()
-        except:
-            pass
-        try:
-            paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
-        except:
-            pass
-        try:
-            if self.original_fallback_env:
-                os.environ[
-                    'PADDLE_ENABLE_PDMODEL_FALLBACK'
-                ] = self.original_fallback_env
-            else:
-                os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
-        except:
-            pass
-
-        gc.collect()
-        try:
-            if paddle.device.is_compiled_with_cuda():
-                paddle.device.cuda.empty_cache()
-                paddle.device.cuda.synchronize()
-        except:
-            pass
+        self.temp_dir.cleanup()
+        paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
+        if self.original_fallback_env:
+            os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = self.original_fallback_env
+        else:
+            os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
 
     def _create_model(self, save_format='pdmodel', name_suffix=''):
         """Create simple model: y = x * w + b"""
