@@ -89,7 +89,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
         try:
             if paddle.device.is_compiled_with_cuda():
                 paddle.device.cuda.empty_cache()
-                paddle.device.synchronize()
+                paddle.device.cuda.synchronize()
         except:
             pass
 

@@ -978,6 +978,25 @@ def _load_inference_model_legacy_impl(
     return [program, feed_target_names, fetch_targets]
 
 
+def candidate_legacy_model_paths(path_prefix, model_filename=None):
+    """Generate candidate paths for legacy model files (.pdmodel)."""
+    LEGACY_MODEL_SUFFIX = ".pdmodel"
+    
+    if path_prefix is None:
+        return
+    
+    if model_filename is not None and model_filename.lower().endswith(LEGACY_MODEL_SUFFIX):
+        yield os.path.join(path_prefix, model_filename)
+        return
+    
+    path_prefix = _normalize_path_prefix(path_prefix)
+    if model_filename is None:
+        yield path_prefix + LEGACY_MODEL_SUFFIX
+        return
+        
+    yield os.path.join(path_prefix, model_filename + LEGACY_MODEL_SUFFIX)
+
+
 @static_only
 def load_inference_model(
     path_prefix: str | None,
@@ -1068,45 +1087,26 @@ def load_inference_model(
             # program to get the inference result.
 
     """
-    if in_pir_mode() and path_prefix is not None:
-        # Check if .pdmodel fallback is enabled
+    if in_pir_mode():
         enable_fallback = os.environ.get(
-            'PADDLE_ENABLE_PDMODEL_FALLBACK', ''
-        ).lower() in ('1', 'true', 'yes')
+            "PADDLE_ENABLE_PDMODEL_FALLBACK", ""
+        ).lower() in ("1", "true", "yes")
+        
+        if not enable_fallback:
+            return load_inference_model_pir(path_prefix, executor, **kwargs)
 
-        if enable_fallback:
-            model_filename = kwargs.get('model_filename', None)
-
-            if model_filename is None:
-                # Default case: check for .pdmodel when .json is missing
-                pdmodel_path = path_prefix + ".pdmodel"
-                json_path = path_prefix + ".json"
-                if os.path.exists(pdmodel_path) and not os.path.exists(json_path):
-                    _logger.info(f"Auto-detected legacy format, loading: {pdmodel_path}")
-                    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-            elif model_filename.lower().endswith('.pdmodel'):
-                # Explicit .pdmodel file specified
-                pdmodel_path = os.path.join(path_prefix, model_filename)
-                if os.path.exists(pdmodel_path):
-                    _logger.info(f"Detected .pdmodel file, using legacy mode: {pdmodel_path}")
-                    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-            elif model_filename and not model_filename.lower().endswith('.json'):
-                # Filename without extension: check for .pdmodel
-                pdmodel_path = os.path.join(path_prefix, model_filename + ".pdmodel")
-                json_path = os.path.join(path_prefix, model_filename + ".json")
-                if os.path.exists(pdmodel_path) and not os.path.exists(json_path):
-                    _logger.info(f"Auto-detected legacy format for {model_filename}: {pdmodel_path}")
-                    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-
+        # Try legacy mode first if found legacy model files
+        for candidate_path in candidate_legacy_model_paths(
+            path_prefix, kwargs.get("model_filename", None)
+        ):
+            if os.path.exists(candidate_path):
+                return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
+        
         # Default to PIR mode
         return load_inference_model_pir(path_prefix, executor, **kwargs)
-
-    # PIR mode for memory loading
-    elif in_pir_mode():
-        return load_inference_model_pir(path_prefix, executor, **kwargs)
+    
     # Legacy mode
     return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-
 
 
 @overload
