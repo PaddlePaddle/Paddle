@@ -11,16 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+import argparse
 import importlib
 import inspect
 import re
-import sys
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 import paddle  # noqa: F401
 
 
-def resolve_string_to_obj(path: str):
+def load_api_by_name(path: str) -> Callable[..., Any] | None:
     """
     Recursively resolves a string path to a Python object.
     """
@@ -39,7 +44,7 @@ def resolve_string_to_obj(path: str):
         # Split the path into its parent and the final object name.
         # e.g., "paddle.Tensor" -> parent="paddle", child="Tensor"
         parent_path, child_name = path.rsplit('.', 1)
-        parent_obj = resolve_string_to_obj(parent_path)
+        parent_obj = load_api_by_name(parent_path)
 
         # If the parent object could not be resolved, we can't find the child.
         if parent_obj is None:
@@ -49,43 +54,57 @@ def resolve_string_to_obj(path: str):
         return getattr(parent_obj, child_name, None)
 
 
-def generate_comment_body(doc_diff, pr_id):
+def generate_comment_body(doc_diff: str, pr_id: int) -> str:
     if not doc_diff:
         return ""
 
-    output_lines = []
+    output_lines: list[str] = []
     base_url = f"http://preview-paddle-pr-{pr_id}.paddle-docs-preview.paddlepaddle.org.cn/documentation/docs/en/api"
 
     # Extract API names like 'paddle.autograd.backward' from lines like:
     # - paddle.autograd.backward (ArgSpec(...), ('document', ...))
     # + paddle.autograd.backward (ArgSpec(...), ('document', ...))
-    apis = sorted(
+    apis: list[str] = sorted(
         set(re.findall(r"^[+]\s*([a-zA-Z0-9_.]+)\s*\(", doc_diff, re.MULTILINE))
     )
+    # All apis should be loaded, this seems a explicitly check.
+    unload_apis: list[str] = []
+
+    if not apis:
+        return ""
 
     for api in apis:
-        api_obj = resolve_string_to_obj(api)
+        api_obj = load_api_by_name(api)
 
         if api_obj is None:
-            raise ValueError(f"Could not resolve API path: {api}")
+            unload_apis.append(api)
+            continue
 
         api_path = api.replace('.', '/')
         url = f"{base_url}/{api_path}_en.html"
 
         if "." in api:
             parent_path, child_name = api.rsplit('.', 1)
-            parent_obj = resolve_string_to_obj(parent_path)
-            if inspect.isclass(parent_obj) and inspect.isfunction(api_obj):
+            parent_obj = load_api_by_name(parent_path)
+            if inspect.isclass(parent_obj) and not inspect.isclass(api_obj):
                 parent_api_path = parent_path.replace('.', '/')
                 url = f"{base_url}/{parent_api_path}_en.html#{child_name}"
 
         output_lines.append(f"- **{api}**: [Preview]({url})")
+    unload_error_msg = (
+        f"@ooooo-create, following apis cannot be loaded, please check it: {', '.join(unload_apis)}"
+        if unload_apis
+        else ""
+    )
 
     if not output_lines:
-        return ""
+        return unload_error_msg
 
-    comment_body = """<details>
+    api_links = "\n".join(output_lines)
+    comment_body = f"""<details>
 <summary>📚 Preview documentation links for API changes in this PR (Click to expand)</summary>
+
+{unload_error_msg}
 
 <table>
 <tr>
@@ -98,25 +117,33 @@ Please wait for the <code>Doc-Preview</code> workflow to complete before clickin
 
 The following are preview links for new or modified API documentation in this PR:
 
-{}
+{api_links}
 
-</details>""".format("\n".join(output_lines))
+</details>"""
 
     return comment_body
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print(
-            "Usage: python generate_doc_comment.py <path_to_doc_diff> <pr_id>"
-        )
-        sys.exit(1)
+def cli():
+    parser = argparse.ArgumentParser(
+        description="Generate documentation comment for PR with API changes"
+    )
+    parser.add_argument(
+        "doc_diff_path", help="Path to the documentation diff file", type=str
+    )
+    parser.add_argument("pr_id", help="Pull request ID", type=int)
+    return parser.parse_args()
 
-    doc_diff_path = sys.argv[1]
-    pr_id = sys.argv[2]
 
-    with open(doc_diff_path, 'r') as f:
+def main():
+    args = cli()
+
+    with open(args.doc_diff_path, 'r') as f:
         doc_diff_content = f.read()
 
-    comment = generate_comment_body(doc_diff_content, pr_id)
+    comment = generate_comment_body(doc_diff_content, args.pr_id)
     print(comment)
+
+
+if __name__ == "__main__":
+    main()
