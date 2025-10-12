@@ -460,7 +460,7 @@ def test_native_code_function():
     res7 = paddle.base.libpaddle.is_compiled_with_xpu()
     res8_deprecated = (
         paddle.base.libpaddle.is_compiled_with_mkldnn()
-    )  # Paddle 4.0 deprecated
+    )  # Paddle 3.3 deprecated
     res8 = paddle.base.libpaddle.is_compiled_with_onednn()
     res9 = paddle.base.libpaddle.is_compiled_with_nccl()
     res10 = paddle.base.libpaddle.is_compiled_with_mpi()
