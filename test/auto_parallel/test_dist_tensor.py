@@ -97,19 +97,19 @@ class TestDistTensorFromFn(unittest.TestCase):
         )
         if paddle.in_dynamic_mode():
             dist_attr.dynamic_dims = []
-            self.assertIsInstance(result, paddle.Tensor)
-            self.assertEqual(result.shape, [16])
-            self.assertEqual(result.placements, placements)
+            self.assertIsInstance(result_zeros, paddle.Tensor)
+            self.assertEqual(result_zeros.shape, [16])
+            self.assertEqual(result_zeros.placements, placements)
         else:
             dist_attr.dynamic_dims = [0]
             dist_attr.chunk_id = 0
-            self.assertIsInstance(result, paddle.base.libpaddle.pir.Value)
-            self.assertEqual(result.shape, [16])
+            self.assertIsInstance(result_zeros, paddle.base.libpaddle.pir.Value)
+            self.assertEqual(result_zeros.shape, [16])
             self.assertEqual(
-                result.dist_attr().dims_mapping, dist_attr.dims_mapping
+                result_zeros.dist_attr().dims_mapping, dist_attr.dims_mapping
             )
             self.assertEqual(
-                result.dist_attr().process_mesh, dist_attr.process_mesh
+                result_zeros.dist_attr().process_mesh, dist_attr.process_mesh
             )
 
         result_random = dist.dtensor_from_fn(
