@@ -102,6 +102,9 @@ class TestEmbeddingSubgraphSemiAutoParallel:
                 layer.weight = dist.shard_tensor(
                     layer.weight, process_mesh, (dist.Shard(1),)
                 )
+                layer.weight = dist.collective_allreduce(
+                    layer.weight, process_mesh, (dist.ReduceType.kRedSum,)
+                )
 
         layer = dist.shard_layer(
             Layer(self._vocab_size, self._hidden_size), self._mesh, shard_fn
