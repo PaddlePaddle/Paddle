@@ -3951,12 +3951,9 @@ struct SoftPlusOpTranscriber : public OpTranscriber {
         }
         attribute_map[info.name] = new_attr;
       } else {
-        VLOG(10) << "attribute in " << op_desc.Type()
-                 << " name: " << legacy_attr_name << " doesn't exist";
         this->HandleNonexistentAttribute(ctx, &attribute_map, info);
       }
     }
-
     return attribute_map;
   }
 };
