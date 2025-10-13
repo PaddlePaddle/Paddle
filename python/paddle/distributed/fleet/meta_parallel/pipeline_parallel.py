@@ -866,10 +866,16 @@ class PipelineParallel(MetaParallelBase):
             )
 
             output_tensor_tuple = dict_to_tuple_helper(output_tensor)
-
-            output_tensor_grad = self._p2p_helper.send_forward_recv_backward(
+            # NOTE: `send_forward_recv_backward` is intentionally unused to
+            # prevent hanging bugs in dynamic shape mode.
+            self._p2p_helper.send_forward(
                 output_tensor_tuple,
-                self.is_pipeline_last_stage(),
+                self.is_pipeline_last_stage(ignore_virtual=True),
+                batch_p2p_comm=self._use_batch_p2p_comm,
+            )
+
+            output_tensor_grad = self._p2p_helper.recv_backward(
+                self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
@@ -898,9 +904,16 @@ class PipelineParallel(MetaParallelBase):
                     batch_p2p_comm=self._use_batch_p2p_comm,
                 )
             else:
-                input_tensor = self._p2p_helper.send_backward_recv_forward(
+                # NOTE: `send_backward_recv_forward` is intentionally unused to
+                # prevent hanging bugs in dynamic shape mode.
+                input_tensor = self._p2p_helper.recv_forward(
+                    self.is_pipeline_first_stage(ignore_virtual=True),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                )
+
+                self._p2p_helper.send_backward(
                     input_tensor_grad,
-                    self.is_pipeline_first_stage(),
+                    self.is_pipeline_first_stage(ignore_virtual=True),
                     batch_p2p_comm=self._use_batch_p2p_comm,
                 )
 
