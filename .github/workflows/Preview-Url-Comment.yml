@@ -2,7 +2,7 @@ name: Comment Preview URLs
 
 on:
   workflow_run:
-    workflows: ["Doc-Preview"]
+    workflows: ["CI-Build"]
     types:
       - completed
 
@@ -14,6 +14,7 @@ jobs:
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
     permissions:
+      actions: read
       pull-requests: write
 
     steps:
