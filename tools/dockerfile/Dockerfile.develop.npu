@@ -12,6 +12,7 @@ RUN groupadd -g 1000 HwHiAiUser && \
     useradd -u 1000 -g 1000 -m -d /home/HwHiAiUser HwHiAiUser
 
 RUN mkdir -p /usr/local/Ascend/driver
+
 WORKDIR /usr/local/Ascend
 
 # install CANN requirement
