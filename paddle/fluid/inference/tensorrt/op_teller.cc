@@ -1252,15 +1252,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "sections and num cannot be equal to 0 at the same time";
         return false;
       }
-      if (with_dynamic_shape) {
-#if IS_TRT_VERSION_GE(6000)
-#else
-        VLOG(3) << "You are running the TRT Dynamic Shape mode, need to "
-                   "confirm that "
-                   "your TRT version is no less than 6.0";
-        return false;
-#endif
-      }
       axis += (axis < 0) ? x_shape.size() : 0;
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
