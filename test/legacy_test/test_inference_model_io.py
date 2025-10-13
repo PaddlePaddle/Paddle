@@ -102,7 +102,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
                         name='bias',
                         default_initializer=paddle.nn.initializer.Constant(0.1),
                     )
-                    y = paddle.add(paddle.matmul(x, w), b)
+                    y = x @ w + b
 
                 self.exe.run(startup_program)
 
@@ -121,7 +121,9 @@ class TestPdmodelCompatibility(unittest.TestCase):
             startup_program = paddle.static.Program()
 
             with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
                 w = paddle.create_parameter(
                     shape=[10, 1],
                     dtype='float32',
@@ -134,7 +136,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     name='bias',
                     default_initializer=paddle.nn.initializer.Constant(0.1),
                 )
-                y = paddle.add(paddle.matmul(x, w), b)
+                y = x @ w + b
 
             self.exe.run(startup_program)
 
