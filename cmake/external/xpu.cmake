@@ -97,7 +97,7 @@ if(WITH_ARM)
   if(WITH_XPU_XRE5)
     set(XPU_XRE_DIR_NAME "xre-kylin_v10_server-aarch64-${XPU_XRE_BASE_VERSION}")
     # TODO: xccl has no kylin output now. set default value here.
-    set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
+    set(XPU_XCCL_DIR_NAME "xccl_Linux_aarch64")
     set(XPU_XHPC_DIR_NAME "xhpc-kylinv4_aarch64")
     set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
   else()
