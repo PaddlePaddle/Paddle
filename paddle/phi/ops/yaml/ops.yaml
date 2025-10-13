@@ -5663,6 +5663,15 @@
   backward : unfold_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : unified_linear
+  args : (Tensor lhs,  Tensor rhs, Tensor out, Tensor lhs_scale, Tensor rhs_scale, Tensor out_scale, DataType out_dtype, float alpha, float beta, bool trans_lhs = false, bool trans_rhs = false, bool trans_out = false, str activation="None")
+  output : Tensor(out, out_scale)
+  infer_meta :
+    func : UnifiedLinearInfermeta
+  kernel :
+    func : unified_linear
+    data_type : lhs
+
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
   output : Tensor(out)
