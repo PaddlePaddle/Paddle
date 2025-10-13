@@ -151,9 +151,7 @@ def flip_converter(network, paddle_op, inputs):
     return identity_layer.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.p_norm", trt_version_ge="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.p_norm", trt_version="trt_version_ge=8.0")
 def p_norm_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_dims = input_tensor.shape
