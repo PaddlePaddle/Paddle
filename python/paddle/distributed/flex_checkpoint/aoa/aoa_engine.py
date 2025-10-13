@@ -152,8 +152,11 @@ class AOAEngine:
         self.output_vars = {}
         self.need_remove_input_vars = set()
         self.need_add_output_vars = set()
-
+        self.meaningless_optimizer_key = set()
         self.shape_propagation()
+
+    def get_meaningless_optimizer_key(self):
+        return self.meaningless_optimizer_key
 
     def make_input_tensor(self, key: str, shape: tuple[int]) -> TensorDesc:
         base_slice = tuple([slice(0, s) for s in shape])
@@ -380,9 +383,11 @@ class AOAEngine:
             if name not in self.output_vars:
                 if name in self.need_add_output_vars:
                     self.output_vars[name] = None
-                else:
-                    assert name in self.input_vars
-                    self.output_vars[name] = self.input_vars[name]
+                else:  # Not from src and not in output_vars: optimizer-created state that cannot be mapped, discard
+                    if name not in self.input_vars:
+                        self.meaningless_optimizer_key.add(name)
+                    else:
+                        self.output_vars[name] = self.input_vars[name]
 
     def find_source_slices(
         self, key: str, local_slice: tuple[slice, ...]
