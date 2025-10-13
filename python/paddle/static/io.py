@@ -980,19 +980,21 @@ def _load_inference_model_legacy_impl(
 def candidate_legacy_model_paths(path_prefix, model_filename=None):
     """Generate candidate paths for legacy model files (.pdmodel)."""
     LEGACY_MODEL_SUFFIX = ".pdmodel"
-    
+
     if path_prefix is None:
         return
-    
-    if model_filename is not None and model_filename.lower().endswith(LEGACY_MODEL_SUFFIX):
+
+    if model_filename is not None and model_filename.lower().endswith(
+        LEGACY_MODEL_SUFFIX
+    ):
         yield os.path.join(path_prefix, model_filename)
         return
-    
+
     path_prefix = _normalize_path_prefix(path_prefix)
     if model_filename is None:
         yield path_prefix + LEGACY_MODEL_SUFFIX
         return
-        
+
     yield os.path.join(path_prefix, model_filename + LEGACY_MODEL_SUFFIX)
 
 
@@ -1090,7 +1092,7 @@ def load_inference_model(
         enable_fallback = os.environ.get(
             "PADDLE_ENABLE_PDMODEL_FALLBACK", ""
         ).lower() in ("1", "true", "yes")
-        
+
         if not enable_fallback:
             return load_inference_model_pir(path_prefix, executor, **kwargs)
 
@@ -1099,11 +1101,13 @@ def load_inference_model(
             path_prefix, kwargs.get("model_filename", None)
         ):
             if os.path.exists(candidate_path):
-                return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-        
+                return _load_inference_model_legacy_impl(
+                    path_prefix, executor, **kwargs
+                )
+
         # Default to PIR mode
         return load_inference_model_pir(path_prefix, executor, **kwargs)
-    
+
     # Legacy mode
     return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
 

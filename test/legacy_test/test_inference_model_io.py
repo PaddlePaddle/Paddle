@@ -16,7 +16,6 @@ import os
 import shutil
 import tempfile
 import unittest
-import warnings
 
 import numpy as np
 
@@ -69,7 +68,9 @@ class TestPdmodelCompatibility(unittest.TestCase):
         self.temp_dir.cleanup()
         paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
         if self.original_fallback_env:
-            os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = self.original_fallback_env
+            os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = (
+                self.original_fallback_env
+            )
         else:
             os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
 
@@ -79,58 +80,74 @@ class TestPdmodelCompatibility(unittest.TestCase):
             self.temp_dir.name, f"model_{save_format}{name_suffix}"
         )
 
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-
-        with paddle.static.program_guard(main_program, startup_program):
-            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
-            param_fn = (
-                paddle.create_parameter
-                if save_format == 'json'
-                else paddle.static.create_parameter
-            )
-            w = param_fn(
-                shape=[10, 1],
-                dtype='float32',
-                name='weight',
-                default_initializer=paddle.nn.initializer.Constant(0.5),
-            )
-            b = param_fn(
-                shape=[1],
-                dtype='float32',
-                name='bias',
-                default_initializer=paddle.nn.initializer.Constant(0.1),
-            )
-            y = paddle.add(paddle.matmul(x, w), b)
-
-        self.exe.run(startup_program)
-
-        # Validate program has operators
-        if len(main_program.global_block().ops) == 0:
-            raise ValueError("Main program is empty - no operators found!")
-
-        save_args = {
-            'path_prefix': model_path,
-            'feed_vars': [x],
-            'fetch_vars': [y],
-            'executor': self.exe,
-        }
-
         if save_format == 'pdmodel':
+            # Create program in OldIR mode for .pdmodel format
             with paddle.pir_utils.OldIrGuard():
-                paddle.static.save_inference_model(**save_args)
-        else:
-            # Ensure PIR mode for json format with proper flag management
-            old_pir_flag = paddle.base.framework.get_flags(
-                "FLAGS_enable_pir_api"
-            )["FLAGS_enable_pir_api"]
-            try:
-                paddle.base.set_flags({'FLAGS_enable_pir_api': True})
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
+                    w = paddle.static.create_parameter(
+                        shape=[10, 1],
+                        dtype='float32',
+                        name='weight',
+                        default_initializer=paddle.nn.initializer.Constant(0.5),
+                    )
+                    b = paddle.static.create_parameter(
+                        shape=[1],
+                        dtype='float32',
+                        name='bias',
+                        default_initializer=paddle.nn.initializer.Constant(0.1),
+                    )
+                    y = paddle.add(paddle.matmul(x, w), b)
+
+                self.exe.run(startup_program)
+
+                if len(main_program.global_block().ops) == 0:
+                    raise ValueError("Main program is empty!")
+
                 paddle.static.save_inference_model(
-                    program=main_program, **save_args
+                    path_prefix=model_path,
+                    feed_vars=[x],
+                    fetch_vars=[y],
+                    executor=self.exe,
                 )
-            finally:
-                paddle.base.set_flags({'FLAGS_enable_pir_api': old_pir_flag})
+        else:
+            # Create program in PIR mode for .json format
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
+                w = paddle.create_parameter(
+                    shape=[10, 1],
+                    dtype='float32',
+                    name='weight',
+                    default_initializer=paddle.nn.initializer.Constant(0.5),
+                )
+                b = paddle.create_parameter(
+                    shape=[1],
+                    dtype='float32',
+                    name='bias',
+                    default_initializer=paddle.nn.initializer.Constant(0.1),
+                )
+                y = paddle.add(paddle.matmul(x, w), b)
+
+            self.exe.run(startup_program)
+
+            if len(main_program.global_block().ops) == 0:
+                raise ValueError("Main program is empty!")
+
+            paddle.static.save_inference_model(
+                path_prefix=model_path,
+                feed_vars=[x],
+                fetch_vars=[y],
+                executor=self.exe,
+                program=main_program,
+            )
 
         return model_path
 
@@ -307,9 +324,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
         model_path = os.path.join(self.temp_dir.name, "nonexistent_model")
 
         with self.assertRaises((FileNotFoundError, OSError, ValueError)):
-            load_inference_model(
-                path_prefix=model_path, executor=self.exe
-            )
+            load_inference_model(path_prefix=model_path, executor=self.exe)
 
 
 if __name__ == '__main__':
