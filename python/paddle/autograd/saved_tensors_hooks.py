@@ -88,7 +88,7 @@ class saved_tensors_hooks:
             ...
             ...     @staticmethod
             ...     def backward(ctx, dy):
-            ...         a,b = ctx.saved_tensor()
+            ...         a,b = ctx.saved_tensors()
             ...         grad_a = dy * a
             ...         grad_b = dy * b
             ...         return grad_a, grad_b
