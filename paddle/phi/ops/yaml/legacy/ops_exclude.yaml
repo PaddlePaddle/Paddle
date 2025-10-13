@@ -44,8 +44,10 @@
 - fused_bn_add_activation
 - fused_softmax_mask
 - fused_softmax_mask_upper_triangle
+- fused_softplus
 - gaussian
 - hsigmoid_loss
+- softplus
 - increment
 - kthvalue
 - linspace

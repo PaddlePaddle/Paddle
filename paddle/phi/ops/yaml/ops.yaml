@@ -5087,7 +5087,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softplus
-  args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
+  args : (Tensor x, double beta = 1.0, double threshold = 20.0)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta

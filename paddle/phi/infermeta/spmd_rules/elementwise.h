@@ -104,12 +104,12 @@ SpmdInfo StanhGradInfoSpmd(const DistMetaTensor& x,
                            const float scale_b);
 
 SpmdInfo SoftplusInfoSpmd(const DistMetaTensor& x,
-                          const float beta,
-                          const float threshold);
+                          const double beta,
+                          const double threshold);
 SpmdInfo SoftplusGradInfoSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad,
-                              const float beta,
-                              const float threshold);
+                              const double beta,
+                              const double threshold);
 
 SpmdInfo SoftshrinkInfoSpmd(const DistMetaTensor& x, const float threshold);
 SpmdInfo SoftshrinkGradInfoSpmd(const DistMetaTensor& x,

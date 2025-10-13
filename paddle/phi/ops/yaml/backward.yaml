@@ -3425,8 +3425,8 @@
     func : slogdet_v2_grad
 
 - backward_op : softplus_double_grad
-  forward : softplus_grad (Tensor x, Tensor grad_out, float beta, float threshold) -> Tensor(grad_x)
-  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float beta, float threshold)
+  forward : softplus_grad (Tensor x, Tensor grad_out, double beta, double threshold) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, double beta, double threshold)
   output : Tensor(x_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -3436,8 +3436,8 @@
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : softplus_grad
-  forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float beta, float threshold)
+  forward : softplus (Tensor x, double beta, double threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, double beta, double threshold)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

@@ -607,8 +607,8 @@ void SoftplusDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& dout,
                               const DenseTensor& ddx,
-                              float beta,
-                              float threshold,
+                              double beta,
+                              double threshold,
                               DenseTensor* dx,
                               DenseTensor* ddout) {
   if (dx) {
