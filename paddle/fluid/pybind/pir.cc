@@ -3287,6 +3287,12 @@ void BindDrrPatternContext(pybind11::module *m) {
           },
           pybind11::arg("value"))
       .def(
+          "DoubleAttr",
+          [](drr::ResultPattern &self, double value) {
+            return self.DoubleAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
           "VectorInt32Attr",
           [](drr::ResultPattern &self, const std::vector<int32_t> &value) {
             return self.VectorInt32Attr(value);
