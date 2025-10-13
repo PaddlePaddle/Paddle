@@ -16,7 +16,6 @@ import sys
 import unittest
 
 sys.path.append("../legacy_test")
-sys.path.append("../deprecated/standalone_executor")
 from test_standalone_executor import build_program
 from utils import compare_legacy_with_pt
 

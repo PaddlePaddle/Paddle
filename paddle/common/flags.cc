@@ -2235,3 +2235,16 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
 PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
                           0,
                           "Whether use prealloc for deepep communication.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_force_stride_compute_contig_out
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether force Stride_Compute_Kernel output contiguous.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    force_stride_compute_contig_out,
+    false,
+    "Whether force Stride_Compute_Kernel output contiguous.");
