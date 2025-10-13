@@ -235,7 +235,7 @@ template <typename T, typename Context>
 void LogitGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& out_grad,
-                     float eps,
+                     double eps,
                      DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
 

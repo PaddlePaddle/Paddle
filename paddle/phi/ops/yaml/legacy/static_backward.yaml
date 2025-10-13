@@ -245,6 +245,17 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- backward_op : logit_grad
+  forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float eps)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : LogitGradInfoSpmd
+  kernel :
+    func : logit_grad
+
 - backward_op : lp_pool2d_grad
   forward : lp_pool2d(Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, float norm_type)
