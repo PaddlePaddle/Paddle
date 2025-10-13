@@ -19,10 +19,6 @@
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
-// NOTE: These XPU kernels depend on dedicated hardware runtime that is not
-// available in the CI coverage environment.
-// LCOV_EXCL_START
-
 namespace phi {
 
 template <typename T, typename Context, typename IndexT = int>
@@ -348,5 +344,3 @@ PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16) {}
-
-// LCOV_EXCL_STOP
