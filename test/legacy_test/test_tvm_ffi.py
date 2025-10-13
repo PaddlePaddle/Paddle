@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import platform
 import unittest
 from typing import TYPE_CHECKING
 
@@ -72,6 +73,9 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
     def test_c_dlpack_exchange_api_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
+        if platform.system() == "Windows":
+            # Temporary skip this test case on windows because compile bug on TVM FFI
+            return
         cpp_sources = r"""
             void add_one_cuda(tvm::ffi::TensorView x, tvm::ffi::TensorView y);
         """
@@ -116,6 +120,10 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
 
     def test_c_dlpack_exchange_api_alloc_tensor(self):
+        if platform.system() == "Windows":
+            # Temporary skip this test case on windows because return owned tensor created by
+            # TVMFFIEnvGetTensorAllocator will cause double free error
+            return
         cpp_source = r"""
             inline tvm::ffi::Tensor alloc_tensor(tvm::ffi::Shape shape, DLDataType dtype, DLDevice device) {
                 return tvm::ffi::Tensor::FromDLPackAlloc(TVMFFIEnvGetTensorAllocator(), shape, dtype, device);
