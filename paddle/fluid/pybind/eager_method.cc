@@ -1436,7 +1436,7 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           (!dst_tensor->meta().is_contiguous() ||
            !src_tensor->meta().is_contiguous()) &&
           dst_tensor->place().GetType() == src_tensor->place().GetType()) {
-        VLOG(6) << "set_tensor() method , src or dst tensor is not contiguous ";
+        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous ";
         if (!FLAGS_use_stride_kernel) {
           PADDLE_THROW(common::errors::Fatal(
               "FLAGS_use_stride_kernel is closed. Strided kernel "
