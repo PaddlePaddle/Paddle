@@ -166,7 +166,7 @@ if(WITH_TESTING)
     add_subdirectory(standalone_executor)
     add_subdirectory(tokenizer)
     if(WITH_ONEDNN)
-      add_subdirectory(mkldnn)
+      add_subdirectory(onednn)
     endif()
   endif()
 
@@ -317,6 +317,17 @@ endif()
 
 set_pir_tests_properties()
 
-add_subdirectory(deprecated)
 add_subdirectory(flex_checkpoint)
 add_subdirectory(compat)
+
+if(WIN32 AND WITH_ONNXRUNTIME)
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cpp/onnxruntime.dll
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ONNXRUNTIME_SHARED_LIB}"
+            "${CMAKE_CURRENT_BINARY_DIR}/cpp/onnxruntime.dll"
+    DEPENDS onnxruntime
+    COMMENT "Copying onnxruntime.dll to build/test/cpp")
+
+  add_custom_target(copy_onnxruntime ALL
+                    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cpp/onnxruntime.dll)
+endif()

@@ -1499,7 +1499,7 @@ class TestCalcReducedAttentionScores(unittest.TestCase):
             q,
             k,
             k,
-            (None,),  # fixed_seed_offset
+            None,  # fixed_seed_offset
             None,  # attn_mask
             0.0,  # dropout
             False,  # causal

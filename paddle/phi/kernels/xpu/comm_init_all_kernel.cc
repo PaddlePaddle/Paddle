@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/comm_init_all_kernel.h"
 #include <string>
 #include "glog/logging.h"
 #include "paddle/phi/core/kernel_registry.h"

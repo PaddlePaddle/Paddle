@@ -542,7 +542,7 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
         self.onednn_data_type = "bfloat16"
 
     def test_check_output(self):
-        # no dynamic graph test for mkldnn
+        # no dynamic graph test for onednn
         self.check_output_with_place(
             core.CPUPlace(), check_dygraph=False, check_pir=False
         )

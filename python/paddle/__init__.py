@@ -79,15 +79,20 @@ from .framework import (
 from .framework.dtype import (
     bfloat16,
     bool,
+    cdouble,
+    cfloat,
     complex64,
     complex128,
+    double,
     dtype,
     finfo,
+    float,
     float8_e4m3fn,
     float8_e5m2,
     float16,
     float32,
     float64,
+    half,
     iinfo,
     int8,
     int16,
@@ -96,6 +101,8 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint32,
+    uint64,
 )
 
 if typing.TYPE_CHECKING:
@@ -227,9 +234,11 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
-    PaddleStream as Stream,
+    Event,
+    Stream,
     device_guard,
     get_cudnn_version,
+    get_default_device,
     get_device,
     get_device_module,
     is_compiled_with_cinn,
@@ -239,6 +248,7 @@ from .device import (  # noqa: F401
     is_compiled_with_ipu,
     is_compiled_with_rocm,
     is_compiled_with_xpu,
+    set_default_device,
     set_device,
 )
 from .distributed import DataParallel
@@ -925,6 +935,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                         raise err
             kernel32.SetErrorMode(prev_error_mode)
 
+
 disable_static()
 
 from .pir_utils import IrGuard
@@ -959,7 +970,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
-get_default_device = get_device
+
 
 __all__ = [
     'block_diag',
@@ -969,17 +980,24 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint32',
+    'uint64',
     'int8',
     'int16',
     'int32',
     'int64',
     'float8_e4m3fn',
     'float8_e5m2',
+    'half',
     'float16',
+    'float',
     'float32',
     'float64',
+    'double',
     'bfloat16',
     'bool',
+    'cfloat',
+    'cdouble',
     'complex64',
     'complex128',
     'pstring',

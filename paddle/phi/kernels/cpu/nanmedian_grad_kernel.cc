@@ -68,7 +68,7 @@ void CalcNanMedianGradEvenly(int64_t pre_dim,
             dout_data[i] / static_cast<T>(2.0);
       }
     } else {
-      for (j = 0; j < data_index.size(); j++) {
+      for (j = 0; j < static_cast<int64_t>(data_index.size()); j++) {
         dx_data[data_index[j]] =
             dout_data[i] / static_cast<T>(data_index.size());
       }

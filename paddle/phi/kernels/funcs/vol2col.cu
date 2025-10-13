@@ -24,7 +24,7 @@ namespace phi {
 namespace funcs {
 
 template <class T>
-__global__ void vol2col(int num_kernels,
+__global__ void vol2col(int64_t num_kernels,
                         const T* data_vol,
                         int depth,
                         int height,
@@ -46,11 +46,12 @@ __global__ void vol2col(int num_kernels,
                         int output_width,
                         T* data_col,
                         const DataLayout data_layout) {
-  int input_channels =
+  int64_t input_channels =
       num_kernels / output_detph / output_height / output_width;
-  int channels_col =
+  int64_t channels_col =
       input_channels * filter_depth * filter_height * filter_width;
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_kernels;
+  for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+       index < num_kernels;
        index += blockDim.x * gridDim.x) {
     int w_out = index % output_width;
     int h_out = (index / output_width) % output_height;
@@ -61,7 +62,9 @@ __global__ void vol2col(int num_kernels,
     int h_in = h_out * stride_height - padding_height;
     int d_in = d_out * stride_depth - padding_depth;
 
-    data_col += ((channel_out * output_detph + d_out) * output_height + h_out) *
+    data_col += ((static_cast<int64_t>(channel_out) * output_detph + d_out) *
+                     output_height +
+                 h_out) *
                     output_width +
                 w_out;
     for (int k = 0; k < filter_depth; ++k) {
@@ -70,12 +73,16 @@ __global__ void vol2col(int num_kernels,
           int d = d_in + k * dilation_d;
           int h = h_in + i * dilation_h;
           int w = w_in + j * dilation_w;
-          int vol_idx;
+          int64_t vol_idx;
           if (data_layout != DataLayout::kNHWC) {
-            vol_idx = ((channel_in * depth + d) * height + h) * width + w;
-          } else {
             vol_idx =
-                ((d * height + h) * width + w) * input_channels + channel_in;
+                ((static_cast<int64_t>(channel_in) * depth + d) * height + h) *
+                    width +
+                w;
+          } else {
+            vol_idx = ((static_cast<int64_t>(d) * height + h) * width + w) *
+                          input_channels +
+                      channel_in;
           }
           *data_col = (d >= 0 && d < depth && h >= 0 && h < height && w >= 0 &&
                        w < width)
@@ -174,7 +181,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                         input_width_tmp,
                         output_width));
 
-  int num_outputs =
+  int64_t num_outputs =
       input_channels * output_depth * output_height * output_width;
 
   int max_threads = 1024;
@@ -183,7 +190,9 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
 #endif
 
   const int threads = max_threads;
-  const int blocks = (num_outputs + max_threads - 1) / max_threads;
+  int64_t max_blocks = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  const int blocks =
+      std::min((num_outputs + max_threads - 1) / max_threads, max_blocks);
 
   vol2col<T><<<blocks, threads, 0, dev_ctx.stream()>>>(num_outputs,
                                                        vol.data<T>(),
@@ -211,7 +220,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
 // };
 
 template <class T>
-__global__ void col2vol(int num_kernels,
+__global__ void col2vol(int64_t num_kernels,
                         const T* data_col,
                         int depth,
                         int height,
@@ -238,7 +247,8 @@ __global__ void col2vol(int num_kernels,
   const int d_filter_width = dilation_w * (filter_width - 1) + 1;
 
   int input_channels = num_kernels / depth / height / width;
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_kernels;
+  for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+       index < num_kernels;
        index += blockDim.x * gridDim.x) {
     T src_val = 0;
     int w = (data_layout != DataLayout::kNHWC
@@ -381,7 +391,8 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                         input_width_tmp,
                         output_width));
 
-  int num_kernels = input_channels * input_depth * input_height * input_width;
+  int64_t num_kernels = static_cast<int64_t>(input_channels) * input_depth *
+                        input_height * input_width;
 
   int max_threads = 1024;
 #ifdef WITH_NV_JETSON
@@ -389,7 +400,9 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
 #endif
 
   const int threads = max_threads;
-  const int blocks = (num_kernels + max_threads - 1) / max_threads;
+  int64_t max_blocks = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  const int blocks =
+      std::min((num_kernels + max_threads - 1) / max_threads, max_blocks);
 
   col2vol<T><<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
                                                        col.data<T>(),

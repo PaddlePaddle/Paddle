@@ -96,7 +96,7 @@ class TestConvHardSigmoidOnednnFusePass(PassAutoScanTest):
         yield config, ["fused_conv2d"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=["conv_activation_onednn_fuse_pass"]
         )
 
