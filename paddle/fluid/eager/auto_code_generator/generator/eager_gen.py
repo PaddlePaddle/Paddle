@@ -467,9 +467,13 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Before log info
 {}
   // Generate a unique API name
-  static int64_t call_count = 0;
-  call_count ++;
-  const std::string & unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {{
+    static int64_t call_count = 0;
+    call_count ++;
+    unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+  }}
   VLOG(4) << \"\\n\"<<separator<<\"Running_C++_API: \" <<unique_api_name<<separator;
   // Call grad_api function
 {}
@@ -535,10 +539,13 @@ TEST_API {} {}({}) {{
   // Set grad_node before API Call
 {}
   // Generate a unique API name
-  static int64_t call_count = 0;
-  call_count ++;
-  const std::string & unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
 
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {{
+    static int64_t call_count = 0;
+    call_count ++;
+    unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+  }}
   VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << unique_api_name << separator;
   // Forward API Call
 {}
@@ -611,9 +618,13 @@ TEST_API {} {}({}) {{
   // Before log info
 {}
   // Generate a unique API name
-  static int64_t call_count = 0;
-  call_count ++;
-  const std::string & unique_api_name = egr::GenerateUniqueApiName(\"{}\",call_count);
+  std::string unique_api_name;
+  if(VLOG_IS_ON(3)){{
+    static int64_t call_count = 0;
+    call_count ++;
+    unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+  }}
+
   VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << unique_api_name <<separator;
   // Forward API Call
 {}
