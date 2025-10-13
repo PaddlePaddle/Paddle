@@ -614,9 +614,17 @@ class _moe_sub_mesh_tensors(PyLayer):
                         "the args global_mesh and global_placements should be set together"
                     )
                 ori_mesh = dist_tensor.process_mesh
-                if global_mesh != dist_tensor.process_mesh:
+                if not (
+                    global_mesh.shape == dist_tensor.process_mesh.shape
+                    and np.array_equal(
+                        global_mesh.process_ids,
+                        dist_tensor.process_mesh.process_ids,
+                    )
+                    and global_mesh.dim_names
+                    == dist_tensor.process_mesh.dim_names
+                ):
                     raise ValueError(
-                        "the global_mesh should be the same as dist_tensor's process_mesh."
+                        "the global_mesh should have the same shape, process_ids and dim_names as dist_tensor's process_mesh."
                     )
                 assert check_placements_equal(
                     global_placements, dist_tensor.placements
