@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 
 TEST(DataTypeTransform, GPUTransform) {
   auto cpu_place = phi::CPUPlace();
@@ -42,6 +45,18 @@ TEST(DataTypeTransform, GPUTransform) {
 
   auto kernel_bool = phi::KernelKey(
       gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::BOOL);
+
+  auto kernel_fp8_e4m3 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT8_E4M3FN);
+
+  auto kernel_fp8_e5m2 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT8_E5M2);
+
+  auto kernel_complex64 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::COMPLEX64);
+
+  auto kernel_complex128 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::COMPLEX128);
 
   // data type transform from float32
   {
@@ -76,6 +91,87 @@ TEST(DataTypeTransform, GPUTransform) {
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_int[i], static_cast<int>(arr[i]));
+    }
+  }
+
+  // data type transform from float8
+  {
+    phi::DenseTensor in_cpu;
+    phi::DenseTensor in_gpu;
+    phi::DenseTensor out_gpu;
+    phi::DenseTensor out_cpu;
+
+    auto* ptr_e4m3 = in_cpu.mutable_data<phi::dtype::float8_e4m3fn>(
+        common::make_ddim({2, 3}), cpu_place);
+    int data_number = 2 * 3;
+    for (int i = 0; i < data_number; ++i) {
+      ptr_e4m3[i] = phi::dtype::float8_e4m3fn(static_cast<float>(i));
+    }
+
+    paddle::framework::TensorCopy(in_cpu, gpu_place, context, &in_gpu);
+    context.Wait();
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e4m3, kernel_complex64, in_gpu, &out_gpu);
+    paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out_cpu);
+    context.Wait();
+
+    auto* out_complex64 = out_cpu.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_complex64[i].real(), static_cast<float>(ptr_e4m3[i]));
+      EXPECT_FLOAT_EQ(out_complex64[i].imag(), 0.0f);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e4m3, kernel_complex128, in_gpu, &out_gpu);
+    paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out_cpu);
+    context.Wait();
+
+    auto* out_complex128 = out_cpu.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_complex128[i].real(),
+                       static_cast<double>(static_cast<float>(ptr_e4m3[i])));
+      EXPECT_DOUBLE_EQ(out_complex128[i].imag(), 0.0);
+    }
+  }
+
+  {
+    phi::DenseTensor in_cpu;
+    phi::DenseTensor in_gpu;
+    phi::DenseTensor out_gpu;
+    phi::DenseTensor out_cpu;
+
+    auto* ptr_e5m2 = in_cpu.mutable_data<phi::dtype::float8_e5m2>(
+        common::make_ddim({2, 3}), cpu_place);
+    int data_number = 2 * 3;
+    for (int i = 0; i < data_number; ++i) {
+      ptr_e5m2[i] = phi::dtype::float8_e5m2(static_cast<float>(i));
+    }
+
+    paddle::framework::TensorCopy(in_cpu, gpu_place, context, &in_gpu);
+    context.Wait();
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e5m2, kernel_complex64, in_gpu, &out_gpu);
+    paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out_cpu);
+    context.Wait();
+
+    auto* out_complex64 = out_cpu.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_complex64[i].real(), static_cast<float>(ptr_e5m2[i]));
+      EXPECT_FLOAT_EQ(out_complex64[i].imag(), 0.0f);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e5m2, kernel_complex128, in_gpu, &out_gpu);
+    paddle::framework::TensorCopy(out_gpu, cpu_place, context, &out_cpu);
+    context.Wait();
+
+    auto* out_complex128 = out_cpu.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_complex128[i].real(),
+                       static_cast<double>(static_cast<float>(ptr_e5m2[i])));
+      EXPECT_DOUBLE_EQ(out_complex128[i].imag(), 0.0);
     }
   }
 

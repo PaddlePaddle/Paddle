@@ -14,7 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 
+#include <vector>
+
 #include "gtest/gtest.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 
 TEST(DataTypeTransform, CPUTransform) {
   auto place = phi::CPUPlace();
@@ -39,6 +46,18 @@ TEST(DataTypeTransform, CPUTransform) {
 
   auto kernel_bool =
       phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, phi::DataType::BOOL);
+
+  auto kernel_fp8_e4m3 = phi::KernelKey(
+      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT8_E4M3FN);
+
+  auto kernel_fp8_e5m2 = phi::KernelKey(
+      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT8_E5M2);
+
+  auto kernel_complex64 = phi::KernelKey(
+      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::COMPLEX64);
+
+  auto kernel_complex128 = phi::KernelKey(
+      place, phi::DataLayout::ALL_LAYOUT, phi::DataType::COMPLEX128);
 
   // data type transform from float32
   {
@@ -107,6 +126,21 @@ TEST(DataTypeTransform, CPUTransform) {
     bool* out_data_bool = out.data<bool>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
+    }
+
+    paddle::framework::TransDataType(kernel_fp16, kernel_complex64, in, &out);
+    auto* out_data_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_data_complex64[i].real(), static_cast<float>(ptr[i]));
+      EXPECT_FLOAT_EQ(out_data_complex64[i].imag(), 0.0f);
+    }
+
+    paddle::framework::TransDataType(kernel_fp16, kernel_complex128, in, &out);
+    auto* out_data_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].real(),
+                       static_cast<double>(ptr[i]));
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].imag(), 0.0);
     }
 
     // transform float to float16
@@ -219,6 +253,21 @@ TEST(DataTypeTransform, CPUTransform) {
       EXPECT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
     }
 
+    paddle::framework::TransDataType(kernel_bf16, kernel_complex64, in, &out);
+    auto* out_data_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_data_complex64[i].real(), static_cast<float>(ptr[i]));
+      EXPECT_FLOAT_EQ(out_data_complex64[i].imag(), 0.0f);
+    }
+
+    paddle::framework::TransDataType(kernel_bf16, kernel_complex128, in, &out);
+    auto* out_data_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].real(),
+                       static_cast<double>(ptr[i]));
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].imag(), 0.0);
+    }
+
     // transform float to bfloat16
     float* in_data_float =
         in.mutable_data<float>(common::make_ddim({2, 3}), place);
@@ -284,6 +333,60 @@ TEST(DataTypeTransform, CPUTransform) {
     ptr = out.data<phi::dtype::bfloat16>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(ptr[i].x, static_cast<phi::dtype::bfloat16>(in_data_bool[i]).x);
+    }
+  }
+
+  // data type transform from float8
+  {
+    phi::DenseTensor in;
+    phi::DenseTensor out;
+
+    auto* ptr_e4m3 = in.mutable_data<phi::dtype::float8_e4m3fn>(
+        common::make_ddim({2, 3}), place);
+    int data_number = 2 * 3;
+
+    for (int i = 0; i < data_number; ++i) {
+      ptr_e4m3[i] = phi::dtype::float8_e4m3fn(static_cast<float>(i));
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e4m3, kernel_complex64, in, &out);
+    auto* out_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_complex64[i].real(), static_cast<float>(ptr_e4m3[i]));
+      EXPECT_FLOAT_EQ(out_complex64[i].imag(), 0.0f);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e4m3, kernel_complex128, in, &out);
+    auto* out_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_complex128[i].real(),
+                       static_cast<double>(static_cast<float>(ptr_e4m3[i])));
+      EXPECT_DOUBLE_EQ(out_complex128[i].imag(), 0.0);
+    }
+
+    auto* ptr_e5m2 = in.mutable_data<phi::dtype::float8_e5m2>(
+        common::make_ddim({2, 3}), place);
+    for (int i = 0; i < data_number; ++i) {
+      ptr_e5m2[i] = phi::dtype::float8_e5m2(static_cast<float>(i));
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e5m2, kernel_complex64, in, &out);
+    out_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_complex64[i].real(), static_cast<float>(ptr_e5m2[i]));
+      EXPECT_FLOAT_EQ(out_complex64[i].imag(), 0.0f);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e5m2, kernel_complex128, in, &out);
+    out_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_complex128[i].real(),
+                       static_cast<double>(static_cast<float>(ptr_e5m2[i])));
+      EXPECT_DOUBLE_EQ(out_complex128[i].imag(), 0.0);
     }
   }
 
@@ -393,6 +496,136 @@ TEST(DataTypeTransform, CPUTransform) {
     ptr = out.data<int32_t>();
     for (int i = 0; i < data_number; ++i) {
       EXPECT_EQ(ptr[i], static_cast<int32_t>(in_data_bool[i]));
+    }
+  }
+
+  // transform float8 to complex
+  {
+    phi::DenseTensor in;
+    phi::DenseTensor out;
+
+    auto* ptr = in.mutable_data<phi::dtype::float8_e5m2>(
+        common::make_ddim({2, 3}), place);
+    const int data_number = 2 * 3;
+    std::vector<float> stored_values(data_number);
+
+    for (int i = 0; i < data_number; ++i) {
+      ptr[i] = phi::dtype::float8_e5m2(static_cast<float>(i) - 2.5f);
+      stored_values[i] = static_cast<float>(ptr[i]);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e5m2, kernel_complex64, in, &out);
+    auto* out_data_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_data_complex64[i].real, stored_values[i]);
+      EXPECT_FLOAT_EQ(out_data_complex64[i].imag, 0.0f);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e5m2, kernel_complex128, in, &out);
+    auto* out_data_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].real,
+                       static_cast<double>(stored_values[i]));
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].imag, 0.0);
+    }
+  }
+
+  // transform float8_e4m3 to complex
+  {
+    phi::DenseTensor in;
+    phi::DenseTensor out;
+
+    auto* ptr = in.mutable_data<phi::dtype::float8_e4m3fn>(
+        common::make_ddim({2, 3}), place);
+    const int data_number = 2 * 3;
+    std::vector<float> stored_values(data_number);
+
+    for (int i = 0; i < data_number; ++i) {
+      ptr[i] = phi::dtype::float8_e4m3fn(static_cast<float>(i) - 1.75f);
+      stored_values[i] = static_cast<float>(ptr[i]);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e4m3, kernel_complex64, in, &out);
+    auto* out_data_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_data_complex64[i].real, stored_values[i]);
+      EXPECT_FLOAT_EQ(out_data_complex64[i].imag, 0.0f);
+    }
+
+    paddle::framework::TransDataType(
+        kernel_fp8_e4m3, kernel_complex128, in, &out);
+    auto* out_data_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].real,
+                       static_cast<double>(stored_values[i]));
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].imag, 0.0);
+    }
+  }
+
+  // transform float16 to complex
+  {
+    phi::DenseTensor in;
+    phi::DenseTensor out;
+
+    auto* ptr =
+        in.mutable_data<phi::dtype::float16>(common::make_ddim({2, 3}), place);
+    const int data_number = 2 * 3;
+    std::vector<float> stored_values(data_number);
+    std::vector<double> stored_values_double(data_number);
+
+    for (int i = 0; i < data_number; ++i) {
+      ptr[i] = static_cast<phi::dtype::float16>(static_cast<float>(i) - 3.0f);
+      stored_values[i] = static_cast<float>(ptr[i]);
+      stored_values_double[i] = static_cast<double>(ptr[i]);
+    }
+
+    paddle::framework::TransDataType(kernel_fp16, kernel_complex64, in, &out);
+    auto* out_data_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_data_complex64[i].real, stored_values[i]);
+      EXPECT_FLOAT_EQ(out_data_complex64[i].imag, 0.0f);
+    }
+
+    paddle::framework::TransDataType(kernel_fp16, kernel_complex128, in, &out);
+    auto* out_data_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].real, stored_values_double[i]);
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].imag, 0.0);
+    }
+  }
+
+  // transform bfloat16 to complex
+  {
+    phi::DenseTensor in;
+    phi::DenseTensor out;
+
+    auto* ptr =
+        in.mutable_data<phi::dtype::bfloat16>(common::make_ddim({2, 3}), place);
+    const int data_number = 2 * 3;
+    std::vector<float> stored_values(data_number);
+    std::vector<double> stored_values_double(data_number);
+
+    for (int i = 0; i < data_number; ++i) {
+      ptr[i] = static_cast<phi::dtype::bfloat16>(static_cast<float>(i) - 1.5f);
+      stored_values[i] = static_cast<float>(ptr[i]);
+      stored_values_double[i] = static_cast<double>(ptr[i]);
+    }
+
+    paddle::framework::TransDataType(kernel_bf16, kernel_complex64, in, &out);
+    auto* out_data_complex64 = out.data<phi::dtype::complex<float>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_FLOAT_EQ(out_data_complex64[i].real, stored_values[i]);
+      EXPECT_FLOAT_EQ(out_data_complex64[i].imag, 0.0f);
+    }
+
+    paddle::framework::TransDataType(kernel_bf16, kernel_complex128, in, &out);
+    auto* out_data_complex128 = out.data<phi::dtype::complex<double>>();
+    for (int i = 0; i < data_number; ++i) {
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].real, stored_values_double[i]);
+      EXPECT_DOUBLE_EQ(out_data_complex128[i].imag, 0.0);
     }
   }
 }
