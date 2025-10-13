@@ -29,24 +29,24 @@ class MacroContext:
     def __init__(self):
         self.source_keys = {
             "embed_tokens.weight",
-            "layers.0.self_attn.qkv_proj.weight",
-            "layers.0.self_attn.o_proj.weight",
-            "layers.0.mlp.gate_up_fused_proj.weight",
-            "layers.0.mlp.down_proj.weight",
-            "layers.0.input_layernorm.weight",
-            "layers.0.post_attention_layernorm.weight",
             "layers.1.self_attn.qkv_proj.weight",
             "layers.1.self_attn.o_proj.weight",
             "layers.1.mlp.gate_up_fused_proj.weight",
             "layers.1.mlp.down_proj.weight",
             "layers.1.input_layernorm.weight",
             "layers.1.post_attention_layernorm.weight",
-            "layers.0.experts.0.weight",
-            "layers.0.experts.1.weight",
+            "layers.2.self_attn.qkv_proj.weight",
+            "layers.2.self_attn.o_proj.weight",
+            "layers.2.mlp.gate_up_fused_proj.weight",
+            "layers.2.mlp.down_proj.weight",
+            "layers.2.input_layernorm.weight",
+            "layers.2.post_attention_layernorm.weight",
             "layers.1.experts.0.weight",
             "layers.1.experts.1.weight",
-            "layers.1.self_attn.qkv_proj.bias",
-            "layers.0.mlp.gate_up_fused_proj.bias",
+            "layers.2.experts.0.weight",
+            "layers.2.experts.1.weight",
+            "layers.2.self_attn.qkv_proj.bias",
+            "layers.1.mlp.gate_up_fused_proj.bias",
         }
 
     def get_all_dst_state_keys(self) -> Iterable[str]:
@@ -115,11 +115,11 @@ class TestStarMacro(TestMacro):
         return "star_macro"
 
     def source_code(self):
-        return "layers.1.experts.*.weight -> fused_experts, axis = 1"
+        return "layers.2.experts.*.weight -> fused_experts, axis = 1"
 
     def expected(self):
         return [
-            'layers.1.experts.0.weight,layers.1.experts.1.weight->fused_experts,axis=1\n'
+            'layers.2.experts.0.weight,layers.2.experts.1.weight->fused_experts,axis=1\n'
         ]
 
     def test(self):
@@ -135,8 +135,8 @@ class TestLayerIdMacro(TestMacro):
 
     def expected(self):
         return [
-            'layers.0.experts.0.weight->test_layer_id.layer.0,axis=1\n',
             'layers.1.experts.0.weight->test_layer_id.layer.1,axis=1\n',
+            'layers.2.experts.0.weight->test_layer_id.layer.2,axis=1\n',
         ]
 
     def test(self):
@@ -148,12 +148,12 @@ class TestFusedQkvOldMacro(TestMacro):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "layers.1.self_attn.qkv_proj.weight -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
+        return "layers.2.self_attn.qkv_proj.weight -> layers.2.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
 
     def expected(self):
         return [
-            'layers.1.self_attn.qkv_proj.weight -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=1',
-            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.weight, axis=1',
+            'layers.2.self_attn.qkv_proj.weight -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=1',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.2.self_attn.qkv_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -165,12 +165,12 @@ class TestFusedFfnMacro(TestMacro):
         return "fused_ffn_macro"
 
     def source_code(self):
-        return "layers.1.mlp.gate_up_fused_proj.weight -> layers.1.mlp.gate_up_fused_proj.weight, fused_ffn"
+        return "layers.2.mlp.gate_up_fused_proj.weight -> layers.2.mlp.gate_up_fused_proj.weight, fused_ffn"
 
     def expected(self):
         return [
-            'layers.1.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=1',
-            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.weight, axis=1',
+            'layers.2.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.2.mlp.gate_up_fused_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -183,13 +183,13 @@ class TestTransposeMacro(TestMacro):
 
     def source_code(self):
         return (
-            "layers.1.mlp.down_proj.weight^T -> layers.1.mlp.down_proj.weight_T"
+            "layers.2.mlp.down_proj.weight^T -> layers.2.mlp.down_proj.weight_T"
         )
 
     def expected(self):
         return [
-            'layers.1.mlp.down_proj.weight -> layers.1.mlp.down_proj.weight_transpose_tmp, permute = "[]"',
-            'layers.1.mlp.down_proj.weight_transpose_tmp->layers.1.mlp.down_proj.weight_T\n',
+            'layers.2.mlp.down_proj.weight -> layers.2.mlp.down_proj.weight_transpose_tmp, permute = "[]"',
+            'layers.2.mlp.down_proj.weight_transpose_tmp->layers.2.mlp.down_proj.weight_T\n',
         ]
 
     def test(self):
@@ -201,11 +201,11 @@ class TestFusedQKVMacro(TestMacro):
         return "fused_qkv"
 
     def source_code(self):
-        return "layers.1.self_attn.qkv_proj.weight -> Q, K, V, fused_qkv, num_heads = 8, num_key_value_groups = 2"
+        return "layers.2.self_attn.qkv_proj.weight -> Q, K, V, fused_qkv, num_heads = 8, num_key_value_groups = 2"
 
     def expected(self):
         return [
-            'layers.1.self_attn.qkv_proj.weight -> Q0,Q1,Q2,Q3,K0,V0,Q4,Q5,Q6,Q7,K1,V1, axis=1',
+            'layers.2.self_attn.qkv_proj.weight -> Q0,Q1,Q2,Q3,K0,V0,Q4,Q5,Q6,Q7,K1,V1, axis=1',
             'Q0,Q1,Q2,Q3,Q4,Q5,Q6,Q7 -> Q, axis=1',
             'K0,K1 -> K, axis=1',
             'V0,V1 -> V, axis=1',
@@ -220,14 +220,14 @@ class TestFusedQKVMacro2(TestMacro):
         return "fused_qkv"
 
     def source_code(self):
-        return "Q, K, V -> layers.1.self_attn.qkv_proj.weight, fused_qkv, num_heads = 8, num_key_value_groups = 8"
+        return "Q, K, V -> layers.2.self_attn.qkv_proj.weight, fused_qkv, num_heads = 8, num_key_value_groups = 8"
 
     def expected(self):
         return [
             'Q -> Q0,Q1,Q2,Q3,Q4,Q5,Q6,Q7, axis=1',
             'K -> K0,K1,K2,K3,K4,K5,K6,K7, axis=1',
             'V -> V0,V1,V2,V3,V4,V5,V6,V7, axis=1',
-            'Q0,K0,V0,Q1,K1,V1,Q2,K2,V2,Q3,K3,V3,Q4,K4,V4,Q5,K5,V5,Q6,K6,V6,Q7,K7,V7 -> layers.1.self_attn.qkv_proj.weight, axis=1',
+            'Q0,K0,V0,Q1,K1,V1,Q2,K2,V2,Q3,K3,V3,Q4,K4,V4,Q5,K5,V5,Q6,K6,V6,Q7,K7,V7 -> layers.2.self_attn.qkv_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -239,13 +239,13 @@ class TestFusedQkvOldMacro2(TestMacro):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "Q,K,V -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
+        return "Q,K,V -> layers.2.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
 
     def expected(self):
         return [
             'Q,K,V  ->  Q.K.V.tmp, axis=1',
             'Q.K.V.tmp -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=1',
-            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.weight, axis=1',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.2.self_attn.qkv_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -276,12 +276,12 @@ class TestFusedQkvOldMacro4(TestMacro):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "fused_qkv_old_test_name ->  layers.1.self_attn.qkv_proj.weight,fused_qkv_old, num_heads = 8, num_key_value_groups = 8 "
+        return "fused_qkv_old_test_name ->  layers.2.self_attn.qkv_proj.weight,fused_qkv_old, num_heads = 8, num_key_value_groups = 8 "
 
     def expected(self):
         return [
             'fused_qkv_old_test_name -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_4,fused_qkv_old_tmp.K_5,fused_qkv_old_tmp.K_6,fused_qkv_old_tmp.K_7,fused_qkv_old_tmp.V_4,fused_qkv_old_tmp.V_5,fused_qkv_old_tmp.V_6,fused_qkv_old_tmp.V_7, axis=1',
-            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_4,fused_qkv_old_tmp.K_5,fused_qkv_old_tmp.V_4,fused_qkv_old_tmp.V_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_6,fused_qkv_old_tmp.K_7,fused_qkv_old_tmp.V_6,fused_qkv_old_tmp.V_7 -> layers.1.self_attn.qkv_proj.weight, axis=1',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_4,fused_qkv_old_tmp.K_5,fused_qkv_old_tmp.V_4,fused_qkv_old_tmp.V_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_6,fused_qkv_old_tmp.K_7,fused_qkv_old_tmp.V_6,fused_qkv_old_tmp.V_7 -> layers.2.self_attn.qkv_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -293,13 +293,13 @@ class TestFusedFfnMacro2(TestMacro):
         return "fused_ffn_macro"
 
     def source_code(self):
-        return "layers.0.mlp.gate_up_fused_proj.weight -> layers.0.mlp.gate_proj.weight,layers.0.mlp.up_proj.weight, fused_ffn "
+        return "layers.1.mlp.gate_up_fused_proj.weight -> layers.1.mlp.gate_proj.weight,layers.1.mlp.up_proj.weight, fused_ffn "
 
     def expected(self):
         return [
-            'layers.0.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1, axis=1',
-            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1 -> layers.0.mlp.gate_proj.weight, axis=1',
-            'fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1 -> layers.0.mlp.up_proj.weight, axis=1',
+            'layers.1.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1 -> layers.1.mlp.gate_proj.weight, axis=1',
+            'fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1 -> layers.1.mlp.up_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -311,13 +311,13 @@ class TestFusedFfnMacro3(TestMacro):
         return "fused_ffn_macro"
 
     def source_code(self):
-        return "layers.0.mlp.gate_up_fused_proj.weight -> layers.0.mlp.gate_proj.weight,layers.0.mlp.up_proj.weight, fused_ffn "
+        return "layers.1.mlp.gate_up_fused_proj.weight -> layers.1.mlp.gate_proj.weight,layers.1.mlp.up_proj.weight, fused_ffn "
 
     def expected(self):
         return [
-            'layers.0.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1, axis=1',
-            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1 -> layers.0.mlp.gate_proj.weight, axis=1',
-            'fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1 -> layers.0.mlp.up_proj.weight, axis=1',
+            'layers.1.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1 -> layers.1.mlp.gate_proj.weight, axis=1',
+            'fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1 -> layers.1.mlp.up_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -329,12 +329,12 @@ class TestFusedQkvOldMacro5(TestMacro):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "layers.1.self_attn.qkv_proj.bias -> layers.1.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4, axis = 0"
+        return "layers.2.self_attn.qkv_proj.bias -> layers.2.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4, axis = 0"
 
     def expected(self):
         return [
-            'layers.1.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=0',
-            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.bias, axis=0',
+            'layers.2.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=0',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.2.self_attn.qkv_proj.bias, axis=0',
         ]
 
     def test(self):
@@ -346,12 +346,29 @@ class TestFusedFfnMacro4(TestMacro):
         return "fused_ffn_macro"
 
     def source_code(self):
-        return "layers.1.mlp.gate_up_fused_proj.bias -> layers.1.mlp.gate_up_fused_proj.bias, fused_ffn, axis=0"
+        return "layers.2.mlp.gate_up_fused_proj.bias -> layers.2.mlp.gate_up_fused_proj.bias, fused_ffn, axis=0"
 
     def expected(self):
         return [
-            'layers.1.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=0',
-            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.bias, axis=0',
+            'layers.2.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=0',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.2.mlp.gate_up_fused_proj.bias, axis=0',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestLayerIdOffsetMacro(TestMacro):
+    def macro_name(self):
+        return "layer_id_offset_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID_OFFSET.experts.0.weight -> layers.$LAYER_ID_OFFSET.experts.0.weight, axis = 1"
+
+    def expected(self):
+        return [
+            'layers.1.experts.0.weight->layers.0.experts.0.weight,axis=1\n',
+            'layers.2.experts.0.weight->layers.1.experts.0.weight,axis=1\n',
         ]
 
     def test(self):

@@ -1362,6 +1362,9 @@ class DygraphShardingOptimizerV2:
             flattened_range = param_slice_info[base_name]
             is_padded = base_name in padded_param
 
+            if flattened_range.stop - flattened_range.start == 0:
+                continue
+
             sharded_state[unified_name] = _create_sharded_weight(
                 unified_name, tensor, sharded_param, is_padded, flattened_range
             )
@@ -1373,6 +1376,9 @@ class DygraphShardingOptimizerV2:
                 unified_name = f"{struct_name}.w_0"
                 flattened_range = param_slice_info[weight_key]
                 is_padded = weight_key in padded_param
+
+                if flattened_range.stop - flattened_range.start == 0:
+                    continue
 
                 sharded_state[unified_name] = _create_sharded_weight(
                     unified_name,
