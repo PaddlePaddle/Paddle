@@ -209,10 +209,17 @@ class DistAttr(core.TensorDistAttr):
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
         self._sharding_specs = sharding_specs
-        dims_mapping = [
-            mesh.dim_names.index(dim_name) if dim_name is not None else -1
-            for dim_name in sharding_specs
-        ]
+        dims_mapping = []
+        for dim_name in sharding_specs:
+            if dim_name is None:
+                dims_mapping.append(-1)
+            else:
+                if dim_name not in mesh.dim_names:
+                    raise ValueError(
+                        f"Invalid sharding dimension '{dim_name}'. "
+                        f"Available dimensions in mesh are: {mesh.dim_names}."
+                    )
+                dims_mapping.append(mesh.dim_names.index(dim_name))
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
