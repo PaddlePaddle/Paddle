@@ -54,7 +54,7 @@ def build_program():
     return main_program, startup_program, [mean]
 
 
-class TestMannulEvent(unittest.TestCase):
+class TestManualEvent(unittest.TestCase):
     """
     fill_constant(def)     gaussian_random(def)
       |     |        |        |
@@ -110,10 +110,8 @@ class TestMannulEvent(unittest.TestCase):
 
     def create_standalone_exe(self, main_progs, startup_progs, fetch_list):
         micro_batch_num = 1
-        micro_batch_id = 0
         job_list = []
         prog_num = len(main_progs)
-        fetch_op_num = len(fetch_list)
 
         if prog_num == 1:  # single prog
             main_progs[0] = _add_feed_fetch_ops(
@@ -124,8 +122,6 @@ class TestMannulEvent(unittest.TestCase):
                 "fetch",
                 use_fetch_v2=True,
             )
-            op_num = len(main_progs[0].block(0).ops)
-            fetch_op_indics = list(range(op_num - fetch_op_num, op_num))
         else:
             main_progs[-1] = _add_feed_fetch_ops(
                 main_progs[-1],
@@ -135,8 +131,6 @@ class TestMannulEvent(unittest.TestCase):
                 "fetch",
                 use_fetch_v2=True,
             )
-            op_num = len(main_progs[-1].block(0).ops)
-            fetch_op_indics = list(range(op_num - fetch_op_num, op_num))
 
         # create jobs
         for program_id in range(prog_num):

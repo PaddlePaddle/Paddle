@@ -310,6 +310,234 @@ struct DivGradYFunctor<ComplexType<T>> {
     return -a * out_div_c_conj;
   }
 };
+// Floor divide
+template <typename T, typename Enable = void>
+struct FloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+#endif
+
+    if (phi::is_negative(a) != phi::is_negative(b)) {
+      // Subtracts one from the results of truncation division if the
+      // divisor and dividend have different sign(bit)s and the remainder of
+      // the division is nonzero
+      const auto quot = a / b;
+      const auto rem = a % b;
+      auto ret = rem ? quot - 1 : quot;
+      return static_cast<T>(ret);
+    }
+
+    return static_cast<T>(a / b);
+  }
+};
+
+template <typename T>
+struct FloorDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (UNLIKELY(b == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<T>(a / b);
+    }
+
+    auto mod = std::fmod(a, b);
+    auto div = (a - mod) / b;
+    if ((mod != 0) && (b < 0) != (mod < 0)) {
+      div -= T(1);
+    }
+
+    T floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > T(0.5)) {
+        floordiv += T(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(T(0), a / b);
+    }
+    return floordiv;
+  }
+};
+
+template <>
+struct FloorDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float b_float = static_cast<float>(b);
+    float a_float = static_cast<float>(a);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::float16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::float16>(floordiv);
+  }
+};
+
+template <>
+struct FloorDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float b_float = static_cast<float>(b);
+    float a_float = static_cast<float>(a);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::bfloat16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::bfloat16>(floordiv);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseFloorDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+#endif
+    if (phi::is_negative(a) != phi::is_negative(b)) {
+      // Subtracts one from the results of truncation division if the
+      // divisor and dividend have different sign(bit)s and the remainder of
+      // the division is nonzero
+      const auto quot = b / a;
+      const auto rem = b % a;
+      auto ret = rem ? quot - 1 : quot;
+      return static_cast<T>(ret);
+    }
+
+    return static_cast<T>(b / a);
+  }
+};
+
+template <typename T>
+struct InverseFloorDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (UNLIKELY(a == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<T>(b / a);
+    }
+
+    auto mod = std::fmod(b, a);
+    auto div = (b - mod) / a;
+    if ((mod != 0) && (a < 0) != (mod < 0)) {
+      div -= T(1);
+    }
+
+    T floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > T(0.5)) {
+        floordiv += T(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(T(0), b / a);
+    }
+    return floordiv;
+  }
+};
+
+template <>
+struct InverseFloorDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float b_float = static_cast<float>(a);
+    float a_float = static_cast<float>(b);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::float16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::float16>(floordiv);
+  }
+};
+
+template <>
+struct InverseFloorDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float b_float = static_cast<float>(a);
+    float a_float = static_cast<float>(b);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::bfloat16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::bfloat16>(floordiv);
+  }
+};
+
 // Fmin
 template <typename T>
 struct FMinFunctor {
@@ -899,7 +1127,8 @@ struct RemainderGradYFunctor<
     // dy = -dout * (floor_div(x, y))
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
-    return static_cast<T>(-static_cast<MPType>(dout) * (std::floor((x_ / y_))));
+    FloorDivideFunctor<MPType> floor_div;
+    return static_cast<T>(-static_cast<MPType>(dout) * (floor_div(x_, y_)));
   }
 };
 template <typename T>
@@ -931,7 +1160,8 @@ struct RemainderGradXYFunctor {
     // dx = dout
     outs[0] = static_cast<OutT>(dout);
     // dy = -dout * (floor_div(x, y))
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(std::floor(x / y)));
+    FloorDivideFunctor<InT> floor_div;
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(floor_div(x, y)));
     return outs;
   }
 };
@@ -950,8 +1180,8 @@ struct RemainderGradXYFunctor<
     using MPType = typename phi::dtype::MPTypeTrait<InT>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
-    outs[1] =
-        static_cast<OutT>(static_cast<MPType>(-dout) * std::floor(x_ / y_));
+    FloorDivideFunctor<MPType> floor_div;
+    outs[1] = static_cast<OutT>(static_cast<MPType>(-dout) * floor_div(x_, y_));
     return outs;
   }
 };
@@ -1097,233 +1327,6 @@ template <typename T>
 struct ElementwiseInverseHeavisideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return b == static_cast<T>(0) ? a : static_cast<T>(b > static_cast<T>(0));
-  }
-};
-
-template <typename T, typename Enable = void>
-struct FloorDivideFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-#ifndef PADDLE_WITH_XPU_KP
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
-#endif
-
-    if (phi::is_negative(a) != phi::is_negative(b)) {
-      // Subtracts one from the results of truncation division if the
-      // divisor and dividend have different sign(bit)s and the remainder of
-      // the division is nonzero
-      const auto quot = a / b;
-      const auto rem = a % b;
-      auto ret = rem ? quot - 1 : quot;
-      return static_cast<T>(ret);
-    }
-
-    return static_cast<T>(a / b);
-  }
-};
-
-template <typename T>
-struct FloorDivideFunctor<
-    T,
-    typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    if (UNLIKELY(b == 0)) {
-      // Divide by zero: return standard IEEE result
-      return static_cast<T>(a / b);
-    }
-
-    auto mod = std::fmod(a, b);
-    auto div = (a - mod) / b;
-    if ((mod != 0) && (b < 0) != (mod < 0)) {
-      div -= T(1);
-    }
-
-    T floordiv;
-    if (div != 0) {
-      floordiv = std::floor(div);
-      if (div - floordiv > T(0.5)) {
-        floordiv += T(1.0);
-      }
-    } else {
-      floordiv = phi::copysign(T(0), a / b);
-    }
-    return floordiv;
-  }
-};
-
-template <>
-struct FloorDivideFunctor<dtype::float16> {
-  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
-                                              const dtype::float16 b) const {
-    float b_float = static_cast<float>(b);
-    float a_float = static_cast<float>(a);
-
-    if (UNLIKELY(b_float == 0)) {
-      // Divide by zero: return standard IEEE result
-      return static_cast<dtype::float16>(a_float / b_float);
-    }
-
-    auto mod = std::fmod(a_float, b_float);
-    auto div = (a_float - mod) / b_float;
-    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
-      div -= static_cast<float>(1);
-    }
-
-    float floordiv;
-    if (div != 0) {
-      floordiv = std::floor(div);
-      if (div - floordiv > static_cast<float>(0.5)) {
-        floordiv += static_cast<float>(1.0);
-      }
-    } else {
-      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
-    }
-
-    return static_cast<dtype::float16>(floordiv);
-  }
-};
-
-template <>
-struct FloorDivideFunctor<dtype::bfloat16> {
-  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
-                                               const dtype::bfloat16 b) const {
-    float b_float = static_cast<float>(b);
-    float a_float = static_cast<float>(a);
-
-    if (UNLIKELY(b_float == 0)) {
-      // Divide by zero: return standard IEEE result
-      return static_cast<dtype::bfloat16>(a_float / b_float);
-    }
-
-    auto mod = std::fmod(a_float, b_float);
-    auto div = (a_float - mod) / b_float;
-    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
-      div -= static_cast<float>(1);
-    }
-
-    float floordiv;
-    if (div != 0) {
-      floordiv = std::floor(div);
-      if (div - floordiv > static_cast<float>(0.5)) {
-        floordiv += static_cast<float>(1.0);
-      }
-    } else {
-      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
-    }
-
-    return static_cast<dtype::bfloat16>(floordiv);
-  }
-};
-
-template <typename T, typename Enable = void>
-struct InverseFloorDivideFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-#ifndef PADDLE_WITH_XPU_KP
-    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
-#endif
-    if (phi::is_negative(a) != phi::is_negative(b)) {
-      // Subtracts one from the results of truncation division if the
-      // divisor and dividend have different sign(bit)s and the remainder of
-      // the division is nonzero
-      const auto quot = b / a;
-      const auto rem = b % a;
-      auto ret = rem ? quot - 1 : quot;
-      return static_cast<T>(ret);
-    }
-
-    return static_cast<T>(b / a);
-  }
-};
-
-template <typename T>
-struct InverseFloorDivideFunctor<
-    T,
-    typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    if (UNLIKELY(a == 0)) {
-      // Divide by zero: return standard IEEE result
-      return static_cast<T>(b / a);
-    }
-
-    auto mod = std::fmod(b, a);
-    auto div = (b - mod) / a;
-    if ((mod != 0) && (a < 0) != (mod < 0)) {
-      div -= T(1);
-    }
-
-    T floordiv;
-    if (div != 0) {
-      floordiv = std::floor(div);
-      if (div - floordiv > T(0.5)) {
-        floordiv += T(1.0);
-      }
-    } else {
-      floordiv = phi::copysign(T(0), b / a);
-    }
-    return floordiv;
-  }
-};
-
-template <>
-struct InverseFloorDivideFunctor<dtype::float16> {
-  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
-                                              const dtype::float16 b) const {
-    float b_float = static_cast<float>(a);
-    float a_float = static_cast<float>(b);
-
-    if (UNLIKELY(b_float == 0)) {
-      // Divide by zero: return standard IEEE result
-      return static_cast<dtype::float16>(a_float / b_float);
-    }
-
-    auto mod = std::fmod(a_float, b_float);
-    auto div = (a_float - mod) / b_float;
-    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
-      div -= static_cast<float>(1);
-    }
-
-    float floordiv;
-    if (div != 0) {
-      floordiv = std::floor(div);
-      if (div - floordiv > static_cast<float>(0.5)) {
-        floordiv += static_cast<float>(1.0);
-      }
-    } else {
-      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
-    }
-
-    return static_cast<dtype::float16>(floordiv);
-  }
-};
-
-template <>
-struct InverseFloorDivideFunctor<dtype::bfloat16> {
-  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
-                                               const dtype::bfloat16 b) const {
-    float b_float = static_cast<float>(a);
-    float a_float = static_cast<float>(b);
-
-    if (UNLIKELY(b_float == 0)) {
-      // Divide by zero: return standard IEEE result
-      return static_cast<dtype::bfloat16>(a_float / b_float);
-    }
-
-    auto mod = std::fmod(a_float, b_float);
-    auto div = (a_float - mod) / b_float;
-    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
-      div -= static_cast<float>(1);
-    }
-
-    float floordiv;
-    if (div != 0) {
-      floordiv = std::floor(div);
-      if (div - floordiv > static_cast<float>(0.5)) {
-        floordiv += static_cast<float>(1.0);
-      }
-    } else {
-      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
-    }
-
-    return static_cast<dtype::bfloat16>(floordiv);
   }
 };
 

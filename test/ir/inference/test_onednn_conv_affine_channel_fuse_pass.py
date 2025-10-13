@@ -158,7 +158,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         self.add_ignore_check_case(
             teller2,
             IgnoreReasons.PASS_ACCURACY_ERROR,
-            "Currently mkldnn Output has diff with bias!",
+            "Currently onednn Output has diff with bias!",
         )
 
     def test(self):

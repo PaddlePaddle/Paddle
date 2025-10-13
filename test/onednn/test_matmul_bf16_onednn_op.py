@@ -24,7 +24,7 @@ from paddle.base import core
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestMatmulBf16MklDNNOp(OpTest):
+class TestMatmulBf16OneDNNOp(OpTest):
     def generate_data(self):
         self.x_fp32 = np.random.random((25, 2, 2)).astype(np.float32)
         self.y_fp32 = np.random.random((25, 2, 2)).astype(np.float32)
@@ -34,7 +34,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
         self.attrs = {
             'alpha': self.alpha,
             "use_onednn": self.use_onednn,
-            "mkldnn_data_type": self.onednn_data_type,
+            "onednn_data_type": self.onednn_data_type,
             "force_fp32_output": self.force_fp32_output,
             'transpose_X': False,
             'transpose_Y': False,
@@ -123,7 +123,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
         self.dout = dout
 
 
-class TestDnnlMatMulOpAlpha(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOpAlpha(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((17, 2, 3)).astype(np.float32)
         self.y_fp32 = np.random.random((17, 3, 2)).astype(np.float32)
@@ -131,14 +131,14 @@ class TestDnnlMatMulOpAlpha(TestMatmulBf16MklDNNOp):
         self.out = self.alpha * np.matmul(self.x_fp32, self.y_fp32)
 
 
-class TestDnnlMatMulOp2D(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOp2D(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((9, 12)).astype(np.float32)
         self.out = np.matmul(self.x_fp32, self.y_fp32)
 
 
-class TestDnnlMatMulOpTransposeX(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOpTransposeX(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((12, 9)).astype(np.float32)
@@ -147,13 +147,13 @@ class TestDnnlMatMulOpTransposeX(TestMatmulBf16MklDNNOp):
     def set_attributes(self):
         self.attrs = {
             "use_onednn": self.use_onednn,
-            "mkldnn_data_type": self.onednn_data_type,
+            "onednn_data_type": self.onednn_data_type,
             'transpose_X': True,
             'transpose_Y': False,
         }
 
 
-class TestDnnlMatMulOpTransposeY(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOpTransposeY(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((12, 9)).astype(np.float32)
@@ -162,13 +162,13 @@ class TestDnnlMatMulOpTransposeY(TestMatmulBf16MklDNNOp):
     def set_attributes(self):
         self.attrs = {
             "use_onednn": self.use_onednn,
-            "mkldnn_data_type": self.onednn_data_type,
+            "onednn_data_type": self.onednn_data_type,
             'transpose_Y': True,
             'transpose_X': False,
         }
 
 
-class TestMatmulBf16MklDNNForceFp32Output(TestMatmulBf16MklDNNOp):
+class TestMatmulBf16OneDNNForceFp32Output(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((9, 12)).astype(np.float32)

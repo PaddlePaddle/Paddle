@@ -106,7 +106,11 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("low_latency_dispatch_two_stage",
            &deep_ep::Buffer::low_latency_dispatch_two_stage_api)
       .def("low_latency_combine_two_stage",
-           &deep_ep::Buffer::low_latency_combine_two_stage_api);
+           &deep_ep::Buffer::low_latency_combine_two_stage_api)
+      .def("m2n_low_latency_dispatch_two_stage",
+           &deep_ep::Buffer::m2n_low_latency_dispatch_two_stage_api)
+      .def("m2n_low_latency_combine_two_stage",
+           &deep_ep::Buffer::m2n_low_latency_combine_two_stage_api);
 #endif
 }
 

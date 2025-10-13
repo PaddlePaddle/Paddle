@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/legacy/gpu/fp8_quant_blockwise_kernel.h"
 #include <cuda_fp8.h>
 #include <cstdint>
 #include <vector>
