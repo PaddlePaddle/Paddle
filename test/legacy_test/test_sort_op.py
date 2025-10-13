@@ -94,20 +94,20 @@ class TestSortDygraph(unittest.TestCase):
             self.place = core.CPUPlace()
 
     def test_api_0(self):
-        paddle.disable_static(self.place)
-        var_x = paddle.to_tensor(self.input_data)
-        out = paddle.sort(var_x)
-        self.assertEqual((np.sort(self.input_data) == out.numpy()).all(), True)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard(self.place):
+            var_x = paddle.to_tensor(self.input_data)
+            out = paddle.sort(var_x)
+            self.assertEqual(
+                (np.sort(self.input_data) == out.numpy()).all(), True
+            )
 
     def test_api_1(self):
-        paddle.disable_static(self.place)
-        var_x = paddle.to_tensor(self.input_data)
-        out = paddle.sort(var_x, axis=-1)
-        self.assertEqual(
-            (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
-        )
-        paddle.enable_static()
+        with paddle.base.dygraph.guard(self.place):
+            var_x = paddle.to_tensor(self.input_data)
+            out = paddle.sort(var_x, axis=-1)
+            self.assertEqual(
+                (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
+            )
 
     def test_api_2(self):
         paddle.disable_static(self.place)

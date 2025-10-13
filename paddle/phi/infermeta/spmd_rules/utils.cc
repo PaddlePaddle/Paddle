@@ -182,6 +182,172 @@ int64_t calculate_total_shards(const std::vector<int64_t>& sharding_vec,
 }
 
 std::unordered_map<std::string, std::vector<int64_t>>
+ShardingMergeForTensorsMatmul(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts) {
+  PADDLE_ENFORCE_EQ(tensor_axes_to_dim_pairs.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "Matmul op should have two input tensors."));
+  const std::string& x_axes = tensor_axes_to_dim_pairs[0].first;
+  const std::string& y_axes = tensor_axes_to_dim_pairs[1].first;
+  const auto& x_dims_mapping = tensor_axes_to_dim_pairs[0].second;
+  const auto& y_dims_mapping = tensor_axes_to_dim_pairs[1].second;
+
+  const size_t x_len = x_axes.length();
+  const size_t y_len = y_axes.length();
+
+  char non_contracting_lhs_ch = '\0';
+  char non_contracting_rhs_ch = '\0';
+  char contracting_axis_ch = '\0';
+
+  std::unordered_set<char> unbatch_axes;
+  if (x_len == 1) {
+    contracting_axis_ch = x_axes[0];
+    unbatch_axes.insert(contracting_axis_ch);
+  } else {
+    non_contracting_lhs_ch = x_axes[x_len - 2];
+    contracting_axis_ch = x_axes[x_len - 1];
+    unbatch_axes.insert(non_contracting_lhs_ch);
+    unbatch_axes.insert(contracting_axis_ch);
+  }
+  if (y_len == 1) {
+    contracting_axis_ch = y_axes[0];
+    unbatch_axes.insert(contracting_axis_ch);
+  } else {
+    non_contracting_rhs_ch = y_axes[y_len - 1];
+    contracting_axis_ch = y_axes[y_len - 2];
+    unbatch_axes.insert(non_contracting_rhs_ch);
+    unbatch_axes.insert(contracting_axis_ch);
+  }
+
+  auto pick_batch_axes = [](const std::string& axes,
+                            const std::vector<std::vector<int64_t>>& dims,
+                            const std::unordered_set<char>& seen)
+      -> std::pair<std::string, std::vector<std::vector<int64_t>>> {
+    std::string out_axes;
+    std::vector<std::vector<int64_t>> out_dims;
+    out_axes.reserve(axes.size());
+    out_dims.reserve(axes.size());
+    for (size_t i = 0; i < axes.size(); ++i) {
+      char ax = axes[i];
+      if (seen.find(ax) == seen.end()) {
+        out_axes.push_back(ax);
+        out_dims.push_back(dims[i]);
+      }
+    }
+    return {std::move(out_axes), std::move(out_dims)};
+  };
+
+  auto x_batch = pick_batch_axes(x_axes, x_dims_mapping, unbatch_axes);
+  auto y_batch = pick_batch_axes(y_axes, y_dims_mapping, unbatch_axes);
+
+  std::unordered_map<std::string, std::vector<int64_t>> batch_dim_map;
+  std::unordered_set<int64_t> forbidden;
+
+  if (!x_batch.first.empty() || !y_batch.first.empty()) {
+    batch_dim_map = ShardingMergeForTensorsElementWise(
+        {x_batch, y_batch}, axis_sizes, mesh_shape, merge_conflicts);
+    for (const auto& pair : batch_dim_map) {
+      for (int64_t dim : pair.second) {
+        forbidden.insert(dim);
+      }
+    }
+  }
+
+  std::vector<int64_t> non_contracting_lhs_dims;
+  std::vector<int64_t> non_contracting_rhs_dims;
+  std::vector<int64_t> contracting_lhs_dims;
+  std::vector<int64_t> contracting_rhs_dims;
+
+  if (x_len > 1) {
+    non_contracting_lhs_dims = tensor_axes_to_dim_pairs[0].second.at(x_len - 2);
+  }
+  contracting_lhs_dims = tensor_axes_to_dim_pairs[0].second.at(x_len - 1);
+
+  if (y_len > 1) {
+    non_contracting_rhs_dims = tensor_axes_to_dim_pairs[1].second.at(y_len - 1);
+    contracting_rhs_dims = tensor_axes_to_dim_pairs[1].second.at(y_len - 2);
+  } else {
+    contracting_rhs_dims = tensor_axes_to_dim_pairs[1].second.at(y_len - 1);
+  }
+
+  auto filter_out = [](std::vector<int64_t>& vec,
+                       const std::unordered_set<int64_t>& forbidden) {
+    if (vec.empty() || forbidden.empty()) return;
+    vec.erase(std::remove_if(vec.begin(),
+                             vec.end(),
+                             [&](int64_t d) { return forbidden.count(d) > 0; }),
+              vec.end());
+  };
+
+  filter_out(non_contracting_lhs_dims, forbidden);
+  filter_out(contracting_lhs_dims, forbidden);
+  filter_out(non_contracting_rhs_dims, forbidden);
+  filter_out(contracting_rhs_dims, forbidden);
+
+  std::vector<int64_t> final_non_contracting_lhs_dims;
+  std::vector<int64_t> final_non_contracting_rhs_dims =
+      non_contracting_rhs_dims;
+  final_non_contracting_lhs_dims.reserve(non_contracting_lhs_dims.size());
+  final_non_contracting_rhs_dims.reserve(final_non_contracting_rhs_dims.size());
+
+  std::unordered_set<int64_t> rhs_set(non_contracting_rhs_dims.begin(),
+                                      non_contracting_rhs_dims.end());
+  const bool has_lhs = (non_contracting_lhs_ch != '\0');
+  const bool has_rhs = (non_contracting_rhs_ch != '\0');
+  const std::string lhs_axis_str =
+      has_lhs ? std::string(1, non_contracting_lhs_ch) : std::string();
+  const std::string rhs_axis_str =
+      has_rhs ? std::string(1, non_contracting_rhs_ch) : std::string();
+
+  for (int64_t dim : non_contracting_lhs_dims) {
+    if (rhs_set.find(dim) != rhs_set.end()) {
+      if (has_lhs && has_rhs &&
+          axis_sizes.at(lhs_axis_str) >= axis_sizes.at(rhs_axis_str)) {
+        final_non_contracting_lhs_dims.push_back(dim);
+        final_non_contracting_rhs_dims.erase(
+            std::remove(final_non_contracting_rhs_dims.begin(),
+                        final_non_contracting_rhs_dims.end(),
+                        dim),
+            final_non_contracting_rhs_dims.end());
+      }
+    } else {
+      final_non_contracting_lhs_dims.push_back(dim);
+    }
+    forbidden.insert(dim);
+  }
+  for (int64_t dim : final_non_contracting_rhs_dims) {
+    forbidden.insert(dim);
+  }
+  filter_out(contracting_lhs_dims, forbidden);
+  filter_out(contracting_rhs_dims, forbidden);
+
+  const std::string contracting_axis_str = std::string(1, contracting_axis_ch);
+  std::unordered_map<std::string, std::vector<int64_t>>
+      contracting_dims_mapping = ShardingMergeForTensorsElementWise(
+          {{contracting_axis_str, {contracting_lhs_dims}},
+           {contracting_axis_str, {contracting_rhs_dims}}},
+          axis_sizes,
+          mesh_shape,
+          merge_conflicts);
+  for (auto& kv : contracting_dims_mapping) {
+    batch_dim_map.emplace(kv.first, std::move(kv.second));
+  }
+  if (has_lhs) {
+    batch_dim_map[lhs_axis_str] = std::move(final_non_contracting_lhs_dims);
+  }
+  if (has_rhs) {
+    batch_dim_map[rhs_axis_str] = std::move(final_non_contracting_rhs_dims);
+  }
+  return batch_dim_map;
+}
+
+std::unordered_map<std::string, std::vector<int64_t>>
 ShardingMergeForTensorsElementWise(
     const std::vector<
         std::pair<std::string, std::vector<std::vector<int64_t>>>>&
@@ -456,6 +622,22 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
     if (tensor_axes.find(it.first) == std::string::npos) {
       if (it.second > -1) {
         partial_on_dims.push_back(it.second);
+      }
+    }
+  }
+  return partial_on_dims;
+}
+
+std::vector<int64_t> ResoluteOutputPartialDimension(
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        axis_to_dim_map,
+    const std::string& tensor_axes) {
+  std::vector<int64_t> partial_on_dims;
+
+  for (auto& it : axis_to_dim_map) {
+    if (tensor_axes.find(it.first) == std::string::npos) {
+      for (auto& dim : it.second) {
+        partial_on_dims.push_back(dim);
       }
     }
   }
@@ -899,9 +1081,11 @@ void DebugInfoForInferSpmd(const std::string& rule_name,
 }
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const ArgDistAttr& grad) {
+                                       const ArgDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape) {
   const auto& grad_in = PADDLE_GET_CONST(TensorDistAttr, grad);
-  return ReduceGradBroadCastDims(input, grad_in);
+  return ReduceGradBroadCastDims(input, grad_in, input_shape, grad_shape);
 }
 
 TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
@@ -909,13 +1093,15 @@ TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
   TensorDistAttr input = CopyTensorDistAttrForOutput(grad);
   std::vector<int64_t> dim_mapping(input_dims, -1);
   input.set_dims_mapping(dim_mapping);
-  return ReduceGradBroadCastDims(input, grad);
+  return ReduceGradBroadCastDims(input, grad, {}, {});
 }
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const TensorDistAttr& grad) {
-  auto grad_dim = grad.dims_mapping().size();
-  auto input_dim = input.dims_mapping().size();
+                                       const TensorDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape) {
+  auto grad_dim = grad.multi_dims_mapping().size();
+  auto input_dim = input.multi_dims_mapping().size();
   PADDLE_ENFORCE_GE(
       grad_dim,
       input_dim,
@@ -929,16 +1115,29 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   size_t broadcast_dim = grad_dim - input_dim;
   // gather partial status
   auto partial_dims = grad.partial_dims();
-  auto& grad_dims_mapping = grad.dims_mapping();
-  auto dims_mapping = input.dims_mapping();
+  auto& grad_dims_mapping = grad.multi_dims_mapping();
+  auto dims_mapping = input.multi_dims_mapping();
   for (size_t i = 0; i < grad_dim; ++i) {
     auto mapping = grad_dims_mapping[i];
     if (i < broadcast_dim) {
-      if (mapping >= 0) {
-        partial_dims.insert(mapping);
+      for (auto& dim : mapping) {
+        partial_dims.insert(dim);
       }
     } else {
       dims_mapping[i - broadcast_dim] = mapping;
+      // non_batch
+      if (input_shape.size() <= 2 || grad_shape.size() <= 2) {
+        continue;
+      }
+      // partial status for broadcast dims
+      // batch dims && input == 1 && grad != 1 && grad_sharding dim
+      if ((i - broadcast_dim) < input_dim - 2 && !mapping.empty() &&
+          input_shape[i - broadcast_dim] == 1 && grad_shape[i] != 1) {
+        dims_mapping[i - broadcast_dim].clear();
+        for (auto& dim : mapping) {
+          partial_dims.insert(dim);
+        }
+      }
     }
   }
   auto grad_out = CopyTensorDistAttrForOutput(input);

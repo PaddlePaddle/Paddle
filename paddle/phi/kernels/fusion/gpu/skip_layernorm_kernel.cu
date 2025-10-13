@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/skip_layernorm_kernel.h"
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -77,7 +78,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(skip_layernorm,
                    GPU,
                    ALL_LAYOUT,

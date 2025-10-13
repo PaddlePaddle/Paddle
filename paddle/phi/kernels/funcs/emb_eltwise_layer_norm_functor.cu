@@ -51,7 +51,7 @@ __device__ __forceinline__ half local_rsqrt(half num) { return hrsqrt(num); }
 template <typename T, int TPB>
 __device__ inline void LayerNorm(const phi::funcs::kvp<T>& thread_data,
                                  const int ld,
-                                 const int offset,
+                                 const int64_t offset,
                                  const T* bias,
                                  const T* scale,
                                  T* output,
@@ -70,7 +70,7 @@ __device__ inline void LayerNorm(const phi::funcs::kvp<T>& thread_data,
   __syncthreads();
 
   for (int i = threadIdx.x; i < ld; i += TPB) {
-    const int idx = offset + i;
+    const int64_t idx = offset + i;
     const T val = output[idx];
     const T g(scale[i]);
     const T b(bias[i]);
@@ -198,9 +198,8 @@ void EmbEltwiseLayerNormFunctor<T>::operator()(int batch,
 
 template class EmbEltwiseLayerNormFunctor<float>;
 
-// device function 'operator()' is not supported until cuda 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 template class EmbEltwiseLayerNormFunctor<half>;
 #endif
 

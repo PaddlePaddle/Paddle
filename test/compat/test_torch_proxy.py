@@ -64,6 +64,19 @@ class TestTorchProxy(unittest.TestCase):
         with self.assertRaises(ModuleNotFoundError):
             import torch
 
+        with paddle.compat.use_torch_proxy_guard():
+            import torch
+
+            self.assertIs(torch.cos, paddle.cos)
+            with paddle.compat.use_torch_proxy_guard(enable=False):
+                with self.assertRaises(ModuleNotFoundError):
+                    import torch
+                with paddle.compat.use_torch_proxy_guard(enable=True):
+                    import torch
+
+        with self.assertRaises(ModuleNotFoundError):
+            import torch
+
     @paddle.compat.use_torch_proxy_guard()
     def test_use_torch_inside_inner_function(self):
         result = use_torch_inside_inner_function()
@@ -71,6 +84,15 @@ class TestTorchProxy(unittest.TestCase):
         np.testing.assert_allclose(
             result, np.sin([0.0, 1.0, 2.0]), atol=1e-6, rtol=1e-6
         )
+
+
+class TestTorchOverriddenClass(unittest.TestCase):
+    def test_overridden_class(self):
+        self.assertRaises(AttributeError, lambda: paddle.Generator)
+        with paddle.compat.use_torch_proxy_guard():
+            import torch
+
+            gen = torch.Generator()
 
 
 if __name__ == "__main__":

@@ -32,8 +32,8 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #endif
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 namespace phi {
 
@@ -281,8 +281,8 @@ PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
 #else
 using float16 = phi::float16;
 using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(all_raw,
                    KPS,

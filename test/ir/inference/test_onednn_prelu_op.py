@@ -22,7 +22,7 @@ from hypothesis import given
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMkldnnPreluOp(OnednnAutoScanTest):
+class TestOnednnPreluOp(OnednnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # if mode is channel, and in_shape is 1 rank
         if (

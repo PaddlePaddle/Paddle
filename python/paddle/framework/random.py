@@ -178,7 +178,7 @@ def set_rng_state(
     if device is None:
         place = paddle.framework._current_expected_place_()
     else:
-        place = device._convert_to_place(device)
+        place = paddle.device._convert_to_place(device)
 
     if isinstance(place, paddle.CUDAPlace):
         if not len(state_list) == core.get_cuda_device_count():

@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../deprecated/legacy_test")
 from op_test import get_device_place, get_places, is_custom_device
 from test_pool3d_op import (
     avg_pool3D_forward_naive,
