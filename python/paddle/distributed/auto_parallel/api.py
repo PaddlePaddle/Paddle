@@ -1198,7 +1198,13 @@ class _ShardOptimizer(Optimizer):
         for param in param_list:
             if not param.is_dist():
                 continue
-            mesh = param.process_mesh
+            dist_attr = param.dist_attr()
+            mesh = dist_attr.process_mesh
+            sharding_dim = dist_attr.dims_mapping[self._sharding_axis]
+            if mesh != self._shard_fn._mesh or sharding_dim == -1:
+                raise ValueError(
+                    f"Parameter {param.name} has incompatible dist_attr with current sharding strategy."
+                )
             placements = param.placements
 
             if not isinstance(placements[self._sharding_axis], dist.Replicate):
