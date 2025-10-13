@@ -152,6 +152,22 @@ class TestCudaCompat(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             self.assertEqual(paddle.get_default_device(), paddle.device('cuda'))
 
+    def test_get_device(self):
+        x_cpu = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+        self.assertEqual(paddle.get_device(x_cpu), -1)
+        if paddle.device.is_compiled_with_cuda():
+            x_gpu = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+            self.assertEqual(paddle.get_device(x_gpu), 0)
+
+    def test_set_default_device(self):
+        if paddle.is_compiled_with_cuda():
+            paddle.set_default_device("gpu")
+            self.assertEqual(paddle.get_default_device(), paddle.device('cuda'))
+
+        if paddle.is_compiled_with_xpu():
+            paddle.set_default_device("xpu")
+            self.assertEqual(paddle.get_default_device(), paddle.device('xpu'))
+
     @unittest.skipIf(
         (
             not paddle.device.is_compiled_with_cuda()
@@ -378,6 +394,22 @@ class TestNvtx(unittest.TestCase):
             paddle.cuda.nvtx.range_push(123)
         with self.assertRaises(TypeError):
             paddle.device.nvtx.range_push(123)
+
+
+class TestDeviceDvice(unittest.TestCase):
+    def test_device_device(self):
+        current = paddle.device.get_device()
+        with paddle.device.device("cpu"):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
+
+
+class TestCudaDvice(unittest.TestCase):
+    def test_device_device(self):
+        current = paddle.device.get_device()
+        with paddle.cuda.device("cpu"):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
 
 
 if __name__ == '__main__':

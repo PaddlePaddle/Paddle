@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename IndexT = int>
 void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
-                                  const std::vector<const DenseTensor*> index,
+                                  const std::vector<const DenseTensor*>& index,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
