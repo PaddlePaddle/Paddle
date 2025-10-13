@@ -5206,13 +5206,7 @@ __device__ __forceinline__
     log_local(T x) {
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
-
-#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
-  // use __logf fast approximation for peak bandwidth
-  return __logf(x);
-#else
   return ::log(x);
-#endif
 }
 
 template <>
