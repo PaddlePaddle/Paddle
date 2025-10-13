@@ -368,7 +368,7 @@ class TestNvtx(unittest.TestCase):
     def test_range_push_pop(self):
         if platform.system().lower() == "windows":
             return
-        if not paddle.is_compiled_with_cuda():
+        if not paddle.device.get_device().startswith("gpu"):
             return
         try:
             paddle.cuda.nvtx.range_push("test_push")
