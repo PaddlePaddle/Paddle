@@ -62,7 +62,7 @@ def _is_builtin_op(op):
 
 
 def _is_computation_op(op):
-    return not _is_builtin_op(op) and op.name() not in ["pd_op.data"]
+    return not _is_builtin_op(op) and op.name() not in {"pd_op.data"}
 
 
 class UniqueIdGenerator:
@@ -87,6 +87,25 @@ class TensorIdAllocator(metaclass=Singleton):
         if not hasattr(tensor, self.TENSOR_ID_ATTR):
             setattr(tensor, self.TENSOR_ID_ATTR, self._id_generator())
         return getattr(tensor, self.TENSOR_ID_ATTR)
+
+
+def walk_block(block, fn):
+    for op in block.ops:
+        fn(op)
+        for subblock in op.blocks():
+            walk_block(subblock, fn)
+
+
+def count_op(program, predicate):
+    count = 0
+
+    def count_fn(op):
+        nonlocal count
+        if predicate(op):
+            count += 1
+
+    walk_block(program.global_block(), count_fn)
+    return count
 
 
 class FallbackWrapper:
@@ -116,9 +135,7 @@ class FallbackWrapper:
                 self.partial_program,
             ) = self.compiled_fn.get_concrete_program(input_spec)
             self.partial_program.training = self.is_training
-        global_block_ops = self.concrete_program.main_program.global_block().ops
-        non_builtin_ops = list(filter(_is_computation_op, global_block_ops))
-        return len(non_builtin_ops)
+        return count_op(self.concrete_program.main_program, _is_computation_op)
 
     def collect_new_symbol_hit_rate(self, inputs, outputs):
         if not InfoCollector().need_collect(NewSymbolHitRateInfo):
