@@ -1800,13 +1800,18 @@ class TestSetValueWithScalarInDygraph(unittest.TestCase):
     "core is not compiled with CUDA",
 )
 class TestSetValueWithStrideError(unittest.TestCase):
-    def _test_different_place1(self):
+    def test_same_place(self):
+        x = paddle.rand([5, 10], device=paddle.CUDAPlace(0))
+        y = paddle.rand([10, 5], device=paddle.CUDAPlace(0))
+        y.transpose_([1, 0])
+        x.set_value(y)
+        assert x.is_contiguous()
+
+    def test_different_place1(self):
         # src place != dst place && src is not contiguous
         x = paddle.rand([5, 10], device=paddle.CUDAPlace(0))
         y = paddle.rand([10, 5], device=paddle.CPUPlace())
         y.transpose_([1, 0])
-        print(x.shape)
-        print(y.shape)
         x.set_value(y)
         assert not x.is_contiguous()
 
