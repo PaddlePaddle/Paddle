@@ -67,9 +67,7 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     set_layer_name(input_shape_tensor, paddle_op)
     input_shape_tensor = input_shape_tensor.get_output(0)
 
-    input_rank = input_shape_tensor.shape  # The reason is unknown that adding this unused code make input_shape_tensor maintain the correct result.
     data_format = paddle_op.attrs().get("data_format")
-    interp_method = paddle_op.attrs().get("interp_method")
     align_corners = paddle_op.attrs().get("align_corners")
     align_mode = paddle_op.attrs().get("align_mode")
     out_h = paddle_op.attrs().get("out_h")
@@ -118,7 +116,6 @@ def bilinear_interp_converter(network, paddle_op, inputs):
         if not pir.is_fake_value(paddle_op.operands()[1].source()):
             size_tensor_operand = paddle_op.operands()[1].source()
             if len(inputs) > 1 and inputs[1] is not None:
-                output_tensor_operand = paddle_op.operands()[1].source()
                 outsize_tensor = inputs[1]
         elif not pir.is_fake_value(paddle_op.operands()[2].source()):
             size_tensor_operand = paddle_op.operands()[2].source()
