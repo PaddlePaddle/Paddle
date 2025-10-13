@@ -76,7 +76,6 @@ RUN wget -q https://github.com/ccache/ccache/releases/download/v4.6.3/ccache-4.6
     make -j16 > /dev/null && make install > /dev/null && \
     cd ../../ && rm -rf ccache-4.6.3.tar.gz && rm -rf ccache-4.6.3 && \
     ln -s /usr/local/ccache-4.6.3/bin/ccache /usr/local/bin/ccache
-
 ENV CCACHE_MAXSIZE=80G \
     CCACHE_LIMIT_MULTIPLE=0.8 \
     CCACHE_SLOPPINESS=clang_index_store,time_macros,include_file_mtime
