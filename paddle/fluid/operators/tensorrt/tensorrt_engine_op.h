@@ -669,7 +669,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
         if (engine->engine()->isShapeInferenceIO(x.c_str()) &&
             engine->engine()->getTensorIOMode(x.c_str()) ==
@@ -739,7 +738,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
-#endif
 #endif
       }
       runtime_batch = t_shape[0];

@@ -538,11 +538,9 @@ class TensorRTEngine {
   // specify run on float to avoid overflow
   std::unordered_set<std::string> trt_ops_run_float_;
 
-#if IS_TRT_VERSION_GE(6000)
   int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   std::vector<nvinfer1::IOptimizationProfile*> optim_profiles_;
-#endif
   std::mutex mutex_;
 
  public:

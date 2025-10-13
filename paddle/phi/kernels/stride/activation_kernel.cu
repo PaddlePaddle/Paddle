@@ -266,10 +266,6 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(HardTanh,
                                              CudaHardTanhFunctor,
                                              t_min,
                                              t_max)
-DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(Softplus,
-                                             CudaSoftplusFunctor,
-                                             beta,
-                                             threshold)
 DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(HardSigmoid,
                                              CudaHardSigmoidFunctor,
                                              slope,
@@ -279,6 +275,47 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(Selu,
                                              scale,
                                              alpha)
 #undef DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS
+
+template <typename T, typename Context>
+void SoftplusStrideKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          double beta,
+                          double threshold,
+                          DenseTensor *out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel be called, "
+        "something wrong has happened!"));
+  }
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous()) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::SoftplusKernel<T, Context>(dev_ctx, x_, beta, threshold, out);
+    return;
+  }
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_compute_kernel is closed. Kernel using "
+        "DenseTensorIterator be called, something wrong has happened!"));
+  }
+  funcs::CudaSoftplusFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
+  LaunchUnaryElementwiseStrideKernel<T, Context>(dev_ctx, x_, functor, out);
+}
+
 template <typename T, typename Context>
 void RoundStrideKernel(const Context &dev_ctx,
                        const DenseTensor &x,
