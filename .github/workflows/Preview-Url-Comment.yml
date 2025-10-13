@@ -2,6 +2,8 @@ name: Comment Preview URLs
 
 on:
   workflow_run:
+    # A workflow triggered by workflow_run cannot directly be triggered by a workflow that only has the workflow_call trigger.
+    # TODO(ooooo): So now change it to CI-Build, but comment is not timely, at least it's better than nothing.
     workflows: ["CI-Build"]
     types:
       - completed
