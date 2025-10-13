@@ -88,12 +88,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("fill_constant_batch_size_like");
     int8_teller_set.insert("fill_constant_batch_size_like");
 #endif
-#if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
     int8_teller_set.insert("reshape");
     int8_teller_set.insert("reshape2");
-#endif
 #if IS_TRT_VERSION_GE(8000)
     teller_set.insert("sparse_fc");
     int8_teller_set.insert("sparse_fc");
