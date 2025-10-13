@@ -2399,11 +2399,17 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                             tgt_grad, '_is_initialized', lambda: False
                         )()
                     ):
-                        if src_mesh is None:
+                        if (
+                            src_mesh is None
+                            and tgt_grad.process_mesh is not None
+                        ):
                             src_mesh = tgt_grad.process_mesh
+                        else:
+                            pass
                         if (
                             current_process_mesh is None
                             and tgt_grad._is_initialized()
+                            and tgt_grad.process_mesh is not None
                         ):
                             current_process_mesh = tgt_grad.process_mesh
                         if tgt_grad.process_mesh not in mesh2param_grads:
@@ -2506,6 +2512,12 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                     self._found_inf, process_mesh, self._found_inf.placements
                 )
         else:
+            if current_process_mesh is None or not hasattr(
+                current_process_mesh, "ranks"
+            ):
+                raise ValueError(
+                    "Invalid current_process_mesh: must be a valid ProcessMesh."
+                )
             # The rank of other mesh, should overwrite the original variable `self._found_inf`
             self._found_inf = dist.reshard(
                 self._found_inf,
