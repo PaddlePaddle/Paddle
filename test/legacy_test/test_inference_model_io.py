@@ -102,7 +102,9 @@ class TestPdmodelCompatibility(unittest.TestCase):
                         name='bias',
                         default_initializer=paddle.nn.initializer.Constant(0.1),
                     )
-                    y = x @ w + b
+                    # Use paddle.tensor for OldIR: matmul and elementwise_add
+                    matmul_out = paddle.tensor.matmul(x, w)
+                    y = paddle.tensor.add(matmul_out, b)
 
                 self.exe.run(startup_program)
 
@@ -114,6 +116,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     feed_vars=[x],
                     fetch_vars=[y],
                     executor=self.exe,
+                    program=main_program,
                 )
         else:
             # Create program in PIR mode for .json format
