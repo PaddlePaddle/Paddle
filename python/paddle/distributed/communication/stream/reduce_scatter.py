@@ -99,16 +99,13 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
         op_type,
     )
 
+    helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id
     nranks = dist.get_world_size()
 
     if in_pir_mode():
         _C_ops.reduce_scatter(tensor_or_tensor_list, ring_id, nranks)
         return
-
-    helper = framework.LayerHelper(op_type, **locals())
-    ring_id = 0 if group is None else group.id
-    nranks = dist.get_world_size()
 
     helper.append_op(
         type=op_type,
