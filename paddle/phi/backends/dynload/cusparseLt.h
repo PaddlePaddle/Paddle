@@ -48,7 +48,6 @@ extern void *cusparselt_dso_handle;
   };                                                                    \
   extern DynLoad__##__name __name
 #if defined(PADDLE_WITH_CUDA)
-#if CUDA_VERSION >= 11020
 #define CUSPARSELT_ROUTINE_EACH(__macro)       \
   __macro(cusparseLtInit);                     \
   __macro(cusparseLtDestroy);                  \
@@ -70,7 +69,6 @@ extern void *cusparselt_dso_handle;
   __macro(cusparseGetErrorString);
 
 CUSPARSELT_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSELT_WRAP);
-#endif
 #endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUSPARSELT_WRAP
