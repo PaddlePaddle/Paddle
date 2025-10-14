@@ -546,7 +546,8 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
       autograd_ptr->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
+      autograd_ptr->GetMutableGradNode()->SetGradInMeta(tensor, 0);
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;

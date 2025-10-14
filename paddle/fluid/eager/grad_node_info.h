@@ -142,7 +142,7 @@ class GradSlotMeta {
     if (!HasTensorMeta()) {
       PADDLE_THROW(common::errors::Fatal(
           "meta_ of GradSlotMeta has not been initialized yet."
-          "You're expected to check Edge availability with HasTensorMeta()"
+          "You're expected to check Edge availability with HasTensorMeta() "
           "before calling GetTensorMeta() interface."));
     }
     return *meta_.get();

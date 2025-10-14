@@ -278,7 +278,7 @@ std::vector<paddle::Tensor> RunBackward(
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
       VLOG(4) << "RunBackward: Fill grad input tensor " << i
-              << "with give grad tensor";
+              << " with given grad tensor";
 
       bool use_shared_buffer = false;
       // Check if inputs and outputs are equal in size and share the same buffer
@@ -296,9 +296,8 @@ std::vector<paddle::Tensor> RunBackward(
         paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
             inputs_grad_tensors;
         inputs_grad_tensors.push_back({grad_tensors[i]});
-        auto grad_holder = GradTensorHolder(std::move(inputs_grad_tensors));
-        node_input_buffers_dict[grad_node] =
-            std::make_unique<GradTensorHolder>(grad_holder);
+        node_input_buffers_dict[grad_node]->SetBuffers(
+            std::move(inputs_grad_tensors));
       } else {
         // Deep copy
         node_input_buffers_dict[grad_node]->CopyValueFromTensor(
@@ -381,6 +380,23 @@ std::vector<paddle::Tensor> RunBackward(
     GradNodeBase* node = queue.front();
     VLOG(3) << node->name() << "(" << node << ")"
             << " Preparing ";
+    // Print InputMeta for debugging
+    VLOG(4) << "InputMeta for node " << node->name() << " (" << node << "):";
+    auto input_meta = node->InputMeta();
+    for (size_t slot = 0; slot < input_meta.size(); ++slot) {
+      VLOG(4) << "  Slot " << slot << ":";
+      for (size_t rank = 0; rank < input_meta[slot].size(); ++rank) {
+        auto& meta = input_meta[slot][rank];
+        if (!meta.HasTensorMeta()) {
+          VLOG(4) << "    Rank " << rank << ": No TensorMeta";
+          continue;
+        }
+        auto& tensor_meta = meta.GetTensorMeta();
+        VLOG(4) << "    Rank " << rank << ": dtype=" << tensor_meta.dtype
+                << ", dims=" << tensor_meta.dims
+                << ", layout=" << tensor_meta.layout;
+      }
+    }
     try {
       queue.pop_front();
 

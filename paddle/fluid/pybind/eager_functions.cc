@@ -533,7 +533,7 @@ static Tensor InitializedEmptyTensor() {
       allocation_ptr, phi::DenseTensorMeta(phi::DataType::FLOAT32, ddims));
   tensor.set_impl(dense_tensor);
   autograd_meta->SetGradNode(
-      std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+      std::make_shared<egr::GradNodeAccumulation>(tensor));
   return tensor;
 }
 
@@ -914,7 +914,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
       VLOG(3) << "Tensor(" << name
               << ") doesn't have GradNode, add GradNodeAccumulation to it.";
       autograd_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
     }
   }
   return ToPyObject(tensor);
@@ -965,7 +965,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
       VLOG(3) << "Tensor(" << name
               << ") have not GradNode, add GradNodeAccumulation for it.";
       autograd_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
     }
   }
   return ToPyObject(tensor);

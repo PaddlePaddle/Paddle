@@ -389,7 +389,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
     auto node = fwd_in_meta->GetMutableGradNode();
     if (!node || !node.get()) {
       fwd_in_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+          std::make_shared<egr::GradNodeAccumulation>(fwd_in));
     }
     VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
@@ -506,7 +506,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
     auto node = fwd_in_meta->GetMutableGradNode();
     if (!node || !node.get()) {
       fwd_in_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+          std::make_shared<egr::GradNodeAccumulation>(fwd_in));
     }
     VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
@@ -590,7 +590,7 @@ void GradNodeBase::SetGradOutMeta(
     auto node = fwd_in_meta->GetMutableGradNode();
     if (!node || !node.get()) {
       fwd_in_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+          std::make_shared<egr::GradNodeAccumulation>(fwd_in));
     }
     VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
@@ -664,7 +664,7 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
       auto node = fwd_in_meta->GetMutableGradNode();
       if (!node || !node.get()) {
         fwd_in_meta->SetGradNode(
-            std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+            std::make_shared<egr::GradNodeAccumulation>(fwd_in_tensor));
       }
       VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
@@ -744,7 +744,7 @@ void GradNodeBase::SetGradOutMeta(
       auto node = fwd_in_meta->GetMutableGradNode();
       if (!node || !node.get()) {
         fwd_in_meta->SetGradNode(
-            std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+            std::make_shared<egr::GradNodeAccumulation>(fwd_in_tensor));
       }
       VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
