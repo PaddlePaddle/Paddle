@@ -52,7 +52,6 @@ class MacroContext:
             "layers.2.experts.1.weight",
             "layers.2.self_attn.qkv_proj.bias",
             "layers.2.mlp.gate_up_fused_proj.bias",
-
         }
 
         self.dst_keys = {

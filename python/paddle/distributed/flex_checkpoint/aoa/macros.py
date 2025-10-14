@@ -166,6 +166,7 @@ def layer_id_macro(tokens, expression, context):
 
     return expanded_expressions
 
+
 @macro(name='expert_id_macro', priority=1)
 def expert_id_macro(tokens, expression, context):
     EXPERT_ID_MACRO_TAG = "$EXPERT_ID"
@@ -213,6 +214,7 @@ def expert_id_macro(tokens, expression, context):
                 expr += token.value
         expanded_expressions.append(expr)
     return expanded_expressions
+
 
 @macro(name='layer_id_offset_macro', priority=1)
 def layer_id_offset_macro(tokens, expression, context):
