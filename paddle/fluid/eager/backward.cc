@@ -380,23 +380,6 @@ std::vector<paddle::Tensor> RunBackward(
     GradNodeBase* node = queue.front();
     VLOG(3) << node->name() << "(" << node << ")"
             << " Preparing ";
-    // Print InputMeta for debugging
-    VLOG(4) << "InputMeta for node " << node->name() << " (" << node << "):";
-    auto input_meta = node->InputMeta();
-    for (size_t slot = 0; slot < input_meta.size(); ++slot) {
-      VLOG(4) << "  Slot " << slot << ":";
-      for (size_t rank = 0; rank < input_meta[slot].size(); ++rank) {
-        auto& meta = input_meta[slot][rank];
-        if (!meta.HasTensorMeta()) {
-          VLOG(4) << "    Rank " << rank << ": No TensorMeta";
-          continue;
-        }
-        auto& tensor_meta = meta.GetTensorMeta();
-        VLOG(4) << "    Rank " << rank << ": dtype=" << tensor_meta.dtype
-                << ", dims=" << tensor_meta.dims
-                << ", layout=" << tensor_meta.layout;
-      }
-    }
     try {
       queue.pop_front();
 
