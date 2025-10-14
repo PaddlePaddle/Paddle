@@ -167,7 +167,10 @@ class TestCollectiveAPIRunnerBase:
             exe.run(startup_prog)
             fetch_list = []
             for elem in result:
-                fetch_list.append(elem.name)
+                if paddle.framework.in_pir_mode():
+                    fetch_list.append(elem)
+                else:
+                    fetch_list.append(elem.name)
             out = exe.run(
                 train_prog, feed={'tindata': indata}, fetch_list=fetch_list
             )

@@ -18,13 +18,14 @@ from typing import TYPE_CHECKING
 
 import paddle
 import paddle.distributed as dist
-from paddle import framework
+from paddle import _C_ops, framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
+from paddle.framework import in_pir_mode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -97,6 +98,13 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
         ],
         op_type,
     )
+
+    ring_id = 0 if group is None else group.id
+    nranks = dist.get_world_size()
+
+    if in_pir_mode():
+        _C_ops.reduce_scatter(tensor_or_tensor_list, ring_id, nranks)
+        return
 
     helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id

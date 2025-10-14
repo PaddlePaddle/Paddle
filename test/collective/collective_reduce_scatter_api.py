@@ -19,6 +19,7 @@ from legacy_test.test_collective_api_base import (
 
 import paddle
 from paddle import base
+from paddle.framework import in_pir_mode
 
 paddle.enable_static()
 
@@ -32,10 +33,11 @@ class TestCollectiveReduceScatterAPI(TestCollectiveAPIRunnerBase):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )
-            tindata.desc.set_need_check_feed(False)
-            toutdata = paddle.static.data(
-                name="toutdata", shape=[5, 1000], dtype=dtype
-            )
+            if not in_pir_mode():
+                tindata.desc.set_need_check_feed(False)
+
+            toutdata = paddle.empty(shape=[5, 1000], dtype=dtype)
+
             paddle.distributed.reduce_scatter(toutdata, tindata)
             return [toutdata]
 
