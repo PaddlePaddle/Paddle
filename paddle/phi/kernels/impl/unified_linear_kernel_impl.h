@@ -35,7 +35,8 @@ limitations under the License. */
 
 namespace phi {
 
-// Implementation of descriptor validation
+// Implementation of descriptor validation with zero-cost Atype/Btype/Ctype
+// dispatch
 inline bool UnifiedLinearDescriptor::IsValid() const {
   if (!input || !weight || !output) {
     return false;
@@ -60,13 +61,29 @@ inline bool UnifiedLinearDescriptor::IsValid() const {
     return false;
   }
 
+  // Validate Atype/Btype/Ctype configuration for zero-cost dispatch
+  if (atype == DataType::UNDEFINED) {
+    atype = input->dtype();  // Auto-detect from input
+  }
+  if (btype == DataType::UNDEFINED) {
+    btype = weight->dtype();  // Auto-detect from weight
+  }
+  if (ctype == DataType::UNDEFINED) {
+    ctype = output->dtype();  // Auto-detect from output
+  }
+
   // Validate scale tensors for narrow precision types
-  if (IsNarrowPrecisionType(input->dtype()) && !input_scale) {
+  if (IsNarrowPrecisionType(atype) && !input_scale) {
     return false;
   }
 
-  if (IsNarrowPrecisionType(weight->dtype()) && !weight_scale) {
+  if (IsNarrowPrecisionType(btype) && !weight_scale) {
     return false;
+  }
+
+  // Enable narrow precision mode if needed
+  if (IsNarrowPrecisionInput()) {
+    narrow_precision_mode = true;
   }
 
   return true;
@@ -109,6 +126,7 @@ inline std::string UnifiedLinearDescriptor::GetErrorMessage() const {
 }
 
 // Utility function implementations
+// Zero-cost utility functions for narrow precision support
 inline bool IsNarrowPrecisionType(DataType dtype) {
   return dtype == DataType::FLOAT8_E4M3FN || dtype == DataType::FLOAT8_E5M2 ||
          dtype == DataType::INT4 || dtype == DataType::INT8;
@@ -118,8 +136,9 @@ inline bool RequiresScaleTensor(DataType dtype) {
   return IsNarrowPrecisionType(dtype);
 }
 
-inline DataType GetComputeType(DataType input_dtype, bool use_fast_accum) {
-  switch (input_dtype) {
+// Zero-cost compute type selection based on Atype/Btype/Ctype
+inline DataType GetComputeType(DataType output_dtype, bool use_fast_accum) {
+  switch (output_dtype) {
     case DataType::FLOAT8_E4M3FN:
     case DataType::FLOAT8_E5M2:
       return use_fast_accum ? DataType::FLOAT16 : DataType::FLOAT32;
@@ -135,6 +154,41 @@ inline DataType GetComputeType(DataType input_dtype, bool use_fast_accum) {
     default:
       return DataType::FLOAT32;
   }
+}
+
+// Zero-cost mixed precision optimization
+inline DataType GetOptimalComputeType(DataType atype,
+                                      DataType btype,
+                                      DataType ctype,
+                                      bool use_fast_accum) {
+  // Optimize compute type based on input types for zero-cost dispatch
+  if (IsNarrowPrecisionType(atype) || IsNarrowPrecisionType(btype)) {
+    return use_fast_accum ? DataType::FLOAT16 : DataType::FLOAT32;
+  }
+
+  // Mixed precision optimization
+  if (atype == DataType::FLOAT16 && btype == DataType::FLOAT16 &&
+      ctype == DataType::FLOAT32) {
+    return use_fast_accum ? DataType::FLOAT16 : DataType::FLOAT32;
+  }
+
+  if (atype == DataType::BFLOAT16 && btype == DataType::BFLOAT16) {
+    return use_fast_accum ? DataType::BFLOAT16 : DataType::FLOAT32;
+  }
+
+  // Default to output type
+  return GetComputeType(ctype, use_fast_accum);
+}
+
+// Zero-cost scale tensor validation
+inline bool ValidateScaleTensors(const UnifiedLinearDescriptor& desc) {
+  if (IsNarrowPrecisionType(desc.atype) && !desc.input_scale) {
+    return false;
+  }
+  if (IsNarrowPrecisionType(desc.btype) && !desc.weight_scale) {
+    return false;
+  }
+  return true;
 }
 
 // Shape inference implementation
@@ -294,18 +348,57 @@ void UnifiedMatMulKernel(const Context& dev_ctx,
   UnifiedLinearKernel<T, Context>(dev_ctx, desc, out);
 }
 
+// Zero-cost narrow precision interface with explicit type control and
+// high-performance scale handling
 template <typename T, typename Context>
 void UnifiedLinearKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
+                         const DenseTensor& input,
                          const DenseTensor& weight,
-                         const paddle::optional<DenseTensor>& bias,
-                         bool transpose_x,
+                         const DenseTensor& bias,
+                         const paddle::optional<DenseTensor>& input_scale,
+                         const paddle::optional<DenseTensor>& weight_scale,
+                         const paddle::optional<DenseTensor>& output_scale,
+                         DataType atype,
+                         DataType btype,
+                         DataType ctype,
+                         bool transpose_input,
                          bool transpose_weight,
                          const std::string& activation,
-                         DenseTensor* out) {
-  auto desc = CreateLinearDescriptor(
-      x, weight, bias, transpose_x, transpose_weight, activation);
-  UnifiedLinearKernel<T, Context>(dev_ctx, desc, out);
+                         bool use_fast_accum,
+                         DenseTensor* output) {
+  // Create descriptor with explicit type control for zero-cost dispatch
+  UnifiedLinearDescriptor desc;
+  desc.input = &input;
+  desc.weight = &weight;
+  desc.bias = &bias;
+  desc.input_scale = input_scale.get_ptr();
+  desc.weight_scale = weight_scale.get_ptr();
+  desc.output_scale = output_scale.get_ptr();
+  desc.atype = atype;
+  desc.btype = btype;
+  desc.ctype = ctype;
+  desc.transpose_input = transpose_input;
+  desc.transpose_weight = transpose_weight;
+  desc.activation = activation;
+  desc.use_fast_accum = use_fast_accum;
+  desc.use_bias = true;
+  desc.use_activation = (activation != "none");
+
+  // Zero-cost compute type optimization for narrow precision
+  if (desc.IsNarrowPrecisionInput()) {
+    desc.narrow_precision_mode = true;
+    desc.compute_dtype = GetComputeType(ctype, use_fast_accum);
+  } else {
+    desc.compute_dtype = GetComputeType(ctype, use_fast_accum);
+  }
+
+  // Validate descriptor with zero-cost checks
+  if (!desc.IsValid()) {
+    throw std::invalid_argument(desc.GetErrorMessage());
+  }
+
+  // Execute with zero-cost dispatch to optimal implementation
+  UnifiedLinearKernel<T, Context>(dev_ctx, desc, output);
 }
 
 template <typename T, typename Context>

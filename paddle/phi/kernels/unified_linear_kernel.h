@@ -40,7 +40,7 @@ enum class DataType : int32_t {
   // ... 其他类型
 };
 
-// Unified linear operation descriptor
+// Unified linear operation descriptor with narrow precision support
 struct UnifiedLinearDescriptor {
   // Input tensors
   const DenseTensor* input = nullptr;
@@ -63,9 +63,15 @@ struct UnifiedLinearDescriptor {
   // Activation function
   std::string activation = "none";  // "none", "relu", "gelu", etc.
 
-  // Data type configuration
-  DataType compute_dtype = DataType::UNDEFINED;
+  // Data type configuration for A, B, C matrices (zero-cost type dispatch)
+  DataType atype = DataType::UNDEFINED;          // A matrix (input) type
+  DataType btype = DataType::UNDEFINED;          // B matrix (weight) type
+  DataType ctype = DataType::UNDEFINED;          // C matrix (output) type
+  DataType compute_dtype = DataType::UNDEFINED;  // Compute precision
+
+  // Narrow precision configuration
   bool use_fast_accum = false;
+  bool narrow_precision_mode = false;  // Enable narrow precision optimizations
 
   // Epilogue configuration
   bool use_bias = false;
@@ -74,21 +80,50 @@ struct UnifiedLinearDescriptor {
   // Constructor
   UnifiedLinearDescriptor() = default;
 
+  // Zero-cost type dispatch helpers
+  bool IsMixedPrecision() const {
+    return atype != ctype || btype != ctype || atype != btype;
+  }
+
+  bool IsNarrowPrecisionInput() const {
+    return atype == DataType::FLOAT8_E4M3FN || atype == DataType::FLOAT8_E5M2 ||
+           btype == DataType::FLOAT8_E4M3FN || btype == DataType::FLOAT8_E5M2;
+  }
+
   // Validation
   bool IsValid() const;
   std::string GetErrorMessage() const;
 };
 
-// Hardware-agnostic unified linear kernel
+// Hardware-agnostic unified linear kernel with narrow precision support
 // This is the top-level interface that handles:
 // 1. Shape and stride validation
 // 2. Framework tensor abstraction
-// 3. Narrow precision type support (fp8, etc.)
-// 4. Scale tensor handling
-// 5. Dispatch to library-agnostic layer
+// 3. Narrow precision type support (fp8, etc.) with scale tensors
+// 4. Zero-cost Atype/Btype/Ctype dispatch
+// 5. High-performance scale tensor handling
+// 6. Dispatch to library-agnostic layer
 template <typename T, typename Context>
 void UnifiedLinearKernel(const Context& dev_ctx,
                          const UnifiedLinearDescriptor& desc,
+                         DenseTensor* output);
+
+// Zero-cost narrow precision interface with explicit type control
+template <typename T, typename Context>
+void UnifiedLinearKernel(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& weight,
+                         const DenseTensor& bias,
+                         const paddle::optional<DenseTensor>& input_scale,
+                         const paddle::optional<DenseTensor>& weight_scale,
+                         const paddle::optional<DenseTensor>& output_scale,
+                         DataType atype,
+                         DataType btype,
+                         DataType ctype,
+                         bool transpose_input,
+                         bool transpose_weight,
+                         const std::string& activation,
+                         bool use_fast_accum,
                          DenseTensor* output);
 
 // Simplified interface for common cases

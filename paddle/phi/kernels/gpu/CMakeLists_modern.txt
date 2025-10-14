@@ -1,0 +1,163 @@
+# Modern CMake configuration for optimized unified linear kernels
+# Zero-overhead abstractions with compile-time optimization
+
+cmake_minimum_required(VERSION 3.20)
+project(UnifiedLinearModern LANGUAGES CXX CUDA)
+
+# Modern C++20 standard with concepts and zero-overhead abstractions
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# CUDA configuration for modern kernels
+set(CMAKE_CUDA_STANDARD 20)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_EXTENSIONS OFF)
+
+# Zero-overhead optimization flags
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -mtune=native")
+set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -DNDEBUG -arch=native")
+
+# Modern CUDA architectures with tensor core support
+set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86 89 90)
+
+# Enable modern CUDA features
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr --expt-extended-lambda")
+
+# Zero-overhead compilation flags
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -fuse-linker-plugin")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mllvm -inline-threshold=1000")
+endif()
+
+# Modern find packages with zero-overhead abstractions
+find_package(CUDAToolkit REQUIRED)
+find_package(Threads REQUIRED)
+
+# Modern interface library for zero-overhead abstractions
+add_library(unified_linear_modern INTERFACE)
+target_compile_features(unified_linear_modern INTERFACE cxx_std_20 cuda_std_20)
+
+# Zero-overhead include directories
+target_include_directories(unified_linear_modern INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+# Modern CUDA library with zero-overhead linking
+target_link_libraries(unified_linear_modern INTERFACE
+    CUDA::cudart
+    CUDA::cublasLt
+    CUDA::cublas
+    Threads::Threads
+)
+
+# Modern compile definitions for zero-overhead optimization
+target_compile_definitions(unified_linear_modern INTERFACE
+    $<$<CONFIG:Release>:NDEBUG>
+    $<$<CONFIG:Release>:EIGEN_NO_DEBUG>
+    $<$<CONFIG:Release>:GOOGLE_STRIP_LOG=1>
+)
+
+# Zero-overhead modern kernels
+add_library(unified_linear_kernels_modern STATIC
+    unified_linear_modern.h
+    unified_linear_cuda_modern.cu
+    cublaslt_linear_modern.cu
+)
+
+target_link_libraries(unified_linear_kernels_modern PRIVATE unified_linear_modern)
+
+# Modern example executable with zero-overhead optimization
+add_executable(unified_linear_example_modern
+    unified_linear_modern_example.cu
+)
+
+target_link_libraries(unified_linear_example_modern PRIVATE unified_linear_modern)
+
+# Zero-overhead installation rules
+install(TARGETS unified_linear_modern unified_linear_kernels_modern
+    EXPORT UnifiedLinearModernTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+)
+
+install(FILES unified_linear_modern.h
+    DESTINATION include/phi/kernels/gpu
+)
+
+# Modern export configuration
+install(EXPORT UnifiedLinearModernTargets
+    FILE UnifiedLinearModernTargets.cmake
+    NAMESPACE phi::
+    DESTINATION lib/cmake/UnifiedLinearModern
+)
+
+# Zero-overhead CPack configuration
+set(CPACK_PACKAGE_NAME "UnifiedLinearModern")
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_PACKAGE_DESCRIPTION "Modern zero-overhead unified linear kernels with C++20")
+set(CPACK_PACKAGE_CONTACT "PaddlePaddle Authors")
+
+include(CPack)
+
+# Modern testing with zero-overhead abstractions
+enable_testing()
+
+# Performance test with zero-overhead measurement
+add_test(NAME performance_test
+    COMMAND unified_linear_example_modern
+)
+
+set_tests_properties(performance_test PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "CUDA_LAUNCH_BLOCKING=0"
+)
+
+# Zero-overhead benchmark target
+add_custom_target(benchmark
+    COMMAND unified_linear_example_modern
+    DEPENDS unified_linear_example_modern
+    COMMENT "Running zero-overhead performance benchmark"
+)
+
+# Modern documentation generation
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in)
+    set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+
+    configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+
+    add_custom_target(docs
+        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating modern API documentation"
+        VERBATIM
+    )
+endif()
+
+# Zero-overhead static analysis
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_custom_target(static_analysis
+        COMMAND clang-tidy
+            ${CMAKE_CURRENT_SOURCE_DIR}/*.cu
+            ${CMAKE_CURRENT_SOURCE_DIR}/*.h
+            -- -std=c++20 -x cuda
+        COMMENT "Running zero-overhead static analysis"
+    )
+endif()
+
+# Modern summary
+message(STATUS "=== Modern Unified Linear Configuration ===")
+message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "CUDA Standard: ${CMAKE_CUDA_STANDARD}")
+message(STATUS "CUDA Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+message(STATUS "Optimization Level: Release")
+message(STATUS "Zero-overhead abstractions: Enabled")
+message(STATUS "Modern C++20 features: Enabled")
+message(STATUS "Tensor Core support: Enabled")
+message(STATUS "==========================================")
