@@ -171,6 +171,76 @@ void Device::MemorySet(void* ptr, uint8_t value, size_t size) {
   impl_->MemorySet(dev_id_, ptr, value, size);
 }
 
+void Device::CUDAStreamBeginCapture(stream::stream_t stream,
+                                    graph::streamCaptureMode mode) {
+  CheckInitialized();
+  impl_->CUDAStreamBeginCapture(dev_id_, stream, mode);
+}
+
+void Device::CudaStreamEndCapture(stream::stream_t stream,
+                                  graph::CUDAGraph_t* pGraph) {
+  CheckInitialized();
+  impl_->CudaStreamEndCapture(dev_id_, stream, pGraph);
+}
+
+void Device::CudaGraphLaunch(graph::CUDAGraphExec_t exec,
+                             stream::stream_t stream) {
+  CheckInitialized();
+  impl_->CudaGraphLaunch(dev_id_, exec, stream);
+}
+
+void Device::CudaGraphDestroy(graph::CUDAGraph_t graph) {
+  CheckInitialized();
+  impl_->CudaGraphDestroy(graph);
+}
+
+void Device::CudaGraphExecDestroy(graph::CUDAGraphExec_t graphExec) {
+  CheckInitialized();
+  impl_->CudaGraphExecDestroy(graphExec);
+}
+
+void Device::CudaGraphInstantiate(graph::CUDAGraphExec_t* pGraphExec,
+                                  graph::CUDAGraph_t* pGraph,
+                                  void** pErrorNode,
+                                  char* pLogBuffer,
+                                  size_t bufferSize) {
+  CheckInitialized();
+  impl_->CudaGraphInstantiate(
+      pGraphExec, pGraph, pErrorNode, pLogBuffer, bufferSize);
+}
+
+void Device::CudaGraphGetNodes(graph::CUDAGraph_t graph,
+                               graph::CUDAGraphNode_t* pNodes,
+                               size_t* numNodes) {
+  CheckInitialized();
+  impl_->CudaGraphGetNodes(graph, pNodes, numNodes);
+}
+
+void Device::CudaStreamGetCaptureInfo(
+    stream::stream_t stream,
+    graph::streamCaptureStatus* captureStatus_out,
+    unsigned long long* id_out,  // NOLINT
+    graph::CUDAGraph_t* graph_out,
+    graph::CUDAGraphNode_t* dependencies_out,
+    void** edgeData_out,
+    size_t* numDependencies_out) {
+  CheckInitialized();
+  impl_->CudaStreamGetCaptureInfo(dev_id_,
+                                  stream,
+                                  captureStatus_out,
+                                  id_out,
+                                  graph_out,
+                                  dependencies_out,
+                                  edgeData_out,
+                                  numDependencies_out);
+}
+
+void Device::GetParameterSetterForExecGraph(graph::CUDAGraph_t graph,
+                                            graph::GraphHookManager* hook) {
+  CheckInitialized();
+  impl_->GetParameterSetterForExecGraph(graph, hook);
+}
+
 template <typename T>
 void Device::BlasAXPBY(const stream::stream_t& stream,
                        size_t numel,
