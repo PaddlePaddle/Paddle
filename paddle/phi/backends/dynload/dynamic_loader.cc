@@ -1070,7 +1070,8 @@ void* GetMKLRTDsoHandle() {
 void* GetCusparseLtDsoHandle() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, SPARSELT_LIB_NAME);
-#elif defined(PADDLE_WITH_CUDA)
+// APIs available after CUDA 11.2
+#elif defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
 #else
   std::string warning_msg(
