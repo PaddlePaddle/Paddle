@@ -168,39 +168,39 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
   log_stream << "]" << std::endl;
 }
 
-template void TensorFormatter::FormatData<bool>(
+template PADDLE_API void TensorFormatter::FormatData<bool>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<float>(
+template PADDLE_API void TensorFormatter::FormatData<float>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<double>(
+template PADDLE_API void TensorFormatter::FormatData<double>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<int>(
+template PADDLE_API void TensorFormatter::FormatData<int>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<int64_t>(
+template PADDLE_API void TensorFormatter::FormatData<int64_t>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<phi::float16>(
+template PADDLE_API void TensorFormatter::FormatData<phi::float16>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<phi::bfloat16>(
+template PADDLE_API void TensorFormatter::FormatData<phi::bfloat16>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<phi::complex64>(
+template PADDLE_API void TensorFormatter::FormatData<phi::complex64>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
-template void TensorFormatter::FormatData<phi::complex128>(
+template PADDLE_API void TensorFormatter::FormatData<phi::complex128>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
