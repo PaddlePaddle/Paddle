@@ -1107,6 +1107,42 @@ class TestBook(LayerTest):
             )
             return output
 
+    def test_warpctc_zero_infinity(self):
+        with self.static_graph():
+            logits = paddle.static.data(
+                name='logits', shape=[4, 4, 8], dtype='float32')
+            label = paddle.static.data(
+                name='label', shape=[4, 1], dtype='int32')
+            logits_len = paddle.static.data(
+                name='logits_len', shape=[4], dtype='int64')
+            label_len = paddle.static.data(
+                name='label_len', shape=[4], dtype='int64')
+
+            logits_np = np.random.randn(4, 4, 8).astype('float32')
+            label_np = np.random.randint(0, 8, (4, 1)).astype('int32')
+            logits_len_np = np.array([2, 3, 4, 4], np.int64)
+            label_len_np = np.array([3, 3, 4, 4], np.int64)
+
+            loss = paddle.nn.functional.ctc_loss(
+                log_probs=logits,
+                labels=label,
+                input_lengths=logits_len,
+                label_lengths=label_len,
+                reduction='none',
+                zero_infinity=True)
+
+            exe = paddle.static.Executor()
+            exe.run(paddle.static.default_startup_program())
+            loss_np = exe.run(
+                feed={'logits': logits_np,
+                      'label': label_np,
+                      'logits_len': logits_len_np,
+                      'label_len': label_len_np},
+                fetch_list=[loss])[0]
+
+            self.assertAlmostEqual(loss_np[0], 0.0, places=6)
+            self.assertTrue(np.all(loss_np[1:] > 0))
+
 
 class ExampleNet(paddle.nn.Layer):
     def __init__(self):
