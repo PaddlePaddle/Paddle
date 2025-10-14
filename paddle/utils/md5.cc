@@ -18,6 +18,7 @@
 // https://github.com/ulwanski/md5/blob/master/LICENSE
 
 #include "paddle/utils/md5.h"
+#include <cstdint>
 namespace paddle {
 #define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
 #define G(x, y, z) ((y) ^ ((z) & ((x) ^ (y))))
