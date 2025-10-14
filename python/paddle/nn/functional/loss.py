@@ -2043,13 +2043,13 @@ def ctc_loss(
     loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
+    loss_out = paddle.squeeze(loss_out, [-1])
 
     if zero_infinity:
         loss_out = paddle.where(
             paddle.isinf(loss_out), paddle.zeros_like(loss_out), loss_out
         )
-
-    loss_out = paddle.squeeze(loss_out, [-1])
+    
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths.astype(loss_out.dtype))
