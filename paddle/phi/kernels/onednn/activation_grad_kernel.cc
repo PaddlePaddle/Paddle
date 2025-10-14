@@ -44,7 +44,7 @@ namespace phi {
                         double attr,                              \
                         DenseTensor* dx) {                        \
     functor_class<T> functor;                                     \
-    functor(dev_ctx, x, dout, attr, 0, dx);                       \
+    functor(dev_ctx, x, dout, static_cast<float>(attr), 0, dx);   \
   }
 
 #define DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(name, functor_class) \

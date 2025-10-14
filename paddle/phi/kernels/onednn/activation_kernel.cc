@@ -40,15 +40,15 @@ namespace phi {
     functor(dev_ctx, x, attr, 0, out);                                     \
   }
 
-#define DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS( \
-    name, functor_class, attr)                          \
-  template <typename T, typename Context>               \
-  void name##Kernel(const Context& dev_ctx,             \
-                    const DenseTensor& x,               \
-                    double attr,                        \
-                    DenseTensor* out) {                 \
-    functor_class<T> functor;                           \
-    functor(dev_ctx, x, attr, 0, out);                  \
+#define DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(    \
+    name, functor_class, attr)                             \
+  template <typename T, typename Context>                  \
+  void name##Kernel(const Context& dev_ctx,                \
+                    const DenseTensor& x,                  \
+                    double attr,                           \
+                    DenseTensor* out) {                    \
+    functor_class<T> functor;                              \
+    functor(dev_ctx, x, static_cast<float>(attr), 0, out); \
   }
 
 template <typename T>
