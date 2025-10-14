@@ -1271,26 +1271,26 @@ const std::string GenerateUniqueTensorName(const std::string& unique_api_name,
   }
   return oss.str();
 }
-void SetTensorName(const std::string& unique_api_name,
-                   const std::string& var_name,
-                   paddle::Tensor* tensor) {
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::Tensor* tensor) {
   if (!tensor->defined() || !tensor->has_allocation()) return;
   const std::string& unique_name =
       egr::GenerateUniqueTensorName(unique_api_name, var_name, tensor);
   tensor->set_name(unique_name);
 }
-void SetTensorName(const std::string& unique_api_name,
-                   const std::string& var_name,
-                   paddle::optional<paddle::Tensor>* tensor) {
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::optional<paddle::Tensor>* tensor) {
   if (tensor->get_ptr() != nullptr) {
     paddle::Tensor* t = tensor->get_ptr();
     if (!t->defined() || !t->has_allocation()) return;
     t->set_name(egr::GenerateUniqueTensorName(unique_api_name, var_name, t));
   }
 }
-void SetTensorName(const std::string& unique_api_name,
-                   const std::string& var_name,
-                   std::vector<paddle::Tensor>* tensors) {
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor>* tensors) {
   for (int i = 0; i < tensors->size(); i++) {
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
@@ -1300,9 +1300,10 @@ void SetTensorName(const std::string& unique_api_name,
   }
 }
 
-void SetTensorName(const std::string& unique_api_name,
-                   const std::string& var_name,
-                   paddle::optional<std::vector<paddle::Tensor>>* tensors) {
+TEST_API void SetTensorName(
+    const std::string& unique_api_name,
+    const std::string& var_name,
+    paddle::optional<std::vector<paddle::Tensor>>* tensors) {
   if (tensors->get_ptr() != nullptr) {
     SetTensorName(unique_api_name, var_name, tensors->get_ptr());
   }
@@ -1312,7 +1313,7 @@ static std::string GenerateGradTensorName(const GradSlotMeta& meta) {
   std::string grad_name = forward_name + "@Grad";
   return grad_name;
 }
-void SetGradTensorName(
+TEST_API void SetGradTensorName(
     paddle::Tensor* tensor,
     const int slot,
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
@@ -1321,7 +1322,7 @@ void SetGradTensorName(
   std::string name = GenerateGradTensorName(metas[0]);
   tensor->set_name(name);
 }
-void SetGradTensorName(
+TEST_API void SetGradTensorName(
     std::vector<paddle::Tensor>* tensors,
     const int slot,
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
