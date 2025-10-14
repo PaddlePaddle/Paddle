@@ -90,27 +90,23 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     x = paddle.static.data(
                         name='x', shape=[None, 10], dtype='float32'
                     )
-                    w = paddle.static.create_parameter(
-                        shape=[10, 1],
-                        dtype='float32',
-                        name='weight',
-                        default_initializer=paddle.nn.initializer.Constant(0.5),
+                    # Use paddle.static.nn.fc for OldIR mode
+                    y = paddle.static.nn.fc(
+                        x,
+                        size=1,
+                        weight_attr=paddle.ParamAttr(
+                            initializer=paddle.nn.initializer.Constant(0.5)
+                        ),
+                        bias_attr=paddle.ParamAttr(
+                            initializer=paddle.nn.initializer.Constant(0.1)
+                        ),
                     )
-                    b = paddle.static.create_parameter(
-                        shape=[1],
-                        dtype='float32',
-                        name='bias',
-                        default_initializer=paddle.nn.initializer.Constant(0.1),
-                    )
-                    # Use paddle.tensor for OldIR: matmul and elementwise_add
-                    matmul_out = paddle.tensor.matmul(x, w)
-                    y = paddle.tensor.add(matmul_out, b)
 
-                self.exe.run(startup_program)
-
+                #  Validate program has ops
                 if len(main_program.global_block().ops) == 0:
                     raise ValueError("Main program is empty!")
 
+                # Save the model (must be done within OldIrGuard)
                 paddle.static.save_inference_model(
                     path_prefix=model_path,
                     feed_vars=[x],
@@ -329,7 +325,9 @@ class TestPdmodelCompatibility(unittest.TestCase):
         model_path = os.path.join(self.temp_dir.name, "nonexistent_model")
 
         with self.assertRaises((FileNotFoundError, OSError, ValueError)):
-            load_inference_model(path_prefix=model_path, executor=self.exe)
+            load_inference_model(
+                path_prefix=model_path, executor=self.exe
+            )
 
 
 if __name__ == '__main__':
