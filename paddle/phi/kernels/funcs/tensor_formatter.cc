@@ -196,6 +196,14 @@ template PADDLE_API void TensorFormatter::FormatData<phi::bfloat16>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
     int precision);
+template PADDLE_API void TensorFormatter::FormatData<phi::float8_e4m3fn>(
+    const phi::DenseTensor& print_tensor,
+    std::stringstream& log_stream,
+    int precision);
+template PADDLE_API void TensorFormatter::FormatData<phi::float8_e5m2>(
+    const phi::DenseTensor& print_tensor,
+    std::stringstream& log_stream,
+    int precision);
 template PADDLE_API void TensorFormatter::FormatData<phi::complex64>(
     const phi::DenseTensor& print_tensor,
     std::stringstream& log_stream,
