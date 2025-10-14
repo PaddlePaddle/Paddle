@@ -556,10 +556,10 @@ if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     fi
 fi
 
-SKIP_CI=`git log --pretty=oneline|grep $COMMIT_ID |grep -w "test=document_fix" || true`
-if [[ ${SKIP_CI} ]];then
-    echo_line="You must have one RD (tianshuo78520a (Recommend), zhiqiu, phlrain ) or PM (Ligoml) approval you add test=document_fix method in commit skips CI"
-    check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
+USE_NEW=`git diff -- '*.h' '*.cc' '*.cuh' '*.cu' | grep "new"`
+if [[ ${USE_NEW} ]];then
+    echo_line="You must have one RD (phlrain or sneaxiy) approval you used new in a C++ function"
+    check_approval 1 phlrain sneaxiy
 fi
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
