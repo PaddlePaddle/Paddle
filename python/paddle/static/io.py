@@ -874,14 +874,16 @@ def _load_inference_model_legacy_impl(
 
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:
-            load_vars(
-                executor,
-                # load from memory, dirname is None
-                dirname=None,
-                main_program=program,
-                predicate=is_persistable,
-                filename=params_filename,
-            )
+            # Load vars in OldIR context to ensure compatibility
+            with paddle.pir_utils.OldIrGuard():
+                load_vars(
+                    executor,
+                    # load from memory, dirname is None
+                    dirname=None,
+                    main_program=program,
+                    predicate=is_persistable,
+                    filename=params_filename,
+                )
     # load from file
     else:
         # check and norm path_prefix
@@ -935,13 +937,15 @@ def _load_inference_model_legacy_impl(
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
 
-            load_vars(
-                executor,
-                dirname=load_dirname,
-                main_program=program,
-                predicate=is_persistable,
-                filename=params_filename,
-            )
+            # Load vars in OldIR context to ensure compatibility
+            with paddle.pir_utils.OldIrGuard():
+                load_vars(
+                    executor,
+                    dirname=load_dirname,
+                    main_program=program,
+                    predicate=is_persistable,
+                    filename=params_filename,
+                )
 
     feed_target_names = program.desc.get_feed_target_names()
     if paddle.framework.in_pir_executor_mode():
@@ -1101,9 +1105,16 @@ def load_inference_model(
             path_prefix, kwargs.get("model_filename", None)
         ):
             if os.path.exists(candidate_path):
-                return _load_inference_model_legacy_impl(
-                    path_prefix, executor, **kwargs
-                )
+                try:
+                    return _load_inference_model_legacy_impl(
+                        path_prefix, executor, **kwargs
+                    )
+                except (ValueError, TypeError) as e:
+                    _logger.warning(
+                        f"Failed to load legacy model: {e}. "
+                        "Falling back to PIR mode."
+                    )
+                    break
 
         # Default to PIR mode
         return load_inference_model_pir(path_prefix, executor, **kwargs)
