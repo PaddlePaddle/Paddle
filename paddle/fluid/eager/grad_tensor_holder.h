@@ -53,8 +53,7 @@ class GradTensorHolder {
     }
   }
 
-  GradTensorHolder(const GradTensorHolder& other)
-      : buffer_(other.buffer_), input_dtypes_(other.input_dtypes_) {}
+  GradTensorHolder(const GradTensorHolder& other) = default;
 
   GradTensorHolder& operator=(const GradTensorHolder& other) = default;
 
