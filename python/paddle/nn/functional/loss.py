@@ -2049,7 +2049,7 @@ def ctc_loss(
         loss_out = paddle.where(
             paddle.isinf(loss_out), paddle.zeros_like(loss_out), loss_out
         )
-    
+
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths.astype(loss_out.dtype))
