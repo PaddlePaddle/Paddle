@@ -1141,9 +1141,9 @@ class TestBook(LayerTest):
             loss_np = exe.run(
                 feed={
                     'logits': logits_np,
-                      'label': label_np,
-                      'logits_len': logits_len_np,
-                      'label_len': label_len_np,
+                    'label': label_np,
+                    'logits_len': logits_len_np,
+                    'label_len': label_len_np,
                 },
                 fetch_list=[loss],
             )[0]
