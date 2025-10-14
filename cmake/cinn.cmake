@@ -130,6 +130,11 @@ if(WITH_ROCM)
   file(COPY paddle/common/float16.h DESTINATION $ENV{runtime_include_dir})
 endif()
 
+message(STATUS "EEEEEEEEEEEEEEEEEEE $ENV{runtime_include_dir}/paddle/common")
+file(MAKE_DIRECTORY "$ENV{runtime_include_dir}/paddle/common")
+file(COPY paddle/common/backend_header.h paddle/common/hostdevice.h
+     DESTINATION $ENV{runtime_include_dir}/paddle/common/backend_header.h)
+
 set(cinnapi_src CACHE INTERNAL "" FORCE)
 set(core_src CACHE INTERNAL "" FORCE)
 set(core_includes CACHE INTERNAL "" FORCE)
