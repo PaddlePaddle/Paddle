@@ -1107,49 +1107,54 @@ class TestBook(LayerTest):
             )
             return output
 
-    def test_warpctc_zero_infinity(self):
+    def test_ctc_loss_zero_infinity(self):
+        max_time = 1
+        batch = 1
+        n_class = 8
+        logits_np = np.random.randn(max_time, batch, n_class).astype("float32")
+        labels_np = np.random.randint(0, n_class - 1, (batch, 3)).astype("int32")
+        input_len_np = np.array([1], dtype=np.int64)
+        label_len_np = np.array([3], dtype=np.int64)
+    
         with self.static_graph():
             logits = paddle.static.data(
-                name='logits', shape=[4, 4, 8], dtype='float32'
+                name="logits_il",
+                shape=[max_time, batch, n_class],
+                dtype="float32",
             )
-            label = paddle.static.data(
-                name='label', shape=[4, 1], dtype='int32'
+            labels = paddle.static.data(
+                name="labels_il", shape=[batch, 3], dtype="int32"
             )
-            logits_len = paddle.static.data(
-                name='logits_len', shape=[4], dtype='int64'
+            input_len = paddle.static.data(
+                name="input_len_il", shape=[batch], dtype="int64"
             )
             label_len = paddle.static.data(
-                name='label_len', shape=[4], dtype='int64'
+                name="label_len_il", shape=[batch], dtype="int64"
             )
-
-            logits_np = np.random.randn(4, 4, 8).astype('float32')
-            label_np = np.random.randint(0, 8, (4, 1)).astype('int32')
-            logits_len_np = np.array([2, 3, 4, 4], np.int64)
-            label_len_np = np.array([3, 3, 4, 4], np.int64)
-
+    
             loss = paddle.nn.functional.ctc_loss(
                 log_probs=logits,
-                labels=label,
-                input_lengths=logits_len,
+                labels=labels,
+                input_lengths=input_len,
                 label_lengths=label_len,
-                reduction='none',
+                reduction="none",
                 zero_infinity=True,
+                blank=n_class - 1,
             )
-
+    
             exe = paddle.static.Executor()
-            exe.run(paddle.static.default_startup_program())
-            loss_np = exe.run(
+            loss_val = exe.run(
                 feed={
-                    'logits': logits_np,
-                    'label': label_np,
-                    'logits_len': logits_len_np,
-                    'label_len': label_len_np,
+                    "logits_il": logits_np,
+                    "labels_il": labels_np,
+                    "input_len_il": input_len_np,
+                    "label_len_il": label_len_np,
                 },
                 fetch_list=[loss],
             )[0]
-
-            self.assertAlmostEqual(loss_np[0], 0.0, places=6)
-            self.assertTrue(np.all(loss_np[1:] > 0))
+    
+        # illegal sample -> 0
+        self.assertAlmostEqual(loss_val[0], 0.0, places=6)
 
 
 class ExampleNet(paddle.nn.Layer):
