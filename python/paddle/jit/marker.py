@@ -129,14 +129,14 @@ def unified(
 def capture_control_flow(
     fn: Callable[_InputT, _RetT] | None = None,
 ) -> Callable[_InputT, _RetT]:
-    def _mark_as_needed_capture_control_flow(fn):
+    def _mark_as_need_capture_control_flow(fn):
         options = TransformOptions().with_need_capture_control_flow(True)
         options.attach(fn)
         return fn
 
     if fn is None:
-        return _mark_as_needed_capture_control_flow
-    return _mark_as_needed_capture_control_flow(fn)
+        return _mark_as_need_capture_control_flow
+    return _mark_as_need_capture_control_flow(fn)
 
 
 def force_dynamic(
