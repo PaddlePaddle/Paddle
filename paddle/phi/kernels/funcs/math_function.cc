@@ -44,8 +44,11 @@ namespace phi::funcs {
 
 using float16 = phi::float16;
 
-template struct SetConstant<phi::CPUContext, phi::float8_e4m3fn>;
-template struct SetConstant<phi::CPUContext, phi::float8_e5m2>;
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e4m3fn>;
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e5m2>;
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e4m3fnuz>;
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e5m2fnuz>;
+template struct SetConstant<phi::CPUContext, phi::dtype::float8_e8m0fnu>;
 template struct SetConstant<phi::CPUContext, phi::float16>;
 template struct SetConstant<phi::CPUContext, phi::bfloat16>;
 template struct SetConstant<phi::CPUContext, float>;
@@ -80,7 +83,13 @@ template struct SetConstant<phi::XPUContext, phi::complex128>;
   template struct PADDLE_API                                                   \
       Transpose<phi::CPUContext, phi::float8_e4m3fn, RANK>;                    \
   template struct PADDLE_API                                                   \
-      Transpose<phi::CPUContext, phi::float8_e5m2, RANK>;                      \
+      Transpose<phi::CPUContext, phi::dtype::float8_e4m3fnuz, RANK>;           \
+  template struct PADDLE_API                                                   \
+      Transpose<phi::CPUContext, phi::dtype::float8_e5m2, RANK>;               \
+  template struct PADDLE_API                                                   \
+      Transpose<phi::CPUContext, phi::dtype::float8_e5m2fnuz, RANK>;           \
+  template struct PADDLE_API                                                   \
+      Transpose<phi::CPUContext, phi::dtype::float8_e8m0fnu, RANK>;            \
   template struct PADDLE_API Transpose<phi::CPUContext, float, RANK>;          \
   template struct PADDLE_API Transpose<phi::CPUContext, double, RANK>;         \
   template struct PADDLE_API Transpose<phi::CPUContext, int, RANK>;            \
@@ -130,8 +139,11 @@ void TransposeNormal<DeviceContext, T>::operator()(
 // define transpose normal
 #define DEFINE_CPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::CPUContext, TYPE>
-DEFINE_CPU_TRANS_NORMAL(phi::float8_e4m3fn);
-DEFINE_CPU_TRANS_NORMAL(phi::float8_e5m2);
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e4m3fnuz);
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e5m2fnuz);
+DEFINE_CPU_TRANS_NORMAL(phi::dtype::float8_e8m0fnu);
 DEFINE_CPU_TRANS_NORMAL(phi::float16);
 DEFINE_CPU_TRANS_NORMAL(phi::bfloat16);
 DEFINE_CPU_TRANS_NORMAL(float);

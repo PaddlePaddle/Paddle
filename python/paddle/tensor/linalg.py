@@ -157,8 +157,11 @@ def transpose(
                 'uint16',
                 'complex64',
                 'complex128',
-                'float8_e5m2',
                 'float8_e4m3fn',
+                'float8_e4m3fnuz',
+                'float8_e5m2',
+                'float8_e5m2fnuz',
+                'float8_e8m0fnu',
             ],
             'transpose',
         )
@@ -293,8 +296,11 @@ def fp8_fp8_half_gemm_fused(
                         val,
                         name,
                         [
-                            'float8_e5m2',
                             'float8_e4m3fn',
+                            'float8_e4m3fnuz',
+                            'float8_e5m2',
+                            'float8_e5m2fnuz',
+                            'float8_e8m0fnu',
                         ],
                         'fp8_fp8_half_gemm_fused',
                     )
@@ -327,8 +333,11 @@ def fp8_fp8_half_gemm_fused(
                         val,
                         name,
                         [
-                            'float8_e5m2',
                             'float8_e4m3fn',
+                            'float8_e4m3fnuz',
+                            'float8_e5m2',
+                            'float8_e5m2fnuz',
+                            'float8_e8m0fnu',
                         ],
                         'fp8_fp8_half_gemm_fused',
                     )

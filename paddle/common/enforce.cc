@@ -67,8 +67,8 @@ std::string SimplifyErrorTypeFormat(const std::string& str) {
       str.substr(type_end_pos - 5, 6) == "Error:") {
     // Remove "Error:", add "()"
     // Examples:
-    //    InvalidArgumentError: xxx -> (InvalidArgument) xxx
-    sout << "(" << str.substr(0, type_end_pos - 5) << ")"
+    //    InvalidArgumentError: xxx -> (InvalidArgumentError) xxx
+    sout << "(" << str.substr(0, type_end_pos) << ")"
          << str.substr(type_end_pos + 1);
   } else {
     // type_end_pos == std::string::npos

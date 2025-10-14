@@ -158,6 +158,9 @@ message VarType {
     COMPLEX128 = 24;
     FP8_E4M3FN = 32;
     FP8_E5M2 = 33;
+    FP8_E4M3FNUZ = 34;
+    FP8_E5M2FNUZ = 35;
+    FP8_E8M0FNU = 36;
     UINT32 = 37;
     UINT64 = 38;
     // Other types that may need additional descriptions

@@ -154,3 +154,9 @@ REGISTER_ERROR(InvalidType, ErrorCode::INVALID_TYPE)
 namespace phi {
 namespace errors = ::common::errors;
 }  // namespace phi
+
+namespace cinn {
+namespace common {
+namespace errors = ::common::errors;
+}  // namespace common
+}  // namespace cinn

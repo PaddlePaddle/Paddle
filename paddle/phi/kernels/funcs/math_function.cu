@@ -146,7 +146,10 @@ template void BatchTranspose(bfloat16* output,
                              const phi::GPUContext* dev_ctx);
 
 template struct SetConstant<phi::GPUContext, float8_e4m3fn>;
+template struct SetConstant<phi::GPUContext, float8_e4m3fnuz>;
 template struct SetConstant<phi::GPUContext, float8_e5m2>;
+template struct SetConstant<phi::GPUContext, float8_e5m2fnuz>;
+template struct SetConstant<phi::GPUContext, float8_e8m0fnu>;
 template struct SetConstant<phi::GPUContext, float16>;
 template struct SetConstant<phi::GPUContext, bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
@@ -175,22 +178,24 @@ template struct SetConstant<phi::GPUPinnedContext, phi::complex64>;
 template struct SetConstant<phi::GPUPinnedContext, phi::complex128>;
 #endif
 
-#define DEFINE_GPU_TRANS(RANK)                                      \
-  template struct Transpose<phi::GPUContext, bool, RANK>;           \
-  template struct Transpose<phi::GPUContext, unsigned char, RANK>;  \
-  template struct Transpose<phi::GPUContext, float, RANK>;          \
-  template struct Transpose<phi::GPUContext, double, RANK>;         \
-  template struct Transpose<phi::GPUContext, float8_e4m3fn, RANK>;  \
-  template struct Transpose<phi::GPUContext, float8_e5m2, RANK>;    \
-  template struct Transpose<phi::GPUContext, float16, RANK>;        \
-  template struct Transpose<phi::GPUContext, bfloat16, RANK>;       \
-  template struct Transpose<phi::GPUContext, int8_t, RANK>;         \
-  template struct Transpose<phi::GPUContext, int16_t, RANK>;        \
-  template struct Transpose<phi::GPUContext, int32_t, RANK>;        \
-  template struct Transpose<phi::GPUContext, int64_t, RANK>;        \
-  template struct Transpose<phi::GPUContext, phi::complex64, RANK>; \
+#define DEFINE_GPU_TRANS(RANK)                                       \
+  template struct Transpose<phi::GPUContext, bool, RANK>;            \
+  template struct Transpose<phi::GPUContext, unsigned char, RANK>;   \
+  template struct Transpose<phi::GPUContext, float, RANK>;           \
+  template struct Transpose<phi::GPUContext, double, RANK>;          \
+  template struct Transpose<phi::GPUContext, float8_e4m3fn, RANK>;   \
+  template struct Transpose<phi::GPUContext, float8_e4m3fnuz, RANK>; \
+  template struct Transpose<phi::GPUContext, float8_e5m2, RANK>;     \
+  template struct Transpose<phi::GPUContext, float8_e5m2fnuz, RANK>; \
+  template struct Transpose<phi::GPUContext, float8_e8m0fnu, RANK>;  \
+  template struct Transpose<phi::GPUContext, float16, RANK>;         \
+  template struct Transpose<phi::GPUContext, bfloat16, RANK>;        \
+  template struct Transpose<phi::GPUContext, int8_t, RANK>;          \
+  template struct Transpose<phi::GPUContext, int16_t, RANK>;         \
+  template struct Transpose<phi::GPUContext, int32_t, RANK>;         \
+  template struct Transpose<phi::GPUContext, int64_t, RANK>;         \
+  template struct Transpose<phi::GPUContext, phi::complex64, RANK>;  \
   template struct Transpose<phi::GPUContext, phi::complex128, RANK>;
-
 DEFINE_GPU_TRANS(1);
 DEFINE_GPU_TRANS(2);
 DEFINE_GPU_TRANS(3);
@@ -327,8 +332,11 @@ struct TransposeNormal<phi::GPUContext, T> {
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::GPUContext, TYPE>
 
-DEFINE_GPU_TRANS_NORMAL(phi::float8_e4m3fn);
-DEFINE_GPU_TRANS_NORMAL(phi::float8_e5m2);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e4m3fnuz);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e5m2fnuz);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e8m0fnu);
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
 DEFINE_GPU_TRANS_NORMAL(float);

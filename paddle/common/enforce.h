@@ -207,7 +207,7 @@ struct EnforceNotMet : public std::exception {
   // e.g. InvalidArgumentError: ***
   std::string err_str_;
   // Simple error message used when no C++ stack and python compile stack
-  // e.g. (InvalidArgument) ***
+  // e.g. (InvalidArgumentError) ***
   std::string simple_err_str_;
 
   details::PaddleFatalGuard paddle_fatal_guard_;
@@ -362,3 +362,9 @@ inline bool is_error(const T& stat) {
 namespace pir {
 #define IR_THROW(...) PADDLE_THROW(common::errors::Fatal(__VA_ARGS__))
 }  // namespace pir
+
+namespace cinn {
+namespace common {
+namespace enforce = ::common::enforce;
+}  // namespace common
+}  // namespace cinn

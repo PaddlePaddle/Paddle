@@ -181,9 +181,21 @@ TypeTranslator::TypeTranslator() {
        [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
          return pir::Float8E4M3FNType::get(ctx);
        }},
+      {VarType::FP8_E4M3FNUZ,
+       [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
+         return pir::Float8E4M3FNUZType::get(ctx);
+       }},
       {VarType::FP8_E5M2,
        [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
          return pir::Float8E5M2Type::get(ctx);
+       }},
+      {VarType::FP8_E5M2FNUZ,
+       [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
+         return pir::Float8E5M2FNUZType::get(ctx);
+       }},
+      {VarType::FP8_E8M0FNU,
+       [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
+         return pir::Float8E8M0FNUType::get(ctx);
        }},
       {VarType::DENSE_TENSOR, HandleTensor},
       {VarType::DENSE_TENSOR_ARRAY, HandleTensorArray},

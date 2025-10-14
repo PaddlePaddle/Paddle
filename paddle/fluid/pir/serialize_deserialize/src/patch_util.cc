@@ -243,8 +243,14 @@ phi::DataType YamlStringToDataType(const std::string &type) {
     dtype = phi::DataType::UINT64;
   } else if (type == "phi::DataType::FLOAT8_E4M3FN") {
     dtype = phi::DataType::FLOAT8_E4M3FN;
+  } else if (type == "phi::DataType::FLOAT8_E4M3FNUZ") {
+    dtype = phi::DataType::FLOAT8_E4M3FNUZ;
   } else if (type == "phi::DataType::FLOAT8_E5M2") {
     dtype = phi::DataType::FLOAT8_E5M2;
+  } else if (type == "phi::DataType::FLOAT8_E5M2FNUZ") {
+    dtype = phi::DataType::FLOAT8_E5M2FNUZ;
+  } else if (type == "phi::DataType::FLOAT8_E8M0FNU") {
+    dtype = phi::DataType::FLOAT8_E8M0FNU;
   } else if (type == "phi::DataType::BFLOAT16") {
     dtype = phi::DataType::BFLOAT16;
   } else if (type == "phi::DataType::FLOAT16") {

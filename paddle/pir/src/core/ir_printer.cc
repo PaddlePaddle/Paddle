@@ -74,8 +74,14 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "c128";
   } else if (type.isa<Float8E4M3FNType>()) {
     os << "f8e4m3fn";
+  } else if (type.isa<Float8E4M3FNUZType>()) {
+    os << "f8e4m3fnuz";
   } else if (type.isa<Float8E5M2Type>()) {
     os << "f8e5m2";
+  } else if (type.isa<Float8E5M2FNUZType>()) {
+    os << "f8e5m2fnuz";
+  } else if (type.isa<Float8E8M0FNUType>()) {
+    os << "f8e8m0fnu";
   } else if (type.isa<VectorType>()) {
     os << "vec[";
     auto inner_types = type.dyn_cast<VectorType>().data();

@@ -66,7 +66,10 @@ template <>
 struct F8LimitsTrait<phi::float8_e4m3fn> {
   static constexpr float max = 448.0f;
 };
-
+template <>
+struct F8LimitsTrait<phi::float8_e4m3fnuz> {
+  static constexpr float max = 240.0f;
+};
 template <>
 struct F8LimitsTrait<__nv_fp8_e5m2> {
   static constexpr float max = 57344.0f;
@@ -75,7 +78,10 @@ template <>
 struct F8LimitsTrait<phi::float8_e5m2> {
   static constexpr float max = 57344.0f;
 };
-
+template <>
+struct F8LimitsTrait<phi::float8_e5m2fnuz> {
+  static constexpr float max = 57344.0f;
+};
 // Type trait to resolve the max finite value
 // represented by a input type to quantization.
 // Or to represent max representable power of 2

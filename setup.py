@@ -1626,31 +1626,27 @@ def get_package_data_and_package_dir():
         package_data['paddle.libs'] += ['cinn_sycl_runtime_source.h']
 
         cinn_fp16_file = (
-            env_dict.get("CINN_INCLUDE_DIR")
-            + '/paddle/cinn/runtime/cuda/float16.h'
+            env_dict.get("CINN_INCLUDE_DIR") + '/paddle/common/float16.h'
         )
         if env_dict.get("WITH_ROCM") == 'ON':
             cinn_fp16_file = (
-                env_dict.get("CINN_INCLUDE_DIR")
-                + '/paddle/cinn/runtime/hip/float16.h'
+                env_dict.get("CINN_INCLUDE_DIR") + '/paddle/common/float16.h'
             )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
         cinn_bf16_file = (
-            env_dict.get("CINN_INCLUDE_DIR")
-            + '/paddle/cinn/runtime/cuda/bfloat16.h'
+            env_dict.get("CINN_INCLUDE_DIR") + '/paddle/common/bfloat16.h'
         )
         if os.path.exists(cinn_bf16_file):
             shutil.copy(cinn_bf16_file, libs_path)
             package_data['paddle.libs'] += ['bfloat16.h']
         cinn_fp8_file = (
-            env_dict.get("CINN_INCLUDE_DIR")
-            + '/paddle/cinn/runtime/cuda/float8e4m3.h'
+            env_dict.get("CINN_INCLUDE_DIR") + '/paddle/common/float8_e4m3fn.h'
         )
         if os.path.exists(cinn_fp8_file):
             shutil.copy(cinn_fp8_file, libs_path)
-            package_data['paddle.libs'] += ['float8e4m3.h']
+            package_data['paddle.libs'] += ['float8_e4m3fn.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (

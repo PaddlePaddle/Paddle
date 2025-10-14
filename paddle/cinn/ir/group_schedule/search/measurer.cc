@@ -55,7 +55,7 @@ Measurer::Measurer(::pir::Program* program) : program_(program) {
 }
 
 void Measurer::Compile() {
-  common::PerformanceStatisticsStart(compile_label_);
+  ::common::PerformanceStatisticsStart(compile_label_);
   ::pir::IrMapping ir_mapping;
   std::shared_ptr<::pir::Program> program_cloned = program_->Clone(ir_mapping);
   cinn::dialect::ir::ApplyCinnPass(program_cloned.get(), CreatePassManager);
@@ -63,7 +63,7 @@ void Measurer::Compile() {
       paddle::dialect::PdOpLowerToKernelPass(program_cloned.get(), place_));
   executor_.reset(new paddle::framework::InterpreterCore(
       place_, {"out@fetch"}, kernel_program_->block(), exe_scope_.get()));
-  common::PerformanceStatisticsEnd(compile_label_);
+  ::common::PerformanceStatisticsEnd(compile_label_);
 }
 
 std::string ConcatShapeAsLabel(
@@ -98,8 +98,8 @@ void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
   }
   std::string input_shape_label = ConcatShapeAsLabel(input_name_and_shape);
 
-  common::PerformanceStatistician& ps =
-      common::PerformanceStatistician::Instance();
+  ::common::PerformanceStatistician& ps =
+      ::common::PerformanceStatistician::Instance();
   for (int i = 0; i < repeat; ++i) {
     ps.Start(execute_label_ + "\n" + input_shape_label);
     executor_->Run(input_names, input_tensors, true);
@@ -109,8 +109,8 @@ void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
 
 MeasureResult Measurer::Result() const {
   MeasureResult result;
-  common::PerformanceStatistician& ps =
-      common::PerformanceStatistician::Instance();
+  ::common::PerformanceStatistician& ps =
+      ::common::PerformanceStatistician::Instance();
 
   auto compile_durations =
       ::common::PerformanceReporter::ExtractDuration(ps.Record(compile_label_));

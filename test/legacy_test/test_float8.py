@@ -25,6 +25,14 @@ from paddle.base import core
 E4M3_MAX_POS = 448.0
 E5M2_MAX_POS = 57344.0
 
+float8_types = [
+    "float8_e4m3fn",
+    "float8_e4m3fnuz",
+    "float8_e5m2",
+    "float8_e5m2fnuz",
+    "float8_e8m0fnu",
+]
+
 
 def get_cuda_version():
     result = os.popen("nvcc --version").read()
@@ -59,12 +67,18 @@ class TestFP8CastOp(unittest.TestCase):
         if paddle.framework.use_pir_api():
             self.dtype_dict = {
                 "float8_e4m3fn": core.DataType.FLOAT8_E4M3FN,
+                "float8_e4m3fnuz": core.DataType.FLOAT8_E4M3FNUZ,
                 "float8_e5m2": core.DataType.FLOAT8_E5M2,
+                "float8_e5m2fnuz": core.DataType.FLOAT8_E5M2FNUZ,
+                "float8_e8m0fnu": core.DataType.FLOAT8_E8M0FNU,
             }
         else:
             self.dtype_dict = {
                 "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
+                "float8_e4m3fnuz": core.VarDesc.VarType.FP8_E4M3FNUZ,
                 "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
+                "float8_e5m2fnuz": core.VarDesc.VarType.FP8_E5M2FNUZ,
+                "float8_e8m0fnu": core.VarDesc.VarType.FP8_E8M0FNU,
             }
         self.shape = (16, 16)
 
@@ -73,6 +87,7 @@ class TestFP8CastOp(unittest.TestCase):
             for self.device in ["cpu", get_device()]:
                 paddle.device.set_device(self.device)
                 for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+                    print(self.dtype)
                     # test fp32 to fp8 (dtype)
                     input = paddle.full(self.shape, 100000.0)
                     input1 = input.astype(self.dtype)
@@ -126,19 +141,26 @@ class TestFP8FullOp(unittest.TestCase):
         if paddle.framework.use_pir_api():
             self.dtype_dict = {
                 "float8_e4m3fn": core.DataType.FLOAT8_E4M3FN,
+                "float8_e4m3fnuz": core.DataType.FLOAT8_E4M3FNUZ,
                 "float8_e5m2": core.DataType.FLOAT8_E5M2,
+                "float8_e5m2fnuz": core.DataType.FLOAT8_E5M2FNUZ,
+                "float8_e8m0fnu": core.DataType.FLOAT8_E8M0FNU,
             }
         else:
             self.dtype_dict = {
                 "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
+                "float8_e4m3fnuz": core.VarDesc.VarType.FP8_E4M3FNUZ,
                 "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
+                "float8_e5m2fnuz": core.VarDesc.VarType.FP8_E5M2FNUZ,
+                "float8_e8m0fnu": core.VarDesc.VarType.FP8_E8M0FNU,
             }
 
     def test_ones(self):
         if core.is_compiled_with_cuda() or is_custom_device():
             for self.device in ["cpu", get_device()]:
                 paddle.device.set_device(self.device)
-                for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+                for self.dtype in float8_types:
+                    print(self.dtype)
                     input = paddle.ones([1, 2], dtype=self.dtype)
                     self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
                     input_fp32 = input.astype("float32")
@@ -147,7 +169,7 @@ class TestFP8FullOp(unittest.TestCase):
         else:
             self.device = "cpu"
             paddle.device.set_device(self.device)
-            for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+            for self.dtype in float8_types:
                 input = paddle.ones([1, 2], dtype=self.dtype)
                 self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
                 input_fp32 = input.astype("float32")
@@ -158,7 +180,7 @@ class TestFP8FullOp(unittest.TestCase):
         if core.is_compiled_with_cuda() or is_custom_device():
             for self.device in ["cpu", get_device()]:
                 paddle.device.set_device(self.device)
-                for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+                for self.dtype in float8_types:
                     input = paddle.zeros([1, 2], dtype=self.dtype)
                     self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
                     input_fp32 = input.astype("float32")
@@ -167,7 +189,7 @@ class TestFP8FullOp(unittest.TestCase):
         else:
             self.device = "cpu"
             paddle.device.set_device(self.device)
-            for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
+            for self.dtype in float8_types:
                 input = paddle.zeros([1, 2], dtype=self.dtype)
                 self.assertTrue(input.dtype == self.dtype_dict[self.dtype])
                 input_fp32 = input.astype("float32")

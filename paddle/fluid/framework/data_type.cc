@@ -62,7 +62,10 @@ static DataTypeMap* InitDataTypeMap() {
   // Register pstring individually
   RegType(pstring, proto::VarType::PSTRING);
   RegType(::phi::dtype::float8_e5m2, proto::VarType::FP8_E5M2);
+  RegType(::phi::dtype::float8_e5m2fnuz, proto::VarType::FP8_E5M2FNUZ);
   RegType(::phi::dtype::float8_e4m3fn, proto::VarType::FP8_E4M3FN);
+  RegType(::phi::dtype::float8_e4m3fnuz, proto::VarType::FP8_E4M3FNUZ);
+  RegType(::phi::dtype::float8_e8m0fnu, proto::VarType::FP8_E8M0FNU);
 #undef RegType
   return retv;
 }

@@ -37,6 +37,18 @@ const size_t JitSafeHeaderGenerator::size() const {
   return include_names_.size();
 }
 
+std::vector<std::string> get_cinn_header_folder(const std::string& str) {
+  std::vector<std::string> result;
+  std::stringstream ss(str);
+  std::string token;
+
+  while (std::getline(ss, token, ':')) {
+    result.push_back(token);
+  }
+
+  return result;
+}
+
 std::string read_file_as_string(const std::string& file_path) {
 #ifdef RUNTIME_INCLUDE_DIR
   static constexpr char* defined_runtime_include_dir = RUNTIME_INCLUDE_DIR;
@@ -47,16 +59,22 @@ std::string read_file_as_string(const std::string& file_path) {
 #ifdef CINN_WITH_CUDA
   std::string cinn_path =
       defined_runtime_include_dir ? defined_runtime_include_dir : "";
-  std::ifstream file(cinn_path + '/' + file_path);
+  auto cinn_paths =
+      get_cinn_header_folder(std::string(defined_runtime_include_dir));
+  for (auto& cinn_path : cinn_paths) {
+    std::ifstream file(cinn_path + '/' + file_path);
 
-  if (!file.is_open()) {
-    VLOG(1) << "Unable to open file : " << cinn_path << '/' << file_path;
-    return "";
+    if (file.is_open()) {
+      std::stringstream buffer;
+      buffer << file.rdbuf();
+      file.close();
+      return buffer.str();
+    }
   }
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  file.close();
-  return buffer.str();
+  // file not found in all paths
+  VLOG(1) << "Unable to open file  " << file_path << "in folders:" << cinn_path;
+  return "";
+
 #else
   return "";
 #endif
@@ -68,7 +86,7 @@ static const std::string cinn_float16_header =  // NOLINT
 static const std::string cinn_bfloat16_header =  // NOLINT
     read_file_as_string("bfloat16.h");
 static const std::string cinn_float8e4m3_header =  // NOLINT
-    read_file_as_string("float8e4m3.h");
+    read_file_as_string("float8_e4m3fn.h");
 static const std::string cinn_with_cuda_header =  // NOLINT
     R"(
 #pragma once

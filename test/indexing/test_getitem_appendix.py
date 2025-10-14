@@ -312,7 +312,7 @@ class TestGetItemErrorCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             res = x[
                 [0, 1], [3, 2], [1, 1]
-            ]  # ValueError: (InvalidArgument) Too many indices
+            ]  # ValueError: (InvalidArgumentError) Too many indices
 
     def test_bool(self):
         x = np.arange(9).reshape(3, 3)
@@ -338,13 +338,13 @@ class TestGetItemErrorCase(unittest.TestCase):
                 paddle.to_tensor([0, 1]),
                 paddle.to_tensor([3, 2]),
                 paddle.to_tensor([1, 1]),
-            ]  # ValueError: (InvalidArgument) Too many indices
+            ]  # ValueError: (InvalidArgumentError) Too many indices
 
     def test_0D(self):
         x = paddle.to_tensor(42)
         # case 2:
         with self.assertRaises(ValueError):
-            res = x[:]  # ValueError: (InvalidArgument) Too many indices
+            res = x[:]  # ValueError: (InvalidArgumentError) Too many indices
         # case 6:
         with self.assertRaises(IndexError):
             res = x[0]  # IndexError: (OutOfRange)

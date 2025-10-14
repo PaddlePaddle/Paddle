@@ -504,8 +504,11 @@ INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float16, GPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::bfloat16, GPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex64, GPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex128, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e4m3fn, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e5m2, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e4m3fn, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e4m3fnuz, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e5m2, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e5m2fnuz, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e8m0fnu, GPUContext)
 #endif
 }  // namespace phi
 
@@ -519,5 +522,8 @@ PD_REGISTER_KERNEL(check_numerics,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128,
-                   phi::float8_e4m3fn,
-                   phi::float8_e5m2) {}
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
+                   ::phi::dtype::float8_e4m3fnuz,
+                   ::phi::dtype::float8_e5m2fnuz,
+                   ::phi::dtype::float8_e8m0fnu) {}

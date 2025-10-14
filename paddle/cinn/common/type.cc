@@ -189,7 +189,7 @@ bool Type::is_supported() const {
          this->is_float(64) || this->is_bool() || this->is_int(8) ||
          this->is_int(16) || this->is_int(32) || this->is_int(64) ||
          this->is_uint(8) || this->is_uint(16) || this->is_uint(32) ||
-         this->is_uint(64) || this->is_float8e4m3();
+         this->is_uint(64) || this->is_float8_e4m3fn();
 }
 
 Type Type::IgnoreConst() const {
@@ -258,7 +258,7 @@ bool Type::valid() const {
     return (GetStorage().specific_type_ == specific_type_t::FP16 ||
             GetStorage().specific_type_ == specific_type_t::BF16);
   }
-  if (is_float8e4m3() && GetStorage().bits_ == 8) {
+  if (is_float8_e4m3fn() && GetStorage().bits_ == 8) {
     return (GetStorage().specific_type_ == specific_type_t::F8E4M3);
   }
   if (is_primitive()) {
@@ -319,7 +319,8 @@ bool Type::is_float(int bits, specific_type_t st) const {
         specific_type_t::None,
         ::common::errors::InvalidArgument(
             "When calling is_float(8), 'st' can't be specific_type_t::None to "
-            "distinguish F8E4M3/F8E5M2. Use is_float8e4m3() or is_float8e5m2() "
+            "distinguish F8E4M3/F8E5M2. Use is_float8_e4m3fn() or "
+            "is_float8e5m2() "
             "for short."));
     return st == this->specific_type();
   } else {
@@ -327,7 +328,7 @@ bool Type::is_float(int bits, specific_type_t st) const {
   }
 }
 
-bool Type::is_float8e4m3() const {
+bool Type::is_float8_e4m3fn() const {
   return is_float(8, specific_type_t::F8E4M3);
 }
 bool Type::is_float16() const { return is_float(16, specific_type_t::FP16); }
@@ -500,7 +501,7 @@ int Type::bytes() const {
       GET_TYPE_SIZE_PAIR(bfloat16),
       GET_TYPE_SIZE_PAIR(float16),
       GET_TYPE_SIZE_PAIR(float),
-      GET_TYPE_SIZE_PAIR(float8e4m3),
+      GET_TYPE_SIZE_PAIR(float8_e4m3fn),
       GET_TYPE_SIZE_PAIR(double),
 
       GET_TYPE_SIZE_PAIR(char),
@@ -608,8 +609,8 @@ Type Str2Type(const std::string &type) {
       {"float16_p", type_of<float16 *>()},
       {"half_p", type_of<float16 *>()},
 
-      {"float8e4m3*", type_of<float8e4m3 *>()},
-      {"float8e4m3_p", type_of<float8e4m3 *>()},
+      {"float8_e4m3fn*", type_of<float8_e4m3fn *>()},
+      {"float8e4m3_p", type_of<float8_e4m3fn *>()},
 
       {"float*", type_of<float *>()},
       {"float32*", type_of<float *>()},
@@ -661,7 +662,7 @@ std::string Type2Str(const Type &type) {
         case Type::specific_type_t::FP16:
           return "float16";
         case Type::specific_type_t::F8E4M3:
-          return "float8e4m3";
+          return "float8_e4m3fn";
         default:
           break;
       }

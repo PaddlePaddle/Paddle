@@ -62,7 +62,8 @@ TEST(CUDAModule, float16) {
     std::string source_code = R"(
   #include <cstdint>
   #define CINN_WITH_CUDA
-  #include "float16.h"
+  #define PADDLE_WITH_CUDA
+  #include "paddle/common/float16.h"
   using cinn::common::float16;
 
   extern "C" __global__
@@ -136,7 +137,8 @@ TEST(CUDAModule, bfloat16) {
     std::string source_code = R"(
   #include <cstdint>
   #define CINN_WITH_CUDA
-  #include "bfloat16.h"
+  #define PADDLE_WITH_CUDA
+  #include "paddle/common/bfloat16.h"
   using cinn::common::bfloat16;
 
   extern "C" __global__

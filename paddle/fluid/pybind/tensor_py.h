@@ -42,7 +42,10 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e4m3fnuz.h"
 #include "paddle/phi/common/float8_e5m2.h"
+#include "paddle/phi/common/float8_e5m2fnuz.h"
+#include "paddle/phi/common/float8_e8m0fnu.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
@@ -65,6 +68,9 @@ constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
 constexpr int NPY_FLOAT8_E4M3FN_ = 24;
 constexpr int NPY_FLOAT8_E5M2_ = 25;
+constexpr int NPY_FLOAT8_E4M3FNUZ_ = 26;
+constexpr int NPY_FLOAT8_E5M2FNUZ_ = 27;
+constexpr int NPY_FLOAT8_E8M0FNU_ = 28;
 
 template <typename T, typename S>
 struct casting_complex_to_non_complex {
@@ -226,6 +232,19 @@ struct npy_format_descriptor<phi::dtype::float8_e4m3fn> {
   }
   static constexpr auto name = _("float8_e4m3fn");
 };
+template <>
+struct npy_format_descriptor<phi::dtype::float8_e4m3fnuz> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT8_E4M3FNUZ_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+
+  static std::string format() {
+    // Note: "E4M3FNUZ" represents float8_e4m3fnuz.
+    return "E4M3FNUZ";
+  }
+  static constexpr auto name = _("float8_e4m3fnuz");
+};
 
 template <>
 struct npy_format_descriptor<phi::dtype::float8_e5m2> {
@@ -240,7 +259,32 @@ struct npy_format_descriptor<phi::dtype::float8_e5m2> {
   }
   static constexpr auto name = _("float8_e5m2");
 };
+template <>
+struct npy_format_descriptor<phi::dtype::float8_e5m2fnuz> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT8_E5M2FNUZ_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
 
+  static std::string format() {
+    // Note: "E5M2FNUZ" represents float8_e5m2fnuz.
+    return "E5M2FNUZ";
+  }
+  static constexpr auto name = _("float8_e5m2fnuz");
+};
+template <>
+struct npy_format_descriptor<phi::dtype::float8_e8m0fnu> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT8_E8M0FNU_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+
+  static std::string format() {
+    // Note: "E8M0FNU" represents float8_e8m0fnu.
+    return "E8M0FNU";
+  }
+  static constexpr auto name = _("float8_e8m0fnu");
+};
 }  // namespace detail
 }  // namespace pybind11
 
@@ -301,7 +345,10 @@ DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float8_e4m3fn);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float8_e4m3fnuz);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float8_e5m2);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float8_e5m2fnuz);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(phi::dtype::float8_e8m0fnu);
 
 inline std::string TensorDTypeToPyDTypeStr(
     framework::proto::VarType::Type type) {

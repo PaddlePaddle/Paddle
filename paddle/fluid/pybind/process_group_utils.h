@@ -212,8 +212,20 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
       SplitDenseTensor<DeviceContext, phi::dtype::float8_e4m3fn>()(
           dev_ctx, t_in, p_list);
       break;
+    case phi::DataType::FLOAT8_E4M3FNUZ:
+      SplitDenseTensor<DeviceContext, phi::dtype::float8_e4m3fnuz>()(
+          dev_ctx, t_in, p_list);
+      break;
     case phi::DataType::FLOAT8_E5M2:
       SplitDenseTensor<DeviceContext, phi::dtype::float8_e5m2>()(
+          dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::FLOAT8_E5M2FNUZ:
+      SplitDenseTensor<DeviceContext, phi::dtype::float8_e5m2fnuz>()(
+          dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::FLOAT8_E8M0FNU:
+      SplitDenseTensor<DeviceContext, phi::dtype::float8_e8m0fnu>()(
           dev_ctx, t_in, p_list);
       break;
     case phi::DataType::INT32:

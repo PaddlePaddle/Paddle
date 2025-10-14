@@ -34,15 +34,15 @@
 #endif
 
 #ifndef CINN_COMMON_FLOAT16_H
-#include "paddle/cinn/common/float16.h"
+#include "paddle/common/float16.h"
 #endif  // CINN_COMMON_FLOAT16_H
 
 #ifndef CINN_COMMON_BFLOAT16_H
-#include "paddle/cinn/common/bfloat16.h"
+#include "paddle/common/bfloat16.h"
 #endif  // CINN_COMMON_BFLOAT16_H
 
 #ifndef CINN_COMMON_FLOAT8E4M3_H
-#include "paddle/cinn/common/float8e4m3.h"
+#include "paddle/common/float8_e4m3fn.h"
 #endif  // CINN_COMMON_FLOAT8E4M3_H
 
 #ifdef __cplusplus
@@ -59,7 +59,7 @@ typedef enum cinn_type_code_t {
   cinn_type_float = 2,      //! floating point
   cinn_type_handle = 3,     //! void*
   cinn_type_bfloat = 4,     //! bfloat16
-  cinn_type_float8e4m3 = 5  //! float8e4m3
+  cinn_type_float8e4m3 = 5  //! float8_e4m3fn
 } cinn_type_code_t;
 
 #ifndef CINN_ATTRIBUTE_ALIGN
@@ -353,9 +353,9 @@ inline cinn::common::bfloat16 cinn_buffer_load_bfloat16(
     struct cinn_buffer_t* buf, uint32_t index) {
   return ((cinn::common::bfloat16*)buf->memory)[index];  // NOLINT
 }
-inline cinn::common::float8e4m3 cinn_buffer_load_float8e4m3(
+inline cinn::common::float8_e4m3fn cinn_buffer_load_float8e4m3(
     struct cinn_buffer_t* buf, uint32_t index) {
-  return ((cinn::common::float8e4m3*)buf->memory)[index];  // NOLINT
+  return ((cinn::common::float8_e4m3fn*)buf->memory)[index];  // NOLINT
 }
 inline cinn::common::float16 cinn_buffer_load_float16(struct cinn_buffer_t* buf,
                                                       uint32_t index) {
@@ -469,7 +469,7 @@ struct cinn_pod_value_t {
   explicit cinn_pod_value_t(float value);
   explicit cinn_pod_value_t(double value);
   explicit cinn_pod_value_t(cinn::common::bfloat16 value);
-  explicit cinn_pod_value_t(cinn::common::float8e4m3 value);
+  explicit cinn_pod_value_t(cinn::common::float8_e4m3fn value);
   explicit cinn_pod_value_t(cinn::common::float16 value);
 
   explicit cinn_pod_value_t(void* value);
@@ -480,7 +480,7 @@ struct cinn_pod_value_t {
   operator double() const;
   operator float() const;
   operator cinn::common::bfloat16() const;
-  operator cinn::common::float8e4m3() const;
+  operator cinn::common::float8_e4m3fn() const;
   operator cinn::common::float16() const;
 
   operator bool() const;
@@ -542,7 +542,7 @@ __m(uint16_t, 13);
 __m(uint32_t, 14);
 __m(uint64_t, 15);
 __m(cinn::common::bfloat16, 16);
-__m(cinn::common::float8e4m3, 17);
+__m(cinn::common::float8_e4m3fn, 17);
 #undef __m
 //@}
 #endif  // __cplusplus
@@ -561,7 +561,8 @@ extern "C" {
 float cinn_pod_value_to_float(cinn_pod_value_t* value);
 double cinn_pod_value_to_double(cinn_pod_value_t* value);
 cinn::common::bfloat16 cinn_pod_value_to_bfloat16(cinn_pod_value_t* value);
-cinn::common::float8e4m3 cinn_pod_value_to_float8e4m3(cinn_pod_value_t* value);
+cinn::common::float8_e4m3fn cinn_pod_value_to_float8e4m3(
+    cinn_pod_value_t* value);
 cinn::common::float16 cinn_pod_value_to_float16(cinn_pod_value_t* value);
 
 int64_t cinn_pod_value_to_int64(cinn_pod_value_t* value);
@@ -586,7 +587,7 @@ cinn_buffer_t* cinn_pod_value_to_buffer_p(cinn_pod_value_t* value);
 void float_to_cinn_pod_value(float v, cinn_pod_value_t* out);
 void bfloat16_to_cinn_pod_value(cinn::common::bfloat16 v,
                                 cinn_pod_value_t* out);
-void float8e4m3_to_cinn_pod_value(cinn::common::float8e4m3 v,
+void float8e4m3_to_cinn_pod_value(cinn::common::float8_e4m3fn v,
                                   cinn_pod_value_t* out);
 void float16_to_cinn_pod_value(cinn::common::float16 v, cinn_pod_value_t* out);
 void double_to_cinn_pod_value(double v, cinn_pod_value_t* out);

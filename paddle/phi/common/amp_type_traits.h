@@ -18,7 +18,10 @@ limitations under the License. */
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e4m3fnuz.h"
 #include "paddle/phi/common/float8_e5m2.h"
+#include "paddle/phi/common/float8_e5m2fnuz.h"
+#include "paddle/phi/common/float8_e8m0fnu.h"
 
 namespace phi {
 namespace dtype {
@@ -46,9 +49,24 @@ class MPTypeTrait<phi::dtype::float8_e4m3fn> {
  public:
   using Type = float;
 };
+template <>
+class MPTypeTrait<phi::dtype::float8_e4m3fnuz> {
+ public:
+  using Type = float;
+};
 
 template <>
 class MPTypeTrait<phi::dtype::float8_e5m2> {
+ public:
+  using Type = float;
+};
+template <>
+class MPTypeTrait<phi::dtype::float8_e5m2fnuz> {
+ public:
+  using Type = float;
+};
+template <>
+class MPTypeTrait<phi::dtype::float8_e8m0fnu> {
  public:
   using Type = float;
 };

@@ -29,17 +29,23 @@ if(NOT DEFINED ENV{runtime_include_dir})
   if(WITH_GPU)
     message(
       STATUS
-        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
-    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda:${PADDLE_SOURCE_DIR}"
+    )
+    set(ENV{runtime_include_dir}
+        "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda:${PADDLE_SOURCE_DIR}")
     add_definitions(
-      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda:${PADDLE_SOURCE_DIR}/paddle/common:${PADDLE_SOURCE_DIR}";
+    )
   elseif(WITH_ROCM)
     message(
       STATUS
-        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
-    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip:${PADDLE_SOURCE_DIR}"
+    )
+    set(ENV{runtime_include_dir}
+        "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip:${PADDLE_SOURCE_DIR}")
     add_definitions(
-      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip:${PADDLE_SOURCE_DIR}/paddle/common:${PADDLE_SOURCE_DIR}"
+    )
   endif()
 endif()
 
@@ -94,14 +100,6 @@ if(WITH_GPU)
   list(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
   set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
-  message(
-    STATUS
-      "copy paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h paddle/cinn/common/float8e4m3.h to $ENV{runtime_include_dir}"
-  )
-  file(COPY paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h
-            paddle/cinn/common/float8e4m3.h
-       DESTINATION $ENV{runtime_include_dir})
-
   find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
                                          REQUIRED)
   find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
@@ -128,10 +126,14 @@ if(WITH_ROCM)
   endif()
   link_libraries(${ROCM_HIPRTC_LIB})
 
-  message(
-    STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
-  file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
+  message(STATUS "copy paddle/common/float16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/common/float16.h DESTINATION $ENV{runtime_include_dir})
 endif()
+
+message(STATUS "EEEEEEEEEEEEEEEEEEE $ENV{runtime_include_dir}/paddle/common")
+file(MAKE_DIRECTORY "$ENV{runtime_include_dir}/paddle/common")
+file(COPY paddle/common/backend_header.h paddle/common/hostdevice.h
+     DESTINATION $ENV{runtime_include_dir}/paddle/common/backend_header.h)
 
 set(cinnapi_src CACHE INTERNAL "" FORCE)
 set(core_src CACHE INTERNAL "" FORCE)
@@ -284,6 +286,9 @@ if(PUBLISH_LIBS)
       "${core_includes};paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h")
   set(core_includes
       "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
+  set(core_includes
+      "${core_includes};paddle/common/float16.h;paddle/common/bfloat16.h;paddle/common/float8_e4m3fn.h"
+  )
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
     file(COPY ${header}

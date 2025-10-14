@@ -43,7 +43,10 @@ void BuiltinDialect::initialize() {
                 Complex64Type,
                 Complex128Type,
                 Float8E4M3FNType,
+                Float8E4M3FNUZType,
                 Float8E5M2Type,
+                Float8E5M2FNUZType,
+                Float8E8M0FNUType,
                 VectorType,
                 DenseTensorType>();
 

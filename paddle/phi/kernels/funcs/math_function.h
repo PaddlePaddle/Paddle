@@ -130,8 +130,11 @@ struct TensorSetConstantXPU {
                          phi::CPUPlace(),
                          static_cast<void*>(data_cpu.get()),
                          numel * sizeof(T));
-    } else if (std::is_same<T, phi::float8_e4m3fn>::value ||
-               std::is_same<T, phi::float8_e5m2>::value) {
+    } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value ||
+               std::is_same<T, phi::dtype::float8_e5m2>::value ||
+               std::is_same<T, phi::dtype::float8_e4m3fnuz>::value ||
+               std::is_same<T, phi::dtype::float8_e5m2fnuz>::value ||
+               std::is_same<T, phi::dtype::float8_e8m0fnu>::value) {
       PADDLE_THROW(common::errors::Fatal("XPU does not support fp8"));
     } else {
       auto* dev_ctx2 = static_cast<phi::XPUContext*>(dev_ctx);

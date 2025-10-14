@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/cinn/backends/extern_func_jit_register.h"
-#include "paddle/cinn/common/float16.h"
+#include "paddle/common/float16.h"
 // #define CINN_HIP_BF16
 #define CINN_HIP_FP16
 

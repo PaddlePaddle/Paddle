@@ -48,7 +48,10 @@ __all__ = []
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
     core.VarDesc.VarType.FP8_E4M3FN: 'float8_e4m3fn',
+    core.VarDesc.VarType.FP8_E4M3FNUZ: 'float8_e4m3fnuz',
     core.VarDesc.VarType.FP8_E5M2: 'float8_e5m2',
+    core.VarDesc.VarType.FP8_E5M2FNUZ: 'float8_e5m2fnuz',
+    core.VarDesc.VarType.FP8_E8M0FNU: 'float8_e8m0fnu',
     core.VarDesc.VarType.FP16: 'float16',
     core.VarDesc.VarType.BF16: 'uint16',
     core.VarDesc.VarType.FP32: 'float32',
@@ -133,6 +136,9 @@ def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
             'complex128',
             'float8_e4m3fn',
             'float8_e5m2',
+            'float8_e4m3fnuz',
+            'float8_e5m2fnuz',
+            'float8_e8m0fnu',
         ]:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need

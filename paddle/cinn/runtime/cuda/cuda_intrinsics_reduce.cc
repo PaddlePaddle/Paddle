@@ -15,10 +15,10 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
-#include "paddle/cinn/common/bfloat16.h"
-#include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
+#include "paddle/common/bfloat16.h"
+#include "paddle/common/float16.h"
 
 using cinn::common::bfloat16;
 using cinn::common::float16;

@@ -15,17 +15,17 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
-#include "paddle/cinn/common/float8e4m3.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
+#include "paddle/common/float8_e4m3fn.h"
 
-using cinn::common::float8e4m3;
+using cinn::common::float8_e4m3fn;
 
 CINN_REGISTER_HELPER(cuda_intrinsics_float8e4m36) {
   auto target = cinn::common::DefaultNVGPUTarget();
   using cinn::backends::FunctionProto;
 
-  // float8e4m3
+  // float8_e4m3fn
   // REGISTER extern func here.
   return true;
 }

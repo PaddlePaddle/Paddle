@@ -21,7 +21,7 @@
 
 using cinn::common::bfloat16;
 using cinn::common::float16;
-using cinn::common::float8e4m3;
+using cinn::common::float8_e4m3fn;
 
 extern "C" {
 
@@ -289,9 +289,9 @@ cinn_pod_value_t::operator cinn::common::bfloat16() const {
   CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::bfloat16>());
   return static_cast<cinn::common::bfloat16>(value_.v_float64);
 }
-cinn_pod_value_t::operator cinn::common::float8e4m3() const {
-  CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float8e4m3>());
-  return static_cast<cinn::common::float8e4m3>(value_.v_float64);
+cinn_pod_value_t::operator cinn::common::float8_e4m3fn() const {
+  CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float8_e4m3fn>());
+  return static_cast<cinn::common::float8_e4m3fn>(value_.v_float64);
 }
 cinn_pod_value_t::operator cinn::common::float16() const {
   CINN_CHECK_EQ(type_code_, ::cinn_type_code<cinn::common::float16>());
@@ -403,8 +403,8 @@ cinn_pod_value_t::cinn_pod_value_t(bfloat16 value)
     : type_code_(::cinn_type_code<bfloat16>()) {
   value_.v_float64 = value;
 }
-cinn_pod_value_t::cinn_pod_value_t(float8e4m3 value)
-    : type_code_(::cinn_type_code<float8e4m3>()) {
+cinn_pod_value_t::cinn_pod_value_t(float8_e4m3fn value)
+    : type_code_(::cinn_type_code<float8_e4m3fn>()) {
   value_.v_float64 = value;
 }
 cinn_pod_value_t::cinn_pod_value_t(float16 value)
@@ -428,7 +428,7 @@ cinn_pod_value_t::cinn_pod_value_t(const char* value)
 float cinn_pod_value_to_float(cinn_pod_value_t* value) { return *value; }
 double cinn_pod_value_to_double(cinn_pod_value_t* value) { return *value; }
 bfloat16 cinn_pod_value_to_bfloat16(cinn_pod_value_t* value) { return *value; }
-float8e4m3 cinn_pod_value_to_float8e4m3(cinn_pod_value_t* value) {
+float8_e4m3fn cinn_pod_value_to_float8e4m3(cinn_pod_value_t* value) {
   return *value;
 }
 float16 cinn_pod_value_to_float16(cinn_pod_value_t* value) { return *value; }
@@ -461,7 +461,7 @@ void float_to_cinn_pod_value(float v, cinn_pod_value_t* out) {
 void bfloat16_to_cinn_pod_value(bfloat16 v, cinn_pod_value_t* out) {
   *out = cinn_pod_value_t(v);
 }
-void float8e4m3_to_cinn_pod_value(float8e4m3 v, cinn_pod_value_t* out) {
+void float8e4m3_to_cinn_pod_value(float8_e4m3fn v, cinn_pod_value_t* out) {
   *out = cinn_pod_value_t(v);
 }
 void float16_to_cinn_pod_value(float16 v, cinn_pod_value_t* out) {
@@ -583,7 +583,7 @@ void* cinn_pod_value_t::data_addr() const {
     case ::cinn_type_code<uint64_t>():
       return (void*)&value_.v_int64;  // NOLINT
     case ::cinn_type_code<bfloat16>():
-    case ::cinn_type_code<float8e4m3>():
+    case ::cinn_type_code<float8_e4m3fn>():
     case ::cinn_type_code<float16>():
     case ::cinn_type_code<float>():
     case ::cinn_type_code<double>():
@@ -644,7 +644,7 @@ cinn_type_t cinn_type_of<bfloat16>() {
 }
 
 template <>
-cinn_type_t cinn_type_of<float8e4m3>() {
+cinn_type_t cinn_type_of<float8_e4m3fn>() {
   return cinn_float8e4m3_t();
 }
 
@@ -674,7 +674,7 @@ cinn_type_t cinn_type_of<bfloat16*>() {
   return cinn_bfloat16_t(1);
 }
 template <>
-cinn_type_t cinn_type_of<float8e4m3*>() {
+cinn_type_t cinn_type_of<float8_e4m3fn*>() {
   return cinn_float8e4m3_t(1);
 }
 template <>

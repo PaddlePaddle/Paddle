@@ -18,8 +18,8 @@
 #include <random>
 #include <vector>
 
-#include "paddle/cinn/common/bfloat16.h"
-#include "paddle/cinn/common/float16.h"
+#include "paddle/common/bfloat16.h"
+#include "paddle/common/float16.h"
 
 namespace cinn {
 namespace common {

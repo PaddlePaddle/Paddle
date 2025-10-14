@@ -3107,7 +3107,10 @@ def max(
                     'int32',
                     'int64',
                     'float8_e4m3fn',
+                    'float8_e4m3fnuz',
                     'float8_e5m2',
+                    'float8_e5m2fnuz',
+                    'float8_e8m0fnu',
                 ],
                 'max',
             )

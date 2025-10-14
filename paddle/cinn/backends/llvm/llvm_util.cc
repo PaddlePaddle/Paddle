@@ -25,7 +25,7 @@ namespace backends {
 
 using cinn::common::bfloat16;
 using cinn::common::float16;
-using cinn::common::float8e4m3;
+using cinn::common::float8_e4m3fn;
 
 llvm::Type *CinnTypeToLLVMType(cinn::common::Type type,
                                llvm::Module *m,
@@ -90,7 +90,7 @@ llvm::Type *CinnTypeToLLVMType(cinn::common::Type type,
     ir_type = bf16;
   } else if (type.is_float16()) {
     ir_type = f16;
-  } else if (type.is_float8e4m3()) {
+  } else if (type.is_float8_e4m3fn()) {
     PADDLE_ENFORCE_NOT_NULL(
         ir_type,
         ::common::errors::InvalidArgument(
@@ -150,7 +150,7 @@ __(bfloat16)
 __(float16)
 __(float)
 __(double)
-__(float8e4m3)
+__(float8_e4m3fn)
 __(cinn_buffer_t)
 __(cinn_buffer_t *)
 __(cinn_pod_value_t *)

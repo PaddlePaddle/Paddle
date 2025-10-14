@@ -23,7 +23,10 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e4m3fnuz.h"
 #include "paddle/phi/common/float8_e5m2.h"
+#include "paddle/phi/common/float8_e5m2fnuz.h"
+#include "paddle/phi/common/float8_e8m0fnu.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/utils/test_macros.h"
 
@@ -68,7 +71,12 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(                                                    \
       callback, ::phi::dtype::complex<double>, COMPLEX128);                   \
   _ForEachDataTypeHelper_(callback, ::phi::dtype::float8_e4m3fn, FP8_E4M3FN); \
-  _ForEachDataTypeHelper_(callback, ::phi::dtype::float8_e5m2, FP8_E5M2);
+  _ForEachDataTypeHelper_(                                                    \
+      callback, ::phi::dtype::float8_e4m3fnuz, FP8_E4M3FNUZ);                 \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::float8_e5m2, FP8_E5M2);     \
+  _ForEachDataTypeHelper_(                                                    \
+      callback, ::phi::dtype::float8_e5m2fnuz, FP8_E5M2FNUZ);                 \
+  _ForEachDataTypeHelper_(callback, ::phi::dtype::float8_e8m0fnu, FP8_E8M0FNU);
 
 #define _ForEachIntDataType_(callback)               \
   _ForEachDataTypeHelper_(callback, int, INT32);     \

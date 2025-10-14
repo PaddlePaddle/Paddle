@@ -18,14 +18,15 @@
 #include <memory>
 #include <string>
 
-#include "paddle/cinn/common/bfloat16.h"
-#include "paddle/cinn/common/float16.h"
-#include "paddle/cinn/common/float16_bfloat16_utils.h"
-#include "paddle/cinn/common/float8e4m3.h"
-#include "paddle/cinn/common/float8e4m3_utils.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/common/bfloat16.h"
+#include "paddle/common/bfloat16.inc.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/float16.h"
+#include "paddle/common/float16.inc.h"
+#include "paddle/common/float8_e4m3fn.h"
+#include "paddle/common/float8_e4m3fn.inc.h"
 //! Much of the concepts are borrowed from Halide project.
 
 namespace cinn {
@@ -91,7 +92,7 @@ struct Type {
   CINN_NODISCARD bool is_scalar() const;
   CINN_NODISCARD bool is_float(
       int bits = -1, specific_type_t st = specific_type_t::None) const;
-  CINN_NODISCARD bool is_float8e4m3() const;
+  CINN_NODISCARD bool is_float8_e4m3fn() const;
   CINN_NODISCARD bool is_float8e5m2() const;
   CINN_NODISCARD bool is_float16() const;
   CINN_NODISCARD bool is_bfloat16() const;
@@ -234,7 +235,7 @@ Type type_of();
 template <> inline Type type_of<void>() { return Void(); }
 
 template <> inline Type type_of<bfloat16>() { return BF16(); }
-template <> inline Type type_of<float8e4m3>() { return F8E4M3(); }
+template <> inline Type type_of<float8_e4m3fn>() { return F8E4M3(); }
 template <> inline Type type_of<float16>() { return F16(); }
 template <> inline Type type_of<float>() { return F32(); }
 template <> inline Type type_of<double>() { return F64(); }
@@ -323,8 +324,8 @@ inline Type type_of<double*>() {
   return x;
 }
 template <>
-inline Type type_of<float8e4m3*>() {
-  Type x = type_of<float8e4m3>();
+inline Type type_of<float8_e4m3fn*>() {
+  Type x = type_of<float8_e4m3fn>();
   x.set_cpp_handle();
   return x;
 }

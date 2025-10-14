@@ -88,7 +88,10 @@ from .framework.dtype import (
     finfo,
     float,
     float8_e4m3fn,
+    float8_e4m3fnuz,
     float8_e5m2,
+    float8_e5m2fnuz,
+    float8_e8m0fnu,
     float16,
     float32,
     float64,
@@ -778,6 +781,7 @@ if is_compiled_with_cinn():
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
     if os.path.exists(cuh_file):
+        runtime_include_dir = f"{runtime_include_dir}:{package_dir}/include"
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
     data_file_path = resources.files('paddle.cinn_config')
@@ -987,7 +991,10 @@ __all__ = [
     'int32',
     'int64',
     'float8_e4m3fn',
+    'float8_e4m3fnuz',
     'float8_e5m2',
+    'float8_e5m2fnuz',
+    'float8_e8m0fnu',
     'half',
     'float16',
     'float',
