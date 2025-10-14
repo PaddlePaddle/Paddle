@@ -310,8 +310,11 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                  if (dev_count == 0) {
                    LOG(ERROR) << "Cannot use " << device_type
                               << " because there is no " << device_type
-                              << " detected on your "
-                                 "machine.";
+                              << " detected on your machine."
+                              << "Please check your environment variables and device configuration. "
+                              << "Device type: " << device_type
+                              << ", CUDA_VISIBLE_DEVICES: " << std::getenv("CUDA_VISIBLE_DEVICES")
+                              << ", CUDA version: " << phi::DeviceManager::GetCudaVersion();;
                    PADDLE_THROW(::common::errors::InvalidArgument(
                        "use wrong place, Please check."));
                  } else {
