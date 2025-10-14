@@ -1004,10 +1004,10 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             return False
         if is_dim_shard(out_dims_mapping[-1]):
             return False
-        if is_valid_list_index(out_dims_mapping, -2) and is_dim_shard(
-            out_dims_mapping[-2]
-        ):
-            return False
+        # Other dimensions must be replicate except the batch dimension
+        for mapping in out_dims_mapping[1:-1]:
+            if is_dim_shard(mapping):
+                return False
         return True
 
     def is_auto_compatible(self, dist_op):
