@@ -29,7 +29,7 @@ namespace paddle {
   (a) += (b);
 
 #if defined(__i386__) || defined(__x86_64__) || defined(__vax__)
-#define SET(n) (*reinterpret_cast<MD5_u32 *>(&ptr[(n)*4]))
+#define SET(n) (*reinterpret_cast<const MD5_u32 *>(&ptr[(n)*4]))
 #define GET(n) SET(n)
 #else
 #define SET(n)                                                              \
