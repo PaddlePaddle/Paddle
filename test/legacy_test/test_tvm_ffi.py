@@ -73,6 +73,9 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
     def test_c_dlpack_exchange_api_gpu(self):
         if not paddle.is_compiled_with_cuda():
             return
+        if paddle.is_compiled_with_rocm():
+            # Skip on DCU because CUDA_HOME is not available
+            return
         if platform.system() == "Windows":
             # Temporary skip this test case on windows because compile bug on TVM FFI
             return
