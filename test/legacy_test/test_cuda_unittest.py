@@ -372,7 +372,12 @@ class TestNvtx(unittest.TestCase):
             return
         if not paddle.device.get_device().startswith("gpu"):
             return
-
+        if (
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.is_compiled_with_rocm():
+            reason = "Skip for nvtx function in dcu is not correct"
+            print(reason)
+            return
         try:
             paddle.cuda.nvtx.range_push("test_push")
             paddle.cuda.nvtx.range_pop()
