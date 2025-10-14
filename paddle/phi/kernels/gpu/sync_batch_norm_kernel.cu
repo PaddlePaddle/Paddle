@@ -119,8 +119,9 @@ void SyncBatchNormKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     int64_t reserve_space_size = 0;
+    phi::DenseTensor tmp_reserve_space;
     if (reserve_space == nullptr) {
-      reserve_space = new DenseTensor();
+      reserve_space = &tmp_reserve_space;
     }
     reserve_space->Resize({reserve_space_size});
     dev_ctx.template Alloc<T>(reserve_space);

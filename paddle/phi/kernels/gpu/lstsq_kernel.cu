@@ -83,28 +83,28 @@ void LstsqKernel(const Context& dev_ctx,
 
   T rcond = rcond_scalar.to<T>();
 
-  DenseTensor* new_x = new DenseTensor();
-  new_x->Resize(common::make_ddim({batch_count, m, n}));
-  dev_ctx.template Alloc<T>(new_x);
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, new_x);
+  DenseTensor new_x;
+  new_x.Resize(common::make_ddim({batch_count, m, n}));
+  dev_ctx.template Alloc<T>(&new_x);
+  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
-  DenseTensor* new_y = new DenseTensor();
-  new_y->Resize(common::make_ddim({batch_count, m, nrhs}));
-  dev_ctx.template Alloc<T>(new_y);
-  phi::Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, new_y);
+  DenseTensor new_y;
+  new_y.Resize(common::make_ddim({batch_count, m, nrhs}));
+  dev_ctx.template Alloc<T>(&new_y);
+  phi::Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, &new_y);
 
   // Prepare tau
   auto tau_dims_vec = common::vectorize<int>(x_dims);
   tau_dims_vec.pop_back();
   tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
 
-  DenseTensor* tau = new DenseTensor();
-  tau->Resize(common::make_ddim(tau_dims_vec));
-  auto tau_data = dev_ctx.template Alloc<T>(tau);
+  DenseTensor tau;
+  tau.Resize(common::make_ddim(tau_dims_vec));
+  auto tau_data = dev_ctx.template Alloc<T>(&tau);
 
   if (m >= n) {
-    DenseTensor tmp_x = phi::TransposeLast2Dim<T>(dev_ctx, *new_x);
-    DenseTensor tmp_y = phi::TransposeLast2Dim<T>(dev_ctx, *new_y);
+    DenseTensor tmp_x = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
+    DenseTensor tmp_y = phi::TransposeLast2Dim<T>(dev_ctx, new_y);
     auto x_data = tmp_x.data<T>();
     auto y_data = tmp_y.data<T>();
 
@@ -130,10 +130,10 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor trans_r = phi::TransposeLast2Dim<T>(dev_ctx, tmp_x);
     DenseTensor slice_r =
         phi::funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
-    DenseTensor* res_r = new DenseTensor();
-    res_r->Resize(common::make_ddim({batch_count, min_mn, min_mn}));
-    dev_ctx.template Alloc<T>(res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, res_r);
+    DenseTensor res_r;
+    res_r.Resize(common::make_ddim({batch_count, min_mn, min_mn}));
+    dev_ctx.template Alloc<T>(&res_r);
+    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
     DenseTensor trans_y = phi::TransposeLast2Dim<T>(dev_ctx, tmp_y);
     DenseTensor slice_y =
@@ -141,27 +141,27 @@ void LstsqKernel(const Context& dev_ctx,
 
     // Step 3, solve R X = Y
     phi::TriangularSolveKernel<T, Context>(
-        dev_ctx, *res_r, slice_y, true, false, false, solution);
+        dev_ctx, res_r, slice_y, true, false, false, solution);
 
   } else {
-    auto x_data = dev_ctx.template Alloc<T>(new_x);
-    auto y_data = dev_ctx.template Alloc<T>(new_y);
+    auto x_data = dev_ctx.template Alloc<T>(&new_x);
+    auto y_data = dev_ctx.template Alloc<T>(&new_y);
 
     // step 1, compute QR factorization using geqrf
     BatchedGeqrf<Context, T>(
         dev_ctx, batch_count, n, m, x_data, n, tau_data, x_stride, tau_stride);
 
     // Step 2, solve R^H Z = Y
-    DenseTensor trans_r = phi::TransposeLast2Dim<T>(dev_ctx, *new_x);
+    DenseTensor trans_r = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
     DenseTensor slice_r =
         phi::funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
-    DenseTensor* res_r = new DenseTensor();
-    res_r->Resize(common::make_ddim({batch_count, min_mn, min_mn}));
-    dev_ctx.template Alloc<T>(res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, res_r);
+    DenseTensor res_r;
+    res_r.Resize(common::make_ddim({batch_count, min_mn, min_mn}));
+    dev_ctx.template Alloc<T>(&res_r);
+    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
     phi::TriangularSolveKernel<T, Context>(
-        dev_ctx, *res_r, *new_y, true, true, false, solution);
+        dev_ctx, res_r, new_y, true, true, false, solution);
 
     // Step 3, X <- Q Z
     BatchedOrgqr<Context, T>(dev_ctx,
@@ -175,7 +175,7 @@ void LstsqKernel(const Context& dev_ctx,
                              x_stride,
                              tau_stride);
 
-    DenseTensor trans_q = phi::TransposeLast2Dim<T>(dev_ctx, *new_x);
+    DenseTensor trans_q = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
     DenseTensor slice_q =
         phi::funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
     DenseTensor solu_tensor =
