@@ -1371,6 +1371,15 @@ class Stream:
         else:
             return ctypes.c_void_p(self.stream_base.raw_stream)
 
+    def __cuda_stream__(self):
+        """
+        CUDA Stream protocol described at
+        https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol
+
+        Returns a tuple of (protocol_version, cudaStream_t)
+        """
+        return (0, self.stream_base.raw_stream)
+
     def __eq__(self, o: Stream | None) -> bool:
         if isinstance(o, Stream):
             return super().__eq__(o)
@@ -1381,15 +1390,6 @@ class Stream:
 
     def __repr__(self) -> str:
         return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
-
-    def __cuda_stream__(self):
-        """
-        CUDA Stream protocol described at
-        https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol
-
-        Returns a tuple of (protocol_version, cudaStream_t)
-        """
-        return (0, self.stream_base.raw_stream)
 
 
 def _device_to_paddle(
