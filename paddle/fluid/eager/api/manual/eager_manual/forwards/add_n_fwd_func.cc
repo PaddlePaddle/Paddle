@@ -63,10 +63,12 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*>* x_autograd_meta = &x_autograd_meta_vec;
   // Forward API Call
-  static int64_t call_count = 0;
-  call_count++;
-  const std::string& unique_api_name =
-      egr::GenerateUniqueApiName("add_n", call_count);
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("add_n", call_count);
+  }
   VLOG(3) << "\n"
           << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto api_result = paddle::experimental::add_n(x);

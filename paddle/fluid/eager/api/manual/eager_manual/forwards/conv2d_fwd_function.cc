@@ -111,10 +111,12 @@ paddle::Tensor conv2d_ad_func(
   egr::AutogradMeta* filter_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
-  static int64_t call_count = 0;
-  call_count++;
-  const std::string& unique_api_name =
-      egr::GenerateUniqueApiName("conv2d", call_count);
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("conv2d", call_count);
+  }
   VLOG(3) << "\n"
           << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto api_result = paddle::experimental::conv2d(input,

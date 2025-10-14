@@ -139,10 +139,13 @@ paddle::Tensor multiply_ad_func(
     input_str += input_y_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
-  static int64_t call_count = 0;
-  call_count++;
-  const std::string& unique_api_name =
-      egr::GenerateUniqueApiName("multiply", call_count);
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("multiply", call_count);
+  }
   VLOG(3) << "\n"
           << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // Forward API Call
@@ -364,10 +367,12 @@ paddle::Tensor& multiply__ad_func(
   }
 
   // Forward API Call
-  static int64_t call_count = 0;
-  call_count++;
-  const std::string& unique_api_name =
-      egr::GenerateUniqueApiName("multiply_", call_count);
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("multiply_", call_count);
+  }
   VLOG(3) << "\n"
           << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto& api_result = paddle::experimental::multiply_(x, y);
