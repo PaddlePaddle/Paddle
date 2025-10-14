@@ -28,8 +28,8 @@ op_patches:
         type : pir::DoubleAttribute
         data : 0.0
   - op_name : pd_op.logit
-      actions:
-        - action : modify_attr
-          object : eps
-          type : pir::DoubleAttribute
-          data : 1e-6
+    actions:
+      - action : modify_attr
+        object : eps
+        type : pir::DoubleAttribute
+        data : 1e-6
