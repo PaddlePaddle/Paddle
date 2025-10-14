@@ -28,10 +28,13 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
+
+#include "paddle/utils/md5.h"
 namespace egr {
 
 void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
@@ -805,6 +808,54 @@ std::string EagerUtils::GradNodeStr(const paddle::Tensor& t) {
     return "None";
   }
 }
+std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
+  if (!t.defined() || !t.has_allocation() || !VLOG_IS_ON(6)) {
+    return "None";
+  }
+  // only data
+  phi::funcs::TensorFormatter formatter;
+  std::stringstream data_stream;
+  phi::DenseTensor* dense_tensor_ptr = nullptr;
+  if (t.is_dist_tensor()) {
+    auto dist_t =
+        std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+    dense_tensor_ptr = dist_t->unsafe_mutable_value();
+  } else {
+    dense_tensor_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+  }
+  auto& dense_tensor = *(dense_tensor_ptr);
+  auto dtype = dense_tensor.dtype();
+  int precision = 15;
+
+  if (dtype == phi::DataType::FLOAT32) {
+    formatter.FormatData<float>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT64) {
+    formatter.FormatData<double>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::INT32) {
+    formatter.FormatData<int>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::INT64) {
+    formatter.FormatData<int64_t>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::BOOL) {
+    formatter.FormatData<bool>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT16) {
+    formatter.FormatData<phi::float16>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::BFLOAT16) {
+    formatter.FormatData<phi::bfloat16>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
+    formatter.FormatData<phi::float8_e4m3fn>(
+        dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT8_E5M2) {
+    formatter.FormatData<phi::float8_e5m2>(
+        dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::COMPLEX64) {
+    formatter.FormatData<phi::complex64>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::COMPLEX128) {
+    formatter.FormatData<phi::complex128>(dense_tensor, data_stream, precision);
+  }
+  std::cout << data_stream.str() << std::endl;
+  std::string checksum = paddle::md5(data_stream.str());
+  return checksum;
+}
 /**
  * Print Input Output (level 0 means least info, level 2 means most info)
  * **/
@@ -930,7 +981,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
   } else if (VLOG_IS_ON(6)) {
     const char* TENSOR_PRINT_TEMPLATE =
         "{\n\tName: %s,\n\tInitialized: "
-        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d,"
+        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d,\n\tMD5_Checksum: %s,"
         "\n\tTensorInfo: { %s \n\t},\n\tADInfo:{ %s \n\t}\n}";
     auto* ad_meta = nullable_autograd_meta(t);
     if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -947,6 +998,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                      t.has_allocation(),
                                      &t,
                                      t.impl(),
+                                     GetTensorMD5Checksum(t),
                                      indent_after_newlines(tensor_info_str),
                                      indent_after_newlines(ad_info_str));
     } else {
@@ -955,6 +1007,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                      t.has_allocation(),
                                      &t,
                                      t.impl(),
+                                     GetTensorMD5Checksum(t),
                                      indent_after_newlines(tensor_info_str),
                                      "None");
     }
