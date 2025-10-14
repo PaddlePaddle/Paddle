@@ -288,7 +288,7 @@ void DenseTensorIteratorBase::populate_operands(
   for (size_t idx = 0; idx < config.tensors_.size(); idx++) {
     auto& tensor = config.tensors_[idx];
     operands_.emplace_back(std::move(const_cast<DenseTensor*>(tensor)));
-    if (idx < config.num_outputs_) {
+    if (idx < static_cast<size_t>(config.num_outputs_)) {
       operands_[idx].is_output = true;
     }
   }

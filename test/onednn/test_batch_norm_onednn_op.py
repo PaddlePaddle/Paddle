@@ -19,20 +19,169 @@ import numpy as np
 from onednn_op_test import check_if_onednn_batchnorm_primitives_exist_in_bwd
 from op_test import _set_use_system_allocator, pir_executor_guard
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_batch_norm_op import TestBatchNormOpInference
-from test_batch_norm_op_deprecated import (
-    TestBatchNormOpTraining,
-    _reference_grad,
-    _reference_training,
-)
 
 from paddle.base import core
 
 _set_use_system_allocator(True)
 
 
-class TestONEDNNBatchNormOpTraining(TestBatchNormOpTraining):
+def _cal_mean_variance(x, epsilon, data_format):
+    assert data_format in ['NCHW', 'NHWC']
+    x_shape = x.shape
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
+    x_square = x * x
+    axis = (0, 2, 3) if data_format == 'NCHW' else (0, 1, 2)
+    C = x.shape[1] if data_format == 'NCHW' else x.shape[-1]
+    x_square_sum = np.sum(x_square, axis)
+    x_sum = np.sum(x, axis=axis)
+    element_count = np.size(x) / C
+    mean = x_sum / element_count
+    var = x_square_sum / element_count - mean * mean
+    return mean, var
+
+
+def _reference_training(x, scale, offset, epsilon, data_format):
+    x_shape = x.shape
+
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
+
+    if data_format == "NCHW":
+        n, c, h, w = x.shape
+        x_square = x * x
+        x_square_sum = np.sum(x_square, (0, 2, 3))
+        x_sum = np.sum(x, axis=(0, 2, 3))
+        element_count = np.size(x) / int(np.shape(x)[1])
+        mean = x_sum / element_count
+        var = x_square_sum / element_count - mean * mean
+        mean_tile = np.reshape(mean, (1, c, 1, 1))
+        mean_tile = np.tile(mean_tile, (n, 1, h, w))
+        var_tile = np.reshape(var, (1, c, 1, 1))
+        var_tile = np.tile(var_tile, (n, 1, h, w))
+        normalized = (x - mean_tile) / np.sqrt(var_tile + epsilon)
+        scale_tile = np.reshape(scale, (1, c, 1, 1))
+        scale_tile = np.tile(scale_tile, (n, 1, h, w))
+        offset_tile = np.reshape(offset, (1, c, 1, 1))
+        offset_tile = np.reshape(offset_tile, (1, c, 1, 1))
+        y = normalized * scale_tile + offset_tile
+    elif data_format == "NHWC":
+        x_square = x * x
+        x_square_sum = np.sum(x_square, (0, 1, 2))
+        x_sum = np.sum(x, axis=(0, 1, 2))
+        element_count = np.size(x) / int(np.shape(x)[-1])
+        mean = x_sum / element_count
+        var = x_square_sum / element_count - mean * mean
+        normalized = (x - mean) / np.sqrt(var + epsilon)
+        y = normalized * scale + offset
+    else:
+        raise ValueError("Unknown data order.")
+
+    if len(x_shape) == 3:
+        y = np.reshape(y, x_shape)
+    return y, mean, var
+
+
+def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
+    # Use the following formulas to calculate gradients:
+    # grad_scale =
+    #   sum(grad_y * (x - mean)) * rsqrt(var + epsilon)
+    #
+    # grad_offset = sum(output_y)
+    #
+    # x_grad =
+    #   1/N * scale * rsqrt(var + epsilon) * (N * grad_y - sum(grad_y) -
+    #   (x - mean) * sum(grad_y * (x - mean)) / (var + epsilon))
+
+    # transfer from (N, C, H, W) to (N, H, W, C) to simplify computation
+    if data_format != "NCHW" and data_format != "NHWC":
+        raise ValueError("Unknown data order.")
+
+    x_shape = x.shape
+    if len(x_shape) == 3:
+        if data_format == "NCHW":  # NCL -> NCL1
+            x = np.reshape(x, (x_shape[0], x_shape[1], x_shape[2], 1))
+            y_grad = np.reshape(y_grad, (x_shape[0], x_shape[1], x_shape[2], 1))
+        else:  # NLC -> NL1C
+            x = np.reshape(x, (x_shape[0], x_shape[1], 1, x_shape[2]))
+            y_grad = np.reshape(y_grad, (x_shape[0], x_shape[1], 1, x_shape[2]))
+
+    if data_format == "NCHW":
+        x = np.transpose(x, (0, 2, 3, 1))
+        y_grad = np.transpose(y_grad, (0, 2, 3, 1))
+
+    x_grad = (
+        scale
+        * (
+            y_grad
+            - np.mean(y_grad, axis=(0, 1, 2))
+            - (x - mean)
+            * np.mean(y_grad * (x - mean), axis=(0, 1, 2))
+            / (var + epsilon)
+        )
+        / np.sqrt(var + epsilon)
+    )
+    grad_scale = np.sum(
+        y_grad * (x - mean) / np.sqrt(var + epsilon), axis=(0, 1, 2)
+    )
+    grad_offset = np.sum(y_grad, axis=(0, 1, 2))
+
+    # transfer back to N, C, H, W
+    if data_format == "NCHW":
+        x_grad = np.transpose(x_grad, (0, 3, 1, 2))
+        x = np.transpose(x, (0, 3, 1, 2))
+        y_grad = np.transpose(y_grad, (0, 3, 1, 2))
+
+    if len(x_shape) == 3:
+        x_grad = np.reshape(x_grad, x_shape)
+
+    return x_grad, grad_scale, grad_offset
+
+
+class TestONEDNNBatchNormOpTraining(unittest.TestCase):
+    def setUp(self):
+        self.use_onednn = False
+        self.fuse_with_relu = False
+        self.data_formats = ["NCHW", "NHWC"]
+        self.momentum = 0.9
+        self.use_momentum_variable = False
+        self.epsilon = 0.00001
+        self.init_kernel_type()
+        self.init_test_case()
+
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set()
+        self.fetch_list = [
+            'y',
+            'mean',
+            'variance',
+            'saved_mean',
+            'saved_variance',
+            'x@GRAD',
+            'scale@GRAD',
+            'bias@GRAD',
+        ]
+
+    def set_mean_variance(self, scale_shape, x, data_layout):
+        mean, variance = _cal_mean_variance(x, self.epsilon, data_layout)
+        mean_pre = np.zeros(scale_shape).astype(np.float32)
+        variance_pre = np.ones(scale_shape).astype(np.float32)
+        # computing global mean/variance for one step
+        if self.use_global_stats:
+            mom = self.momentum
+            mean = mean * (1.0 - mom) + mom * mean_pre
+            variance = variance * (1.0 - mom) + mom * variance_pre
+        return mean, variance
+
     def init_kernel_type(self):
         self.use_onednn = True
         self.data_formats = ["NCHW"]

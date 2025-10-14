@@ -15,11 +15,12 @@
 from __future__ import annotations
 
 import copy
+import gc
 import json
 import math
 import os
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -31,7 +32,8 @@ from paddle.distributed.fleet.utils.log_util import logger
 from ..aoa.aoa_engine import (
     AOAEngine,
 )
-from .metadata import LocalTensorIndex, LocalTensorMetadata
+from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
+from .metadata_manager import MetadataManager
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
@@ -39,6 +41,7 @@ from .sharded_weight import (
 )
 from .utils import (
     assign_sharded_slice,
+    build_global_state_shard_info,
     build_shard_desc,
     check_unique_id,
     compute_local_shape_and_global_offset,
@@ -46,8 +49,9 @@ from .utils import (
     flatten_state_dict,
     get_max_id,
     is_sharded_state_dict,
-    merge_shard_info_list,
+    merge_state_dict_metadata,
     minimal_nd_slice,
+    ravel_index,
 )
 
 if TYPE_CHECKING:
@@ -76,16 +80,19 @@ class ReadItem:
     tensor_name: str
     src_global_offset: tuple[int]
     dst_global_offset: tuple[int] | None
-    dst_rank: list[int]
+    dst_rank: tuple[int]
     src_rank: int
     dst_local_offset: tuple[int]
     src_local_offset: tuple[int]
     slice_shape: tuple[int]
     file_name: str
     dtype: str
+    comm_group: Group | None = None
 
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
+
+_metadata_manager = MetadataManager()
 
 
 def get_checkpoint_files(path, use_cache=True, unique_id=None):
@@ -140,9 +147,6 @@ def get_rank_to_files(
 
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
-            assert local_tensor_index not in tensor_key_list, (
-                f"Duplicate tensor_key:{local_tensor_index} found. Check whether the metadata."
-            )
             tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict_param_names:
                 necessary_files.append(file_name)
@@ -544,9 +548,6 @@ def get_read_items(
         cur_chunk_metadata = LocalTensorMetadata(
             global_offset, local_shape, dtype, global_shape
         )
-        assert tensor_name in storage_state_dict_metadata, (
-            f"tensor_key:{tensor_name} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
-        )
 
         for storage_local_tensor_metadata in storage_state_dict_metadata[
             tensor_name
@@ -568,7 +569,7 @@ def get_read_items(
                         storage_local_tensor_metadata.global_offset
                     ),
                     dst_global_offset=global_offset,
-                    dst_rank=[paddle.distributed.get_rank()],
+                    dst_rank=(paddle.distributed.get_rank(),),
                     src_rank=src_rank,
                     dst_local_offset=tuple(cur_offsets),
                     src_local_offset=tuple(storage_offsets),
@@ -655,8 +656,10 @@ def _unflatten_shards(flat_shards):
 
 def _handle_aoa(
     load_dict,
+    destination_state_shard_info,
     path,
     process_group,
+    worker_groups,
     coordinator_rank,
     unique_id,
     offload,
@@ -674,30 +677,12 @@ def _handle_aoa(
                 local_shape=tuple(meta.local_shape),
                 global_shape=tuple(meta.global_shape),
                 global_offset=tuple(meta.global_offset),
+                dtype=meta.dtype,
             )
             for meta in local_tensor_metas
         ]
         for param_name, local_tensor_metas in state_dict_metadata.items()
     }
-    destination_state_shard_info = defaultdict(list)
-    for key, val in load_dict.items():
-        desc = build_shard_desc(val)
-        destination_state_shard_info[key].append(desc)
-
-    use_dist = paddle.distributed.get_world_size() > 1
-
-    if use_dist:
-        dst_sharded_shard_info_list = []
-        paddle.distributed.all_gather_object(
-            dst_sharded_shard_info_list,
-            dict(destination_state_shard_info),
-            process_group,
-        )
-        destination_state_shard_info = merge_shard_info_list(
-            dst_sharded_shard_info_list
-        )
-    else:
-        destination_state_shard_info = dict(destination_state_shard_info)
 
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
@@ -709,6 +694,7 @@ def _handle_aoa(
     dst_to_src_desc_mapping = {}
     new_load_dict = {}
     src_desc_to_postprocess_list = {}
+    force_gc = []
 
     for param_name, tgt_shard in load_dict.items():
         tgt_desc = build_shard_desc(tgt_shard)
@@ -737,6 +723,7 @@ def _handle_aoa(
                 local_tensor = paddle.empty(
                     src_desc.local_shape, dtype=tgt_shard.local_tensor.dtype
                 )
+                force_gc.append(local_tensor)
                 if local_tensor.place != tgt_shard.local_tensor.place:
                     local_tensor = local_tensor.to(tgt_shard.local_tensor.place)
                 new_load_dict[idx] = ShardedWeight(
@@ -750,12 +737,13 @@ def _handle_aoa(
                 dst_to_src_desc_mapping[dst_desc] = src_desc
 
     load_state_dict_impl(
-        new_load_dict,
-        path,
-        process_group,
-        coordinator_rank,
-        unique_id,
-        offload,
+        state_dict=new_load_dict,
+        path=path,
+        process_group=process_group,
+        coordinator_rank=coordinator_rank,
+        unique_id=unique_id,
+        offload=offload,
+        worker_groups=worker_groups,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -766,6 +754,11 @@ def _handle_aoa(
             src_desc, src_tensor, dst_desc, dst_tensor, postprocess_list
         )
 
+    for tensor in force_gc:
+        # force GC
+        tensor._clear()
+        del tensor
+
 
 def _finish_unflatten(flat_shards, padding_info):
     for key, info in padding_info.items():
@@ -774,6 +767,9 @@ def _finish_unflatten(flat_shards, padding_info):
         start, end = info["slice_range"]
         src_flat = src_tensor.flatten()
         paddle.assign(src_flat[start:end], flat_shard.local_tensor)
+        # force GC
+        src_flat._clear()
+        src_tensor._clear()
     for key, flat_shard in flat_shards.items():
         flat_shard.local_tensor.flatten_()
 
@@ -788,6 +784,7 @@ def load_state_dict(
     mw_name_compatibility: bool = True,
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
+    worker_groups: list[Group] | None = None,
 ) -> None:
     r"""
     Load the state_dict inplace from a checkpoint path.
@@ -802,6 +799,7 @@ def load_state_dict(
         mw_name_compatibility(bool): Enable name compatibility between dynamic and static graph semi-automatic parallel. Default is True.
         aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
         safetensors(bool): Whether to use safetensors format. Default is False.
+        worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the global group (all cards) is used.
     Example:
         .. code-block:: python
 
@@ -826,6 +824,15 @@ def load_state_dict(
             [24, 25, 26, 27, 28, 29, 30, 31]])}
             >>> # doctest: -SKIP
     """
+    use_dist = paddle.distributed.get_world_size() > 1
+
+    if use_dist and process_group is None and not is_initialized():
+        # Init the default global process group
+        paddle.distributed.init_parallel_env()
+
+    if use_dist:
+        paddle.distributed.barrier(process_group)
+
     if not is_sharded_state_dict(state_dict):
         load_state_dict_impl(
             state_dict,
@@ -836,10 +843,10 @@ def load_state_dict(
             offload,
             mw_name_compatibility,
             safetensors,
+            worker_groups,
         )
         return
 
-    use_dist = paddle.distributed.get_world_size() > 1
     if not use_dist:
         load_dict = {}
         for key, val in state_dict.items():
@@ -847,16 +854,34 @@ def load_state_dict(
                 f"{key} is not replicated!"
             )
             load_dict[key] = val
-    else:
-        flat_shards, nonflat_shards = _split_flat_shards(state_dict)
-        load_dict, padding_info = _unflatten_shards(flat_shards)
-        load_dict.update(nonflat_shards)
+        load_state_dict_impl(
+            load_dict,
+            path,
+            process_group,
+            coordinator_rank,
+            unique_id,
+            offload,
+            mw_name_compatibility,
+            safetensors,
+            worker_groups,
+        )
+        return
+
+    destination_state_shard_info = build_global_state_shard_info(
+        state_dict, process_group
+    )
+
+    flat_shards, nonflat_shards = _split_flat_shards(state_dict)
+    load_dict, padding_info = _unflatten_shards(flat_shards)
+    load_dict.update(nonflat_shards)
 
     if aoa_config is not None:
         _handle_aoa(
             load_dict,
+            destination_state_shard_info,
             path,
             process_group,
+            worker_groups,
             coordinator_rank,
             unique_id,
             offload,
@@ -872,10 +897,223 @@ def load_state_dict(
             offload,
             mw_name_compatibility,
             safetensors,
+            worker_groups,
+        )
+    _finish_unflatten(flat_shards, padding_info)
+
+    global _metadata_manager
+    _metadata_manager.clear()
+    gc.collect()
+
+
+def restore_unflattened_state_dict(
+    source_state_dict: dict[str, dict[str, Tensor]],
+    process_group,
+    worker_groups,
+):
+    global _metadata_manager
+    use_dist = paddle.distributed.get_world_size() > 1
+
+    flattened_tensors = {}
+    already_unflattened_tensors = {}
+    for file_name, state_dict in source_state_dict.items():
+        for tensor_name, tensor in state_dict.items():
+            key = (tensor_name, file_name)
+            meta = _metadata_manager.local_tensor_metadata[key]
+            if meta.is_flattened:
+                flattened_tensors[key] = tensor
+            else:
+                already_unflattened_tensors[key] = tensor
+
+    direct_reshape_tensors = {}
+    direct_reshape_metas = {}
+    reshard_needed_tensors = {}
+
+    reshard_target_infos = {}
+
+    for key, local_tensor in flattened_tensors.items():
+        meta = _metadata_manager.local_tensor_metadata[key]
+
+        flat_start, flat_end = meta.flattened_range
+        slices, _, _ = minimal_nd_slice(meta.local_shape, flat_start, flat_end)
+
+        unflattened_local_shape = tuple(e - s for s, e in slices)
+        unflattened_global_offset = tuple(
+            o + s[0] for o, s in zip(meta.global_offset, slices)
+        )
+        numel_in_slice = math.prod(unflattened_local_shape)
+
+        unflattened_meta = LocalTensorMetadata(
+            local_shape=unflattened_local_shape,
+            global_shape=meta.global_shape,
+            dtype=meta.dtype,
+            global_offset=unflattened_global_offset,
+            is_flattened=False,
+            flattened_range=None,
         )
 
+        if numel_in_slice == (flat_end - flat_start):
+            direct_reshape_tensors[key] = local_tensor.reshape_(
+                unflattened_local_shape
+            )
+            direct_reshape_metas[key] = unflattened_meta
+        else:
+            reshard_needed_tensors[key] = local_tensor
+            reshard_target_infos[key] = (
+                numel_in_slice,
+                slices,
+                unflattened_meta,
+            )
+
+    resharded_tensors = {}
+    force_gc = []
+
+    source_state_dict_for_reshard = defaultdict(dict)
+    source_local_tensor_meta = defaultdict(list)
+    source_storage_meta = {}
+    destination_sharded_state_dict = {}
+    name_mapping = {}
+
+    for key, local_tensor in reshard_needed_tensors.items():
+        tensor_name, file_name = key
+        meta = _metadata_manager.local_tensor_metadata[key]
+        numel, slices, unflattened_meta = reshard_target_infos[key]
+        tensor_name_expand = f"{tensor_name}.global_offset.{meta.global_offset}"
+
+        flat_start, flat_end = meta.flattened_range
+        source_state_dict_for_reshard[file_name][tensor_name_expand] = (
+            local_tensor
+        )
+        source_local_tensor_meta[tensor_name_expand].append(
+            LocalTensorMetadata(
+                local_shape=(flat_end - flat_start,),
+                global_shape=(math.prod(meta.local_shape),),
+                dtype=meta.dtype,
+                global_offset=(flat_start,),
+                is_flattened=False,
+            )
+        )
+        source_storage_meta[
+            LocalTensorIndex(
+                tensor_key=tensor_name_expand, global_offset=(flat_start,)
+            )
+        ] = file_name
+
+        tmp_target_tensor = paddle.zeros((numel,), dtype=local_tensor.dtype)
+        global_offset_1d = (
+            ravel_index(tuple(s[0] for s in slices), meta.local_shape),
+        )
+
+        destination_sharded_state_dict[
+            (tensor_name_expand, global_offset_1d)
+        ] = ShardedWeight(
+            key=tensor_name_expand,
+            local_tensor=tmp_target_tensor,
+            local_shape=(numel,),
+            global_shape=(math.prod(meta.local_shape),),
+            global_offset=global_offset_1d,
+        )
+        name_mapping[key] = (tensor_name_expand, global_offset_1d)
+        force_gc.append(local_tensor)
+
+    global_state_dict_metadata, global_storage_metadata = [], []
     if use_dist:
-        _finish_unflatten(flat_shards, padding_info)
+        paddle.distributed.all_gather_object(
+            global_state_dict_metadata, source_local_tensor_meta, process_group
+        )
+        paddle.distributed.all_gather_object(
+            global_storage_metadata, source_storage_meta, process_group
+        )
+    else:
+        global_state_dict_metadata = [source_local_tensor_meta]
+        global_storage_metadata = [source_storage_meta]
+
+    tmp_metadata = Metadata()
+    tmp_metadata.state_dict_metadata = merge_state_dict_metadata(
+        global_state_dict_metadata
+    )
+    tmp_metadata.storage_metadata = {
+        k: v for d in global_storage_metadata for k, v in d.items()
+    }
+
+    _load_state_dict(
+        target_state_dict=destination_sharded_state_dict,
+        source_state_dict=source_state_dict_for_reshard,
+        metadata_list=[tmp_metadata],
+        process_group=process_group,
+        worker_groups=worker_groups,
+    )
+
+    for key in reshard_needed_tensors:
+        target_key = name_mapping[key]
+        unflattened_meta = reshard_target_infos[key][2]
+
+        final_tensor = destination_sharded_state_dict[target_key].local_tensor
+        final_tensor.reshape_(unflattened_meta.local_shape)
+        resharded_tensors[key] = final_tensor
+
+    final_unflattened_state_dict = defaultdict(dict)
+    final_local_tensor_meta = defaultdict(list)
+    final_storage_meta = {}
+
+    all_unflattened_tensors_with_meta = []
+
+    for key, tensor in already_unflattened_tensors.items():
+        all_unflattened_tensors_with_meta.append(
+            (key, tensor, _metadata_manager.local_tensor_metadata[key])
+        )
+
+    for key, tensor in direct_reshape_tensors.items():
+        all_unflattened_tensors_with_meta.append(
+            (key, tensor, direct_reshape_metas[key])
+        )
+
+    for key, tensor in resharded_tensors.items():
+        unflattened_meta = reshard_target_infos[key][2]
+        all_unflattened_tensors_with_meta.append(
+            (key, tensor, unflattened_meta)
+        )
+
+    for key, tensor, meta in all_unflattened_tensors_with_meta:
+        tensor_name, file_name = key
+        final_unflattened_state_dict[file_name][tensor_name] = tensor
+        final_local_tensor_meta[tensor_name].append(meta)
+        final_storage_meta[
+            LocalTensorIndex(
+                tensor_key=tensor_name,
+                global_offset=meta.global_offset,
+                is_flattened=False,
+                flattened_range=None,
+            )
+        ] = file_name
+
+    global_state_dict_metadata, global_storage_metadata = [], []
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            global_state_dict_metadata, final_local_tensor_meta, process_group
+        )
+        paddle.distributed.all_gather_object(
+            global_storage_metadata, final_storage_meta, process_group
+        )
+    else:
+        global_state_dict_metadata = [final_local_tensor_meta]
+        global_storage_metadata = [final_storage_meta]
+
+    final_metadata = Metadata()
+    final_metadata.state_dict_metadata = merge_state_dict_metadata(
+        global_state_dict_metadata
+    )
+    final_metadata.storage_metadata = {
+        k: v for d in global_storage_metadata for k, v in d.items()
+    }
+    final_metadata.flat_mapping = _metadata_manager.get_flat_mapping()
+    _metadata_manager.set_metadata_list([final_metadata])
+
+    for tensor in force_gc:
+        # force GC
+        tensor._clear()
+
+    return final_unflattened_state_dict
 
 
 def load_state_dict_impl(
@@ -891,8 +1129,10 @@ def load_state_dict_impl(
     offload: bool = False,
     mw_name_compatibility: bool = True,
     safetensors: bool = False,
+    worker_groups: list[Group] | None = None,
 ) -> None:
     with paddle.base.dygraph.guard():
+        global _metadata_manager
         assert isinstance(state_dict, dict), (
             "The state_dict should be a dictionary."
         )
@@ -910,10 +1150,6 @@ def load_state_dict_impl(
                 )
 
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
-
-        if use_dist and process_group is None and not is_initialized():
-            # Init the default global process group
-            paddle.distributed.init_parallel_env()
 
         if use_dist:
             # sync to avoid some ranks not write path yet
@@ -935,9 +1171,12 @@ def load_state_dict_impl(
         for file in metadata_files:
             metadata_list.append(paddle.load(os.path.join(path, file)))
 
+        global _metadata_manager
+        _metadata_manager.set_metadata_list(metadata_list)
+
         rank_to_files, missing_keys, mw_name_compatibility_mapping = (
             get_rank_to_files(
-                metadata_list,
+                _metadata_manager.get_metadata_list(),
                 local_data_files,
                 flat_state_dict,
                 process_group,
@@ -990,14 +1229,32 @@ def load_state_dict_impl(
                     os.path.join(path, file), safetensors=safetensors
                 )
 
+        if use_dist:
+            paddle.distributed.barrier(process_group)
+
+        if _metadata_manager.has_flattened_tensors:
+            logger.info("Restoring unflattened state dict.")
+            source_state_dict = restore_unflattened_state_dict(
+                source_state_dict, process_group, worker_groups
+            )
+            logger.info("Restored unflattened state dict.")
+
         _load_state_dict(
             flat_state_dict,
             source_state_dict,
-            metadata_list,
+            _metadata_manager.get_metadata_list(),
             process_group,
             coordinator_rank,
             offload,
+            worker_groups,
         )
+
+        for file_name, state_dict in source_state_dict.items():
+            for key, value in state_dict.items():
+                # force GC
+                value._clear()
+
+        del source_state_dict
 
         for flat_key, keys in mapping.items():
             if (
@@ -1054,7 +1311,6 @@ def process_local_copy_tasks(
 
         src_tensor = source_state_dict[task.file_name][task.tensor_name]
         dst_tensor = get_target_tensor(target_state_dict, task)
-
         src_chunk_tensor = slice_tensor(
             src_tensor, task.src_local_offset, task.slice_shape
         )
@@ -1094,9 +1350,24 @@ def split_read_items(
     return local_read_items, comm_read_items
 
 
-def schedule_comm_read_items(
+def schedule_comm_read_items_single_group(
     comm_read_items: list[ReadItem],
 ) -> dict[str, list[ReadItem]]:
+    order_rules = lambda read_item: (
+        read_item.tensor_name,
+        read_item.src_rank,
+        read_item.src_global_offset,
+        read_item.dst_rank,
+        read_item.dst_local_offset,
+        read_item.dst_global_offset
+        if read_item.dst_global_offset is not None
+        else (),
+        read_item.src_local_offset,
+        read_item.slice_shape,
+        read_item.file_name,
+        read_item.dtype,
+    )
+    comm_read_items = sorted(comm_read_items, key=order_rules)
     # Step 1: Group by tensor_name
     tensor_groups = defaultdict(list)
     for item in comm_read_items:
@@ -1125,7 +1396,7 @@ def schedule_comm_read_items(
             combined_dst_rank = []
             for item in grouped_item:
                 combined_dst_rank.extend(item.dst_rank)
-            combined_dst_rank = list(
+            combined_dst_rank = sorted(
                 set(combined_dst_rank)
             )  # Remove duplicates
 
@@ -1134,7 +1405,7 @@ def schedule_comm_read_items(
                 tensor_name=tensor_name,
                 src_global_offset=key[0],
                 dst_global_offset=key[1],
-                dst_rank=combined_dst_rank,
+                dst_rank=tuple(combined_dst_rank),
                 src_rank=key[2],
                 dst_local_offset=key[3],
                 src_local_offset=key[4],
@@ -1143,11 +1414,165 @@ def schedule_comm_read_items(
                 dtype=key[7],
             )
             scheduled_items[tensor_name].append(scheduled_item)
+    for key, items in scheduled_items.items():
+        scheduled_items[key] = sorted(items, key=order_rules)
 
-    return scheduled_items
+    return dict(sorted(scheduled_items.items()))
+
+
+def schedule_comm_read_items_multi_group(
+    comm_read_items: list[ReadItem],
+    worker_groups: list[Group],
+) -> list[list[ReadItem]]:
+    group_members = {}
+    name_to_groups = {}
+    read_items = []
+
+    order_rules = lambda read_item: (
+        read_item.tensor_name,
+        read_item.src_rank,
+        read_item.src_global_offset,
+        read_item.dst_rank,
+        read_item.dst_local_offset,
+        read_item.dst_global_offset
+        if read_item.dst_global_offset is not None
+        else (),
+        read_item.src_local_offset,
+        read_item.slice_shape,
+        read_item.file_name,
+        read_item.dtype,
+    )
+
+    def _find_min_group(need_ranks, group_members, name_to_groups):
+        min_group = None
+        min_size = None
+        for name, ranks in group_members.items():
+            if need_ranks <= ranks:
+                if (min_size is None) or (len(ranks) < min_size):
+                    min_size = len(ranks)
+                    min_group = name_to_groups[name]
+        assert min_group is not None, f"No group found for {need_ranks}!"
+        return min_group
+
+    for group in worker_groups:
+        if len(group.ranks) <= 1:
+            continue
+        group_members[group.name] = set(group.ranks)
+        name_to_groups[group.name] = group
+
+    for read_item in comm_read_items:
+        need_ranks = need_ranks = {*read_item.dst_rank, read_item.src_rank}
+        group = _find_min_group(
+            need_ranks,
+            group_members,
+            name_to_groups,
+        )
+        read_items.append(replace(read_item, comm_group=group))
+
+    read_items = sorted(read_items, key=order_rules)
+
+    def _build_group_conflict(group_members: dict[str, set]):
+        member_to_groups = defaultdict(set)
+        for g, members in group_members.items():
+            for m in members:
+                member_to_groups[m].add(g)
+        group_conflict = defaultdict(set)
+        for group_set in member_to_groups.values():
+            for g1 in group_set:
+                for g2 in group_set:
+                    if g1 != g2:
+                        group_conflict[g1].add(g2)
+        return group_conflict
+
+    def _dsatur_coloring(group_conflict: dict[str, set]) -> dict[str, int]:
+        import heapq
+
+        all_groups = sorted(group_conflict.keys())
+        sorted_conflict = {g: sorted(group_conflict[g]) for g in all_groups}
+
+        color_map = {}
+        neighbor_colors = {g: set() for g in all_groups}
+        uncolored = set(all_groups)
+
+        degree = {g: len(sorted_conflict[g]) for g in all_groups}
+
+        heap = []
+        for g in all_groups:
+            heapq.heappush(heap, (0, -degree[g], g))
+        saturation = dict.fromkeys(all_groups, 0)
+
+        while uncolored:
+            while True:
+                _, _, node = heapq.heappop(heap)
+                if node in uncolored:
+                    break
+            used = neighbor_colors[node]
+            color = 0
+            while color in used:
+                color += 1
+            color_map[node] = color
+            uncolored.remove(node)
+            for neighbor in sorted_conflict[node]:
+                if neighbor in uncolored:
+                    if color not in neighbor_colors[neighbor]:
+                        neighbor_colors[neighbor].add(color)
+                        saturation[neighbor] += 1
+                        heapq.heappush(
+                            heap,
+                            (
+                                -saturation[neighbor],
+                                -degree[neighbor],
+                                neighbor,
+                            ),
+                        )
+        return color_map
+
+    def _assign_batches(tasks, group_color_map):
+        batches = defaultdict(list)
+        for t in tasks:
+            g = t.comm_group.name
+            batches[group_color_map[g]].append(t)
+        return [sorted(batches[c], key=order_rules) for c in sorted(batches)]
+
+    group_conflict = _build_group_conflict(group_members)
+    group_color_map = _dsatur_coloring(group_conflict)
+    results = _assign_batches(read_items, group_color_map)
+    return results
 
 
 def _load_state_dict(
+    target_state_dict: dict,
+    source_state_dict: dict,
+    metadata_list,
+    process_group=None,
+    coordinator_rank=0,
+    offload=False,
+    worker_groups=None,
+):
+    if worker_groups is None:
+        _load_state_dict_single_group(
+            target_state_dict,
+            source_state_dict,
+            metadata_list,
+            process_group,
+            coordinator_rank,
+            offload,
+        )
+    else:
+        _load_state_dict_multi_group(
+            target_state_dict,
+            source_state_dict,
+            metadata_list,
+            process_group,
+            coordinator_rank,
+            offload,
+            worker_groups,
+        )
+
+    del source_state_dict
+
+
+def pre_process_and_build_comm_read_items(
     target_state_dict: dict,
     source_state_dict: dict,
     metadata_list,
@@ -1212,11 +1637,36 @@ def _load_state_dict(
         f"Rank {cur_rank} finished local copy and entered communication phase."
     )
 
+    return processed_target_state_dict, comm_read_items
+
+
+def _load_state_dict_single_group(
+    target_state_dict: dict,
+    source_state_dict: dict,
+    metadata_list,
+    process_group=None,
+    coordinator_rank=0,
+    offload=False,
+):
+    use_dist = paddle.distributed.get_world_size() > 1
+    cur_rank = paddle.distributed.get_rank() if use_dist else 0
+
+    processed_target_state_dict, comm_read_items = (
+        pre_process_and_build_comm_read_items(
+            target_state_dict,
+            source_state_dict,
+            metadata_list,
+            process_group,
+            coordinator_rank,
+            offload,
+        )
+    )
+
     if len(comm_read_items) == 0:
         return
     paddle.distributed.barrier(process_group)
 
-    tasks = schedule_comm_read_items(comm_read_items)
+    tasks = schedule_comm_read_items_single_group(comm_read_items)
 
     logger.info(
         f"Communication tasks generated successfully, total {len(tasks)} tasks!"
@@ -1294,6 +1744,114 @@ def _load_state_dict(
         if use_dist:
             paddle.distributed.barrier(process_group)
 
+    logger.info("All communication tasks completed.")
+
+
+def _load_state_dict_multi_group(
+    target_state_dict: dict,
+    source_state_dict: dict,
+    metadata_list,
+    process_group=None,
+    coordinator_rank=0,
+    offload=False,
+    worker_groups=None,
+):
+    assert paddle.distributed.get_world_size() > 1, (
+        "Multi-group loading is only supported in distributed training."
+    )
+    cur_rank = paddle.distributed.get_rank()
+
+    processed_target_state_dict, comm_read_items = (
+        pre_process_and_build_comm_read_items(
+            target_state_dict,
+            source_state_dict,
+            metadata_list,
+            process_group,
+            coordinator_rank,
+            offload,
+        )
+    )
+
+    results = schedule_comm_read_items_multi_group(
+        comm_read_items, worker_groups
+    )
+
+    logger.info(
+        f"Communication task scheduling completed, {len(results)}  batches in total."
+    )
+    for read_items in results:
+        source_tensors = {}
+        destination_tensors = {}
+        for item in read_items:
+            tensor_name = item.tensor_name
+            if item.src_rank == cur_rank:
+                src_tensor = source_state_dict[item.file_name][tensor_name]
+                if not src_tensor.place.is_gpu_place():
+                    src_tensor = src_tensor.cuda()
+                source_tensors[(tensor_name, item.file_name)] = src_tensor
+            elif cur_rank in item.dst_rank:
+                dst_tensor = get_target_tensor(
+                    processed_target_state_dict, item
+                )
+                if not dst_tensor.place.is_gpu_place():
+                    gpu_dst_tensor = dst_tensor.cuda()
+                    gpu_dst_tensor.need_copy_to_cpu = True
+                    gpu_dst_tensor.target_tensor = dst_tensor
+                    destination_tensors[
+                        (tensor_name, cur_rank, item.dst_global_offset)
+                    ] = gpu_dst_tensor
+                else:
+                    gpu_dst_tensor = dst_tensor
+                    gpu_dst_tensor.target_tensor = dst_tensor
+                    destination_tensors[
+                        (tensor_name, cur_rank, item.dst_global_offset)
+                    ] = dst_tensor
+
+        for item in read_items:
+            logger.debug(f"Beginning to send/recv task {item}.")
+            tensor_name = item.tensor_name
+            if item.src_rank == cur_rank:
+                src_tensor = source_tensors[(tensor_name, item.file_name)]
+                src_chunk_tensor = slice_tensor(
+                    src_tensor, item.src_local_offset, item.slice_shape
+                )
+                buffer_tensor = src_chunk_tensor.contiguous()
+            elif cur_rank in item.dst_rank:
+                dst_tensor = destination_tensors[
+                    (tensor_name, cur_rank, item.dst_global_offset)
+                ]
+                dst_chunk_tensor = slice_tensor(
+                    dst_tensor, item.dst_local_offset, item.slice_shape
+                )
+                buffer_tensor = paddle.zeros_like(dst_chunk_tensor)
+                paddle.assign(dst_chunk_tensor, buffer_tensor)
+
+            elif cur_rank in item.comm_group.ranks:
+                buffer_tensor = paddle.zeros(item.slice_shape, item.dtype)
+            else:
+                buffer_tensor = None
+
+            if cur_rank in item.comm_group.ranks:
+                paddle.distributed.broadcast(
+                    buffer_tensor, src=item.src_rank, group=item.comm_group
+                )
+
+            if cur_rank in item.dst_rank:
+                paddle.assign(buffer_tensor, dst_chunk_tensor)
+            del buffer_tensor
+
+        for dst_tensor in destination_tensors.values():
+            if hasattr(dst_tensor, 'need_copy_to_cpu'):
+                target_tensor = dst_tensor.target_tensor
+                paddle.assign(dst_tensor.cpu(), target_tensor)
+            else:
+                target_tensor = dst_tensor.target_tensor
+                paddle.assign(dst_tensor, target_tensor)
+            del dst_tensor
+
+        del source_tensors
+
+    paddle.distributed.barrier(process_group)
     logger.info("All communication tasks completed.")
 
 

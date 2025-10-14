@@ -1434,7 +1434,8 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
       if (self->tensor.has_allocation() && self->tensor.initialized() &&
           (!dst_tensor->meta().is_contiguous() ||
-           !src_tensor->meta().is_contiguous())) {
+           !src_tensor->meta().is_contiguous()) &&
+          dst_tensor->place().GetType() == src_tensor->place().GetType()) {
         VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous ";
         if (!FLAGS_use_stride_kernel) {
           PADDLE_THROW(common::errors::Fatal(
@@ -1451,6 +1452,17 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
                   dst_tensor);
             }));
       } else {
+        if (!dst_tensor->meta().is_contiguous()) {
+          PADDLE_THROW(common::errors::Fatal(
+              "dst_tensor is not contiguous and src_tesnor has different place "
+              "with dst_tensor, so Strided kernel "
+              "can't be called, please change src_tensor'place as same as "
+              "dst_tensor'place or change dst_tensor to be contiguous"));
+        } else if (!src_tensor->meta().is_contiguous()) {
+          VLOG(6) << "src_tensor is not contiguous, so dst_tensor will be not "
+                     "contiguous after set_value ";
+        }
+
         if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
           framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
         } else if (src_tensor->place().GetType() !=

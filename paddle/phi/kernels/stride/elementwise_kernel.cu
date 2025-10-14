@@ -40,6 +40,7 @@
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name, functor_name)          \
@@ -82,6 +83,12 @@ namespace phi {
           common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
+    }                                                                         \
+                                                                              \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
     }                                                                         \
     LaunchBinaryElementwiseStrideKernel<T, Context>(                          \
         dev_ctx, x_, y_, funcs::functor_name##Functor<T>(), -1, out);         \
@@ -139,6 +146,12 @@ void AddStrideKernel(const Context &dev_ctx,
         common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   if (x_.dtype() == phi::DataType::FLOAT32 &&
@@ -220,6 +233,12 @@ void ScaleStrideKernel(const Context &dev_ctx,
         common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
+  }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
 
   if (x.numel() <= 0 || (!x.IsInitialized())) {

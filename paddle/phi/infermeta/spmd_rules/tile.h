@@ -38,6 +38,10 @@ SpmdInfo TileInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo TileGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
-                           IntArray repeat_times);
+                           const std::vector<int64_t>& repeat_times);
+
+SpmdInfo TileGradInferSpmdDynamic(const DistMetaTensor& x,
+                                  const DistMetaTensor& out_grad,
+                                  const IntArray& repeat_times);
 }  // namespace distributed
 }  // namespace phi

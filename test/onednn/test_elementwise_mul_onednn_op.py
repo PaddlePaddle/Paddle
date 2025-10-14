@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import skip_check_grad_ci
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_elementwise_mul_op import ElementwiseMulOp
 
 from paddle import enable_static
