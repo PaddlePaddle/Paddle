@@ -95,7 +95,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Construct a new Tensor object
    */
-  Tensor() = default;
+  Tensor();
 
   /**
    * @brief Construct a new Tensor object by copy
