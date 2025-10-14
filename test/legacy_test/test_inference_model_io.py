@@ -102,6 +102,9 @@ class TestPdmodelCompatibility(unittest.TestCase):
                         ),
                     )
 
+                # Initialize parameters
+                self.exe.run(startup_program)
+
                 #  Validate program has ops
                 if len(main_program.global_block().ops) == 0:
                     raise ValueError("Main program is empty!")
@@ -325,9 +328,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
         model_path = os.path.join(self.temp_dir.name, "nonexistent_model")
 
         with self.assertRaises((FileNotFoundError, OSError, ValueError)):
-            load_inference_model(
-                path_prefix=model_path, executor=self.exe
-            )
+            load_inference_model(path_prefix=model_path, executor=self.exe)
 
 
 if __name__ == '__main__':
