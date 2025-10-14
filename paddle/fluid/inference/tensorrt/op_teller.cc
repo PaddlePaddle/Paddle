@@ -88,12 +88,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("fill_constant_batch_size_like");
     int8_teller_set.insert("fill_constant_batch_size_like");
 #endif
-#if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
     int8_teller_set.insert("reshape");
     int8_teller_set.insert("reshape2");
-#endif
 #if IS_TRT_VERSION_GE(8000)
     teller_set.insert("sparse_fc");
     int8_teller_set.insert("sparse_fc");
@@ -1251,15 +1249,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (output_lengths.empty() && num == 0) {
         VLOG(3) << "sections and num cannot be equal to 0 at the same time";
         return false;
-      }
-      if (with_dynamic_shape) {
-#if IS_TRT_VERSION_GE(6000)
-#else
-        VLOG(3) << "You are running the TRT Dynamic Shape mode, need to "
-                   "confirm that "
-                   "your TRT version is no less than 6.0";
-        return false;
-#endif
       }
       axis += (axis < 0) ? x_shape.size() : 0;
       if (x_shape[axis] == -1) {

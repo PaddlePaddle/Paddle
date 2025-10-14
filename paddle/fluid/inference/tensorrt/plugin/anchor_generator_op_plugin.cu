@@ -456,7 +456,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::deserializePlugin(
   return plugin;
 }
 
-#if IS_TRT_VERSION_GE(6000)
 AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
     const nvinfer1::DataType data_type,
     const std::vector<float>& anchor_sizes,
@@ -757,7 +756,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-#endif
 
 PIRAnchorGeneratorPluginDynamic::PIRAnchorGeneratorPluginDynamic(
     const nvinfer1::DataType data_type,
