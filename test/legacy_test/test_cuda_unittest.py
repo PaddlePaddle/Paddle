@@ -368,27 +368,18 @@ class TestNvtx(unittest.TestCase):
     def test_range_push_pop(self):
         if platform.system().lower() == "windows":
             return
+        if not paddle.device.is_compiled_with_cuda():
+            return
         if not paddle.device.get_device().startswith("gpu"):
             return
+
         try:
             paddle.cuda.nvtx.range_push("test_push")
-        except Exception as e:
-            self.fail(f"nvtx.range_push raised an exception: {e}")
-
-        try:
             paddle.cuda.nvtx.range_pop()
-        except Exception as e:
-            self.fail(f"nvtx.range_pop raised an exception: {e}")
-
-        try:
             paddle.device.nvtx.range_push("test_push")
-        except Exception as e:
-            self.fail(f"nvtx.range_push raised an exception: {e}")
-
-        try:
             paddle.device.nvtx.range_pop()
         except Exception as e:
-            self.fail(f"nvtx.range_pop raised an exception: {e}")
+            self.fail(f"nvtx test failed: {e}")
 
         with self.assertRaises(TypeError):
             paddle.cuda.nvtx.range_push(123)

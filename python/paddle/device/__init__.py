@@ -1795,7 +1795,7 @@ class nvtx:
                 >>> paddle.device.nvtx.range_push("test")
 
         """
-        paddle.framework.core.nvprof_nvtx_push(msg)
+        paddle.base.core.nvprof_nvtx_push(msg)
 
     @staticmethod
     def range_pop():
@@ -1808,7 +1808,7 @@ class nvtx:
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
                 >>> paddle.device.nvtx.range_pop()
         """
-        paddle.framework.core.nvprof_nvtx_pop()
+        paddle.base.core.nvprof_nvtx_pop()
 
 
 def reset_peak_memory_stats(device: PlaceLike | int | None = None) -> None:
