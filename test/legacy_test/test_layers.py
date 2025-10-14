@@ -1133,7 +1133,7 @@ class TestBook(LayerTest):
             label_len = paddle.static.data(
                 name="label_len_il", shape=[batch], dtype="int64"
             )
-    
+
             loss = paddle.nn.functional.ctc_loss(
                 log_probs=logits,
                 labels=labels,
