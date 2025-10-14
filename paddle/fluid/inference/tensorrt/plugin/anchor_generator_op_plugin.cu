@@ -163,7 +163,7 @@ size_t AnchorGeneratorPlugin::getWorkspaceSize(int max_batch_size) const
   return 0;
 }
 
-#ifdef _WIN32
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
 template <typename T>
 __global__ void GenAnchors(T* out,
                            const T* aspect_ratios,
@@ -233,7 +233,7 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-#ifdef _WIN32
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
   GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                                        aspect_ratios_device,
                                                        aspect_ratios_.size(),
@@ -258,7 +258,7 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
                                               offset_);
 #endif
   const int var_grid = (box_num_ * 4 + block - 1) / block;
-#ifdef _WIN32
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
   SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num_ * 4);
 #else
@@ -592,7 +592,7 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-#ifdef _WIN32
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
   GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                                        aspect_ratios_device,
                                                        aspect_ratios_.size(),
@@ -617,7 +617,7 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
                                               offset_);
 #endif
   const int var_grid = (box_num * 4 + block - 1) / block;
-#ifdef _WIN32
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
   SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num * 4);
 #else
@@ -894,7 +894,7 @@ int PIRAnchorGeneratorPluginDynamic::enqueue_impl(
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-#ifdef _WIN32
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
   GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                                        aspect_ratios_device,
                                                        aspect_ratios_.size(),
@@ -919,7 +919,7 @@ int PIRAnchorGeneratorPluginDynamic::enqueue_impl(
                                               offset_);
 #endif
   const int var_grid = (box_num * 4 + block - 1) / block;
-#ifdef _WIN32
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
   SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num * 4);
 #else

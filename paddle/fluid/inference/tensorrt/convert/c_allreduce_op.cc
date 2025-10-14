@@ -62,7 +62,6 @@ class CAllReduceOpConverter : public OpConverter {
         PADDLE_GET_CONST(bool, op_desc.GetAttr("use_calc_stream"));
 
     nvinfer1::ILayer* layer = nullptr;
-#if IS_TRT_VERSION_GE(6000)
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
     if (engine_->precision() == phi::DataType::INT8) {
@@ -73,11 +72,6 @@ class CAllReduceOpConverter : public OpConverter {
         new plugin::CAllReducePluginDynamic(
             ring_id, use_calc_stream, red_type, with_fp16);
     layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "You are running the TRT Dynamic Shape mode, need to confirm that "
-        "your TRT version is no less than 6.0"));
-#endif
     auto output_name = op_desc.Output("Out")[0];
 
     ReplenishLayerAndOutput(layer, name, {output_name}, test_mode);

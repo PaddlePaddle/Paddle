@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class LocalTensorMetadata:
     """
     The location of a local tensor in the global tensor.
@@ -26,6 +26,8 @@ class LocalTensorMetadata:
     local_shape: tuple[int]
     dtype: str
     global_shape: tuple[int] | None = None
+    is_flattened: bool = False
+    flattened_range: tuple[int] | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,8 @@ class LocalTensorIndex:
 
     tensor_key: str
     global_offset: tuple[int]
+    is_flattened: bool = False
+    flattened_range: tuple[int] | None = None
 
 
 @dataclass
