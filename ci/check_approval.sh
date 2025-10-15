@@ -549,7 +549,7 @@ if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     fi
 fi
 
-USE_NEW=`git diff -- '*.h' '*.cc' '*.cuh' '*.cu' | grep -w "new" | grep -v "//" || true`
+USE_NEW=`git diff -- '*.h' '*.cc' '*.cuh' '*.cu' || true`
 USE_MALLOC=`git diff -- '*.h' '*.c' | grep -w "malloc(" | grep -v "//" || true`
 echo $USE_NEW
 if [[ -n "${USE_NEW}" ]] || [[ -n "${USE_MALLOC}" ]];then
@@ -557,7 +557,6 @@ if [[ -n "${USE_NEW}" ]] || [[ -n "${USE_MALLOC}" ]];then
     echo_line="You must have one RD (phlrain or sneaxiy) approval you used new or malloc in a C++ function"
     check_approval 1 phlrain sneaxiy
 fi
-sleep 30m
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
 # by Unity Build to combine source files. Changes to these rules may cause
