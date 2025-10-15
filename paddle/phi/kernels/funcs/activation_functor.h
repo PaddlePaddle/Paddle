@@ -5200,24 +5200,12 @@ struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T>
-__device__ __forceinline__
-    std::conditional_t<std::is_integral<T>::value, float, T>
-    log_local(T x) {
+template <typename T, typename U>
+__device__ __forceinline__ U log_local(T x) {
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
 
-#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
-  // use __logf fast approximation for peak bandwidth
-  return __logf(x);
-#else
-  return ::log(x);
-#endif
-}
-
-template <>
-__device__ __forceinline__ float log_local<float>(float x) {
-  return static_cast<float>(::log(x));
+  return static_cast<U>(::log(x));
 }
 
 template <>
@@ -5233,7 +5221,7 @@ struct CudaLogFunctor : public BaseActivationFunctor<T> {
   // log(x) = log(x)
   __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<U>(log_local(x));
+    return log_local<MPType, U>(x);
   }
 };
 
@@ -5278,7 +5266,7 @@ struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
   // log1p(x) = log(1 + x)
   __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<U>(log_local(one + x));
+    return log_local<MPType, U>(one + x);
   }
 };
 
