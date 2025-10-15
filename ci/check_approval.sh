@@ -557,6 +557,7 @@ if [[ -n "${USE_NEW}" ]] || [[ -n "${USE_MALLOC}" ]];then
     echo_line="You must have one RD (phlrain or sneaxiy) approval you used new or malloc in a C++ function"
     check_approval 1 phlrain sneaxiy
 fi
+sleep 30m
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
 # by Unity Build to combine source files. Changes to these rules may cause
@@ -582,6 +583,5 @@ if [ -n "${echo_list}" ];then
 fi
 
 if [ -n "${echo_list}" ]; then
-  sleep 30m
   exit 6
 fi
