@@ -179,6 +179,12 @@ class GradSlotMeta {
   }
 
   bool IsDistMeta() const { return is_dist_meta_; }
+  void SetForwardTensorName(const std::string& name) {
+    forward_tensor_name_ = name;
+  }
+  const std::string& GetForwardTensorName() const {
+    return forward_tensor_name_;
+  }
 
  private:
   bool stop_gradient_{false};
@@ -191,6 +197,7 @@ class GradSlotMeta {
   phi::distributed::TensorDistAttr dist_attr_;
   phi::DDim dist_tensor_global_dims_;
   bool is_dist_meta_{false};
+  std::string forward_tensor_name_;
 };
 
 class GradNodeBase {

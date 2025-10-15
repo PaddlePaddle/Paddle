@@ -378,6 +378,11 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
     metas.resize(1);
   }
   auto& meta = metas[0];
+  if (VLOG_IS_ON(6)) {
+    // Record the forward input tensor name
+    meta.SetForwardTensorName(fwd_in.name());
+  }
+
   // Set Stop_gradient
   if (fwd_in_meta) {
     meta.SetStopGradient(fwd_in_meta->StopGradient());
@@ -495,6 +500,10 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
     metas.resize(1);
   }
   auto& meta = metas[0];
+  if (VLOG_IS_ON(6)) {
+    // Record the forward input tensor name
+    meta.SetForwardTensorName(fwd_in.name());
+  }
   // Set Stop_gradient
   if (fwd_in_meta && !fwd_in_meta->StopGradient() && fwd_out_meta) {
     meta.SetStopGradient(false);
@@ -579,6 +588,9 @@ void GradNodeBase::SetGradOutMeta(
     metas.resize(1);
   }
   auto& meta = metas[0];
+  if (VLOG_IS_ON(6)) {
+    meta.SetForwardTensorName(fwd_in.name());
+  }
   // Set Stop_gradient
   if (fwd_in_meta) {
     meta.SetStopGradient(fwd_in_meta->StopGradient());
@@ -654,6 +666,9 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
   for (size_t i = 0; i < slot_size; i++) {
     const auto& fwd_in_tensor = fwd_in[i];
     auto& meta = metas[i];
+    if (VLOG_IS_ON(6)) {
+      meta.SetForwardTensorName(fwd_in_tensor.name());
+    }
     auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in_tensor);
     // Set Stop_gradient
     if (fwd_in_meta) {
@@ -734,6 +749,9 @@ void GradNodeBase::SetGradOutMeta(
   for (size_t i = 0; i < slot_size; i++) {
     const auto& fwd_in_tensor = (*fwd_in[i]);
     auto& meta = metas[i];
+    if (VLOG_IS_ON(6)) {
+      meta.SetForwardTensorName(fwd_in_tensor.name());
+    }
     auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in_tensor);
     // Set Stop_gradient
     if (fwd_in_meta) {
