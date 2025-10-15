@@ -1041,7 +1041,7 @@ void FlashMaskV2GradBaseKernel(
   int const kBlockN_sm90 =
       head_size_rounded <= 64 && (is_flashmask && !is_causal) ? 96
       : head_size_rounded <= 128 ? (is_flashmask && !is_causal) ? 64 : 128
-                                 : (head_size_rounded <= 192 ? 96 : 80);
+                                 : (head_size_rounded <= 192 ? 96 : 64);
   int const kBlockN_sm80 =
       head_size_rounded <= 128 ? 128 : (head_size_rounded <= 192 ? 80 : 64);
   int const kBlockN_sm86 =
