@@ -332,6 +332,7 @@ def build_shard_desc(val):
         local_shape=tuple(val.local_shape),
         global_shape=tuple(val.global_shape),
         global_offset=tuple(val.global_offset),
+        dtype=str(val.local_tensor.dtype).split(".")[-1],
     )
 
 
@@ -365,3 +366,80 @@ def write_to_file_if_empty(data, path):
         logger.info(
             f"Process {os.getpid()} could not acquire the lock; another process is writing or has written the metadata."
         )
+
+
+def build_global_state_shard_info(sharded_state_dict, process_group):
+    state_shard_info = defaultdict(list)
+    for key, val in sharded_state_dict.items():
+        desc = build_shard_desc(val)
+        state_shard_info[key].append(desc)
+
+    gathered_info = []
+    paddle.distributed.all_gather_object(
+        gathered_info, dict(state_shard_info), process_group
+    )
+
+    return merge_shard_info_list(gathered_info)
+
+
+def merge_state_dict_metadata(global_state_dict_metadata):
+    assert isinstance(global_state_dict_metadata, list), (
+        "The global_state_dict should be a list."
+    )
+    out = {}
+    for state_dict in global_state_dict_metadata:
+        for key, val in state_dict.items():
+            if key not in out:
+                out[key] = []
+
+            if isinstance(val, list):
+                for item in val:
+                    if item not in out[key]:
+                        out[key].append(item)
+            else:
+                if val not in out[key]:
+                    out[key].append(val)
+
+    return out
+
+
+def recover_shard_tensor_from_shards(sharded_weights: list, sw):
+    def _assign_slice(dst_tensor, dst_starts, dst_ends, src_tensor):
+        axes = list(range(len(dst_starts)))
+        view = paddle.slice(
+            dst_tensor, axes=axes, starts=dst_starts, ends=dst_ends
+        )
+        paddle.assign(src_tensor, output=view)
+        return dst_tensor
+
+    dims = len(sw.global_offset)
+    sw_glo_start = sw.global_offset
+    sw_glo_end = [sw.global_offset[i] + sw.local_shape[i] for i in range(dims)]
+    sw_shape = sw.local_shape
+
+    for s in sharded_weights:
+        s_glo_start = s.global_offset
+        s_glo_end = [s.global_offset[i] + s.local_shape[i] for i in range(dims)]
+
+        overlap = []
+        for i in range(dims):
+            ol_start = max(s_glo_start[i], sw_glo_start[i])
+            ol_end = min(s_glo_end[i], sw_glo_end[i])
+            if ol_start >= ol_end:
+                break
+            overlap.append((ol_start, ol_end))
+        else:
+            s_starts = [ol[0] - s_glo_start[i] for i, ol in enumerate(overlap)]
+            s_ends = [ol[1] - s_glo_start[i] for i, ol in enumerate(overlap)]
+            sw_starts = [
+                ol[0] - sw_glo_start[i] for i, ol in enumerate(overlap)
+            ]
+            sw_ends = [ol[1] - sw_glo_start[i] for i, ol in enumerate(overlap)]
+
+            axes = list(range(len(s_starts)))
+            src = paddle.slice(
+                s.local_tensor, axes=axes, starts=s_starts, ends=s_ends
+            )
+            _assign_slice(sw.local_tensor, sw_starts, sw_ends, src)
+
+    return sw

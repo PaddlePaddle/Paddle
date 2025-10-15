@@ -2902,6 +2902,8 @@ class DistModel:
             strategy
             and strategy.sharding.enable_tensor_fusion
             and isinstance(optimizer, _ShardOptimizer)
+            and hasattr(optimizer, '_shard_fn')
+            and hasattr(optimizer, '_inner_opt')
             and use_pir_api()
         ):
             assert isinstance(optimizer._shard_fn, ShardingStage1), (

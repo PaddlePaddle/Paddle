@@ -131,21 +131,21 @@ void GaussianRandom(const Context& dev_ctx,
   float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
   if (seed == 0) {
     // use global Generator seed
-    DenseTensor* out_real = new DenseTensor();
-    DenseTensor* out_imag = new DenseTensor();
-    out_real->Resize(common::make_ddim(shape.GetData()));
-    out_imag->Resize(common::make_ddim(shape.GetData()));
-    dev_ctx.template Alloc<T>(out_real);
-    dev_ctx.template Alloc<T>(out_imag);
+    DenseTensor out_real;
+    DenseTensor out_imag;
+    out_real.Resize(common::make_ddim(shape.GetData()));
+    out_imag.Resize(common::make_ddim(shape.GetData()));
+    dev_ctx.template Alloc<T>(&out_real);
+    dev_ctx.template Alloc<T>(&out_imag);
     funcs::normal_distribution<phi::dtype::Real<T>> dist;
     funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
     funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
                                                        std_of_real_or_imag);
     funcs::distribution_and_transform<phi::dtype::Real<T>>(
-        dev_ctx, out_real, dist, trans);
+        dev_ctx, &out_real, dist, trans);
     funcs::distribution_and_transform<phi::dtype::Real<T>>(
-        dev_ctx, out_imag, dist_imag, trans);
-    phi::ComplexKernel<phi::dtype::Real<T>>(dev_ctx, *out_real, *out_imag, out);
+        dev_ctx, &out_imag, dist_imag, trans);
+    phi::ComplexKernel<phi::dtype::Real<T>>(dev_ctx, out_real, out_imag, out);
   } else {
     // use OP seed
     auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
@@ -197,21 +197,21 @@ void GaussianRandomInplace(const Context& dev_ctx,
   float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
   if (seed == 0) {
     // use global Generator seed
-    DenseTensor* out_real = new DenseTensor();
-    DenseTensor* out_imag = new DenseTensor();
-    out_real->Resize(x.dims());
-    out_imag->Resize(x.dims());
-    dev_ctx.template Alloc<T>(out_real);
-    dev_ctx.template Alloc<T>(out_imag);
+    DenseTensor out_real;
+    DenseTensor out_imag;
+    out_real.Resize(x.dims());
+    out_imag.Resize(x.dims());
+    dev_ctx.template Alloc<T>(&out_real);
+    dev_ctx.template Alloc<T>(&out_imag);
     funcs::normal_distribution<phi::dtype::Real<T>> dist;
     funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
     funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
                                                        std_of_real_or_imag);
     funcs::distribution_and_transform<phi::dtype::Real<T>>(
-        dev_ctx, out_real, dist, trans);
+        dev_ctx, &out_real, dist, trans);
     funcs::distribution_and_transform<phi::dtype::Real<T>>(
-        dev_ctx, out_imag, dist_imag, trans);
-    phi::ComplexKernel<phi::dtype::Real<T>>(dev_ctx, *out_real, *out_imag, out);
+        dev_ctx, &out_imag, dist_imag, trans);
+    phi::ComplexKernel<phi::dtype::Real<T>>(dev_ctx, out_real, out_imag, out);
   } else {
     // use OP seed
     auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
