@@ -61,7 +61,7 @@ TEST(MatmulSPMDRule, Ctor) {
   EXPECT_EQ(is_partial(inferred_dist_attrs.second[0]), false);
   VLOG(4) << "test1 done." << std::endl << std::endl << std::endl;
 
-  // mk[-1,-1],kn[-1,0] --> mk[-1,-1],kn[-1,0] = nm[-1,0] partial[]。。。
+  // mk[-1,-1],kn[-1,0] --> mk[-1,-1],kn[-1,0] = nm[-1,0] partial[]
   x_dist_attr.set_dims_mapping({-1, -1});
   y_dist_attr.set_dims_mapping({-1, 0});
   x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
