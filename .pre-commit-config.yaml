@@ -85,8 +85,7 @@ repos:
         # Exclude third-party libraries
         exclude: |
           (?x)^(
-            paddle/utils/flat_hash_map\.h |
-            paddle/fluid/pybind/sot/macros.h
+            paddle/utils/flat_hash_map\.h
           )$
   - repo: local
     hooks:

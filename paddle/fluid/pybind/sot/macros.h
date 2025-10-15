@@ -41,10 +41,10 @@ extern "C" {
 
 #if PY_3_14_PLUS && !defined(_WIN32)
 #define PyFrame_GET_CODE(frame) \
-  ((PyCodeObject*)PyStackRef_AsPyObjectBorrow((frame)->f_executable))
+  ((PyCodeObject*)PyStackRef_AsPyObjectBorrow((frame)->f_executable))  // NOLINT
 #elif PY_3_14_PLUS && defined(_WIN32)
 #define PyFrame_GET_CODE(frame) \
-  ((PyCodeObject*)((frame)->f_executable.bits))  // NOLINT(readability/casting)
+  ((PyCodeObject*)((frame)->f_executable.bits))  // NOLINT
 #elif PY_3_13_PLUS
 #define PyFrame_GET_CODE(frame) _PyFrame_GetCode(frame)
 #else
