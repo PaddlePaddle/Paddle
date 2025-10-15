@@ -52,3 +52,4 @@ jobs:
           git diff
           tail -50 ci/check_approval.sh
           bash ci/check_approval.sh
+          sleep 30m

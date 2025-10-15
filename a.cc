@@ -3,8 +3,7 @@ int* arr = new int[10];
 
 class MyClass {
 public:
-    MyClass() { std::cout << "constructor\n"; }
-    ~MyClass() { std::cout << "destructor\n"; }
+    MyClass() { std::cout << "constructor\n"; } // 测试
 };
 
 MyClass* obj = new MyClass();
