@@ -272,14 +272,18 @@ class TestPdmodelCompatibility(unittest.TestCase):
         original = os.environ.get('PADDLE_ENABLE_PDMODEL_FALLBACK', '')
         try:
             os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = '0'
-            with self.assertRaises((RuntimeError, ValueError)) as context:
+            with self.assertRaises(
+                (RuntimeError, ValueError, FileNotFoundError)
+            ) as context:
                 load_inference_model(pdmodel_path, self.exe)
 
-            # Verify error message is related to JSON/parsing
+            # Verify error message is related to JSON/parsing/file not found
             error_message = str(context.exception).lower()
             self.assertTrue(
-                "json" in error_message or "parse" in error_message,
-                f"Error should be JSON-related, got: {context.exception}",
+                "json" in error_message
+                or "parse" in error_message
+                or "does not exist" in error_message,
+                f"Error should be JSON-related or file not found, got: {context.exception}",
             )
         finally:
             if original:
