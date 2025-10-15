@@ -47,7 +47,7 @@ TEST(MatmulSPMDRule, Ctor) {
 
   auto matmul_spmd_rule =
       phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule("matmul");
-  //
+
   // mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
   phi::distributed::InferSpmdContext ctx(
       {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
