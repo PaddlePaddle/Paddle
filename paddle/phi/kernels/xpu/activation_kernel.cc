@@ -64,7 +64,7 @@ void ActivationXPUImpl(const Context& dev_ctx,
                     DenseTensor* out) {                                        \
     functor_class<T> functor;                                                  \
     auto attrs = functor.GetAttrs();                                           \
-    *(attrs[0].second) = attr;                                                 \
+    *(attrs[0].second) = static_cast<float>(attr);                             \
     ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
   }
 
@@ -190,9 +190,9 @@ struct XPULogFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct XPULeakyReluFunctor : public funcs::BaseActivationFunctor<T, double> {
-  double alpha;
-  typename funcs::BaseActivationFunctor<T, double>::AttrPair GetAttrs() {
+struct XPULeakyReluFunctor : public funcs::BaseActivationFunctor<T> {
+  float alpha;
+  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
   template <typename Context>
