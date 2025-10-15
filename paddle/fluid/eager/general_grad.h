@@ -76,8 +76,8 @@ class GeneralGrad {
         } else {
           // normal input
           (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
-          orig_node_to_fwd_tensor_map_[target_node] =
-              std::dynamic_pointer_cast<paddle::Tensor>(inputs[i].impl());
+          (input_target_nodes_inputtensor_map_)[target_node] =
+              std::make_shared<paddle::Tensor>(inputs[i]);
         }
       }
     }
@@ -337,7 +337,7 @@ class GeneralGrad {
                 pre_node_edge.SetGradNode(
                     copied_node_to_ending_node_map_[node]);
               } else {
-                auto iter = copied_node_to_fwd_tensor_map_.find(node);
+                auto iter = input_target_nodes_inputtensor_map_.find(node);
                 PADDLE_ENFORCE_NE(
                     iter,
                     copied_node_to_fwd_tensor_map_.end(),
@@ -583,19 +583,6 @@ class GeneralGrad {
     }
   }
 
-  void CopyForwardTensorMap() {
-    for (const auto& pair : orig_node_to_fwd_tensor_map_) {
-      GradNodeBase* orig_node = pair.first;
-      std::weak_ptr<paddle::Tensor> fwd_tensor_weak_ptr = pair.second;
-      if (orig_to_copied_node_map_.count(orig_node)) {
-        GradNodeBase* copied_node = orig_to_copied_node_map_[orig_node].get();
-        if (auto shared_fwd_tensor = fwd_tensor_weak_ptr.lock()) {
-          copied_node_to_fwd_tensor_map_[copied_node] = shared_fwd_tensor;
-        }
-      }
-    }
-  }
-
   void PreparedForGeneralGrad(
       const std::vector<paddle::Tensor>& inputs,
       const std::vector<paddle::Tensor>& no_grad_vars,
@@ -606,8 +593,6 @@ class GeneralGrad {
           node_input_buffers_dict) {
     // Copy Backward Graph
     CopyBackwardGraph(orig_queue);
-    // Copy Forward Tensor Map
-    CopyForwardTensorMap();
     // Get no_grad_vars's GradNodes and InputMeta Info
     GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);
     // Get inputs's GradNodes and InputMeta Info
@@ -638,6 +623,7 @@ class GeneralGrad {
   void Clear() {
     no_grad_var_nodes_inputmeta_map_.clear();
     input_target_nodes_inputmeta_map_.clear();
+    input_target_nodes_inputtensor_map_.clear();
     potential_startup_nodes_.clear();
     depending_nodes_.clear();
     results_map_.clear();
@@ -657,6 +643,9 @@ class GeneralGrad {
   // inputs's GradNode and GradNode's InputMeta.
   std::unordered_map<GradNodeBase*, AutogradMeta* /* InputMeta */>
       input_target_nodes_inputmeta_map_;
+  // Record the fwd tensor for init GradNodeAccumulation
+  std::unordered_map<GradNodeBase*, std::shared_ptr<paddle::Tensor>>
+      input_target_nodes_inputtensor_map_;
   // Record all the potential startup_nodes, will be changed.
   std::unordered_set<GradNodeBase*> potential_startup_nodes_;
   std::unordered_map<GradNodeBase* /* next node */,
@@ -673,12 +662,6 @@ class GeneralGrad {
   std::unordered_map<GradNodeBase*, std::shared_ptr<GradNodeBase>>
       copied_node_to_ending_node_map_;
   std::unordered_set<GradNodeBase*> ending_nodes_;
-
-  // Record the fwd tensor for init GradNodeAccumulation
-  std::unordered_map<GradNodeBase*, std::shared_ptr<paddle::Tensor>>
-      copied_node_to_fwd_tensor_map_;
-  std::unordered_map<GradNodeBase*, std::weak_ptr<paddle::Tensor>>
-      orig_node_to_fwd_tensor_map_;
 
   DISABLE_COPY_AND_ASSIGN(GeneralGrad);
 };
