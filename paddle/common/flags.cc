@@ -749,6 +749,20 @@ PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
                            "",
                            "Dump grad node forward call stack to the dir path");
 
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_output_dir
+ * Since Version: 3.2.1
+ * Value Range: string, default=""
+ * Example:
+ * Note: Export all API output tensors to the specified directory.
+ * If tensor_md5_checksum_output_dir is "", this flag will not take effect.
+ */
+PHI_DEFINE_EXPORTED_string(
+    tensor_md5_checksum_output_dir,
+    "",
+    "Export all API output tensors to the specified directory.");
+
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");

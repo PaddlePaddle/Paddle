@@ -809,7 +809,7 @@ std::string EagerUtils::GradNodeStr(const paddle::Tensor& t) {
   }
 }
 std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
-  if (!t.defined() || !t.has_allocation() || !VLOG_IS_ON(6)) {
+  if (!t.defined() || !t.has_allocation()) {
     return "None";
   }
   // only data
@@ -853,8 +853,7 @@ std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
     formatter.FormatData<phi::complex128>(dense_tensor, data_stream, precision);
   }
   std::cout << data_stream.str() << std::endl;
-  std::string checksum = paddle::md5(data_stream.str());
-  return checksum;
+  return paddle::md5(data_stream.str());
 }
 /**
  * Print Input Output (level 0 means least info, level 2 means most info)
@@ -1236,10 +1235,10 @@ std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor) {
   return oss.str();
 }
 void SaveStringToFile(const std::string& file_path,
-                      const std::string& serialized_graph,
+                      const std::string& str,
                       const std::string& mode) {
   std::ios_base::openmode open_mode = std::ios::out;
-  if (mode == "app") {
+  if (mode == "append") {
     open_mode |= std::ios::app;
   } else if (mode == "trunc") {
     open_mode |= std::ios::trunc;
@@ -1252,9 +1251,34 @@ void SaveStringToFile(const std::string& file_path,
     return;
   }
 
-  outFile << serialized_graph;
+  outFile << str;
   outFile.close();
   return;
+}
+
+TEST_API void SaveTensorMD5CheckSumToFile(const std::string& file_path,
+                                          const paddle::Tensor& t) {
+  const std::string& md5_checksum = GetTensorMD5Checksum(t);
+  SaveStringToFile(file_path, t.name() + ":" + md5_checksum + "\n", "append");
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const paddle::optional<paddle::Tensor>& t) {
+  if (t.get_ptr()) {
+    SaveTensorMD5CheckSumToFile(file_path, *t.get_ptr());
+  }
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const std::vector<paddle::Tensor>& tensors) {
+  for (auto& t : tensors) {
+    SaveTensorMD5CheckSumToFile(file_path, t);
+  }
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path,
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  if (tensors.get_ptr()) {
+    SaveTensorMD5CheckSumToFile(file_path, *(tensors.get_ptr()));
+  }
 }
 void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,

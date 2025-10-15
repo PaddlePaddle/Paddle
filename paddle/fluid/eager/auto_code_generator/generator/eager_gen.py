@@ -382,7 +382,12 @@ SET_ATTR_METHOD_TEMPLATE = """  void SetAttribute_{}({} {}) {{
     {} = {};
   }}
 """
-
+SAVE_TENSOR_MD5_CHECKSUM_TEMPLATE = """
+  // Save the tensors checksum to file_path
+  if(!FLAGS_tensor_md5_checksum_output_dir.empty()){{
+{}
+  }}
+"""
 ATTRIBUTE_MEMBER_WITH_DEFAULT_TEMPLATE = """  {} {} = {};
 """
 
@@ -744,6 +749,7 @@ COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
 static std::string separator = "==========================";
 {}
 {}
@@ -2071,6 +2077,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         # Get Outputs
         get_outputs_str = ""
+        save_md5_checksum_str = ""
         for name, (rtype, pos) in forward_outputs_position_map.items():
             if num_outputs == 1 and len(intermediate_outputs) == 0:
                 get_outputs_str += f"{indent}auto& {name} = api_result;\n"
@@ -2078,7 +2085,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 get_outputs_str += (
                     f"{indent}auto& {name} = std::get<{pos}>(api_result);\n"
                 )
-
+            save_md5_checksum_str += f"{indent}{indent}egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir, {name});\n"
+        get_outputs_str += SAVE_TENSOR_MD5_CHECKSUM_TEMPLATE.format(
+            save_md5_checksum_str
+        )
         # Get return type list & outputs
         returns_type_list = ["" for i in range(num_outputs)]
         returns_list = ["" for i in range(num_outputs)]
