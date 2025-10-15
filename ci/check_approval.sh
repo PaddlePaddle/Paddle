@@ -549,11 +549,9 @@ if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     fi
 fi
 
-USE_NEW=`git diff -- '*.h' '*.cc' '*.cuh' '*.cu' || true`
+USE_NEW=`git diff upstream/$BRANCH -- '*.h' '*.cc' '*.cuh' '*.cu' || true`
 #USE_MALLOC=`git diff -- '*.h' '*.c' | grep -w "malloc(" | grep -v "//" || true`
-Test=`git diff --name-only ｜grep ".cc"`
 echo USE_NE=$WUSE_NEW
-echo Test=$Test
 git diff
 if [[ -n "${USE_NEW}" ]] || [[ -n "${USE_MALLOC}" ]];then
     echo 123
