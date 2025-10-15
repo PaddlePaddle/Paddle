@@ -103,7 +103,7 @@ paddle::Tensor dtensor_from_local_ad_function(
       grad_node->SetEdge(edge);
     } else {
       grad_node->SetGradOutMeta(input, 0);
-    }
+    }  //
 
     // SetOutRank & SetHistory & SetGradInMeta
     if (out_autograd_meta) {
