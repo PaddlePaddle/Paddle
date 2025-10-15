@@ -5200,14 +5200,20 @@ struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T, typename U>
-__device__ __forceinline__ U log_local(T x) {
+template <typename T>
+__device__ __forceinline__
+    std::conditional_t<std::is_integral<T>::value, float, T>
+    log_local(T x) {
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
-  if (std::is_integral<T>::value) {
-    return static_cast<U>(::log(static_cast<float>(x)));
-  }
-  return static_cast<U>(::log(x));
+
+#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
+  return static_cast<std::conditional_t<std::is_integral<T>::value, float, T>>(
+      ::log(static_cast<double>(x)));
+#else
+  return static_cast<std::conditional_t<std::is_integral<T>::value, float, T>>(
+      ::log(static_cast<double>(x)));
+#endif
 }
 
 template <>
@@ -5223,7 +5229,7 @@ struct CudaLogFunctor : public BaseActivationFunctor<T> {
   // log(x) = log(x)
   __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return log_local<MPType, U>(x);
+    return static_cast<U>(log_local(x));
   }
 };
 
@@ -5268,7 +5274,7 @@ struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
   // log1p(x) = log(1 + x)
   __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return log_local<MPType, U>(one + x);
+    return static_cast<U>(log_local(one + x));
   }
 };
 
