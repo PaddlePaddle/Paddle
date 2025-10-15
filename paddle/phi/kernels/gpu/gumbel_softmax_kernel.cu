@@ -73,7 +73,7 @@ __global__ void OneHotCUDAKernel(const int64_t height,
     int h = idx / size_out_axis;
     int w = idx % size_out_axis;
     cub::ArgMax reducer;
-    for (int k = threadIdx.x; k < width; k += blockDim.x) {
+    for (int64_t k = threadIdx.x; k < width; k += blockDim.x) {
       kv_pair = reducer(
           {k, in[h * width * size_out_axis + k * size_out_axis + w]}, kv_pair);
     }

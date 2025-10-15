@@ -332,6 +332,13 @@ void FindChannelAbsMaxFunctor<Context, T>::operator()(
                                       "the received is %d",
                                       quant_axis));
   const int64_t num = in_tensor.numel();
+  // big tensor currently not supported
+  PADDLE_ENFORCE_LE(num,
+                    (1LL << 31) - 1,
+                    ::common::errors::PreconditionNotMet(
+                        "in_tensor's numel too large"
+                        "allowed size is 2 ^ 31 - 1 elements, but got %lld",
+                        num));
   auto in_dims = in_tensor.dims();
   const T *in_data = in_tensor.data<T>();
   if (quant_axis == 0) {

@@ -27,7 +27,7 @@
 namespace phi {
 namespace funcs {
 
-const int kBoxDim = 4;
+const size_t kBoxDim = 4;
 
 template <typename Context>
 inline std::vector<size_t> GetLodFromRoisNum(const Context& dev_ctx,

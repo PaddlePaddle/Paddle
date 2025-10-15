@@ -27,9 +27,7 @@ __global__ void KernelUnpool2dMax(const int64_t nthreads,
                                   T* output_data,
                                   const int output_height,
                                   const int output_width) {
-  for (int64_t linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
-       linearIndex < nthreads;
-       linearIndex += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
     int64_t c = (linearIndex / input_width / input_height) % channels;
     int64_t n = linearIndex / input_width / input_height / channels;
     output_data += (n * channels + c) * output_height * output_width;
@@ -50,9 +48,7 @@ __global__ void KernelUnpool2dMaxGrad(const int64_t nthreads,
                                       const int output_height,
                                       const int output_width,
                                       T* input_grad) {
-  for (int64_t linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
-       linearIndex < nthreads;
-       linearIndex += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
     int64_t c = (linearIndex / input_width / input_height) % channels;
     int64_t n = linearIndex / input_width / input_height / channels;
     output_grad += (n * channels + c) * output_height * output_width;
@@ -76,9 +72,7 @@ __global__ void KernelUnpool3dMax(const int64_t nthreads,
                                   const int output_depth,
                                   const int output_height,
                                   const int output_width) {
-  for (int64_t linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
-       linearIndex < nthreads;
-       linearIndex += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
     int64_t c =
         (linearIndex / input_depth / input_width / input_height) % channels;
     int64_t n =
@@ -104,9 +98,7 @@ __global__ void KernelUnpool3dMaxGrad(const int64_t nthreads,
                                       const int output_height,
                                       const int output_width,
                                       T* input_grad) {
-  for (int64_t linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
-       linearIndex < nthreads;
-       linearIndex += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
     int64_t c =
         (linearIndex / input_depth / input_width / input_height) % channels;
     int64_t n =

@@ -35,9 +35,8 @@ __global__ void expand_input_by_rank_kernel(const T* input,
                                             int rank_offset_col,
                                             T* ins_rank,
                                             int max_rank) {
-  int64_t numel = static_cast<int64_t>(output_row) * output_col;
-  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < numel;
-       idx += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(
+      idx, static_cast<int64_t>(output_row) * output_col, int64_t) {
     int64_t output_col_idx = idx % output_col;
     int64_t output_row_idx = idx / output_col;
     int64_t k = output_col_idx / input_col;
@@ -101,9 +100,8 @@ __global__ void expand_rank_attention_param_kernel(const T* input,
                                                    int output_param_row,
                                                    int output_param_col,
                                                    int max_rank) {
-  int64_t numel = static_cast<int64_t>(output_param_row) * output_param_col;
-  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < numel;
-       idx += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(
+      idx, static_cast<int64_t>(output_param_row) * output_param_col, int64_t) {
     int64_t output_col_idx = idx % output_param_col;
     int64_t output_row_idx = idx / output_param_col;
 
@@ -172,9 +170,8 @@ __global__ void merge_param_gradient_kernel(T* expanded_grad,
                                             int ins_num,
                                             int max_rank,
                                             int input_col) {
-  int64_t numel = static_cast<int64_t>(param_grad_row) * param_grad_col;
-  for (int64_t tid = blockIdx.x * blockDim.x + threadIdx.x; tid < numel;
-       tid += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(
+      tid, static_cast<int64_t>(param_grad_row) * param_grad_col, int64_t) {
     int64_t param_col_idx = tid % param_grad_col;
     int64_t param_row_idx = tid / param_grad_col;
 
