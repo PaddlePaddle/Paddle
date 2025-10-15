@@ -5201,10 +5201,23 @@ struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-__device__ __forceinline__ T log_local(T x) {
+__device__ __forceinline__
+    std::conditional_t<std::is_integral<T>::value, float, T>
+    log_local(T x) {
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
-  return static_cast<T>(log(x));
+
+#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
+  // use __logf fast approximation for peak bandwidth
+  return __logf(x);
+#else
+  return ::log(x);
+#endif
+}
+
+template <>
+__device__ __forceinline__ float log_local<float>(float x) {
+  return static_cast<float>(::log(x));
 }
 
 template <>
