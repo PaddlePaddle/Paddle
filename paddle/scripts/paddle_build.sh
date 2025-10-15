@@ -4893,12 +4893,6 @@ function main() {
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         clean_build_files
         ;;
-      cicheck_py37_pir)
-        export FLAGS_enable_pir_api=1
-        # disable deprecated test in pir
-        rm -rf ${PADDLE_ROOT}/build/test/deprecated/CTestTestfile.cmake
-        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;

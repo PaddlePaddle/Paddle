@@ -135,7 +135,6 @@ class AnchorGeneratorPluginCreator : public nvinfer1::IPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(AnchorGeneratorPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class AnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit AnchorGeneratorPluginDynamic(const nvinfer1::DataType data_type,
@@ -326,7 +325,6 @@ class PIRAnchorGeneratorPluginDynamicCreator : public nvinfer1::IPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(AnchorGeneratorPluginDynamicCreator);
 REGISTER_TRT_PLUGIN_V2(PIRAnchorGeneratorPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

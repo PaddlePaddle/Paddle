@@ -20,3 +20,4 @@ xdoctest==1.3.0
 ubelt==1.3.3 # just for xdoctest
 mypy==1.17.1
 soundfile
+apache-tvm-ffi==0.1.0b16

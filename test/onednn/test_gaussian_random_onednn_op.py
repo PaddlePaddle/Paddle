@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_gaussian_random_op import TestGaussianRandomOp
 
 import paddle

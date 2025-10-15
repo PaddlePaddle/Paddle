@@ -66,11 +66,11 @@ def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
         if data_format == "NHWC":
             filter_hw = list(filter_size_new[1:3])
         if isinstance(stride, int):
-            stride = [stride.copy(), stride.copy()]
+            stride = [stride, stride]
         if isinstance(padding, int):
-            padding = [padding.copy(), padding.copy()]
+            padding = [padding, padding]
         if isinstance(dilation, int):
-            dilation = [dilation.copy(), dilation.copy()]
+            dilation = [dilation, dilation]
 
         c_index = 1 if data_format == "NCHW" else 3
         res = paddle.nn.Conv2D(

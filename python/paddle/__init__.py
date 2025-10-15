@@ -234,7 +234,8 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
-    PaddleStream as Stream,
+    Event,
+    Stream,
     device_guard,
     get_cudnn_version,
     get_default_device,
@@ -247,6 +248,7 @@ from .device import (  # noqa: F401
     is_compiled_with_ipu,
     is_compiled_with_rocm,
     is_compiled_with_xpu,
+    set_default_device,
     set_device,
 )
 from .distributed import DataParallel
@@ -932,6 +934,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                         err.strerror += f' Error loading "{dll}" or one of its dependencies.'
                         raise err
             kernel32.SetErrorMode(prev_error_mode)
+
 
 disable_static()
 

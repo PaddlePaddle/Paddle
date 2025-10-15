@@ -71,7 +71,8 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
         AddAttr<int64_t>(attr_name, "custom operator int64_t attribute.")
             .SetDefault(1);
       } else if (attr_type_str == "std::string") {
-        AddAttr<std::string>(attr_name, "custom operator int attribute.")
+        AddAttr<std::string>(attr_name,
+                             "custom operator std::string attribute.")
             .SetDefault("");
       } else if (attr_type_str == "std::vector<int>") {
         AddAttr<std::vector<int>>(attr_name,

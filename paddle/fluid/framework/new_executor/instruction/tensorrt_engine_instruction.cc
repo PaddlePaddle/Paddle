@@ -605,6 +605,18 @@ void TensorRTEngineInstruction::BindOutputTensor(
       break;
     }
   }
+  // output_name and getIOTensorName may be different, use output_index
+  if (bind_index < 0) {
+    for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+      const char *name = trt_engine_->engine()->getIOTensorName(i);
+      nvinfer1::TensorIOMode mode =
+          trt_engine_->engine()->getTensorIOMode(name);
+      if (mode == nvinfer1::TensorIOMode::kOUTPUT) {
+        bind_index = i + output_index + binding_offset;
+        break;
+      }
+    }
+  }
   PADDLE_ENFORCE_GE(
       bind_index,
       0,

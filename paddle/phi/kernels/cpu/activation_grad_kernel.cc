@@ -64,6 +64,23 @@ namespace phi {
         dev_ctx, &x, nullptr, &dout, dx, functor);           \
   }
 
+#define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr1, attr2)                         \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr1,                          \
+                        double attr2,                          \
+                        DenseTensor* dx) {                     \
+    funcs::functor_class<T> functor;                           \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = attr1;                                \
+    *(attrs[1].second) = attr2;                                \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>(   \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
+  }
+
 #define DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(name, functor_class) \
   template <typename T, typename Context>                             \
   void name##GradKernel(const Context& dev_ctx,                       \
@@ -178,11 +195,10 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
                                                STanhGradFunctor,
                                                scale_a,
                                                scale_b);
-
-DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               SoftplusGradFunctor,
-                                               beta,
-                                               threshold);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX(Softplus,
+                                                      SoftplusGradFunctor,
+                                                      beta,
+                                                      threshold);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  HardSigmoidGradFunctor,
                                                  slope,

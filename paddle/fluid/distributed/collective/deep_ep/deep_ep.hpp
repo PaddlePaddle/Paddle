@@ -52,6 +52,10 @@ struct Buffer {
   // Low-latency mode buffer
   int low_latency_buffer_idx = 0;
   bool low_latency_mode = false;
+  int m2n_ll_dispatch_workspace_idx = 0;
+  int m2n_ll_combine_workspace_idx = 0;
+  int m2n_ll_dispatch_recv_complete_idx = 0;
+  int m2n_ll_combine_recv_complete_idx = 0;
 
   // NVLink Buffer
   int64_t num_nvl_bytes;
@@ -327,6 +331,53 @@ struct Buffer {
       bool return_recv_hook,
       const std::optional<deep_ep::detail::Tensor>& out);
 
+  std::tuple<deep_ep::detail::Tensor,
+             std::optional<deep_ep::detail::Tensor>,
+             deep_ep::detail::Tensor,
+             deep_ep::detail::Tensor,
+             deep_ep::detail::Tensor,
+             deep_ep::detail::Tensor,
+             deep_ep::detail::Tensor,
+             deep_ep::detail::Tensor,
+             std::optional<EventHandle>,
+             std::optional<std::function<EventHandle()>>>
+  m2n_low_latency_dispatch_two_stage(
+      const deep_ep::detail::Tensor& x,
+      const deep_ep::detail::Tensor& topk_idx,
+      const deep_ep::detail::Tensor& topk_weights,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      int a_start_rank,
+      int a_num_ranks,
+      int e_start_rank,
+      int e_num_ranks,
+      bool use_fp8,
+      bool async,
+      bool return_recv_hook);
+
+  std::tuple<deep_ep::detail::Tensor,
+             std::optional<EventHandle>,
+             std::optional<std::function<EventHandle()>>>
+  m2n_low_latency_combine_two_stage(
+      const deep_ep::detail::Tensor& x,
+      const deep_ep::detail::Tensor& rdma_recv_x,
+      const deep_ep::detail::Tensor& topk_idx,
+      const deep_ep::detail::Tensor& topk_weights,
+      const deep_ep::detail::Tensor& src_info,
+      const deep_ep::detail::Tensor& layout_range,
+      const deep_ep::detail::Tensor& rdma_send_flags,
+      const deep_ep::detail::Tensor& dispatch_rdma_recv_count,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      int a_start_rank,
+      int a_num_ranks,
+      int e_start_rank,
+      int e_num_ranks,
+      bool dispatch_use_fp8,
+      bool async,
+      bool return_recv_hook,
+      const std::optional<deep_ep::detail::Tensor>& out);
+
 #endif  // PADDLE_WITH_NVSHMEM
 
   std::tuple<paddle::Tensor,
@@ -447,6 +498,52 @@ struct Buffer {
       const paddle::Tensor& dispatch_rdma_recv_count,
       int num_max_dispatch_tokens_per_rank,
       int num_experts,
+      bool dispatch_use_fp8,
+      bool async,
+      bool return_recv_hook,
+      const std::optional<paddle::Tensor>& out);
+
+  std::tuple<paddle::Tensor,
+             std::optional<paddle::Tensor>,
+             paddle::Tensor,
+             paddle::Tensor,
+             paddle::Tensor,
+             paddle::Tensor,
+             paddle::Tensor,
+             paddle::Tensor,
+             std::optional<EventHandle>,
+             std::optional<std::function<EventHandle()>>>
+  m2n_low_latency_dispatch_two_stage_api(const paddle::Tensor& x,
+                                         const paddle::Tensor& topk_idx,
+                                         const paddle::Tensor& topk_weights,
+                                         int num_max_dispatch_tokens_per_rank,
+                                         int num_experts,
+                                         int a_start_rank,
+                                         int a_num_ranks,
+                                         int e_start_rank,
+                                         int e_num_ranks,
+                                         bool use_fp8,
+                                         bool async,
+                                         bool return_recv_hook);
+
+  std::tuple<paddle::Tensor,
+             std::optional<EventHandle>,
+             std::optional<std::function<EventHandle()>>>
+  m2n_low_latency_combine_two_stage_api(
+      const paddle::Tensor& x,
+      const paddle::Tensor& rdma_recv_x,
+      const paddle::Tensor& topk_idx,
+      const paddle::Tensor& topk_weights,
+      const paddle::Tensor& src_info,
+      const paddle::Tensor& layout_range,
+      const paddle::Tensor& rdma_send_flags,
+      const paddle::Tensor& dispatch_rdma_recv_count,
+      int num_max_dispatch_tokens_per_rank,
+      int num_experts,
+      int a_start_rank,
+      int a_num_ranks,
+      int e_start_rank,
+      int e_num_ranks,
       bool dispatch_use_fp8,
       bool async,
       bool return_recv_hook,

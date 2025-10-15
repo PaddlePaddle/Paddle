@@ -464,5 +464,58 @@ class TestSetDevice(TestCase):
         self.assertIn("Unsupported device type", str(context.exception))
 
 
+class TestBf16Supported(unittest.TestCase):
+    def test_is_bf16_supported(self):
+        self.assertIsInstance(paddle.cuda.is_bf16_supported(), bool)
+        self.assertIsInstance(paddle.device.is_bf16_supported(), bool)
+        self.assertIsInstance(paddle.device.is_bf16_supported(True), bool)
+        self.assertIsInstance(paddle.cuda.is_bf16_supported(False), bool)
+        if should_skip_tests():
+            self.assertFalse(paddle.cuda.is_bf16_supported())
+            self.assertFalse(paddle.device.is_bf16_supported())
+
+
+class TestManualSeed(unittest.TestCase):
+    def test_device_manual_seed(self):
+        paddle.device.manual_seed(102)
+        x1 = paddle.randn([2, 3])
+
+        paddle.device.manual_seed(999)
+        x2 = paddle.randn([2, 3])
+
+        paddle.device.manual_seed(102)
+        x3 = paddle.randn([2, 3])
+
+        self.assertTrue(
+            paddle.equal_all(x1, x3),
+            "Random outputs should be identical with the same seed",
+        )
+
+        self.assertFalse(
+            paddle.equal_all(x1, x2),
+            "Random outputs should differ with different seeds",
+        )
+
+    def test_cuda_manual_seed(self):
+        paddle.cuda.manual_seed(102)
+        x1 = paddle.randn([2, 3], dtype='float32')
+
+        paddle.cuda.manual_seed(999)
+        x2 = paddle.randn([2, 3], dtype='float32')
+
+        paddle.cuda.manual_seed(102)
+        x3 = paddle.randn([2, 3], dtype='float32')
+
+        self.assertTrue(
+            paddle.equal_all(x1, x3),
+            "Random outputs should be identical with the same seed",
+        )
+
+        self.assertFalse(
+            paddle.equal_all(x1, x2),
+            "Random outputs should differ with different seeds",
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

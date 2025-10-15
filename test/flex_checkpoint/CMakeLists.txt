@@ -26,11 +26,16 @@ foreach(TEST_OP ${TEST_OPS})
   endif()
 endforeach()
 
-set(GPU_ONLY_DISTRIBUTED_TESTS test_sharded_state_dict test_strategy_conversion
-                               test_load_static_dict_transpose)
+set(GPU_ONLY_DISTRIBUTED_TESTS
+    test_sharded_state_dict test_strategy_conversion
+    test_load_static_dict_transpose test_model_full_param)
 
 if(TEST test_sharded_state_dict)
   set_tests_properties(test_sharded_state_dict PROPERTIES TIMEOUT 480)
+endif()
+
+if(TEST test_model_full_param)
+  set_tests_properties(test_model_full_param PROPERTIES TIMEOUT 480)
 endif()
 
 if(NOT (WITH_DISTRIBUTE AND WITH_GPU))
