@@ -100,13 +100,13 @@ ProgramDesc BuildProgramDesc() {
   return prog;
 }
 
-TEST(DepthwiseConvMKLDNNPass, pass_op_version_check) {
+TEST(DepthwiseConvOneDNNPass, pass_op_version_check) {
   ASSERT_TRUE(
       paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
           .IsPassCompatible("depthwise_conv_onednn_pass"));
 }
 
-TEST(DepthwiseConvMKLDNNPass, basic) {
+TEST(DepthwiseConvOneDNNPass, basic) {
   auto prog = BuildProgramDesc();
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));

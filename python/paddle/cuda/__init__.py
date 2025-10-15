@@ -34,6 +34,18 @@ from paddle.device import (
     set_stream,
     stream_guard as _PaddleStreamGuard,
 )
+from paddle.tensor.creation import (
+    BFloat16Tensor,
+    BoolTensor,
+    ByteTensor,
+    CharTensor,
+    DoubleTensor,
+    FloatTensor,
+    HalfTensor,
+    IntTensor,
+    LongTensor,
+    ShortTensor,
+)
 
 if TYPE_CHECKING:
     DeviceLike = Union[paddle.core.Place, int, str, None]
@@ -388,6 +400,40 @@ def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
 
     '''
     return StreamContext(stream_obj)
+
+
+class nvtx:
+    """Namespace for NVTX marker operations."""
+
+    @staticmethod
+    def range_push(msg: str):
+        """
+        Push an NVTX range marker with the given message.
+
+        Args:
+            msg (str): The name of the NVTX range.
+        Example:
+            .. code-block:: python
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+                >>> # paddle.device.nvtx.range_push("test") is equivalent to paddle.cuda.nvtx.range_push("test")
+                >>> paddle.cuda.nvtx.range_push("test")
+
+        """
+        paddle.base.core.nvprof_nvtx_push(msg)
+
+    @staticmethod
+    def range_pop():
+        """
+        Pop the most recent NVTX range marker.
+        Example:
+            .. code-block:: python
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+                >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
+                >>> paddle.cuda.nvtx.range_pop()
+        """
+        paddle.base.core.nvprof_nvtx_pop()
 
 
 def cudart():
@@ -909,6 +955,16 @@ __all__ = [
     "manual_seed_all",
     "get_rng_state",
     "set_rng_state",
+    'FloatTensor',
+    'DoubleTensor',
+    'HalfTensor',
+    'BFloat16Tensor',
+    'ByteTensor',
+    'CharTensor',
+    'ShortTensor',
+    'IntTensor',
+    'LongTensor',
+    'BoolTensor',
     "device",
     "is_bf16_supported",
     "manual_seed",

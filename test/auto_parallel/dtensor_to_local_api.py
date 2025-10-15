@@ -55,8 +55,11 @@ class TestDtensorToLocalAPI:
 
     def check_grad_mesh(self, org_mesh, org_placements):
         def _check_mesh(grad):
-            assert grad.process_mesh == org_mesh
-            assert grad.placements == org_placements
+            if hasattr(grad, "process_mesh") and hasattr(grad, "placements"):
+                assert grad.process_mesh == org_mesh
+                assert grad.placements == org_placements
+            else:
+                assert org_mesh is None and org_placements is None
 
         return _check_mesh
 
