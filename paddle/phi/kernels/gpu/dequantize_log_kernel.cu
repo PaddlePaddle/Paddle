@@ -51,8 +51,8 @@ void DequantizeLogKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(num,
                     (1LL << 31) - 1,
                     ::common::errors::PreconditionNotMet(
-                        "x's numel too large "
-                        "allowed size is 2 ^ 31 - 1 elements, but got %lld",
+                        "x's numel too large, allowed size is 2 ^ 31 - 1 "
+                        "elements, but got %lld",
                         num));
   int block = 512;
   int grid = (num + block - 1) / block;

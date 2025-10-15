@@ -111,8 +111,8 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
     PADDLE_ENFORCE_LE(im.numel(),
                       (1LL << 31) - 1,
                       ::common::errors::PreconditionNotMet(
-                          "im's numel too large "
-                          "allowed size is 2 ^ 31 - 1 elements, but got %lld",
+                          "im's numel too large, allowed size is 2 ^ 31 - 1 "
+                          "elements, but got %lld",
                           im.numel()));
 
     int im_channels =
