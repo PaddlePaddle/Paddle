@@ -75,7 +75,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
             os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
 
     def _create_model(self, save_format='pdmodel', name_suffix=''):
-        """Create simple model: y = x * w + b"""
+        """Create simple model: y = fc(x)"""
         model_path = os.path.join(
             self.temp_dir.name, f"model_{save_format}{name_suffix}"
         )
@@ -105,7 +105,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
                 # Initialize parameters
                 self.exe.run(startup_program)
 
-                #  Validate program has ops
+                # Validate program has ops
                 if len(main_program.global_block().ops) == 0:
                     raise ValueError("Main program is empty!")
 
@@ -158,28 +158,21 @@ class TestPdmodelCompatibility(unittest.TestCase):
     def _verify_loaded_model(
         self, program, feed_names, fetch_targets, expected_feed_name='x'
     ):
-        """Verify loaded model structure and run basic inference test"""
-        self.assertIsNotNone(program, "Program should be loaded successfully")
-        self.assertEqual(len(feed_names), 1, "Should have one feed variable")
-        self.assertEqual(
-            len(fetch_targets), 1, "Should have one fetch variable"
-        )
-        self.assertEqual(
-            feed_names[0],
-            expected_feed_name,
-            f"Feed variable name should be '{expected_feed_name}'",
-        )
+        """Verify loaded model by checking structure and running inference"""
+        self.assertEqual(len(feed_names), 1)
+        self.assertEqual(feed_names[0], expected_feed_name)
+        self.assertEqual(len(fetch_targets), 1)
 
-        # Test basic inference functionality
-        test_data = np.random.random([1, 10]).astype('float32')
+        # Run inference to verify model works
+        x_data = np.random.rand(2, 10).astype('float32')
         results = self.exe.run(
-            program, feed={feed_names[0]: test_data}, fetch_list=fetch_targets
+            program,
+            feed={feed_names[0]: x_data},
+            fetch_list=fetch_targets,
+            return_numpy=True,
         )
-        self.assertIsNotNone(results, "Inference results should not be None")
-        self.assertEqual(len(results), 1, "Should have one output")
-        self.assertEqual(
-            results[0].shape, (1, 1), "Output shape should be (1, 1)"
-        )
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].shape, (2, 1))
 
     def test_auto_fallback_pdmodel_to_legacy(self):
         """Test auto fallback from PIR to legacy mode when loading .pdmodel"""
@@ -279,12 +272,10 @@ class TestPdmodelCompatibility(unittest.TestCase):
         original = os.environ.get('PADDLE_ENABLE_PDMODEL_FALLBACK', '')
         try:
             os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = '0'
-            with self.assertRaises(
-                (RuntimeError, ValueError, FileNotFoundError)
-            ) as context:
+            with self.assertRaises((RuntimeError, ValueError)) as context:
                 load_inference_model(pdmodel_path, self.exe)
 
-            # Verify error message is related to JSON/parsing/file not found
+            # Verify error message is related to JSON/parsing
             error_message = str(context.exception).lower()
             self.assertTrue(
                 "json" in error_message or "parse" in error_message,
@@ -326,7 +317,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
         self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
 
     def test_no_model_files_error(self):
-        """Test proper error handling when model files don\'t exist"""
+        """Test proper error handling when model files don't exist"""
         model_path = os.path.join(self.temp_dir.name, "nonexistent_model")
 
         with self.assertRaises((FileNotFoundError, OSError, ValueError)):
