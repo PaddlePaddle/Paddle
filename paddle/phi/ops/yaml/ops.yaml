@@ -5664,13 +5664,15 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unified_linear
-  args : (Tensor lhs,  Tensor rhs, Tensor out, Tensor lhs_scale, Tensor rhs_scale, Tensor out_scale, DataType out_dtype, float alpha, float beta, bool trans_lhs = false, bool trans_rhs = false, bool trans_out = false, str activation="None")
-  output : Tensor(out, out_scale)
+  args : (Tensor A,  Tensor B, Tensor C, Tensor D, Tensor Bias, Tensor A_scale, Tensor B_scale, Tensor C_scale, Tensor D_scale, float alpha = 1.0, float beta = 0.0, bool trans_A = false, bool trans_B = false, bool trans_C = false, str activation="None")
+  output : Tensor(D, D_scale)
   infer_meta :
     func : UnifiedLinearInfermeta
+  inplace: (D -> D), (D_scale -> D_scale)
+  optional: A_scale, B_scale, C_scale, D_scale
   kernel :
     func : unified_linear
-    data_type : lhs
+    data_type : A
 
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
