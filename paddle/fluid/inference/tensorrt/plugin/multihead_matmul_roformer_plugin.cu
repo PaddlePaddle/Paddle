@@ -31,9 +31,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 int MultiheadMatmulRoformerPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs MultiheadMatmulRoformerPlugin::getOutputDimensions(
@@ -370,7 +367,6 @@ int MultiheadMatmulRoformerPlugin::enqueue(
   }
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

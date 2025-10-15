@@ -158,9 +158,16 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     input_str += input_bias_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name =
+        egr::GenerateUniqueApiName("sync_batch_norm_", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "sync_batch_norm_" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // Forward API Call
   auto api_result =
       paddle::experimental::sync_batch_norm_(x,
@@ -175,8 +182,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                              use_global_stats,
                                              trainable_statistics);
   VLOG(3) << "\n"
-          << SEPARATOR << "Finishi_C++_API: "
-          << "sync_batch_norm_" << SEPARATOR;
+          << SEPARATOR << "Finishi_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("sync_batch_norm_", api_result);
@@ -189,7 +195,14 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   auto& saved_mean = std::get<3>(api_result);
   auto& saved_variance = std::get<4>(api_result);
   auto& reserve_space = std::get<5>(api_result);
-
+  if (VLOG_IS_ON(6)) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+    egr::SetTensorName(unique_api_name, "mean_out", &mean_out);
+    egr::SetTensorName(unique_api_name, "variance_out", &variance_out);
+    egr::SetTensorName(unique_api_name, "saved_mean", &saved_mean);
+    egr::SetTensorName(unique_api_name, "saved_variance", &saved_variance);
+    egr::SetTensorName(unique_api_name, "reserve_space", &reserve_space);
+  }
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
   egr::AutogradMeta* mean_out_autograd_meta =
@@ -231,7 +244,10 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     // Node Construction
     auto grad_node = std::shared_ptr<SyncBatchNormGradNode>(  // NOLINT
         new SyncBatchNormGradNode(6, 5));
-
+    // Set GradNodeName
+    if (VLOG_IS_ON(6)) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());

@@ -95,7 +95,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Construct a new Tensor object
    */
-  Tensor() = default;
+  Tensor();
 
   /**
    * @brief Construct a new Tensor object by copy
@@ -721,6 +721,9 @@ class PADDLE_API Tensor final {
    * Tensor name: used to adapt original execution mechanism and debug analysis
    * in the development of new dygraph.
    */
+  // std::string name_ =
+  //     "Tensor_" + std::to_string(reinterpret_cast<uintptr_t>(this));  //
+  //     NOLINT
   std::string name_{""};
 
  public:

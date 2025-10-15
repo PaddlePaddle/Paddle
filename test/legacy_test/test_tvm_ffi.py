@@ -12,12 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import platform
 import unittest
+from typing import TYPE_CHECKING
+
+import numpy as np
+import tvm_ffi.cpp
 
 import paddle
 
+if TYPE_CHECKING:
+    from tvm_ffi import Module
 
-class TestTVMFFI(unittest.TestCase):
+
+class TestTVMFFIEnvStream(unittest.TestCase):
     def test_tvm_ffi_env_stream_for_gpu_tensor(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -32,6 +42,114 @@ class TestTVMFFI(unittest.TestCase):
             RuntimeError, r"the __tvm_ffi_env_stream__ method"
         ):
             tensor.__tvm_ffi_env_stream__()
+
+
+class TestCDLPackExchangeAPI(unittest.TestCase):
+    def test_c_dlpack_exchange_api_cpu(self):
+        cpp_source = r"""
+            void add_one_cpu(tvm::ffi::TensorView x, tvm::ffi::TensorView y) {
+                // implementation of a library function
+                TVM_FFI_ICHECK(x->ndim == 1) << "x must be a 1D tensor";
+                DLDataType f32_dtype{kDLFloat, 32, 1};
+                TVM_FFI_ICHECK(x->dtype == f32_dtype) << "x must be a float tensor";
+                TVM_FFI_ICHECK(y->ndim == 1) << "y must be a 1D tensor";
+                TVM_FFI_ICHECK(y->dtype == f32_dtype) << "y must be a float tensor";
+                TVM_FFI_ICHECK(x->shape[0] == y->shape[0]) << "x and y must have the same shape";
+                for (int i = 0; i < x->shape[0]; ++i) {
+                    static_cast<float*>(y->data)[i] = static_cast<float*>(x->data)[i] + 1;
+                }
+            }
+        """
+
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions='add_one_cpu'
+        )
+
+        x = paddle.full((3,), 1.0, dtype='float32').cpu()
+        y = paddle.zeros((3,), dtype='float32').cpu()
+        mod.add_one_cpu(x, y)
+        np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
+
+    def test_c_dlpack_exchange_api_gpu(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        if paddle.is_compiled_with_rocm():
+            # Skip on DCU because CUDA_HOME is not available
+            return
+        if platform.system() == "Windows":
+            # Temporary skip this test case on windows because compile bug on TVM FFI
+            return
+        cpp_sources = r"""
+            void add_one_cuda(tvm::ffi::TensorView x, tvm::ffi::TensorView y);
+        """
+        cuda_sources = r"""
+            __global__ void AddOneKernel(float* x, float* y, int n) {
+              int idx = blockIdx.x * blockDim.x + threadIdx.x;
+              if (idx < n) {
+                y[idx] = x[idx] + 1;
+              }
+            }
+
+            void add_one_cuda(tvm::ffi::TensorView x, tvm::ffi::TensorView y) {
+              // implementation of a library function
+              TVM_FFI_ICHECK(x->ndim == 1) << "x must be a 1D tensor";
+              DLDataType f32_dtype{kDLFloat, 32, 1};
+              TVM_FFI_ICHECK(x->dtype == f32_dtype) << "x must be a float tensor";
+              TVM_FFI_ICHECK(y->ndim == 1) << "y must be a 1D tensor";
+              TVM_FFI_ICHECK(y->dtype == f32_dtype) << "y must be a float tensor";
+              TVM_FFI_ICHECK(x->shape[0] == y->shape[0]) << "x and y must have the same shape";
+
+              int64_t n = x->shape[0];
+              int64_t nthread_per_block = 256;
+              int64_t nblock = (n + nthread_per_block - 1) / nthread_per_block;
+              // Obtain the current stream from the environment by calling TVMFFIEnvGetStream
+              cudaStream_t stream = static_cast<cudaStream_t>(
+                  TVMFFIEnvGetStream(x->device.device_type, x->device.device_id));
+              // launch the kernel
+              AddOneKernel<<<nblock, nthread_per_block, 0, stream>>>(static_cast<float*>(x->data),
+                                                                     static_cast<float*>(y->data), n);
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod',
+            cpp_sources=cpp_sources,
+            cuda_sources=cuda_sources,
+            functions=['add_one_cuda'],
+        )
+
+        x = paddle.full((3,), 1.0, dtype='float32').cuda()
+        y = paddle.zeros((3,), dtype='float32').cuda()
+        mod.add_one_cuda(x, y)
+        np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
+
+    def test_c_dlpack_exchange_api_alloc_tensor(self):
+        if platform.system() == "Windows":
+            # Temporary skip this test case on windows because return owned tensor created by
+            # TVMFFIEnvGetTensorAllocator will cause double free error
+            return
+        cpp_source = r"""
+            inline tvm::ffi::Tensor alloc_tensor(tvm::ffi::Shape shape, DLDataType dtype, DLDevice device) {
+                return tvm::ffi::Tensor::FromDLPackAlloc(TVMFFIEnvGetTensorAllocator(), shape, dtype, device);
+            }
+
+            tvm::ffi::Tensor add_one_cpu(tvm::ffi::TensorView x) {
+                TVM_FFI_ICHECK(x->ndim == 1) << "x must be a 1D tensor";
+                DLDataType f32_dtype{kDLFloat, 32, 1};
+                TVM_FFI_ICHECK(x->dtype == f32_dtype) << "x must be a float tensor";
+                tvm::ffi::Shape x_shape(x->shape, x->shape + x->ndim);
+                tvm::ffi::Tensor y = alloc_tensor(x_shape, f32_dtype, x->device);
+                for (int i = 0; i < x->shape[0]; ++i) {
+                    static_cast<float*>(y->data)[i] = static_cast<float*>(x->data)[i] + 1;
+                }
+                return y;
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions=['add_one_cpu']
+        )
+        x = paddle.full((3,), 1.0, dtype='float32').cpu()
+        y = mod.add_one_cpu(x)
+        np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
 
 
 if __name__ == '__main__':

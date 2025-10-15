@@ -2902,6 +2902,8 @@ class DistModel:
             strategy
             and strategy.sharding.enable_tensor_fusion
             and isinstance(optimizer, _ShardOptimizer)
+            and hasattr(optimizer, '_shard_fn')
+            and hasattr(optimizer, '_inner_opt')
             and use_pir_api()
         ):
             assert isinstance(optimizer._shard_fn, ShardingStage1), (
@@ -4088,7 +4090,7 @@ class ShardDataloader:
                         self.dense_tensor_idx is not None
                         and self.dense_tensor_idx[i] != []
                     ):
-                        dist_batch_data.append(input_data)
+                        dist_batch_data[key] = input_data
                     else:
                         mesh, placements = self._get_mesh_and_placement(i)
                         dist_batch_data[key] = dtensor_from_local(

@@ -114,7 +114,6 @@ class SwishPluginCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(SwishPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class SwishPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SwishPluginDynamic(const float beta, const bool with_fp16)
@@ -138,10 +137,11 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -194,7 +194,6 @@ class SwishPluginDynamicCreator : public TensorRTPluginCreator {
   }
 };
 REGISTER_TRT_PLUGIN_V2(SwishPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
