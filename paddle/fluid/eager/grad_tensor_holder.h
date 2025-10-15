@@ -84,16 +84,10 @@ class GradTensorHolder {
                                              size_t rank,
                                              const paddle::Tensor& grad_tensor);
 
-  const paddle::small_vector<std::vector<phi::DataType>, kSlotSmallVectorSize>&
-  GetInputDtypes() const {
-    return input_dtypes_;
-  }
-
   // Set shared buffer
-  void SetBuffers(paddle::small_vector<std::vector<paddle::Tensor>,
-                                       kSlotSmallVectorSize>&& new_buffer) {
-    buffer_ = std::move(new_buffer);
-  }
+  PADDLE_API void SetBuffers(
+      paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>&&
+          new_buffer);
 
  private:
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>

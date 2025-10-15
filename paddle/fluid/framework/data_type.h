@@ -246,17 +246,6 @@ extern inline bool IsComplexType(const phi::DataType& type) {
           type == phi::DataType::COMPLEX128);
 }
 
-extern inline bool IsFloatingType(const proto::VarType::Type& type) {
-  return (type == proto::VarType::FP32 || type == proto::VarType::FP64 ||
-          type == proto::VarType::FP16 || type == proto::VarType::BF16);
-}
-
-extern inline bool IsFloatingType(const paddle::DataType& type) {
-  return (
-      type == paddle::DataType::FLOAT32 || type == paddle::DataType::FLOAT64 ||
-      type == paddle::DataType::FLOAT16 || type == paddle::DataType::BFLOAT16);
-}
-
 extern proto::VarType::Type PromoteTypesIfComplexExists(
     const proto::VarType::Type type_a, const proto::VarType::Type type_b);
 

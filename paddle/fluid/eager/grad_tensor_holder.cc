@@ -70,7 +70,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
         buffer_tensor.copy_(grad_tensor, grad_tensor.place(), false);
       }
       auto* meta = egr::EagerUtils::autograd_meta(&buffer_tensor);
-      auto* origin_meta = egr::EagerUtils::nullable_autograd_meta(grad_tensor);
+      auto* origin_meta = egr::EagerUtils::nullable_autograd_meta(t);
       if (origin_meta) {
         auto grad_node = origin_meta->GetMutableGradNode();
         if (grad_node && grad_node.get()) {
@@ -245,55 +245,38 @@ paddle::Tensor GradTensorHolder::ValidateGradient(
   }
   if (slot_id >= input_dtypes_.size() ||
       rank >= input_dtypes_[slot_id].size()) {
-    VLOG(4) << "GradTensorHolder: No input dtype available for slot " << slot_id
+    VLOG(7) << "GradTensorHolder: No input dtype available for slot " << slot_id
             << ", rank " << rank << ", skipping validation";
     return grad_tensor;
   }
   const auto& expected_dtype = input_dtypes_[slot_id][rank];
   if (expected_dtype == phi::DataType::UNDEFINED) {
-    VLOG(4) << "GradTensorHolder: No dtype info available for slot " << slot_id
+    VLOG(7) << "GradTensorHolder: No dtype info available for slot " << slot_id
             << ", rank " << rank << ", skipping validation";
     return grad_tensor;
   }
   const auto grad_dtype = grad_tensor.dtype();
-  const bool grad_is_float = paddle::framework::IsFloatingType(grad_dtype);
-  const bool grad_is_complex = paddle::framework::IsComplexType(grad_dtype);
-
-  // Check gradient differentiability
-  if (!grad_is_float && !grad_is_complex) {
-    VLOG(3) << "GradTensorHolder: Non-differentiable gradient type for slot "
-            << slot_id << ", rank " << rank;
-    // PADDLE_THROW
-  }
-
-  // Check type compatibility
-  const bool expected_is_complex =
-      paddle::framework::IsComplexType(expected_dtype);
-  if (!grad_is_float && (expected_is_complex != grad_is_complex)) {
-    VLOG(3) << "GradTensorHolder: Invalid gradient type for slot " << slot_id
-            << ", rank " << rank
-            << " - expected floating point or matching complex type";
-    // PADDLE_THROW
-  }
-
   // Return directly if types match
   if (grad_dtype == expected_dtype) {
     return grad_tensor;
   }
 
   // Cast gradient to expected dtype
-  VLOG(4) << "GradTensorHolder: Converting gradient dtype from " << grad_dtype
+  VLOG(6) << "GradTensorHolder: Converting gradient dtype from " << grad_dtype
           << " to " << expected_dtype << " for slot " << slot_id << ", rank "
           << rank;
+  return grad_tensor.cast(expected_dtype);
+}
 
-  auto casted_grad = grad_tensor.cast(expected_dtype);
-  if (casted_grad.dtype() != expected_dtype) {
-    VLOG(3) << "GradTensorHolder: Dtype mismatch detected - current: "
-            << casted_grad.dtype() << ", target: " << expected_dtype
-            << " for slot " << slot_id << ", rank " << rank;
-    // PADDLE_THROW
+void GradTensorHolder::SetBuffers(
+    paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>&&
+        new_buffer) {
+  for (size_t i = 0; i < new_buffer.size(); ++i) {
+    for (size_t j = 0; j < new_buffer[i].size(); ++j) {
+      new_buffer[i][j] = ValidateGradient(i, j, new_buffer[i][j]);
+    }
   }
-  return casted_grad;
+  buffer_ = std::move(new_buffer);
 }
 
 }  // namespace egr
