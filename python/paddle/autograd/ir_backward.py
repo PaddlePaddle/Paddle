@@ -282,6 +282,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     visited_output.add(opresult)
 
                     complete_outputs.append(opresult)
+                    if opresult not in state.value_to_valuegrad:
+                        state.value_to_valuegrad[opresult] = [[grad_value]]
 
     return grad_outputs, complete_outputs, backward_ops
 

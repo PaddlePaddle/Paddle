@@ -172,7 +172,6 @@ class PoolPluginCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(PoolPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class PoolPluginDynamic : public DynamicPluginTensorRT {
  public:
   PoolPluginDynamic() {}
@@ -339,7 +338,6 @@ class PIRPoolPluginDynamicCreator : public TensorRTPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(PoolPluginDynamicCreator);
 REGISTER_TRT_PLUGIN_V2(PIRPoolPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

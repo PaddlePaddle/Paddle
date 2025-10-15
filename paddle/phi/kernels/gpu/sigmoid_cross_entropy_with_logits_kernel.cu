@@ -100,14 +100,14 @@ void SigmoidCrossEntropyWithLogitsKernel(
   auto out_data = dev_ctx.template Alloc<T>(out);
 
   // Temporary memory
-  DenseTensor *counts_tensor = new DenseTensor();
+  DenseTensor counts_tensor;
 
   int64_t out_dims = label.numel() * sizeof(T);
-  counts_tensor->Resize({out_dims});
-  dev_ctx.template Alloc<T>(counts_tensor);
-  counts_tensor->Resize(out->dims());
+  counts_tensor.Resize({out_dims});
+  dev_ctx.template Alloc<T>(&counts_tensor);
+  counts_tensor.Resize(out->dims());
 
-  std::vector<DenseTensor *> outs = {out, counts_tensor};
+  std::vector<DenseTensor *> outs = {out, &counts_tensor};
 
   if (pos_weight.get_ptr() == nullptr) {
     std::vector<const DenseTensor *> ins = {&x, &label};
@@ -121,18 +121,18 @@ void SigmoidCrossEntropyWithLogitsKernel(
         dev_ctx, ins, &outs, functor);
   }
   if (normalize) {
-    DenseTensor *norm_tensor = new DenseTensor();
-    norm_tensor->Resize({sizeof(T)});
-    dev_ctx.template Alloc<T>(norm_tensor);
-    auto dims = common::vectorize(counts_tensor->dims());
+    DenseTensor norm_tensor;
+    norm_tensor.Resize({sizeof(T)});
+    dev_ctx.template Alloc<T>(&norm_tensor);
+    auto dims = common::vectorize(counts_tensor.dims());
     std::vector<int> reduce_dim = {};
     for (int i = 0; i < dims.size(); i++) {
       reduce_dim.push_back(i);
     }
 
     funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-        dev_ctx, *counts_tensor, norm_tensor, NonzeroFunctor<T>(), reduce_dim);
-    T *norm = dev_ctx.template Alloc<T>(norm_tensor);
+        dev_ctx, counts_tensor, &norm_tensor, NonzeroFunctor<T>(), reduce_dim);
+    T *norm = dev_ctx.template Alloc<T>(&norm_tensor);
     auto norm_cpu_mem = phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
     memory_utils::Copy(phi::CPUPlace(),
@@ -146,10 +146,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
     phi::ScaleKernel<T>(dev_ctx, *out, 1.0 / (*norm_cpu_ptr), 0.0f, false, out);
-
-    delete norm_tensor;
   }
-  delete counts_tensor;
 }
 
 }  // namespace phi

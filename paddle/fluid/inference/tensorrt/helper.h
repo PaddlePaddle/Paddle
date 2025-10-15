@@ -71,16 +71,12 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
   return static_cast<nvinfer1::IRuntime*>(
       dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
-#if IS_TRT_VERSION_GE(6000)
 static nvinfer1::IPluginRegistry* GetPluginRegistry() {
   return static_cast<nvinfer1::IPluginRegistry*>(dy::getPluginRegistry());
 }
 static int GetInferLibVersion() {
   return static_cast<int>(dy::getInferLibVersion());
 }
-#else
-static int GetInferLibVersion() { return 0; }
-#endif
 
 static std::tuple<int, int, int> GetTrtRuntimeVersion() {
   int ver = GetInferLibVersion();
