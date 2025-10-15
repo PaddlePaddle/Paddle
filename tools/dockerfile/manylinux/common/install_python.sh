@@ -76,6 +76,12 @@ function do_cpython_build {
     if [ -e ${prefix}/bin/python3.13t ]; then
         ln -s python3.13t ${prefix}/bin/python
     fi
+    if [ -e ${prefix}/bin/python3.14 ]; then
+        ln -s python3.14 ${prefix}/bin/python
+    fi
+    if [ -e ${prefix}/bin/python3.14t ]; then
+        ln -s python3.14t ${prefix}/bin/python
+    fi
 
     # NOTE Make libpython shared library visible to python calls below
     LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.trusted-host mirrors.aliyun.com
@@ -112,7 +118,7 @@ function build_cpythons {
 
 PYTHON_DOWNLOAD_URL=https://www.python.org/ftp/python
 GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py
-CPYTHON_VERSIONS="3.13.0 3.12.0 3.11.0 3.10.0 3.9.0"
+CPYTHON_VERSIONS="3.14.0 3.13.0 3.12.0 3.11.0 3.10.0 3.9.0"
 
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS

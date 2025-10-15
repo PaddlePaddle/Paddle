@@ -80,10 +80,16 @@ RUN python3.13t get-pip.py && \
   mv /usr/local/bin/pip3.13 /usr/local/bin/pip3.13t && \
   python3.13 get-pip.py
 
+RUN python3.14t get-pip.py && \
+  mv /usr/local/bin/pip3.14 /usr/local/bin/pip3.14t && \
+  python3.14 get-pip.py
+
 RUN python3.9 -m pip install setuptools==50.3.2 && \
   python3.10 -m pip install setuptools==68.2.0 && \
   python3.11 -m pip install setuptools==68.2.0 && \
   python3.12 -m pip install --break-system-packages setuptools==68.2.0 && \
+  python3.13 -m pip install setuptools==69.5.0 && \
+  python3.13t -m pip install setuptools==69.5.0 && \
   python3.13 -m pip install setuptools==69.5.0 && \
   python3.13t -m pip install setuptools==69.5.0
 
@@ -123,7 +129,9 @@ RUN python3.9 -m pip --no-cache-dir install ipython==5.3.0 && \
     python3.13 -m pip --no-cache-dir install ipython==5.3.0 && \
     python3.13 -m pip --no-cache-dir install ipykernel==4.6.0 wheel && \
     python3.13t -m pip --no-cache-dir install ipython==5.3.0 && \
-    python3.13t -m pip --no-cache-dir install ipykernel==4.6.0 wheel
+    python3.13t -m pip --no-cache-dir install ipykernel==4.6.0 wheel && \
+    python3.14 -m pip --no-cache-dir install ipython==5.3.0 ipykernel==4.6.0 wheel && \
+    python3.14t -m pip --no-cache-dir install ipython==5.3.0 ipykernel==4.6.0 wheel
 
 # For PaddleTest CE
 RUN python3.9  -m pip --no-cache-dir install pytest && \
@@ -131,7 +139,9 @@ RUN python3.9  -m pip --no-cache-dir install pytest && \
     python3.11 -m pip --no-cache-dir install pytest && \
     python3.12 -m pip --no-cache-dir install --break-system-packages pytest && \
     python3.13 -m pip --no-cache-dir install pytest && \
-    python3.13t -m pip --no-cache-dir install pytest
+    python3.13t -m pip --no-cache-dir install pytest && \
+    python3.14 -m pip --no-cache-dir install pytest && \
+    python3.14t -m pip --no-cache-dir install pytest
 
 RUN python3.9  -m pip --no-cache-dir install pre-commit==2.17.0 && \
     python3.10 -m pip --no-cache-dir install pre-commit==2.17.0 && \
@@ -140,7 +150,9 @@ RUN python3.9  -m pip --no-cache-dir install pre-commit==2.17.0 && \
     python3.11 -m pip --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     python3.12 -m pip --no-cache-dir install --break-system-packages cpplint==1.6.0 clang-format==13.0.0 && \
     python3.13 -m pip --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    python3.13t -m pip --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
+    python3.13t -m pip --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    python3.14 -m pip --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    python3.14t -m pip --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
@@ -155,7 +167,10 @@ RUN python3.9  -m pip --no-cache-dir install -r  /root/requirements.txt && \
     python3.12 -m pip --no-cache-dir install --break-system-packages -r /home/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /home/requirements.txt && \
-    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt
+    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt && \
+    python3.14 -m pip --no-cache-dir install -r /root/requirements.txt && \
+    python3.14 -m pip --no-cache-dir install -r /home/requirements.txt && \
+    python3.14t -m pip --no-cache-dir install -r /root/requirements.txt
 
 # clang14
 RUN apt-get update &&\
