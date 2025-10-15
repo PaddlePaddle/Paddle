@@ -4,7 +4,7 @@ int* arr = new int[10];
 
 class MyClass {
 public:
-    MyClass() { std::cout << "constructor\n"; } // 测试
+    MyClass() { std::cout << "constructor\n"; }
 };
 
 MyClass* obj = new MyClass();

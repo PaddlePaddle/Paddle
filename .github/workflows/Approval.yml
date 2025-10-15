@@ -36,7 +36,6 @@ jobs:
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git merge test
-          git diff
 
       - name: Check bypass
         id: check-bypass
@@ -48,7 +47,4 @@ jobs:
       - name: Display Required Approvers
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
-          set -x
-          git diff
-          tail -50 ci/check_approval.sh
           bash ci/check_approval.sh
