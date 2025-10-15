@@ -96,10 +96,11 @@ paddle::Tensor dtensor_from_local_ad_function(
   if (require_any_grad) {
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
-    // SetGradOutMeta & SetEdge replacement
+    // SetGradOutMeta & SetEdges
     if (input_autograd_meta) {
       grad_node->SetGradOutMeta(input, 0);
-      egr::EagerUtils::AddEdgeBetween(input_autograd_meta, grad_node);
+      egr::Edge edge{input_autograd_meta, grad_node};
+      grad_node->SetEdge(edge);
     } else {
       grad_node->SetGradOutMeta(input, 0);
     }
