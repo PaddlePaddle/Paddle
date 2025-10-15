@@ -111,9 +111,14 @@ paddle::Tensor conv2d_ad_func(
   egr::AutogradMeta* filter_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("conv2d", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "conv2d" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto api_result = paddle::experimental::conv2d(input,
                                                  filter,
                                                  strides,
@@ -123,8 +128,7 @@ paddle::Tensor conv2d_ad_func(
                                                  groups,
                                                  data_format);
   VLOG(3) << "\n"
-          << SEPARATOR << "Finshi_C++_API: "
-          << "conv2d" << SEPARATOR;
+          << SEPARATOR << "Finshi_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
@@ -132,6 +136,9 @@ paddle::Tensor conv2d_ad_func(
 
   // Get Outputs
   auto& out = api_result;
+  if (VLOG_IS_ON(6)) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+  }
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
@@ -151,7 +158,10 @@ paddle::Tensor conv2d_ad_func(
     // Node Construction
     auto grad_node = std::shared_ptr<Conv2dGradNodeFinal>(  // NOLINT
         new Conv2dGradNodeFinal(1, 2));
-
+    // Set GradNodeName
+    if (VLOG_IS_ON(6)) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());

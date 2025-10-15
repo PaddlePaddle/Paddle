@@ -4090,7 +4090,7 @@ class ShardDataloader:
                         self.dense_tensor_idx is not None
                         and self.dense_tensor_idx[i] != []
                     ):
-                        dist_batch_data.append(input_data)
+                        dist_batch_data[key] = input_data
                     else:
                         mesh, placements = self._get_mesh_and_placement(i)
                         dist_batch_data[key] = dtensor_from_local(
