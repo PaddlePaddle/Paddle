@@ -70,8 +70,9 @@ void NormKernel(const Context& dev_ctx,
   norm_reshape.device(*place) = sum.sqrt();
 
   // y = x / norm
-  Eigen::DSizes<int, 3> rshape(pre, 1, post);
-  Eigen::DSizes<int, 3> bcast(1, n, 1);
+  Eigen::DSizes<int64_t, 3> rshape(pre, static_cast<int64_t>(1), post);
+  Eigen::DSizes<int64_t, 3> bcast(
+      static_cast<int64_t>(1), n, static_cast<int64_t>(1));
   y.device(*place) = x_r / norm_reshape.reshape(rshape).broadcast(bcast);
 }
 
