@@ -298,8 +298,8 @@ def hardswish_converter(network, paddle_op, inputs):
     return hardswish_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.elu", trt_version="8.x")
-@converter_registry.register("pd_op.elu_", trt_version="8.x")
+@converter_registry.register("pd_op.elu")
+@converter_registry.register("pd_op.elu_")
 def elu_converter(network, paddle_op, inputs):
     x = inputs[0]
     alpha = paddle_op.attrs()["alpha"]
@@ -309,7 +309,7 @@ def elu_converter(network, paddle_op, inputs):
     return elu_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.softplus", trt_version="8.x")
+@converter_registry.register("pd_op.softplus")
 def softplus_converter(network, paddle_op, inputs):
     x = inputs[0]
     beta = paddle_op.attrs()["beta"]
@@ -328,8 +328,8 @@ def softplus_converter(network, paddle_op, inputs):
     return softplus_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.swish", trt_version="8.x")
-@converter_registry.register("pd_op.silu", trt_version="8.x")
+@converter_registry.register("pd_op.swish")
+@converter_registry.register("pd_op.silu")
 def swish_silu_converter(network, paddle_op, inputs):
     layer_output = network.add_activation(
         inputs[0], activation_type_map[paddle_op.name()]
@@ -343,7 +343,7 @@ def swish_silu_converter(network, paddle_op, inputs):
     )
 
 
-@converter_registry.register("pd_op.tanh_shrink", trt_version="8.x")
+@converter_registry.register("pd_op.tanh_shrink")
 def tanh_shrink_converter(network, paddle_op, inputs):
     x = inputs[0]
     tanh_layer = network.add_activation(x, trt.ActivationType.TANH)
@@ -355,7 +355,7 @@ def tanh_shrink_converter(network, paddle_op, inputs):
     return subtract_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.stanh", trt_version="8.x")
+@converter_registry.register("pd_op.stanh")
 def stanh_converter(network, paddle_op, inputs):
     x = inputs[0]
     scale_a = paddle_op.attrs()["scale_a"]
@@ -367,7 +367,7 @@ def stanh_converter(network, paddle_op, inputs):
     return stanh_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.mish", trt_version="8.x")
+@converter_registry.register("pd_op.mish")
 def mish_converter(network, paddle_op, inputs):
     x = inputs[0]
     softplus_layer = network.add_activation(x, trt.ActivationType.SOFTPLUS)
@@ -385,7 +385,7 @@ def mish_converter(network, paddle_op, inputs):
     )
 
 
-@converter_registry.register("pd_op.celu", trt_version="8.x")
+@converter_registry.register("pd_op.celu")
 def celu_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     alpha = paddle_op.attrs()["alpha"]
@@ -451,7 +451,7 @@ def celu_converter(network, paddle_op, inputs):
     return output_tensor
 
 
-@converter_registry.register("pd_op.thresholded_relu", trt_version="8.x")
+@converter_registry.register("pd_op.thresholded_relu")
 def thresholded_relu_converter(network, paddle_op, inputs):
     x = inputs[0]
     threshold = paddle_op.attrs()["threshold"]
@@ -463,8 +463,8 @@ def thresholded_relu_converter(network, paddle_op, inputs):
     return thresholded_relu_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.leaky_relu", trt_version="8.x")
-@converter_registry.register("pd_op.leaky_relu_", trt_version="8.x")
+@converter_registry.register("pd_op.leaky_relu")
+@converter_registry.register("pd_op.leaky_relu_")
 def leaky_relu_converter(network, paddle_op, inputs):
     x = inputs[0]
     negative_slope = paddle_op.attrs()["negative_slope"]
@@ -474,7 +474,7 @@ def leaky_relu_converter(network, paddle_op, inputs):
     return leaky_relu_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.selu", trt_version="8.x")
+@converter_registry.register("pd_op.selu")
 def selu_converter(network, paddle_op, inputs):
     x = inputs[0]
     alpha = paddle_op.attrs()["alpha"]
@@ -486,7 +486,7 @@ def selu_converter(network, paddle_op, inputs):
     return selu_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.prelu", trt_version="8.x")
+@converter_registry.register("pd_op.prelu")
 def prelu_converter(network, paddle_op, inputs):
     input, alpha_data = inputs
     input_dims = input.shape
