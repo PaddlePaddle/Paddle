@@ -398,9 +398,10 @@ ATTRIBUTE_MEMBER_WITH_DEFAULT_TEMPLATE = """  {} {} = {};
 ATTRIBUTE_MEMBER_TEMPLATE = """  {} {};
 """
 SET_TENSOR_NAME_TEMPLATE = """
-  if(VLOG_IS_ON(6)){{
+  if(VLOG_IS_ON(6)||FLAGS_enable_unique_name)
+{{
 {}
-  }}
+}}
 """
 
 NODE_DECLARATION_TEMPLATE = """
@@ -478,7 +479,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Generate a unique API name
 
   std::string unique_api_name;
-  if (VLOG_IS_ON(3)) {{
+  if (VLOG_IS_ON(3)||FLAGS_enable_unique_name) {{
     static int64_t call_count = 0;
     call_count ++;
     unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
@@ -550,7 +551,7 @@ TEST_API {} {}({}) {{
   // Generate a unique API name
 
   std::string unique_api_name;
-  if (VLOG_IS_ON(3)) {{
+  if (VLOG_IS_ON(3)||FLAGS_enable_unique_name) {{
     static int64_t call_count = 0;
     call_count ++;
     unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
@@ -628,7 +629,7 @@ TEST_API {} {}({}) {{
 {}
   // Generate a unique API name
   std::string unique_api_name;
-  if(VLOG_IS_ON(3)){{
+  if(VLOG_IS_ON(3)||FLAGS_enable_unique_name){{
     static int64_t call_count = 0;
     call_count ++;
     unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
@@ -676,7 +677,7 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
 """
 
 FORWARD_BODY_AFTER_API_CALL_TEMPLATE = """  if (require_any_grad) {{
-    if(VLOG_IS_ON(6)){{
+    if(VLOG_IS_ON(6)||FLAGS_enable_unique_name){{
         // Set GradNodeName
         grad_node->SetNameFromAPI(unique_api_name);
     }}
@@ -698,7 +699,7 @@ HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if (trace_backward) {{
 {}
     // Node Construction
 {}
-    if(VLOG_IS_ON(6)){{
+    if(VLOG_IS_ON(6)||FLAGS_enable_unique_name){{
         //Set GradNode Name
         grad_node->SetNameFromAPI(unique_api_name);
     }}
@@ -748,6 +749,8 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
 static std::string separator = "==========================";
 {}
 """
@@ -795,6 +798,7 @@ COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
 static std::string separator = "==========================";
 {}
@@ -3332,6 +3336,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
 
         num_fwd_outputs = len(backward_grad_outputs_map)
         set_tensor_name_str = ""
+        save_md5_checksum_str = ""
         for name, (
             rtype,
             pos,
@@ -3372,11 +3377,15 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
     }}
 """
             set_tensor_name_str += f"""    egr::SetGradTensorName(&{transformed_tensor_name}, {pos}, out_metas);\n"""
+            save_md5_checksum_str += f"    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir, {transformed_tensor_name});\n"
             outputs_autograd_meta_list.append(output_autograd_meta)
 
         outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
         outputs_autograd_meta_str += SET_TENSOR_NAME_TEMPLATE.format(
             set_tensor_name_str
+        )
+        outputs_autograd_meta_str += SAVE_TENSOR_MD5_CHECKSUM_TEMPLATE.format(
+            save_md5_checksum_str
         )
 
         returns_str = f"{indent}if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"

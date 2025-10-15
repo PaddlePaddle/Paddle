@@ -35,6 +35,8 @@
 #include "paddle/fluid/framework/variable.h"
 
 #include "paddle/utils/md5.h"
+COMMON_DECLARE_bool(enable_unique_name);
+
 namespace egr {
 
 void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
@@ -852,7 +854,6 @@ std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
   } else if (dtype == phi::DataType::COMPLEX128) {
     formatter.FormatData<phi::complex128>(dense_tensor, data_stream, precision);
   }
-  std::cout << data_stream.str() << std::endl;
   return paddle::md5(data_stream.str());
 }
 /**
@@ -980,7 +981,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
   } else if (VLOG_IS_ON(6)) {
     const char* TENSOR_PRINT_TEMPLATE =
         "{\n\tName: %s,\n\tInitialized: "
-        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d,\n\tMD5_Checksum: %s,"
+        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d,"
         "\n\tTensorInfo: { %s \n\t},\n\tADInfo:{ %s \n\t}\n}";
     auto* ad_meta = nullable_autograd_meta(t);
     if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
@@ -997,7 +998,6 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                      t.has_allocation(),
                                      &t,
                                      t.impl(),
-                                     GetTensorMD5Checksum(t),
                                      indent_after_newlines(tensor_info_str),
                                      indent_after_newlines(ad_info_str));
     } else {
@@ -1006,7 +1006,6 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                      t.has_allocation(),
                                      &t,
                                      t.impl(),
-                                     GetTensorMD5Checksum(t),
                                      indent_after_newlines(tensor_info_str),
                                      "None");
     }
@@ -1225,7 +1224,7 @@ std::string CreateForwardNodeLabelInDot(GradNodeBase* node) {
 }
 std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor) {
   std::ostringstream oss;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
     oss << tensor.name() << "\\n"
         << tensor.place() << "\\n"
         << tensor.dtype() << "[" << tensor.dims() << "]";

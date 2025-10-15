@@ -763,6 +763,20 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Export all API output tensors to the specified directory.");
 
+/**
+ * Debug related FLAG
+ * Name: enable_unique_name
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True,the Tensor, C++ API and GradNode will has unique name,such as
+ * 'matmul2_out_float32_2x10' or 'matmul2_out_float32_2x10@Grad'
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_unique_name,
+    false,
+    "Enable unique name in Eager mode for Tensor, C++ API and GradNode.");
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");
