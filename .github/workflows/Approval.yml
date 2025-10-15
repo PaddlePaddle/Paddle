@@ -29,14 +29,14 @@ jobs:
 
       - name: Update paddle
         run: |
+          git switch -c test
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          git fetch origin pull/${PR_ID}/merge
-          git checkout -b test FETCH_HEAD
           git fetch upstream $BRANCH
           git checkout $BRANCH
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git merge test
+          git diff
 
       - name: Check bypass
         id: check-bypass
@@ -50,5 +50,5 @@ jobs:
         run: |
           set -x
           git diff
-          tail -100 ci/check_approval.sh
+          tail -50 ci/check_approval.sh
           bash ci/check_approval.sh
