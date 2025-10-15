@@ -551,9 +551,10 @@ fi
 
 USE_NEW=`git diff -- '*.h' '*.cc' '*.cuh' '*.cu' || true`
 #USE_MALLOC=`git diff -- '*.h' '*.c' | grep -w "malloc(" | grep -v "//" || true`
-Test=`git diff --name-only -- '*.h' '*.cc' '*.cuh' '*.cu'`
+Test=`git diff --name-only ｜grep ".cc"`
 echo USE_NE=$WUSE_NEW
 echo Test=$Test
+git diff
 if [[ -n "${USE_NEW}" ]] || [[ -n "${USE_MALLOC}" ]];then
     echo 123
     echo_line="You must have one RD (phlrain or sneaxiy) approval you used new or malloc in a C++ function"
