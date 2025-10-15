@@ -5204,7 +5204,9 @@ template <typename T, typename U>
 __device__ __forceinline__ U log_local(T x) {
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
-
+  if (std::is_integral<T>::value) {
+    return static_cast<U>(::log(static_cast<float>(x)));
+  }
   return static_cast<U>(::log(x));
 }
 
