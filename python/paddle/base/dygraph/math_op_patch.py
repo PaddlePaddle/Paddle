@@ -178,11 +178,9 @@ def monkey_patch_math_tensor():
             tensor = astype(self, 'int8')
             return astype(tensor, 'uint8')
         elif self.is_complex():
-            real = astype(self.real(), 'int8')
-            imag = astype(self.imag(), 'int8')
-            combined = _C_ops.stack(
-                [astype(real, 'uint8'), astype(imag, 'uint8')], axis=-1
-            )
+            real = astype(self.real(), 'uint8')
+            imag = astype(self.imag(), 'uint8')
+            combined = paddle.stack([real, imag], axis=-1)
             return combined
         else:
             return astype(self, 'uint8')
