@@ -556,50 +556,18 @@ if [[ ${SKIP_CI} ]];then
 fi
 
 MALLOC_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'malloc(' | grep -v '//')
-MALLOC_ADDED_LINES=$(git diff upstream/$BRANCH -U0 -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' \
-| awk '
-  /^diff --git/ {next}
-  /^+++ b\// {file=substr($0,7)}
-  /^@@/ {
-    split($0, a, " ")
-    for(i=1;i<=NF;i++) if($i ~ /^\+/) { split($i, b, ","); start=b[1]; break }
-    lineno = substr(start, 2)
-  }
-  /^\+/ && !/^+++/ {
-    if ($0 ~ /malloc\(/ && $0 !~ /\/\//) {
-      print file ":" lineno ": " substr($0,2)
-    }
-    lineno++
-  }
-')
 FREE_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'free(' | grep -v '//')
 
 NEW_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'new' | grep -v '//')
-NEW_ADDED_LINES=$(git diff upstream/$BRANCH -U0 -- '*.cc' '*.cpp' '*.cuh' '*.cu' \
-| awk '
-  /^diff --git/ {next}
-  /^+++ b\// {file=substr($0,7)}
-  /^@@/ {
-    split($0, a, " ")
-    for(i=1;i<=NF;i++) if($i ~ /^\+/) { split($i, b, ","); start=b[1]; break }
-    lineno = substr(start, 2)
-  }
-  /^\+/ && !/^+++/ {
-    if ($0 ~ /\bnew\b/ && $0 !~ /\/\//) {
-      print file ":" lineno ": " substr($0,2)
-    }
-    lineno++
-  }
-')
 DELETE_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'delete' | grep -v '//')
 
 if [ -n "$MALLOC_ADDED" ] && [ -z "$FREE_ADDED" ]; then
-  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED heihei\n $NEW_ADDED_LINES"
+  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED"
   check_approval 1 phlrain sneaxiy
 fi
 
 if [ -n "$NEW_ADDED" ] && [ -z "$DELETE_ADDED" ]; then
-  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED heihei\n $NEW_ADDED_LINES"
+  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED"
   check_approval 1 phlrain sneaxiy
 fi
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used

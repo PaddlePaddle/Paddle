@@ -14,9 +14,13 @@
 
 #include <iostream>
 
-int* ptr = new int(42);
+int main() {
+  int* ptr = new int(42);
 
-int* arr = new int[10];
+  int* arr = new int[10];
+
+  delete ptr;
+}
 
 class MyClass {
  public:
