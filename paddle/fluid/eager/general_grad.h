@@ -340,7 +340,7 @@ class GeneralGrad {
                 auto iter = input_target_nodes_inputtensor_map_.find(node);
                 PADDLE_ENFORCE_NE(
                     iter,
-                    copied_node_to_fwd_tensor_map_.end(),
+                    input_target_nodes_inputtensor_map_.end(),
                     common::errors::Fatal("Cannot find fwd tensor for target "
                                           "accumulation node."));
                 const paddle::Tensor& fwd_tensor = *(iter->second.get());
