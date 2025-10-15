@@ -14,12 +14,17 @@
 
 from __future__ import annotations
 
-import re
 import unittest
 from typing import TYPE_CHECKING
 
+from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
+    AOAShardInfoContext,
+)
 from paddle.distributed.flex_checkpoint.aoa.lexer import Lexer
 from paddle.distributed.flex_checkpoint.aoa.macros import macro_registry
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedWeightDesc,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -29,11 +34,7 @@ class MacroContext:
     def __init__(self):
         self.source_keys = {
             "embed_tokens.weight",
-            "layers.1.self_attn.qkv_proj.weight",
-            "layers.1.self_attn.o_proj.weight",
             "layers.1.mlp.gate_up_fused_proj.weight",
-            "layers.1.mlp.down_proj.weight",
-            "layers.1.input_layernorm.weight",
             "layers.1.post_attention_layernorm.weight",
             "layers.2.self_attn.qkv_proj.weight",
             "layers.2.self_attn.o_proj.weight",
@@ -42,41 +43,104 @@ class MacroContext:
             "layers.2.input_layernorm.weight",
             "layers.2.post_attention_layernorm.weight",
             "layers.1.experts.0.weight",
-            "layers.1.experts.1.weight",
+            "layers.0.qkv_proj.weight",
+            "fused_qkv_old_test_name",
+            "layers.shared.qkv_proj.weight",
+            "layers.5.experts.0.up_gate_proj.weight",
+            "layers.5.experts.1.up_gate_proj.weight",
             "layers.2.experts.0.weight",
             "layers.2.experts.1.weight",
             "layers.2.self_attn.qkv_proj.bias",
-            "layers.1.mlp.gate_up_fused_proj.bias",
+            "layers.2.mlp.gate_up_fused_proj.bias",
         }
 
+        self.dst_keys = {
+            "embed_tokens.weight",
+            "layers.0.self_attn.qkv_proj.weight",
+            "layers.0.self_attn.o_proj.weight",
+            "layers.0.mlp.gate_up_fused_proj.weight",
+            "layers.0.mlp.down_proj.weight",
+            "layers.0.input_layernorm.weight",
+            "layers.0.post_attention_layernorm.weight",
+            "layers.1.mlp.gate_up_fused_proj.weight",
+            "layers.1.post_attention_layernorm.weight",
+            "layers.0.experts.0.weight",
+            "layers.0.experts.1.weight",
+            "layers.1.experts.0.weight",
+            "layers.0.q_proj.weight",
+            "layers.0.k_proj.weight",
+            "layers.0.v_proj.weight",
+            "q_test_name",
+            "k_test_name",
+            "v_test_name",
+            "layers.0.shared.q_proj.weight",
+            "layers.0.shared.k_proj.weight",
+            "layers.0.shared.v_proj.weight",
+            "layers.1.shared.q_proj.weight",
+            "layers.1.shared.k_proj.weight",
+            "layers.1.shared.v_proj.weight",
+            "layers.5.experts.0.gate_proj.weight",
+            "layers.5.experts.1.gate_proj.weight",
+            "layers.5.experts.0.up_proj.weight",
+            "layers.5.experts.1.up_proj.weight",
+            "layers.2.self_attn.qkv_proj.weight",
+            "layers.2.self_attn.qkv_proj.bias",
+            "layers.2.mlp.gate_up_fused_proj.bias",
+            "layers.2.mlp.gate_up_fused_proj.weight",
+        }
+
+        # Build _ShardInfo mapping for AOAShardInfoContext based on existing keys
+        def make_shard_info(keys: set[str], num_shards: int):
+            shard_info: dict[str, list[ShardedWeightDesc]] = {}
+            for k in keys:
+                descs: list[ShardedWeightDesc] = []
+                for i in range(num_shards):
+                    descs.append(
+                        ShardedWeightDesc(
+                            key=k,
+                            local_shape=(1,),
+                            global_shape=(num_shards,),
+                            global_offset=(i,),
+                        )
+                    )
+                shard_info[k] = descs
+            return shard_info
+
+        source_state_shard_info = make_shard_info(self.source_keys, 2)
+        destination_state_shard_info = make_shard_info(self.dst_keys, 4)
+
+        self._ctx = AOAShardInfoContext(
+            source_state_shard_info=source_state_shard_info,
+            destination_state_shard_info=destination_state_shard_info,
+        )
+
     def get_all_dst_state_keys(self) -> Iterable[str]:
-        return self.source_keys
+        return self._ctx.get_all_dst_state_keys()
 
     def get_all_src_state_keys(self) -> Iterable[str]:
-        return self.source_keys
+        return self._ctx.get_all_src_state_keys()
 
     def get_num_hidden_layers(
-        self, name_with_layer_id: str, layer_id_macro_tag: str
+        self,
+        name_with_layer_id: str,
+        layer_id_macro_tag: str,
     ) -> int:
-        if layer_id_macro_tag not in name_with_layer_id:
-            raise ValueError(
-                f"layer_id_macro_tag '{layer_id_macro_tag}' not in name_with_layer_id '{name_with_layer_id}'"
-            )
-        prefix, suffix = name_with_layer_id.split(layer_id_macro_tag, 1)
-        pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
-        match_layer_id = set()
-        for key in self.get_all_dst_state_keys():
-            match = pattern.fullmatch(key)
-            if match:
-                layer_num = int(match.group(1))
-                match_layer_id.add(layer_num)
-        return match_layer_id
+        return self._ctx.get_num_hidden_layers(
+            name_with_layer_id, layer_id_macro_tag
+        )
+
+    def get_num_experts(
+        self, name_with_expert_id: str, expert_id_macro_tag: str
+    ) -> set:
+        return self._ctx.get_num_experts(
+            name_with_expert_id, expert_id_macro_tag
+        )
 
     def get_src_state_shard_num(self, src_state_key: str) -> int:
-        return 2
+        return self._ctx.get_src_state_shard_num(src_state_key)
 
     def get_dst_state_shard_num(self, dst_state_key: str) -> int:
-        return 4
+        return self._ctx.get_dst_state_shard_num(dst_state_key)
 
 
 def get_macro(macro_name):
@@ -131,12 +195,28 @@ class TestLayerIdMacro(TestMacro):
         return "layer_id_macro"
 
     def source_code(self):
-        return "layers.$LAYER_ID.experts.0.weight -> test_layer_id, axis = 1"
+        return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight\n"
 
     def expected(self):
         return [
-            'layers.1.experts.0.weight->test_layer_id.layer.1,axis=1\n',
-            'layers.2.experts.0.weight->test_layer_id.layer.2,axis=1\n',
+            'layers.0.qkv_proj.weight->layers.0.q_proj.weight,layer.0.k_proj.weight,layer.0.v_proj.weight\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class Test_expert_id_Macro(TestMacro):
+    def macro_name(self):
+        return "expert_id_macro"
+
+    def source_code(self):
+        return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight"
+
+    def expected(self):
+        return [
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight\n',
         ]
 
     def test(self):
@@ -369,6 +449,39 @@ class TestLayerIdOffsetMacro(TestMacro):
         return [
             'layers.1.experts.0.weight->layers.0.experts.0.weight,axis=1\n',
             'layers.2.experts.0.weight->layers.1.experts.0.weight,axis=1\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestLayerIdMacro_with_Fused_qkv_old_macro(TestMacro):
+    def macro_name(self):
+        return "layer_id_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4\n"
+
+    def expected(self):
+        return [
+            'layers.0.qkv_proj.weight->layers.0.q_proj.weight,layer.0.k_proj.weight,layer.0.v_proj.weight,fused_qkv_old,num_heads=8,num_key_value_groups=4\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class Test_expert_id_Macro_with_Fused_ffn_macro(TestMacro):
+    def macro_name(self):
+        return "expert_id_macro"
+
+    def source_code(self):
+        return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight, fused_ffn"
+
+    def expected(self):
+        return [
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight,fused_ffn\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight,fused_ffn\n',
         ]
 
     def test(self):

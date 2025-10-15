@@ -13,6 +13,7 @@
 # limitations under the License.
 # test_cuda_unittest.py
 import ctypes
+import platform
 import types
 import unittest
 
@@ -361,6 +362,34 @@ class TestExternalStream(unittest.TestCase):
         self.assertEqual(
             current_stream.stream_base.raw_stream, original_raw_ptr
         )
+
+
+class TestNvtx(unittest.TestCase):
+    def test_range_push_pop(self):
+        if platform.system().lower() == "windows":
+            return
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        if not paddle.device.get_device().startswith("gpu"):
+            return
+        if (
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.is_compiled_with_rocm():
+            reason = "Skip for nvtx function in dcu is not correct"
+            print(reason)
+            return
+        try:
+            paddle.cuda.nvtx.range_push("test_push")
+            paddle.cuda.nvtx.range_pop()
+            paddle.device.nvtx.range_push("test_push")
+            paddle.device.nvtx.range_pop()
+        except Exception as e:
+            self.fail(f"nvtx test failed: {e}")
+
+        with self.assertRaises(TypeError):
+            paddle.cuda.nvtx.range_push(123)
+        with self.assertRaises(TypeError):
+            paddle.device.nvtx.range_push(123)
 
 
 class TestDeviceDvice(unittest.TestCase):
