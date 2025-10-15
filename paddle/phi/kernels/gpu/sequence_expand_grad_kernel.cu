@@ -62,7 +62,7 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_LE(ref_lod.size(),
                       dev_ctx.GetCUDAMaxGridDimSize()[0],
                       ::common::errors::PreconditionNotMet(
-                          "ref_lod.size's numel too large"
+                          "ref_lod.size's numel too large "
                           "allowed size is %lld elements, but got %lld",
                           dev_ctx.GetCUDAMaxGridDimSize()[0],
                           ref_lod.size()));

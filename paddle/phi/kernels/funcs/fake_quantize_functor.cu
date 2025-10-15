@@ -336,7 +336,7 @@ void FindChannelAbsMaxFunctor<Context, T>::operator()(
   PADDLE_ENFORCE_LE(num,
                     (1LL << 31) - 1,
                     ::common::errors::PreconditionNotMet(
-                        "in_tensor's numel too large"
+                        "in_tensor's numel too large "
                         "allowed size is 2 ^ 31 - 1 elements, but got %lld",
                         num));
   auto in_dims = in_tensor.dims();

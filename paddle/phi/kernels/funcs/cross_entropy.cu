@@ -130,7 +130,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   PADDLE_ENFORCE_LE(out->numel(),
                     (1LL << 31) - 1,
                     ::common::errors::PreconditionNotMet(
-                        "out's numel too large"
+                        "out's numel too large "
                         "allowed size is 2 ^ 31 - 1 elements, but got %lld",
                         out->numel()));
 
