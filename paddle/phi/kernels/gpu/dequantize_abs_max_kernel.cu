@@ -42,6 +42,7 @@ void DequantizeAbsMaxKernel(const Context& dev_ctx,
   float* out_data = dev_ctx.template Alloc<float>(out);
 
   int64_t num = x.numel();
+
   // big tensor currently not supported
   PADDLE_ENFORCE_LE(num,
                     (1LL << 31) - 1,
