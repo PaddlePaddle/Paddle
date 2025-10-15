@@ -302,7 +302,7 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   // -------- Memset all padding area to zero, with regard to do_gather
   auto memset_invalid_rows =
-      [&](auto *ptr, int64_t element_size, int64_t stride) {
+      [&](void *ptr, int64_t element_size, int64_t stride) {
         for (int i = 0; i < num_experts; i++) {
           int64_t next_expert_offset =
               i < num_experts - 1 ? expert_offset[i + 1] : output_rows;

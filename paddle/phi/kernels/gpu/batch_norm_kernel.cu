@@ -533,6 +533,7 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
+  phi::DenseTensor tmp_reserve_space;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     if (mean_out) dev_ctx.template Alloc<T>(mean_out);
@@ -875,7 +876,7 @@ void BatchNormKernel(const Context &dev_ctx,
     } else {
       int64_t reserve_space_size = 0;
       if (reserve_space == nullptr) {
-        reserve_space = new DenseTensor();
+        reserve_space = &tmp_reserve_space;
       }
       reserve_space->Resize({reserve_space_size});
       dev_ctx.template Alloc<T>(reserve_space);
@@ -924,7 +925,7 @@ void BatchNormKernel(const Context &dev_ctx,
     if ((N * H * W * D) == 1) {
       int64_t reserve_space_size = 0;
       if (reserve_space == nullptr) {
-        reserve_space = new DenseTensor();
+        reserve_space = &tmp_reserve_space;
       }
       reserve_space->Resize({reserve_space_size});
       dev_ctx.template Alloc<T>(reserve_space);
@@ -1174,7 +1175,7 @@ void BatchNormKernel(const Context &dev_ctx,
         // auto *reserve_space =
         // dev_ctx.Output<phi::DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
-          reserve_space = new DenseTensor();
+          reserve_space = &tmp_reserve_space;
         }
         PADDLE_ENFORCE_NOT_NULL(
             reserve_space,
