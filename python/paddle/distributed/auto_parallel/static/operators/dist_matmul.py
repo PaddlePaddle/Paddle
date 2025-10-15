@@ -1015,7 +1015,6 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             return False
         if not _is_auto_compatible_for_matmul(dist_op):
             return False
-        #
         return True
 
     def update_dims_mapping(self, dist_op):
