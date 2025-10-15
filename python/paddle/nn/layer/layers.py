@@ -2670,13 +2670,13 @@ class Layer:
                     core.CUDAPlace,
                     core.CUDAPinnedPlace,
                     core.XPUPlace,
+                    core.Place,  # type of Tensor.place
                 ),
             ):
                 pass
             else:
                 raise ValueError(
-                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
-                    + type(device).__name__
+                    f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, paddle.CUDAPinnedPlace, paddle.XPUPlace, or paddle.base.libpaddle.Place, but got {type(device).__name__}"
                 )
 
         if blocking is None:
