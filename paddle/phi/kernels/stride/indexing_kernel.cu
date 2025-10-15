@@ -160,8 +160,11 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
   funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
 
   const int64_t N = iter.numel();
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);

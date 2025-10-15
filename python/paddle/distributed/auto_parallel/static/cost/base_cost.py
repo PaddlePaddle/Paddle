@@ -585,26 +585,19 @@ class CommContext:
         # NOTE: Get beta by ring, even in the case of tree such as tree broadcast
         ranks = self.cluster.convert_rank_to_device_id(ranks)
         key = ','.join(map(str, sorted(ranks)))
-        max_beta = None
         if key in self.beta:
-            max_beta = self.beta[key]
-        else:
-            for i in range(len(ranks)):
-                for j in range(i + 1, len(ranks)):
-                    forward_order_beta = self.cluster.get_beta(
-                        ranks[i], ranks[j]
-                    )
-                    backward_order_beta = self.cluster.get_beta(
-                        ranks[j], ranks[i]
-                    )
-                    beta = max(backward_order_beta, forward_order_beta)
-                    if max_beta is None:
-                        max_beta = beta
-                    else:
-                        if beta > max_beta:
-                            max_beta = beta
-            self.beta[key] = max_beta
-
+            return self.beta[key]
+        max_beta = None
+        for i in range(len(ranks)):
+            for j in range(i + 1, len(ranks)):
+                forward_order_beta = self.cluster.get_beta(ranks[i], ranks[j])
+                backward_order_beta = self.cluster.get_beta(ranks[j], ranks[i])
+                beta = max(backward_order_beta, forward_order_beta)
+                if max_beta is None or beta > max_beta:
+                    max_beta = beta
+        if max_beta is None:
+            max_beta = 0
+        self.beta[key] = max_beta
         return max_beta
 
     def get_hops(self, ranks):

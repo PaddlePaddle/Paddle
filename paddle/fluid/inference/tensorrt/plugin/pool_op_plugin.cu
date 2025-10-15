@@ -128,9 +128,6 @@ int PoolPlugin::enqueue(int batchSize,
   return cudaGetLastError() != cudaSuccess;
 }
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 PoolPluginDynamic::PoolPluginDynamic(void const *serialData,
                                      size_t serialLength) {
   DeserializeValue(&serialData, &serialLength, &ceil_mode_);
@@ -366,7 +363,6 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
 
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

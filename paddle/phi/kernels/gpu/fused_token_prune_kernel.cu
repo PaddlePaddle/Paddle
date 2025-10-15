@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/fused_token_prune_kernel.h"
 #include <limits>
 
 #ifdef __NVCC__

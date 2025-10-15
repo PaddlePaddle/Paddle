@@ -361,12 +361,15 @@ def conv1d(
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain one integers, (stride_size). Default: 1.
-        padding (int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
+        padding (int|str|tuple|list, optional): The padding size.
+            Padding could be in one of the following forms.
+
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
             3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
             4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
+
             The default value is 0.
         dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain one integer, (dilation_size). Default: 1.

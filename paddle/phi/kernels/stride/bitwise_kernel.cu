@@ -24,6 +24,7 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 namespace phi {
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name)                        \
   template <typename T, typename Context>                                     \
@@ -65,6 +66,11 @@ namespace phi {
           common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
+    }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
     }                                                                         \
     LaunchBinaryElementwiseStrideKernel<T, Context>(                          \
         dev_ctx, x_, y_, funcs::name##Functor<T>(), -1, out);                 \
@@ -116,6 +122,11 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+    }                                                                         \
     if (is_arithmetic) {                                                      \
       LaunchBinaryElementwiseStrideKernel<T, Context>(                        \
           dev_ctx,                                                            \
@@ -130,8 +141,11 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
     }                                                                         \
   }
 
+#if defined(__NVCC__)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(LeftShift)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(RightShift)
+#endif
+
 #undef DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP
 
 template <typename T, typename Context>
@@ -165,6 +179,11 @@ void BitwiseNotStrideKernel(const Context &dev_ctx,
         common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
+  }
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
   LaunchUnaryElementwiseStrideKernel<T, Context>(
       dev_ctx, x_, funcs::BitwiseNotFunctor<T>(), out);
@@ -203,6 +222,7 @@ PD_REGISTER_KERNEL(bitwise_xor,
                    int,
                    int64_t) {}
 
+#if defined(__NVCC__)
 PD_REGISTER_KERNEL(bitwise_left_shift,
                    GPU,
                    STRIDED,
@@ -222,6 +242,7 @@ PD_REGISTER_KERNEL(bitwise_right_shift,
                    int16_t,
                    int,
                    int64_t) {}
+#endif
 
 PD_REGISTER_KERNEL(bitwise_not,
                    GPU,

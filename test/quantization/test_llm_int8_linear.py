@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from test_weight_only_linear import convert_uint16_to_float, get_cuda_version
+from test_weight_only_linear import convert_uint16_to_float
 
 import paddle
 import paddle.nn.quant as Q
@@ -26,9 +26,8 @@ from paddle.framework import set_default_dtype
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCase(unittest.TestCase):
     def config(self):
@@ -196,9 +195,8 @@ class LLMInt8LinearTestCase(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCase1(LLMInt8LinearTestCase):
     def config(self):
@@ -209,9 +207,8 @@ class LLMInt8LinearTestCase1(LLMInt8LinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCase2(LLMInt8LinearTestCase):
     def config(self):
@@ -223,10 +220,9 @@ class LLMInt8LinearTestCase2(LLMInt8LinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class LLMInt8LinearTestCase4(LLMInt8LinearTestCase):
     def config(self):
@@ -237,9 +233,8 @@ class LLMInt8LinearTestCase4(LLMInt8LinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCase5(LLMInt8LinearTestCase):
     def config(self):
@@ -251,9 +246,8 @@ class LLMInt8LinearTestCase5(LLMInt8LinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCase7(LLMInt8LinearTestCase):
     def config(self):
@@ -266,9 +260,8 @@ class LLMInt8LinearTestCase7(LLMInt8LinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCase8(LLMInt8LinearTestCase):
     def config(self):
@@ -282,9 +275,8 @@ class LLMInt8LinearTestCase8(LLMInt8LinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCase10(LLMInt8LinearTestCase):
     def config(self):
@@ -299,9 +291,8 @@ class LLMInt8LinearTestCase10(LLMInt8LinearTestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class LLMInt8LinearTestCaseStatic(LLMInt8LinearTestCase):
     def config(self):

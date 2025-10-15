@@ -27,6 +27,51 @@ def is_custom_device():
     return False
 
 
+def only_has_cpu():
+    return (
+        not core.is_compiled_with_cuda()
+        and not core.is_compiled_with_xpu()
+        and not is_custom_device()
+    )
+
+
+class TestErrorCPU(unittest.TestCase):
+    def test_max_memory_allocated_raises_on_cpu(self):
+        if only_has_cpu():
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.cuda.max_memory_allocated()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.device.max_memory_allocated()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.cuda.max_memory_reserved()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.device.max_memory_reserved()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.cuda.reset_max_memory_allocated()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.device.reset_max_memory_allocated()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.cuda.reset_max_memory_reserved()
+            with self.assertRaisesRegex(
+                ValueError, "not supported in CPU PaddlePaddle"
+            ):
+                paddle.device.reset_max_memory_reserved()
+
+
 class TestDeviceAPIs(unittest.TestCase):
     """Test paddle.device APIs across different hardware types."""
 
@@ -164,12 +209,37 @@ class TestDeviceAPIs(unittest.TestCase):
         self.assertIsInstance(mem7, int)
         self.assertGreaterEqual(mem7, 0)
 
+        # Test max_memory_allocated with different input types
+        mem1 = paddle.cuda.max_memory_allocated()
+        self.assertIsInstance(mem1, int)
+        self.assertGreaterEqual(mem1, 0)
+
+        mem2 = paddle.cuda.max_memory_allocated('gpu:0')
+        self.assertIsInstance(mem2, int)
+        self.assertGreaterEqual(mem2, 0)
+
+        mem3 = paddle.cuda.max_memory_allocated(0)
+        self.assertIsInstance(mem3, int)
+        self.assertGreaterEqual(mem3, 0)
+
+        mem7 = paddle.cuda.max_memory_allocated(paddle.CUDAPlace(0))
+        self.assertIsInstance(mem7, int)
+        self.assertGreaterEqual(mem7, 0)
+
         # Test max_memory_reserved with different input types
         mem4 = paddle.device.max_memory_reserved()
         self.assertIsInstance(mem4, int)
         self.assertGreaterEqual(mem4, 0)
 
         mem8 = paddle.device.max_memory_reserved('gpu:0')
+        self.assertIsInstance(mem8, int)
+        self.assertGreaterEqual(mem8, 0)
+
+        mem4 = paddle.cuda.max_memory_reserved()
+        self.assertIsInstance(mem4, int)
+        self.assertGreaterEqual(mem4, 0)
+
+        mem8 = paddle.cuda.max_memory_reserved('gpu:0')
         self.assertIsInstance(mem8, int)
         self.assertGreaterEqual(mem8, 0)
 
@@ -508,10 +578,37 @@ class TestDeviceAPIs(unittest.TestCase):
         paddle.device.reset_max_memory_allocated(0)
         paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
 
+        # Test reset functions with different input types
+        paddle.device.reset_peak_memory_stats()
+        paddle.device.reset_peak_memory_stats('gpu:0')
+        paddle.device.reset_peak_memory_stats('cuda:0')
+        paddle.device.reset_peak_memory_stats(0)
+        paddle.device.reset_peak_memory_stats(paddle.CUDAPlace(0))
+
+        # Test reset functions with different input types
+        paddle.cuda.reset_peak_memory_stats()
+        paddle.cuda.reset_peak_memory_stats('gpu:0')
+        paddle.cuda.reset_peak_memory_stats(0)
+        paddle.cuda.reset_peak_memory_stats(paddle.CUDAPlace(0))
+
         paddle.device.reset_max_memory_reserved()
         paddle.device.reset_max_memory_reserved('gpu:0')
+        paddle.device.reset_max_memory_reserved('cuda:0')
         paddle.device.reset_max_memory_reserved(0)
         paddle.device.reset_max_memory_reserved(paddle.CUDAPlace(0))
+
+        # Test reset functions with different input types
+        paddle.cuda.reset_max_memory_allocated()
+        paddle.cuda.reset_max_memory_allocated('gpu:0')
+        paddle.cuda.reset_max_memory_allocated('cuda:0')
+        paddle.cuda.reset_max_memory_allocated(0)
+        paddle.cuda.reset_max_memory_allocated(paddle.CUDAPlace(0))
+
+        paddle.cuda.reset_max_memory_reserved()
+        paddle.cuda.reset_max_memory_reserved('gpu:0')
+        paddle.cuda.reset_max_memory_reserved('cuda:0')
+        paddle.cuda.reset_max_memory_reserved(0)
+        paddle.cuda.reset_max_memory_reserved(paddle.CUDAPlace(0))
 
         # Check that max memory has been reset
         max_allocated_after_reset = paddle.device.max_memory_allocated()
