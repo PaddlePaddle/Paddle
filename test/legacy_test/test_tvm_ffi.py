@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import platform
 import unittest
 from typing import TYPE_CHECKING
 
@@ -75,9 +74,6 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
             return
         if paddle.is_compiled_with_rocm():
             # Skip on DCU because CUDA_HOME is not available
-            return
-        if platform.system() == "Windows":
-            # Temporary skip this test case on windows because compile bug on TVM FFI
             return
         cpp_sources = r"""
             void add_one_cuda(tvm::ffi::TensorView x, tvm::ffi::TensorView y);
