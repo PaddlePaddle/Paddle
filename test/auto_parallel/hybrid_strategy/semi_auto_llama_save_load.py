@@ -144,7 +144,7 @@ class TestLlamaAuto:
         for i in range(program_a.num_ops()):
             a_op = program_a.global_block().ops[i]
             b_op = program_a.global_block().ops[i]
-            # check op name111
+            # check op name
             assert a_op.name() == b_op.name(), (
                 f'The name of {i} op in program is different: {a_op.name()} vs {b_op.name()}.'
             )
