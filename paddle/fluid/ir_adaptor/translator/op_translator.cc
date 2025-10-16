@@ -1096,11 +1096,6 @@ struct LeakyReLUOpTranscriber : public OpTranscriber {
     pir::AttributeMap attribute_map = {};
 
     for (const auto& info : op_attr_infos) {
-      if (auto handler = this->GetSpecialAttributeHandlers(info.name)) {
-        auto new_attr = handler(ctx, op_desc, info);
-        attribute_map[info.name] = new_attr;
-        continue;
-      }
       auto legacy_attr_name =
           op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
       VLOG(10) << "[op: " << op_desc.Type()
@@ -1119,14 +1114,6 @@ struct LeakyReLUOpTranscriber : public OpTranscriber {
                   new_attr.dyn_cast<pir::FloatAttribute>().data()));
         }
         attribute_map[info.name] = new_attr;
-        if (!new_attr) {
-          VLOG(0) << "empty attribute in " << op_desc.Type()
-                  << " name: " << info.name;
-        }
-      } else {
-        VLOG(10) << "attribute in " << op_desc.Type()
-                 << " name: " << legacy_attr_name << " doesn't exist";
-        this->HandleNonexistentAttribute(ctx, &attribute_map, info);
       }
     }
 

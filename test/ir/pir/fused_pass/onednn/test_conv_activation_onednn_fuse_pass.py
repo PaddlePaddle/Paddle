@@ -69,6 +69,54 @@ class TestConv2dReluFusePass(PassTest):
         self.check_pass_correct()
 
 
+class TestConv2dLeakyReluFusePass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                conv2d = paddle.nn.Conv2D(
+                    in_channels=5,
+                    out_channels=1,
+                    kernel_size=[1, 1],
+                    groups=1,
+                    stride=[1, 1],
+                    padding=[1, 1, 1, 1],
+                    dilation=[1, 1],
+                    data_format='NCHW',
+                    bias_attr=False,
+                )
+                act_op = paddle.nn.LeakyReLU()
+                out = act_op(conv2d(x))
+                out = paddle.assign(out)
+                self.pass_attr_list = [{'conv_activation_onednn_fuse_pass': {}}]
+                self.feeds = {
+                    "x": np.random.random((5, 5, 5, 5)).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "pd_op.leaky_relu": 0,
+                    "pd_op.conv2d": 0,
+                    "onednn_op.fused_conv2d": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
 class TestConv2dHardsigmoidFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
