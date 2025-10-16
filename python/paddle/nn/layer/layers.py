@@ -2665,13 +2665,7 @@ class Layer:
                 device = paddle.device._convert_to_place(device)
             elif isinstance(
                 device,
-                (
-                    core.CPUPlace,
-                    core.CUDAPlace,
-                    core.CUDAPinnedPlace,
-                    core.XPUPlace,
-                    core.Place,  # type of Tensor.place
-                ),
+                core.Place,
             ):
                 pass
             else:
