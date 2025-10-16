@@ -209,10 +209,17 @@ class DistAttr(core.TensorDistAttr):
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
         self._sharding_specs = sharding_specs
-        dims_mapping = [
-            mesh.dim_names.index(dim_name) if dim_name is not None else -1
-            for dim_name in sharding_specs
-        ]
+        dims_mapping = []
+        for dim_name in sharding_specs:
+            if dim_name is None:
+                dims_mapping.append(-1)
+            else:
+                if dim_name not in mesh.dim_names:
+                    raise ValueError(
+                        f"Invalid sharding dimension '{dim_name}'. "
+                        f"Available dimensions in mesh are: {mesh.dim_names}."
+                    )
+                dims_mapping.append(mesh.dim_names.index(dim_name))
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
@@ -2399,11 +2406,17 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                             tgt_grad, '_is_initialized', lambda: False
                         )()
                     ):
-                        if src_mesh is None:
+                        if (
+                            src_mesh is None
+                            and tgt_grad.process_mesh is not None
+                        ):
                             src_mesh = tgt_grad.process_mesh
+                        else:
+                            pass
                         if (
                             current_process_mesh is None
                             and tgt_grad._is_initialized()
+                            and tgt_grad.process_mesh is not None
                         ):
                             current_process_mesh = tgt_grad.process_mesh
                         if tgt_grad.process_mesh not in mesh2param_grads:
@@ -2506,6 +2519,12 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                     self._found_inf, process_mesh, self._found_inf.placements
                 )
         else:
+            if current_process_mesh is None or not hasattr(
+                current_process_mesh, "ranks"
+            ):
+                raise ValueError(
+                    "Invalid current_process_mesh: must be a valid ProcessMesh."
+                )
             # The rank of other mesh, should overwrite the original variable `self._found_inf`
             self._found_inf = dist.reshard(
                 self._found_inf,
@@ -3956,6 +3975,8 @@ class ShardDataloader:
         return len(self._dataloader)
 
     def __iter__(self):
+        # Reset iterator state to allow restarting iteration
+        self.iter = None
         return self
 
     def _get_mesh_and_placement(self, index):
@@ -4009,7 +4030,9 @@ class ShardDataloader:
     ):
         dist_data = []
         for j in range(len(list_tensors)):
-            if dense_tensor_idx is not None and j in dense_tensor_idx:
+            if (
+                dense_tensor_idx is not None and j in dense_tensor_idx
+            ) or not isinstance(list_tensors[j], paddle.Tensor):
                 dist_data.append(list_tensors[j])
             else:
                 dist_data.append(
@@ -4097,9 +4120,7 @@ class ShardDataloader:
                             batch_data[key], mesh, placements
                         )
                 else:
-                    raise ValueError(
-                        f"Unsupported input_data type {type(input_data)}"
-                    )
+                    dist_batch_data[key] = input_data
             return dist_batch_data
         elif isinstance(batch_data, paddle.Tensor):
             mesh, placements = self._get_mesh_and_placement(0)
@@ -4114,7 +4135,8 @@ class ShardDataloader:
         return self._get_batch(batch_data)
 
     def __call__(self):
-        self.iter = self._dataloader.__iter__()
+        # Reset iterator state to allow restarting iteration
+        self.iter = None
         return self
 
 

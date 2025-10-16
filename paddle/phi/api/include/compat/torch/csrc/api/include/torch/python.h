@@ -17,22 +17,11 @@
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
+#include <ATen/Device.h>
+#include <c10/util/Exception.h>
+#include <torch/types.h>
 
-#include <ATen/cuda/Exceptions.h>
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <c10/cuda/CUDAStream.h>
-#include <cuda_runtime_api.h>
-#include "paddle/phi/backends/gpu/gpu_info.h"
-
-namespace at::cuda {
-cudaDeviceProp* getDeviceProperties(c10::DeviceIndex device) {
-  return const_cast<cudaDeviceProp*>(
-      &phi::backends::gpu::GetDeviceProperties(device));
-}
-
-cudaDeviceProp* getCurrentDeviceProperties() {
-  auto device = phi::backends::gpu::GetCurrentDeviceId();
-  return getDeviceProperties(device);
-}
-}  // namespace at::cuda
+#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+// Python bindings for the C++ frontend (includes Python.h)
+#include "paddle/utils/pybind.h"
 #endif
