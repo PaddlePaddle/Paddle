@@ -148,7 +148,7 @@ class TestLlamaAuto:
             assert a_op.name() == b_op.name(), (
                 f'The name of {i} op in program is different: {a_op.name()} vs {b_op.name()}.'
             )
-            # check op inputs
+            # check op inputs1
             for index in range(a_op.num_operands()):
                 assert (
                     a_op.operand(index)
