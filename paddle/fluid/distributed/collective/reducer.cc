@@ -859,11 +859,20 @@ void EagerReducer::MarkVarReady(const size_t var_index,
                 paddle::experimental::Trans2Contiguous(*dense_tensor)));
           }
         }
+        if (grad_tensor.is_dist_tensor()) {
+          auto dist_tensor =
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                  grad_tensor.impl());
+          auto dense_tensor = dist_tensor->shared_value();
+          group_tensor.ShareDataWith(*dense_tensor)
+              .Resize({dense_tensor->numel()});
 
-        group_tensor
-            .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
-                grad_tensor.impl())))
-            .Resize({grad_tensor.numel()});
+        } else {
+          group_tensor
+              .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
+                  grad_tensor.impl())))
+              .Resize({grad_tensor.numel()});
+        }
       } else {
         VLOG(3) << "Tensor[" << tensors_[var_index].name()
                 << "] doesn't have grad";

@@ -2533,8 +2533,10 @@ Scope* OperatorWithKernel::PrepareData(
   Scope* new_scope = nullptr;
 
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
+  VLOG(1) << "xxx ------------ enter PrepareData";
   if (info_) {
     auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
+    VLOG(1) << "xxx ------------ enter PrepareData no_buffer_inferer";
     // Some op may not register NoNeedBufferVarsInferer
     if (no_buffer_inferer) {
       no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
@@ -2551,7 +2553,7 @@ Scope* OperatorWithKernel::PrepareData(
                                       fluid_attrs,
                                       &infer_attrs,
                                       has_infer_varkernel_fn);
-
+  VLOG(1) << "xxx ------------ enter PrepareData GetKernelTypeForVarContext";
   const auto& name_map = Inputs();
   auto prepare_input_data = [&](const std::string& in_name,
                                 std::vector<Variable*>* in_vars,
@@ -2560,13 +2562,15 @@ Scope* OperatorWithKernel::PrepareData(
     auto& name_vec = name_map.at(in_name);
     for (size_t i = 0; i < in_vars->size(); ++i) {
       const auto& var_name = name_vec[i];
+      VLOG(1) << "xxx ------------ enter prepare_input_data ";
       auto* var = in_vars->at(i);
 
       // Only tensor can be transfer to another device.
       if (var == nullptr || !VarIsTensor(*var)) {
         continue;
       }
-
+      VLOG(1)
+          << "xxx ------------ enter GetDenseTensorOrSelectedRowsValueFromVar";
       auto* tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
 
       // When no_buffer_ins then checking of phi::DenseTensor::holder_ is
@@ -2607,7 +2611,8 @@ Scope* OperatorWithKernel::PrepareData(
 #endif
         continue;
       }
-
+      VLOG(1) << "xxx ------------ enter tensor in init: "
+              << (tensor_in->IsInitialized());
       if (!tensor_in->IsInitialized()) {
         continue;
       }
@@ -2768,6 +2773,9 @@ Scope* OperatorWithKernel::PrepareData(
   if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
                              phi::KernelRegisteredType::FUNCTION) {
     const auto& input_names = kernel_signature_->input_names;
+    VLOG(1) << "xxx ------------ enter PrepareData run_phi_kernel_ input_names "
+               "size: "
+            << input_names.size();
     const auto& input_defs = phi_kernel_->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),
                       input_defs.size(),
@@ -2778,6 +2786,8 @@ Scope* OperatorWithKernel::PrepareData(
                           input_defs.size()));
     for (size_t i = 0; i < input_defs.size(); ++i) {
       std::string input_name = input_names[i];
+      VLOG(1) << "xxx ------------ enter PrepareData input_name i : "
+              << input_name;
       auto iter = ctx->inputs.find(input_name);
       if (iter == ctx->inputs.end()) {
         continue;
@@ -2785,7 +2795,8 @@ Scope* OperatorWithKernel::PrepareData(
       auto& ins_vector = iter->second;
       bool should_skip_input =
           no_buffer_ins && no_buffer_ins->count(input_name) > 0;
-
+      VLOG(1) << "xxx ------------ enter PrepareData should_skip_input i : "
+              << should_skip_input;
       phi::TensorArgDef in_def = input_defs.at(i);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       // When the backend of input tensor arg_def is CUSTOM, we need to set it
@@ -2794,7 +2805,9 @@ Scope* OperatorWithKernel::PrepareData(
         in_def.SetBackend(expected_kernel_key.backend());
       }
 #endif
+      VLOG(1) << "xxx ------------ enter PrepareData prepare_input_data  ";
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
+      VLOG(1) << "xxx ------------ enter PrepareData prepare_input_data over ";
     }
 #ifdef PADDLE_WITH_DNNL
     // For input that is Extra, only OneDNN will use Extra Inputs
@@ -2813,13 +2826,17 @@ Scope* OperatorWithKernel::PrepareData(
     }
 #endif
   } else {
+    VLOG(1) << "xxx ------------ enter PrepareData no run_phi_kernel_ ";
     for (auto& var_name_item : Inputs()) {
       bool should_skip_input =
           no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
-
+      VLOG(1) << "xxx ------------ enter PrepareData no should_skip_input i : "
+              << should_skip_input;
       std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
+      VLOG(1) << "xxx ------------ enter PrepareData prepare_input_data  ";
       prepare_input_data(
           var_name_item.first, &input_vars, nullptr, should_skip_input);
+      VLOG(1) << "xxx ------------ enter PrepareData prepare_input_data over ";
     }
   }
 

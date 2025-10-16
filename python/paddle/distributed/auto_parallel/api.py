@@ -3975,6 +3975,7 @@ class ShardDataloader:
         return len(self._dataloader)
 
     def __iter__(self):
+        self.iter = None
         return self
 
     def _get_mesh_and_placement(self, index):
@@ -4028,7 +4029,9 @@ class ShardDataloader:
     ):
         dist_data = []
         for j in range(len(list_tensors)):
-            if dense_tensor_idx is not None and j in dense_tensor_idx:
+            if (
+                dense_tensor_idx is not None and j in dense_tensor_idx
+            ) or not isinstance(list_tensors[j], paddle.Tensor):
                 dist_data.append(list_tensors[j])
             else:
                 dist_data.append(
@@ -4116,9 +4119,7 @@ class ShardDataloader:
                             batch_data[key], mesh, placements
                         )
                 else:
-                    raise ValueError(
-                        f"Unsupported input_data type {type(input_data)}"
-                    )
+                    dist_batch_data[key] = input_data
             return dist_batch_data
         elif isinstance(batch_data, paddle.Tensor):
             mesh, placements = self._get_mesh_and_placement(0)
