@@ -97,10 +97,9 @@ void DenseTensorIteratorBase::reorder_dimensions() {
 }
 
 void DenseTensorIteratorBase::permute_dimensions(std::vector<int64_t> perm) {
-  PADDLE_ENFORCE_EQ(
-      perm.size(),
-      static_cast<unsigned>(ndim()),
-      "perm.size() must equal to ndim in DenseDenseTensorIterator");
+  PADDLE_ENFORCE_EQ(perm.size(),
+                    static_cast<unsigned>(ndim()),
+                    "perm.size() must equal to ndim in DenseTensorIterator");
   auto reorder = [perm](std::vector<int64_t> data) {
     auto res = std::vector<int64_t>(data.size(), 0);
     for (size_t i = 0; i < perm.size(); i++) {
