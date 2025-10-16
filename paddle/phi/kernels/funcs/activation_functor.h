@@ -5207,13 +5207,8 @@ __device__ __forceinline__
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
 
-#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
   return static_cast<std::conditional_t<std::is_integral<T>::value, float, T>>(
       ::log(static_cast<double>(x)));
-#else
-  return static_cast<std::conditional_t<std::is_integral<T>::value, float, T>>(
-      ::log(static_cast<double>(x)));
-#endif
 }
 
 template <>
