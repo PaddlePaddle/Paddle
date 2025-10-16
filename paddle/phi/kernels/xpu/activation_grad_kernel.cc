@@ -375,7 +375,7 @@ struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
     XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
 
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      if (!std::is_same<T, ::phi::bfloat16>::value) {
+      if (!std::is_same<T, phi::bfloat16>::value) {
         // use fast_silu_grad if NOT bf16
         int r = xpu::fast_silu_grad(
             dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
@@ -664,14 +664,25 @@ DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                XPULeakyReluGradFunctor,
                                                alpha);
 
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               XPUSoftPlusGradFunctor,
-                                               beta,
-                                               threshold)
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  XPUHardSigmoidGradFunctor,
                                                  slope,
                                                  offset)
+
+template <typename T, typename Context>
+void SoftplusGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& dout,
+                        double beta,
+                        double threshold,
+                        DenseTensor* dx) {
+  XPUSoftPlusGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = static_cast<float>(beta);
+  *(attrs[1].second) = static_cast<float>(threshold);
+  ActivationGradXPUImpl<T, Context, XPUSoftPlusGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
+}
 
 template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,

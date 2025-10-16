@@ -32,7 +32,7 @@ def product(input):
 
 
 @OpTestTool.skip_if_not_cpu()
-class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
+class TestShuffleChannelOneDNNDetectPass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         input_shape = program_config.inputs['input_data'].shape
         first_reshape2_shape = program_config.ops[0].attrs['shape']
@@ -136,7 +136,7 @@ class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
         yield config, ["shuffle_channel"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=["shuffle_channel_onednn_detect_pass"]
         )
 

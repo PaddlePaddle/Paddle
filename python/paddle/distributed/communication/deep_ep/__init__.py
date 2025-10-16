@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .buffer import Buffer
+
+from .buffer import Buffer, M2NBuffer
 from .utils import (
     EventOverlap,
     get_event_from_calc_stream,
@@ -22,6 +23,7 @@ from .utils import (
 
 __all__ = [
     "Buffer",
+    "M2NBuffer",
     "EventOverlap",
     "get_event_from_calc_stream",
     "get_event_from_comm_stream",

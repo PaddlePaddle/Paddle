@@ -843,10 +843,11 @@ struct RsqrtGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct SoftplusFunctor : public BaseActivationFunctor<T> {
-  float beta;
-  float threshold;
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
+  double beta;
+  double threshold;
 
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  typename SoftplusFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
 
@@ -888,9 +889,10 @@ struct SoftplusFunctor<ComplexType<T>>
 
 template <typename T>
 struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
-  float beta;
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
+  double beta;
+  double threshold;
+  typename SoftplusGradFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
   template <typename Device,
@@ -911,9 +913,10 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct SoftplusGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
-  float beta;
-  float threshold;
-  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
+  double beta;
+  double threshold;
+  typename SoftplusGradFunctor<ComplexType<T>>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
   template <typename Device,
@@ -935,9 +938,10 @@ struct SoftplusGradFunctor<ComplexType<T>>
 
 template <typename T>
 struct SoftplusDoubleGradFunctor : public BaseActivationFunctor<T> {
-  float beta;
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
+  double beta;
+  double threshold;
+  typename SoftplusDoubleGradFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
   template <typename Device>
@@ -3803,19 +3807,30 @@ struct CudaExpm1Functor<double> : public BaseActivationFunctor<double> {
 };
 
 template <typename T>
+__device__ __forceinline__ ComplexType<T> local_expm1(const ComplexType<T>& z) {
+  T x = z.real;
+  T y = z.imag;
+  T a = std::sin(y / 2);
+  T er = std::expm1(x) * std::cos(y) - T(2) * a * a;
+  T ei = std::exp(x) * std::sin(y);
+  return {er, ei};
+}
+
+template <typename T>
 struct CudaExpm1Functor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> x) const {
-    return static_cast<ComplexType<T>>(Expm1<ComplexType<T>>()(x));
+    return static_cast<ComplexType<T>>(local_expm1(x));
   }
 };
 
 template <typename T>
 struct CudaExpm1GradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
   // dx = dout * out
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * out + dout;
+    return dout * (out + one);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3826,10 +3841,11 @@ struct CudaExpm1GradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaExpm1GradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
   // dx = dout * exp(x)
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> out) const {
-    return static_cast<ComplexType<T>>(dout * conj(out) + dout);
+    return static_cast<ComplexType<T>>(dout * (conj(out) + one));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3893,22 +3909,30 @@ struct CudaTanFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaTanGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  T one = static_cast<T>(1.0f);
 
   // dx = dout *(1 + tan(x)^2)
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<MPType, double>::value) {
+    if constexpr (std::is_same<T, double>::value) {
       double td = ::tan(x);
       double tsq = __dmul_rn(td, td);
       double y = __dadd_rn(tsq, 1.0);
       return static_cast<T>(dout * y);
-    } else {
+    } else if constexpr (std::is_same<T, float>::value) {
       float tf = ::tanf(x);
       float tsq = __fmul_rn(tf, tf);
       float y = __fadd_rn(tsq, 1.0f);
       return static_cast<T>(dout * y);
+    } else if constexpr (std::is_same<T, phi::float16>::value) {
+      __half tf = __float2half_rn(::tanf(x));
+      __half tmp_half = __hmul(tf, tf);
+      return arg_dout * (one + static_cast<T>(__half2float(tmp_half)));
+    } else {
+      return static_cast<T>(dout *
+                            (static_cast<MPType>(1.0f) + ::tan(x) * ::tan(x)));
     }
   }
 
@@ -4259,11 +4283,12 @@ __device__ __forceinline__ ComplexType<T> log1p_local(ComplexType<T> x) {
 
 template <typename T>
 struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  float beta;
-  float threshold;
+  double beta;
+  double threshold;
 
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  typename CudaSoftplusFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
 
@@ -4302,12 +4327,13 @@ struct CudaSoftplusFunctor<ComplexType<T>>
 
 template <typename T>
 struct CudaSoftplusGradFunctor : public BaseActivationFunctor<T> {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
-  float beta;
-  float threshold;
+  double beta;
+  double threshold;
 
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  typename CudaSoftplusGradFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
 
@@ -4328,12 +4354,13 @@ struct CudaSoftplusGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaSoftplusGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
   using MPType = typename phi::dtype::MPTypeTrait<ComplexType<T>>::Type;
   MPType one = static_cast<MPType>(1.0f);
-  float beta;
-  float threshold;
+  double beta;
+  double threshold;
 
-  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+  typename CudaSoftplusGradFunctor<ComplexType<T>>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
 

@@ -36,7 +36,6 @@ class GeluOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (op_desc.HasAttr("approximate") &&
         PADDLE_GET_CONST(bool, op_desc.GetAttr("approximate"))) {
-#if IS_TRT_VERSION_GE(7000)
       nvinfer1::Dims input_shape;
       input_shape.nbDims = input->getDimensions().nbDims;
       for (int i = 0; i < input_shape.nbDims; ++i) {
@@ -137,13 +136,7 @@ class GeluOpConverter : public OpConverter {
                                     *input,
                                     nvinfer1::ElementWiseOperation::kPROD);
       layer = y;
-#else
-      PADDLE_THROW(common::errors::Fatal(
-          "You are running GeLU Op with approximate True, need to confirm that "
-          "your TRT version is no less than 7.0"));
-#endif
     } else {
-#if IS_TRT_VERSION_GE(7000)
       nvinfer1::Dims input_shape;
       input_shape.nbDims = input->getDimensions().nbDims;
       for (int i = 0; i < input_shape.nbDims; ++i) {
@@ -211,20 +204,6 @@ class GeluOpConverter : public OpConverter {
                                     *input,
                                     nvinfer1::ElementWiseOperation::kPROD);
       layer = y;
-#else  // if IS_TRT_VERSION_GE(7000)
-      int input_num = op_desc.Input("X").size();
-#if IS_TRT_VERSION_GE(6000)
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::GeluPluginDynamic* plugin =
-          new plugin::GeluPluginDynamic(with_fp16);
-      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
-#else
-      PADDLE_THROW(common::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
-#endif  // if IS_TRT_VERSION_GE(7000)
     }
     auto output_name = op_desc.Output("Out")[0];
     ReplenishLayerAndOutput(layer, "gelu", {output_name}, test_mode);

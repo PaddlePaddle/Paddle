@@ -483,7 +483,7 @@ class PaddleToTensorRTConverter:
         elif precision_mode.value == PrecisionMode.BF16.value:
             if version_list[0] >= 9:
                 if builder.platform_has_fast_bfp16 and hasattr(
-                    builder, 'plateform_has_fast_bf16'
+                    builder, 'platform_has_fast_bf16'
                 ):
                     config.set_flag(trt.BuilderFlag.BF16)
                     _logger.info("Run Paddle-TRT BF16 mode")

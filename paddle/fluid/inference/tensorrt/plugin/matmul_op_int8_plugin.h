@@ -282,7 +282,6 @@ class MatmulPluginCreator : public nvinfer1::IPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(MatmulPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class MatmulPluginDynamic : public DynamicPluginTensorRT {
  public:
   MatmulPluginDynamic(bool transA, bool transB, float alpha)
@@ -446,7 +445,6 @@ class MatmulPluginDynamicCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 REGISTER_TRT_PLUGIN_V2(MatmulPluginDynamicCreator);
-#endif
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

@@ -60,7 +60,7 @@ class TestBuildOp(unittest.TestCase):
             w = paddle.static.data('w', self.c_shape, x.dtype)
             b = paddle.static.data('b', self.c_shape, x.dtype)
             y = batch_norm_net1(x, r_m, r_v, w, b)
-            res = paddle.tanh(y)
+            _ = paddle.tanh(y)
         return main_program
 
     def test_build_op(self):

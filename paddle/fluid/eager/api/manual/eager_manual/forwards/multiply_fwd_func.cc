@@ -139,21 +139,29 @@ paddle::Tensor multiply_ad_func(
     input_str += input_y_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("multiply", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "multiply" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // Forward API Call
   auto api_result = paddle::experimental::multiply(x, y, predefined_out);
   // Check NaN and Inf if needed
   VLOG(3) << "\n"
-          << SEPARATOR << "Finish_C++_API: "
-          << "multiply" << SEPARATOR;
+          << SEPARATOR << "Finish_C++_API: " << unique_api_name << SEPARATOR;
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("multiply", api_result);
   }
 
   // Get Outputs
   auto& out = api_result;
+  if (VLOG_IS_ON(6)) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+  }
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
@@ -173,6 +181,10 @@ paddle::Tensor multiply_ad_func(
     // Node Construction
     auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
         new MultiplyGradNode(1, 2));
+    // Set GradNodeName
+    if (VLOG_IS_ON(6)) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set for forward trace
     if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
@@ -355,14 +367,18 @@ paddle::Tensor& multiply__ad_func(
   }
 
   // Forward API Call
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("multiply_", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "multiply_" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto& api_result = paddle::experimental::multiply_(x, y);
 
   VLOG(3) << "\n"
-          << SEPARATOR << "Finish_C++_API: "
-          << "multiply" << SEPARATOR;
+          << SEPARATOR << "Finish_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf if needed
 
   if (FLAGS_check_nan_inf) {
@@ -371,6 +387,9 @@ paddle::Tensor& multiply__ad_func(
 
   // Get Outputs
   auto& out = api_result;
+  if (VLOG_IS_ON(6)) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+  }
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
@@ -384,6 +403,10 @@ paddle::Tensor& multiply__ad_func(
 
   // Node Creation
   if (require_any_grad) {
+    // Set GradNodeName
+    if (VLOG_IS_ON(6)) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);

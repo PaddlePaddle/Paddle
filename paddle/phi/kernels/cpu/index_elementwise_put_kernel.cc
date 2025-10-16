@@ -75,8 +75,11 @@ void CPUIndexElementwisePutWithTensorKernel(
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   using dtype = funcs::OpaqueType<sizeof(T)>;
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
   char* out_ptr = reinterpret_cast<char*>(output_);
@@ -149,14 +152,17 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
-  char* out_ptr = reinterpret_cast<char*>(output_);
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
+  char* out_ptr = reinterpret_cast<char*>(output_) + slice_offset;
   if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
     const bool* mask_data = index[0]->data<bool>();
     for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
-      char* const out_data = out_ptr + offsets[0] + slice_offset;
+      char* const out_data = out_ptr + offsets[0];
       if (mask_data[idx]) {
         *reinterpret_cast<T*>(out_data) = value_T;
       }
@@ -165,7 +171,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
-      char* const out_data = out_ptr + offsets[0] + slice_offset;
+      char* const out_data = out_ptr + offsets[0];
       int64_t offset = 0;
       for (int64_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
