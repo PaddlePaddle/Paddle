@@ -276,7 +276,6 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   std::string name_space_;
 };
 
-#if IS_TRT_VERSION_GE(6000)
 class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
  public:
   DynamicPluginTensorRT() : with_fp16_(false) {}
@@ -348,7 +347,6 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   std::string name_space_;
   std::string plugin_base_;
 };
-#endif
 
 class TensorRTPluginCreator : public nvinfer1::IPluginCreator {
  public:

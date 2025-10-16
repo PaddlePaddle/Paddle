@@ -342,6 +342,15 @@
     data_type : dtype > x
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : fused_softplus
+  args : (Tensor x, float beta=1.0, float threshold=20.0, str fuse_activation="", float fuse_alpha=0.0, float fuse_beta=0.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedExceptDtypeInferMeta
+    param : [x]
+  kernel :
+    func : fused_softplus
+
 - op : gaussian
   args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
   output: Tensor(out)
@@ -852,6 +861,19 @@
     func : softmax
   inplace : (x -> out)
   backward : softmax_grad
+
+- op : softplus
+  args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : SoftplusInfoSpmd
+  kernel :
+    func : softplus
+  backward : softplus_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
 
 - op : sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)

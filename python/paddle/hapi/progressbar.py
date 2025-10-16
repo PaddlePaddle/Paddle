@@ -147,7 +147,7 @@ class ProgressBar:
                         info += f' {v}'
 
             if self._num is not None and current_num < self._num:
-                eta = time_per_unit * (self._num - current_num)
+                eta = int(time_per_unit * (self._num - current_num))
                 if eta > 3600:
                     eta_format = (
                         f'{eta // 3600}:{(eta % 3600) // 60:02}:{eta % 60:02}'
