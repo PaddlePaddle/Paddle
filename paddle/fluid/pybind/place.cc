@@ -315,7 +315,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                               << "Please check your environment variables and device configuration. "
                               << "Device type: " << device_type
                               << ", CUDA_VISIBLE_DEVICES: " << std::getenv("CUDA_VISIBLE_DEVICES")
-                              << ", CUDA version: " << phi::DeviceManager::GetCudaVersion();
                    #else
                    LOG(ERROR) << "Cannot use " << device_type
                               << " because there is no " << device_type
