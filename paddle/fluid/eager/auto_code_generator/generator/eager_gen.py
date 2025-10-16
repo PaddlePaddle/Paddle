@@ -925,10 +925,9 @@ CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE = """
 
 CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_RECALL_AD_FUNC_TEMPLATE = """
   const phi::distributed::ProcessMesh* mesh = nullptr;
-  bool inputs_contain_dist_tensor = egr::InputsContainDistTensor(&mesh, {grad_inputs_names});
-  bool all_inputs_are_dist_tensor = egr::AllInputsAreDistTensor({grad_inputs_names});
-  if (inputs_contain_dist_tensor && ! all_inputs_are_dist_tensor) {{
-    auto builder = egr::DistTensorPtrBuilder(mesh);
+  bool inputs_need_convert_dist_tensor = egr::InputsNeedConvertDistTensor(&mesh, {grad_inputs_names});
+  if (inputs_need_convert_dist_tensor) {{
+    auto converter = egr::DistTensorPtrConverter(mesh);
     {convert_to_dist_str}
     return {recall_ad_func};
   }}
@@ -2501,7 +2500,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             convert_to_dist_str = ""
             for param in grad_inputs_names:
                 convert_to_dist_str += (
-                    f"\n{indent}  auto dist_{param} = builder({param});"
+                    f"{indent}  auto dist_{param} = converter({param});\n"
                 )
 
             recall_ad_func_args_str = ", ".join(dist_recall_ad_func_names)

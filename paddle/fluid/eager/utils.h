@@ -311,11 +311,22 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
   }
 };
 
-struct DistTensorTypeParserBuilder : ArgsIterator<DistTensorTypeParserBuilder> {
-  bool result = true;
+struct CheckInputsNeedConvertDistTensor
+    : ArgsIterator<CheckInputsNeedConvertDistTensor> {
+  bool have_dense = false;
+  bool have_dist = false;
+  const phi::distributed::ProcessMesh** mesh = nullptr;
 
-  DistTensorTypeParserBuilder() {}
+  explicit CheckInputsNeedConvertDistTensor(
+      const phi::distributed::ProcessMesh** m)
+      : mesh(m) {}
 
+  bool need_convert() {
+    if (have_dense && have_dist) {
+      return true;
+    }
+    return false;
+  }
   void operator()(const paddle::Tensor& x);
   void operator()(const paddle::optional<paddle::Tensor>& x);
   void operator()(const std::vector<paddle::Tensor>& x);
@@ -360,8 +371,9 @@ bool InputsContainDistTensor(const phi::distributed::ProcessMesh** mesh,
 }
 
 template <typename... Args>
-bool AllInputsAreDistTensor(const Args&... args) {
-  return DistTensorTypeParserBuilder().apply(args...).result;
+bool InputsNeedConvertDistTensor(const phi::distributed::ProcessMesh** mesh,
+                                 const Args&... args) {
+  return CheckInputsNeedConvertDistTensor(mesh).apply(args...).need_convert();
 }
 
 template <typename... Args>
@@ -377,29 +389,28 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 void ConvertToDistTensor(paddle::Tensor* x,
                          const phi::distributed::ProcessMesh* mesh);
 
-struct DistTensorPtrBuilder : ArgsIterator<DistTensorPtrBuilder> {
+struct DistTensorPtrConverter : ArgsIterator<DistTensorPtrConverter> {
   const phi::distributed::ProcessMesh* mesh = nullptr;
 
-  explicit DistTensorPtrBuilder(const phi::distributed::ProcessMesh* m)
+  explicit DistTensorPtrConverter(const phi::distributed::ProcessMesh* m)
       : mesh(m) {
     PADDLE_ENFORCE_NE(
         m,
         nullptr,
         common::errors::InvalidArgument(
-            "Input mesh of DistTensorPtrBuilder() shouldn't be nullptr."));
+            "Input mesh of DistTensorPtrConverter() shouldn't be nullptr."));
   }
 
   std::shared_ptr<paddle::Tensor> builder(const paddle::Tensor& x);
   std::shared_ptr<paddle::Tensor> operator()(const paddle::Tensor& x);
-  std::shared_ptr<paddle::optional<paddle::Tensor>> operator()(
-      const paddle::optional<paddle::Tensor>& x);
-  std::shared_ptr<std::vector<paddle::Tensor>> operator()(
-      const std::vector<paddle::Tensor>& x);
 
-  // skip other type args, these args don't used in kernel selection
+  // skip other type args, eg, `vector<paddle::Tensor>` and
+  // `optional<std::vector<paddle::Tensor>>`, these args don't used in
+  // dense2dist transpose in op_ad_func.
   template <typename T>
   std::shared_ptr<T> operator()(const T& x) {
     // do nothing
+    return std::make_shared<T>(x);
   }
 };
 

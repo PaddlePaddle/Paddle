@@ -1063,42 +1063,66 @@ void DistTensorTypeParser::operator()(
   }
 }
 
-void DistTensorTypeParserBuilder::operator()(const paddle::Tensor& x) {
-  if (x.defined() && !x.is_dist_tensor()) {
-    result = false;
-  }
-}
-
-void DistTensorTypeParserBuilder::operator()(
-    const paddle::optional<paddle::Tensor>& x) {
-  if (x) {
-    if (x.get_ptr()->defined() && !x.get_ptr()->is_dist_tensor()) {
-      result = false;
+void CheckInputsNeedConvertDistTensor::operator()(const paddle::Tensor& x) {
+  if (x.defined()) {
+    if (x.is_dist_tensor()) {
+      *mesh =
+          &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                ->process_mesh());
+      have_dist = true;
+    } else if (x.is_dense_tensor()) {
+      have_dense = true;
     }
   }
 }
 
-void DistTensorTypeParserBuilder::operator()(
-    const std::vector<paddle::Tensor>& x) {
-  if (!x.empty()) {
-    for (auto& t : x) {
-      if (t.defined() && !t.is_dist_tensor()) {
-        result = false;
-        break;
+void CheckInputsNeedConvertDistTensor::operator()(
+    const paddle::optional<paddle::Tensor>& x) {
+  if (x) {
+    if (x.get_ptr()->defined()) {
+      if (x.get_ptr()->is_dist_tensor()) {
+        *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      x.get_ptr()->impl())
+                      ->process_mesh());
+        have_dist = true;
+      } else if (x.get_ptr()->is_dense_tensor()) {
+        have_dense = true;
       }
     }
   }
 }
 
-void DistTensorTypeParserBuilder::operator()(
+void CheckInputsNeedConvertDistTensor::operator()(
+    const std::vector<paddle::Tensor>& x) {
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.defined()) {
+        if (t.is_dist_tensor()) {
+          *mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+          have_dist = true;
+        } else if (t.is_dense_tensor()) {
+          have_dense = true;
+        }
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
     const paddle::optional<std::vector<paddle::Tensor>>& x) {
   if (x) {
-    if (!(x.get_ptr()->empty())) {
-      for (auto& t : *(x.get_ptr())) {
-        if (t.defined() && !t.is_dist_tensor()) {
-          result = false;
-          break;
-        }
+    if (x.get_ptr()->empty()) return;
+    for (auto& t : *(x.get_ptr())) {
+      if (!t.defined()) continue;
+      if (t.is_dist_tensor()) {
+        *mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+        have_dist = true;
+      } else if (t.is_dense_tensor()) {
+        have_dense = true;
       }
     }
   }
@@ -1191,7 +1215,7 @@ void ConvertToDistTensor(paddle::Tensor* x,
   }
 }
 
-std::shared_ptr<paddle::Tensor> DistTensorPtrBuilder::builder(
+std::shared_ptr<paddle::Tensor> DistTensorPtrConverter::builder(
     const paddle::Tensor& x) {
   PADDLE_ENFORCE_EQ(
       x.defined(),
@@ -1236,28 +1260,9 @@ std::shared_ptr<paddle::Tensor> DistTensorPtrBuilder::builder(
   return std::make_shared<paddle::Tensor>(dist_tensor_impl);
 }
 
-std::shared_ptr<paddle::Tensor> DistTensorPtrBuilder::operator()(
+std::shared_ptr<paddle::Tensor> DistTensorPtrConverter::operator()(
     const paddle::Tensor& x) {
   return builder(x);
-}
-
-std::shared_ptr<paddle::optional<paddle::Tensor>>
-DistTensorPtrBuilder::operator()(const paddle::optional<paddle::Tensor>& x) {
-  auto result = std::make_shared<paddle::optional<paddle::Tensor>>();
-  if (x) {
-    *result = paddle::make_optional<paddle::Tensor>(*builder(*(x.get_ptr())));
-  }
-  return result;
-}
-
-std::shared_ptr<std::vector<paddle::Tensor>> DistTensorPtrBuilder::operator()(
-    const std::vector<paddle::Tensor>& x) {
-  auto result = std::make_shared<std::vector<paddle::Tensor>>();
-  result->reserve(x.size());
-  for (const auto& t : x) {
-    result->emplace_back(*builder(t));
-  }
-  return result;
 }
 
 std::string CreateNodeLabelInDot(GradNodeBase* node) {
