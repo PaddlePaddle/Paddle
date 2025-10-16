@@ -168,7 +168,7 @@ def __bootstrap__():
         os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
     if os.getenv('MKL_NUM_THREADS', None) is None:
-        os.environ['MKL_NUM_THREADS'] = os.cpu_count()
+        os.environ['MKL_NUM_THREADS'] = str(os.cpu_count())
 
     flag_prefix = "FLAGS_"
     read_env_flags = [
