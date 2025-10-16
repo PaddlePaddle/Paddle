@@ -462,7 +462,7 @@ class DistributedContext:
             self._ops_ids = list(self._dist_ops_for_program.keys())
             self._is_initialized = True
 
-            # TODO: This will be removed in the future1
+            # TODO: This will be removed in the future
             if with_cpp:
                 _copy_dist_attr_to_cpp(self)
 
