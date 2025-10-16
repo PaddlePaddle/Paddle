@@ -842,6 +842,166 @@ def load_from_file(path: str) -> bytes:
     return data
 
 
+def _load_inference_model_legacy_impl(
+    path_prefix: str | None,
+    executor: Executor,
+    **kwargs: Unpack[_LoadInferenceModelKwargs],
+) -> list[Program | list[str] | list[Tensor]]:
+    """Legacy implementation of load_inference_model for fallback scenarios."""
+    # check kwargs
+    supported_args = ('model_filename', 'params_filename')
+    deprecated_args = ('pserver_endpoints',)
+    caller = inspect.currentframe().f_code.co_name
+    _check_args(caller, kwargs, supported_args, deprecated_args)
+
+    # load from memory
+    if path_prefix is None:
+        _logger.warning(
+            "Load inference model from memory is deprecated. Please specify path_prefix."
+        )
+        model_filename = kwargs.get('model_filename', None)
+        params_filename = kwargs.get('params_filename', None)
+        if params_filename is None:
+            raise ValueError(
+                "params_filename cannot be None when path_prefix is None."
+            )
+        program_bytes = model_filename
+        # deserialize bytes to program
+        program = deserialize_program(program_bytes)
+
+        # do type promotion
+        program = process_type_promotion(program)
+
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
+            # Load vars in OldIR context to ensure compatibility
+            with paddle.pir_utils.OldIrGuard():
+                load_vars(
+                    executor,
+                    # load from memory, dirname is None
+                    dirname=None,
+                    main_program=program,
+                    predicate=is_persistable,
+                    filename=params_filename,
+                )
+    # load from file
+    else:
+        # check and norm path_prefix
+        path_prefix = _normalize_path_prefix(path_prefix)
+        dir_path = os.path.dirname(path_prefix)
+        if not os.path.isdir(dir_path):
+            raise ValueError(f"There is no directory named {dir_path}")
+        # set model_path and params_path in new way,
+        # path_prefix represents a file path without suffix in this case.
+        if not kwargs:
+            model_path = path_prefix + ".pdmodel"
+            params_path = path_prefix + ".pdiparams"
+        # set model_path and params_path in old way for compatible,
+        # path_prefix represents a directory path.
+        else:
+            model_filename = kwargs.get('model_filename', None)
+            params_filename = kwargs.get('params_filename', None)
+            # set model_path
+            if model_filename is None:
+                model_path = os.path.join(path_prefix, "__model__")
+            else:
+                model_path = os.path.join(
+                    path_prefix, model_filename + ".pdmodel"
+                )
+                if not os.path.exists(model_path):
+                    model_path = os.path.join(path_prefix, model_filename)
+            # set params_path
+            if params_filename is None:
+                params_path = os.path.join(path_prefix, "")
+            else:
+                params_path = os.path.join(
+                    path_prefix, params_filename + ".pdiparams"
+                )
+                if not os.path.exists(params_path):
+                    params_path = os.path.join(path_prefix, params_filename)
+            _logger.warning(
+                "The old way to load inference model is deprecated. Please specify path_prefix."
+                f" model path: {model_path}, params path: {params_path}"
+            )
+
+        program_bytes = load_from_file(model_path)
+
+        # deserialize bytes to program
+        program = deserialize_program(program_bytes)
+
+        # do type promotion
+        program = process_type_promotion(program)
+
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
+            load_dirname = os.path.dirname(params_path)
+            params_filename = os.path.basename(params_path)
+
+            # Load vars in OldIR context to ensure compatibility
+            with paddle.pir_utils.OldIrGuard():
+                load_vars(
+                    executor,
+                    dirname=load_dirname,
+                    main_program=program,
+                    predicate=is_persistable,
+                    filename=params_filename,
+                )
+
+    feed_target_names = program.desc.get_feed_target_names()
+    if paddle.framework.in_pir_executor_mode():
+        with paddle.pir_utils.IrGuard():
+            program = paddle.pir.translate_to_pir(program.desc)
+            block = program.global_block()
+            remove_op_list = []
+            fetch_targets = []
+            for op in block.ops:
+                if op.name() == "pd_op.feed":
+                    var_name = op.attrs()["name"]
+                    org_value = op.result(0)
+                    with block:
+                        value = paddle.static.data(
+                            name=var_name,
+                            shape=org_value.shape,
+                            dtype=org_value.dtype,
+                        )
+                        org_value.replace_all_uses_with(value)
+                        value.get_defining_op().move_before(op)
+                    remove_op_list.append(op)
+            for op in remove_op_list:
+                block.remove_op(op)
+            for op in block.ops:
+                if op.name() == "pd_op.fetch":
+                    fetch_targets.append(op.operand_source(0))
+
+    else:
+        fetch_target_names = program.desc.get_fetch_target_names()
+        fetch_targets = [
+            program.global_block().var(name) for name in fetch_target_names
+        ]
+    return [program, feed_target_names, fetch_targets]
+
+
+def candidate_legacy_model_paths(path_prefix, model_filename=None):
+    """Generate candidate paths for legacy model files (.pdmodel)."""
+    LEGACY_MODEL_SUFFIX = ".pdmodel"
+
+    if path_prefix is None:
+        return
+
+    if model_filename is not None and model_filename.lower().endswith(
+        LEGACY_MODEL_SUFFIX
+    ):
+        yield os.path.join(path_prefix, model_filename)
+        return
+
+    path_prefix = _normalize_path_prefix(path_prefix)
+    if model_filename is None:
+        yield path_prefix + LEGACY_MODEL_SUFFIX
+        return
+
+    yield os.path.join(path_prefix, model_filename + LEGACY_MODEL_SUFFIX)
+
+
 @static_only
 def load_inference_model(
     path_prefix: str | None,
@@ -853,10 +1013,29 @@ def load_inference_model(
     Load inference model from a given path. By this API, you can get the model
     structure(Inference Program) and model parameters.
 
+    .. note::
+        **Format Compatibility**: This API automatically detects and supports both
+        modern JSON format (.json) and legacy binary format (.pdmodel) models.
+        In PIR mode (Paddle 3.x default), the API prioritizes JSON format but
+        seamlessly falls back to legacy format when only .pdmodel files are available.
+        This ensures backward compatibility with models created in earlier versions
+        or by tools that generate .pdmodel format files.
+        **Environment Control**: The automatic fallback can be controlled via the
+        ``PADDLE_DISABLE_PDMODEL_FALLBACK`` environment variable. Set it to '1', 'true',
+        or 'yes' to disable automatic fallback and force PIR format usage.
+
     Args:
         path_prefix(str | None): One of the following:
           - Directory path to save model + model name without suffix.
           - Set to None when reading the model from memory.
+
+          .. note::
+              **Format Detection**: The API automatically detects the model format:
+
+              - If `path_prefix + ".json"` exists, uses PIR mode (Paddle 3.x format)
+              - If only `path_prefix + ".pdmodel"` exists, automatically falls back to legacy mode
+              - JSON format takes priority when both formats are present
+
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
         kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
@@ -911,135 +1090,37 @@ def load_inference_model(
             # By the inference program, feed_target_names and
             # fetch_targets, we can use an executor to run the inference
             # program to get the inference result.
+
     """
     if in_pir_mode():
+        enable_fallback = os.environ.get(
+            "PADDLE_ENABLE_PDMODEL_FALLBACK", ""
+        ).lower() in ("1", "true", "yes")
+
+        if not enable_fallback:
+            return load_inference_model_pir(path_prefix, executor, **kwargs)
+
+        # Try legacy mode first if found legacy model files
+        for candidate_path in candidate_legacy_model_paths(
+            path_prefix, kwargs.get("model_filename", None)
+        ):
+            if os.path.exists(candidate_path):
+                try:
+                    return _load_inference_model_legacy_impl(
+                        path_prefix, executor, **kwargs
+                    )
+                except (ValueError, TypeError) as e:
+                    _logger.warning(
+                        f"Failed to load legacy model: {e}. "
+                        "Falling back to PIR mode."
+                    )
+                    break
+
+        # Default to PIR mode
         return load_inference_model_pir(path_prefix, executor, **kwargs)
-    # check kwargs
-    supported_args = ('model_filename', 'params_filename')
-    deprecated_args = ('pserver_endpoints',)
-    caller = inspect.currentframe().f_code.co_name
-    _check_args(caller, kwargs, supported_args, deprecated_args)
 
-    # load from memory
-    if path_prefix is None:
-        _logger.warning(
-            "Load inference model from memory is deprecated. Please specify path_prefix."
-        )
-        model_filename = kwargs.get('model_filename', None)
-        params_filename = kwargs.get('params_filename', None)
-        if params_filename is None:
-            raise ValueError(
-                "params_filename cannot be None when path_prefix is None."
-            )
-        program_bytes = model_filename
-        # deserialize bytes to program
-        program = deserialize_program(program_bytes)
-
-        # do type promotion
-        program = process_type_promotion(program)
-
-        vars = list(filter(is_persistable, program.list_vars()))
-        if len(vars) > 0:
-            load_vars(
-                executor,
-                # load from memory, dirname is None
-                dirname=None,
-                main_program=program,
-                predicate=is_persistable,
-                filename=params_filename,
-            )
-    # load from file
-    else:
-        # check and norm path_prefix
-        path_prefix = _normalize_path_prefix(path_prefix)
-        dir_path = os.path.dirname(path_prefix)
-        if not os.path.isdir(dir_path):
-            raise ValueError(f"There is no directory named {dir_path}")
-        # set model_path and params_path in new way,
-        # path_prefix represents a file path without suffix in this case.
-        if not kwargs:
-            model_path = path_prefix + ".pdmodel"
-            params_path = path_prefix + ".pdiparams"
-        # set model_path and params_path in old way for compatible,
-        # path_prefix represents a directory path.
-        else:
-            model_filename = kwargs.get('model_filename', None)
-            params_filename = kwargs.get('params_filename', None)
-            # set model_path
-            if model_filename is None:
-                model_path = os.path.join(path_prefix, "__model__")
-            else:
-                model_path = os.path.join(
-                    path_prefix, model_filename + ".pdmodel"
-                )
-                if not os.path.exists(model_path):
-                    model_path = os.path.join(path_prefix, model_filename)
-            # set params_path
-            if params_filename is None:
-                params_path = os.path.join(path_prefix, "")
-            else:
-                params_path = os.path.join(
-                    path_prefix, params_filename + ".pdiparams"
-                )
-                if not os.path.exists(params_path):
-                    params_path = os.path.join(path_prefix, params_filename)
-            _logger.warning(
-                "The old way to load inference model is deprecated. Please specify path_prefix."
-                f" model path: {model_path}, params path: {params_path}"
-            )
-
-        program_bytes = load_from_file(model_path)
-
-        # deserialize bytes to program
-        program = deserialize_program(program_bytes)
-
-        # do type promotion
-        program = process_type_promotion(program)
-
-        vars = list(filter(is_persistable, program.list_vars()))
-        if len(vars) > 0:
-            load_dirname = os.path.dirname(params_path)
-            params_filename = os.path.basename(params_path)
-
-            load_vars(
-                executor,
-                dirname=load_dirname,
-                main_program=program,
-                predicate=is_persistable,
-                filename=params_filename,
-            )
-    feed_target_names = program.desc.get_feed_target_names()
-    if paddle.framework.in_pir_executor_mode():
-        with paddle.pir_utils.IrGuard():
-            program = paddle.pir.translate_to_pir(program.desc)
-            block = program.global_block()
-            remove_op_list = []
-            fetch_targets = []
-            for op in block.ops:
-                if op.name() == "pd_op.feed":
-                    var_name = op.attrs()["name"]
-                    org_value = op.result(0)
-                    with block:
-                        value = paddle.static.data(
-                            name=var_name,
-                            shape=org_value.shape,
-                            dtype=org_value.dtype,
-                        )
-                        org_value.replace_all_uses_with(value)
-                        value.get_defining_op().move_before(op)
-                    remove_op_list.append(op)
-            for op in remove_op_list:
-                block.remove_op(op)
-            for op in block.ops:
-                if op.name() == "pd_op.fetch":
-                    fetch_targets.append(op.operand_source(0))
-
-    else:
-        fetch_target_names = program.desc.get_fetch_target_names()
-        fetch_targets = [
-            program.global_block().var(name) for name in fetch_target_names
-        ]
-    return [program, feed_target_names, fetch_targets]
+    # Legacy mode
+    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
 
 
 @overload
@@ -1699,9 +1780,7 @@ def load(
             if len(binary_file_set) > 0:
                 unused_var_list = " ".join(list(binary_file_set))
                 _logger.warning(
-                    "variable file [ {} ] not used".format(
-                        " ".join(list(binary_file_set))
-                    )
+                    f"variable file [ {' '.join(list(binary_file_set))} ] not used"
                 )
             try:
                 load_vars(
@@ -1889,7 +1968,7 @@ def set_program_state(
             ten_place = ten._place()
 
             # assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
-            #    "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
+            #    f"Place not support, only support CPUPlace and GPUPlace, now is {ten_place!s}"
             py_place = paddle.base.CPUPlace()
             if ten_place.is_cuda_pinned_place():
                 place = paddle.base.CUDAPinnedPlace()
@@ -1912,9 +1991,7 @@ def set_program_state(
             unused_para_list.append(k)
     if len(unused_para_list) > 0:
         warnings.warn(
-            "This list is not set, Because of Parameter not found in program. There are: {}".format(
-                " ".join(unused_para_list)
-            )
+            f"This list is not set, Because of Parameter not found in program. There are: {' '.join(unused_para_list)}"
         )
 
 
