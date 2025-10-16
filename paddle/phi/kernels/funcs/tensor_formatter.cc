@@ -150,12 +150,13 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
     auto print_element = [&log_stream, &precision](const auto& elem) {
       if constexpr (std::is_same_v<T, phi::complex64> ||
                     std::is_same_v<T, phi::complex128>) {
-        log_stream << std::setprecision(precision)
-                   << static_cast<float>(elem.real) << "+"
+        log_stream << std::fixed << std::setprecision(precision)
+                   << static_cast<float>(elem.real) << "+" << std::fixed
                    << std::setprecision(precision)
                    << static_cast<float>(elem.imag) << "j";
       } else {
-        log_stream << std::setprecision(precision) << static_cast<float>(elem);
+        log_stream << std::fixed << std::setprecision(precision)
+                   << static_cast<float>(elem);
       }
     };
 

@@ -782,6 +782,20 @@ PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          "CopyValueFromTensor do not deep copy, if true.");
 /**
  * Debug related FLAG
+ * Name: tensor_md5_checksum_precision
+ * Since Version: 3.2.1
+ * Value Range: int32, default=3
+ * Example:
+ * Note: The precision of the tensor data used for computing the MD5 checksum
+ * (the number of decimal places after the decimal point).
+ *
+ */
+PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
+                          3,
+                          "The precision of tensor md5 checksum.");
+
+/**
+ * Debug related FLAG
  * Name: sort_sum_gradient
  * Since Version: 2.0.0
  * Value Range: bool, default=false

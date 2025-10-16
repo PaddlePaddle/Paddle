@@ -36,7 +36,7 @@
 
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
-
+COMMON_DECLARE_int32(tensor_md5_checksum_precision);
 namespace egr {
 
 void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
@@ -827,7 +827,7 @@ std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
   }
   auto& dense_tensor = *(dense_tensor_ptr);
   auto dtype = dense_tensor.dtype();
-  int precision = 15;
+  int precision = FLAGS_tensor_md5_checksum_precision;
 
   if (dtype == phi::DataType::FLOAT32) {
     formatter.FormatData<float>(dense_tensor, data_stream, precision);
