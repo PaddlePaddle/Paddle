@@ -18,9 +18,11 @@ from functools import partial
 import hypothesis.strategies as st
 import numpy as np
 from auto_scan_test import PassAutoScanTest
+from op_test import OpTestTool
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
+@OpTestTool.skip_if_not_cpu()
 class TestMatmulElementwiseAddOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
@@ -84,7 +86,8 @@ class TestMatmulElementwiseAddOnednnFusePass(PassAutoScanTest):
         )
 
 
-class TestMatmulElementwiseAddMkldnnFuse1CHWPass(PassAutoScanTest):
+@OpTestTool.skip_if_not_cpu()
+class TestMatmulElementwiseAddOnednnFuse1CHWPass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
@@ -147,6 +150,7 @@ class TestMatmulElementwiseAddMkldnnFuse1CHWPass(PassAutoScanTest):
         )
 
 
+@OpTestTool.skip_if_not_cpu()
 class TestMatmulElementwiseAddExpendResidualPass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([0]))

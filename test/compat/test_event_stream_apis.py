@@ -116,6 +116,9 @@ class TestEventStreamAPIs(unittest.TestCase):
         prev_stream = paddle.device.set_stream(stream1)
         self.assertIsInstance(prev_stream, paddle.device.Stream)
 
+        prev_stream = paddle.cuda.set_stream(stream1)
+        self.assertIsInstance(prev_stream, paddle.cuda.Stream)
+
         # Test Event.record() with default stream
         event1.record()
         # Query result may be True immediately for some devices
@@ -348,6 +351,55 @@ class TestEventStreamTimingFunctionality(unittest.TestCase):
             # Verify the timing result
             self.assertIsInstance(elapsed_time, (int, float))
             self.assertGreater(elapsed_time, 0)  # Should take some time
+
+
+class TestEventAPIs(unittest.TestCase):
+    """Unified test for paddle.Event, paddle.device.Event, and paddle.cuda.Event."""
+
+    def setUp(self):
+        if not paddle.device.is_compiled_with_cuda():
+            self.skipTest("This test requires CUDA.")
+        self.device = "gpu:0"
+        paddle.device.set_device(self.device)
+
+        self.event_classes = [
+            ("paddle.Event", paddle.Event),
+            ("paddle.cuda.Event", paddle.cuda.Event),
+        ]
+
+    def test_event_timing_consistency(self):
+        """Check timing consistency across different Event APIs."""
+        for name, EventCls in self.event_classes:
+            with self.subTest(api=name):
+                start = EventCls(enable_timing=True)
+                end = EventCls(enable_timing=True)
+
+                start.record()
+
+                x = paddle.randn([2048, 2048], dtype="float32")
+                y = paddle.randn([2048, 2048], dtype="float32")
+                z = paddle.matmul(x, y)
+                _ = z.mean()
+
+                end.record()
+                end.synchronize()
+
+                elapsed = start.elapsed_time(end)
+                self.assertIsInstance(elapsed, (int, float))
+                self.assertGreater(
+                    elapsed,
+                    0.0,
+                    f"{name} should measure positive elapsed time.",
+                )
+
+    def test_event_methods_available(self):
+        """Ensure all Event variants expose expected methods."""
+        for name, EventCls in self.event_classes:
+            with self.subTest(api=name):
+                e = EventCls(enable_timing=True)
+                self.assertTrue(hasattr(e, "record"))
+                self.assertTrue(hasattr(e, "synchronize"))
+                self.assertTrue(hasattr(e, "elapsed_time"))
 
 
 if __name__ == '__main__':

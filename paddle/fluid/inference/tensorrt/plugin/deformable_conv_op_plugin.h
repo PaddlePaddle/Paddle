@@ -169,9 +169,6 @@ class DeformableConvPluginCreator : public nvinfer1::IPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(DeformableConvPluginCreator);
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 class DeformableConvPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit DeformableConvPluginDynamic(const nvinfer1::DataType data_type,
@@ -421,7 +418,6 @@ class PIRDeformableConvPluginDynamicCreator : public nvinfer1::IPluginCreator {
 REGISTER_TRT_PLUGIN_V2(PIRDeformableConvPluginDynamicCreator);
 
 REGISTER_TRT_PLUGIN_V2(DeformableConvPluginDynamicCreator);
-#endif
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

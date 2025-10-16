@@ -64,6 +64,9 @@ class ConverterOpRegistry:
             """
             return tuple(map(int, [*version.split('.'), '0', '0'][:3]))
 
+        if version_range is None:
+            return True
+
         # Convert the given TensorRT version to a normalized tuple
         trt_version_tuple = _normalize_version(trt_version)
         # Split the version range into comparator and reference version

@@ -120,24 +120,36 @@ class SoftplusActivationFusePattern : public paddle::drr::DrrPatternBase {
         {"beta", pat.Attr("beta")}, {"threshold", pat.Attr("threshold")}};
 
     if (act_type_ == paddle::dialect::HardswishOp::name()) {
-      fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f / 6.0f));
-      fused_attrs.emplace("fuse_beta", res.Float32Attr(1.0f / 2.0f));
+      fused_attrs.emplace("fuse_alpha", res.DoubleAttr(1.0 / 6.0));
+      fused_attrs.emplace("fuse_beta", res.DoubleAttr(1.0 / 2.0));
     } else if (act_type_ == paddle::dialect::HardsigmoidOp::name()) {
-      fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
-      fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
+      const auto &fuse_alpha = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> double {
+            return static_cast<double>(match_ctx.Attr<float>("fuse_alpha"));
+          });
+      const auto &fuse_beta = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> double {
+            return static_cast<double>(match_ctx.Attr<float>("fuse_beta"));
+          });
+      fused_attrs.emplace("fuse_alpha", fuse_alpha);
+      fused_attrs.emplace("fuse_beta", fuse_beta);
     } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
                act_type_ == paddle::dialect::LeakyReluOp::name()) {
-      fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      const auto &fuse_alpha = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> double {
+            return static_cast<double>(match_ctx.Attr<float>("fuse_alpha"));
+          });
+      fused_attrs.emplace("fuse_alpha", fuse_alpha);
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
-      fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
+      fused_attrs.emplace("fuse_alpha", res.DoubleAttr(1.0));
     } else if (act_type_ == paddle::dialect::Relu6Op::name()) {
-      fused_attrs.emplace("fuse_beta", res.Float32Attr(6.0f));
+      fused_attrs.emplace("fuse_beta", res.DoubleAttr(6.0));
     }
 
     fused_attrs.insert(std::make_pair("fuse_activation",
                                       res.StrAttr(activation_type[act_type_])));
-    fused_attrs.insert(std::make_pair("fuse_alpha", res.Float32Attr(0.0f)));
-    fused_attrs.insert(std::make_pair("fuse_beta", res.Float32Attr(0.0f)));
+    fused_attrs.insert(std::make_pair("fuse_alpha", res.DoubleAttr(0.0)));
+    fused_attrs.insert(std::make_pair("fuse_beta", res.DoubleAttr(0.0)));
 
     const auto &fused_softplus = res.Op(fused_softplus_name_, fused_attrs);
 
@@ -188,8 +200,8 @@ class SoftplusGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
         {"beta", pat.Attr("beta")},
         {"threshold", pat.Attr("threshold")},
         {"fuse_activation", res.StrAttr("gelu_tanh")},
-        {"fuse_alpha", res.Float32Attr(0.0f)},
-        {"fuse_beta", res.Float32Attr(0.0f)}};
+        {"fuse_alpha", res.DoubleAttr(0.0)},
+        {"fuse_beta", res.DoubleAttr(0.0)}};
 
     const auto &fused_softplus = res.Op(fused_softplus_name_, fused_attrs);
 
@@ -244,11 +256,11 @@ class SoftplusClipFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fuse_alpha = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
           return match_ctx.Attr<double>("value1");
         });
     const auto &fuse_beta = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
           return match_ctx.Attr<double>("value2");
         });
 

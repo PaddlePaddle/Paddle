@@ -86,8 +86,6 @@ int HardSwishPlugin::enqueue(int batch_size,
   return cudaGetLastError() != cudaSuccess;
 }
 
-#if IS_TRT_VERSION_GE(6000)
-
 nvinfer1::DimsExprs HardSwishPluginDynamic::getOutputDimensions(
     int output_index,
     const nvinfer1::DimsExprs *inputs,
@@ -162,7 +160,7 @@ bool HardSwishPluginDynamic::supportsFormatCombination(
   // output
   return in.type == prev.type && in.format == prev.format;
 }
-#endif
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
