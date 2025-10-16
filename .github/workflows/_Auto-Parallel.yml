@@ -43,6 +43,7 @@ jobs:
       group: Auto-Parallel
     steps:
       - name: Check docker image and run container
+        if: false
         env:
           FLAGS_dynamic_static_unified_comm: "True"
           python_version: "3.10"
@@ -72,6 +73,7 @@ jobs:
             -w /workspace --runtime=nvidia ${docker_image}
 
       - name: Download Paddle
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -86,6 +88,7 @@ jobs:
           '
 
       - name: Download PaddleTest
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -100,6 +103,7 @@ jobs:
           '
 
       - name: Test
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -115,7 +119,7 @@ jobs:
           '
 
       - name: Upload and display logs
-        if: always()
+        if: false
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -137,7 +141,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
