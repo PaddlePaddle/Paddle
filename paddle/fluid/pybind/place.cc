@@ -308,17 +308,18 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                    phi::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
-                   #if defined(PADDLE_WITH_CUDA)
-                   LOG(ERROR) << "Cannot use " << device_type
-                              << " because there is no " << device_type
-                              << " detected on your machine."
-                              << "Please check your environment variables and device configuration. "
-                              << "Device type: " << device_type
-                              << ", CUDA_VISIBLE_DEVICES: " << std::getenv("CUDA_VISIBLE_DEVICES")
-                   #else
-                   LOG(ERROR) << "Cannot use " << device_type
-                              << " because there is no " << device_type
-                              << " detected on your machine.";
+                   if(defined(PADDLE_WITH_CUDA)){
+                     LOG(ERROR) << "Cannot use " << device_type
+                                << " because there is no " << device_type
+                                << " detected on your machine."
+                                << "Please check your environment variables and device configuration. "
+                                << "Device type: " << device_type
+                                << ", CUDA_VISIBLE_DEVICES: " << std::getenv("CUDA_VISIBLE_DEVICES")
+                   } else {
+                     LOG(ERROR) << "Cannot use " << device_type
+                                << " because there is no " << device_type
+                                << " detected on your machine.";
+                   }
                    PADDLE_THROW(::common::errors::InvalidArgument(
                        "use wrong place, Please check."));
                  } else {
