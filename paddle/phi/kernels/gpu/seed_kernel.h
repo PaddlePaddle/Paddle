@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,17 @@
 
 #pragma once
 
-namespace compat {
-#ifndef TORCH_EXTENSION_NAME
-#define TORCH_EXTENSION_NAME PADDLE_EXTENSION_NAME
-#endif
-#define UNSUPPORTED_FEATURE_IN_PADDLE(feature) \
-  std::cerr << "Unsupported feature in Paddle: " << feature << std::endl;
-}  // namespace compat
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void GPUSeedKernel(const Context& dev_ctx,
+                   int seed,
+                   bool deterministic,
+                   const std::string& rng_name,
+                   bool force_cpu,
+                   DenseTensor* out);
+
+}  // namespace phi

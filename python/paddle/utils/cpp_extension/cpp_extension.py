@@ -724,7 +724,7 @@ class BuildExtension(build_ext):
                     # if user set build_directory, output objects there.
                     if build_directory is not None:
                         objects = [
-                            os.path.join(build_directory, os.path.basename(obj))
+                            os.path.join(build_directory, obj)
                             for obj in objects
                         ]
                     # ensure to use abspath
