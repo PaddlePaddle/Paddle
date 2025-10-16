@@ -5111,13 +5111,13 @@ struct CudaLogSigmoidFunctor : public BaseActivationFunctor<T> {
   MPType zero = static_cast<MPType>(0.0f);
 
   // logsigmoid(x) = log(1 / (1 + exp(-x)))
-  // For numerical stability,
-  // logsigmoid(x) =
-  //          - (max(-x, 0) + log(exp(-max(-x, 0)) + exp(-x - max(-x, 0))))
+  // Use the numerically stable:
+  // log_sigmoid(x) = min(0, x) - log1p(exp(-abs(x)))
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    MPType temp = x > zero ? zero : -x;
-    return static_cast<T>(-temp - log(exp(-temp) + exp(-x - temp)));
+    MPType min0 = (x < zero) ? x : zero;
+    MPType abs_x = abs(x);
+    return static_cast<T>(min0 - log1p_local(exp(-abs_x)));
   }
 };
 
@@ -5125,18 +5125,25 @@ template <typename T>
 struct CudaLogSigmoidGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType zero = static_cast<MPType>(0.0f);
+  MPType one = static_cast<MPType>(1.0f);
 
   // dx = dout * exp(-x) / (1 + exp(-x))
-  // For numerical stability:
-  // dx = dout * exp(-x - max(-x, 0)) / (exp(-max(-x, 0)) + exp(-x - max(-x,
-  // 0)))
+  // Use stable backward:
+  // grad = dout * (max_deriv - sign * (z / (1 + z)))
+  // where z = exp(-abs(x)), max_deriv = (x < 0) ? 1 : 0, sign = (x < 0) ? 1 :
+  // -1
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    MPType temp1 = x > zero ? zero : -x;
-    MPType temp2 = exp(-x - temp1);
-    return static_cast<T>(dout * (temp2 / (exp(-temp1) + temp2)));
+
+    // in_negative, max_deriv, sign
+    const bool in_negative = (x < zero);
+    const MPType max_deriv = in_negative ? one : zero;
+    const MPType sign = in_negative ? one : -one;
+
+    MPType z = exp(-abs(x));
+    return static_cast<T>(dout * (max_deriv - sign * (z / (one + z))));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -5146,19 +5153,25 @@ template <typename T>
 struct CudaLogSigmoidGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
   ComplexType<T> zero = static_cast<ComplexType<T>>(0.0f);
+  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
 
   // dx = dout * exp(-x) / (1 + exp(-x))
-  // For numerical stability:
-  // dx = dout * exp(-x - max(-x, 0)) / (exp(-max(-x, 0)) + exp(-x - max(-x,
-  // 0)))
+  // Use stable backward:
+  // grad = dout * (max_deriv - sign * (z / (1 + z)))
+  // where z = exp(-abs(x)), max_deriv = (x < 0) ? 1 : 0, sign = (x < 0) ? 1 :
+  // -1
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
     ComplexType<T> dout = static_cast<ComplexType<T>>(arg_dout);
     ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
-    ComplexType<T> temp1 = x > zero ? zero : -x;
-    ComplexType<T> temp2 = exp(-x - temp1);
-    return static_cast<ComplexType<T>>(dout *
-                                       conj(temp2 / (exp(-temp1) + temp2)));
+
+    // in_negative, max_deriv, sign
+    const bool in_negative = (x < zero);
+    const ComplexType<T> max_deriv = in_negative ? one : zero;
+    const ComplexType<T> sign = in_negative ? one : -one;
+
+    ComplexType<T> z = exp(-abs(x));
+    return static_cast<T>(dout * conj(max_deriv - sign * (z / (one + z))));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
