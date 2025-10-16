@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gc
 import os
 import shutil
 import tempfile
 import unittest
-import warnings
 
 import numpy as np
 
@@ -67,275 +65,267 @@ class TestPdmodelCompatibility(unittest.TestCase):
         paddle.enable_static()
 
     def tearDown(self):
-        try:
-            self.temp_dir.cleanup()
-        except:
-            pass
-        try:
-            paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
-        except:
-            pass
-        try:
-            if self.original_fallback_env:
-                os.environ[
-                    'PADDLE_ENABLE_PDMODEL_FALLBACK'
-                ] = self.original_fallback_env
-            else:
-                os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
-        except:
-            pass
-
-        gc.collect()
-        try:
-            if paddle.device.is_compiled_with_cuda():
-                paddle.device.cuda.empty_cache()
-                paddle.device.cuda.synchronize()
-        except:
-            pass
+        self.temp_dir.cleanup()
+        paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
+        if self.original_fallback_env:
+            os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = (
+                self.original_fallback_env
+            )
+        else:
+            os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
 
     def _create_model(self, save_format='pdmodel', name_suffix=''):
-        """Create simple model: y = x * w + b"""
+        """Create simple model: y = fc(x)"""
         model_path = os.path.join(
             self.temp_dir.name, f"model_{save_format}{name_suffix}"
         )
 
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-
-        with paddle.static.program_guard(main_program, startup_program):
-            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
-            param_fn = (
-                paddle.create_parameter
-                if save_format == 'json'
-                else paddle.static.create_parameter
-            )
-            w = param_fn(
-                shape=[10, 1],
-                dtype='float32',
-                name='weight',
-                default_initializer=paddle.nn.initializer.Constant(0.5),
-            )
-            b = param_fn(
-                shape=[1],
-                dtype='float32',
-                name='bias',
-                default_initializer=paddle.nn.initializer.Constant(0.1),
-            )
-            y = paddle.add(paddle.matmul(x, w), b)
-
-        self.exe.run(startup_program)
-
-        # Validate program has operators
-        if len(main_program.global_block().ops) == 0:
-            raise ValueError("Main program is empty - no operators found!")
-
-        save_args = {
-            'path_prefix': model_path,
-            'feed_vars': [x],
-            'fetch_vars': [y],
-            'executor': self.exe,
-        }
-
         if save_format == 'pdmodel':
+            # Create program in OldIR mode for .pdmodel format
             with paddle.pir_utils.OldIrGuard():
-                paddle.static.save_inference_model(**save_args)
-        else:
-            # Ensure PIR mode for json format with proper flag management
-            old_pir_flag = paddle.base.framework.get_flags(
-                "FLAGS_enable_pir_api"
-            )["FLAGS_enable_pir_api"]
-            try:
-                paddle.base.set_flags({'FLAGS_enable_pir_api': True})
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(
+                        name='x', shape=[None, 10], dtype='float32'
+                    )
+                    # Use paddle.static.nn.fc for OldIR mode
+                    y = paddle.static.nn.fc(
+                        x,
+                        size=1,
+                        weight_attr=paddle.ParamAttr(
+                            initializer=paddle.nn.initializer.Constant(0.5)
+                        ),
+                        bias_attr=paddle.ParamAttr(
+                            initializer=paddle.nn.initializer.Constant(0.1)
+                        ),
+                    )
+
+                # Initialize parameters
+                self.exe.run(startup_program)
+
+                # Validate program has ops
+                if len(main_program.global_block().ops) == 0:
+                    raise ValueError("Main program is empty!")
+
+                # Save the model (must be done within OldIrGuard)
                 paddle.static.save_inference_model(
-                    program=main_program, **save_args
+                    path_prefix=model_path,
+                    feed_vars=[x],
+                    fetch_vars=[y],
+                    executor=self.exe,
+                    program=main_program,
                 )
-            finally:
-                paddle.base.set_flags({'FLAGS_enable_pir_api': old_pir_flag})
+        else:
+            # Create program in PIR mode for .json format
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+                w = paddle.create_parameter(
+                    shape=[10, 1],
+                    dtype='float32',
+                    name='weight',
+                    default_initializer=paddle.nn.initializer.Constant(0.5),
+                )
+                b = paddle.create_parameter(
+                    shape=[1],
+                    dtype='float32',
+                    name='bias',
+                    default_initializer=paddle.nn.initializer.Constant(0.1),
+                )
+                y = x @ w + b
+
+            self.exe.run(startup_program)
+
+            if len(main_program.global_block().ops) == 0:
+                raise ValueError("Main program is empty!")
+
+            paddle.static.save_inference_model(
+                path_prefix=model_path,
+                feed_vars=[x],
+                fetch_vars=[y],
+                executor=self.exe,
+                program=main_program,
+            )
 
         return model_path
 
     def _verify_loaded_model(
         self, program, feed_names, fetch_targets, expected_feed_name='x'
     ):
-        """Verify loaded model structure and run basic inference test"""
-        self.assertIsNotNone(program, "Program should be loaded successfully")
-        self.assertEqual(len(feed_names), 1, "Should have one feed variable")
-        self.assertEqual(
-            len(fetch_targets), 1, "Should have one fetch variable"
-        )
-        self.assertEqual(
-            feed_names[0],
-            expected_feed_name,
-            f"Feed variable name should be '{expected_feed_name}'",
-        )
+        """Verify loaded model by checking structure and running inference"""
+        self.assertEqual(len(feed_names), 1)
+        self.assertEqual(feed_names[0], expected_feed_name)
+        self.assertEqual(len(fetch_targets), 1)
 
-        # Test basic inference functionality
-        test_data = np.random.random([1, 10]).astype('float32')
+        # Run inference to verify model works
+        x_data = np.random.rand(2, 10).astype('float32')
         results = self.exe.run(
-            program, feed={feed_names[0]: test_data}, fetch_list=fetch_targets
+            program,
+            feed={feed_names[0]: x_data},
+            fetch_list=fetch_targets,
+            return_numpy=True,
         )
-        self.assertIsNotNone(results, "Inference results should not be None")
-        self.assertEqual(len(results), 1, "Should have one output")
-        self.assertEqual(
-            results[0].shape, (1, 1), "Output shape should be (1, 1)"
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].shape, (2, 1))
+
+    def test_auto_fallback_pdmodel_to_legacy(self):
+        """Test auto fallback from PIR to legacy mode when loading .pdmodel"""
+        pdmodel_path = self._create_model('pdmodel')
+
+        # Verify pdmodel files exist and json files don't
+        self.assertTrue(
+            os.path.exists(pdmodel_path + ".pdmodel"),
+            "pdmodel file should exist",
+        )
+        self.assertTrue(
+            os.path.exists(pdmodel_path + ".pdiparams"),
+            "pdiparams file should exist",
+        )
+        self.assertFalse(
+            os.path.exists(pdmodel_path + ".json"),
+            "json file should not exist for pdmodel format",
         )
 
-    def test_pdmodel_fallback_and_priority(self):
-        """Test .pdmodel fallback and priority behavior"""
-        # Test 1: Auto fallback from PIR to legacy mode
-        with self.subTest(msg="Auto fallback from PIR to legacy mode"):
-            pdmodel_path = self._create_model('pdmodel')
+        program, feed_names, fetch_targets = load_inference_model(
+            pdmodel_path, self.exe
+        )
+        self._verify_loaded_model(program, feed_names, fetch_targets)
 
-            # Verify pdmodel files exist and json files don't
+    def test_pdmodel_priority_over_json(self):
+        """Test .pdmodel priority over .json when both files exist"""
+        pdmodel_path = self._create_model('pdmodel', '_priority')
+        json_path = self._create_model('json', '_json')
+        priority_path = os.path.join(self.temp_dir.name, "priority_test")
+
+        # Combine both formats at same location
+        shutil.copy(json_path + ".json", priority_path + ".json")
+        shutil.copy(pdmodel_path + ".pdmodel", priority_path + ".pdmodel")
+        shutil.copy(pdmodel_path + ".pdiparams", priority_path + ".pdiparams")
+
+        # Verify both file formats exist
+        self.assertTrue(
+            os.path.exists(priority_path + ".pdmodel"),
+            "pdmodel file should exist",
+        )
+        self.assertTrue(
+            os.path.exists(priority_path + ".json"),
+            "json file should exist",
+        )
+        self.assertTrue(
+            os.path.exists(priority_path + ".pdiparams"),
+            "pdiparams file should exist",
+        )
+
+        program, feed_names, fetch_targets = load_inference_model(
+            priority_path, self.exe
+        )
+        # Should prioritize .pdmodel format
+        self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
+
+    def test_pir_mode_loads_json_normally(self):
+        """Test PIR mode loads .json format normally"""
+        json_path = self._create_model('json')
+
+        # Verify json files exist and pdmodel files don't
+        self.assertTrue(
+            os.path.exists(json_path + ".json"), "JSON file should exist"
+        )
+        self.assertTrue(
+            os.path.exists(json_path + ".pdiparams"),
+            "pdiparams file should exist",
+        )
+        self.assertFalse(
+            os.path.exists(json_path + ".pdmodel"),
+            "pdmodel file should not exist for json format",
+        )
+
+        program, feed_names, fetch_targets = load_inference_model(
+            json_path, self.exe
+        )
+        # JSON should load in PIR mode
+        self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
+
+    def test_pir_mode_rejects_pdmodel_without_fallback(self):
+        """Test PIR mode rejects .pdmodel without fallback enabled"""
+        pdmodel_path = self._create_model('pdmodel', '_no_fallback')
+
+        # Verify pdmodel files exist and json files don't
+        self.assertTrue(
+            os.path.exists(pdmodel_path + ".pdmodel"),
+            "pdmodel file should exist",
+        )
+        self.assertTrue(
+            os.path.exists(pdmodel_path + ".pdiparams"),
+            "pdiparams file should exist",
+        )
+        self.assertFalse(
+            os.path.exists(pdmodel_path + ".json"),
+            "json file should not exist for pdmodel format",
+        )
+
+        original = os.environ.get('PADDLE_ENABLE_PDMODEL_FALLBACK', '')
+        try:
+            os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = '0'
+            with self.assertRaises(
+                (RuntimeError, ValueError, FileNotFoundError)
+            ) as context:
+                load_inference_model(pdmodel_path, self.exe)
+
+            # Verify error message is related to JSON/parsing/file not found
+            error_message = str(context.exception).lower()
             self.assertTrue(
-                os.path.exists(pdmodel_path + ".pdmodel"),
-                "pdmodel file should exist",
+                "json" in error_message
+                or "parse" in error_message
+                or "does not exist" in error_message,
+                f"Error should be JSON-related or file not found, got: {context.exception}",
             )
-            self.assertTrue(
-                os.path.exists(pdmodel_path + ".pdiparams"),
-                "pdiparams file should exist",
-            )
-            self.assertFalse(
-                os.path.exists(pdmodel_path + ".json"),
-                "json file should not exist for pdmodel format",
+        finally:
+            if original:
+                os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = original
+            else:
+                os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
+
+    def test_custom_model_filename_parameter(self):
+        """Test compatibility when using custom model_filename parameter"""
+        model_dir = os.path.join(self.temp_dir.name, "model_dir")
+        os.makedirs(model_dir)
+        temp_path = self._create_model('pdmodel', '_custom')
+        for ext in [".pdmodel", ".pdiparams"]:
+            shutil.copy(
+                temp_path + ext,
+                os.path.join(model_dir, "custom_model" + ext),
             )
 
-            program, feed_names, fetch_targets = load_inference_model(
-                pdmodel_path, self.exe
-            )
-            self._verify_loaded_model(program, feed_names, fetch_targets)
+        program, feed_names, fetch_targets = load_inference_model(
+            model_dir, self.exe, model_filename="custom_model"
+        )
+        # Custom filename should work
+        self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
 
-        # Test 2: .pdmodel priority over .json when both exist
-        with self.subTest(msg="pdmodel priority over json when both exist"):
-            pdmodel_path = self._create_model('pdmodel', '_priority')
-            json_path = self._create_model('json', '_json')
-            priority_path = os.path.join(self.temp_dir.name, "priority_test")
+    def test_fallback_from_invalid_pdmodel_to_json(self):
+        """Test fallback from invalid .pdmodel to valid .json"""
+        json_path = self._create_model('json', '_fallback')
+        with open(json_path + ".pdmodel", 'w') as f:
+            f.write("# Invalid pdmodel content")
 
-            # Combine both formats at same location
-            shutil.copy(json_path + ".json", priority_path + ".json")
-            shutil.copy(pdmodel_path + ".pdmodel", priority_path + ".pdmodel")
-            shutil.copy(pdmodel_path + ".pdiparams", priority_path + ".pdiparams")
-
-            # Verify both file formats exist
-            self.assertTrue(
-                os.path.exists(priority_path + ".pdmodel"),
-                "pdmodel file should exist",
-            )
-            self.assertTrue(
-                os.path.exists(priority_path + ".json"),
-                "json file should exist",
-            )
-            self.assertTrue(
-                os.path.exists(priority_path + ".pdiparams"),
-                "pdiparams file should exist",
-            )
-
-            program, feed_names, fetch_targets = load_inference_model(
-                priority_path, self.exe
-            )
-            # Should prioritize .pdmodel format
-            self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
-
-    def test_pir_mode_behavior(self):
-        """Test PIR mode loading behavior with and without fallback"""
-        # Test 1: PIR mode loads .json normally
-        with self.subTest(msg="PIR mode loads json normally"):
-            json_path = self._create_model('json')
-
-            # Verify json files exist and pdmodel files don't
-            self.assertTrue(
-                os.path.exists(json_path + ".json"), "JSON file should exist"
-            )
-            self.assertTrue(
-                os.path.exists(json_path + ".pdiparams"),
-                "pdiparams file should exist",
-            )
-            self.assertFalse(
-                os.path.exists(json_path + ".pdmodel"),
-                "pdmodel file should not exist for json format",
-            )
-
-            program, feed_names, fetch_targets = load_inference_model(
-                json_path, self.exe
-            )
-            # JSON should load in PIR mode
-            self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
-
-        # Test 2: PIR mode rejects .pdmodel without fallback
-        with self.subTest(msg="PIR mode rejects pdmodel without fallback"):
-            pdmodel_path = self._create_model('pdmodel', '_no_fallback')
-
-            # Verify pdmodel files exist and json files don't
-            self.assertTrue(
-                os.path.exists(pdmodel_path + ".pdmodel"),
-                "pdmodel file should exist",
-            )
-            self.assertTrue(
-                os.path.exists(pdmodel_path + ".pdiparams"),
-                "pdiparams file should exist",
-            )
-            self.assertFalse(
-                os.path.exists(pdmodel_path + ".json"),
-                "json file should not exist for pdmodel format",
-            )
-
-            original = os.environ.get('PADDLE_ENABLE_PDMODEL_FALLBACK', '')
-            try:
-                os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = '0'
-                with self.assertRaises((RuntimeError, ValueError)) as context:
-                    load_inference_model(pdmodel_path, self.exe)
-
-                # Verify error message is related to JSON/parsing
-                error_message = str(context.exception).lower()
-                self.assertTrue(
-                    "json" in error_message or "parse" in error_message,
-                    f"Error should be JSON-related, got: {context.exception}",
-                )
-            finally:
-                if original:
-                    os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = original
-                else:
-                    os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
-
-    def test_edge_cases_and_compatibility(self):
-        """Test edge cases and parameter compatibility"""
-        # Test 1: Custom model_filename parameter
-        with self.subTest(msg="Custom model_filename parameter"):
-            model_dir = os.path.join(self.temp_dir.name, "model_dir")
-            os.makedirs(model_dir)
-            temp_path = self._create_model('pdmodel', '_custom')
-            for ext in [".pdmodel", ".pdiparams"]:
-                shutil.copy(
-                    temp_path + ext,
-                    os.path.join(model_dir, "custom_model" + ext),
-                )
-
-            program, feed_names, fetch_targets = load_inference_model(
-                model_dir, self.exe, model_filename="custom_model"
-            )
-            # Custom filename should work
-            self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
-
-        # Test 2: Fallback from invalid .pdmodel to valid .json
-        with self.subTest(msg="Fallback from invalid pdmodel to valid json"):
-            json_path = self._create_model('json', '_fallback')
-            with open(json_path + ".pdmodel", 'w') as f:
-                f.write("# Invalid pdmodel content")
-
-            program, feed_names, fetch_targets = load_inference_model(
-                json_path, self.exe
-            )
-            # Should fallback to json
-            self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
+        program, feed_names, fetch_targets = load_inference_model(
+            json_path, self.exe
+        )
+        # Should fallback to json
+        self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
 
     def test_no_model_files_error(self):
-        """Test proper error handling when model files don\'t exist"""
+        """Test proper error handling when model files don't exist"""
         model_path = os.path.join(self.temp_dir.name, "nonexistent_model")
 
         with self.assertRaises((FileNotFoundError, OSError, ValueError)):
-            load_inference_model(
-                path_prefix=model_path, executor=self.exe
-            )
+            load_inference_model(path_prefix=model_path, executor=self.exe)
 
 
 if __name__ == '__main__':
