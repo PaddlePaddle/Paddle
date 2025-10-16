@@ -549,6 +549,8 @@ class AOAEngine:
     ) -> list[SliceRef]:
         assert key in self.output_vars
         tensor = self.output_vars[key]
+        if tensor is None:
+            return []
         results = []
         assert len(local_slice) == len(tensor.shape)
         ndim = len(tensor.shape)
