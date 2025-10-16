@@ -49,7 +49,7 @@ jobs:
             echo $method
             set +x
             source ~/.icafe
-            wget -q --no-check-certificate https://paddle-qa.bj.bcebos.com/baidu/cloud/modify_icafe.py
+            wget -q --no-check-certificate https://paddle-qa.bj.bcebos.com/baidu/cloud/modify_icafe_yu.py
             set -x
-            python3 modify_icafe.py
+            python3 modify_icafe_yu.py
           }
