@@ -1762,9 +1762,7 @@ void FlashMaskV2BaseKernel(
   const int params_arch =
       phi::dynload::flashmaskv2_fwd_params_get_arch(params_handle);
   bool const scheduler_needs_semaphore =
-      params_arch >= 90 ? (((params_is_causal || params_is_local) &&
-                            (params_num_splits == 1)) ||
-                           is_varlen)
+      params_arch >= 90 ? true
                         : ((params_is_causal && !is_varlen) ||
                            (is_varlen && params_num_splits > 1));
   if (scheduler_needs_semaphore || use_dynamic_split) {
