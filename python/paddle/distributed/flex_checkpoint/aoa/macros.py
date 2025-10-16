@@ -83,7 +83,7 @@ def star_macro(tokens, expression, context):
         pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         filtered_keys = []
         for key in allkeys:
-            match = pattern.match(key)
+            match = pattern.fullmatch(key)
             if match:
                 num = int(match.group(1))
                 filtered_keys.append((key, num))
