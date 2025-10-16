@@ -53,9 +53,6 @@ class Tensor : public TensorBase {
   }
 
   using TensorBase::size;
-  //   int64_t size(int64_t dim) const {
-  //     return tensor_.dims()[static_cast<int>(dim)];
-  //   }
 
   c10::IntArrayRef sizes() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
