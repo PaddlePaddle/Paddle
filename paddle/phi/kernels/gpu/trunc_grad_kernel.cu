@@ -42,7 +42,7 @@ void TruncGradKernel(const Context& dev_ctx,
 
   int threads = PADDLE_CUDA_NUM_THREADS;
   int64_t blocks_grid = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int blocks = std::max((numel + threads - 1) / threads, blocks_grid);
+  int blocks = std::min((numel + threads - 1) / threads, blocks_grid);
 
   TruncGrad<<<blocks, threads>>>(in_grad_data, numel);
 }

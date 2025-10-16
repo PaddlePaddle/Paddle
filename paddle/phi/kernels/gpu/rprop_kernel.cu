@@ -108,7 +108,7 @@ void RpropKernel(const Context& dev_ctx,
 
   int block = 512;
   int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid = std::max((param.numel() + block - 1) / block, grid_max);
+  int grid = std::min((param.numel() + block - 1) / block, grid_max);
 
   RpropKernelGPUImpl<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
       param.data<T>(),
