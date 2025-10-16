@@ -579,7 +579,7 @@ class DataLoader:
             dp_world_size = mesh.get_dim_size("dp")
 
             self.batch_size = int(self.batch_sampler.batch_size / dp_world_size)
-            if self.batch_size>=1:
+            if self.batch_size > 0:
                 if isinstance(self.batch_sampler, _InfiniteIterableSampler):
                     shuffle = False
                     drop_last = False
