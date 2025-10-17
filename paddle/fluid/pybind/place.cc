@@ -321,7 +321,6 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                      LOG(ERROR) << "Cannot use " << device_type
                                 << " because there is no " << device_type
                                 << " detected on your machine.";
-                   }
                    #endif
                    PADDLE_THROW(::common::errors::InvalidArgument(
                        "use wrong place, Please check."));
