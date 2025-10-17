@@ -330,8 +330,16 @@ struct XPUReluGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* out,
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
+    auto relu_grad_func = [](xpu::Context* context,
+                             const XPUType* /*x_data*/,
+                             const XPUType* y_data,
+                             const XPUType* y_grad,
+                             XPUType* x_grad,
+                             int64_t len) -> int {
+      return xpu::relu_grad<XPUType>(context, y_data, y_grad, x_grad, len);
+    };
     int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::relu_grad<XPUType>);
+        dev_ctx, x, out, dout, dx, relu_grad_func);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
   }
 };
@@ -431,7 +439,17 @@ struct XPUSqrtGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
     int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::sqrt_grad<XPUType>);
+        dev_ctx,
+        x,
+        out,
+        dout,
+        dx,
+        (int (*)(baidu::xpu::api::Context*,
+                 const XPUType*,
+                 const XPUType*,
+                 const XPUType*,
+                 XPUType*,
+                 int64_t))xpu::sqrt_grad<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sqrt_grad");
   }
 };

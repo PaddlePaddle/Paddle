@@ -274,7 +274,6 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
   } else if (act_method == "relu") {
     r = xpu::relu_grad(xpu_ctx,
                        linear1_out_ptr,
-                       linear1_out_ptr,
                        d_dropout1_out_ptr,
                        d_act_out_ptr,
                        bsz_seq * dim_feedforward);
