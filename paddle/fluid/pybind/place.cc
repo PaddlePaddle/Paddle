@@ -324,7 +324,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                               << " detected on your machine.";
 #endif
                               PADDLE_THROW(::common::errors::InvalidArgument(
-                                 "use wrong place, Please check."));
+                                  "use wrong place, Please check."));
                  } else {
                    LOG(ERROR) << string::Sprintf(
                        "Invalid CustomPlace(%s, %d), dev_id must "
