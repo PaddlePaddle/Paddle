@@ -527,6 +527,15 @@ TEST(EagerUtils, SaveTensorMD5CheckSumToFile) {
       CreateTestCPUTensor<phi::float16>(static_cast<phi::float16>(1), ddim))
   EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
       CreateTestCPUTensor<int32_t>(static_cast<int32_t>(1), ddim))
+#if defined(PADDLE_WITH_CUDA)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
+      CreateTestCPUTensor<phi::bfloat16>(static_cast<phi::bfloat16>(1), ddim))
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
+      CreateTestCPUTensor<phi::float8_e4m3fn>(
+          static_cast<phi::float8_e4m3fn>(1), ddim))
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(CreateTestCPUTensor<phi::float8_e5m2>(
+      static_cast<phi::float8_e5m2>(1), ddim))
+#endif
 
 #ifndef _WIN32
   // test save to file
