@@ -516,7 +516,6 @@ class TensorRTEngine {
   int32_t get_max_batch_size() { return params_.max_batch_size; }
   phi::DataType precision() { return params_.precision; }
 
-#if IS_TRT_VERSION_GE(6000)
   nvinfer1::IPluginV2Layer* AddDynamicPlugin(
       nvinfer1::ITensor* const* inputs,
       int num_inputs,
@@ -524,7 +523,6 @@ class TensorRTEngine {
     owned_pluginv2_.emplace_back(plugin);
     return network()->addPluginV2(inputs, num_inputs, *plugin);
   }
-#endif
 
   void SetProfileNum(int num) { max_profile_num_ = num; }
 
@@ -605,12 +603,10 @@ class TensorRTEngine {
   // specify run on float to avoid overflow
   std::unordered_set<std::string> trt_ops_run_float_;
 
-#if IS_TRT_VERSION_GE(6000)
   int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   std::vector<nvinfer1::IOptimizationProfile*> optim_profiles_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
-#endif
   std::mutex mutex_;
 
  public:

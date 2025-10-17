@@ -1173,8 +1173,15 @@ std::string CreateForwardNodeLabelInDot(GradNodeBase* node) {
 }
 std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor) {
   std::ostringstream oss;
-  oss << tensor.place() << "\\n"
-      << tensor.dtype() << "[" << tensor.dims() << "]";
+  if (VLOG_IS_ON(6)) {
+    oss << tensor.name() << "\\n"
+        << tensor.place() << "\\n"
+        << tensor.dtype() << "[" << tensor.dims() << "]";
+  } else {
+    oss << tensor.place() << "\\n"
+        << tensor.dtype() << "[" << tensor.dims() << "]";
+  }
+
   return oss.str();
 }
 std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor) {
@@ -1248,6 +1255,85 @@ void SaveDebugInfo(std::string dir_path,
         file_path_prefix + "_backward_graph" + ".dot";
     VLOG(4) << "Save backward graph to file : " << backward_graph_file_path;
     SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
+  }
+}
+const std::string GenerateUniqueTensorName(const std::string& unique_api_name,
+                                           const std::string& var_name,
+                                           const paddle::Tensor* tensor) {
+  // example: {unique_api_name}_{var_name}_fp16_1024x1024
+  std::ostringstream oss;
+  oss << unique_api_name << "_" << var_name << "_" << tensor->dtype() << "_";
+  for (int i = 0; i < tensor->dims().size(); ++i) {
+    if (i != 0) {
+      oss << "x";
+    }
+    oss << tensor->dims()[i];
+  }
+  return oss.str();
+}
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::Tensor* tensor) {
+  if (!tensor->defined() || !tensor->has_allocation()) return;
+  const std::string& unique_name =
+      egr::GenerateUniqueTensorName(unique_api_name, var_name, tensor);
+  tensor->set_name(unique_name);
+}
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::optional<paddle::Tensor>* tensor) {
+  if (tensor->get_ptr() != nullptr) {
+    paddle::Tensor* t = tensor->get_ptr();
+    if (!t->defined() || !t->has_allocation()) return;
+    t->set_name(egr::GenerateUniqueTensorName(unique_api_name, var_name, t));
+  }
+}
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor>* tensors) {
+  for (int i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t.defined() && t.has_allocation()) {
+      t.set_name(egr::GenerateUniqueTensorName(
+          unique_api_name, var_name + std::to_string(i), &t));
+    }
+  }
+}
+
+TEST_API void SetTensorName(
+    const std::string& unique_api_name,
+    const std::string& var_name,
+    paddle::optional<std::vector<paddle::Tensor>>* tensors) {
+  if (tensors->get_ptr() != nullptr) {
+    SetTensorName(unique_api_name, var_name, tensors->get_ptr());
+  }
+}
+static std::string GenerateGradTensorName(const GradSlotMeta& meta) {
+  const std::string& forward_name = meta.GetForwardTensorName();
+  std::string grad_name = forward_name + "@Grad";
+  return grad_name;
+}
+TEST_API void SetGradTensorName(
+    paddle::Tensor* tensor,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        bwd_out_meta) {
+  const auto& metas = bwd_out_meta[slot];
+  std::string name = GenerateGradTensorName(metas[0]);
+  tensor->set_name(name);
+}
+TEST_API void SetGradTensorName(
+    std::vector<paddle::Tensor>* tensors,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+        bwd_out_meta) {
+  const auto& metas = bwd_out_meta[slot];
+  for (int i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t.defined() && t.has_allocation()) {
+      std::string name = GenerateGradTensorName(metas[i]);
+      t.set_name(name);
+    }
   }
 }
 }  // namespace egr
