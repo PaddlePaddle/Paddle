@@ -99,7 +99,8 @@ paddle::Tensor dtensor_from_local_ad_function(
     // SetGradOutMeta & SetEdges
     if (input_autograd_meta) {
       grad_node->SetGradOutMeta(input, 0);
-      egr::EagerUtils::SetEdge(input_autograd_meta, egr::Edge(grad_node, 0, 0));
+      input_autograd_meta->SetGradNode(grad_node);
+      input_autograd_meta->SetSingleOutRankWithSlot(0, 0);
     } else {
       grad_node->SetGradOutMeta(input, 0);
     }
