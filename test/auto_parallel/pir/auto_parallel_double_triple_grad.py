@@ -180,8 +180,15 @@ class TestMLPTensorParallel(unittest.TestCase):
         )
 
     def test_prim_eager_auto_parallel(self):
+        rtol = 1e-5
         paddle.framework.core.set_prim_eager_enabled(True)
-        self.test_auto_parallel()
+        dp_losses = self.run_dp_model(test_prim=True)
+        tp_losses = self.run_tp_model(test_prim=True)
+        np.testing.assert_allclose(
+            dp_losses,
+            tp_losses,
+            rtol=rtol,
+        )
 
 
 if __name__ == "__main__":
