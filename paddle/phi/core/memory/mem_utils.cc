@@ -31,11 +31,11 @@ bool TotalMemoryCompactor::compact(std::list<Block>& blocks,
   void* new_ptr = start_ptr;
   size_t remaining_size = 0;
   std::list<Block> new_blocks;
-
+  cudaDeviceSynchronize();
   for (auto& block : blocks) {
     if (!block.is_free_) {
       if (block.ptr_ != new_ptr && block.ptr_ >= start_ptr) {
-        cudaError_t err = cudaMemcpy(
+        cudaError_t err = cudaMemcpyAsync(
             new_ptr, block.ptr_, block.size_, cudaMemcpyDeviceToDevice);
         if (err != cudaSuccess) {
           std::cerr << "cudaMemcpy failed in TotalMemoryCompactor::compact."
@@ -52,7 +52,7 @@ bool TotalMemoryCompactor::compact(std::list<Block>& blocks,
       remaining_size += block.size_;
     }
   }
-
+  cudaDeviceSynchronize();
   if (remaining_size > 0) {
     new_blocks.push_back({new_ptr, remaining_size, true});
   }

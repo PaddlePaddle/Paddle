@@ -34,9 +34,9 @@ struct Block {
       : ptr_(ptr), size_(size), is_free_(is_free), allocation_(allocation) {}
 
   void* ptr_;
-  BlockAllocation* allocation_;
   size_t size_;
   bool is_free_;
+  BlockAllocation* allocation_;
 };
 
 struct BlockAllocation : public Allocation {
@@ -44,12 +44,6 @@ struct BlockAllocation : public Allocation {
                            phi::Place place)
       : Allocation(it->ptr_, it->size_, place), block_it_(it) {
     it->allocation_ = this;
-  }
-  ~BlockAllocation() override {
-    if (block_it_ != std::list<Block>::iterator{}) {
-      if (block_it_->allocation_) block_it_->allocation_ = nullptr;
-      block_it_ = std::list<Block>::iterator{};
-    }
   }
   std::list<Block>::iterator block_it_;
 };
