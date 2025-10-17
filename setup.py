@@ -615,8 +615,8 @@ def nccl() -> str:
     """
     return nccl_version
 
-def cuda() -> str:
-    """Get cuda version of paddle package.
+import inspect
+CUDA_FUNC_DOC = """Get cuda version of paddle package.
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
@@ -631,7 +631,30 @@ def cuda() -> str:
             '10.2'
 
     """
-    return cuda_version
+class CudaVersion(str):
+    def __new__(cls, version: str):
+        return super().__new__(cls, version)
+
+    def __call__(self) -> str:
+        # When users check for GPU devices using paddle.version.cuda is None, we cannot align this behavior with other frameworks .
+        # Note: This discrepancy arises because the is operator checks for object identity (memory address equality) rather than value equality.
+        return str(self)
+
+    def __repr__(self) -> str:
+        return f"CudaVersion('{self}')"
+
+    @property
+    def __doc__(self):
+        return CUDA_FUNC_DOC
+
+    @property
+    def __signature__(self):
+        return inspect.Signature(
+            parameters=[],
+            return_annotation=str
+        )
+
+cuda = CudaVersion(cuda_version)
 
 def cudnn() -> str:
     """Get cudnn version of paddle package.
@@ -1367,7 +1390,6 @@ def get_apy_files():
 def get_typing_libs_packages(paddle_binary_dir):
     """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
     e.g.
-        'paddle._typing.libs.libpaddle.cinn'
         'paddle._typing.libs.libpaddle.pir'
         'paddle._typing.libs.libpaddle.eager'
         'paddle._typing.libs.libpaddle.eager.ops'
@@ -1607,6 +1629,11 @@ def get_package_data_and_package_dir():
             env_dict.get("CINN_INCLUDE_DIR")
             + '/paddle/cinn/runtime/cuda/float16.h'
         )
+        if env_dict.get("WITH_ROCM") == 'ON':
+            cinn_fp16_file = (
+                env_dict.get("CINN_INCLUDE_DIR")
+                + '/paddle/cinn/runtime/hip/float16.h'
+            )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
@@ -2421,6 +2448,7 @@ def get_setup_parameters():
         'paddle.io.dataloader',
         'paddle.optimizer',
         'paddle.nn',
+        'paddle.nn.attention',
         'paddle.nn.functional',
         'paddle.nn.layer',
         'paddle.nn.quant',
@@ -2438,6 +2466,7 @@ def get_setup_parameters():
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
+        'paddle.cuda',
         'paddle.device',
         'paddle.device.cuda',
         'paddle.device.xpu',
@@ -2643,6 +2672,8 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
             paddle_source_dir
             + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
         ],
+        python_api_info_yaml_path=paddle_source_dir
+        + "/paddle/phi/ops/yaml/python_api_info.yaml",
     )
 
     libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'

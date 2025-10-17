@@ -50,13 +50,13 @@ repos:
             paddle/cinn/utils/registry.h
           )$
   - repo: https://github.com/PFCCLab/typos-pre-commit-mirror.git
-    rev: v1.34.0
+    rev: v1.36.2
     hooks:
       - id: typos
         args: [--force-exclude]
   # For Python files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.0
+    rev: v0.13.0
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]

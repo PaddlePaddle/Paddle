@@ -162,25 +162,29 @@ def pool2d(np_data, attrs, dtype="float32"):
                         ) / np.maximum(pad_count, 1)
                 else:
                     if data_format == "NCHW":
-                        ret_np[:, :, i, j] = np.mean(
+                        window = (
                             pad_np[
                                 :,
                                 :,
                                 i * s_h : i * s_h + k_h,
                                 j * s_w : j * s_w + k_w,
                             ],
-                            axis=(height_axis, width_axis),
                         )
+                        ret_np[:, :, i, j] = np.sum(
+                            window, axis=(height_axis, width_axis)
+                        ) / (k_h * k_w)
                     else:
-                        ret_np[:, i, j, :] = np.mean(
+                        window = (
                             pad_np[
                                 :,
                                 i * s_h : i * s_h + k_h,
                                 j * s_w : j * s_w + k_w,
                                 :,
                             ],
-                            axis=(height_axis, width_axis),
                         )
+                        ret_np[:, i, j, :] = np.sum(
+                            window, axis=(height_axis, width_axis)
+                        ) / (k_h * k_w)
     elif pool_type == 'max':
         for i in range(out_shape[height_axis]):
             for j in range(out_shape[width_axis]):

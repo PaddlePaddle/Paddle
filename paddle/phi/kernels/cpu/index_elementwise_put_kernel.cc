@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
@@ -287,10 +286,10 @@ PD_REGISTER_KERNEL(index_elementwise_put,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    CPU,
@@ -304,7 +303,7 @@ PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

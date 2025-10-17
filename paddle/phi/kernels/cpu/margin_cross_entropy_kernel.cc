@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/margin_cross_entropy_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -47,4 +46,4 @@ PD_REGISTER_KERNEL(margin_cross_entropy,
                    phi::MarginCrossEntropyKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

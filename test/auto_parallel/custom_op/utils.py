@@ -16,7 +16,9 @@ import os
 from pathlib import Path
 from site import getsitepackages
 
-from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
+from paddle.utils.cpp_extension.extension_utils import (
+    _get_all_paddle_includes_from_include_root,
+)
 
 # Test for extra compile args
 extra_cc_args = ['-w', '-g']
@@ -29,7 +31,7 @@ def get_paddle_includes():
     paddle_includes = []
     paddle_includes.append(f"{env_dict.get('PADDLE_SOURCE_DIR')}")
 
-    # mkldnn
+    # onednn
     if env_dict.get("WITH_ONEDNN") == 'ON':
         paddle_includes.append(f"{env_dict.get('ONEDNN_INSTALL_DIR')}/include")
     if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
@@ -38,18 +40,9 @@ def get_paddle_includes():
 
     for site_packages_path in getsitepackages():
         paddle_include_dir = Path(site_packages_path) / "paddle/include"
-        paddle_includes.append(str(paddle_include_dir))
-        paddle_includes.append(str(paddle_include_dir / 'third_party'))
-        if not IS_WINDOWS:
-            paddle_includes.append(
-                str(paddle_include_dir / 'paddle/phi/api/include/compat')
-            )
-            paddle_includes.append(
-                str(
-                    paddle_include_dir
-                    / 'paddle/phi/api/include/compat/torch/csrc/api/include'
-                )
-            )
+        paddle_includes.extend(
+            _get_all_paddle_includes_from_include_root(str(paddle_include_dir))
+        )
 
     return paddle_includes
 

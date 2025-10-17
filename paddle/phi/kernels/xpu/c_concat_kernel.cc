@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/c_concat_kernel.h"
 #include <vector>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -103,5 +104,5 @@ PD_REGISTER_KERNEL(c_concat,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

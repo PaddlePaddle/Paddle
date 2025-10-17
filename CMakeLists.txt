@@ -17,12 +17,13 @@ if(APPLE AND WITH_ARM)
   cmake_minimum_required(VERSION 3.19.2)
   cmake_policy(VERSION 3.19.2)
 else()
-  cmake_minimum_required(VERSION 3.15)
+  cmake_minimum_required(VERSION 3.18)
   cmake_policy(VERSION 3.10)
 endif()
-# use to get_property location of static lib
-# https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
-cmake_policy(SET CMP0026 OLD)
+# use modern CMake target handling, disable deprecated LOCATION property
+# use $<TARGET_FILE> generator expression instead of get_property LOCATION
+# https://cmake.org/cmake/help/v4.0/policy/CMP0026.html#cmp0026
+cmake_policy(SET CMP0026 NEW)
 cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -318,6 +319,9 @@ option(
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_FLAGCX "Compile PaddlePaddle with FLAGCX support" OFF)
+option(KERNEL_WITH_FLAGCX
+       "Use FlagCX as communication backend in kernels involving communication"
+       OFF)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
@@ -369,9 +373,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.8)
-elseif(${PY_VERSION} VERSION_LESS 3.8)
-  message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
+  set(PY_VERSION 3.9)
+elseif(${PY_VERSION} VERSION_LESS 3.9)
+  message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
@@ -551,6 +555,9 @@ endif()
 
 if(WITH_FLAGCX)
   add_definitions("-DPADDLE_WITH_FLAGCX")
+  if(KERNEL_WITH_FLAGCX)
+    add_definitions("-DPADDLE_KERNEL_WITH_FLAGCX")
+  endif()
 endif()
 
 if(WITH_DISTRIBUTE)

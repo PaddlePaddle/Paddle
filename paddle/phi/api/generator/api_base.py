@@ -33,6 +33,20 @@ def parse_plain_list(s: str, sep=",") -> list[str]:
         return [item.strip() for item in s.strip().split(sep)]
 
 
+def IsUsePredefinedOut(position_list: list) -> bool:
+    """
+    Determine whether all forwards are Tensors, including outputs and positions, And the length is between [1,7].
+    The number 7 represents that the multi out mechanism currently supports a maximum of 7 output tensors.
+    """
+    if not position_list:
+        return False
+
+    is_all_tensor = all(pos == "Tensor" for pos in position_list)
+    length = len(position_list)
+
+    return is_all_tensor and 1 <= length <= 7
+
+
 class BaseAPI:
     def __init__(self, api_item_yaml):
         self.api = self.get_api_name(api_item_yaml)
@@ -239,7 +253,7 @@ class BaseAPI:
             return f"""std::make_tuple({", ".join(args)})"""
 
     def get_declare_args(
-        self, inplace_flag=False, grad_flag=False, append_input_out=False
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=False
     ):
         declare_args = self.get_input_tensor_args(inplace_flag)
         for name in self.attrs['names']:
@@ -253,19 +267,25 @@ class BaseAPI:
         if (
             not grad_flag
             and not inplace_flag
-            and append_input_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
+            and append_predefined_out
             and self.api != "empty_like"
         ):
-            declare_args.append(
-                "paddle::optional<Tensor*> input_out = paddle::none"
-            )
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                declare_args.append(
+                    f"paddle::optional<{type_str}> predefined_out = paddle::none"
+                )
 
         return ", ".join(declare_args)
 
     def get_define_args(
-        self, inplace_flag=False, grad_flag=False, append_input_out=True
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
     ):
         define_args = self.get_input_tensor_args(inplace_flag)
         for name in self.attrs['names']:
@@ -274,12 +294,20 @@ class BaseAPI:
         if (
             not grad_flag
             and not inplace_flag
-            and append_input_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
+            and append_predefined_out
             and self.api != "empty_like"
         ):
-            define_args.append("paddle::optional<Tensor*> input_out")
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                define_args.append(
+                    f"paddle::optional<{type_str}> predefined_out"
+                )
 
         return ", ".join(define_args)
 
@@ -548,12 +576,12 @@ class BaseAPI:
     def get_return_type(self, inplace_flag=False):
         return None
 
-    def gene_api_declaration(self, grad_flag=False, append_input_out=True):
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
         api_declaration = ""
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             api_declaration = f"""
-PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(grad_flag=grad_flag, append_input_out=append_input_out)});
+PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(grad_flag=grad_flag, append_predefined_out=append_predefined_out)});
 """
 
         if self.is_base_api and len(self.inplace_map) > 0:
@@ -562,7 +590,7 @@ PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(grad_
             api_declaration = (
                 api_declaration
                 + f"""
-PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, grad_flag=grad_flag, append_input_out=append_input_out)});
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, grad_flag=grad_flag, append_predefined_out=append_predefined_out)});
 """
             )
 
@@ -1485,14 +1513,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}      *target_ptr = *{kernel_out}.at(i);
 {code_indent}    }}"""
         return f"""
-{code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+{code_indent}  VLOG(4) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  if (FLAGS_low_precision_op_list) {{
 {code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
 {code_indent}  }}
-{code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
+{code_indent}  VLOG(4) << "{kernel_name} kernel: " << kernel;
 {code_indent}  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
 {code_indent}  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
@@ -1608,7 +1636,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   return {invoke_code};
 }}"""
 
-    def gene_api_code(self, grad_flag=False, append_input_out=True):
+    def gene_api_code(self, grad_flag=False, append_predefined_out=True):
         if self.is_base_api:
             api_code = self.gene_base_api_code()
             if len(self.inplace_map) > 0:
@@ -1622,6 +1650,6 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         else:
             invoke_code = self.invoke
             params_code = self.get_define_args(
-                grad_flag=grad_flag, append_input_out=append_input_out
+                grad_flag=grad_flag, append_predefined_out=append_predefined_out
             )
             return self.gene_invoke_code(invoke_code, params_code)

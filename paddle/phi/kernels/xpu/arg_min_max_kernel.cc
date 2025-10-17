@@ -197,8 +197,8 @@ PD_REGISTER_KERNEL(argmax,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
@@ -207,7 +207,7 @@ PD_REGISTER_KERNEL(argmin,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

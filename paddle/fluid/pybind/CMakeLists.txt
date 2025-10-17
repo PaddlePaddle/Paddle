@@ -132,6 +132,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    cudart_py.cc
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
@@ -183,7 +184,7 @@ if(WITH_PYTHON)
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
   endif()
-  if(WITH_FLAGCX)
+  if(WITH_FLAGCX AND NOT WITH_XPU)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_flagcx)
   endif()
   if(WITH_CUSTOM_DEVICE)

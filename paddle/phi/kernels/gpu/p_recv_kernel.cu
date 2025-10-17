@@ -101,8 +101,8 @@ PD_REGISTER_KERNEL(p_recv,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(p_recv_array,
                    GPU,
@@ -115,8 +115,8 @@ PD_REGISTER_KERNEL(p_recv_array,
                    int8_t,
                    uint8_t,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(p_recv,
                    GPU,
@@ -130,7 +130,7 @@ PD_REGISTER_KERNEL(p_recv,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(p_recv_array,
                    GPU,
@@ -143,5 +143,5 @@ PD_REGISTER_KERNEL(p_recv_array,
                    int8_t,
                    uint8_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

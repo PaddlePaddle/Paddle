@@ -16,7 +16,6 @@
 
 #include "paddle/phi/kernels/as_complex_kernel.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"

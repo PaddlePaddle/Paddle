@@ -2491,7 +2491,7 @@ class Variable(metaclass=VariableMetaClass):
                 LoD Level of current Var is: 0
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
-            raise Exception("SelectedRows DO NOT support lod")
+            raise NotImplementedError("SelectedRows DO NOT support lod")
         if self.type == core.VarDesc.VarType.STRINGS:
             return None
         return self.desc.lod_level()
@@ -8366,9 +8366,12 @@ def _get_paddle_place(place):
     place_info_list = place.split(":", 1)
     device_type = place_info_list[0]
     if device_type in core.get_all_custom_device_type():
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.CustomPlace(device_type, device_id)
+        if len(place_info_list) == 1:
+            return core.CustomPlace(device_type, 0)
+        else:
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.CustomPlace(device_type, device_id)
 
     raise ValueError(
         f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, XPUPinnedPlace, IPUPlace and CustomPlace, but received {place}."

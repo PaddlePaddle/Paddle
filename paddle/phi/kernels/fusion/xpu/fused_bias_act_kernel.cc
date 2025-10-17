@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_bias_act_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -140,5 +141,5 @@ PD_REGISTER_KERNEL(fused_bias_act,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasActKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -363,4 +363,44 @@ void inline CUDAErrorCheck(const std::string& check_tag) {
   std::cout << check_tag << " check done." << std::endl;
 #endif
 }
+std::string CreateNodeLabelInDot(GradNodeBase* node);
+std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor);
+std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor);
+std::string CreateForwardNodeLabelInDot(GradNodeBase* node);
+void SaveDebugInfo(std::string dir_path,
+                   const std::string& serialized_forward_graph,
+                   const std::string& call_stack,
+                   const std::string& serialized_backward_graph);
+
+void SaveStringToFile(const std::string& file_path,
+                      const std::string& serialized_graph,
+                      const std::string& mode = "trunc");
+static inline const std::string GenerateUniqueApiName(
+    const std::string& api_name, const int64_t& call_count) {
+  return api_name + std::to_string(call_count);
+}
+
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::Tensor* tensor);
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::optional<paddle::Tensor>* tensor);
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor>* tensors);
+TEST_API void SetTensorName(
+    const std::string& unique_api_name,
+    const std::string& var_name,
+    paddle::optional<std::vector<paddle::Tensor>>* tensors);
+TEST_API void SetGradTensorName(
+    std::vector<paddle::Tensor>* tensors,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+        bwd_out_meta);
+TEST_API void SetGradTensorName(
+    paddle::Tensor* tensor,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        bwd_out_meta);
 }  // namespace egr

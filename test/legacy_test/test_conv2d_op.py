@@ -152,7 +152,8 @@ def conv2d_forward_naive(
 
 def create_test_cudnn_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNCase(parent):
         def init_kernel_type(self):
@@ -270,7 +271,8 @@ def create_test_channel_last_class(parent):
 
 def create_test_cudnn_channel_last_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCudnnChannelLastCase(parent):
         def init_kernel_type(self):
@@ -293,7 +295,8 @@ def create_test_cudnn_channel_last_class(parent):
 
 def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCudnnChannelLastFp16(parent):
         def init_kernel_type(self):
@@ -356,7 +359,8 @@ def create_test_padding_VALID_class(parent):
 
 def create_test_cudnn_padding_SAME_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingSAMECase(parent):
         def init_kernel_type(self):
@@ -376,7 +380,8 @@ def create_test_cudnn_padding_SAME_class(parent):
 
 def create_test_cudnn_padding_VALID_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingVALIDCase(parent):
         def init_kernel_type(self):
@@ -734,6 +739,7 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
 
 class TestConv2DOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -756,6 +762,7 @@ class TestConv2DOpError(unittest.TestCase):
                 paddle.nn.Conv2D(x2.shape[1], 1, 1)(x2)
 
             self.assertRaises(TypeError, test_dtype)
+        paddle.disable_static()
 
 
 # Please Don't remove the following code.

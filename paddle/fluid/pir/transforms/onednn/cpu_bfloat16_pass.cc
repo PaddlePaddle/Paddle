@@ -121,6 +121,9 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
                bfloat16_ops_ == "onednn_op.squeeze_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
     }
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0"), &pat.Tensor("quantize_1")},
@@ -128,7 +131,8 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
       const std::vector<std::string> permitted_input_names = {
@@ -290,6 +294,9 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
                bfloat16_ops_ == "onednn_op.squeeze_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
     }
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("x"), &pat.Tensor("y")}, {&pat.Tensor("out")});
@@ -399,13 +406,17 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
                bfloat16_ops_ == "onednn_op.sigmoid_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
     }
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0")}, {&pat.Tensor("out")});
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
       const std::vector<std::string> permitted_input_names = {
@@ -515,6 +526,9 @@ class CpuBfloat16DequantPatternOne_one : public paddle::drr::DrrPatternBase {
                bfloat16_ops_ == "onednn_op.sigmoid_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
     }
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("x")}, {&pat.Tensor("out")});
@@ -526,7 +540,8 @@ class CpuBfloat16DequantPatternOne_one : public paddle::drr::DrrPatternBase {
       pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
 
@@ -604,6 +619,7 @@ class CpuBfloat16Pattern2_2 : public paddle::drr::DrrPatternBase {
     if (bfloat16_ops_ == "onednn_op.squeeze" ||
         bfloat16_ops_ == "onednn_op.squeeze_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
     }
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
 
@@ -612,7 +628,8 @@ class CpuBfloat16Pattern2_2 : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
       const std::vector<std::string> permitted_input_names = {
@@ -706,6 +723,7 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
     if (bfloat16_ops_ == "onednn_op.squeeze" ||
         bfloat16_ops_ == "onednn_op.squeeze_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
     }
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("x"), &pat.Tensor("y")},
@@ -718,7 +736,8 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
       pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
 
@@ -867,7 +886,9 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
       data_format = true;
     }
-
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0"),
         &pat.Tensor("quantize_1"),
@@ -876,7 +897,8 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
       // For fused_matmul, it name residual_data as residual_param
@@ -1041,7 +1063,9 @@ class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("strides", pat.Attr("strides"));
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
     }
-
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("x"), &pat.Tensor("y"), &pat.Tensor("z")},
        {&pat.Tensor("out")});
@@ -1053,7 +1077,8 @@ class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
       pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
 
@@ -1133,6 +1158,7 @@ class CpuBfloat16FusionGruPattern : public paddle::drr::DrrPatternBase {
     op_attrs.emplace("shift_data", pat.Attr("shift_data"));
     op_attrs.emplace("scale_data", pat.Attr("scale_data"));
     op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
     op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
     op_attrs.emplace("origin_mode", pat.Attr("origin_mode"));
     op_attrs.emplace("use_seq", pat.Attr("use_seq"));
@@ -1154,7 +1180,8 @@ class CpuBfloat16FusionGruPattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
       const std::vector<std::string> permitted_input_names = {
@@ -1304,6 +1331,7 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
     op_attrs.emplace("shift_data", pat.Attr("shift_data"));
     op_attrs.emplace("scale_data", pat.Attr("scale_data"));
     op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
     op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
     op_attrs.emplace("origin_mode", pat.Attr("origin_mode"));
     op_attrs.emplace("use_seq", pat.Attr("use_seq"));
@@ -1330,7 +1358,8 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
       pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
 
@@ -1493,6 +1522,7 @@ class CpuBfloat16LayerNormOpPattern : public paddle::drr::DrrPatternBase {
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
     op_attrs.emplace("is_test", pat.Attr("is_test"));
     op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
     op_attrs.emplace("begin_norm_axis", pat.Attr("begin_norm_axis"));
     op_attrs.emplace("epsilon", pat.Attr("epsilon"));
 
@@ -1504,7 +1534,8 @@ class CpuBfloat16LayerNormOpPattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
       const std::vector<std::string> permitted_input_names = {
@@ -1614,6 +1645,7 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
     op_attrs.emplace("is_test", pat.Attr("is_test"));
     op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
     op_attrs.emplace("begin_norm_axis", pat.Attr("begin_norm_axis"));
     op_attrs.emplace("epsilon", pat.Attr("epsilon"));
 
@@ -1630,7 +1662,8 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
       pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
 
@@ -1790,7 +1823,9 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("paddings", pat.Attr("paddings"));
       op_attrs.emplace("strides", pat.Attr("strides"));
     }
-
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0"),
         &pat.Tensor("quantize_1"),
@@ -1800,7 +1835,8 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
       const std::vector<std::string> permitted_input_names = {
@@ -1959,7 +1995,9 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("paddings", pat.Attr("paddings"));
       op_attrs.emplace("strides", pat.Attr("strides"));
     }
-
+    if (op_attrs.find("mkldnn_data_type") != op_attrs.end()) {
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
+    }
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("x"), &pat.Tensor("y"), &pat.Tensor("z"), &pat.Tensor("s")},
        {&pat.Tensor("out")});
@@ -1971,7 +2009,8 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
       pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
 

@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 namespace phi::sr {
@@ -45,7 +44,7 @@ PD_REGISTER_KERNEL(scale_sr,
                    phi::sr::ScaleKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -59,7 +58,7 @@ PD_REGISTER_KERNEL(scale_sr,
                    phi::sr::ScaleKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,

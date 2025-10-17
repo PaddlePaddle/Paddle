@@ -126,5 +126,5 @@ PD_REGISTER_KERNEL(max_grad,
                    ALL_LAYOUT,
                    phi::ReduceMaxGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

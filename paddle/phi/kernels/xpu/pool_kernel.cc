@@ -414,15 +414,15 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::dtype::float16) {}
+    pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::float16) {}
 PD_REGISTER_KERNEL(
-    pool3d, XPU, ALL_LAYOUT, phi::Pool3dKernel, float, phi::dtype::float16) {}
+    pool3d, XPU, ALL_LAYOUT, phi::Pool3dKernel, float, phi::float16) {}
 
 PD_REGISTER_KERNEL(max_pool2d_with_index,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
 }

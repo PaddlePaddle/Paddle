@@ -13,9 +13,13 @@
 # limitations under the License.
 
 from .cpp_extension import (
+    CUDA_HOME,  # noqa: F401
     BuildExtension,  # noqa: F401
     CppExtension,
     CUDAExtension,
+    _get_cuda_arch_flags,  # noqa: F401
+    _get_num_workers,  # noqa: F401
+    _get_pybind11_abi_build_flags,  # noqa: F401
     load,
     setup,
 )

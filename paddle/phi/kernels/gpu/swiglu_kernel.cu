@@ -135,5 +135,5 @@ PD_REGISTER_KERNEL(swiglu,
                    phi::SwiGLUKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

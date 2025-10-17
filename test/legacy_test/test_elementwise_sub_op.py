@@ -17,7 +17,13 @@ import unittest
 import warnings
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import base
@@ -124,8 +130,8 @@ class TestElementwiseSubOp_ZeroSize3(TestElementwiseSubOp_ZeroSize1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP(TestElementwiseOp):
@@ -152,13 +158,13 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         self.enable_cinn = False
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', max_relative_error=0.1
         )
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['Y'],
@@ -171,7 +177,7 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -209,8 +215,8 @@ class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseSubBF16OP_ZeroDim1(TestElementwiseBF16OP):
@@ -259,8 +265,8 @@ class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseSubBF16OP_ZeroDim2(TestElementwiseBF16OP):
@@ -309,8 +315,8 @@ class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_ZeroDim3(TestElementwiseBF16OP):
@@ -335,8 +341,8 @@ class TestElementwiseBF16OP_ZeroDim3(TestElementwiseBF16OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestBF16ElementwiseOp(OpTest):
@@ -457,8 +463,8 @@ class TestElementwiseSubFP16OP_broadcast_0(TestElementwiseSubOp_broadcast_0):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
@@ -481,19 +487,19 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
         self.attrs = {'axis': 0}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['Y'],
@@ -504,7 +510,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
         )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -537,8 +543,8 @@ class TestElementwiseSubFP16OP_broadcast_1(TestElementwiseSubOp_broadcast_1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
@@ -585,8 +591,8 @@ class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseSubOp_broadcast_2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
@@ -610,8 +616,8 @@ class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
@@ -672,8 +678,8 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
@@ -720,8 +726,8 @@ class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseSubOp_commonuse_1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_commonuse_1(TestElementwiseBF16OP):
@@ -766,8 +772,8 @@ class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseSubOp_commonuse_2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_commonuse_2(TestElementwiseBF16OP):
@@ -819,8 +825,8 @@ class TestElementwiseSubFP16OP_xsize_lessthan_ysize(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
@@ -1002,8 +1008,8 @@ class TestSubtractApiZeroSize(unittest.TestCase):
     def test_dygraph(self):
         self.init_data()
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
-            if core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         for place in places:
@@ -1044,14 +1050,15 @@ class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
         self.y_numpy = np.random.rand(3, 4).astype('float')
 
     def test_broadcast_success(self):
-        paddle.disable_static()
-        self.init_data()
-        x = paddle.to_tensor(self.x_numpy)
-        y = paddle.to_tensor(self.y_numpy)
-        inplace_result = x.subtract_(y)
-        numpy_result = self.x_numpy - self.y_numpy
-        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            x = paddle.to_tensor(self.x_numpy)
+            y = paddle.to_tensor(self.y_numpy)
+            inplace_result = x.subtract_(y)
+            numpy_result = self.x_numpy - self.y_numpy
+            self.assertEqual(
+                (inplace_result.numpy() == numpy_result).all(), True
+            )
 
 
 class TestSubtractInplaceBroadcastSuccess2(TestSubtractInplaceBroadcastSuccess):
@@ -1072,16 +1079,15 @@ class TestSubtractInplaceBroadcastError(unittest.TestCase):
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
     def test_broadcast_errors(self):
-        paddle.disable_static()
-        self.init_data()
-        x = paddle.to_tensor(self.x_numpy)
-        y = paddle.to_tensor(self.y_numpy)
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            x = paddle.to_tensor(self.x_numpy)
+            y = paddle.to_tensor(self.y_numpy)
 
-        def broadcast_shape_error():
-            x.subtract_(y)
+            def broadcast_shape_error():
+                x.subtract_(y)
 
-        self.assertRaises(ValueError, broadcast_shape_error)
-        paddle.enable_static()
+            self.assertRaises(ValueError, broadcast_shape_error)
 
 
 class TestSubtractInplaceBroadcastError2(TestSubtractInplaceBroadcastError):
@@ -1098,62 +1104,56 @@ class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
 
 class TestFloatElementwiseSubop(unittest.TestCase):
     def test_dygraph_sub(self):
-        paddle.disable_static()
+        with paddle.base.dygraph.guard():
+            np_a = np.random.random((2, 3, 4)).astype(np.float64)
+            np_b = np.random.random((2, 3, 4)).astype(np.float64)
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float64)
-        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+            tensor_a = paddle.to_tensor(np_a, dtype="float32")
+            tensor_b = paddle.to_tensor(np_b, dtype="float32")
 
-        tensor_a = paddle.to_tensor(np_a, dtype="float32")
-        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+            # normal case: tensor - tensor
+            expect_out = np_a - np_b
+            actual_out = tensor_a - tensor_b
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-07, atol=1e-07
+            )
 
-        # normal case: tensor - tensor
-        expect_out = np_a - np_b
-        actual_out = tensor_a - tensor_b
-        np.testing.assert_allclose(
-            actual_out, expect_out, rtol=1e-07, atol=1e-07
-        )
+            # normal case: tensor - scalar
+            expect_out = np_a - 1
+            actual_out = tensor_a - 1
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-07, atol=1e-07
+            )
 
-        # normal case: tensor - scalar
-        expect_out = np_a - 1
-        actual_out = tensor_a - 1
-        np.testing.assert_allclose(
-            actual_out, expect_out, rtol=1e-07, atol=1e-07
-        )
-
-        # normal case: scalar - tenor
-        expect_out = 1 - np_a
-        actual_out = 1 - tensor_a
-        np.testing.assert_allclose(
-            actual_out, expect_out, rtol=1e-07, atol=1e-07
-        )
-
-        paddle.enable_static()
+            # normal case: scalar - tenor
+            expect_out = 1 - np_a
+            actual_out = 1 - tensor_a
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-07, atol=1e-07
+            )
 
 
 class TestFloatElementwiseSubop1(unittest.TestCase):
     def test_dygraph_sub(self):
-        paddle.disable_static()
+        with paddle.base.dygraph.guard():
+            np_a = np.random.random((2, 3, 4)).astype(np.float32)
+            np_b = np.random.random((2, 3, 4)).astype(np.float32)
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float32)
-        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+            tensor_a = paddle.to_tensor(np_a, dtype="float32")
+            tensor_b = paddle.to_tensor(np_b, dtype="float32")
 
-        tensor_a = paddle.to_tensor(np_a, dtype="float32")
-        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+            # normal case: nparray - tenor
+            expect_out = np_a - np_b
+            actual_out = np_a - tensor_b
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-07, atol=1e-07
+            )
 
-        # normal case: nparray - tenor
-        expect_out = np_a - np_b
-        actual_out = np_a - tensor_b
-        np.testing.assert_allclose(
-            actual_out, expect_out, rtol=1e-07, atol=1e-07
-        )
-
-        # normal case: tenor - nparray
-        actual_out = tensor_a - np_b
-        np.testing.assert_allclose(
-            actual_out, expect_out, rtol=1e-07, atol=1e-07
-        )
-
-        paddle.enable_static()
+            # normal case: tenor - nparray
+            actual_out = tensor_a - np_b
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-07, atol=1e-07
+            )
 
 
 class TestElementwiseOpZeroSize(TestElementwiseOp):
@@ -1217,7 +1217,8 @@ class TestTensorSubAPIWarnings(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseSubOp_Stride(TestElementwiseOp):
     def setUp(self):
@@ -1242,7 +1243,7 @@ class TestElementwiseSubOp_Stride(TestElementwiseOp):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,
@@ -1258,7 +1259,7 @@ class TestElementwiseSubOp_Stride(TestElementwiseOp):
 
     def test_check_grad_normal(self):
         self.test_stride_backward = True
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
@@ -1269,7 +1270,7 @@ class TestElementwiseSubOp_Stride(TestElementwiseOp):
 
     def test_check_grad_ignore_x(self):
         self.test_stride_backward = True
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
@@ -1281,7 +1282,7 @@ class TestElementwiseSubOp_Stride(TestElementwiseOp):
 
     def test_check_grad_ignore_y(self):
         self.test_stride_backward = True
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(

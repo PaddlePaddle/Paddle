@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/legacy/gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.h"
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -143,5 +144,5 @@ PD_REGISTER_KERNEL(moe_gate_dispatch_partial_nosoftmaxtopk_grad,
                    phi::MoeGateDispatchPartialNoSoftMaxTopkGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/c_scatter_kernel.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
@@ -121,4 +122,4 @@ PD_REGISTER_KERNEL(c_scatter,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

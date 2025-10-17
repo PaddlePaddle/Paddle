@@ -40,6 +40,14 @@ namespace phi {
                     float attr2,                                     \
                     DenseTensor* out);
 
+#define DECLARE_ACTIVATION_KERNEL_WITH_TWO_DOUBLE_ATTRS(name, attr1, attr2) \
+  template <typename T, typename Context>                                   \
+  void name##Kernel(const Context& dev_ctx,                                 \
+                    const DenseTensor& x,                                   \
+                    double attr1,                                           \
+                    double attr2,                                           \
+                    DenseTensor* out);
+
 DECLARE_ACTIVATION_KERNEL(Sin)
 DECLARE_ACTIVATION_KERNEL(Cos)
 DECLARE_ACTIVATION_KERNEL(Tan)
@@ -83,7 +91,7 @@ DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Logit, eps)
 
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardTanh, t_min, t_max)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(STanh, scale_a, scale_b)
-DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus, beta, threshold)
+DECLARE_ACTIVATION_KERNEL_WITH_TWO_DOUBLE_ATTRS(Softplus, beta, threshold)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid, slope, offset)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu, threshold, value)
 

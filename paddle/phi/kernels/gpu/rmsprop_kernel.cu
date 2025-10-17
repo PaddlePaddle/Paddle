@@ -96,7 +96,7 @@ struct RmsFunctor<T, phi::GPUContext> {
 };
 template struct RmsFunctor<phi::GPUContext, float>;
 template struct RmsFunctor<phi::GPUContext, double>;
-template struct RmsFunctor<phi::GPUContext, phi::dtype::float16>;
+template struct RmsFunctor<phi::GPUContext, phi::float16>;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(rmsprop,
@@ -105,7 +105,7 @@ PD_REGISTER_KERNEL(rmsprop,
                    phi::RmspropDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(rmsprop_dense_param_sparse_grad,
                    GPU,
@@ -113,4 +113,4 @@ PD_REGISTER_KERNEL(rmsprop_dense_param_sparse_grad,
                    phi::RmspropSparseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

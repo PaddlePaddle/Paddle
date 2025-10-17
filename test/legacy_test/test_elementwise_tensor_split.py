@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.base import core
@@ -29,7 +29,7 @@ class TestElementwiseOp(unittest.TestCase):
         self.prim_op_type = "prim"
 
     def test_float16_sub(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
 
         gpu_info = paddle.device.cuda.get_device_properties()

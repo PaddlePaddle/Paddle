@@ -21,7 +21,7 @@
 
 paddle::Tensor add_n_ad_func(
     const std::vector<paddle::Tensor>& x,
-    paddle::optional<paddle::Tensor*> input_out = paddle::none);
+    paddle::optional<paddle::Tensor*> predefined_out = paddle::none);
 
 paddle::Tensor conv2d_ad_func(
     const paddle::Tensor& input,
@@ -32,16 +32,16 @@ paddle::Tensor conv2d_ad_func(
     std::vector<int> dilations,
     int groups,
     std::string data_format,
-    paddle::optional<paddle::Tensor*> input_out = paddle::none);
+    paddle::optional<paddle::Tensor*> predefined_out = paddle::none);
 
 paddle::Tensor multiply_ad_func(
     const paddle::Tensor& x,
     const paddle::Tensor& y,
-    paddle::optional<paddle::Tensor*> input_out = paddle::none);
+    paddle::optional<paddle::Tensor*> predefined_out = paddle::none);
 paddle::Tensor& multiply__ad_func(
     paddle::Tensor& x,  // NOLINT
     const paddle::Tensor& y,
-    paddle::optional<paddle::Tensor*> input_out = paddle::none);
+    paddle::optional<paddle::Tensor*> predefined_out = paddle::none);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
@@ -64,19 +64,19 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 paddle::Tensor reshard_ad_function(
     const paddle::Tensor& tensor,
     const phi::distributed::TensorDistAttr dist_attr,
-    paddle::optional<paddle::Tensor*> input_out = paddle::none);
+    paddle::optional<paddle::Tensor*> predefined_out = paddle::none);
 
 paddle::Tensor dtensor_to_local_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::ProcessMesh& processmesh,
     const phi::distributed::Placements& placements,
-    paddle::optional<paddle::Tensor*> input_out = paddle::none);
+    paddle::optional<paddle::Tensor*> predefined_out = paddle::none);
 
 paddle::Tensor dtensor_from_local_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::ProcessMesh& processmesh,
     const phi::distributed::Placements& placements,
-    paddle::optional<paddle::Tensor*> input_out = paddle::none);
+    paddle::optional<paddle::Tensor*> predefined_out = paddle::none);
 
 namespace sparse {
 std::tuple<paddle::Tensor,

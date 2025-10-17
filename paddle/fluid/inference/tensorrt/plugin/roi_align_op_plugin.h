@@ -25,7 +25,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
 class RoiAlignPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
@@ -214,7 +213,6 @@ class PIRRoiAlignPluginDynamicCreator : public nvinfer1::IPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(RoiAlignPluginDynamicCreator);
 REGISTER_TRT_PLUGIN_V2(PIRRoiAlignPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

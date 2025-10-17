@@ -76,5 +76,5 @@ PD_REGISTER_KERNEL(flip,
                    int32_t,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

@@ -306,7 +306,7 @@ PD_REGISTER_KERNEL(fused_feedforward,
                    phi::fusion::FusedFeedForwardKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
   kernel->OutputAt(2).SetDataType(phi::DataType::UINT8);
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {

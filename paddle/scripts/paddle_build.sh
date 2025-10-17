@@ -1347,13 +1347,10 @@ function check_cinn_file_diff() {
         CMakeLists.txt
         cmake
         paddle/cinn
-        python/cinn
         python/CMakeLists.txt
-        python/setup_cinn.py.in
         test/CMakeLists.txt
         test/cinn
         test/cpp/cinn
-        tools/cinn
     )
 
     run_cinn_ut="OFF"
@@ -3847,21 +3844,12 @@ function exec_type_checking() {
     cd ${PADDLE_ROOT}/tools
 
     # check all sample code
-    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[typing\]" || true`
     DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[debug\]" || true`
 
-    if [[ ${TITLE_CHECK_ALL} ]]; then
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug --full-test; type_checking_error=$?
-        else
-            python type_checking.py --full-test; type_checking_error=$?
-        fi
+    if [[ ${DEBUG_MODE} ]]; then
+        python type_checking.py --debug --full-test; type_checking_error=$?
     else
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug; type_checking_error=$?
-        else
-            python type_checking.py; type_checking_error=$?
-        fi
+        python type_checking.py --full-test; type_checking_error=$?
     fi
 
     if [ "$type_checking_error" != "0" ];then
@@ -4904,12 +4892,6 @@ function main() {
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         clean_build_files
-        ;;
-      cicheck_py37_pir)
-        export FLAGS_enable_pir_api=1
-        # disable deprecated test in pir
-        rm -rf ${PADDLE_ROOT}/build/test/deprecated/CTestTestfile.cmake
-        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}

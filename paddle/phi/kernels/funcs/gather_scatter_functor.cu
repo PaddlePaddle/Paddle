@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+#include <type_traits>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -77,6 +78,15 @@ __global__ void CudaMemsetAsync(int* dest, int value, size_t size) {
   dest[tid] = value;
 }
 
+template <typename SrcT, typename DstT>
+__global__ void CastMemcpy(const SrcT* __restrict__ src,
+                           DstT* __restrict__ dst,
+                           int64_t size) {
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= size) return;
+  dst[tid] = static_cast<DstT>(src[tid]);
+}
+
 template <typename T>
 static T ExcludeSelfInitialValue(const std::string& reduce_op) {
   if (reduce_op == "add") {
@@ -96,6 +106,17 @@ static T ExcludeSelfInitialValue(const std::string& reduce_op) {
         common::errors::InvalidArgument(
             "Unsupported or unnecessary (assign) reduce op: '%s'", reduce_op));
   }
+}
+
+template <typename T>
+__device__ __forceinline__ T IntFloorDiv(T a, T b) {
+  if ((a < 0) != (b < 0)) {
+    // compute div and mod at the same time can be optimized by compilers
+    const auto quot = a / b;
+    const auto rem = a % b;
+    return rem ? quot - 1 : quot;
+  }
+  return a / b;
 }
 
 struct DivMod {
@@ -309,7 +330,12 @@ __global__ void CastDivKernel(tensor_t* __restrict__ self_data,
 
   int64_t tid = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
   if (tid >= numel) return;
-  self_data[tid] /= static_cast<tensor_t>(atomic_cnt_buffer[tid]);
+  if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
+    self_data[tid] = IntFloorDiv(self_data[tid],
+                                 static_cast<tensor_t>(atomic_cnt_buffer[tid]));
+  } else {
+    self_data[tid] /= static_cast<tensor_t>(atomic_cnt_buffer[tid]);
+  }
 }
 
 /**
@@ -458,6 +484,11 @@ __global__ void ScatterWriteByWinnersKernel(
     *(self_data + replace_index_self) = *(src_data + replace_index_src);
   }
 }
+
+namespace {
+template <typename T, typename U>
+constexpr bool is_same_type = std::is_same_v<std::decay_t<T>, std::decay_t<U>>;
+}  // anonymous namespace
 
 template <typename tensor_t,
           typename index_t = int64_t,

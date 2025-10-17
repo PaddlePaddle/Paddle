@@ -27,17 +27,17 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
 class StackPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit StackPluginDynamic(int axis, int num_stack, bool with_fp16);
   StackPluginDynamic(void const* serial_data, size_t serial_length);
   ~StackPluginDynamic();
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
-  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nbInputs,
-                                          nvinfer1::IExprBuilder& exprBuilder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
+      nvinfer1::IExprBuilder& exprBuilder)  // NOLINT
       TRT_NOEXCEPT override;
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -96,7 +96,6 @@ class StackPluginDynamicCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 REGISTER_TRT_PLUGIN_V2(StackPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

@@ -29,8 +29,6 @@ namespace cub = hipcub;
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -461,11 +459,11 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
-  using Op = typename std::conditional<
-      std::is_same<T, phi::dtype::complex<float>>::value ||
-          std::is_same<T, phi::dtype::complex<double>>::value,
-      ComplexSum,
-      cub::Sum>::type;
+  using Op =
+      typename std::conditional<std::is_same<T, phi::complex64>::value ||
+                                    std::is_same<T, phi::complex128>::value,
+                                ComplexSum,
+                                cub::Sum>::type;
   auto op = Op();
   ScanKernel<T, Context, Op>(
       dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);
@@ -493,7 +491,7 @@ PD_REGISTER_KERNEL(cumsum,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    double,
                    int16_t,
                    int,
@@ -513,10 +511,10 @@ PD_REGISTER_KERNEL(cumsum,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(logcumsumexp,
                    GPU,
@@ -524,6 +522,6 @@ PD_REGISTER_KERNEL(logcumsumexp,
                    phi::LogcumsumexpKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

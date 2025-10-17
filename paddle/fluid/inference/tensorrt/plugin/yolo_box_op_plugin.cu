@@ -491,27 +491,27 @@ nvinfer1::IPluginV2Ext* YoloBoxPluginCreator::createPlugin(
     const std::string field_name(fc->fields[i].name);
     if (field_name.compare("type_id") == 0) {
       type_id = *static_cast<const int*>(fc->fields[i].data);
-    } else if (field_name.compare("anchors")) {
+    } else if (field_name.compare("anchors") == 0) {
       const int length = fc->fields[i].length;
       const int* data = static_cast<const int*>(fc->fields[i].data);
       anchors.insert(anchors.end(), data, data + length);
-    } else if (field_name.compare("class_num")) {
+    } else if (field_name.compare("class_num") == 0) {
       class_num = *static_cast<const int*>(fc->fields[i].data);
-    } else if (field_name.compare("conf_thresh")) {
+    } else if (field_name.compare("conf_thresh") == 0) {
       conf_thresh = *static_cast<const float*>(fc->fields[i].data);
-    } else if (field_name.compare("downsample_ratio")) {
+    } else if (field_name.compare("downsample_ratio") == 0) {
       downsample_ratio = *static_cast<const int*>(fc->fields[i].data);
-    } else if (field_name.compare("clip_bbox")) {
+    } else if (field_name.compare("clip_bbox") == 0) {
       clip_bbox = *static_cast<const bool*>(fc->fields[i].data);
-    } else if (field_name.compare("scale_x_y")) {
+    } else if (field_name.compare("scale_x_y") == 0) {
       scale_x_y = *static_cast<const float*>(fc->fields[i].data);
-    } else if (field_name.compare("iou_aware")) {
+    } else if (field_name.compare("iou_aware") == 0) {
       iou_aware = *static_cast<const bool*>(fc->fields[i].data);
-    } else if (field_name.compare("iou_aware_factor")) {
+    } else if (field_name.compare("iou_aware_factor") == 0) {
       iou_aware_factor = *static_cast<const float*>(fc->fields[i].data);
-    } else if (field_name.compare("h")) {
+    } else if (field_name.compare("h") == 0) {
       h = *static_cast<const int*>(fc->fields[i].data);
-    } else if (field_name.compare("w")) {
+    } else if (field_name.compare("w") == 0) {
       w = *static_cast<const int*>(fc->fields[i].data);
     } else {
       assert(false && "unknown plugin field name.");

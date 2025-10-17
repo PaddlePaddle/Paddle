@@ -24,8 +24,8 @@ void GetSize(T start, T end, T step, int64_t* size) {
       step,
       0,
       common::errors::InvalidArgument("The step of range op should not be 0."));
-  if constexpr (std::is_same_v<T, phi::dtype::bfloat16> ||
-                std::is_same_v<T, phi::dtype::float16>) {
+  if constexpr (std::is_same_v<T, phi::bfloat16> ||
+                std::is_same_v<T, phi::float16>) {
     PADDLE_ENFORCE_EQ(phi::dtype::isfinite(start) && phi::dtype::isfinite(end),
                       true,
                       common::errors::InvalidArgument(

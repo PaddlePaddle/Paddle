@@ -2647,6 +2647,33 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                             x_dims_vec[i],
                             residual_dims_vec[i]));
     }
+    if (bias) {
+      std::vector<int64_t> bias_dims_vec = common::vectorize(bias.dims());
+      PADDLE_ENFORCE_EQ(
+          x_dims_size - begin_norm_axis,
+          bias_dims_vec.size(),
+          common::errors::InvalidArgument(
+              "The normalized size of Input(X) must be equal to the size "
+              "of Bias, but received normalized size of Input(X) is [%d], "
+              "received size of Bias is [%d]",
+              x_dims_size - begin_norm_axis,
+              bias_dims_vec.size()));
+      for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
+        if (x_dims_vec[i] == -1 || bias_dims_vec[i - begin_norm_axis] == -1 ||
+            x_dims_vec[i] == 0)
+          continue;
+
+        PADDLE_ENFORCE_EQ(x_dims_vec[i],
+                          bias_dims_vec[i - begin_norm_axis],
+                          common::errors::InvalidArgument(
+                              "The normalized dimension of Input(X) and Bias "
+                              "must match at axis %d, but received Input(X) "
+                              "dimension is [%d], Bias dimension is [%d]",
+                              i,
+                              x_dims_vec[i],
+                              bias_dims_vec[i - begin_norm_axis]));
+      }
+    }
   }
 
   int64_t rows = 1;
@@ -2665,6 +2692,18 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
               "of Weight is [%d]",
               normalized_dims,
               norm_weight.dims()[0]));
+    }
+    if (norm_bias) {
+      PADDLE_ENFORCE_EQ(
+          normalized_dims,
+          norm_bias.dims()[0],
+          common::errors::InvalidArgument(
+              "The normalized size of Input(X) must equal to be "
+              "the size of Bias, but received "
+              "normalized size of Input(X) is [%d], received size "
+              "of Bias is [%d]",
+              normalized_dims,
+              norm_bias.dims()[0]));
     }
   }
 

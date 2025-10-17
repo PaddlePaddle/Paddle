@@ -249,7 +249,7 @@ void Conv3DKernel(const Context& dev_ctx,
   int fc_calc_type = GetConvCalcType<XPUType>();
   PD_VISIT_XPU_CONV_TYPES(XPUType, fc_calc_type, "conv3d", [&] {
 #ifdef PADDLE_WITH_XPU_XRE5
-    using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
     using RealTGEMM = std::conditional_t<std::is_same_v<XPUType, XPUTypeFP16> &&
                                              std::is_same_v<TGEMM, float>,
                                          XPUTypeFP16,
@@ -312,23 +312,23 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvKernel,
                    float,
 #ifdef PADDLE_WITH_XPU_XRE5
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
 #endif
-                   phi::dtype::float16) {
+                   phi::float16) {
 }
 PD_REGISTER_KERNEL(depthwise_conv2d,
                    XPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(conv3d,
                    XPU,
                    ALL_LAYOUT,
                    phi::Conv3DKernel,
                    float,
 #ifdef PADDLE_WITH_XPU_XRE5
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
 #endif
-                   phi::dtype::float16) {
+                   phi::float16) {
 }

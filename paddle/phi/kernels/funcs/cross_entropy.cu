@@ -51,11 +51,11 @@ __global__ void SoftCrossEntropyKernel(T* Y,
                                        const T* X,
                                        const T* label,
                                        const int class_num) {
-  int tid = threadIdx.x;
+  int64_t tid = threadIdx.x;
   T val(0);
 
-  int idx = blockIdx.x * class_num + tid;
-  int end = blockIdx.x * class_num + class_num;
+  int64_t idx = blockIdx.x * class_num + tid;
+  int64_t end = blockIdx.x * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
     val += phi::funcs::TolerableValue<T>()(phi::funcs::real_log(X[idx])) *
            label[idx];
@@ -149,9 +149,9 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
 
 template class CrossEntropyFunctor<phi::GPUContext, float>;
 template class CrossEntropyFunctor<phi::GPUContext, double>;
-template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::float16>;
+template class CrossEntropyFunctor<phi::GPUContext, phi::float16>;
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(8, 1, 0)
-template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::bfloat16>;
+template class CrossEntropyFunctor<phi::GPUContext, phi::bfloat16>;
 #endif
 
 }  // namespace funcs

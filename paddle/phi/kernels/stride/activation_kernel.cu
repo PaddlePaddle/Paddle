@@ -34,17 +34,9 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
+
 namespace phi {
-template <typename T, typename Context, typename Functor>
-void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
-                                        const DenseTensor &x,
-                                        Functor func,
-                                        DenseTensor *out) {
-  std::vector<const DenseTensor *> inputs = {&x};
-  std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
-}
 #define DEFINE_CUDA_ACTIVATION_STRIDE_OP(name, functor_class)                 \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(                                                    \
@@ -55,8 +47,8 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
           "be called, something wrong has happened!"));                       \
     }                                                                         \
     DenseTensor x_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
@@ -77,6 +69,12 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+    }                                                                         \
+                                                                              \
     LaunchUnaryElementwiseStrideKernel<T, Context>(                           \
         dev_ctx, x_, funcs::functor_class<T>(), out);                         \
   }
@@ -115,8 +113,8 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
           "be called, something wrong has happened!"));                       \
     }                                                                         \
     DenseTensor x_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
@@ -136,6 +134,11 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
           common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
+    }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
     }                                                                         \
     using U =                                                                 \
         typename std::conditional_t<std::is_integral<T>::value, float, T>;    \
@@ -163,8 +166,8 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
           "be called, something wrong has happened!"));                        \
     }                                                                          \
     DenseTensor x_;                                                            \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                 \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                      \
+    if (!FLAGS_use_stride_compute_kernel) {                                    \
+      if (!x.meta().is_contiguous()) {                                         \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                           \
       } else {                                                                 \
         x_ = x;                                                                \
@@ -185,6 +188,12 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
                                 "Kernel using DenseTensorIterator "            \
                                 "be called, something wrong has happened!"));  \
     }                                                                          \
+    if (FLAGS_force_stride_compute_contig_out) {                               \
+      auto meta = out->meta();                                                 \
+      meta.strides = meta.calc_strides(out->dims());                           \
+      out->set_meta(meta);                                                     \
+    }                                                                          \
+                                                                               \
     funcs::functor_class<T> functor;                                           \
     auto attrs = functor.GetAttrs();                                           \
     *(attrs[0].second) = attr;                                                 \
@@ -218,8 +227,8 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
           "be called, something wrong has happened!"));                        \
     }                                                                          \
     DenseTensor x_;                                                            \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                 \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                      \
+    if (!FLAGS_use_stride_compute_kernel) {                                    \
+      if (!x.meta().is_contiguous()) {                                         \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                           \
       } else {                                                                 \
         x_ = x;                                                                \
@@ -240,6 +249,12 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
                                 "Kernel using DenseTensorIterator "            \
                                 "be called, something wrong has happened!"));  \
     }                                                                          \
+    if (FLAGS_force_stride_compute_contig_out) {                               \
+      auto meta = out->meta();                                                 \
+      meta.strides = meta.calc_strides(out->dims());                           \
+      out->set_meta(meta);                                                     \
+    }                                                                          \
+                                                                               \
     funcs::functor_class<T> functor;                                           \
     auto attrs = functor.GetAttrs();                                           \
     *(attrs[0].second) = attr1;                                                \
@@ -251,10 +266,6 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(HardTanh,
                                              CudaHardTanhFunctor,
                                              t_min,
                                              t_max)
-DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(Softplus,
-                                             CudaSoftplusFunctor,
-                                             beta,
-                                             threshold)
 DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(HardSigmoid,
                                              CudaHardSigmoidFunctor,
                                              slope,
@@ -264,6 +275,47 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(Selu,
                                              scale,
                                              alpha)
 #undef DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS
+
+template <typename T, typename Context>
+void SoftplusStrideKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          double beta,
+                          double threshold,
+                          DenseTensor *out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel be called, "
+        "something wrong has happened!"));
+  }
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous()) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::SoftplusKernel<T, Context>(dev_ctx, x_, beta, threshold, out);
+    return;
+  }
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_compute_kernel is closed. Kernel using "
+        "DenseTensorIterator be called, something wrong has happened!"));
+  }
+  funcs::CudaSoftplusFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
+  LaunchUnaryElementwiseStrideKernel<T, Context>(dev_ctx, x_, functor, out);
+}
+
 template <typename T, typename Context>
 void RoundStrideKernel(const Context &dev_ctx,
                        const DenseTensor &x,
@@ -275,8 +327,8 @@ void RoundStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -297,6 +349,13 @@ void RoundStrideKernel(const Context &dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   funcs::CudaRoundFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = decimals;
@@ -312,8 +371,8 @@ void HardSwishStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -334,6 +393,13 @@ void HardSwishStrideKernel(const Context &dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   funcs::CudaHardSwishFunctor<T> functor;
   float threshold = 6;
   float scale = 6;
@@ -356,14 +422,14 @@ template <typename T>
 struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
-                     std::is_same<T, phi::dtype::bfloat16>::value>> {
+                     std::is_same<T, phi::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
 };
 template <typename T>
 struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
-                     !std::is_same<T, phi::dtype::bfloat16>::value>> {
+                     !std::is_same<T, phi::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -378,8 +444,8 @@ void AbsStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -400,6 +466,13 @@ void AbsStrideKernel(const Context &dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
+
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+  }
+
   auto functor = CudaAbsFunctor<T>();
   LaunchUnaryElementwiseStrideKernel<phi::dtype::Real<T>, Context>(
       dev_ctx, x_, functor, out);
@@ -413,10 +486,10 @@ PD_REGISTER_KERNEL(abs,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #define REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, func) \
@@ -426,10 +499,10 @@ PD_REGISTER_KERNEL(abs,
                      phi::func,                                   \
                      float,                                       \
                      double,                                      \
-                     phi::dtype::float16,                         \
-                     phi::dtype::bfloat16,                        \
-                     phi::dtype::complex<float>,                  \
-                     phi::dtype::complex<double>) {}
+                     phi::float16,                                \
+                     phi::bfloat16,                               \
+                     phi::complex64,                              \
+                     phi::complex128) {}
 
 #define REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(exp, func) \
   PD_REGISTER_KERNEL(exp,                                 \
@@ -440,10 +513,10 @@ PD_REGISTER_KERNEL(abs,
                      double,                              \
                      int,                                 \
                      int64_t,                             \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16,                \
-                     phi::dtype::complex<float>,          \
-                     phi::dtype::complex<double>) {}
+                     phi::float16,                        \
+                     phi::bfloat16,                       \
+                     phi::complex64,                      \
+                     phi::complex128) {}
 
 #define REGISTER_ACTIVATION_FLOOR_STRIDE_KERNEL(floor, func) \
   PD_REGISTER_KERNEL(floor,                                  \
@@ -457,8 +530,8 @@ PD_REGISTER_KERNEL(abs,
                      int16_t,                                \
                      int,                                    \
                      int64_t,                                \
-                     phi::dtype::float16,                    \
-                     phi::dtype::bfloat16) {}
+                     phi::float16,                           \
+                     phi::bfloat16) {}
 
 #define REGISTER_ACTIVATION_STRIDE_KERNEL(leaky_relu, func) \
   PD_REGISTER_KERNEL(leaky_relu,                            \
@@ -467,8 +540,8 @@ PD_REGISTER_KERNEL(abs,
                      phi::func,                             \
                      float,                                 \
                      double,                                \
-                     phi::dtype::float16,                   \
-                     phi::dtype::bfloat16) {}
+                     phi::float16,                          \
+                     phi::bfloat16) {}
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, CosStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sin, SinStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(tan, TanStrideKernel)

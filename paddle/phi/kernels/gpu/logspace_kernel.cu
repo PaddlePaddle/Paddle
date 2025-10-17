@@ -120,5 +120,5 @@ PD_REGISTER_KERNEL(logspace,
                    int32_t,
                    int64_t,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

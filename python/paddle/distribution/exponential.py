@@ -184,10 +184,10 @@ class Exponential(exponential_family.ExponentialFamily):
             { cdf(x; \theta) = 1 - e^{- \theta x }, (x \ge 0) }
 
         Args:
-            value (float|Tensor): Value to be evaluated.
+            value (float|Tensor): Input value to evaluate the cumulative probability.
 
         Returns:
-            Tensor: CDF evaluated at value.
+            Tensor: The evaluated cumulative probability.
         """
         return 1.0 - paddle.exp(-self.rate * value)
 
@@ -197,13 +197,13 @@ class Exponential(exponential_family.ExponentialFamily):
         .. math::
 
 
-            { icdf(x; \theta) = -\frac{ 1 }{ \theta } ln(1 + x), (x \ge 0) }
+            { icdf(x; \theta) = -\frac{ 1 }{ \theta } ln(1 - x), (0 < x < 1) }
 
         Args:
-            value (float|Tensor): Value to be evaluated.
+            value (float|Tensor): Input probability to evaluate the quantile.
 
         Returns:
-            Tensor: CDF evaluated at value.
+            Tensor: The evaluated quantile value.
         """
         return -paddle.log1p(-value) / self.rate
 

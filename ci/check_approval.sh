@@ -363,6 +363,13 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${PR_ID}
     check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
 fi
 
+PY_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- python |grep "^+")
+PY_FILE_USE_TYPE_IGNORE=`echo $PY_FILE_ADDED_LINES | grep -B5 --no-group-separator ">>>\s*#\s*type:\s*ignore" || true`
+if [ "${PY_FILE_USE_TYPE_IGNORE}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You must have one RD (SigureMo(Recommend), zrr1999, gouzil) approval for using '>>> # type: ignore' skip type check in sample code.\n"
+    check_approval 1 SigureMo zrr1999 gouzil
+fi
+
 HAS_USED_AUTO_PARALLEL_ALIGN_MODE=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep -o -m 1 "auto_parallel_align_mode" || true`
 if [ ${HAS_USED_AUTO_PARALLEL_ALIGN_MODE} ] && [ "${PR_ID}" != "" ]; then
     echo_line="You must have one RD (sneaxiy, zhiqiu, ForFishes, or From00) approval for the usage of auto-parallel align mode.\n"
@@ -553,6 +560,22 @@ SKIP_CI=`git log --pretty=oneline|grep $COMMIT_ID |grep -w "test=document_fix" |
 if [[ ${SKIP_CI} ]];then
     echo_line="You must have one RD (tianshuo78520a (Recommend), zhiqiu, phlrain ) or PM (Ligoml) approval you add test=document_fix method in commit skips CI"
     check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
+fi
+
+MALLOC_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'malloc(' | grep -v '//')
+FREE_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'free(' | grep -v '//')
+
+NEW_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'new' | grep -v '//')
+DELETE_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'delete' | grep -v '//')
+
+if [ -n "$MALLOC_ADDED" ] && [ -z "$FREE_ADDED" ]; then
+  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED"
+  check_approval 1 phlrain sneaxiy
+fi
+
+if [ -n "$NEW_ADDED" ] && [ -z "$DELETE_ADDED" ]; then
+  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED"
+  check_approval 1 phlrain sneaxiy
 fi
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used

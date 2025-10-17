@@ -67,5 +67,5 @@ PD_REGISTER_KERNEL(all_to_all,
                    bool,
                    uint8_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

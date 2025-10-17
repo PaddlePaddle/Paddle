@@ -33,6 +33,8 @@ class CodeGenHipDevice : public CodeGenGpuDev {
   explicit CodeGenHipDevice(Target target);
   static const std::string& GetSourceHeader();
   void PrintIncludes() override;
+  void Visit(const ir::Min* op) override;
+  void Visit(const ir::Max* op) override;
 
  private:
   static const std::string source_header_;

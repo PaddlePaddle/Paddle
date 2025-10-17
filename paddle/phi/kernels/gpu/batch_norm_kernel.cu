@@ -533,6 +533,7 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
+  phi::DenseTensor tmp_reserve_space;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     if (mean_out) dev_ctx.template Alloc<T>(mean_out);
@@ -741,7 +742,7 @@ void BatchNormKernel(const Context &dev_ctx,
         C,
         common::errors::InvalidArgument(
             "The first dimension of mean must equal to the number of "
-            "Channels, which is [%d]. But received: the first dimension"
+            "Channels, which is [%d]. But received: the first dimension "
             "of mean is [%d], the dimensions of mean is [%s].",
             C,
             est_mean->dims()[0],
@@ -750,8 +751,8 @@ void BatchNormKernel(const Context &dev_ctx,
         est_var->dims()[0],
         C,
         common::errors::InvalidArgument(
-            "The first dimension of variance must equal to the number"
-            "of Channels, which is [%d]. But received: the first dimension of"
+            "The first dimension of variance must equal to the number "
+            "of Channels, which is [%d]. But received: the first dimension of "
             "variance is [%d], the dimensions of variance is [%s].",
             C,
             est_var->dims()[0],
@@ -875,7 +876,7 @@ void BatchNormKernel(const Context &dev_ctx,
     } else {
       int64_t reserve_space_size = 0;
       if (reserve_space == nullptr) {
-        reserve_space = new DenseTensor();
+        reserve_space = &tmp_reserve_space;
       }
       reserve_space->Resize({reserve_space_size});
       dev_ctx.template Alloc<T>(reserve_space);
@@ -924,7 +925,7 @@ void BatchNormKernel(const Context &dev_ctx,
     if ((N * H * W * D) == 1) {
       int64_t reserve_space_size = 0;
       if (reserve_space == nullptr) {
-        reserve_space = new DenseTensor();
+        reserve_space = &tmp_reserve_space;
       }
       reserve_space->Resize({reserve_space_size});
       dev_ctx.template Alloc<T>(reserve_space);
@@ -1174,7 +1175,7 @@ void BatchNormKernel(const Context &dev_ctx,
         // auto *reserve_space =
         // dev_ctx.Output<phi::DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
-          reserve_space = new DenseTensor();
+          reserve_space = &tmp_reserve_space;
         }
         PADDLE_ENFORCE_NOT_NULL(
             reserve_space,
@@ -1292,8 +1293,8 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
@@ -1311,8 +1312,8 @@ PD_REGISTER_KERNEL(batch_norm,
                    phi::BatchNormKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -1335,7 +1336,7 @@ PD_REGISTER_KERNEL(batch_norm,
                    phi::BatchNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);

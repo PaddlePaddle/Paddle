@@ -21,6 +21,7 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -2342,7 +2343,7 @@ def margin_cross_entropy(
             >>> num_class_per_card = [4, 8]
             >>> num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
 
-            >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64') # type: ignore
+            >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')  # type: ignore[arg-type]
             >>> label_list: List[paddle.Tensor] = []
             >>> dist.all_gather(label_list, label)
             >>> label = paddle.concat(label_list, axis=0)
@@ -2680,6 +2681,7 @@ def softmax_with_cross_entropy(
     )
 
 
+@ParamAliasDecorator({"label": ["target"]})
 def cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -2824,6 +2826,9 @@ def cross_entropy(
             3. If has label_smoothing, (i.e. label_smoothing > 0.0), no matter what ``soft_label`` is,
             the shape and data type of ``label`` could be either the situation 1 or situation 2.
             In other words, if label_smoothing > 0.0, the format of label could be one-hot label or integer label.
+
+            4. Alias Support: The parameter name ``label`` can be used as an alias for ``target``.
+            For example, ``cross_entropy(label=tensor)`` is equivalent to ``cross_entropy(target=tensor)``.
 
         weight (Tensor, optional): a manual rescaling weight given to each class.
             If given, has to be a Tensor of size C and the data type is float32, float64.

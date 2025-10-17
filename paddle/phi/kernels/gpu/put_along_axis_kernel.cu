@@ -105,5 +105,5 @@ PD_REGISTER_KERNEL(put_along_axis,
                    uint8_t,
                    int16_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

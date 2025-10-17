@@ -353,7 +353,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         common::errors::InvalidArgument(
             "The `shape` in InstanceNormOp is invalid: "
             "the size of scale's dimensions must be equal to 1. But "
-            "received: the size of scale's dimensions"
+            "received: the size of scale's dimensions "
             "is [%d]",
             scale_ptr->dims().size()));
     PADDLE_ENFORCE_EQ(scale_ptr->dims()[0],
@@ -640,13 +640,13 @@ PD_REGISTER_KERNEL(instance_norm_grad,
                    ALL_LAYOUT,
                    phi::InstanceNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(instance_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::InstanceNormDoubleGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #elif CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
@@ -654,16 +654,16 @@ PD_REGISTER_KERNEL(instance_norm_grad,
                    phi::InstanceNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(instance_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::InstanceNormDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
@@ -671,12 +671,12 @@ PD_REGISTER_KERNEL(instance_norm_grad,
                    phi::InstanceNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(instance_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::InstanceNormDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

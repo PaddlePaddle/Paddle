@@ -21,7 +21,9 @@ from site import getsitepackages
 
 import numpy as np
 
-from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
+from paddle.utils.cpp_extension.extension_utils import (
+    _get_all_paddle_includes_from_include_root,
+)
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
@@ -140,18 +142,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         paddle_includes = []
         for site_packages_path in getsitepackages():
             paddle_include_dir = Path(site_packages_path) / "paddle/include"
-            paddle_includes.append(str(paddle_include_dir))
-            paddle_includes.append(str(paddle_include_dir / 'third_party'))
-            if not IS_WINDOWS:
-                paddle_includes.append(
-                    str(paddle_include_dir / 'paddle/phi/api/include/compat')
+            paddle_includes.extend(
+                _get_all_paddle_includes_from_include_root(
+                    str(paddle_include_dir)
                 )
-                paddle_includes.append(
-                    str(
-                        paddle_include_dir
-                        / 'paddle/phi/api/include/compat/torch/csrc/api/include'
-                    )
-                )
+            )
 
         custom_module = paddle.utils.cpp_extension.load(
             name='custom_device',

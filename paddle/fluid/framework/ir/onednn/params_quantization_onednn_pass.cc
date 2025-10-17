@@ -74,7 +74,7 @@ void QuantizeConvInput(Scope* scope,
 
 }  // namespace
 
-ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {  // NOLINT
+ParamsQuantizationOnednnPass::ParamsQuantizationOnednnPass() {  // NOLINT
   AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -114,7 +114,7 @@ ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {  // NOLINT
       .End();
 }
 
-void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
+void ParamsQuantizationOnednnPass::QuantizeConv(ir::Graph* graph,
                                                 const std::string& conv_type,
                                                 bool with_residual_data) const {
   GraphPatternDetector gpd;
@@ -164,7 +164,7 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
   paddle::string::PrettyLogDetail(msg_ss.str().c_str());
 }
 
-void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+void ParamsQuantizationOnednnPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
@@ -176,7 +176,7 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle::framework::ir
 
 REGISTER_PASS(params_quantization_onednn_pass,
-              paddle::framework::ir::ParamsQuantizationMkldnnPass);
+              paddle::framework::ir::ParamsQuantizationOnednnPass);
 REGISTER_PASS_CAPABILITY(params_quantization_onednn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().LE(

@@ -39,20 +39,19 @@ namespace cub = hipcub;
 namespace rocprim {
 namespace detail {
 template <>
-struct radix_key_codec_base<phi::dtype::float16>
-    : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+struct radix_key_codec_base<phi::float16>
+    : radix_key_codec_integral<phi::float16, uint16_t> {};
 
 template <>
-struct radix_key_codec_base<phi::dtype::bfloat16>
-    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
+struct radix_key_codec_base<phi::bfloat16>
+    : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
 
 #if HIP_VERSION >= 50400000
 template <>
-struct float_bit_mask<phi::dtype::float16> : float_bit_mask<rocprim::half> {};
+struct float_bit_mask<phi::float16> : float_bit_mask<rocprim::half> {};
 
 template <>
-struct float_bit_mask<phi::dtype::bfloat16>
-    : float_bit_mask<rocprim::bfloat16> {};
+struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
 #endif
 }  // namespace detail
 }  // namespace rocprim
@@ -60,13 +59,12 @@ struct float_bit_mask<phi::dtype::bfloat16>
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
-struct NumericTraits<phi::dtype::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+struct NumericTraits<phi::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::float16> {};
 
 template <>
-struct NumericTraits<phi::dtype::bfloat16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
-};
+struct NumericTraits<phi::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::bfloat16> {};
 }  // namespace cub
 
 #endif
@@ -488,7 +486,7 @@ PD_REGISTER_KERNEL(argsort,
                    int64_t,
                    uint8_t,
                    int16_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
