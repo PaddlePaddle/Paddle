@@ -56,7 +56,11 @@ else()
 endif()
 
 if(NOT DEFINED XPU_FFT_BASE_DATE)
-  set(XPU_FFT_BASE_DATE "20250704")
+  if(WITH_ARM)
+    set(XPU_FFT_BASE_DATE "20251017")
+  else()
+    set(XPU_FFT_BASE_DATE "20250704")
+  endif()
 endif()
 
 set(XPU_XRE_BASE_URL
@@ -106,7 +110,7 @@ if(WITH_ARM)
     set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
   endif()
   if(WITH_XPU_FFT)
-    set(XPU_FFT_DIR_NAME "kylin_v10_aarch64/xpufft_kylinv10_aarch64_v2")
+    set(XPU_FFT_DIR_NAME "kylin_v10_aarch64/${XPU_FFT_BASE_DATE}/xpufft_kylinv10_aarch64")
   endif()
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
