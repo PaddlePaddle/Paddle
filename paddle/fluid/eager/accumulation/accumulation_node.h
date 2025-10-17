@@ -37,6 +37,7 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
     if (FLAGS_call_stack_level == 3) {
       this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
+    SetDefaultGradInOutMeta();
     SetGradInMeta(fwd_tensor, 0);
   }
 
