@@ -912,7 +912,14 @@ def _load_inference_model_legacy_impl(
                     model_path = os.path.join(path_prefix, model_filename)
             # set params_path
             if params_filename is None:
-                params_path = os.path.join(path_prefix, "")
+                if model_filename is not None:
+                    params_path = os.path.join(
+                        path_prefix, model_filename + ".pdiparams"
+                    )
+                    if not os.path.exists(params_path):
+                        params_path = os.path.join(path_prefix, "")
+                else:
+                    params_path = os.path.join(path_prefix, "")
             else:
                 params_path = os.path.join(
                     path_prefix, params_filename + ".pdiparams"
@@ -981,25 +988,23 @@ def _load_inference_model_legacy_impl(
     return [program, feed_target_names, fetch_targets]
 
 
-def candidate_legacy_model_paths(path_prefix, model_filename=None):
-    """Generate candidate paths for legacy model files (.pdmodel)."""
-    LEGACY_MODEL_SUFFIX = ".pdmodel"
-
+def _should_try_legacy_fallback(path_prefix, model_filename=None):
+    """Check if legacy model (.pdmodel) exists for fallback."""
     if path_prefix is None:
-        return
-
-    if model_filename is not None and model_filename.lower().endswith(
-        LEGACY_MODEL_SUFFIX
-    ):
-        yield os.path.join(path_prefix, model_filename)
-        return
-
+        return False
+    
+    LEGACY_MODEL_SUFFIX = ".pdmodel"
+    
+    # Check with explicit model filename
+    if model_filename is not None:
+        if model_filename.lower().endswith(LEGACY_MODEL_SUFFIX):
+            return os.path.exists(os.path.join(path_prefix, model_filename))
+        candidate = os.path.join(path_prefix, model_filename + LEGACY_MODEL_SUFFIX)
+        return os.path.exists(candidate)
+    
+    # Check default path
     path_prefix = _normalize_path_prefix(path_prefix)
-    if model_filename is None:
-        yield path_prefix + LEGACY_MODEL_SUFFIX
-        return
-
-    yield os.path.join(path_prefix, model_filename + LEGACY_MODEL_SUFFIX)
+    return os.path.exists(path_prefix + LEGACY_MODEL_SUFFIX)
 
 
 @static_only
@@ -1096,30 +1101,24 @@ def load_inference_model(
         enable_fallback = os.environ.get(
             "PADDLE_ENABLE_PDMODEL_FALLBACK", ""
         ).lower() in ("1", "true", "yes")
-
-        if not enable_fallback:
-            return load_inference_model_pir(path_prefix, executor, **kwargs)
-
-        # Try legacy mode first if found legacy model files
-        for candidate_path in candidate_legacy_model_paths(
-            path_prefix, kwargs.get("model_filename", None)
+        
+        # Try legacy fallback if enabled and legacy model exists
+        if enable_fallback and _should_try_legacy_fallback(
+            path_prefix, kwargs.get("model_filename")
         ):
-            if os.path.exists(candidate_path):
-                try:
-                    return _load_inference_model_legacy_impl(
-                        path_prefix, executor, **kwargs
-                    )
-                except (ValueError, TypeError) as e:
-                    _logger.warning(
-                        f"Failed to load legacy model: {e}. "
-                        "Falling back to PIR mode."
-                    )
-                    break
-
-        # Default to PIR mode
+            try:
+                return _load_inference_model_legacy_impl(
+                    path_prefix, executor, **kwargs
+                )
+            except (ValueError, TypeError) as e:
+                _logger.warning(
+                    f"Failed to load legacy model: {e}. Falling back to PIR mode."
+                )
+        
+        # Default: use PIR mode
         return load_inference_model_pir(path_prefix, executor, **kwargs)
-
-    # Legacy mode
+    
+    # OldIR mode: always use legacy implementation
     return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
 
 

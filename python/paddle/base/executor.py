@@ -447,10 +447,11 @@ def has_fetch_operations_and_is_startup_program(
     is_startup_program = False
     fetch_info = [[], []]
     for op in block.ops:
-        if op.name() == fetch_op:
+        op_name = op.name() if hasattr(op, 'name') else op.type()
+        if op_name == fetch_op:
             fetch_info[0].append(op.operand_source(0))
             fetch_info[1].append(op.attrs()["name"])
-        elif op.name() == "builtin.set_parameter":
+        elif op_name == "builtin.set_parameter":
             is_startup_program = True
 
     need_fetch_info = []
@@ -1208,7 +1209,8 @@ class _ExecutorCache:
         data_op_infos = []
         global_block = program.global_block()
         for op in global_block.ops:
-            if op.name() == 'pd_op.data':
+            op_name = op.name() if hasattr(op, 'name') else op.type()
+            if op_name == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
@@ -1219,7 +1221,7 @@ class _ExecutorCache:
                     op.result(0).persistable,
                 )
                 data_op_infos.append(tup)
-            if op.name() == 'pd_op.feed':
+            if op_name == 'pd_op.feed':
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.results()[0].dtype]
                 var_shape = op.results()[0].shape
