@@ -562,6 +562,22 @@ if [[ ${SKIP_CI} ]];then
     check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
 fi
 
+MALLOC_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'malloc(' | grep -v '//')
+FREE_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'free(' | grep -v '//')
+
+NEW_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'new' | grep -v '//')
+DELETE_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'delete' | grep -v '//')
+
+if [ -n "$MALLOC_ADDED" ] && [ -z "$FREE_ADDED" ]; then
+  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED"
+  check_approval 1 phlrain sneaxiy
+fi
+
+if [ -n "$NEW_ADDED" ] && [ -z "$DELETE_ADDED" ]; then
+  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (phlrain or sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED"
+  check_approval 1 phlrain sneaxiy
+fi
+
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
 # by Unity Build to combine source files. Changes to these rules may cause
 # errors in the compilation. Specific personal are required to approve the

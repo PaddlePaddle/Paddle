@@ -177,7 +177,6 @@ int SplitPlugin::enqueue(int batchSize,
 }
 
 // Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
 int SplitPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 size_t SplitPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
@@ -338,7 +337,6 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   }
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

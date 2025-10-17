@@ -132,8 +132,12 @@ class TensorWrapper {
       }
 #endif
     }
+    if (VLOG_IS_ON(6)) {
+      // We should copy the name for debug.
+      intermediate_tensor_.set_name(tensor.name());
+    }
 
-    if (VLOG_IS_ON(7)) {
+    if (VLOG_IS_ON(11)) {
       // TODO(jiabin): This may has server performance issue
       intermediate_tensor_.set_name(tensor.name() + "@Saved");
     }

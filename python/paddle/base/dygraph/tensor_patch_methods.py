@@ -1586,6 +1586,7 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
+        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

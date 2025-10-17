@@ -1,0 +1,29 @@
+op_patches:
+  - op_name : pd_op.softplus
+    actions:
+      - action : modify_attr
+        object : beta
+        type : pir::DoubleAttribute
+        data : 1.0
+      - action : modify_attr
+        object : threshold
+        type : pir::DoubleAttribute
+        data : 20.0
+  - op_name : onednn_op.fused_softplus
+    actions:
+      - action : modify_attr
+        object : beta
+        type : pir::DoubleAttribute
+        data : 1.0
+      - action : modify_attr
+        object : threshold
+        type : pir::DoubleAttribute
+        data : 20.0
+      - action : modify_attr
+        object : fuse_alpha
+        type : pir::DoubleAttribute
+        data : 0.0
+      - action : modify_attr
+        object : fuse_beta
+        type : pir::DoubleAttribute
+        data : 0.0

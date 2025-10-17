@@ -317,7 +317,6 @@ endif()
 
 set_pir_tests_properties()
 
-add_subdirectory(deprecated)
 add_subdirectory(flex_checkpoint)
 add_subdirectory(compat)
 

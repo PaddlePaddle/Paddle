@@ -3481,7 +3481,7 @@ class OpTest(unittest.TestCase):
                     num_devices = len(
                         runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")
                     )
-                    if num_devices > paddle.device.cuda.device_count():
+                    if num_devices > paddle.device.device_count():
                         self.skipTest("number of GPUs is not enough")
 
                     start_command = get_subprocess_command(

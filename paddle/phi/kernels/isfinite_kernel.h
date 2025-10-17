@@ -36,5 +36,9 @@ DEFINE_ISFINITE_KERNEL(IsfiniteKernel)
 #define INSTANTIATE_ISFINITE_KERNEL_Isnan(type, context) \
   template PADDLE_API void IsnanKernel<type, context>(   \
       const context&, const DenseTensor&, DenseTensor*)
+
+#define INSTANTIATE_ISFINITE_KERNEL_Isfinite(type, context) \
+  template PADDLE_API void IsfiniteKernel<type, context>(   \
+      const context&, const DenseTensor&, DenseTensor*)
 #endif
 }  // namespace phi

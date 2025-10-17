@@ -159,7 +159,7 @@ void MatmulStrideKernel(const Context &dev_ctx,
                                                              &x_stride,
                                                              &x_axis)) {
     auto x_trans_dims = x_axis.size();
-    if (x_axis[x_trans_dims - 1] == x_trans_dims - 2 &&
+    if (x_axis.size() > 2 && x_axis[x_trans_dims - 1] == x_trans_dims - 2 &&
         x_axis[x_trans_dims - 2] == x_trans_dims - 1) {
       transpose_x = !transpose_x;
       x_meta.dims = x_shape;
@@ -180,7 +180,7 @@ void MatmulStrideKernel(const Context &dev_ctx,
                                                              &y_stride,
                                                              &y_axis)) {
     auto y_trans_dims = y_axis.size();
-    if (y_axis[y_trans_dims - 1] == y_trans_dims - 2 &&
+    if (y_axis.size() > 2 && y_axis[y_trans_dims - 1] == y_trans_dims - 2 &&
         y_axis[y_trans_dims - 2] == y_trans_dims - 1) {
       transpose_y = !transpose_y;
       y_meta.dims = y_shape;

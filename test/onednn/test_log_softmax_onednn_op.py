@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, OpTestTool, convert_float_to_uint16
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_log_softmax import ref_log_softmax
 
 import paddle

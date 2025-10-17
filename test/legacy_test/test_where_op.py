@@ -178,6 +178,7 @@ class TestWhereAPI(unittest.TestCase):
         return np.where(~self.cond, dout, 0)
 
     def test_api(self, use_cuda=False):
+        paddle.enable_static()
         for x_stop_gradient in [False, True]:
             for y_stop_gradient in [False, True]:
                 with paddle.static.program_guard(
@@ -259,6 +260,7 @@ class TestWhereAPI(unittest.TestCase):
                                 np.testing.assert_array_equal(
                                     out[2], self.ref_y_backward(out[1])
                                 )
+        paddle.disable_static()
 
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
@@ -323,6 +325,7 @@ class TestWhereAPI(unittest.TestCase):
                             )
 
     def test_api_broadcast(self, use_cuda=False):
+        paddle.enable_static()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
@@ -355,8 +358,10 @@ class TestWhereAPI(unittest.TestCase):
                 np.testing.assert_array_equal(
                     out[0], np.where((x_i > 1), x_i, y_i)
                 )
+        paddle.disable_static()
 
     def test_scalar(self):
+        paddle.enable_static()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             cond_shape = [4]
@@ -383,6 +388,7 @@ class TestWhereAPI(unittest.TestCase):
                 )
                 expect = np.where(cond_data, x_data, y_data)
                 np.testing.assert_array_equal(out[0], expect)
+        paddle.disable_static()
 
     def __test_where_with_broadcast_static(self, cond_shape, x_shape, y_shape):
         paddle.enable_static()

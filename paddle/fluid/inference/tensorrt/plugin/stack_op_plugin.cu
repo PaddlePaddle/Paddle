@@ -23,7 +23,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
 StackPluginDynamic::StackPluginDynamic(int axis, int num_stack, bool with_fp16)
     : axis_(axis), num_stack_(num_stack) {
   with_fp16_ = with_fp16;
@@ -284,8 +283,6 @@ void StackPluginDynamicCreator::setPluginNamespace(const char* lib_namespace)
 const char* StackPluginDynamicCreator::getPluginNamespace() const TRT_NOEXCEPT {
   return plugin_namespace_.c_str();
 }
-
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
