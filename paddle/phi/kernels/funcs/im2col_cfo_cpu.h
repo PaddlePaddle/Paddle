@@ -48,8 +48,6 @@ inline void im2col_common(const phi::DenseTensor& im,
   const int64_t im_channels64 = im_channels;
   const int64_t im_height64 = im_height;
   const int64_t im_width64 = im_width;
-  const int64_t filter_height64 = filter_height;
-  const int64_t filter_width64 = filter_width;
   const int64_t output_height64 = output_height;
   const int64_t output_width64 = output_width;
 
