@@ -90,8 +90,8 @@ RUN python3.9 -m pip install setuptools==50.3.2 && \
   python3.12 -m pip install --break-system-packages setuptools==68.2.0 && \
   python3.13 -m pip install setuptools==69.5.0 && \
   python3.13t -m pip install setuptools==69.5.0 && \
-  python3.13 -m pip install setuptools==69.5.0 && \
-  python3.13t -m pip install setuptools==69.5.0
+  python3.14 -m pip install setuptools==69.5.0 && \
+  python3.14t -m pip install setuptools==69.5.0
 
 # binutils >= 2.27
 RUN apt-get install -y binutils
