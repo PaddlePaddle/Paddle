@@ -30,6 +30,9 @@
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
+#include <dlfcn.h>
+#include <ctime>
+#include <cstdlib>
 #endif
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/backends/hip/codegen_hip_dev.h"
@@ -349,28 +352,35 @@ void Compiler::RegisterDeviceModuleSymbol() {
 
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
-  nvrtc::Compiler compiler;
+  // 生成动态链接库
   std::string source_code = CodeGenCudaDev::GetSourceHeader() + device_fn_code_;
-  auto ptx = compiler(source_code);
-  PADDLE_ENFORCE_EQ(!ptx.empty(),
+  dynamic_library_path_ = GenerateDynamicLibrary(source_code);
+  
+  PADDLE_ENFORCE_EQ(!dynamic_library_path_.empty(),
                     true,
                     ::common::errors::InvalidArgument(
-                        "Compile PTX failed from source code\n"));
-  using runtime::cuda::CUDAModule;
-  cuda_module_.reset(new CUDAModule(ptx,
-                                    compiler.compile_to_cubin()
-                                        ? CUDAModule::Kind::CUBIN
-                                        : CUDAModule::Kind::PTX));
+                        "Generate dynamic library failed from source code\n"));
+  VLOG(3) << "[YUHAN!!!] Generate dynamic library success from source code:\n" << dynamic_library_path_;
+  
+  // 加载动态链接库
+  dynamic_library_handle_ = LoadDynamicLibrary(dynamic_library_path_);
+  PADDLE_ENFORCE_NOT_NULL(dynamic_library_handle_,
+                          ::common::errors::InvalidArgument(
+                              "Fail to load dynamic library: %s", dynamic_library_path_));
 
   RuntimeSymbols symbols;
   for (const auto& kernel_fn_name : device_fn_name_) {
-    auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
-    PADDLE_ENFORCE_NOT_NULL(fn_kernel,
+    // 从动态链接库获取函数指针
+    void* fn_ptr = GetFunctionFromLibrary(dynamic_library_handle_, kernel_fn_name);
+    PADDLE_ENFORCE_NOT_NULL(fn_ptr,
                             ::common::errors::InvalidArgument(
-                                "Fail to get CUfunction kernel_fn_name"));
-    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
-    symbols.RegisterVar(kernel_fn_name + "_ptr_",
-                        reinterpret_cast<void*>(fn_kernel));
+                                "Fail to get function %s from dynamic library", kernel_fn_name));
+    
+    fn_ptr_.push_back(fn_ptr);
+    
+    // 注册动态链接库信息而不是直接的函数指针
+    symbols.RegisterVar(kernel_fn_name + "_library_info",
+                        CreateLibraryInfo(dynamic_library_path_, kernel_fn_name));
   }
   engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
 #else
@@ -573,6 +583,74 @@ void* Compiler::Lookup(std::string_view fn_name) {
   }
   return nullptr;
 }
+
+#ifdef CINN_WITH_CUDA
+std::string Compiler::GenerateDynamicLibrary(const std::string& source_code) {
+  // 生成唯一的库文件名
+  std::string library_name = "cinn_kernel_" + std::to_string(std::time(nullptr)) + ".so";
+  std::string library_path = "/tmp/" + library_name;  // 临时目录
+  
+  // 1. 将CUDA源代码编译为PTX
+  nvrtc::Compiler compiler;
+  auto ptx = compiler(source_code);
+  PADDLE_ENFORCE_EQ(!ptx.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Compile PTX failed from source code\n"));
+  
+  // 2. 使用nvcc将PTX编译为动态链接库
+  std::string cuda_source_file = library_path + ".cu";
+  std::ofstream source_file(cuda_source_file);
+  source_file << source_code;
+  source_file.close();
+  
+  // 编译命令：将CUDA代码编译为动态链接库
+  std::string compile_cmd = "nvcc -shared -Xcompiler -fPIC -o " + 
+                           library_path + " " + cuda_source_file + 
+                           " -arch=sm_90";  // 根据实际GPU架构调整
+  
+  int result = std::system(compile_cmd.c_str());
+  PADDLE_ENFORCE_EQ(result, 0,
+                    ::common::errors::InvalidArgument(
+                        "Failed to compile dynamic library: %s", compile_cmd));
+  
+  // 清理临时源文件
+  std::remove(cuda_source_file.c_str());
+  
+  return library_path;
+}
+
+void* Compiler::LoadDynamicLibrary(const std::string& library_path) {
+  // 使用dlopen加载动态链接库
+  void* handle = dlopen(library_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
+  if (!handle) {
+    LOG(ERROR) << "Failed to load dynamic library: " << dlerror();
+    return nullptr;
+  }
+  return handle;
+}
+
+void* Compiler::GetFunctionFromLibrary(void* library_handle, const std::string& function_name) {
+  // 使用dlsym从动态链接库获取函数指针
+  void* func_ptr = dlsym(library_handle, function_name.c_str());
+  if (!func_ptr) {
+    LOG(ERROR) << "Failed to get function " << function_name << ": " << dlerror();
+    return nullptr;
+  }
+  return func_ptr;
+}
+
+void* Compiler::CreateLibraryInfo(const std::string& library_path, const std::string& function_name) {
+  // 创建库信息结构，包含库路径和函数名
+  struct LibraryInfo {
+    std::string path;
+    std::string function;
+  };
+  
+  LibraryInfo* info = new LibraryInfo{library_path, function_name};
+  return reinterpret_cast<void*>(info);
+}
+#endif
 
 }  // namespace backends
 }  // namespace cinn

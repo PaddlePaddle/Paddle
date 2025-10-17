@@ -34,6 +34,14 @@ struct CINNKernelInfo {
   void* fn_ptr;
   void* infer_shape_fn_ptr;
   void* CX86_fn_ptr{nullptr};
+  
+  // Dynamic library support
+  struct LibraryInfo {
+    std::string library_path;
+    std::string function_name;
+    void* library_handle{nullptr};
+  };
+  LibraryInfo dynamic_library_info;
 
   struct ArgDimIdx {
     int arg_idx;

@@ -166,12 +166,23 @@ class Compiler final {
   std::string device_fn_code_;
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
+  // dynamic library support
+  std::string dynamic_library_path_;
+  void* dynamic_library_handle_{nullptr};
 #endif
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
 #endif
 #ifdef CINN_WITH_SYCL
   std::unique_ptr<runtime::sycl::SYCLModule> sycl_module_;
+#endif
+
+  // Dynamic library helper methods
+#ifdef CINN_WITH_CUDA
+  std::string GenerateDynamicLibrary(const std::string& source_code);
+  void* LoadDynamicLibrary(const std::string& library_path);
+  void* GetFunctionFromLibrary(void* library_handle, const std::string& function_name);
+  void* CreateLibraryInfo(const std::string& library_path, const std::string& function_name);
 #endif
 };
 
