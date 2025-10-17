@@ -26,7 +26,7 @@ paddle.enable_static()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "DepthwiseConv2ConvPattern requires CUDA",
 )
 class TestDepthwiseConv2ConvPattern(PassTest):
