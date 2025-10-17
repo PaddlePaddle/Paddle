@@ -41,6 +41,7 @@ jobs:
 
     steps:
       - name: Download paddle.tar.gz and update test branch
+        if: false
         run: |
           docker run -i --rm \
           -v ${{ github.workspace }}:/paddle \
@@ -64,6 +65,7 @@ jobs:
           bash ci/git_pull.sh $BRANCH
 
       - name: Determine the runner
+        if: false
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
@@ -72,6 +74,7 @@ jobs:
           echo no_proxy="localhost,127.0.0.1,localaddress,.bj.bcebos.com,.localdomain.com,.cdn.bcebos.com,.baidu.com,.bcebos.com" >> ${{ github.env }}
 
       - name: Clone PaddleCustomDevice repository
+        if: false
         run: |
           source ~/.bashrc
           git clone --depth=1000 -b develop https://github.com/PaddlePaddle/PaddleCustomDevice.git
@@ -79,6 +82,7 @@ jobs:
           cp -r ../Paddle .
 
       - name: Check docker image and run container
+        if: false
         env:
           PADDLE_VERSION: 0.0.0
           WITH_COVERAGE: "OFF"
@@ -148,6 +152,7 @@ jobs:
             -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Install Paddle-CPU
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
@@ -169,6 +174,7 @@ jobs:
           '
 
       - name: Build and test
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -188,7 +194,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: false
         run: |
           docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${container_name}

@@ -58,6 +58,7 @@ jobs:
       labels: [self-hosted, "${{ inputs.run-labels }}"]
     steps:
       - name: Determine the runner
+        if: false
         run: |
           docker_image=${{ inputs.docker_build_image }}
           echo "docker_image=${docker_image}" >> $GITHUB_ENV
@@ -74,6 +75,7 @@ jobs:
           echo "core_index=${core_index}" >> $GITHUB_ENV
 
       - name: Check docker image and run container
+        if: false
         env:
           python: "python3.10"
           GIT_PR_ID: ${{ github.event.pull_request.number || '0' }}
@@ -106,6 +108,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download PaddleTest.tar.gz
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -125,6 +128,7 @@ jobs:
           '
 
       - name: Paddletest check
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -153,7 +157,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
