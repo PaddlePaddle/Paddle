@@ -1896,6 +1896,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 + ", paddle::optional<paddle::Tensor*> input_out"
             )
             inputs_call_list.append("input_out")
+            dist_recall_ad_func_names.append("input_out")
         inputs_call_args_str = ", ".join(inputs_call_list)
         self.inputs_call_list = inputs_call_list
 
