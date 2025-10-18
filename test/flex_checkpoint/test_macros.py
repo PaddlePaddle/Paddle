@@ -523,24 +523,5 @@ class TestIdMacroCase3(TestMacro):
         self.start_macro_test()
 
 
-class TestIdMacroCase4(TestMacro):
-    def macro_name(self):
-        return "id_macro"
-
-    def source_code(self):
-        return "layers.$ID0.experts.$ID1.up_gate_proj.weight -> layers.$ID1.experts.$ID0.gate_proj.weight, fused_ffn"
-
-    def expected(self):
-        return [
-            'layers.3.experts.0.up_gate_proj.weight->layers.0.experts.3.gate_proj.weight,fused_ffn\n',
-            'layers.3.experts.1.up_gate_proj.weight->layers.1.experts.3.gate_proj.weight,fused_ffn\n',
-            'layers.5.experts.0.up_gate_proj.weight->layers.0.experts.5.gate_proj.weight,fused_ffn\n',
-            'layers.5.experts.1.up_gate_proj.weight->layers.1.experts.5.gate_proj.weight,fused_ffn\n',
-        ]
-
-    def test(self):
-        self.start_macro_test()
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -88,7 +88,7 @@ def star_macro(tokens, expression, context):
         pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         filtered_keys = []
         for key in allkeys:
-            match = pattern.match(key)
+            match = pattern.fullmatch(key)
             if match:
                 num = int(match.group(1))
                 filtered_keys.append((key, num))
@@ -657,9 +657,19 @@ def fused_qkv_macro(tokens, expression, context):
 
 
 class IDMatcher:
-    def __init__(self, source_keys: list[str], extra_suffixes: list[str]):
+    def __init__(
+        self,
+        source_keys: list[str],
+        extra_suffixes: list[str],
+        allowed_placeholders: list[str],
+    ):
         self.source_keys = set(source_keys)
-        self._placeholder_pattern = re.compile(r'(\$[A-Z_][A-Z0-9_]*)')
+        self.allowed_placeholders = allowed_placeholders
+        # Dynamically build regex pattern from allowed placeholders
+        placeholder_pattern = '|'.join(
+            re.escape(ph) for ph in self.allowed_placeholders
+        )
+        self._placeholder_pattern = re.compile(f'({placeholder_pattern})')
         self.extra_suffixes = sorted(extra_suffixes, key=lambda x: (-len(x), x))
 
     def _remove_extra_suffixes(self, key: str) -> str:
@@ -697,10 +707,17 @@ class IDMatcher:
         return {k: sorted(vs) for k, vs in id_values.items()}
 
 
+# Global registry for allowed_placeholders
+_REGISTERED_PLACEHOLDERS = ['$EXPERT_ID', '$LAYER_ID']
+
+
 @macro(name='id_macro', priority=1)
 def id(tokens, expression, context):
-    ID_MACRO_TAG = "$"
-    if ID_MACRO_TAG not in expression:
+    allowed_placeholders = _REGISTERED_PLACEHOLDERS
+    has_allowed_placeholder = any(
+        ph in expression for ph in allowed_placeholders
+    )
+    if not has_allowed_placeholder:
         return expression
 
     name_with_id = next(
@@ -708,14 +725,16 @@ def id(tokens, expression, context):
             token.value
             for token in tokens
             if token.type == TokenType.IDENTIFIER
-            and ID_MACRO_TAG in token.value
+            and any(ph in token.value for ph in allowed_placeholders)
         ),
         None,
     )
 
     assert name_with_id is not None, "No $ID found in NAME tokens"
     all_src_state_keys = context.get_all_src_state_keys()
-    id_matcher = IDMatcher(all_src_state_keys, EXTRA_SUFFIX)
+    id_matcher = IDMatcher(
+        all_src_state_keys, EXTRA_SUFFIX, allowed_placeholders
+    )
     valid_id_combos = id_matcher.find_matches(name_with_id)
 
     from collections import Counter
@@ -733,7 +752,9 @@ def id(tokens, expression, context):
     for tkn in tokens:
         if tkn.type == TokenType.RARROW:
             break
-        if tkn.type == TokenType.IDENTIFIER and ID_MACRO_TAG in tkn.value:
+        if tkn.type == TokenType.IDENTIFIER and any(
+            ph in tkn.value for ph in allowed_placeholders
+        ):
             assert dict_list_equal_unordered(
                 id_matcher.find_matches(tkn.value), valid_id_combos
             )
@@ -751,11 +772,11 @@ def id(tokens, expression, context):
         cur_statement = ""
         for tkn in tokens:
             tkn_val = tkn.value
-            if tkn.type == TokenType.IDENTIFIER and ID_MACRO_TAG in tkn.value:
+            if tkn.type == TokenType.IDENTIFIER and any(
+                ph in tkn.value for ph in allowed_placeholders
+            ):
                 for id_tag, id_val in id_comb:
-                    tkn_val = tkn_val.replace(
-                        ID_MACRO_TAG + id_tag, str(id_val)
-                    )
+                    tkn_val = tkn_val.replace("$" + id_tag, str(id_val))
                 cur_statement += tkn_val
             else:
                 cur_statement += tkn_val
