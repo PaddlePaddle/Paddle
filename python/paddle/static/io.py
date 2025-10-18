@@ -955,7 +955,13 @@ def _load_inference_model_legacy_impl(
                 )
 
     feed_target_names = program.desc.get_feed_target_names()
-    if paddle.framework.in_pir_executor_mode():
+    # Check if we need to convert to PIR (either in pir_executor_mode or in_pir_mode)
+    need_pir_conversion = (
+        paddle.framework.in_pir_executor_mode()
+        or paddle.framework.in_pir_mode()
+    )
+
+    if need_pir_conversion:
         with paddle.pir_utils.IrGuard():
             program = paddle.pir.translate_to_pir(program.desc)
             block = program.global_block()
@@ -981,7 +987,7 @@ def _load_inference_model_legacy_impl(
                     fetch_targets.append(op.operand_source(0))
 
     else:
-        fetch_target_names = program.desc.get_fetch_target_names()
+        fetch_target_names = program.desc.get_feed_target_names()
         fetch_targets = [
             program.global_block().var(name) for name in fetch_target_names
         ]
@@ -992,19 +998,42 @@ def _should_try_legacy_fallback(path_prefix, model_filename=None):
     """Check if legacy model (.pdmodel) exists for fallback."""
     if path_prefix is None:
         return False
-    
+
     LEGACY_MODEL_SUFFIX = ".pdmodel"
-    
+
     # Check with explicit model filename
     if model_filename is not None:
         if model_filename.lower().endswith(LEGACY_MODEL_SUFFIX):
             return os.path.exists(os.path.join(path_prefix, model_filename))
-        candidate = os.path.join(path_prefix, model_filename + LEGACY_MODEL_SUFFIX)
+        candidate = os.path.join(
+            path_prefix, model_filename + LEGACY_MODEL_SUFFIX
+        )
         return os.path.exists(candidate)
-    
+
     # Check default path
     path_prefix = _normalize_path_prefix(path_prefix)
     return os.path.exists(path_prefix + LEGACY_MODEL_SUFFIX)
+
+
+def _check_pir_model_exists(path_prefix, model_filename=None):
+    """Check if PIR model file exists and raise exceptions if not found."""
+    normalized_prefix = _normalize_path_prefix(path_prefix)
+    dir_path = os.path.dirname(normalized_prefix)
+
+    if dir_path and not os.path.isdir(dir_path):
+        raise ValueError(f"There is no directory named {dir_path}")
+
+    if model_filename is None:
+        pir_model_path = normalized_prefix + ".json"
+    else:
+        pir_model_path = os.path.join(normalized_prefix, model_filename + ".json")
+        if not os.path.exists(pir_model_path):
+            pir_model_path = os.path.join(normalized_prefix, model_filename)
+
+    if not os.path.exists(pir_model_path):
+        raise FileNotFoundError(
+            f"PIR format model file '{pir_model_path}' does not exist."
+        )
 
 
 @static_only
@@ -1101,7 +1130,7 @@ def load_inference_model(
         enable_fallback = os.environ.get(
             "PADDLE_ENABLE_PDMODEL_FALLBACK", ""
         ).lower() in ("1", "true", "yes")
-        
+
         # Try legacy fallback if enabled and legacy model exists
         if enable_fallback and _should_try_legacy_fallback(
             path_prefix, kwargs.get("model_filename")
@@ -1114,10 +1143,14 @@ def load_inference_model(
                 _logger.warning(
                     f"Failed to load legacy model: {e}. Falling back to PIR mode."
                 )
-        
+
+        # Validate PIR model file existence before loading
+        if path_prefix is not None:
+            _check_pir_model_exists(path_prefix, kwargs.get('model_filename'))
+
         # Default: use PIR mode
         return load_inference_model_pir(path_prefix, executor, **kwargs)
-    
+
     # OldIR mode: always use legacy implementation
     return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
 

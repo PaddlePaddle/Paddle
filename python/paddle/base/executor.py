@@ -422,6 +422,14 @@ def has_fetch_operators(
     return fetch_count > 0
 
 
+def _get_op_name(op):
+    """Get operation name, compatible with both OldIR and PIR."""
+    if hasattr(op, 'name'):
+        return op.name() if callable(op.name) else op.name
+    else:
+        return op.type() if callable(op.type) else op.type
+
+
 def has_fetch_operations_and_is_startup_program(
     block, fetch_targets, fetch_holder_name, fetch_op='pd_op.fetch'
 ):
@@ -447,7 +455,7 @@ def has_fetch_operations_and_is_startup_program(
     is_startup_program = False
     fetch_info = [[], []]
     for op in block.ops:
-        op_name = op.name() if hasattr(op, 'name') else op.type()
+        op_name = _get_op_name(op)
         if op_name == fetch_op:
             fetch_info[0].append(op.operand_source(0))
             fetch_info[1].append(op.attrs()["name"])
@@ -462,7 +470,12 @@ def has_fetch_operations_and_is_startup_program(
                     raise Exception(
                         f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
                     )
-            elif fetch_var not in ValueSet(fetch_info[0]):
+            elif isinstance(fetch_var, Value):
+                # Only use ValueSet for PIR Value types
+                if fetch_var not in ValueSet(fetch_info[0]):
+                    need_fetch_info.append(fetch_var)
+            else:
+                # For non-PIR types (e.g., OldIR Variable), add directly
                 need_fetch_info.append(fetch_var)
 
     return need_fetch_info, is_startup_program
@@ -1117,10 +1130,15 @@ class _ExecutorCache:
         for i, fetch_var in enumerate(fetch_list):
             if isinstance(fetch_var, str):
                 update_fetch_list.append(fetch_var)
-            else:
+            elif isinstance(fetch_var, Value):
+                # Only process PIR Value types through value_map
                 for value_map in value_map_list:
                     if value_map.has(fetch_var):
                         update_fetch_list.append(value_map.look_up(fetch_var))
+                        break
+            else:
+                # For non-PIR types (e.g., OldIR Variable), add directly
+                update_fetch_list.append(fetch_var)
         return update_fetch_list
 
     def _get_pir_program_and_executor(self, cached_data):
@@ -1209,7 +1227,7 @@ class _ExecutorCache:
         data_op_infos = []
         global_block = program.global_block()
         for op in global_block.ops:
-            op_name = op.name() if hasattr(op, 'name') else op.type()
+            op_name = _get_op_name(op)
             if op_name == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
