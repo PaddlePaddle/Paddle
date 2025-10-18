@@ -957,9 +957,12 @@ def _load_inference_model_legacy_impl(
     feed_target_names = program.desc.get_feed_target_names()
     fetch_target_names = program.desc.get_fetch_target_names()
     
-    # In PIR mode, convert OldIR program to PIR completely
-    # This ensures no OldIR Operator objects leak into PIR execution paths
-    if paddle.framework.in_pir_mode():
+    need_pir_conversion = (
+        paddle.framework.in_pir_mode()
+        or paddle.framework.in_pir_executor_mode()
+    )
+    
+    if need_pir_conversion:
         with paddle.pir_utils.IrGuard():
             program = paddle.pir.translate_to_pir(program.desc)
             block = program.global_block()
