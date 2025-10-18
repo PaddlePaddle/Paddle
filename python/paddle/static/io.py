@@ -955,13 +955,11 @@ def _load_inference_model_legacy_impl(
                 )
 
     feed_target_names = program.desc.get_feed_target_names()
-    # Check if we need to convert to PIR (either in pir_executor_mode or in_pir_mode)
-    need_pir_conversion = (
-        paddle.framework.in_pir_executor_mode()
-        or paddle.framework.in_pir_mode()
-    )
-
-    if need_pir_conversion:
+    fetch_target_names = program.desc.get_fetch_target_names()
+    
+    # In PIR mode, convert OldIR program to PIR completely
+    # This ensures no OldIR Operator objects leak into PIR execution paths
+    if paddle.framework.in_pir_mode():
         with paddle.pir_utils.IrGuard():
             program = paddle.pir.translate_to_pir(program.desc)
             block = program.global_block()
@@ -985,12 +983,11 @@ def _load_inference_model_legacy_impl(
             for op in block.ops:
                 if op.name() == "pd_op.fetch":
                     fetch_targets.append(op.operand_source(0))
-
     else:
-        fetch_target_names = program.desc.get_feed_target_names()
         fetch_targets = [
             program.global_block().var(name) for name in fetch_target_names
         ]
+    
     return [program, feed_target_names, fetch_targets]
 
 
