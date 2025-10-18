@@ -3312,7 +3312,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logit
-  args : (Tensor x, float eps = 1e-6f)
+  args : (Tensor x, double eps = 1e-6)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

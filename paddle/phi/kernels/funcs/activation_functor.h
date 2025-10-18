@@ -554,7 +554,7 @@ struct CosFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct LogitFunctor {
   template <typename Device, typename X, typename Out, typename P>
-  void operator()(Device d, X x, Out out, P p, float eps) const {
+  void operator()(Device d, X x, Out out, P p, double eps) const {
     // logit(x) = ln(x/(1-x))
     auto tmp_x =
         (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
@@ -1268,7 +1268,7 @@ struct AtanGradFunctor<ComplexType<T>>
 template <typename T>
 struct LogitGradFunctor {
   template <typename Device, typename X, typename dOut, typename dX, typename P>
-  void operator()(Device d, X x, dOut dout, dX dx, P p, float eps) const {
+  void operator()(Device d, X x, dOut dout, dX dx, P p, double eps) const {
     // logit(x)' = 1/(x*(1-x))
     if (!eps) {
       dx.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
@@ -3422,15 +3422,14 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaLogitFunctor : public BaseActivationFunctor<T> {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   MT zero = static_cast<MT>(0.0f);
   MT one = static_cast<MT>(1.0f);
-  float eps;
+  double eps;
 
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"eps", &eps}};
-  }
+  typename CudaLogitFunctor<T>::AttrPair GetAttrs() { return {{"eps", &eps}}; }
 
   // logit(x) = ln(x/(1-x))
   __device__ __forceinline__ T operator()(const T arg_x) const {
@@ -3449,13 +3448,14 @@ struct CudaLogitFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaLogitGradFunctor : public BaseActivationFunctor<T> {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  float eps;
+  double eps;
   MT zero = static_cast<MT>(0.0f);
   MT one = static_cast<MT>(1.0f);
 
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  typename CudaLogitGradFunctor<T>::AttrPair GetAttrs() {
     return {{"eps", &eps}};
   }
   // logit(x)' = 1/(x*(1-x))
