@@ -305,7 +305,7 @@ class TestIndexAddAPI(unittest.TestCase):
 
         if device == "cpu":
             place = paddle.CPUPlace()
-        elif device == "gpu":
+        elif device == "gpu" or is_custom_device():
             place = get_device_place()
         else:
             raise TypeError(
