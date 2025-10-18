@@ -45,13 +45,11 @@ list(
   prompt_tuning_emb_layernorm_varseqlen_kernel_hface.cu
   prompt_tuning_emb_layernorm_varseqlen_plugin.cu)
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
-  list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
-       many_emb_layernorm_varseqlen_kernel_mtron.cu
-       many_emb_layernorm_varseqlen_kernel_hface.cu)
-endif()
+list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
+     many_emb_layernorm_varseqlen_kernel_mtron.cu
+     many_emb_layernorm_varseqlen_kernel_hface.cu)
 
-if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
+if(CUSPARSELT_FOUND)
   list(APPEND TRT_FILES spmm_plugin.cu)
 endif()
 

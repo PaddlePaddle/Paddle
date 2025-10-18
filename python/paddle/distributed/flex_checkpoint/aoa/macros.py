@@ -132,7 +132,16 @@ def layer_id_macro(tokens, expression, context):
         ),
         None,
     )
+
     assert name_with_layer_id, "No $LAYER_ID found in NAME tokens"
+    assert all(
+        (t.type != TokenType.IDENTIFIER)
+        or (LAYER_ID_MACRO_TAG in t.value)
+        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
+        for t in tokens
+    ), (
+        f"All IDENTIFIER tokens must contain {LAYER_ID_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
+    )
 
     match_layer_id = context.get_num_hidden_layers(
         name_with_layer_id, LAYER_ID_MACRO_TAG
@@ -149,14 +158,61 @@ def layer_id_macro(tokens, expression, context):
                     expr += token.value.replace(
                         LAYER_ID_MACRO_TAG, str(layer_id)
                     )
-                elif token.value not in GLOBAL_ATTRIBUTE_KEYWORDS:
-                    expr += f"{token.value}.layer.{layer_id}"
                 else:
                     expr += token.value
             else:
                 expr += token.value
         expanded_expressions.append(expr)
 
+    return expanded_expressions
+
+
+@macro(name='expert_id_macro', priority=1)
+def expert_id_macro(tokens, expression, context):
+    EXPERT_ID_MACRO_TAG = "$EXPERT_ID"
+    if EXPERT_ID_MACRO_TAG not in expression:
+        return expression
+
+    name_with_expert_id = next(
+        (
+            token.value
+            for token in tokens
+            if token.type == TokenType.IDENTIFIER
+            and EXPERT_ID_MACRO_TAG in token.value
+        ),
+        None,
+    )
+
+    assert name_with_expert_id, "No $EXPERT_ID found in NAME tokens"
+    assert all(
+        (t.type != TokenType.IDENTIFIER)
+        or (EXPERT_ID_MACRO_TAG in t.value)
+        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
+        for t in tokens
+    ), (
+        f"All IDENTIFIER tokens must contain {EXPERT_ID_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
+    )
+
+    match_expert_id = context.get_num_experts(
+        name_with_expert_id, EXPERT_ID_MACRO_TAG
+    )
+    expanded_expressions = []
+
+    match_expert_id = sorted(match_expert_id)
+
+    for expert_id in match_expert_id:
+        expr = ""
+        for token in tokens:
+            if token.type == TokenType.IDENTIFIER:
+                if EXPERT_ID_MACRO_TAG in token.value:
+                    expr += token.value.replace(
+                        EXPERT_ID_MACRO_TAG, str(expert_id)
+                    )
+                else:
+                    expr += token.value
+            else:
+                expr += token.value
+        expanded_expressions.append(expr)
     return expanded_expressions
 
 
@@ -206,7 +262,6 @@ def layer_id_offset_macro(tokens, expression, context):
             else:
                 expr += token.value
         expanded_expressions.append(expr)
-
     return expanded_expressions
 
 

@@ -119,6 +119,7 @@ from .utils import (  # noqa: F401
     map_if,
     map_if_extend,
     meta_str,
+    need_capture_control_flow,
     no_eval_frame,
     printable,
     switch_symbol_registry,

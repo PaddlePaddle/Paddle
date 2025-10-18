@@ -64,3 +64,4 @@
 - triu_grad
 - unpool_grad
 - unsqueeze_grad
+- logit_grad
