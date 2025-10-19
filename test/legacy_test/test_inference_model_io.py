@@ -199,34 +199,38 @@ class TestPdmodelCompatibility(unittest.TestCase):
 
     def test_json_priority_over_pdmodel(self):
         """Test .json priority over .pdmodel when both files exist"""
-        pdmodel_path = self._create_model('pdmodel', '_priority')
         json_path = self._create_model('json', '_json')
+        pdmodel_path = self._create_model('pdmodel', '_pdmodel')
         priority_path = os.path.join(self.temp_dir.name, "priority_test")
 
-        # Combine both formats at same location
+        # Create both formats at same location
         shutil.copy(json_path + ".json", priority_path + ".json")
+        shutil.copy(json_path + ".pdiparams", priority_path + ".pdiparams")
         shutil.copy(pdmodel_path + ".pdmodel", priority_path + ".pdmodel")
-        shutil.copy(pdmodel_path + ".pdiparams", priority_path + ".pdiparams")
 
         # Verify both file formats exist
-        self.assertTrue(
-            os.path.exists(priority_path + ".pdmodel"),
-            "pdmodel file should exist",
-        )
-        self.assertTrue(
-            os.path.exists(priority_path + ".json"),
-            "json file should exist",
-        )
-        self.assertTrue(
-            os.path.exists(priority_path + ".pdiparams"),
-            "pdiparams file should exist",
-        )
+        self.assertTrue(os.path.exists(priority_path + ".json"))
+        self.assertTrue(os.path.exists(priority_path + ".pdmodel"))
 
-        program, feed_names, fetch_targets = load_inference_model(
+        # Load with both formats present - should load .json
+        program1, feed_names1, fetch_targets1 = load_inference_model(
             priority_path, self.exe
         )
-        # Should prioritize .json format (PIR format is preferred)
-        self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
+        self.assertIsInstance(program1, paddle.base.libpaddle.pir.Program)
+        self._verify_loaded_model(program1, feed_names1, fetch_targets1, 'x')
+
+        # If .json has priority, this should still work
+        # If .pdmodel has priority, this would fail
+        os.remove(priority_path + ".pdmodel")
+        self.assertTrue(os.path.exists(priority_path + ".json"))
+        self.assertFalse(os.path.exists(priority_path + ".pdmodel"))
+
+        # Should still load successfully from .json
+        program2, feed_names2, fetch_targets2 = load_inference_model(
+            priority_path, self.exe
+        )
+        self.assertIsInstance(program2, paddle.base.libpaddle.pir.Program)
+        self._verify_loaded_model(program2, feed_names2, fetch_targets2, 'x')
 
     def test_pir_mode_loads_json_normally(self):
         """Test PIR mode loads .json format normally"""
