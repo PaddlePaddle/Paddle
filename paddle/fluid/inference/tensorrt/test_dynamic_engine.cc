@@ -130,7 +130,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
 
   std::vector<float> x_v(8 * 32);
   for (int i = 0; i < 8 * 32; i++) {
-    x_v[i] = i % (8 * 32);
+    x_v[i] = i;
   }
 
   std::vector<int> shape_v = {8, 8, 4};
