@@ -422,15 +422,20 @@ TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_SETUP_FAILED, "CUFFT error"));
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_SIZE, "CUFFT error"));
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_UNALIGNED_DATA, "CUFFT error"));
+#ifdef CUFFT_INCOMPLETE_PARAMETER_LIST
   EXPECT_TRUE(
       CheckCudaStatusFailure(CUFFT_INCOMPLETE_PARAMETER_LIST, "CUFFT error"));
+#endif
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_DEVICE, "CUFFT error"));
+#ifdef CUFFT_PARSE_ERROR
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_PARSE_ERROR, "CUFFT error"));
+#endif
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_NO_WORKSPACE, "CUFFT error"));
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_NOT_IMPLEMENTED, "CUFFT error"));
+#ifdef CUFFT_LICENSE_ERROR
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_LICENSE_ERROR, "CUFFT error"));
+#endif
   EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_NOT_SUPPORTED, "CUFFT error"));
-
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "NCCL error"));
