@@ -22,6 +22,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/psroi_pool_kernel.h"
+#include "paddle/phi/kernels/psroi_pool_grad_kernel.h"
 
 namespace phi {
 
