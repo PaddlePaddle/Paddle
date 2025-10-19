@@ -1134,7 +1134,7 @@ def load_inference_model(
         if has_json:
             return load_inference_model_pir(path_prefix, executor, **kwargs)
 
-        # Fallback to .pdmodel (legacy format) if enabled
+        # Fallback to .pdmodel if enabled
         if has_pdmodel:
             return _load_inference_model_legacy_impl(
                 path_prefix, executor, **kwargs

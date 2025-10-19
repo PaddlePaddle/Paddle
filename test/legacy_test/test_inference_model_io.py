@@ -212,7 +212,6 @@ class TestPdmodelCompatibility(unittest.TestCase):
         self.assertTrue(os.path.exists(priority_path + ".json"))
         self.assertTrue(os.path.exists(priority_path + ".pdmodel"))
 
-        # Load with both formats present - should load .json
         program1, feed_names1, fetch_targets1 = load_inference_model(
             priority_path, self.exe
         )
