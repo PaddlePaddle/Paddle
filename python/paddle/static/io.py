@@ -1016,12 +1016,8 @@ def _should_try_legacy_fallback(path_prefix, model_filename=None):
 
 
 def _check_pir_model_exists(path_prefix, model_filename=None):
-    """Check if PIR model file exists and raise exceptions if not found."""
+    """Check if PIR model (.json) exists."""
     normalized_prefix = _normalize_path_prefix(path_prefix)
-    dir_path = os.path.dirname(normalized_prefix)
-
-    if dir_path and not os.path.isdir(dir_path):
-        raise ValueError(f"There is no directory named {dir_path}")
 
     if model_filename is None:
         pir_model_path = normalized_prefix + ".json"
@@ -1030,10 +1026,7 @@ def _check_pir_model_exists(path_prefix, model_filename=None):
         if not os.path.exists(pir_model_path):
             pir_model_path = os.path.join(normalized_prefix, model_filename)
 
-    if not os.path.exists(pir_model_path):
-        raise FileNotFoundError(
-            f"PIR format model file '{pir_model_path}' does not exist."
-        )
+    return os.path.exists(pir_model_path)
 
 
 @static_only
@@ -1131,22 +1124,30 @@ def load_inference_model(
             "PADDLE_ENABLE_PDMODEL_FALLBACK", ""
         ).lower() in ("1", "true", "yes")
 
-        # Try legacy fallback if enabled and legacy model exists
-        if enable_fallback and _should_try_legacy_fallback(
+        # Check which format exists
+        has_json = _check_pir_model_exists(path_prefix, kwargs.get("model_filename"))
+        has_pdmodel = enable_fallback and _should_try_legacy_fallback(
             path_prefix, kwargs.get("model_filename")
-        ):
+        )
+
+        # Load .json (PIR format) if exists
+        if has_json:
+            return load_inference_model_pir(path_prefix, executor, **kwargs)
+
+        # Fallback to .pdmodel (legacy format) if enabled
+        if has_pdmodel:
             return _load_inference_model_legacy_impl(
                 path_prefix, executor, **kwargs
             )
 
-        # Validate PIR model file existence before loading
-        if path_prefix is not None:
-            _check_pir_model_exists(path_prefix, kwargs.get('model_filename'))
+        # No valid model found
+        normalized_prefix = _normalize_path_prefix(path_prefix)
+        raise FileNotFoundError(
+            f"Model file not found at '{normalized_prefix}'. "
+            f"Expected .json or .pdmodel format."
+        )
 
-        # Default: use PIR mode
-        return load_inference_model_pir(path_prefix, executor, **kwargs)
-
-    # OldIR mode: always use legacy implementation
+    # Legacy mode
     return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
 
 

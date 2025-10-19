@@ -197,8 +197,8 @@ class TestPdmodelCompatibility(unittest.TestCase):
         )
         self._verify_loaded_model(program, feed_names, fetch_targets)
 
-    def test_pdmodel_priority_over_json(self):
-        """Test .pdmodel priority over .json when both files exist"""
+    def test_json_priority_over_pdmodel(self):
+        """Test .json priority over .pdmodel when both files exist"""
         pdmodel_path = self._create_model('pdmodel', '_priority')
         json_path = self._create_model('json', '_json')
         priority_path = os.path.join(self.temp_dir.name, "priority_test")
@@ -225,7 +225,7 @@ class TestPdmodelCompatibility(unittest.TestCase):
         program, feed_names, fetch_targets = load_inference_model(
             priority_path, self.exe
         )
-        # Should prioritize .pdmodel format
+        # Should prioritize .json format (PIR format is preferred)
         self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
 
     def test_pir_mode_loads_json_normally(self):
