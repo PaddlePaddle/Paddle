@@ -2455,8 +2455,10 @@ struct LogSigmoidFunctor<ComplexType<T>>
   void operator()(Device d, X x, Out out) const {
     // For complex numbers, use the direct formula: log(1 / (1 + exp(-x)))
     // This is mathematically correct for complex numbers
-    ComplexType<T> one = static_cast<ComplexType<T>>(1);
-    out.device(d) = (one / (one + (-x).exp())).log();
+    ComplexType<T> one = ComplexType<T>(T(1), T(0));
+    // Cache exp(-x) to avoid redundant computation
+    auto exp_neg_x = (-x).exp();
+    out.device(d) = (one / (one + exp_neg_x)).log();
   }
 };
 
@@ -2490,9 +2492,10 @@ struct LogSigmoidGradFunctor<ComplexType<T>>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
     // For complex numbers, use the direct formula: d/dx log(1/(1+exp(-x))) =
     // exp(-x)/(1+exp(-x))
-    ComplexType<T> one = static_cast<ComplexType<T>>(1);
-    dx.device(d) =
-        dout * ((-x).exp() / (one + (-x).exp())).unaryExpr(Conj<T>());
+    ComplexType<T> one = ComplexType<T>(T(1), T(0));
+    // Cache exp(-x) to avoid redundant computation
+    auto exp_neg_x = (-x).exp();
+    dx.device(d) = dout * (exp_neg_x / (one + exp_neg_x)).unaryExpr(Conj<T>());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -5138,13 +5141,14 @@ struct CudaLogSigmoidFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaLogSigmoidFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
-  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+  ComplexType<T> one = ComplexType<T>(T(1), T(0));
 
   // For complex numbers, use the direct formula: log(1 / (1 + exp(-x)))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_x) const {
     ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
-    return log(one / (one + exp(-x)));
+    auto exp_neg_x = exp(-x);  // Cache exp(-x) to avoid redundant computation
+    return log(one / (one + exp_neg_x));
   }
 };
 
@@ -5179,7 +5183,7 @@ struct CudaLogSigmoidGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaLogSigmoidGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
-  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+  ComplexType<T> one = ComplexType<T>(T(1), T(0));
 
   // For complex numbers, use the direct formula: d/dx log(1/(1+exp(-x))) =
   // exp(-x)/(1+exp(-x))
@@ -5187,7 +5191,8 @@ struct CudaLogSigmoidGradFunctor<ComplexType<T>>
       const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
     ComplexType<T> dout = static_cast<ComplexType<T>>(arg_dout);
     ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
-    return dout * conj(exp(-x) / (one + exp(-x)));
+    auto exp_neg_x = exp(-x);  // Cache exp(-x) to avoid redundant computation
+    return dout * conj(exp_neg_x / (one + exp_neg_x));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
