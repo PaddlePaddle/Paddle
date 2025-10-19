@@ -309,16 +309,20 @@ class TestPdmodelCompatibility(unittest.TestCase):
         self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
 
     def test_fallback_from_invalid_pdmodel_to_json(self):
-        """Test fallback from invalid .pdmodel to valid .json"""
+        """Test that invalid .pdmodel raises error when fallback is enabled"""
         json_path = self._create_model('json', '_fallback')
+        # Create an invalid .pdmodel file
         with open(json_path + ".pdmodel", 'w') as f:
             f.write("# Invalid pdmodel content")
 
-        program, feed_names, fetch_targets = load_inference_model(
-            json_path, self.exe
-        )
-        # Should fallback to json
-        self._verify_loaded_model(program, feed_names, fetch_targets, 'x')
+        # When fallback is enabled and .pdmodel exists but is invalid,
+        # it should raise an error rather than silently fallback
+        os.environ['PADDLE_ENABLE_PDMODEL_FALLBACK'] = '1'
+        try:
+            with self.assertRaises((ValueError, RuntimeError)):
+                load_inference_model(json_path, self.exe)
+        finally:
+            os.environ.pop('PADDLE_ENABLE_PDMODEL_FALLBACK', None)
 
     def test_no_model_files_error(self):
         """Test proper error handling when model files don't exist"""

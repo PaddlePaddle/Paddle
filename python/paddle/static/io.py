@@ -1135,14 +1135,9 @@ def load_inference_model(
         if enable_fallback and _should_try_legacy_fallback(
             path_prefix, kwargs.get("model_filename")
         ):
-            try:
-                return _load_inference_model_legacy_impl(
-                    path_prefix, executor, **kwargs
-                )
-            except (ValueError, TypeError) as e:
-                _logger.warning(
-                    f"Failed to load legacy model: {e}. Falling back to PIR mode."
-                )
+            return _load_inference_model_legacy_impl(
+                path_prefix, executor, **kwargs
+            )
 
         # Validate PIR model file existence before loading
         if path_prefix is not None:
