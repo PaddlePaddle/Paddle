@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/phi/common/data_type.h"
-#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
+#if PADDLE_WITH_CUSPARSELT && defined(PADDLE_WITH_TENSORRT)
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 #endif
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
@@ -245,7 +245,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
 
 TEST_F(TensorRTDynamicEngineTest, test_spmm) {
   // Weight in CPU memory.
-#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
+#if PADDLE_WITH_CUSPARSELT && defined(PADDLE_WITH_TENSORRT)
   float16 raw_weight[512];
   for (int i = 0; i < 128; i++) {
     if (i % 16 <= 7) {
@@ -424,7 +424,7 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
 };
 
 TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
-#if IS_TRT_VERSION_GE(8000)
+#if defined(PADDLE_WITH_TENSORRT)
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kFLOAT, nvinfer1::Dims2{-1, 4});
   auto *x = engine_->DeclareInput(
@@ -626,7 +626,7 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
 };
 
 TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
-#if IS_TRT_VERSION_GE(8000)
+#if defined(PADDLE_WITH_TENSORRT)
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kHALF, nvinfer1::Dims2{-1, 4});
   auto *x = engine_->DeclareInput(
@@ -746,7 +746,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   LOG(INFO) << "finish";
 #endif
 }
-#if IS_TRT_VERSION_GE(8000)
+#if defined(PADDLE_WITH_TENSORRT)
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   void SetUp() override {
