@@ -956,12 +956,12 @@ def _load_inference_model_legacy_impl(
 
     feed_target_names = program.desc.get_feed_target_names()
     fetch_target_names = program.desc.get_fetch_target_names()
-    
+
     need_pir_conversion = (
         paddle.framework.in_pir_mode()
         or paddle.framework.in_pir_executor_mode()
     )
-    
+
     if need_pir_conversion:
         with paddle.pir_utils.IrGuard():
             program = paddle.pir.translate_to_pir(program.desc)
@@ -990,7 +990,7 @@ def _load_inference_model_legacy_impl(
         fetch_targets = [
             program.global_block().var(name) for name in fetch_target_names
         ]
-    
+
     return [program, feed_target_names, fetch_targets]
 
 

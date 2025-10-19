@@ -461,9 +461,8 @@ def has_fetch_operations_and_is_startup_program(
                     raise Exception(
                         f"Found fetch_target[{i}] is type(str) and doesn't have fetch op."
                     )
-            elif isinstance(fetch_var, Value):
-                if fetch_var not in ValueSet(fetch_info[0]):
-                    need_fetch_info.append(fetch_var)
+            elif fetch_var not in ValueSet(fetch_info[0]):
+                need_fetch_info.append(fetch_var)
 
     return need_fetch_info, is_startup_program
 
@@ -1117,11 +1116,10 @@ class _ExecutorCache:
         for i, fetch_var in enumerate(fetch_list):
             if isinstance(fetch_var, str):
                 update_fetch_list.append(fetch_var)
-            elif isinstance(fetch_var, Value):
+            else:
                 for value_map in value_map_list:
                     if value_map.has(fetch_var):
                         update_fetch_list.append(value_map.look_up(fetch_var))
-                        break
         return update_fetch_list
 
     def _get_pir_program_and_executor(self, cached_data):
