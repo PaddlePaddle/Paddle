@@ -1130,7 +1130,7 @@ def load_inference_model(
             path_prefix, kwargs.get("model_filename")
         )
 
-        # Load .json (PIR format) if exists
+        # Load .json if exists
         if has_json:
             return load_inference_model_pir(path_prefix, executor, **kwargs)
 
