@@ -4558,7 +4558,7 @@ def lstsq(
                 f"Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {driver}"
             )
         driver = "gelsy" if driver is None else driver
-    elif "gpu" in device:
+    elif device.startswith('gpu'):
         if driver not in (None, "gels"):
             raise ValueError(
                 f"Only support valid driver is 'gels' or None for CUDA inputs. But got {driver}"
