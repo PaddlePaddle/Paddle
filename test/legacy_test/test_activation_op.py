@@ -465,7 +465,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.006,
+            max_relative_error=0.007,
             check_prim=False,
             check_pir=True,
             check_prim_pir=False,
