@@ -1782,11 +1782,12 @@ PYBIND11_MODULE(libpaddle, m) {
   py::class_<MmapStorage>(m, "MmapStorage")  // class attr: base_ptr_, size_
       .def(py::init<const std::string &, int64_t>())  // filename_, nbytes
       .def("get_slice",
-           [](MmapStorage &self,
+           [](py::object self_obj,
               proto::VarType::Type dtype,
               int64_t start,
               int64_t stop,
               int64_t step) {
+             MmapStorage &self = self_obj.cast<MmapStorage &>();
              if (stop < 0) {
                stop = start + 1;  // default: get the start element.
              }
@@ -1798,11 +1799,16 @@ PYBIND11_MODULE(libpaddle, m) {
                  PySlice_AdjustIndices(size_py, &start_py, &stop_py, step_py);
              auto data = static_cast<uint8_t *>(self.base_ptr_) + start;
              auto dtype_phi = phi::TransToPhiDataType(dtype);
-             return from_blob(data,
-                              phi::IntArray({slicelength}),
-                              dtype_phi,
-                              phi::DataLayout::NCHW,
-                              phi::CPUPlace());
+             return from_blob(
+                 data,
+                 phi::IntArray({slicelength}),
+                 dtype_phi,
+                 phi::DataLayout::NCHW,
+                 phi::CPUPlace(),
+                 [self_obj = std::move(self_obj)](void *ptr) mutable {
+                   pybind11::gil_scoped_acquire gil;
+                   self_obj.dec_ref();
+                 });
            });
   m.def(
       "frombuffer",
