@@ -38,6 +38,16 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}"
 include_directories(${ONEDNN_INC_DIR}
 )# For oneDNN code to include internal headers.
 
+# For CMake >= 4.0.0, set policy compatibility for oneDNN's CMake.
+set(ONEDNN_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "oneDNN: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(ONEDNN_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+
 if(NOT WIN32)
   set(ONEDNN_FLAG
       "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-error=array-bounds"
@@ -87,6 +97,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DDNNL_BUILD_TESTS=OFF
              -DDNNL_BUILD_EXAMPLES=OFF
+             ${ONEDNN_POLICY_ARGS}
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${ONEDNN_INSTALL_DIR}
   BUILD_BYPRODUCTS ${BUILD_BYPRODUCTS_ARGS})
 

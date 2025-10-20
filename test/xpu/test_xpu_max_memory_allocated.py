@@ -68,5 +68,54 @@ class TestMaxMemoryAllocated(unittest.TestCase):
                 max_memory_allocated()
 
 
+class TestMaxMemoryAllocated_paddle_device(unittest.TestCase):
+    def func_test_max_memory_allocated(self, device=None):
+        if core.is_compiled_with_xpu():
+            alloc_time = 100
+            max_alloc_size = 10000
+            peak_memory_allocated_size = paddle.device.max_memory_allocated(
+                device
+            )
+            for i in range(alloc_time):
+                shape = paddle.randint(max_alloc_size)
+                tensor = paddle.zeros(shape)
+                peak_memory_allocated_size = max(
+                    peak_memory_allocated_size,
+                    paddle.device.memory_allocated(device),
+                )
+                del shape
+                del tensor
+
+            self.assertEqual(
+                peak_memory_allocated_size,
+                paddle.device.max_memory_allocated(device),
+            )
+
+    def test_max_memory_allocated_for_all_places(self):
+        if core.is_compiled_with_xpu():
+            xpu_num = paddle.device.device_count()
+            for i in range(xpu_num):
+                paddle.device.set_device("xpu:" + str(i))
+                self.func_test_max_memory_allocated(core.XPUPlace(i))
+                self.func_test_max_memory_allocated(i)
+                self.func_test_max_memory_allocated("xpu:" + str(i))
+
+    def test_max_memory_allocated_exception(self):
+        if core.is_compiled_with_xpu():
+            wrong_device = [
+                core.CPUPlace(),
+                paddle.device.device_count() + 1,
+                -2,
+                0.5,
+                "xpu1",
+            ]
+            for device in wrong_device:
+                with self.assertRaises(BaseException):  # noqa: B017
+                    paddle.device.max_memory_allocated(device)
+        else:
+            with self.assertRaises(ValueError):
+                paddle.device.max_memory_allocated()
+
+
 if __name__ == "__main__":
     unittest.main()

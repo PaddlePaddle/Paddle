@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_layernorm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"

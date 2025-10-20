@@ -52,7 +52,7 @@ def parse_args():
         '--onednn_cache_capacity',
         type=int,
         default=0,
-        help='Mkldnn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.',
+        help='Onednn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.',
     )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
@@ -200,7 +200,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         return hx_acc, ctc_acc, fps
 
     def test_lstm_model(self):
-        if not core.is_compiled_with_mkldnn():
+        if not core.is_compiled_with_onednn():
             return
 
         fp32_model = test_case_args.fp32_model

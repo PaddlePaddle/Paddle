@@ -966,8 +966,6 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::deserializePlugin(
   return plugin;
 }
 
-#if IS_TRT_VERSION_GE(6000)
-
 DeformableConvPluginDynamic::DeformableConvPluginDynamic(
     const nvinfer1::DataType data_type,
     const nvinfer1::Weights& weights,
@@ -1870,7 +1868,6 @@ PIRDeformableConvPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

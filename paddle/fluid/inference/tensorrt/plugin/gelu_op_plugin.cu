@@ -133,9 +133,6 @@ int GeluPlugin::enqueue(int batch_size,
   return cudaGetLastError() != cudaSuccess;
 }
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 nvinfer1::DimsExprs GeluPluginDynamic::getOutputDimensions(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -223,7 +220,6 @@ int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   }
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

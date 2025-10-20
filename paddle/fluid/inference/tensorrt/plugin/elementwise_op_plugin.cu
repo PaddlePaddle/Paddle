@@ -211,9 +211,6 @@ int ElementWisePlugin::enqueue(int batch_size,
   return cudaGetLastError() != cudaSuccess;
 }
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 int ElementwisePluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 size_t ElementwisePluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
@@ -347,7 +344,6 @@ int ElementwisePluginDynamic::enqueue(
 
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

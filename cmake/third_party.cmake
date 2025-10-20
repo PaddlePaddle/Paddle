@@ -494,8 +494,7 @@ if(WITH_GPU)
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
-      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR1}"
-      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR2}")
+      COMMENT "Copy directory from ${SRC_DIR} to ${DST_DIR1} and ${DST_DIR2}")
   endif()
 endif()
 

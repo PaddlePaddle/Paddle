@@ -3921,6 +3921,43 @@ struct SyncCommStreamOpTranscriber : public OpTranscriber {
   }
 };
 
+struct SoftPlusOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (legacy_attr_name == "beta" || legacy_attr_name == "threshold") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      } else {
+        this->HandleNonexistentAttribute(ctx, &attribute_map, info);
+      }
+    }
+    return attribute_map;
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -4033,5 +4070,7 @@ OpTranslator::OpTranslator() {
       WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
 
   special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
+  special_handlers["softplus"] = SoftPlusOpTranscriber();
+  special_handlers["softplus_grad"] = SoftPlusOpTranscriber();
 }
 }  // namespace paddle::translator

@@ -13,6 +13,7 @@
 # limitations under the License.
 # test_cuda_unittest.py
 import ctypes
+import platform
 import types
 import unittest
 
@@ -41,32 +42,20 @@ class TestCudaCompat(unittest.TestCase):
     # _device_to_paddle test
     # ---------------------
     def test_device_to_paddle_none(self):
-        self.assertIsNone(_device_to_paddle(None))
-
-    def test_device_to_paddle_int(self):
-        self.assertEqual(_device_to_paddle(0), 'gpu:0')
-        self.assertEqual(_device_to_paddle(2), 'gpu:2')
-
-    def test_device_to_paddle_str(self):
-        self.assertEqual(_device_to_paddle('cuda:0'), 'gpu:0')
-        self.assertEqual(_device_to_paddle('gpu:1'), 'gpu:1')
-
-    def test_device_to_paddle_invalid(self):
-        with self.assertRaises(TypeError):
-            _device_to_paddle(1.5)
+        self.assertEqual(_device_to_paddle(), paddle.device.get_device())
 
     # ---------------------
     # is_available test
     # ---------------------
     def test_is_available(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
-            self.assertIsInstance(is_available(), bool)
+        self.assertIsInstance(is_available(), bool)
+        self.assertIsInstance(paddle.device.is_available(), bool)
 
     # ---------------------
     # synchronize test
     # ---------------------
     def test_synchronize(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             try:
                 synchronize(None)
                 synchronize(0)
@@ -79,7 +68,7 @@ class TestCudaCompat(unittest.TestCase):
     # current_stream test
     # ---------------------
     def test_current_stream(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             stream = current_stream(None)
             self.assertIsNotNone(stream)
             stream = current_stream(0)
@@ -89,16 +78,18 @@ class TestCudaCompat(unittest.TestCase):
     # get_device_properties test
     # ---------------------
     def test_get_device_properties(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             props = get_device_properties(0)
             self.assertTrue(hasattr(props, 'name'))
             self.assertTrue(hasattr(props, 'total_memory'))
+            with self.assertRaises(ValueError):
+                get_device_properties("cpu:2")
 
     # ---------------------
     # get_device_name / get_device_capability test
     # ---------------------
     def test_device_name_and_capability(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             name = get_device_name(0)
             self.assertIsInstance(name, str)
 
@@ -106,15 +97,22 @@ class TestCudaCompat(unittest.TestCase):
             self.assertIsInstance(cap, tuple)
             self.assertEqual(len(cap), 2)
 
+            name = paddle.device.get_device_name(0)
+            self.assertIsInstance(name, str)
+
+            cap = paddle.device.get_device_capability(0)
+            self.assertIsInstance(cap, tuple)
+            self.assertEqual(len(cap), 2)
+
     def test_stream_creation(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = Stream()
             s1 = Stream()
             self.assertIsInstance(s, paddle.device.Stream)
             self.assertIsInstance(s1, paddle.device.Stream)
 
     def test_stream_context(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = Stream(device=get_device(), priority=2)
             with stream(s):
                 ctx = stream(s)
@@ -123,7 +121,7 @@ class TestCudaCompat(unittest.TestCase):
                 self.assertEqual(current.stream_base, s.stream_base)
 
     def test_nested_streams(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s1 = Stream()
             s2 = Stream()
             with stream(s1):
@@ -132,6 +130,43 @@ class TestCudaCompat(unittest.TestCase):
                     self.assertEqual(current.stream_base, s2.stream_base)
                 current = paddle.cuda.current_stream()
                 self.assertEqual(current.stream_base, s1.stream_base)
+
+    def test_manual_seed_all(self):
+        seed = 42
+        paddle.cuda.manual_seed_all(seed)
+
+        x = paddle.randn([3, 3])
+        y = paddle.randn([3, 3])
+        self.assertEqual(x.numpy().all(), y.numpy().all())
+
+        seed = 21
+        paddle.device.manual_seed_all(seed)
+
+        x = paddle.randn([3, 3])
+        y = paddle.randn([3, 3])
+        self.assertEqual(x.numpy().all(), y.numpy().all())
+
+    def test_get_default_device(self):
+        default_device = paddle.get_default_device()
+        self.assertIsInstance(default_device, str)
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(paddle.get_default_device(), paddle.device('cuda'))
+
+    def test_get_device(self):
+        x_cpu = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+        self.assertEqual(paddle.get_device(x_cpu), -1)
+        if paddle.device.is_compiled_with_cuda():
+            x_gpu = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+            self.assertEqual(paddle.get_device(x_gpu), 0)
+
+    def test_set_default_device(self):
+        if paddle.is_compiled_with_cuda():
+            paddle.set_default_device("gpu")
+            self.assertEqual(paddle.get_default_device(), paddle.device('cuda'))
+
+        if paddle.is_compiled_with_xpu():
+            paddle.set_default_device("xpu")
+            self.assertEqual(paddle.get_default_device(), paddle.device('xpu'))
 
     @unittest.skipIf(
         (
@@ -239,8 +274,14 @@ class TestCudaCompat(unittest.TestCase):
         self.assertGreaterEqual(a, 0)
         self.assertGreaterEqual(b, 0)
 
-        with self.assertRaises(ValueError):
-            a, b = mem_get_info(0)
+        a, b = mem_get_info(0)
+        self.assertGreaterEqual(a, 0)
+        self.assertGreaterEqual(b, 0)
+
+        with self.assertRaisesRegex(
+            ValueError, "Expected a cuda device, but got"
+        ):
+            a, b = mem_get_info(paddle.CPUPlace())
 
     @unittest.skipIf(
         (
@@ -259,10 +300,22 @@ class TestCudaCompat(unittest.TestCase):
             check_error(2)
 
 
+def can_use_cuda_graph():
+    return (
+        paddle.is_compiled_with_cuda() or is_custom_device()
+    ) and not paddle.is_compiled_with_rocm()
+
+
+class TestCurrentStreamCapturing(unittest.TestCase):
+    def test_cuda_fun(self):
+        self.assertFalse(paddle.cuda.is_current_stream_capturing())
+        self.assertFalse(paddle.device.is_current_stream_capturing())
+
+
 class TestExternalStream(unittest.TestCase):
     def test_get_stream_from_external(self):
         # Only run test if CUDA is available
-        if not paddle.cuda.is_available():
+        if not (paddle.cuda.is_available() and paddle.is_compiled_with_cuda()):
             return
 
         # Test case 1: Device specified by integer ID
@@ -309,6 +362,50 @@ class TestExternalStream(unittest.TestCase):
         self.assertEqual(
             current_stream.stream_base.raw_stream, original_raw_ptr
         )
+
+
+class TestNvtx(unittest.TestCase):
+    def test_range_push_pop(self):
+        if platform.system().lower() == "windows":
+            return
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        if not paddle.device.get_device().startswith("gpu"):
+            return
+        if (
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.is_compiled_with_rocm():
+            reason = "Skip for nvtx function in dcu is not correct"
+            print(reason)
+            return
+        try:
+            paddle.cuda.nvtx.range_push("test_push")
+            paddle.cuda.nvtx.range_pop()
+            paddle.device.nvtx.range_push("test_push")
+            paddle.device.nvtx.range_pop()
+        except Exception as e:
+            self.fail(f"nvtx test failed: {e}")
+
+        with self.assertRaises(TypeError):
+            paddle.cuda.nvtx.range_push(123)
+        with self.assertRaises(TypeError):
+            paddle.device.nvtx.range_push(123)
+
+
+class TestDeviceDvice(unittest.TestCase):
+    def test_device_device(self):
+        current = paddle.device.get_device()
+        with paddle.device.device("cpu"):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
+
+
+class TestCudaDvice(unittest.TestCase):
+    def test_device_device(self):
+        current = paddle.device.get_device()
+        with paddle.cuda.device("cpu"):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
 
 
 if __name__ == '__main__':

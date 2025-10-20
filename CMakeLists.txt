@@ -17,7 +17,7 @@ if(APPLE AND WITH_ARM)
   cmake_minimum_required(VERSION 3.19.2)
   cmake_policy(VERSION 3.19.2)
 else()
-  cmake_minimum_required(VERSION 3.15)
+  cmake_minimum_required(VERSION 3.18)
   cmake_policy(VERSION 3.10)
 endif()
 # use modern CMake target handling, disable deprecated LOCATION property
@@ -373,9 +373,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.8)
-elseif(${PY_VERSION} VERSION_LESS 3.8)
-  message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
+  set(PY_VERSION 3.9)
+elseif(${PY_VERSION} VERSION_LESS 3.9)
+  message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 

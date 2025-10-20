@@ -68,5 +68,54 @@ class TestMaxMemoryreserved(unittest.TestCase):
                 max_memory_reserved()
 
 
+class TestMaxMemoryreserved_paddle_device(unittest.TestCase):
+    def test_max_memory_reserved(self, device=None):
+        if core.is_compiled_with_xpu():
+            alloc_time = 100
+            max_alloc_size = 10000
+            peak_memory_reserved_size = paddle.device.max_memory_reserved(
+                device
+            )
+            for i in range(alloc_time):
+                shape = paddle.randint(max_alloc_size)
+                tensor = paddle.zeros(shape)
+                peak_memory_reserved_size = max(
+                    peak_memory_reserved_size,
+                    paddle.device.memory_reserved(device),
+                )
+                del shape
+                del tensor
+
+            self.assertEqual(
+                peak_memory_reserved_size,
+                paddle.device.max_memory_reserved(device),
+            )
+
+    def test_max_memory_reserved_for_all_places(self):
+        if core.is_compiled_with_xpu():
+            xpu_num = paddle.device.device_count()
+            for i in range(xpu_num):
+                paddle.device.set_device("xpu:" + str(i))
+                self.test_max_memory_reserved(core.XPUPlace(i))
+                self.test_max_memory_reserved(i)
+                self.test_max_memory_reserved("xpu:" + str(i))
+
+    def test_max_memory_reserved_exception(self):
+        if core.is_compiled_with_xpu():
+            wrong_device = [
+                core.CPUPlace(),
+                paddle.device.device_count() + 1,
+                -2,
+                0.5,
+                "xpu1",
+            ]
+            for device in wrong_device:
+                with self.assertRaises(BaseException):  # noqa: B017
+                    paddle.device.max_memory_reserved(device)
+        else:
+            with self.assertRaises(ValueError):
+                paddle.device.max_memory_reserved()
+
+
 if __name__ == "__main__":
     unittest.main()

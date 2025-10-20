@@ -42,36 +42,36 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   auto eta_negative = etas.data<T>()[0];
   auto eta_positive = etas.data<T>()[1];
 
-  DenseTensor* grad_tensor = new DenseTensor();
-  grad_tensor->Resize(grad.dims());
-  dev_ctx.template Alloc<T>(grad_tensor);
-  phi::Copy<Context>(dev_ctx, grad, dev_ctx.GetPlace(), true, grad_tensor);
-  auto grad_eigen = EigenVector<T>::Flatten(*grad_tensor);
+  DenseTensor grad_tensor;
+  grad_tensor.Resize(grad.dims());
+  dev_ctx.template Alloc<T>(&grad_tensor);
+  phi::Copy<Context>(dev_ctx, grad, dev_ctx.GetPlace(), true, &grad_tensor);
+  auto grad_eigen = EigenVector<T>::Flatten(grad_tensor);
 
-  DenseTensor* product_tensor = new DenseTensor();
-  product_tensor->Resize(grad.dims());
-  dev_ctx.template Alloc<T>(product_tensor);
-  auto product_eigen = EigenVector<T>::Flatten(*product_tensor);
+  DenseTensor product_tensor;
+  product_tensor.Resize(grad.dims());
+  dev_ctx.template Alloc<T>(&product_tensor);
+  auto product_eigen = EigenVector<T>::Flatten(product_tensor);
 
-  DenseTensor* learning_rate_tensor = new DenseTensor();
-  learning_rate_tensor->Resize(learning_rate.dims());
-  dev_ctx.template Alloc<T>(learning_rate_tensor);
+  DenseTensor learning_rate_tensor;
+  learning_rate_tensor.Resize(learning_rate.dims());
+  dev_ctx.template Alloc<T>(&learning_rate_tensor);
   phi::Copy<Context>(
-      dev_ctx, learning_rate, dev_ctx.GetPlace(), true, learning_rate_tensor);
-  auto learning_rate_eigen = EigenVector<T>::Flatten(*learning_rate_tensor);
+      dev_ctx, learning_rate, dev_ctx.GetPlace(), true, &learning_rate_tensor);
+  auto learning_rate_eigen = EigenVector<T>::Flatten(learning_rate_tensor);
 
-  DenseTensor* eta_tensor = new DenseTensor();
-  eta_tensor->Resize(learning_rate.dims());
-  dev_ctx.template Alloc<T>(eta_tensor);
-  auto eta_eigen = EigenVector<T>::Flatten(*eta_tensor);
+  DenseTensor eta_tensor;
+  eta_tensor.Resize(learning_rate.dims());
+  dev_ctx.template Alloc<T>(&eta_tensor);
+  auto eta_eigen = EigenVector<T>::Flatten(eta_tensor);
 
   product_eigen = grad_eigen * prev_eigen;
-  T* product_data = product_tensor->data<T>();
-  T* grad_data = grad_tensor->data<T>();
-  T* eta_data = eta_tensor->data<T>();
+  T* product_data = product_tensor.data<T>();
+  T* grad_data = grad_tensor.data<T>();
+  T* eta_data = eta_tensor.data<T>();
   T zero = static_cast<T>(0);
   T one = static_cast<T>(1);
-  for (int i = 0, n = product_tensor->numel(); i < n; i++) {
+  for (int i = 0, n = product_tensor.numel(); i < n; i++) {
     if (product_data[i] > zero) {
       eta_data[i] = eta_positive;
     } else if (product_data[i] == zero) {
@@ -83,8 +83,8 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   }
 
   learning_rate_eigen = learning_rate_eigen * eta_eigen;
-  T* learning_rate_data = learning_rate_tensor->data<T>();
-  for (int i = 0, n = learning_rate_tensor->numel(); i < n; i++) {
+  T* learning_rate_data = learning_rate_tensor.data<T>();
+  for (int i = 0, n = learning_rate_tensor.numel(); i < n; i++) {
     if (learning_rate_data[i] > learning_rate_max) {
       learning_rate_data[i] = learning_rate_max;
     } else if (learning_rate_data[i] < learning_rate_min) {
@@ -95,9 +95,9 @@ void RpropKernelCPUImpl(const Context& dev_ctx,
   param_out_eigen = param_eigen - grad_eigen.sign() * learning_rate_eigen;
   prev_out_eigen = grad_eigen;
   learning_rate_out_eigen = learning_rate_eigen;
-  phi::Copy<Context>(dev_ctx, *grad_tensor, dev_ctx.GetPlace(), true, prev_out);
+  phi::Copy<Context>(dev_ctx, grad_tensor, dev_ctx.GetPlace(), true, prev_out);
   phi::Copy<Context>(dev_ctx,
-                     *learning_rate_tensor,
+                     learning_rate_tensor,
                      dev_ctx.GetPlace(),
                      true,
                      learning_rate_out);

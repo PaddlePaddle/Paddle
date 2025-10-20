@@ -50,9 +50,10 @@ __global__ void KeLocalStats(
   for (int k = blockIdx.x; k < C; k += gridDim.x) {
     BatchNormParamType<T> x_sum = 0.;
     BatchNormParamType<T> x2_sum = 0.;
-    for (int i = threadIdx.x; i < N * M; i += BlockDim) {
-      int id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
-                                           : i * C + k;
+    for (int64_t i = threadIdx.x; i < static_cast<int64_t>(N) * M;
+         i += BlockDim) {
+      int64_t id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
+                                               : i * C + k;
       auto x_in = static_cast<BatchNormParamType<T>>(x[id]);
       x_sum += x_in;
       x2_sum += x_in * x_in;
@@ -114,11 +115,11 @@ static __global__ void KeNormAffine(const T *x,
                                     const double epsilon,
                                     const int C,
                                     const int M,
-                                    const int num,
+                                    const int64_t num,
                                     T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  for (int i = gid; i < num; i += stride) {
+  for (int64_t i = gid; i < num; i += stride) {
     const int c = layout == DataLayout::kNCHW ? (i / M) % C : i % C;
     auto x_i = static_cast<BatchNormParamType<T>>(x[i]);
     auto y_i =
@@ -276,13 +277,13 @@ static __global__ void KeBNBackwardScaleBias2D(
     const double epsilon,
     const int N,
     const int C,
-    const int HxW,
+    const int64_t HxW,
     BatchNormParamType<T> *block_data_ptr,
     int *flag_ptr,
     BatchNormParamType<T> *dscale,
     BatchNormParamType<T> *dbias) {
   const int outer_size = C;
-  const int inner_size = N * HxW;
+  const int64_t inner_size = N * HxW;
   __shared__ BatchNormParamType<T> smem_sum[BlockDim];
   __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
 
@@ -293,11 +294,11 @@ static __global__ void KeBNBackwardScaleBias2D(
 
     auto inv_var_i = inv_variance[i];
     auto mean_i = mean[i];
-    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
          j += gridDim.y * blockDim.y) {
-      const int id = layout == DataLayout::kNCHW
-                         ? ((j / HxW) * C + i) * HxW + (j % HxW)
-                         : j * outer_size + i;
+      const int64_t id = layout == DataLayout::kNCHW
+                             ? ((j / HxW) * C + i) * HxW + (j % HxW)
+                             : j * outer_size + i;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
       auto dy_i = static_cast<BatchNormParamType<T>>(dy[id]);
       ds_sum += dy_i * (x_i - mean_i);
@@ -338,12 +339,12 @@ static __global__ void KeBNRestoreData(T *x,
                                        const double epsilon,
                                        int C,
                                        int M,
-                                       int num,
+                                       int64_t num,
                                        const T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  for (int i = gid; i < num; i += stride) {
-    const int c = layout == DataLayout::kNCHW ? (i / M) % C : i % C;
+  for (int64_t i = gid; i < num; i += stride) {
+    const int64_t c = layout == DataLayout::kNCHW ? (i / M) % C : i % C;
     auto y_i = static_cast<BatchNormParamType<T>>(y[i]);
     auto x_i = (y_i - bias[c]) / scale[c] / sv_inv[c] + mean[c];
     x[i] = static_cast<T>(x_i);
@@ -362,15 +363,15 @@ static __global__ void KeBNBackwardData(
     const BatchNormParamType<T> *num_dev,
     const double epsilon,
     const int C,
-    const int HxW,
-    const int num,
+    const int64_t HxW,
+    const int64_t num,
     T *dx) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   auto scale = static_cast<BatchNormParamType<T>>(C) / num;
   auto dev_num = num_dev[0];
-  for (int i = gid; i < num; i += stride) {
-    const int c = layout == DataLayout::kNCHW ? i / HxW % C : i % C;
+  for (int64_t i = gid; i < num; i += stride) {
+    const int64_t c = layout == DataLayout::kNCHW ? i / HxW % C : i % C;
     auto inv_var = inv_variance[c];
     auto s_d = gamma[c];
     auto gvar =
@@ -437,7 +438,7 @@ void SyncBatchNormGradFunctor(
                     common::errors::InvalidArgument(
                         "The Input X dim size should be less than 6."));
 
-  int N, C, H, W, D;
+  int64_t N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
   PADDLE_ENFORCE_EQ(scale.dims()[0],
                     C,
@@ -458,14 +459,22 @@ void SyncBatchNormGradFunctor(
                         "OP(sync_batch_norm) be (1), but given (%d).",
                         scale.dims().size()));
 
-  std::vector<int> dims;
-  std::vector<int> strides;
+  std::vector<int64_t> dims;
+  std::vector<int64_t> strides;
   if (layout == DataLayout::kNCHW) {
     dims = {N, C, H, W, D};
-    strides = {C * H * W * D, H * W * D, W * D, D, 1};
+    strides = {static_cast<int64_t>(C) * H * W * D,
+               static_cast<int64_t>(H) * W * D,
+               static_cast<int64_t>(W) * D,
+               D,
+               1};
   } else {
     dims = {N, C, H, W, D};
-    strides = {H * W * C * D, 1, W * D * C, D * C, C};
+    strides = {static_cast<int64_t>(H) * W * C * D,
+               1,
+               static_cast<int64_t>(W) * D * C,
+               static_cast<int64_t>(D) * C,
+               C};
   }
   const T *x_d = x->data<T>();
   auto px = *x;
@@ -486,9 +495,9 @@ void SyncBatchNormGradFunctor(
 
   const int block = 512;
   const int threads = 256;
-  int x_numel = x->numel();
-  int fsize = H * W * D;
-  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  int64_t x_numel = x->numel();
+  int64_t fsize = H * W * D;
+  int64_t max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int grid = std::min(C, (max_threads + threads - 1) / threads);
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
 

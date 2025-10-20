@@ -61,7 +61,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
                         "The Input dim size should be less than 6."));
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
-  int x_numel = x.numel();
+  int64_t x_numel = x.numel();
 
   const T* x_d = x.template data<T>();
   const auto* s_d = scale.template data<BatchNormParamType<T>>();
@@ -119,8 +119,9 @@ void SyncBatchNormKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     int64_t reserve_space_size = 0;
+    phi::DenseTensor tmp_reserve_space;
     if (reserve_space == nullptr) {
-      reserve_space = new DenseTensor();
+      reserve_space = &tmp_reserve_space;
     }
     reserve_space->Resize({reserve_space_size});
     dev_ctx.template Alloc<T>(reserve_space);
@@ -143,7 +144,9 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     var_data = stats + C;
   }
 
-  int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
+  int grid2 =
+      (std::min(x_numel, static_cast<int64_t>(max_threads)) + block - 1) /
+      block;
   if (layout == phi::DataLayout::kNCHW) {
     KeNormAffine<T, phi::DataLayout::kNCHW>
         <<<grid2, block, 0, stream>>>(x_d,
