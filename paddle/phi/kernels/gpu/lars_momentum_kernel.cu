@@ -92,7 +92,7 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
                                            const MT rescale_grad,
                                            const int tid,
                                            const int grid_stride,
-                                           const int numel,
+                                           const int64_t numel,
                                            MT* master_param_out = nullptr) {
   using VecType = phi::AlignedVector<T, VecSize>;
   using VecMType = phi::AlignedVector<MT, VecSize>;
@@ -133,7 +133,7 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
     }
   }
 
-  for (int i = tid + tail_offset; i < numel; i += grid_stride) {
+  for (int64_t i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad_val = static_cast<MT>(grad[i]) * rescale_grad;
     MT param_val = param[i];
     MT velocity_tmp =

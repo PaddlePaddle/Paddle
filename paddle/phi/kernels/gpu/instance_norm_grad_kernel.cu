@@ -32,10 +32,10 @@ static __global__ void GradComputeDX(const T *dy,
                                      const T *x,
                                      const BatchNormParamType<T> *variance,
                                      const int C,
-                                     const int sample_size,
+                                     const int64_t sample_size,
                                      T *dx) {
-  int beg_idx = blockIdx.x * sample_size + threadIdx.x;
-  int end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t beg_idx = blockIdx.x * sample_size + threadIdx.x;
+  int64_t end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
   BatchNormParamType<T> mean_val = mean[ncid];
@@ -49,7 +49,7 @@ static __global__ void GradComputeDX(const T *dy,
   BatchNormParamType<T> dy_x_sub_mean_sum =
       static_cast<BatchNormParamType<T>>(0);
 
-  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+  for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
     BatchNormParamType<T> dy_i = static_cast<BatchNormParamType<T>>(dy[i]);
     dy_sum += dy_i;
     dy_x_sub_mean_sum +=
@@ -63,7 +63,7 @@ static __global__ void GradComputeDX(const T *dy,
     dy_x_sub_mean_sum_val = dy_x_sub_mean_sum;
   }
   __syncthreads();
-  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+  for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
     dx[i] = static_cast<T>(
         (static_cast<BatchNormParamType<T>>(dy[i]) -
          dy_sum_val / static_cast<BatchNormParamType<T>>(sample_size) -
@@ -89,11 +89,11 @@ __global__ void DoubleGradComputeDX(const T *x,
                                     const AccT *scale,
                                     const AccT *ddscale,
                                     int C,
-                                    int sample_size,
+                                    int64_t sample_size,
                                     const double epsilon,
                                     T *dx) {
-  int beg_idx = blockIdx.x * sample_size + threadIdx.x;
-  int end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t beg_idx = blockIdx.x * sample_size + threadIdx.x;
+  int64_t end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
 
@@ -117,7 +117,7 @@ __global__ void DoubleGradComputeDX(const T *x,
   AccT dy_mul_ddx_sum = 0;
   AccT dy_mul_x_sub_mean_sum = 0;
   AccT ddx_mul_x_sub_mean_sum = 0;
-  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+  for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
     AccT ddx_i = static_cast<AccT>(ddx[i]);
     AccT dy_i = static_cast<AccT>(dy[i]);
     AccT tmp = static_cast<AccT>(x[i]) - mean_val;
@@ -149,7 +149,7 @@ __global__ void DoubleGradComputeDX(const T *x,
   __syncthreads();
 
   if (ddx != nullptr) {
-    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
       AccT tmp = static_cast<AccT>(dx[i]);
       tmp +=
           ((static_cast<AccT>(x[i]) - mean_val) * var_val * var_val * var_val /
@@ -168,7 +168,7 @@ __global__ void DoubleGradComputeDX(const T *x,
   }
   __syncthreads();
   if (ddscale != nullptr) {
-    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
       AccT tmp = static_cast<AccT>(dx[i]);
       tmp += (static_cast<AccT>(dy[i]) * var_val -
               dy_sum_val / sample_size * var_val -
@@ -189,11 +189,11 @@ __global__ void DoubleGradComputeDDY(const T *x,
                                      const T *ddx,
                                      const AccT *scale,
                                      int C,
-                                     int sample_size,
+                                     int64_t sample_size,
                                      const double epsilon,
                                      T *ddy) {
-  int beg_idx = blockIdx.x * sample_size + threadIdx.x;
-  int end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t beg_idx = blockIdx.x * sample_size + threadIdx.x;
+  int64_t end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
   AccT mean_val = mean[ncid];
@@ -206,7 +206,7 @@ __global__ void DoubleGradComputeDDY(const T *x,
 
   AccT ddx_sum = 0;
   AccT ddx_mul_x_sub_mean_sum = 0;
-  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+  for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
     AccT ddx_i = static_cast<AccT>(ddx[i]);
     ddx_sum += ddx_i;
     ddx_mul_x_sub_mean_sum += (ddx_i * (static_cast<AccT>(x[i]) - mean_val));
@@ -220,7 +220,7 @@ __global__ void DoubleGradComputeDDY(const T *x,
   }
   __syncthreads();
   if (ddx != nullptr) {
-    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
       AccT tmp = static_cast<AccT>(ddy[i]);
       tmp += scale[c] * var_val *
              (static_cast<AccT>(ddx[i]) - ddx_sum_val / sample_size -
@@ -231,7 +231,7 @@ __global__ void DoubleGradComputeDDY(const T *x,
   }
   __syncthreads();
   if (ddscale != nullptr) {
-    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
       AccT tmp = static_cast<AccT>(ddy[i]);
       tmp += (static_cast<AccT>(x[i]) - mean_val) * var_val * ddscale[c];
       ddy[i] = static_cast<T>(tmp);
@@ -239,7 +239,7 @@ __global__ void DoubleGradComputeDDY(const T *x,
   }
   __syncthreads();
   if (ddbias != nullptr) {
-    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
       ddy[i] = static_cast<T>(static_cast<AccT>(ddy[i]) + ddbias[c]);
     }
   }
@@ -252,11 +252,11 @@ __global__ void DoubleGradComputeDScale(const T *x,
                                         const T *ddx,
                                         const T *dy,
                                         int C,
-                                        int sample_size,
+                                        int64_t sample_size,
                                         const double epsilon,
                                         AccT *dscale) {
-  int beg_idx = blockIdx.x * sample_size + threadIdx.x;
-  int end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t beg_idx = blockIdx.x * sample_size + threadIdx.x;
+  int64_t end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
   AccT mean_val = mean[ncid];
@@ -270,7 +270,7 @@ __global__ void DoubleGradComputeDScale(const T *x,
 
   AccT dy_sum = 0;
   AccT dy_mul_x_sub_mean_sum = 0;
-  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+  for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
     AccT dy_i = static_cast<AccT>(dy[i]);
     dy_sum += dy_i;
     dy_mul_x_sub_mean_sum += (dy_i * (static_cast<AccT>(x[i]) - mean_val));
@@ -286,7 +286,7 @@ __global__ void DoubleGradComputeDScale(const T *x,
   __syncthreads();
   if (ddx != nullptr) {
     AccT dscale_tmp = 0;
-    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
       dscale_tmp +=
           static_cast<AccT>(ddx[i]) * var_val *
           (static_cast<AccT>(dy[i]) - dy_sum_val / sample_size -
@@ -369,7 +369,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
                           scale_ptr->dims()));
   }
 
-  const int n = x.numel();
+  const int64_t n = x.numel();
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
@@ -560,8 +560,8 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
   int NxC = N * C;
-  const int n = x.numel();
-  int sample_size = n / N / C;
+  const int64_t n = x.numel();
+  int64_t sample_size = n / N / C;
 
   DenseTensor scale_tmp;
   if (!Scale) {

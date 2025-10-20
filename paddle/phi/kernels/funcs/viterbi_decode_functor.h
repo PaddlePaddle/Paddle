@@ -44,7 +44,7 @@ void SameDimsBinaryOP(const DenseTensor& lhs,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < out->numel(); ++i) {
+  for (int64_t i = 0; i < out->numel(); ++i) {
     out_ptr[i] = functor(lhs_ptr[i], rhs_ptr[i]);
   }
 }
@@ -100,7 +100,7 @@ void SimpleBroadcastBinaryOP(const DenseTensor& lhs,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < out->numel(); ++i) {
+  for (int64_t i = 0; i < out->numel(); ++i) {
     int lhs_idx = 0;
     int rhs_idx = 0;
     get_input_index(lhs_dims,
