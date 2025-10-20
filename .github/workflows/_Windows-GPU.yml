@@ -24,7 +24,7 @@ jobs:
     name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'win-gpu'
+      workflow-name: 'win-gpu-test'
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
