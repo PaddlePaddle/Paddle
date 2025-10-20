@@ -467,6 +467,60 @@ def is_custom_device():
     return False
 
 
+def check_cudnn_version_and_compute_capability(
+    min_cudnn_version=None, min_device_capability=None
+):
+    """
+    Check if the current environment meets the specified cuDNN version and device capability requirements.
+
+    Args:
+        min_cudnn_version (int, optional): Minimum required cuDNN version. If None, cuDNN version check is skipped.
+        min_device_capability (int, optional): Minimum required device capability. If None, device capability check is skipped.
+
+    Returns:
+        bool: True if the environment meets the requirements or if using custom device, False otherwise.
+    """
+    if is_custom_device():
+        return True
+
+    if not core.is_compiled_with_cuda():
+        return False
+
+    # Check cuDNN version if specified
+    cudnn_check = True
+    if min_cudnn_version is not None:
+        cudnn_check = core.cudnn_version() >= min_cudnn_version
+
+    # Check device capability if specified
+    device_check = True
+    if min_device_capability is not None:
+        device_check = (
+            paddle.device.cuda.get_device_capability()[0]
+            >= min_device_capability
+        )
+
+    return cudnn_check and device_check
+
+
+def get_cuda_version():
+    if paddle.is_compiled_with_cuda():
+        import re
+
+        result = os.popen("nvcc --version").read()
+        regex = r'release (\S+),'
+        match = re.search(regex, result)
+        if match:
+            num = str(match.group(1))
+            integer, decimal = num.split('.')
+            return int(integer) * 1000 + int(float(decimal) * 10)
+        else:
+            return -1
+    elif is_custom_device():
+        return 13000
+    else:
+        return -1
+
+
 @contextmanager
 def auto_parallel_test_guard(test_info_path, generated_test_file_path):
     test_info_file, generated_test_file = None, None

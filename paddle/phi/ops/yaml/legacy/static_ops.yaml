@@ -522,6 +522,20 @@
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : logit
+  args : (Tensor x, float eps = 1e-6f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : LogitInfoSpmd
+  kernel :
+    func : logit
+  inplace: (x -> out)
+  backward : logit_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
+
 - op : lp_pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
   output : Tensor(out)

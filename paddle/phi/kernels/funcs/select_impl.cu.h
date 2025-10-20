@@ -546,13 +546,13 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   int block = 64;
   auto stream = dev_ctx.x_context()->xpu_stream;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 8);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, static_cast<int64_t>(8));
 #else
   const int block = 256;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 256);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, static_cast<int64_t>(256));
   auto stream = dev_ctx.stream();
 #endif
   const int64_t main_offset = Floor(numel, num_per_block);
