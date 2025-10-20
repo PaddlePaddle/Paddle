@@ -113,7 +113,7 @@ __global__ void sampleMultinomialWithReplacement(
 #endif
 
   int sample = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
+  for (int64_t dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
     if (sample < num_samples) {
 #if defined(__NVCC__)
       T rng_number = static_cast<T>(curand_uniform4(&state).x);

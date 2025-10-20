@@ -52,7 +52,7 @@ __global__ void LookupTable(T *output,
         id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int64_t i = idx; i < D; i += BlockDimX) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
