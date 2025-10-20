@@ -38,9 +38,10 @@ static __global__ void GPUBoxClip(const T *input,
                  im_info[blockIdx.x * ImInfoSize + 2]);
   T im_h = round(im_info[blockIdx.x * ImInfoSize] /
                  im_info[blockIdx.x * ImInfoSize + 2]);
-  for (int i = threadIdx.x; i < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * width;
+  for (size_t i = threadIdx.x;
+       i < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * width;
        i += BlockSize) {
-    int idx = lod[blockIdx.x] * width + i;
+    size_t idx = lod[blockIdx.x] * width + i;
     T im_size = (idx % 2 == 0) ? im_w : im_h;
     output[idx] = max(min(input[idx], im_size - 1), T(0.));
   }

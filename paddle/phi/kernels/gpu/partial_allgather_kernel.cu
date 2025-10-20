@@ -72,7 +72,7 @@ void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   int64_t send_numel = numel / nranks;
-  int offset = send_numel * rank;
+  int64_t offset = send_numel * rank;
 
   auto send_buf = distributed::GetPartialTensor(*in, offset, send_numel);
   comm_ctx->AllGather(out, send_buf, stream);
