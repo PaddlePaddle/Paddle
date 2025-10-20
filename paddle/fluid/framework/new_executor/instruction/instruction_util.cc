@@ -162,6 +162,11 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
       return dev_ctx;
     }
 
+    // for cudagraph op
+    if (op->GetParentOp()->isa<paddle::dialect::CudaGraphOp>()) {
+      VLOG(4) << "CudaGraphOp detected, using original device context";
+      return origin_dev_ctx;
+    }
     // handle comm op
     if (op_attributes.count("ring_id") != 0) {
       int ring_id =
