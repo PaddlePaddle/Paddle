@@ -233,7 +233,7 @@ void DistributeFpnProposalsKernel(
                                             sizeof(int) * 8,
                                             dev_ctx.stream());
 
-  int start = 0;
+  size_t start = 0;
 
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
   memory_utils::Copy(phi::CPUPlace(),
@@ -248,13 +248,13 @@ void DistributeFpnProposalsKernel(
     DenseTensor sub_lod = sub_lod_list.Slice(i, i + 1);
     // transfer length-based lod to offset-based lod
     std::vector<size_t> offset(1, 0);
-    for (int j = 0; j < lod_size; ++j) {
+    for (size_t j = 0; j < lod_size; ++j) {
       offset.emplace_back(offset.back() + sub_lod_list_cpu[i * lod_size + j]);
     }
 
-    int sub_rois_num = offset.back();
+    int64_t sub_rois_num = offset.back();
 
-    int end = start + sub_rois_num;
+    size_t end = start + sub_rois_num;
     if (end > start) {
       DenseTensor sub_idx = index_out_t.Slice(start, end);
       start = end;

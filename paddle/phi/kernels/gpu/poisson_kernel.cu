@@ -49,13 +49,14 @@ void PoissonKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
-  const int size = x.numel();
+  const int64_t size = x.numel();
   const int kMaxBlockDim = 256;
 
   int block_size = std::min(kMaxBlockDim, dev_ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
-  dim3 dim_grid((size + block_size - 1) / block_size);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &dim_grid);
+  int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((size + block_size - 1) / block_size, grid_max);
+  dim3 dim_grid(grid);
 
   auto gen_cuda = dev_ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(20);

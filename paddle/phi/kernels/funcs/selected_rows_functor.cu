@@ -125,7 +125,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
   selected_rows += ty * row_numel;
   tensor_out += rows[ty] * row_numel;
 
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we can not use
     // tensor_out[index] += selected_rows[index]; Instead, we have to use
     // AtomicAdd to avoid concurrent write error.
@@ -278,7 +278,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
   selected_rows += ty * row_numel;
   tensor_out += rows[ty] * row_numel;
 
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
     phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
@@ -363,7 +363,7 @@ __global__ void MergeAddKernel(const T* input,
 
   input += ty * row_numel;
   out += out_idx * row_numel;
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     phi::CudaAtomicAdd(out + index, input[index]);
   }
 }
@@ -555,37 +555,37 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
   // FIXME(typhoonzero): use macro fix the below messy code.
   switch (op) {
     case ScatterOps::ASSIGN:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] = selected_rows[index];
       }
       break;
     case ScatterOps::ADD:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] += selected_rows[index];
       }
       break;
     case ScatterOps::SUB:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] -= selected_rows[index];
       }
       break;
     case ScatterOps::SUBBY:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] = selected_rows[index] - tensor_out[index];
       }
       break;
     case ScatterOps::MUL:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] *= selected_rows[index];
       }
       break;
     case ScatterOps::DIV:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] /= selected_rows[index];
       }
       break;
     case ScatterOps::DIVBY:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] = selected_rows[index] / tensor_out[index];
       }
       break;

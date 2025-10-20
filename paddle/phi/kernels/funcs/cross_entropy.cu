@@ -126,6 +126,14 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   int class_num = prob->dims()[1];
   constexpr int kMaxBlockDim = 512;
 
+  // big tensor currently not supported
+  PADDLE_ENFORCE_LE(out->numel(),
+                    (1LL << 31) - 1,
+                    ::common::errors::PreconditionNotMet(
+                        "out's numel too large "
+                        "allowed size is 2 ^ 31 - 1 elements, but got %lld",
+                        out->numel()));
+
   if (softLabel) {
     const T* label_data = labels->data<T>();
     int block = class_num > kMaxBlockDim
