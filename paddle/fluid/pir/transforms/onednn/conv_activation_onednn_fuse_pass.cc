@@ -136,7 +136,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (activation_name_ == "leaky_relu_" ||
           activation_name_ == "leaky_relu") {
-        float negative_slope = match_ctx.Attr<float>("negative_slope");
+        auto negative_slope = match_ctx.Attr<double>("negative_slope");
         // leaky relu alpha is a positive number
         if (negative_slope <= 0.0) {
           return false;

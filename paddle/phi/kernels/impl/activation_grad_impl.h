@@ -143,7 +143,7 @@ template <typename T, typename Context>
 void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& ddx,
-                               float alpha,
+                               double alpha,
                                DenseTensor* ddout) {
   funcs::LeakyReluGradGradFunctor<T> leaky_relu_double_grad_functor;
   leaky_relu_double_grad_functor.alpha = alpha;
