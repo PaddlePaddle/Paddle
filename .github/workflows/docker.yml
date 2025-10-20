@@ -75,7 +75,7 @@ jobs:
           docker_npu_file: Dockerfile.develop.npu
           docker_dcu_file: Dockerfile.develop.dtk
           docker_doc_file: Dockerfile.doc
-          dockerfile_script: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/ci_dockerfile.sh
+          dockerfile_script: https://github.com/gouzil/Paddle/blob/036fdc0977bcebdf743d638f27eb13fd1edf9d71/tools/dockerfile/ci_dockerfile.sh
           dockerfile_origin: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
         run: |
           set -x
