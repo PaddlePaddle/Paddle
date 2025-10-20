@@ -107,6 +107,13 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col->dims()));
+    // big tensor currently not supported
+    PADDLE_ENFORCE_LE(im.numel(),
+                      (1LL << 31) - 1,
+                      ::common::errors::PreconditionNotMet(
+                          "im's numel too large, allowed size is 2 ^ 31 - 1 "
+                          "elements, but got %lld",
+                          im.numel()));
 
     int im_channels =
         (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
