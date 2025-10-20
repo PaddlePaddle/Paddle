@@ -36,6 +36,14 @@ namespace phi {
                         float attr,                             \
                         DenseTensor* dx);
 
+#define DECLARE_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(name, attr) \
+  template <typename T, typename Context>                              \
+  void name##GradKernel(const Context& dev_ctx,                        \
+                        const DenseTensor& x,                          \
+                        const DenseTensor& dout,                       \
+                        double attr,                                   \
+                        DenseTensor* dx);
+
 #define DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(name, attr1, attr2) \
   template <typename T, typename Context>                               \
   void name##GradKernel(const Context& dev_ctx,                         \
@@ -72,6 +80,14 @@ namespace phi {
                         const DenseTensor& out,                   \
                         const DenseTensor& dout,                  \
                         float attr,                               \
+                        DenseTensor* dx);
+
+#define DECLARE_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPOUT(name, attr) \
+  template <typename T, typename Context>                                \
+  void name##GradKernel(const Context& dev_ctx,                          \
+                        const DenseTensor& out,                          \
+                        const DenseTensor& dout,                         \
+                        double attr,                                     \
                         DenseTensor* dx);
 
 #define DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(name, attr1, attr2) \
@@ -318,10 +334,10 @@ DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Ceil);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu, alpha);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink, lambda);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink, threshold);
-DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Logit, eps);
+DECLARE_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(Logit, eps);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Celu, alpha);
-DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT(LogitCUDA, eps);
+DECLARE_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPOUT(LogitCUDA, eps);
 
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh, t_min, t_max);
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh, scale_a, scale_b);

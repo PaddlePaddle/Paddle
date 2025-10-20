@@ -19,6 +19,7 @@ import numpy as np
 from decorator_helper import prog_scope
 from op_test import (
     OpTest,
+    check_cudnn_version_and_compute_capability,
     convert_float_to_uint16,
     get_device_place,
     get_places,
@@ -231,8 +232,7 @@ class TestAutoTuneTransposeOp(OpTest):
 
 
 @unittest.skipIf(
-    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
-    or paddle.device.cuda.get_device_capability()[0] < 9.0,
+    not check_cudnn_version_and_compute_capability(min_device_capability=9.0),
     "core is not compiled with CUDA or not support native fp8",
 )
 class TestFP8FastTranspose(unittest.TestCase):
