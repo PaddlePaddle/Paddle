@@ -422,6 +422,19 @@
   backward : kthvalue_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : leaky_relu
+  args : (Tensor x, float negative_slope = 0.02)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : leaky_relu
+  inplace: (x -> out)
+  backward : leaky_relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
+
 - op : legacy_bilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
@@ -521,6 +534,20 @@
     param: [start, stop, number, dtype]
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : logit
+  args : (Tensor x, float eps = 1e-6f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : LogitInfoSpmd
+  kernel :
+    func : logit
+  inplace: (x -> out)
+  backward : logit_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits: pir::UnaryElementWiseTrait
 
 - op : lp_pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)

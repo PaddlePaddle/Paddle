@@ -66,6 +66,9 @@ class PADDLE_API TensorBase {
   }
 
   int64_t size(int64_t dim) const {
+    if (dim < 0) {
+      dim += tensor_.dims().size();
+    }
     return tensor_.dims()[static_cast<int>(dim)];
   }
 

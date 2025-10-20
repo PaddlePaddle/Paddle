@@ -124,9 +124,9 @@ SpmdInfo ThresholdedReluGradInfoSpmd(const DistMetaTensor& x,
                                      const float threshold,
                                      const float value);
 
-SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const float eps);
+SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const double eps);
 SpmdInfo LogitGradInfoSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
-                           const float eps);
+                           const double eps);
 }  // namespace distributed
 }  // namespace phi
