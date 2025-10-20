@@ -771,8 +771,8 @@ class Buffer:
         handle: tuple | None = None,
         num_tokens_per_rank: paddle.Tensor | None = None,
         num_tokens_per_rdma_rank: paddle.Tensor | None = None,
-        is_token_in_rank: paddle.Tensor | None = None,
         num_tokens_per_expert: paddle.Tensor | None = None,
+        is_token_in_rank: paddle.Tensor | None = None,
         expert_alignment: int = 1,
         config: Config | None = None,
         previous_event: EventOverlap | None = None,
@@ -786,7 +786,14 @@ class Buffer:
         paddle.Tensor,
         paddle.Tensor,
         paddle.Tensor,
+        tuple,
     ]:
+        # Default config
+        config = (
+            self.get_dispatch_config(self.group_size)
+            if config is None
+            else config
+        )
         # Launch the kernel with cached or non-cached mode
         x, x_scales = x if isinstance(x, tuple) else (x, None)
         if handle is not None:
@@ -848,12 +855,12 @@ class Buffer:
                 num_tokens_per_rdma_rank,
                 num_tokens_per_expert,
                 is_token_in_rank,
+                None,
+                None,
+                None,
+                None,
                 0,
                 0,
-                None,
-                None,
-                None,
-                None,
                 expert_alignment,
                 config,
                 getattr(previous_event, 'event', None),
@@ -908,6 +915,13 @@ class Buffer:
         tuple,
         EventOverlap,
     ]:
+        # Default config
+        config = (
+            self.get_dispatch_config(self.group_size)
+            if config is None
+            else config
+        )
+
         # Launch the kernel with cached or non-cached mode
         x, x_scales = x if isinstance(x, tuple) else (x, None)
         if handle is not None:
