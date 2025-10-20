@@ -515,6 +515,8 @@ TEST_API {} {}({}) {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
 {}
+  // Convert All Inputs to DistTensor
+{}
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -1889,7 +1891,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
         record_inplace_original_dist_attr_list = []
+        grad_inputs_names = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
+            grad_inputs_names.append(f"{name}")
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"new_{name}"
             is_optional = name in optional_inputs
@@ -2476,6 +2480,14 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         ):
             strided_flags_check = STRIDED_FLAGS_CHECK_TEMPLATE
         # Generate forward_definition_str and forward_declaration_str
+
+        convert_input_to_dist_tensor_str = (
+            CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE.format(
+                grad_inputs_names=", " + ", ".join(grad_inputs_names),
+                wrapper_inputs_names=", " + ", ".join(grad_inputs_names),
+            )
+        )
+
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
                 amp_logic_str = f'\n VLOG(7) << " No AMP for {forward_ad_function_name} because it has no input. "; '
@@ -2515,6 +2527,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_api_name,
                 forward_ad_function_name,
                 strided_flags_check,
+                convert_input_to_dist_tensor_str,
                 dygraph_event_str,
                 amp_logic_str,
                 type_promotion_logic_str,

@@ -1063,7 +1063,7 @@ void DistTensorTypeParser::operator()(
   }
 }
 
-void DistTensorConverter::convert(paddle::Tensor* x) {
+void DistTensorConverter::convert(const paddle::Tensor* x) {
   ConvertToDistTensor(x, mesh);
 }
 
@@ -1071,17 +1071,26 @@ void DistTensorConverter::operator()(paddle::Tensor* x) {
   DistTensorConverter::convert(x);
 }
 
-void DistTensorConverter::operator()(paddle::optional<paddle::Tensor>* x) {
-  if (*x) {
-    DistTensorConverter::convert(x->get_ptr());
+void DistTensorConverter::operator()(const paddle::Tensor* x) {
+  if (x) {
+    DistTensorConverter::convert(x);
   }
 }
 
+void DistTensorConverter::operator()(const paddle::Tensor& x) {
+  DistTensorConverter::convert(&x);
+}
 void DistTensorConverter::operator()(std::vector<paddle::Tensor>* x) {
   if (!x->empty()) {
     for (auto& t : *x) {
       DistTensorConverter::convert(&t);
     }
+  }
+}
+
+void DistTensorConverter::operator()(const std::vector<paddle::Tensor> x) {
+  for (auto& t : x) {
+    DistTensorConverter::convert(&t);
   }
 }
 
@@ -1098,7 +1107,7 @@ void DistTensorConverter::operator()(
   }
 }
 
-void ConvertToDistTensor(paddle::Tensor* x,
+void ConvertToDistTensor(const paddle::Tensor* x,
                          const phi::distributed::ProcessMesh* mesh) {
   if (!x->defined()) {
     return;
@@ -1145,8 +1154,9 @@ void ConvertToDistTensor(paddle::Tensor* x,
     if (!dense_t->meta().is_contiguous()) {
       *dense_t = paddle::experimental::Trans2Contiguous(*dense_t);
     }
-    x->set_impl(std::make_shared<phi::distributed::DistTensor>(
-        dense_t, *mesh, placements));
+    const_cast<paddle::Tensor*>(x)->set_impl(
+        std::make_shared<phi::distributed::DistTensor>(
+            dense_t, *mesh, placements));
   }
 }
 std::string CreateNodeLabelInDot(GradNodeBase* node) {
