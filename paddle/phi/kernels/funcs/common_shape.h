@@ -97,7 +97,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
 }
 
 inline void GetPrePostNumel(
-    const DDim &dim, int axis, int *pre, int *n, int *post) {
+    const DDim &dim, int axis, int64_t *pre, int64_t *n, int64_t *post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];

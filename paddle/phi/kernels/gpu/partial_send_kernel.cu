@@ -35,7 +35,7 @@ void PartialSendKernel(const Context& dev_ctx,
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
   auto x = &x_in;
-  int numel = x->numel();
+  int64_t numel = x->numel();
 
   PADDLE_ENFORCE_GE(
       peer,

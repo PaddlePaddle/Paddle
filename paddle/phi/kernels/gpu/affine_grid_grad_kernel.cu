@@ -29,7 +29,9 @@ namespace phi {
 
 template <typename T>
 __global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
-  CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
+  CUDA_KERNEL_LOOP_TYPE(index, size, int64_t) {
+    out[index] = start + step * index;
+  }
 }
 
 template <typename T>
@@ -56,7 +58,7 @@ struct Linspace<phi::GPUContext, T> {
 };
 
 template <typename T>
-__global__ void affine_grid_grad_kernel_4d(const int count,
+__global__ void affine_grid_grad_kernel_4d(const int64_t count,
                                            int n,
                                            int out_h,
                                            int out_w,
@@ -66,7 +68,7 @@ __global__ void affine_grid_grad_kernel_4d(const int count,
                                            T w_step,
                                            const T* out_grad,  // N, H, W, 2
                                            T* theta_grad) {    // N, 2, 3
-  CUDA_KERNEL_LOOP(index, count) {
+  CUDA_KERNEL_LOOP_TYPE(index, count, int64_t) {
     int w = index % out_w;
     int h = (index / out_w) % out_h;
     int n = index / (out_w * out_h);
@@ -87,7 +89,7 @@ __global__ void affine_grid_grad_kernel_4d(const int count,
 }
 
 template <typename T>
-__global__ void affine_grid_grad_kernel_5d(const int count,
+__global__ void affine_grid_grad_kernel_5d(const int64_t count,
                                            int n,
                                            int out_d,
                                            int out_h,
@@ -100,7 +102,7 @@ __global__ void affine_grid_grad_kernel_5d(const int count,
                                            T w_step,
                                            const T* out_grad,  // N, D, H, W, 3
                                            T* theta_grad) {    // N, 3, 4
-  CUDA_KERNEL_LOOP(index, count) {
+  CUDA_KERNEL_LOOP_TYPE(index, count, int64_t) {
     int w = index % out_w;
     int h = (index / out_w) % out_h;
     int d = (index / (out_w * out_h)) % out_d;
@@ -163,12 +165,13 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
     h_start *= static_cast<T>(h - 1) / static_cast<T>(h);
     w_start *= static_cast<T>(w - 1) / static_cast<T>(w);
   }
-  const int count = n * h * w;
+  const int64_t count = n * h * w;
   VLOG(3) << "count: " << count << "; h_step: " << h_step
           << "; w_step: " << w_step << "; h_start: " << h_start
           << "; w_start: " << w_start;
   int block = 512;
-  int grid = (count + block - 1) / block;
+  int64_t max_grid = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((count + block - 1) / block, max_grid);
   auto cu_stream = dev_ctx.stream();
   affine_grid_grad_kernel_4d<<<grid, block, 0, cu_stream>>>(
       count,
