@@ -168,11 +168,6 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
     // This is necessary for correct CUDA Graph capture and memory allocation.
     if (op->GetParentOp()->isa<paddle::dialect::CudaGraphOp>()) {
       VLOG(4) << "CudaGraphOp detected, using original device context";
-      PADDLE_ENFORCE_EQ(
-          origin_dev_ctx->IsCUDAGraphAllocatorValid(),
-          true,
-          ::common::errors::Fatal(
-              "origin_dev_ctx->cuda_graph_allocator_ is nullptr."));
       return origin_dev_ctx;
     }
 #endif
