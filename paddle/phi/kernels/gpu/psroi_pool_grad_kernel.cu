@@ -34,7 +34,7 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void GPUPSROIPoolBackward(const int nthreads,
+__global__ void GPUPSROIPoolBackward(const int64_t nthreads,
                                      const T* input_rois,
                                      const T* dout_data,
                                      const float spatial_scale,
@@ -48,17 +48,17 @@ __global__ void GPUPSROIPoolBackward(const int nthreads,
                                      T* dx_data) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int64_t i = index; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
-    int pw = i % pooled_width;
-    int ph = (i / pooled_width) % pooled_height;
-    int c = (i / pooled_width / pooled_height) % output_channels;
-    int n = i / pooled_width / pooled_height / output_channels;
+    int64_t pw = i % pooled_width;
+    int64_t ph = (i / pooled_width) % pooled_height;
+    int64_t c = (i / pooled_width / pooled_height) % output_channels;
+    int64_t n = i / pooled_width / pooled_height / output_channels;
 
     // set roi_batch_id
-    int roi_batch_id = rois_batch_id_data[n];
-    int input_channel = (c * pooled_height + ph) * pooled_width + pw;
-    int input_offset =
+    int64_t roi_batch_id = rois_batch_id_data[n];
+    int64_t input_channel = (c * pooled_height + ph) * pooled_width + pw;
+    int64_t input_offset =
         (roi_batch_id * input_channels + input_channel) * height * width;
     T* offset_dx_data = dx_data + input_offset;
 
@@ -163,7 +163,7 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
     funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dx, static_cast<T>(0));
 
-    int dout_size = dout.numel();
+    int64_t dout_size = dout.numel();
     int blocks = NumBlocks(dout_size);
     int threads = kNumCUDAThreads;
 

@@ -213,7 +213,7 @@ jobs:
           WITH_RCCL: "ON"
           WITH_AVX: "ON"
           WITH_MKL: "ON"
-          IF_DCU: "ON"
+          IF_DCU: "OFF"
           WITH_TENSORRT: "OFF"
           WITH_XPU: "OFF"
           WITH_CINN: "ON"
