@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/lerp_kernel.h"
+#include <cstdlib>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -37,7 +38,11 @@ struct LerpScalarDirectCUDAFunctor {
       : weight_(weight) {}
 
   HOSTDEVICE inline T operator()(const T x, const T y) const {
-    return x + weight_[0] * (y - x);
+    if (abs(static_cast<float>(weight_[0])) < 0.5f) {
+      return x + weight_[0] * (y - x);
+    } else {
+      return y - (y - x) * (static_cast<T>(1) - weight_[0]);
+    }
   }
 };
 
