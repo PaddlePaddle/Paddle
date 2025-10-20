@@ -47,7 +47,7 @@ namespace c10 {
   } while (false);
 
 // Check for a given boolean condition.
-#define CHECK(condition) PD_CHECK(condition, "CHECK failed : ", #condition)
+#define C10_CHECK(condition) PD_CHECK(condition, "CHECK failed : ", #condition)
 
 // TORCH_CHECK_OP macro definitions
 #define TORCH_CHECK_EQ(val1, val2) TORCH_CHECK_OP(val1, val2, ==)
