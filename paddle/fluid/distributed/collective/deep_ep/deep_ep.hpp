@@ -230,9 +230,7 @@ struct Buffer {
       bool async,
       bool allocate_on_comm_stream);
 
-  std::tuple<deep_ep::detail::Tensor,
-             std::optional<deep_ep::detail::Tensor>,
-             std::optional<EventHandle>>
+  std::tuple<std::optional<deep_ep::detail::Tensor>, std::optional<EventHandle>>
   internode_combine(const deep_ep::detail::Tensor& x,
                     const std::optional<deep_ep::detail::Tensor>& topk_weights,
                     const deep_ep::detail::Tensor& src_meta,
@@ -245,7 +243,8 @@ struct Buffer {
                     const Config& config,
                     std::optional<EventHandle>& previous_event,  // NOLINT
                     bool async,
-                    bool allocate_on_comm_stream);
+                    bool allocate_on_comm_stream,
+                    deep_ep::detail::Tensor* combined_x);
 #endif  // PADDLE_WITH_NVSHMEM
 
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,

@@ -1417,9 +1417,7 @@ Buffer::internode_dispatch(
           event};
 }
 
-std::tuple<deep_ep::detail::Tensor,
-           std::optional<deep_ep::detail::Tensor>,
-           std::optional<EventHandle>>
+std::tuple<std::optional<deep_ep::detail::Tensor>, std::optional<EventHandle>>
 Buffer::internode_combine(
     const deep_ep::detail::Tensor& x,
     const std::optional<deep_ep::detail::Tensor>& topk_weights,
@@ -1433,7 +1431,8 @@ Buffer::internode_combine(
     const Config& config,
     std::optional<EventHandle>& previous_event,  // NOLINT
     bool async,
-    bool allocate_on_comm_stream) {
+    bool allocate_on_comm_stream,
+    deep_ep::detail::Tensor* combined_x) {
   const int num_channels = config.num_sms / 2;
   EP_HOST_ASSERT(config.num_sms % 2 == 0);
 
@@ -1547,9 +1546,9 @@ Buffer::internode_combine(
       low_latency_mode);
 
   // Launch data combine
-  auto combined_x =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_combined_tokens, hidden}, x.dtype(), x.place()));
+  // auto combined_x =
+  //     ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+  //         {num_combined_tokens, hidden}, x.dtype(), x.place()));
   internode::combine(deep_ep::detail::ScalarTypeToCudaDataType(x.scalar_type()),
                      combined_x.data_ptr(),
                      combined_topk_weights_ptr,
@@ -1611,7 +1610,7 @@ Buffer::internode_combine(
   }
 
   // Return values
-  return {combined_x, combined_topk_weights, event};
+  return {combined_topk_weights, event};
 }
 #endif  // PADDLE_WITH_NVSHMEM
 
@@ -2923,6 +2922,15 @@ Buffer::internode_combine_api(
   const auto& combined_nvl_head_ =
       ConvertPaddleTensorToDetailTensor(combined_nvl_head);
 
+  auto num_combined_tokens =
+      static_cast<int>(is_combined_token_in_rank.dims()[0]);
+
+  auto hidden = static_cast<int>(x.dims()[1]);
+
+  auto combined_x =
+      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+          {num_combined_tokens, hidden}, x.dtype(), x.place()));
+
   auto res = internode_combine(x_,
                                topk_weights_,
                                src_meta_,
@@ -2935,13 +2943,14 @@ Buffer::internode_combine_api(
                                config,
                                previous_event,
                                async,
-                               allocate_on_comm_stream);
+                               allocate_on_comm_stream,
+                               &combined_x);
 
-  auto combined_x_ = ConvertDetailTensorToPaddleTensor(std::get<0>(res));
+  auto combined_x_ = ConvertDetailTensorToPaddleTensor(combined_x);
   std::optional<paddle::Tensor> combined_topk_weights_ =
-      ConvertOptionalDetailTensorToPaddleTensor(std::get<1>(res));
+      ConvertOptionalDetailTensorToPaddleTensor(std::get<0>(res));
 
-  const auto& event = std::get<2>(res);
+  const auto& event = std::get<1>(res);
 
   return {combined_x_, combined_topk_weights_, event};
 #else
