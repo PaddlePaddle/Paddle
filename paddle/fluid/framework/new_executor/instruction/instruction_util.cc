@@ -162,9 +162,17 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
       return dev_ctx;
     }
 
-    // for cudagraph op
+    // If the current OP is inside a CUDAGraphOp,
+    // we must use the same device context as the parent CUDAGraphOp,
+    // mainly to ensure that cuda_graph_allocator_ is not nullptr.
+    // This is necessary for correct CUDA Graph capture and memory allocation.
     if (op->GetParentOp()->isa<paddle::dialect::CudaGraphOp>()) {
       VLOG(4) << "CudaGraphOp detected, using original device context";
+      PADDLE_ENFORCE_EQ(
+          origin_dev_ctx->IsCUDAGraphAllocatorValid(),
+          true,
+          ::common::errors::Fatal(
+              "origin_dev_ctx->cuda_graph_allocator_ is nullptr."));
       return origin_dev_ctx;
     }
     // handle comm op
