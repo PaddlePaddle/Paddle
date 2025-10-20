@@ -40,7 +40,9 @@ PD_REGISTER_SPMD_RULE(matmul,
 PD_REGISTER_SPMD_RULE(matmul_v2,  // static mode
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
-
+PD_REGISTER_SPMD_RULE(bmm,
+                      PD_INFER_SPMD(phi::distributed::BmmInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::BmmGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     elementwise_unary,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),

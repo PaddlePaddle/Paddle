@@ -537,6 +537,13 @@ bool DeviceManager::IsBFloat16Supported(const Place& place) {
   return dev_impl->IsBFloat16Supported(device_id);
 }
 
+bool DeviceManager::IsDnnAvailable(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->IsDnnAvailable(device_id);
+}
+
 void* DeviceManager::InitEigenDevice(const Place& place,
                                      phi::stream::stream_t stream,
                                      phi::Allocator* allocator) {
