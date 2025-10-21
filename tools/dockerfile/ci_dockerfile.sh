@@ -24,6 +24,7 @@ function make_cpu_dockerfile(){
   sed -i 's#RUN rm /etc/apt/sources.list.d/\*##g' ${dockerfile_name}
   sed -i 's#<install_cudnn>##g' ${dockerfile_name}
   sed -i "/\/etc\/apt\/sources.list.d\/cuda/ d" ${dockerfile_name}
+  sed -i '/RUN curl https:\/\/developer.download.nvidia.cn/ d' ${dockerfile_name}
   sed -i "s#RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub##g" ${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
