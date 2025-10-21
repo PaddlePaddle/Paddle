@@ -261,7 +261,7 @@ class TensorRTConfig:
                 - PrecisionMode.FP32: 32-bit floating point precision (default).
                 - PrecisionMode.FP16: 16-bit floating point precision.
                 - PrecisionMode.INT8: 8-bit integer precision.
-                - PrecisionMode.BFP16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
+                - PrecisionMode.BF16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
             ops_run_float (str|list, optional):
                 A set of operation names that should be executed using FP32 precision regardless of the `tensorrt_precision_mode` setting.
             optimization_level (int, optional):
@@ -605,8 +605,8 @@ def _convert_(function=None, input_spec=None, config=None, **kwargs):
             # we only record the state_dict variable's structured name
             state_names_dict = {}
             state_var_dict = {}
-            for strcutured_name, var in dygraph_state_dict.items():
-                state_names_dict[var.name] = strcutured_name
+            for structured_name, var in dygraph_state_dict.items():
+                state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
         #  share parameters from Layer to scope & record var info
         with dygraph.guard():
