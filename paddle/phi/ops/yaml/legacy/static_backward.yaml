@@ -190,6 +190,30 @@
     func : kthvalue_grad
     data_type : out_grad
 
+- backward_op : leaky_relu_double_grad
+  forward : leaky_relu_grad (Tensor x, Tensor grad_out, float negative_slope) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, float negative_slope)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [grad_x_grad]
+  kernel :
+    func : leaky_relu_double_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
+- backward_op : leaky_relu_grad
+  forward : leaky_relu (Tensor x, float negative_slope) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float negative_slope)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : leaky_relu_grad
+  backward : leaky_relu_double_grad
+  composite: leaky_relu_grad(x, out_grad, negative_slope, x_grad)
+  inplace : (out_grad -> x_grad)
+
 - backward_op : legacy_bilinear_interp_grad
   forward : legacy_bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float scale, str interp_method, bool align_corners, int align_mode)
@@ -244,6 +268,17 @@
     data_type : output_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+
+- backward_op : logit_grad
+  forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float eps)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : LogitGradInfoSpmd
+  kernel :
+    func : logit_grad
 
 - backward_op : lp_pool2d_grad
   forward : lp_pool2d(Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f) -> Tensor(out)
@@ -477,6 +512,30 @@
   kernel :
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)
+
+- backward_op : softplus_double_grad
+  forward : softplus_grad (Tensor x, Tensor grad_out, float beta, float threshold) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float beta, float threshold)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : softplus_double_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
+- backward_op : softplus_grad
+  forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float beta, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : SoftplusGradInfoSpmd
+  kernel :
+    func : softplus_grad
+  backward : softplus_double_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)

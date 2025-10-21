@@ -1249,6 +1249,14 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
   return strategy;
 }
 
+template <typename T, typename ExprT>
+T GetStaticValueImpl(const ir::Tensor &input, const utils::Attribute &attr) {
+  if (input->value().has_value()) {
+    return static_cast<T>(input->value().value()[0].As<ExprT>()->value);
+  }
+  return std::get<T>(attr);
+}
+
 std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1305,28 +1313,31 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
       }
     };
 
-#define EXPR_FROM_ATTR(type)                            \
-  type start_ = std::get<type>(attr_store.at("start")); \
-  type end_ = std::get<type>(attr_store.at("end"));     \
-  type step_ = std::get<type>(attr_store.at("step"));   \
-  arange_size = GetArangeSize(start_, end_, step_);     \
-  start = Expr(start_);                                 \
+#define EXPR_FROM_ATTR(type, expr_type)                                       \
+  type start_ =                                                               \
+      GetStaticValueImpl<type, expr_type>(inputs[0], attr_store.at("start")); \
+  type end_ =                                                                 \
+      GetStaticValueImpl<type, expr_type>(inputs[1], attr_store.at("end"));   \
+  type step_ =                                                                \
+      GetStaticValueImpl<type, expr_type>(inputs[2], attr_store.at("step"));  \
+  arange_size = GetArangeSize(start_, end_, step_);                           \
+  start = Expr(start_);                                                       \
   step = Expr(step_);
 
     if (dtype.is_float(32)) {
-      EXPR_FROM_ATTR(float)
+      EXPR_FROM_ATTR(float, ir::FloatImm)
     } else if (dtype.is_float(64)) {
-      EXPR_FROM_ATTR(double)
+      EXPR_FROM_ATTR(double, ir::FloatImm)
     } else if (dtype.is_int(32)) {
-      EXPR_FROM_ATTR(int)
+      EXPR_FROM_ATTR(int, ir::IntImm)
     } else if (dtype.is_int(64)) {
-      EXPR_FROM_ATTR(int64_t)
+      EXPR_FROM_ATTR(int64_t, ir::IntImm)
     } else if (dtype.is_bfloat16()) {
-      EXPR_FROM_ATTR(float)
+      EXPR_FROM_ATTR(float, ir::FloatImm)
       start->set_type(cinn::common::BFloat16());
       step->set_type(cinn::common::BFloat16());
     } else if (dtype.is_float16()) {
-      EXPR_FROM_ATTR(float)
+      EXPR_FROM_ATTR(float, ir::FloatImm)
       start->set_type(cinn::common::Float16());
       step->set_type(cinn::common::Float16());
     } else {

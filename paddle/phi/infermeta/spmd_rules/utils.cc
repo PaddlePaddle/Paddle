@@ -939,11 +939,12 @@ TensorDistAttr FromPlacements(
 TensorDistAttr UnShardTensorDims(const TensorDistAttr& dist_attr,
                                  std::vector<int64_t> dims) {
   TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
-  std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  std::vector<std::vector<int64_t>> dims_mapping =
+      dist_attr.multi_dims_mapping();
   int64_t n_dim = dims_mapping.size();
   for (auto dim : dims) {
     dim = dim < 0 ? n_dim + dim : dim;
-    dims_mapping[dim] = kReplicateDim;
+    dims_mapping[dim] = std::vector<int64_t>({});
   }
   dst_dist_attr.set_dims_mapping(dims_mapping);
   return dst_dist_attr;

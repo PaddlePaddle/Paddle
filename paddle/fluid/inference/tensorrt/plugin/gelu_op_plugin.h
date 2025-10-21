@@ -91,7 +91,6 @@ class GeluPluginCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(GeluPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class GeluPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit GeluPluginDynamic(const bool with_fp16) { with_fp16_ = with_fp16; }
@@ -117,10 +116,11 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -171,7 +171,6 @@ class GeluPluginDynamicCreator : public TensorRTPluginCreator {
   }
 };
 REGISTER_TRT_PLUGIN_V2(GeluPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

@@ -14,6 +14,8 @@
 
 import os
 
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import legacy_test.test_collective_api_base as test_base
 
 import paddle
