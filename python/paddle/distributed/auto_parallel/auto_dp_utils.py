@@ -39,8 +39,8 @@ def _fake_replicate_grad_to_partial(grad, partial_axis):
 
 def _convert_fake_replicate_grad_to_partial(params_grads):
     # skip non-parallel cases
-    word_size = paddle.distributed.get_world_size()
-    if word_size == 1:
+    world_size = paddle.distributed.get_world_size()
+    if world_size == 1:
         return
 
     if isinstance(params_grads, list):
@@ -55,7 +55,7 @@ def _convert_fake_replicate_grad_to_partial(params_grads):
                     dist.Partial(dist.ReduceType.kRedSum)
                 ]
                 default_grad_mesh = dist.ProcessMesh(
-                    list(range(0, word_size)), dim_names=["dp"]
+                    list(range(0, world_size)), dim_names=["dp"]
                 )
                 grad = dist.auto_parallel.api.dtensor_from_local(
                     grad, default_grad_mesh, default_grad_placements
@@ -73,7 +73,7 @@ def _convert_fake_replicate_grad_to_partial(params_grads):
                     dist.Partial(dist.ReduceType.kRedSum)
                 ]
                 default_grad_mesh = dist.ProcessMesh(
-                    list(range(0, word_size)), dim_names=["dp"]
+                    list(range(0, world_size)), dim_names=["dp"]
                 )
                 grad = dist.auto_parallel.api.dtensor_from_local(
                     grad, default_grad_mesh, default_grad_placements
@@ -82,8 +82,8 @@ def _convert_fake_replicate_grad_to_partial(params_grads):
 
 
 def in_auto_dp_mode():
-    word_size = paddle.distributed.get_world_size()
-    if word_size <= 1:
+    world_size = paddle.distributed.get_world_size()
+    if world_size <= 1:
         return False
 
     global _enable_auto_dp_mode
