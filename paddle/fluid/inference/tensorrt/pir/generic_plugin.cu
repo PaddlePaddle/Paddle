@@ -14,6 +14,7 @@
 
 #include <map>
 
+#include "paddle/ap/include/paddle/pir/attribute.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/inference/tensorrt/pir/dynamic_shape_infermeta_factory.h"
 #include "paddle/fluid/inference/tensorrt/pir/dynamic_shape_infermeta_registry.h"
@@ -30,6 +31,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
