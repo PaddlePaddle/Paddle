@@ -1,4 +1,9 @@
 op_patches:
+  - op_name : pd_op.leaky_relu
+    actions:
+      - action : modify_attr
+        object : negative_slope
+        type : pir::DoubleAttribute
   - op_name : pd_op.softplus
     actions:
       - action : modify_attr

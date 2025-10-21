@@ -515,6 +515,8 @@ TEST_API {} {}({}) {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
 {}
+  // Convert All Inputs to DistTensor and recall op_ad_func if Necessary
+{}
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -918,6 +920,16 @@ CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE = """
   bool inputs_contain_dist_tensor = egr::InputsContainDistTensor(&mesh{grad_inputs_names});
   if (inputs_contain_dist_tensor) {{
     egr::ConvertAllInputsToDistTensor(mesh{wrapper_inputs_names});
+  }}
+"""
+
+CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_RECALL_AD_FUNC_TEMPLATE = """
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  bool inputs_need_convert_dist_tensor = egr::InputsNeedConvertDistTensor(&mesh, {grad_inputs_names});
+  if (inputs_need_convert_dist_tensor) {{
+    auto converter = egr::DistTensorPtrConverter(mesh);
+    {convert_to_dist_str}
+    return {recall_ad_func};
   }}
 """
 
@@ -1889,8 +1901,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
         record_inplace_original_dist_attr_list = []
+        grad_inputs_names = []
+        dist_recall_ad_func_names = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
+            grad_inputs_names.append(f"{name}")
+            dist_recall_ad_func_names.append(f"*dist_{name}")
             amp_inputs_call_list[pos] = f"new_{name}"
             is_optional = name in optional_inputs
             if forward_api_name in type_promote_white_list:
@@ -2016,6 +2032,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # forward attrs
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
+            dist_recall_ad_func_names.append(f"{name}")
             amp_inputs_call_list[pos] = name
             type_promote_inputs_call_list[pos] = name
             type_autocast_inputs_call_list[pos] = name
@@ -2052,6 +2069,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 )
                 inputs_args_definition_str += f", {optional_str} predefined_out"
                 inputs_call_list.append("predefined_out")
+                dist_recall_ad_func_names.append("predefined_out")
 
         inputs_call_args_str = ", ".join(inputs_call_list)
         self.inputs_call_list = inputs_call_list
@@ -2476,6 +2494,25 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         ):
             strided_flags_check = STRIDED_FLAGS_CHECK_TEMPLATE
         # Generate forward_definition_str and forward_declaration_str
+
+        convert_input_to_dist_tensor_str = ""
+        if len(grad_inputs_names) > 1:
+            convert_to_dist_str = ""
+            for param in grad_inputs_names:
+                convert_to_dist_str += (
+                    f"{indent}  auto dist_{param} = converter({param});\n"
+                )
+
+            recall_ad_func_args_str = ", ".join(dist_recall_ad_func_names)
+            recall_ad_func = (
+                f"{forward_ad_function_name}({recall_ad_func_args_str})"
+            )
+            convert_input_to_dist_tensor_str = CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_RECALL_AD_FUNC_TEMPLATE.format(
+                grad_inputs_names=", ".join(grad_inputs_names),
+                convert_to_dist_str=convert_to_dist_str,
+                recall_ad_func=recall_ad_func,
+            )
+
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
                 amp_logic_str = f'\n VLOG(7) << " No AMP for {forward_ad_function_name} because it has no input. "; '
@@ -2515,6 +2552,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_api_name,
                 forward_ad_function_name,
                 strided_flags_check,
+                convert_input_to_dist_tensor_str,
                 dygraph_event_str,
                 amp_logic_str,
                 type_promotion_logic_str,
