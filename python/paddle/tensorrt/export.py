@@ -120,7 +120,7 @@ class Input:
             if input_data_type is not None or input_range is not None:
                 _logger.warning(
                     "When warmup_data is provided,input_data_type and input_range are ignored."
-                    "These parameters only apply whtn generate random data using min/opt/max shapes."
+                    "These parameters only apply when generate random data using min/opt/max shapes."
                 )
         else:
             if None in (min_input_shape, max_input_shape, optim_input_shape):
@@ -224,7 +224,7 @@ class PrecisionMode(Enum):
     - PrecisionMode.FP32: 32-bit floating point precision (default).
     - PrecisionMode.FP16: 16-bit floating point precision.
     - PrecisionMode.INT8: 8-bit integer precision.
-    - PrecisionMode.BFP16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
+    - PrecisionMode.BF16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
     """
 
 
