@@ -761,6 +761,15 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.4.40 | "
                     "nvidia-cusparse-cu12==12.5.9.5 "
                 ),
+                "13.0": (
+                    "nvidia-cuda-runtime-cu13 | "
+                    "nvidia-cudnn-cu13 | "
+                    "nvidia-cublas-cu13 | "
+                    "nvidia-cufft-cu13 | "
+                    "nvidia-curand-cu13 | "
+                    "nvidia-cusolver-cu13 | "
+                    "nvidia-cusparse-cu13 "
+                )
             }
 
         try:
