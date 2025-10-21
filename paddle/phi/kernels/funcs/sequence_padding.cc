@@ -138,7 +138,7 @@ class PaddingDenseTensorFunctor<phi::CPUContext, T> {
       fast_mem_init<T>(
           pad_data, pad_tensor->numel(), pad_value_data, sizeof(T));
     } else {
-      for (int i = 0; i < pad_tensor->numel(); i += step_width) {
+      for (int64_t i = 0; i < pad_tensor->numel(); i += step_width) {
         memcpy(pad_data + i, pad_value_data, step_width * sizeof(T));
       }
     }
@@ -207,7 +207,7 @@ class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
-    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    int64_t step_width = seq_tensor->numel() / seq_tensor_dims[0];
 
     CheckDims(seq_tensor_dims,
               pad_tensor_dims,

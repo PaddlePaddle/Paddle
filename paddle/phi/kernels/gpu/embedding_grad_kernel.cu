@@ -35,7 +35,7 @@ template <typename InT, typename OutT>
 __global__ void InputTypeConvert(const InT* in_ids,
                                  const int64_t K,
                                  OutT* out_ids) {
-  for (int i = 0; i < K; i++) {
+  for (int64_t i = 0; i < K; i++) {
     out_ids[i] = static_cast<OutT>(in_ids[i]);
   }
 }
@@ -57,7 +57,7 @@ __global__ void EmbeddingGrad(T* table,
 #ifdef PADDLE_WITH_CUDA
     phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int64_t i = idx; i < D; i += blockDim.x) {
       phi::CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
