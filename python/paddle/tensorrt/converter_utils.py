@@ -853,7 +853,6 @@ def add_reduce_layer(network, paddle_op, inputs, op_type):
         assert axis != 0, (
             "can't reduce on axis == 0 when network has implicit batch dimension"
         )
-    output_shape = []
     if len(axis) == 0:
         axis = list(range(len(input_shape)))
     for i in range(len(axis)):
