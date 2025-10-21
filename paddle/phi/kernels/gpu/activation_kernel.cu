@@ -152,7 +152,9 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, CudaLog1pFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, CudaExpFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
+                                            CudaLeakyReluFunctor,
+                                            alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
