@@ -794,11 +794,9 @@ def convert(model_path, config):
 
     if is_json:
         with paddle.pir_utils.IrGuard():
-            [program, feed_target_names, fetch_targets] = (
-                paddle.static.io.load_inference_model(
-                    model_path,
-                    executor=exe,
-                )
+            [program, _, _] = paddle.static.io.load_inference_model(
+                model_path,
+                executor=exe,
             )
     else:
         with paddle.pir_utils.OldIrGuard():
