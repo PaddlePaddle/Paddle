@@ -46,7 +46,7 @@ __global__ void EmbeddingFW(T *output,
     }
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int64_t i = idx; i < D; i += blockDim.x) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);

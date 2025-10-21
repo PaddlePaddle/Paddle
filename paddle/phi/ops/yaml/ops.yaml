@@ -3085,7 +3085,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : leaky_relu
-  args : (Tensor x, float negative_slope = 0.02f)
+  args : (Tensor x, double negative_slope = 0.02)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
