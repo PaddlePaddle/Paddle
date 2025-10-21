@@ -53,6 +53,7 @@
 - linspace
 - logspace
 - lp_pool2d
+- leaky_relu
 - matrix_rank
 - matrix_rank_tol
 - max

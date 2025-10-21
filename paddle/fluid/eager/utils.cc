@@ -1063,6 +1063,71 @@ void DistTensorTypeParser::operator()(
   }
 }
 
+void CheckInputsNeedConvertDistTensor::operator()(const paddle::Tensor& x) {
+  if (x.defined()) {
+    if (x.is_dist_tensor()) {
+      *mesh =
+          &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                ->process_mesh());
+      have_dist = true;
+    } else if (x.is_dense_tensor()) {
+      have_dense = true;
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const paddle::optional<paddle::Tensor>& x) {
+  if (x) {
+    if (x.get_ptr()->defined()) {
+      if (x.get_ptr()->is_dist_tensor()) {
+        *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      x.get_ptr()->impl())
+                      ->process_mesh());
+        have_dist = true;
+      } else if (x.get_ptr()->is_dense_tensor()) {
+        have_dense = true;
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const std::vector<paddle::Tensor>& x) {
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.defined()) {
+        if (t.is_dist_tensor()) {
+          *mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+          have_dist = true;
+        } else if (t.is_dense_tensor()) {
+          have_dense = true;
+        }
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const paddle::optional<std::vector<paddle::Tensor>>& x) {
+  if (x) {
+    if (x.get_ptr()->empty()) return;
+    for (auto& t : *(x.get_ptr())) {
+      if (!t.defined()) continue;
+      if (t.is_dist_tensor()) {
+        *mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+        have_dist = true;
+      } else if (t.is_dense_tensor()) {
+        have_dense = true;
+      }
+    }
+  }
+}
+
 void DistTensorConverter::convert(paddle::Tensor* x) {
   ConvertToDistTensor(x, mesh);
 }
@@ -1149,6 +1214,57 @@ void ConvertToDistTensor(paddle::Tensor* x,
         dense_t, *mesh, placements));
   }
 }
+
+std::shared_ptr<paddle::Tensor> DistTensorPtrConverter::builder(
+    const paddle::Tensor& x) {
+  PADDLE_ENFORCE_EQ(
+      x.defined(),
+      true,
+      common::errors::InvalidArgument(
+          "Input tensor for DistTensor conversion is not defined. "
+          "All inputs must be valid tensors."));
+  if (x.is_dist_tensor()) {
+    auto dist_impl =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl());
+    PADDLE_ENFORCE_NE(
+        dist_impl,
+        nullptr,
+        common::errors::InvalidArgument("Input tensor claims to be DistTensor "
+                                        "but has invalid implementation."));
+    PADDLE_ENFORCE_EQ(
+        dist_impl->process_mesh(),
+        *mesh,
+        common::errors::InvalidArgument(
+            "Input DistTensor's mesh does not match builder's mesh. "
+            "Expected mesh: %s, Got mesh: %s",
+            mesh->to_string(),
+            dist_impl->process_mesh().to_string()));
+    return std::make_shared<paddle::Tensor>(x);
+  }
+  auto dense_impl = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
+  PADDLE_ENFORCE_NE(dense_impl,
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "Failed to convert input tensor '%s' to DistTensor: "
+                        "Tensor implementation is not DenseTensor.",
+                        x.name()));
+  std::shared_ptr<phi::DenseTensor> dense_tensor =
+      std::make_shared<phi::DenseTensor>(*dense_impl);
+  phi::distributed::Placements placements;
+  placements.reserve(mesh->ndim());
+  for (int64_t i = 0; i < mesh->ndim(); ++i) {
+    placements.emplace_back(std::make_shared<phi::distributed::Replicate>());
+  }
+  auto dist_tensor_impl = std::make_shared<phi::distributed::DistTensor>(
+      dense_tensor, *mesh, placements);
+  return std::make_shared<paddle::Tensor>(dist_tensor_impl);
+}
+
+std::shared_ptr<paddle::Tensor> DistTensorPtrConverter::operator()(
+    const paddle::Tensor& x) {
+  return builder(x);
+}
+
 std::string CreateNodeLabelInDot(GradNodeBase* node) {
   std::ostringstream oss;
   oss << node->name() << "\\nPtr: " << std::hex << node;
