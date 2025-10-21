@@ -196,11 +196,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-#if IS_TRT_VERSION_GE(8500)
-    ret = context->enqueueV3(stream);
-#else
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
-#endif
   }
 #endif
   return ret;
