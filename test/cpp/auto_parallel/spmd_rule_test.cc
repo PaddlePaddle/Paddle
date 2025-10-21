@@ -50,7 +50,7 @@ TEST(MatmulSPMDRule, Ctor) {
 
   // mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
   phi::distributed::InferSpmdContext ctx(
-      {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
+      {x, y}, {/*trans_x=*/false, /*trans_y=*/false});
   auto inferred_dist_attrs = matmul_spmd_rule.InferForward(ctx);
 
   EXPECT_EQ(inferred_dist_attrs.first.size(), input_size);
