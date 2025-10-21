@@ -1085,6 +1085,42 @@ struct CastOpTranscriber : public OpTranscriber {
   }
 };
 
+struct LeakyReLUOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (legacy_attr_name == "alpha") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      }
+    }
+
+    return attribute_map;
+  }
+};
+
 struct Conv2dOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -4007,6 +4043,8 @@ OpTranslator::OpTranslator() {
   special_handlers["batch_norm"] = BatchNormOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
+  special_handlers["leaky_relu"] = LeakyReLUOpTranscriber();
+  special_handlers["leaky_relu_grad"] = LeakyReLUOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
   special_handlers["conv3d"] = Conv3dOpTranscriber();
   special_handlers["cross_entropy_with_softmax"] =
