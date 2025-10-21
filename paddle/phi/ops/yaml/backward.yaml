@@ -1943,8 +1943,8 @@
   optional : scale, bias
 
 - backward_op : leaky_relu_double_grad
-  forward : leaky_relu_grad (Tensor x, Tensor grad_out, float negative_slope) -> Tensor(grad_x)
-  args : (Tensor x, Tensor grad_x_grad, float negative_slope)
+  forward : leaky_relu_grad (Tensor x, Tensor grad_out, double negative_slope) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, double negative_slope)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1954,8 +1954,8 @@
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : leaky_relu_grad
-  forward : leaky_relu (Tensor x, float negative_slope) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float negative_slope)
+  forward : leaky_relu (Tensor x, double negative_slope) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, double negative_slope)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
