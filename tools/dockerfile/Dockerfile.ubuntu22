@@ -20,7 +20,7 @@ COPY paddle/scripts/docker/root/ /root/
 RUN chmod 777 /tmp
 
 RUN mv /etc/apt/sources.list.d/cuda-ubuntu2204-x86_64.list /etc/apt/sources.list.d/cuda-ubuntu2204-x86_64.list.bak
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils curl
 RUN curl https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub | gpg --dearmor | tee /usr/share/keyrings/cuda-archive-keyring.gpg
 RUN mv /etc/apt/sources.list.d/cuda-ubuntu2204-x86_64.list.bak /etc/apt/sources.list.d/cuda-ubuntu2204-x86_64.list
 RUN sed -i 's#deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64 /#deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64 /#' /etc/apt/sources.list.d/cuda-ubuntu2204-x86_64.list
