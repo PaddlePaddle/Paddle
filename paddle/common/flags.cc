@@ -2250,13 +2250,13 @@ PHI_DEFINE_EXPORTED_bool(
     "Whether force Stride_Compute_Kernel output contiguous.");
 
 /**
- * Stride_Compute_Kernel related FLAG
- * Name: FLAGS_torch_compatible_pool_grad
- * Since Version: 3.2.1
+ * Torch Compatible related FLAG
+ * Name: FLAGS_torch_compatible_kernel_implementation
+ * Since Version: 3.2.2
  * Value Range: bool, default=false
  * Example:
- * Note: Whether use torch compatible version pool grad.
+ * Note: Whether use torch compatible version kernel.
  */
-PHI_DEFINE_EXPORTED_bool(torch_compatible_pool_grad,
+PHI_DEFINE_EXPORTED_bool(torch_compatible_kernel_implementation,
                          false,
-                         "Whether use torch compatible version pool grad.");
+                         "Whether use torch compatible version kernel.");

@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/random.cuh"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
-COMMON_DECLARE_bool(torch_compatible_pool_grad);
+COMMON_DECLARE_bool(torch_compatible_kernel_implementation);
 
 namespace phi {
 namespace funcs {
@@ -513,9 +513,6 @@ __global__ void KernelMaxPool2DGradCompatible(
     bool channel_last = false) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  const IndexT start_index =
-      static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
   CUDA_KERNEL_LOOP(index, input_height * input_width) {
     IndexT h = index / input_width;
     IndexT w = index - h * input_width;
@@ -949,6 +946,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                   const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   DenseTensor* input_grad) {
+    static const int kBlockThreads = 1024;
+
     bool channel_last = (data_format == "NHWC");
 
     const int64_t batch_size = input.dims()[0];
@@ -983,15 +982,18 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
 
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
-    dim3 threads(1024, 1);
+    dim3 threads(kBlockThreads, 1);
 
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
-      if (FLAGS_torch_compatible_pool_grad) {
-        int64_t blocks = (input_width * input_height + 1024 - 1) / 1024;
+      if (FLAGS_torch_compatible_kernel_implementation) {
+        int64_t blocks =
+            (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
         dim3 grid(blocks, batch_size, input_channels);
+        // NOTE: input.numel() <= std::numeric_limits<int>::max() &&
+        // output.numel() <= std::numeric_limits<int>::max()
         KernelMaxPool2DGradCompatible<T, int>
             <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,
                                                      output_data,
@@ -1012,8 +1014,10 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                                                      pool_divmods,
                                                      channel_last);
       } else {
-        int64_t blocks = (nthreads + 1024 - 1) / 1024;
+        int64_t blocks = (nthreads + kBlockThreads - 1) / kBlockThreads;
         dim3 grid(blocks, 1);
+        // NOTE: input.numel() <= std::numeric_limits<int>::max() &&
+        // output.numel() <= std::numeric_limits<int>::max()
         KernelMaxPool2DGrad<T, int>
             <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
@@ -1038,8 +1042,9 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
     } else {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, output_width, output_height);
-      if (FLAGS_torch_compatible_pool_grad) {
-        int64_t blocks = (input_width * input_height + 1024 - 1) / 1024;
+      if (FLAGS_torch_compatible_kernel_implementation) {
+        int64_t blocks =
+            (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
         dim3 grid(blocks, batch_size, input_channels);
         KernelMaxPool2DGradCompatible<T, int64_t>
             <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,
@@ -1061,7 +1066,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                                                      pool_divmods,
                                                      channel_last);
       } else {
-        int64_t blocks = (nthreads + 1024 - 1) / 1024;
+        int64_t blocks = (nthreads + kBlockThreads - 1) / kBlockThreads;
         dim3 grid(blocks, 1);
         KernelMaxPool2DGrad<T, int64_t>
             <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
