@@ -214,7 +214,7 @@ class TestDLPackDeviceType(unittest.TestCase):
             (DLDeviceType.kDLCUDA.value, 0),
         )
 
-    # TODO(SigureMo): add e2e test case pass a paddle.dtype to TVM FFI Function
+    # TODO(SigureMo): add e2e test case pass a paddle.base.core.Place to TVM FFI Function
     # in tvm_ffi next release
 
 
