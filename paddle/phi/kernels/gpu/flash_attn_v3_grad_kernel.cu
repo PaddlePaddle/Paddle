@@ -1020,27 +1020,68 @@ void FlashMaskV2GradBaseKernel(
   bool const is_local =
       (window_size_left >= 0 || window_size_right >= 0) && !is_causal;
   bool const is_flashmask = startend_row_indices_.is_initialized();
+  DenseTensor startend_row_indices;
+  if (is_flashmask) startend_row_indices = startend_row_indices_.get();
+  bool const has_softcap = softcap > 0.0;
+  const auto [has_lt_end, has_ut_start] = [&]() -> std::pair<bool, bool> {
+    if (is_flashmask) {
+      if (startend_row_indices.dims()[3] == 2) {
+        if (!is_causal) {
+          // startend_row_indices contain lts, ute
+          return {false, false};
+        } else {
+          // startend_row_indices contain lts, lte
+          return {true, false};
+        }
+      } else if (startend_row_indices.dims()[3] == 4) {
+        // startend_row_indices contain lts, lte, uts, ute
+        return {true, true};
+      }
+    } else {
+      return {false, false};
+    }
+  }();
 
-  int const kBlockM_sm90 =
-      head_size_rounded <= 64
-          ? (is_flashmask && !is_causal)
-                ? 64
-                : (is_causal && softcap || is_flashmask > 0.0 ? 96 : 128)
-          : (head_size_rounded <= 128
-                 ? (is_causal || is_local || softcap > 0.0
-                        ? 64
-                        : 64)
-                 : 64);
+  // umiswing: The tile dispatch for flashmask is now different from fa3.
+  // Replacing the original ternary operator with lambda makes the code
+  // easier to reason about and less error-prone.
+  const auto [kBlockM_sm90, kBlockN_sm90] = [&]() -> std::pair<int, int> {
+    if (head_size_rounded <= 64) {
+      if (is_flashmask && !is_causal) {
+        return {64, 96};
+      } else if (is_causal && has_softcap || is_flashmask) {
+        return {96, 128};
+      } else {
+        return {128, 128};
+      }
+    } else if (head_size_rounded <= 128) {
+      // umiswing: by now, we resue template instantiation of head dim 128 for head dim in range (64, 128],
+      // and therefore no separate dispatch for head dim in range (64, 96]
+      if (is_causal || is_local || has_softcap) {
+        return {64, 128};
+      } else {
+        if ((seqlen_q >= 1024 || seqlen_k >= 1024) && !(has_lt_end && has_ut_start)) {
+          return {64, 128};
+        } else {
+          return {64, 64};
+        }
+      }
+    } else if (head_size_rounded <= 192) {
+      // umiswing: head dim > 128 is not supported now
+      RaiseNotSupportedError();
+      return {0, 0};
+    } else if (head_size_rounded <= 256) {
+      // umiswing: head dim > 128 is not supported now
+      RaiseNotSupportedError();
+      return {0, 0};
+    }
+  }();
 
   int const kBlockM_sm80 = head_size_rounded <= 64 ? 128 : 64;
   int const kBlockM_sm86 = head_size_rounded <= 192 ? 64 : 32;
   int const kBlockM =
       arch >= 90 ? kBlockM_sm90
                  : (arch == 86 || arch == 89 ? kBlockM_sm86 : kBlockM_sm80);
-  int const kBlockN_sm90 =
-      head_size_rounded <= 64 && (is_flashmask && !is_causal) ? 96
-      : head_size_rounded <= 128 ? (is_causal || is_local || softcap > 0.f || seqlen_q >= 8192 ? 128 : 64)
-                                 : (head_size_rounded <= 192 ? 96 : 80);
   int const kBlockN_sm80 =
       head_size_rounded <= 128 ? 128 : (head_size_rounded <= 192 ? 80 : 64);
   int const kBlockN_sm86 =
@@ -1308,8 +1349,6 @@ void FlashMaskV2GradBaseKernel(
                                                      dv_semaphore.data<int>());
   }
   // flashmask
-  DenseTensor startend_row_indices;
-  if (is_flashmask) startend_row_indices = startend_row_indices_.get();
   DenseTensor flashmask_maxmin, lt_start_row_indices, lt_end_row_indices,
       ut_start_row_indices, ut_end_row_indices;
   if (is_flashmask) {
