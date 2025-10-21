@@ -176,9 +176,9 @@ def setup(**attr: Any) -> None:
         ext_modules(Extension): Specify the Extension instance including customized operator source files, compiling flags et.al.
                                 If only compile operator supporting CPU device, please use ``CppExtension`` ; If compile operator
                                 supporting CPU and GPU devices, please use ``CUDAExtension`` .
-        include_dirs(list[str], optional): Specify the extra include directories to search head files. The interface will automatically
-                                add ``site-package/paddle/include``. Please add the corresponding directory path if including third-party
-                                head files. Default is None.
+        include_dirs(list[str], optional): Specify the extra include directories to search head files. The interface will automatically add
+                                 ``site-package/paddle/include`` . Please add the corresponding directory path if including third-party
+                                 head files. Default is None.
         extra_compile_args(list[str] | dict, optional): Specify the extra compiling flags such as ``-O3`` . If set ``list[str]`` , all these flags
                                 will be applied for ``cc`` and ``nvcc`` compiler. It supports specify flags only applied ``cc`` or ``nvcc``
                                 compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
