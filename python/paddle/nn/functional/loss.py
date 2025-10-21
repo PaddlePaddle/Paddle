@@ -2047,7 +2047,9 @@ def ctc_loss(
 
     if zero_infinity:
         loss_out = loss_out.where(
-            paddle.isinf(loss_out), paddle.zeros_like(loss_out), 0.0
+            condition=paddle.isinf(loss_out),
+            x=paddle.zeros_like(loss_out),
+            y=loss_output,
         )
 
     assert reduction in ['mean', 'sum', 'none']
