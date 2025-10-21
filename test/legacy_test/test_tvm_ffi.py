@@ -188,15 +188,16 @@ class TestDLPackDeviceType(unittest.TestCase):
             (DLDeviceType.kDLCPU.value, 0),
         )
 
-        self.assertEqual(
-            paddle.CUDAPlace(0).__dlpack_device__(),
-            (DLDeviceType.kDLCUDA.value, 0),
-        )
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.CUDAPlace(0).__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
 
-        self.assertEqual(
-            paddle.CUDAPinnedPlace().__dlpack_device__(),
-            (DLDeviceType.kDLCUDAHost.value, 0),
-        )
+            self.assertEqual(
+                paddle.CUDAPinnedPlace().__dlpack_device__(),
+                (DLDeviceType.kDLCUDAHost.value, 0),
+            )
 
     def test_dlpack_device_type_base_protocol_from_device(self):
         self.assertEqual(
@@ -204,15 +205,16 @@ class TestDLPackDeviceType(unittest.TestCase):
             (DLDeviceType.kDLCPU.value, 0),
         )
 
-        self.assertEqual(
-            paddle.device('cuda:0').__dlpack_device__(),
-            (DLDeviceType.kDLCUDA.value, 0),
-        )
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.device('cuda:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
 
-        self.assertEqual(
-            paddle.device('gpu:0').__dlpack_device__(),
-            (DLDeviceType.kDLCUDA.value, 0),
-        )
+            self.assertEqual(
+                paddle.device('gpu:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
 
     # TODO(SigureMo): add e2e test case pass a paddle.base.core.Place to TVM FFI Function
     # in tvm_ffi next release
