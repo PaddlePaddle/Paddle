@@ -154,10 +154,10 @@ class AOAShardInfoContext:
         }
 
         if not shard_nums:
-            raise ValueError(
-                f"No shard information found for any of the keys: {state_keys}"
+            logger.warning(
+                f"No shard information found for any of the keys: {state_keys}, return 1."
             )
-
+            return 1
         if len(shard_nums) > 1:
             raise AssertionError(
                 f"Inconsistent shard numbers among keys in source_sharded_state_dict: {shard_nums}."
@@ -196,10 +196,10 @@ class AOAShardInfoContext:
         }
 
         if not shard_nums:
-            raise ValueError(
-                f"No shard information found for any of the keys: {state_keys}"
+            logger.warning(
+                f"No shard information found for any of the keys: {state_keys}, return 1."
             )
-
+            return 1
         if len(shard_nums) > 1:
             raise AssertionError(
                 f"Inconsistent shard numbers among keys in destination_state_shard_info: {shard_nums}."

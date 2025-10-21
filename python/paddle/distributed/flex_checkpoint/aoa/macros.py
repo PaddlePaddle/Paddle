@@ -505,7 +505,7 @@ def fused_ffn_macro(tokens, expression, context):
     return results
 
 
-@macro(name='transpose_macro', priority=5)
+@macro(name='transpose_macro', priority=3)
 def transpose_macro(tokens, expression, context):
     TRANSPOSE_TAG = "^T"
 
