@@ -66,8 +66,8 @@ void PNormGradKernel(const Context& dev_ctx,
   if (axis < 0) axis = xdim.size() + axis;
   int pre, n, post;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
-  Eigen::DSizes<int, 3> shape(pre, n, post);
-  Eigen::DSizes<int, 3> rshape(pre, 1, post);
+  Eigen::DSizes<int64_t, 3> shape(pre, n, post);
+  Eigen::DSizes<int64_t, 3> rshape(pre, static_cast<int64_t>(1), post);
 
   auto* place = dev_ctx.eigen_device();
 

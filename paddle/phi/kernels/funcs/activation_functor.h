@@ -47,11 +47,11 @@ enum ActBwdOpFwdDeps {
   kDepOut = 0x02,  // Only need forward output Out
 };
 
-template <typename T>
+template <typename T, typename AttrT = float>
 struct BaseActivationFunctor {
   using ELEMENT_TYPE = T;
 
-  using AttrPair = std::vector<std::pair<const char*, float*>>;
+  using AttrPair = std::vector<std::pair<const char*, AttrT*>>;
 
   AttrPair GetAttrs() { return AttrPair(); }
 };
@@ -1836,9 +1836,9 @@ struct HardTanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct LeakyReluFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+struct LeakyReluFunctor : public BaseActivationFunctor<T, double> {
+  double alpha;
+  typename BaseActivationFunctor<T, double>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
 
@@ -1853,9 +1853,9 @@ struct LeakyReluFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+struct LeakyReluGradFunctor : public BaseActivationFunctor<T, double> {
+  double alpha;
+  typename BaseActivationFunctor<T, double>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
   template <typename Device,
@@ -1874,9 +1874,9 @@ struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T, double> {
+  double alpha;
+  typename BaseActivationFunctor<T, double>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
   template <typename Device>
@@ -4759,32 +4759,38 @@ struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
   }
 };
 template <typename T>
-struct CudaLeakyReluFunctor : public BaseActivationFunctor<T> {
+struct CudaLeakyReluFunctor : public BaseActivationFunctor<T, double> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   T zero = static_cast<T>(0.0f);
-  float alpha;
+  double alpha;
 
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  typename BaseActivationFunctor<T, double>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
 
   // leakyrelu(x) = x > 0 ? x : alpha * x
   __device__ __forceinline__ T operator()(const T x) const {
-    return x > zero ? x : static_cast<T>(alpha) * x;
+    return x > zero ? x
+                    : static_cast<T>(static_cast<MPType>(alpha) *
+                                     static_cast<MPType>(x));
   }
 };
 
 template <typename T>
-struct CudaLeakyReluGradFunctor : public BaseActivationFunctor<T> {
+struct CudaLeakyReluGradFunctor : public BaseActivationFunctor<T, double> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   T zero = static_cast<T>(0.0f);
-  float alpha;
+  double alpha;
 
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  typename BaseActivationFunctor<T, double>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
 
   // dx = dout * (x > 0 ? 1 : alpha)
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return x > zero ? dout : static_cast<T>(alpha) * dout;
+    return x > zero ? dout
+                    : static_cast<T>(static_cast<MPType>(alpha) *
+                                     static_cast<MPType>(dout));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
