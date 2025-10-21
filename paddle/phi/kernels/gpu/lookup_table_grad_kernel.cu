@@ -47,7 +47,7 @@ __global__ void LookupTableGrad(T *table,
         id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int64_t i = idx; i < D; i += BlockDimX) {
       phi::CudaAtomicAdd(&tab[i], out[i]);
     }
     idy += BlockDimY * GridDimX;

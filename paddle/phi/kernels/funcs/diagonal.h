@@ -158,7 +158,7 @@ __global__ void DiagonalCuda(const T* data1,
                              int64_t numel,
                              int64_t out_numel,
                              bool is_grad) {
-  CUDA_KERNEL_LOOP(idx, out_numel) {
+  CUDA_KERNEL_LOOP_TYPE(idx, out_numel, int64_t) {
     int64_t idx_dim[OUT_DIM_SIZE] = {0};
     int64_t temp = 0;
     for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
