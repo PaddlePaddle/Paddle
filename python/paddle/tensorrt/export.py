@@ -803,11 +803,9 @@ def convert(model_path, config):
     else:
         with paddle.pir_utils.OldIrGuard():
             os.environ['FLAGS_enable_pir_in_executor'] = '1'
-            [program, feed_target_names, fetch_targets] = (
-                paddle.static.io.load_inference_model(
-                    model_path,
-                    executor=exe,
-                )
+            [program, _, _] = paddle.static.io.load_inference_model(
+                model_path,
+                executor=exe,
             )
             os.environ['FLAGS_enable_pir_in_executor'] = '0'
     return convert_to_trt(program, config, scope)
