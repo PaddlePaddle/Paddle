@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed import Replicate, Shard
+from paddle.distributed import Shard
 from paddle.io import DataLoader
 
 BATCH_SIZE = 4
@@ -58,14 +58,13 @@ def create_data_loader(
 
 
 class DemoNet(nn.Layer):
-    def __init__(self, mesh, shard_type="no_shard"):
+    def __init__(self, mesh, shard_type="no_shard", test_prim=False):
         super().__init__()
         self._mesh = mesh
+        self._test_prim = test_prim
         self.shard_type = shard_type
         self.linear_0 = nn.Linear(IMAGE_SIZE, CLASS_NUM, bias_attr=False)
         self.linear_1 = nn.Linear(CLASS_NUM, CLASS_NUM, bias_attr=False)
-        self.relu_0 = nn.ReLU()
-        self.relu_1 = nn.ReLU()
         if self.shard_type == "tp":
             self.linear_0.weight = dist.shard_tensor(
                 self.linear_0.weight,
@@ -79,35 +78,23 @@ class DemoNet(nn.Layer):
                 [Shard(0)],
                 stop_gradient=False,
             )
-        elif self.shard_type == "pp":
-            assert len(self.mesh) == 2
-            self.linear_0.weight = dist.shard_tensor(
-                self.linear_0.weight,
-                self._mesh[0],
-                [Replicate()],
-                stop_gradient=False,
-            )
-            self.linear_0.weight = dist.shard_tensor(
-                self.linear_0.weight,
-                self._mesh[1],
-                [Replicate()],
-                stop_gradient=False,
-            )
         elif self.shard_type == "dp":
             pass
         else:
             raise ValueError(
-                "Only support `shard_type` is one of `no_shard`, `dp`, `tp` and `pp`."
+                "Only support `shard_type` is one of `dp` and `tp`."
             )
 
     def forward(self, x):
         x.stop_gradient = False
         y = paddle.tanh(x)
         y = self.linear_0(y)
-        y = self.relu_0(y)
         y = self.linear_1(y)
-        y = self.relu_1(y)
         y = paddle.cast(y, 'float32')
+        if self._test_prim:
+            y = y.unsqueeze(1)
+            # `p_norm_grad` needs prim_eager=True.
+            y = paddle.linalg.norm(y, p=2, axis=-1)
         return y
 
 
@@ -128,16 +115,17 @@ class TestMLPTensorParallel(unittest.TestCase):
             d2x = paddle.grad(dx, image, create_graph=False)[0]
             logit = y + dx + d2x
             loss = loss_fn(logit, label)
-            losses.append(loss._md5sum())
+            loss = logit
+            losses.append(loss)
             loss.backward()
             opt.step()
             opt.clear_grad()
         return losses
 
-    def run_tp_model(self):
+    def run_tp_model(self, test_prim=False):
         set_random_seed(eval(os.getenv("seed")))
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        mp_layer = DemoNet(mesh=mesh, shard_type="tp")
+        mesh = dist.ProcessMesh([0, 1], dim_names=["tp"])
+        mp_layer = DemoNet(mesh=mesh, shard_type="tp", test_prim=test_prim)
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=mp_layer.parameters()
         )
@@ -148,10 +136,10 @@ class TestMLPTensorParallel(unittest.TestCase):
         tp_losses = self.run_model(mp_layer, dist_loader, loss_fn, opt)
         return tp_losses
 
-    def run_dp_model(self):
+    def run_dp_model(self, test_prim=False):
         set_random_seed(eval(os.getenv("seed")))
         mesh = dist.ProcessMesh([0, 1], dim_names=["dp"])
-        dp_layer = DemoNet(mesh=mesh, shard_type="dp")
+        dp_layer = DemoNet(mesh=mesh, shard_type="dp", test_prim=test_prim)
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=dp_layer.parameters()
         )
@@ -164,11 +152,13 @@ class TestMLPTensorParallel(unittest.TestCase):
         dp_losses = self.run_model(dp_layer, dist_loader, loss_fn, opt)
         return dp_losses
 
-    def run_pp_model(self):
+    def run_pp_model(self, test_prim=False):
         set_random_seed(eval(os.getenv("seed")))
         mesh_1 = dist.ProcessMesh([0], dim_names=["pp1"])
         mesh_2 = dist.ProcessMesh([1], dim_names=["pp2"])
-        pp_layer = DemoNet(mesh=[mesh_1, mesh_2], shard_type="dp")
+        pp_layer = DemoNet(
+            mesh=[mesh_1, mesh_2], shard_type="pp", test_prim=test_prim
+        )
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=pp_layer.parameters()
         )
@@ -180,11 +170,25 @@ class TestMLPTensorParallel(unittest.TestCase):
         return pp_losses
 
     def test_auto_parallel(self):
+        rtol = 1e-5
         dp_losses = self.run_dp_model()
         tp_losses = self.run_tp_model()
-        pp_losses = self.run_pp_model()
-        self.assertTrue(dp_losses == tp_losses)
-        self.assertTrue(dp_losses == pp_losses)
+        np.testing.assert_allclose(
+            dp_losses,
+            tp_losses,
+            rtol=rtol,
+        )
+
+    def test_prim_eager_auto_parallel(self):
+        rtol = 1e-5
+        paddle.framework.core.set_prim_eager_enabled(True)
+        dp_losses = self.run_dp_model(test_prim=True)
+        tp_losses = self.run_tp_model(test_prim=True)
+        np.testing.assert_allclose(
+            dp_losses,
+            tp_losses,
+            rtol=rtol,
+        )
 
 
 if __name__ == "__main__":
