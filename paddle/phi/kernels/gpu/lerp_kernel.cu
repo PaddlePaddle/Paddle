@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/lerp_kernel.h"
-#include <cstdlib>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
