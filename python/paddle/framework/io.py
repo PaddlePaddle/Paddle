@@ -430,7 +430,11 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        if self.is_dense() and self.place.is_custom_place():
+        if (
+            self.is_dense()
+            and self.place.is_custom_place()
+            and core.is_compiled_with_custom_device('npu')
+        ):
             data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
         else:
             data = np.array(self.cpu())

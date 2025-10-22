@@ -172,7 +172,7 @@ template <typename T, typename Context>
 void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& ddx,
-                               float alpha,
+                               double alpha,
                                DenseTensor* ddout);
 
 template <typename T, typename Context>
@@ -331,7 +331,7 @@ DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Round);
 DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Floor);
 DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Ceil);
 
-DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu, alpha);
+DECLARE_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu, alpha);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink, lambda);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(Logit, eps);

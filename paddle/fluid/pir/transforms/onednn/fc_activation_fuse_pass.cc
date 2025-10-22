@@ -148,7 +148,11 @@ class FusedFcActivationFusePattern : public paddle::drr::DrrPatternBase {
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
     } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
                act_type_ == paddle::dialect::LeakyReluOp::name()) {
-      fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      const auto &fuse_alpha = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> float {
+            return static_cast<float>(match_ctx.Attr<double>("fuse_alpha"));
+          });
+      fused_attrs["fuse_alpha"] = fuse_alpha;
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
     } else if (act_type_ == paddle::dialect::Relu6Op::name()) {

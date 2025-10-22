@@ -32,6 +32,9 @@ using egr::InputsContainDistTensor;
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
+
 #define SEPARATOR "=========================="
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
@@ -113,9 +116,15 @@ Conv2dGradNodeFinal::operator()(
   // Inplace Strategy
 
   // Call grad_api function
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("conv2d_grad", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "conv2d_grad" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
 
   paddle::experimental::conv2d_grad(input,
                                     filter,
@@ -129,8 +138,7 @@ Conv2dGradNodeFinal::operator()(
                                     api_output_0,
                                     api_output_1);
   VLOG(3) << "\n"
-          << SEPARATOR << "Finish_C++_API: "
-          << "conv2d_grad" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf id needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d_grad", returns);
@@ -157,6 +165,17 @@ Conv2dGradNodeFinal::operator()(
     grad_filter_autograd_meta->SetStopGradient(false);
   VLOG(3) << "Conv2dGradNodeFinal grad_filter_autograd_meta: "
           << grad_filter_autograd_meta;
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetGradTensorName(&grad_input, 0, out_metas);
+    egr::SetGradTensorName(&grad_filter, 1, out_metas);
+  }
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_dir.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+                                     grad_input);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+                                     grad_filter);
+  }
 
   // Create Grad Node
   if (trace_backward) {

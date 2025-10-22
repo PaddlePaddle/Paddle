@@ -242,7 +242,8 @@ PADDLE_API void AdamwDenseKernel(
 
   // update param and moment
   int threads = 512;
-  int blocks = (param.numel() + threads - 1) / threads;
+  int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((param.numel() + threads - 1) / threads, blocks_max);
 
   // Determine BetaPow location
   const bool beta_pow_on_cpu =
