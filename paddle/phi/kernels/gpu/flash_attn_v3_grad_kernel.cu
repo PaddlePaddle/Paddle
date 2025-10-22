@@ -1109,11 +1109,20 @@ void FlashMaskV2GradBaseKernel(
       }
     } else if (head_size_rounded <= 192) {
       // umiswing: head dim > 128 is not supported now
-      RaiseNotSupportedError();
+      PADDLE_THROW(common::errors::Unimplemented(
+          "head dim is rounded to %d, which is not supported in FlashMask V3 now.",
+          head_size_rounded));
       return {0, 0};
     } else if (head_size_rounded <= 256) {
       // umiswing: head dim > 128 is not supported now
-      RaiseNotSupportedError();
+      PADDLE_THROW(common::errors::Unimplemented(
+          "head dim is rounded to %d, which is not supported in FlashMask V3 now.",
+          head_size_rounded));
+      return {0, 0};
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "head dim is rounded to %d, which is not supported in FlashMask V3 now.",
+          head_size_rounded));
       return {0, 0};
     }
   }();
