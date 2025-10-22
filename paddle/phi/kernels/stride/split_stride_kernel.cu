@@ -104,7 +104,7 @@ void SplitWithNumStridedGPUKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(split_stride,
+PD_REGISTER_KERNEL(split_strided,
                    GPU,
                    STRIDED,
                    phi::SplitStridedGPUKernel,
@@ -122,7 +122,7 @@ PD_REGISTER_KERNEL(split_stride,
                    phi::complex64,
                    phi::complex128) {}
 
-PD_REGISTER_KERNEL(split_with_num_stride,
+PD_REGISTER_KERNEL(split_with_num_strided,
                    GPU,
                    STRIDED,
                    phi::SplitWithNumStridedGPUKernel,
