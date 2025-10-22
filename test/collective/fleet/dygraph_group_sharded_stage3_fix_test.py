@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<< HEAD
-=======
 import unittest
-
->>>>>>> b3bc81cd9e (sharding stage3 bugfix)
 import numpy as np
 from dist_amp_base import create_optimizer
 
@@ -131,7 +127,6 @@ class TestStage3Bugfix(unittest.TestCase):
         model = MyModel(input_dim=h, hidden_dim=32, output_dim=h, scale=0.4)
         dist.init_parallel_env()
         train_step(model)
-
 
 if __name__ == "__main__":
     unittest.main()
