@@ -61,7 +61,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
 // not support Windows
 #if !defined(_WIN32)
   if (FLAGS_use_stride_kernel && FLAGS_use_stride_compute_kernel &&

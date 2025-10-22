@@ -655,7 +655,7 @@ if(WITH_GPU
 endif()
 py_test_modules(test_index_put_op MODULES test_index_put_op ENVS
                 FLAGS_use_stride_compute_kernel=1)
-if(NOT WIN32)
+if((NOT WIN32) AND (NOT WITH_ROCM))
   py_test_modules(test_fast_h2d_copy MODULES test_fast_h2d_copy ENVS
                   FLAGS_use_stride_compute_kernel=1)
 endif()
