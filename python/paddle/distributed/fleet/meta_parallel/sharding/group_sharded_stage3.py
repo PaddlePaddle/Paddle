@@ -938,26 +938,26 @@ class ForwardPostHooks(PyLayer):
         ctx.trainable_params = trainable_params
         ctx.param2buffer_size = param2buffer_size
         ctx.offload = offload
-        inputs_new = []
+        inputs_list = []
         grad_none = {}
         tensor_count = 0
-        for input in inputs:
-            if isinstance(input, paddle.Tensor):
-                input_new = paddle.assign(input)
-                inputs_new.append(input_new)
-                input_new.stop_gradient = input.stop_gradient
-                if input.stop_gradient:
+        for input_tensor in inputs:
+            if isinstance(input_tensor, paddle.Tensor):
+                input_new = paddle.assign(input_tensor)
+                inputs_list.append(input_new)
+                input_new.stop_gradient = input_tensor.stop_gradient
+                if input_tensor.stop_gradient:
                     grad_none[tensor_count] = True
                 else:
                     grad_none[tensor_count] = False
                 tensor_count += 1
             else:
-                inputs_new.append(input)
+                inputs_list.append(input_tensor)
         ctx.grad_none = grad_none
-        if len(inputs_new) == 1:
-            return inputs_new[0]
+        if len(inputs_list) == 1:
+            return inputs_list[0]
         else:
-            return tuple(inputs_new)
+            return tuple(inputs_list)
 
     @staticmethod
     def backward(ctx, *args):

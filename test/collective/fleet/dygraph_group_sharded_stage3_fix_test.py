@@ -20,6 +20,7 @@ import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
@@ -43,7 +44,8 @@ def train_step(model, use_pure_bf16=False, use_main_grad=False):
     optimizer = create_optimizer(
         model=model, use_pure_bf16=use_pure_bf16, use_main_grad=use_main_grad
     )
-    group = paddle.distributed.new_group([0, 1])
+    hcg = fleet.get_hybrid_communicate_group()
+    group = hcg.get_sharding_parallel_group()
     model = GroupShardedStage3(model, optimizer, group=group)
     local_rank = paddle.distributed.get_rank()
     epoch = 1
@@ -97,7 +99,9 @@ class MulLinear(nn.Layer):
         output2 = self.scale2 * out2
         score1 = output1.mean()
         score2 = output2.mean()
-        return score1, score2, output1, output2
+        combined = paddle.stack([output1, output2], axis=0)
+        combined.stop_gradient = True
+        return score1.item(), score2.item(), output1, output2, combined
 
 
 class MyModel(nn.Layer):
@@ -110,9 +114,13 @@ class MyModel(nn.Layer):
     def forward(self, input):
         hidden_states = self.linear1(input)
         hidden_states = F.relu(hidden_states)
-        score1, score2, hidden_states1, hidden_states2 = self.mullinear(
-            hidden_states
-        )
+        (
+            score1,
+            score2,
+            hidden_states1,
+            hidden_states2,
+            combined_hidden_states,
+        ) = self.mullinear(hidden_states)
         final_score = score1 + score2
         w1 = score1 / final_score
         w2 = score2 / final_score
@@ -121,7 +129,22 @@ class MyModel(nn.Layer):
         output = self.linear2(hidden_states)
         return final_score, output
 
+
 class TestStage3Bugfix(unittest.TestCase):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 1
+        self.data_parallel_size = 1
+        self.pipeline_parallel_size = 1
+        self.sharding_parallel_size = 2
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": self.pipeline_parallel_size,
+            "sharding_degree": self.sharding_parallel_size,
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
     def test_stage3(self):
         b, s, h = 4, 8, 16
         model = MyModel(input_dim=h, hidden_dim=32, output_dim=h, scale=0.4)
