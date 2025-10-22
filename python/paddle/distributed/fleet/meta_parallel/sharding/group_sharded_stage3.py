@@ -592,19 +592,34 @@ class GroupShardedStage3(nn.Layer):
             )
 
         def _forward_post_hook(layer, inputs, outputs):
-            return ForwardPostHooks.apply(
-                outputs,
-                layer,
-                self._order_tracer,
-                self._trainable_params,
-                self._param2buffer,
-                self._param2buffer_size,
-                self._rank,
-                self._group,
-                self._sync_comm,
-                self._offload,
-                task_flow,
-            )
+            if isinstance(outputs, tuple):
+                return ForwardPostHooks.apply(
+                    *outputs,
+                    layer=layer,
+                    order_tracer=self._order_tracer,
+                    trainable_params=self._trainable_params,
+                    param2buffer=self._param2buffer,
+                    param2buffer_size=self._param2buffer_size,
+                    rank=self._rank,
+                    group=self._group,
+                    sync_comm=self._sync_comm,
+                    offload=self._offload,
+                    task_flow=task_flow,
+                )
+            else:
+                return ForwardPostHooks.apply(
+                    outputs,
+                    layer=layer,
+                    order_tracer=self._order_tracer,
+                    trainable_params=self._trainable_params,
+                    param2buffer=self._param2buffer,
+                    param2buffer_size=self._param2buffer_size,
+                    rank=self._rank,
+                    group=self._group,
+                    sync_comm=self._sync_comm,
+                    offload=self._offload,
+                    task_flow=task_flow,
+                )
 
         # register previous forward hooks
         sub_layer.register_forward_pre_hook(_forward_pre_hook)
@@ -903,7 +918,7 @@ class ForwardPostHooks(PyLayer):
     @staticmethod
     def forward(
         ctx,
-        inputs,
+        *inputs,
         layer,
         order_tracer,
         trainable_params,
@@ -936,8 +951,26 @@ class ForwardPostHooks(PyLayer):
         ctx.trainable_params = trainable_params
         ctx.param2buffer_size = param2buffer_size
         ctx.offload = offload
-
-        return inputs
+        inputs_new = []
+        grad_none = {}
+        tensor_count = 0
+        for input in inputs:
+            if isinstance(input, paddle.Tensor):
+                input_new = paddle.assign(input)
+                inputs_new.append(input_new)
+                input_new.stop_gradient = input.stop_gradient
+                if input.stop_gradient:
+                    grad_none[tensor_count] = True
+                else:
+                    grad_none[tensor_count] = False
+                tensor_count += 1
+            else:
+                inputs_new.append(input)
+        ctx.grad_none = grad_none
+        if len(inputs_new) == 1:
+            return inputs_new[0]
+        else:
+            return tuple(inputs_new)
 
     @staticmethod
     def backward(ctx, *args):
@@ -992,8 +1025,12 @@ class ForwardPostHooks(PyLayer):
                 sync_wait=sync_wait,
                 offload=offload,
             )
-
-        return args
+        grad_none = ctx.grad_none
+        args = list(args)
+        for i in range(len(args)):
+            if grad_none[i]:
+                args[i] = None
+        return tuple(args)
 
 
 class TaskFlow:
