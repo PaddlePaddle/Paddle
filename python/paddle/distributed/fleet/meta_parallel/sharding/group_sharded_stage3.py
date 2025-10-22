@@ -592,34 +592,21 @@ class GroupShardedStage3(nn.Layer):
             )
 
         def _forward_post_hook(layer, inputs, outputs):
-            if isinstance(outputs, tuple):
-                return ForwardPostHooks.apply(
-                    *outputs,
-                    layer=layer,
-                    order_tracer=self._order_tracer,
-                    trainable_params=self._trainable_params,
-                    param2buffer=self._param2buffer,
-                    param2buffer_size=self._param2buffer_size,
-                    rank=self._rank,
-                    group=self._group,
-                    sync_comm=self._sync_comm,
-                    offload=self._offload,
-                    task_flow=task_flow,
-                )
-            else:
-                return ForwardPostHooks.apply(
-                    outputs,
-                    layer=layer,
-                    order_tracer=self._order_tracer,
-                    trainable_params=self._trainable_params,
-                    param2buffer=self._param2buffer,
-                    param2buffer_size=self._param2buffer_size,
-                    rank=self._rank,
-                    group=self._group,
-                    sync_comm=self._sync_comm,
-                    offload=self._offload,
-                    task_flow=task_flow,
-                )
+            if isinstance(outputs, paddle.Tensor):
+                outputs = (outputs,)
+            return ForwardPostHooks.apply(
+                *outputs,
+                layer=layer,
+                order_tracer=self._order_tracer,
+                trainable_params=self._trainable_params,
+                param2buffer=self._param2buffer,
+                param2buffer_size=self._param2buffer_size,
+                rank=self._rank,
+                group=self._group,
+                sync_comm=self._sync_comm,
+                offload=self._offload,
+                task_flow=task_flow,
+            )
 
         # register previous forward hooks
         sub_layer.register_forward_pre_hook(_forward_pre_hook)
