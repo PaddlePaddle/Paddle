@@ -1022,24 +1022,66 @@ void FlashMaskV2GradBaseKernel(
   DenseTensor startend_row_indices;
   if (is_flashmask) startend_row_indices = startend_row_indices_.get();
   bool const has_softcap = softcap > 0.0;
-  const auto [has_lt_end, has_ut_start] = [&]() -> std::pair<bool, bool> {
-    if (is_flashmask) {
-      if (startend_row_indices.dims()[3] == 2) {
-        if (!is_causal) {
-          // startend_row_indices contain lts, ute
-          return {false, false};
-        } else {
-          // startend_row_indices contain lts, lte
-          return {true, false};
-        }
-      } else if (startend_row_indices.dims()[3] == 4) {
-        // startend_row_indices contain lts, lte, uts, ute
-        return {true, true};
+
+  // flashmask
+  DenseTensor flashmask_maxmin, lt_start_row_indices, lt_end_row_indices,
+      ut_start_row_indices, ut_end_row_indices;
+  if (is_flashmask) {
+    PADDLE_ENFORCE_EQ(
+        startend_row_indices.dtype(),
+        phi::DataType::INT32,
+        common::errors::InvalidArgument(
+            "flashmask_attention startend_row_indices must be INT32 type"));
+    PADDLE_ENFORCE_EQ(
+        startend_row_indices.dims().size(),
+        4,
+        common::errors::InvalidArgument(
+            "flashmask_attention receive startend_row_indices with dim "
+            "[batch_size, num_heads,seq_len, mask_bounds]"));
+    PADDLE_ENFORCE_EQ(startend_row_indices.dims()[3] == 1 ||
+                          startend_row_indices.dims()[3] == 2 ||
+                          startend_row_indices.dims()[3] == 4,
+                      true,
+                      common::errors::InvalidArgument(
+                          "flashmask_attention startend_row_indices "
+                          "mask_bounds must in [1,2,4]"));
+
+    auto flashmask_maxmin_shape = startend_row_indices.dims();
+    // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
+    // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
+    // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
+    flashmask_maxmin_shape[2] =
+        ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+    flashmask_maxmin_shape[3] = 8;
+
+    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.Resize(flashmask_maxmin_shape);
+    dev_ctx.template Alloc<int32_t>(&flashmask_maxmin);
+
+    lt_start_row_indices =
+        phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {0}, {1});
+    if (startend_row_indices.dims()[3] == 2) {
+      if (!is_causal) {
+        ut_end_row_indices =
+            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+      } else {
+        lt_end_row_indices =
+            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
       }
-    } else {
-      return {false, false};
+    } else if (startend_row_indices.dims()[3] == 4) {
+      ut_end_row_indices =
+          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {3}, {4});
+      lt_end_row_indices =
+          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+      ut_start_row_indices =
+          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {2}, {3});
     }
-  }();
+  }
+
+  const bool has_lt_start = lt_start_row_indices.initialized();
+  const bool has_lt_end = lt_end_row_indices.initialized();
+  const bool has_ut_start = ut_start_row_indices.initialized();
+  const bool has_ut_end = ut_end_row_indices.initialized();
 
   // umiswing: The tile dispatch for flashmask is now different from fa3.
   // Replacing the original ternary operator with lambda makes the code
@@ -1346,60 +1388,6 @@ void FlashMaskV2GradBaseKernel(
                                                      dk_semaphore.data<int>());
     dynload::flashmaskv2_bwd_params_set_dv_semaphore(params_handle,
                                                      dv_semaphore.data<int>());
-  }
-  // flashmask
-  DenseTensor flashmask_maxmin, lt_start_row_indices, lt_end_row_indices,
-      ut_start_row_indices, ut_end_row_indices;
-  if (is_flashmask) {
-    PADDLE_ENFORCE_EQ(
-        startend_row_indices.dtype(),
-        phi::DataType::INT32,
-        common::errors::InvalidArgument(
-            "flashmask_attention startend_row_indices must be INT32 type"));
-    PADDLE_ENFORCE_EQ(
-        startend_row_indices.dims().size(),
-        4,
-        common::errors::InvalidArgument(
-            "flashmask_attention receive startend_row_indices with dim "
-            "[batch_size, num_heads,seq_len, mask_bounds]"));
-    PADDLE_ENFORCE_EQ(startend_row_indices.dims()[3] == 1 ||
-                          startend_row_indices.dims()[3] == 2 ||
-                          startend_row_indices.dims()[3] == 4,
-                      true,
-                      common::errors::InvalidArgument(
-                          "flashmask_attention startend_row_indices "
-                          "mask_bounds must in [1,2,4]"));
-
-    auto flashmask_maxmin_shape = startend_row_indices.dims();
-    // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
-    // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
-    // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin_shape[2] =
-        ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
-    flashmask_maxmin_shape[3] = 8;
-
-    flashmask_maxmin.set_type(phi::DataType::INT32);
-    flashmask_maxmin.Resize(flashmask_maxmin_shape);
-    dev_ctx.template Alloc<int32_t>(&flashmask_maxmin);
-
-    lt_start_row_indices =
-        phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {0}, {1});
-    if (startend_row_indices.dims()[3] == 2) {
-      if (!is_causal) {
-        ut_end_row_indices =
-            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
-      } else {
-        lt_end_row_indices =
-            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
-      }
-    } else if (startend_row_indices.dims()[3] == 4) {
-      ut_end_row_indices =
-          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {3}, {4});
-      lt_end_row_indices =
-          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
-      ut_start_row_indices =
-          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {2}, {3});
-    }
   }
 
   if (is_flashmask) {
