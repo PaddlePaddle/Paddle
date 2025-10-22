@@ -1240,7 +1240,11 @@ Tensor lerp_decomp(const Tensor& x, const Tensor& y, const Tensor& weight) {
   Tensor x_cast = ConvertToMT<T>(x);
   Tensor y_cast = ConvertToMT<T>(y);
   Tensor weight_cast = ConvertToMT<T>(weight);
-  Tensor res = x_cast + weight_cast * (y_cast - x_cast);
+  Tensor half = full_scalar<T>((0.5), x_cast.dtype(), x_cast.place());
+  Tensor one = full_scalar<T>(1.0, x_cast.dtype(), x_cast.place());
+  Tensor res = where<T>(weight_cast.abs() < half,
+                        x_cast + weight_cast * (y_cast - x_cast),
+                        y_cast - (y_cast - x_cast) * (one - weight_cast));
   return ConvertToOrig<T>(res, x.dtype());
 }
 
