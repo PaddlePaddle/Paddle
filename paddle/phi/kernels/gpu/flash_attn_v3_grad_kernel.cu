@@ -1096,12 +1096,14 @@ void FlashMaskV2GradBaseKernel(
         return {128, 128};
       }
     } else if (head_size_rounded <= 128) {
-      // umiswing: by now, we resue template instantiation of head dim 128 for head dim in range (64, 128],
-      // and therefore no separate dispatch for head dim in range (64, 96]
+      // umiswing: by now, we reuse template instantiation of head dim 128 for
+      // head dim in range (64, 128], and therefore no separate dispatch for
+      // head dim in range (64, 96]
       if (is_causal || is_local || has_softcap) {
         return {64, 128};
       } else {
-        if ((seqlen_q >= 1024 || seqlen_k >= 1024) && !(has_lt_end && has_ut_start)) {
+        if ((seqlen_q >= 1024 || seqlen_k >= 1024) &&
+            !(has_lt_end && has_ut_start)) {
           return {64, 128};
         } else {
           return {64, 64};
@@ -1109,20 +1111,23 @@ void FlashMaskV2GradBaseKernel(
       }
     } else if (head_size_rounded <= 192) {
       // umiswing: head dim > 128 is not supported now
-      PADDLE_THROW(common::errors::Unimplemented(
-          "head dim is rounded to %d, which is not supported in FlashMask V3 now.",
-          head_size_rounded));
+      PADDLE_THROW(
+          common::errors::Unimplemented("head dim is rounded to %d, which is "
+                                        "not supported in FlashMask V3 now.",
+                                        head_size_rounded));
       return {0, 0};
     } else if (head_size_rounded <= 256) {
       // umiswing: head dim > 128 is not supported now
-      PADDLE_THROW(common::errors::Unimplemented(
-          "head dim is rounded to %d, which is not supported in FlashMask V3 now.",
-          head_size_rounded));
+      PADDLE_THROW(
+          common::errors::Unimplemented("head dim is rounded to %d, which is "
+                                        "not supported in FlashMask V3 now.",
+                                        head_size_rounded));
       return {0, 0};
     } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "head dim is rounded to %d, which is not supported in FlashMask V3 now.",
-          head_size_rounded));
+      PADDLE_THROW(
+          common::errors::Unimplemented("head dim is rounded to %d, which is "
+                                        "not supported in FlashMask V3 now.",
+                                        head_size_rounded));
       return {0, 0};
     }
   }();
