@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from dist_amp_base import create_optimizer
 
@@ -150,6 +151,7 @@ class TestStage3Bugfix(unittest.TestCase):
         model = MyModel(input_dim=h, hidden_dim=32, output_dim=h, scale=0.4)
         dist.init_parallel_env()
         train_step(model)
+
 
 if __name__ == "__main__":
     unittest.main()
