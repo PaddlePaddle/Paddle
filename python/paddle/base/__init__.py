@@ -164,9 +164,6 @@ def __bootstrap__():
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
-    if os.getenv('MKL_NUM_THREADS', None) is None:
-        os.environ['MKL_NUM_THREADS'] = str(int(0.8 * os.cpu_count()))
-
     flag_prefix = "FLAGS_"
     read_env_flags = [
         key[len(flag_prefix) :]
