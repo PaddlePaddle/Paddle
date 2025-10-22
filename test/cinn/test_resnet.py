@@ -85,8 +85,8 @@ class TestLoadResnetModel(unittest.TestCase):
 
     def test_model(self):
         self.apply_test()
-        # self.target.arch = Target.NVGPUArch()
-        # self.apply_test()
+        self.target.arch = Target.NVGPUArch()
+        self.apply_test()
 
 
 if __name__ == "__main__":

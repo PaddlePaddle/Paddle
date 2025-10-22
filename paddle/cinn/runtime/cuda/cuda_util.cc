@@ -119,7 +119,22 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   {
     cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                         cinn::utils::EventType::kInstruction);
-    CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),
+    // 检查CUDA函数指针有效性
+    CUfunction cu_func = static_cast<CUfunction>(kernel_fn);
+    if (!cu_func) {
+      LOG(FATAL) << "Invalid CUDA function pointer";
+      return;
+    }
+    
+    // 检查当前CUDA上下文
+    CUcontext ctx;
+    CUresult ctx_result = cuCtxGetCurrent(&ctx);
+    if (ctx_result != CUDA_SUCCESS || !ctx) {
+      LOG(FATAL) << "No valid CUDA context";
+      return;
+    }
+    
+    CUDA_DRIVER_CALL(cuLaunchKernel(cu_func,
                                     grid_x,
                                     grid_y,
                                     grid_z,

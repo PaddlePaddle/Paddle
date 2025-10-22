@@ -352,6 +352,8 @@ void Compiler::RegisterDeviceModuleSymbol() {
 
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
+   VLOG(3) << "[YUHAN!!!] RegisterCudaModuleSymbol:\n";
+  nvrtc::Compiler compiler;
   // 生成动态链接库
   std::string source_code = CodeGenCudaDev::GetSourceHeader() + device_fn_code_;
   dynamic_library_path_ = GenerateDynamicLibrary(source_code);
@@ -362,25 +364,61 @@ void Compiler::RegisterCudaModuleSymbol() {
                         "Generate dynamic library failed from source code\n"));
   VLOG(3) << "[YUHAN!!!] Generate dynamic library success from source code:\n" << dynamic_library_path_;
   
-  // 加载动态链接库
-  dynamic_library_handle_ = LoadDynamicLibrary(dynamic_library_path_);
-  PADDLE_ENFORCE_NOT_NULL(dynamic_library_handle_,
-                          ::common::errors::InvalidArgument(
-                              "Fail to load dynamic library: %s", dynamic_library_path_));
-
   RuntimeSymbols symbols;
   for (const auto& kernel_fn_name : device_fn_name_) {
-    // 从动态链接库获取函数指针
-    void* fn_ptr = GetFunctionFromLibrary(dynamic_library_handle_, kernel_fn_name);
-    PADDLE_ENFORCE_NOT_NULL(fn_ptr,
-                            ::common::errors::InvalidArgument(
-                                "Fail to get function %s from dynamic library", kernel_fn_name));
+    // 不再使用dlopen加载fatbin，因为fatbin不是ELF格式
+    // 直接使用CUDA驱动API加载fatbin数据
     
-    fn_ptr_.push_back(fn_ptr);
-    
-    // 注册动态链接库信息而不是直接的函数指针
+    // 同时注册库信息
     symbols.RegisterVar(kernel_fn_name + "_library_info",
                         CreateLibraryInfo(dynamic_library_path_, kernel_fn_name));
+    // 确保函数指针转换正确并保留CUDA上下文
+    CUfunction cu_func;
+    VLOG(3) << "[YUHAN!!!] Looking up CUDA function: " << kernel_fn_name; 
+    
+    // 正确加载CUDA模块 - 读取fatbin文件并使用cuModuleLoadData
+    CUmodule cuda_module;
+    
+    // 读取fatbin文件内容
+    std::ifstream fatbin_file(dynamic_library_path_, std::ios::binary);
+    PADDLE_ENFORCE_EQ(fatbin_file.is_open(), true,
+                      "Failed to open fatbin file: " + dynamic_library_path_);
+    
+    std::vector<char> fatbin_data((std::istreambuf_iterator<char>(fatbin_file)),
+                                std::istreambuf_iterator<char>());
+    fatbin_file.close();
+    
+    CUresult result = cuModuleLoadData(&cuda_module, fatbin_data.data());
+    if (result != CUDA_SUCCESS) {
+      const char* error_str;
+      cuGetErrorString(result, &error_str);
+      LOG(FATAL) << "Failed to load CUDA module from fatbin data: " << dynamic_library_path_ 
+                 << ", error: " << result << " (" << error_str << ")"
+                 << "\nMake sure:"
+                 << "\n1. The fatbin file is valid"
+                 << "\n2. CUDA driver version matches fatbin target architecture";
+    }
+    VLOG(3) << "Successfully loaded CUDA module from fatbin: " << dynamic_library_path_;
+    result = cuModuleGetFunction(&cu_func, cuda_module, kernel_fn_name.c_str());
+    if (result != CUDA_SUCCESS) {
+      LOG(FATAL) << "Failed to get CUDA function for " << kernel_fn_name
+                  << ", error: " << result 
+                  << ". Make sure the module is loaded with CUDA context active.";
+    } else {
+      VLOG(3) << "[YUHAN!!!] Successfully found function: " << kernel_fn_name;
+    }
+    
+    // 验证函数指针有效性
+    CUcontext ctx;
+    CUresult ctx_result = cuCtxGetCurrent(&ctx);
+    if (ctx_result != CUDA_SUCCESS || !ctx) {
+      LOG(FATAL) << "No valid CUDA context when registering kernel " 
+                 << kernel_fn_name;
+    }
+    
+    // 注册CUDA函数指针
+    symbols.RegisterVar(kernel_fn_name + "_ptr_", 
+                       reinterpret_cast<void*>(cu_func));
   }
   engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
 #else
@@ -586,33 +624,37 @@ void* Compiler::Lookup(std::string_view fn_name) {
 
 #ifdef CINN_WITH_CUDA
 std::string Compiler::GenerateDynamicLibrary(const std::string& source_code) {
-  // 生成唯一的库文件名
-  std::string library_name = "cinn_kernel_" + std::to_string(std::time(nullptr)) + ".so";
+  // 生成唯一的库文件名 - 使用fatbin格式
+  std::string library_name = "cinn_kernel_" + std::to_string(std::time(nullptr)) + ".fatbin";
   std::string library_path = "/tmp/" + library_name;  // 临时目录
   
-  // 1. 将CUDA源代码编译为PTX
-  nvrtc::Compiler compiler;
-  auto ptx = compiler(source_code);
-  PADDLE_ENFORCE_EQ(!ptx.empty(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "Compile PTX failed from source code\n"));
-  
-  // 2. 使用nvcc将PTX编译为动态链接库
+  // 使用nvcc直接编译为fatbin格式（嵌入设备代码）
   std::string cuda_source_file = library_path + ".cu";
   std::ofstream source_file(cuda_source_file);
   source_file << source_code;
   source_file.close();
   
-  // 编译命令：将CUDA代码编译为动态链接库
-  std::string compile_cmd = "nvcc -shared -Xcompiler -fPIC -o " + 
+  // 编译命令：生成fatbin格式（包含多架构代码，性能+兼容性平衡）
+  std::string compile_cmd = "nvcc --fatbin -o " + 
                            library_path + " " + cuda_source_file + 
-                           " -arch=sm_90";  // 根据实际GPU架构调整
+                           " -arch=sm_90 --std=c++14 --expt-relaxed-constexpr " +
+                           "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/libs " +
+                           "-I/usr/local/cuda/include -include cuda_fp16.h " +
+                           "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
+                           "-DCUDA_VERSION=12030 " +
+                           "-Wno-deprecated-gpu-targets " +
+                           "--generate-code=arch=compute_90,code=sm_90";
   
-  int result = std::system(compile_cmd.c_str());
-  PADDLE_ENFORCE_EQ(result, 0,
-                    ::common::errors::InvalidArgument(
-                        "Failed to compile dynamic library: %s", compile_cmd));
+  // 添加编译日志输出
+  LOG(INFO) << "Compiling CUDA fatbin with command: " << compile_cmd;
+  int result = std::system((compile_cmd + " > compile.log 2>&1").c_str());
+  if (result != 0) {
+    std::ifstream log_file("compile.log");
+    std::string log_content((std::istreambuf_iterator<char>(log_file)), 
+                           std::istreambuf_iterator<char>());
+    LOG(ERROR) << "Compilation failed with output:\n" << log_content;
+    return "";
+  }
   
   // 清理临时源文件
   std::remove(cuda_source_file.c_str());
