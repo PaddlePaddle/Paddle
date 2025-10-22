@@ -555,6 +555,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     # append necessary include dir path of paddle
     include_dirs = list(kwargs.get('include_dirs', []))
+    include_dirs = [os.fsdecode(include_dir) for include_dir in include_dirs]
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
     include_dirs.extend(find_python_includes())
@@ -821,7 +822,9 @@ def find_rocm_includes():
     return [os.path.join(rocm_home, 'include')]
 
 
-def _get_all_paddle_includes_from_include_root(include_root: str) -> list[str]:
+def _get_all_paddle_includes_from_include_root(
+    include_root: os.PathLike[str] | str,
+) -> list[str]:
     """
     Get all paddle include directories from include root (packaged in wheel)
     """

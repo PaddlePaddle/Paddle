@@ -1390,6 +1390,16 @@ void matmul_grad(const Tensor& x,
     } else {
       set_output<T>(x_grad_out, x_grad);
     }
+
+    // Ensure output shape matches original input shape for 1-D inputs
+    if (x_rank == 1 && x_grad_out.dims().size() == 2) {
+      if (x_grad_out.dims()[1] == 1) {
+        x_grad_out = squeeze<T>(x_grad_out, {1});
+      } else if (x_grad_out.dims()[0] == 1) {
+        x_grad_out = squeeze<T>(x_grad_out, {0});
+      }
+      set_output<T>(x_grad_out, x_grad);
+    }
   }
 
   if (y_grad) {
@@ -1413,6 +1423,16 @@ void matmul_grad(const Tensor& x,
       y_grad_out = reduce_as<T>(y_grad_out, temp_y_unsqueeze);
       set_output<T>(y_grad_out, y_grad);
     } else {
+      set_output<T>(y_grad_out, y_grad);
+    }
+
+    // Ensure output shape matches original input shape for 1-D inputs
+    if (y_rank == 1 && y_grad_out.dims().size() == 2) {
+      if (y_grad_out.dims()[1] == 1) {
+        y_grad_out = squeeze<T>(y_grad_out, {1});
+      } else if (y_grad_out.dims()[0] == 1) {
+        y_grad_out = squeeze<T>(y_grad_out, {0});
+      }
       set_output<T>(y_grad_out, y_grad);
     }
   }
