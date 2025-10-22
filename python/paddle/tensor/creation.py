@@ -716,12 +716,24 @@ def _to_tensor_non_static(
         if np.isscalar(data) and not isinstance(data, str):
             data = np.array(data)
         elif isinstance(data, (list, tuple)):
-            if len(data) == 1 and isinstance(data[0], paddle.Tensor) and data[0].dtype == paddle.bfloat16:
-                data = np.array([data[0].numpy()])
+            has_tensor = False
+            for d in data:
+                if isinstance(d, paddle.Tensor):
+                    has_tensor = True
+                    break
+            if has_tensor:
+                if (
+                    len(data) == 1
+                    and isinstance(data[0], paddle.Tensor)
+                    and data[0].dtype == paddle.bfloat16
+                ):
+                    data = np.array([data[0].numpy()])
+                else:
+                    data = np.array(data)
+                if not dtype:
+                    dtype = data.dtype
             else:
                 data = np.array(data)
-            if not dtype:
-                dtype = data.dtype
             if data.dtype == np.object_:
                 raise ValueError(
                     "\n\tFailed to convert input data to a regular ndarray :\n\t - Usually "
