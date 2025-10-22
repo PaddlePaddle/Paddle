@@ -205,7 +205,7 @@ __global__ void RepeatInterleaveVecKernel(const T* __restrict__ input,
   const VecType* vec_input = reinterpret_cast<const VecType*>(input);
 
 #pragma unroll
-  for (int v = 0; v < VecSize && tid + v < numel; v++) {
+  for (int64_t v = 0; v < VecSize && tid + v < numel; v++) {
     const int64_t idx = tid + v;
     const int64_t inner_idx = idx % inner_size;
     const int64_t temp = idx / inner_size;

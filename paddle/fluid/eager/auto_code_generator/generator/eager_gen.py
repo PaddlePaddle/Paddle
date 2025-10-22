@@ -386,11 +386,22 @@ SET_ATTR_METHOD_TEMPLATE = """  void SetAttribute_{}({} {}) {{
     {} = {};
   }}
 """
-
+SAVE_TENSOR_MD5_CHECKSUM_TEMPLATE = """
+  // Save the tensors checksum to file_path
+  if(!FLAGS_tensor_md5_checksum_output_dir.empty()){{
+{}
+  }}
+"""
 ATTRIBUTE_MEMBER_WITH_DEFAULT_TEMPLATE = """  {} {} = {};
 """
 
 ATTRIBUTE_MEMBER_TEMPLATE = """  {} {};
+"""
+SET_TENSOR_NAME_TEMPLATE = """
+  if(VLOG_IS_ON(6)||FLAGS_enable_unique_name)
+{{
+{}
+}}
 """
 
 NODE_DECLARATION_TEMPLATE = """
@@ -403,8 +414,10 @@ class {} : public egr::GradNodeBase {{
 
   virtual paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> operator()(
       paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph = false, bool is_new_grad = false) override;
-  std::string name() override {{ return \"{}\"; }}
-
+  std::string name() override {{ return name_; }}
+  void SetNameFromAPI(const std::string &name) {{
+    name_ = name + "GradNode";
+  }}
   void ClearTensorWrappers() override {{
 {}
     SetIsTensorWrappersCleared(true);
@@ -420,6 +433,8 @@ class {} : public egr::GradNodeBase {{
   // SetAttributes
 {}
  private:
+  // Node Name
+  std::string name_ = \"{}\";
   // TensorWrappers
 {}
   // Attributes
@@ -461,10 +476,18 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 
   // Before log info
 {}
-  VLOG(4) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
+  // Generate a unique API name
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)||FLAGS_enable_unique_name) {{
+    static int64_t call_count = 0;
+    call_count ++;
+    unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+  }}
+  VLOG(4) << \"\\n\"<<separator<<\"Running_C++_API: \" <<unique_api_name<<separator;
   // Call grad_api function
 {}
-  VLOG(4) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
+  VLOG(4) << \"\\n\"<<separator<<\"Finish_C++_API: \" <<unique_api_name<<separator;
   // Check NaN and Inf id needed
 {}
   // Get GradOut autograd_meta
@@ -498,6 +521,8 @@ TEST_API {} {}({}) {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
 {}
+  // Convert All Inputs to DistTensor and recall op_ad_func if Necessary
+{}
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -525,10 +550,18 @@ TEST_API {} {}({}) {{
 
   // Set grad_node before API Call
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
+  // Generate a unique API name
+
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3)||FLAGS_enable_unique_name) {{
+    static int64_t call_count = 0;
+    call_count ++;
+    unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+  }}
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << unique_api_name << separator;
   // Forward API Call
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << unique_api_name << separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
@@ -596,10 +629,18 @@ TEST_API {} {}({}) {{
 
   // Before log info
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
+  // Generate a unique API name
+  std::string unique_api_name;
+  if(VLOG_IS_ON(3)||FLAGS_enable_unique_name){{
+    static int64_t call_count = 0;
+    call_count ++;
+    unique_api_name = egr::GenerateUniqueApiName(\"{}\", call_count);
+  }}
+
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << unique_api_name <<separator;
   // Forward API Call
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << unique_api_name <<separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
@@ -638,6 +679,10 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
 """
 
 FORWARD_BODY_AFTER_API_CALL_TEMPLATE = """  if (require_any_grad) {{
+    if(VLOG_IS_ON(6)||FLAGS_enable_unique_name){{
+        // Set GradNodeName
+        grad_node->SetNameFromAPI(unique_api_name);
+    }}
 
     egr::EagerUtils::PassStopGradient({});
 
@@ -656,6 +701,10 @@ HIGHER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if (trace_backward) {{
 {}
     // Node Construction
 {}
+    if(VLOG_IS_ON(6)||FLAGS_enable_unique_name){{
+        //Set GradNode Name
+        grad_node->SetNameFromAPI(unique_api_name);
+    }}
     // SetAttributes if needed
 {}
     // Set TensorWrappers for Forward Inputs if needed
@@ -702,6 +751,8 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
 static std::string separator = "==========================";
 {}
 """
@@ -735,6 +786,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
+#include "paddle/fluid/eager/utils.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
@@ -748,6 +800,8 @@ COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
 static std::string separator = "==========================";
 {}
 {}
@@ -876,6 +930,16 @@ CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_TEMPLATE = """
   bool inputs_contain_dist_tensor = egr::InputsContainDistTensor(&mesh{grad_inputs_names});
   if (inputs_contain_dist_tensor) {{
     egr::ConvertAllInputsToDistTensor(mesh{wrapper_inputs_names});
+  }}
+"""
+
+CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_RECALL_AD_FUNC_TEMPLATE = """
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  bool inputs_need_convert_dist_tensor = egr::InputsNeedConvertDistTensor(&mesh, {grad_inputs_names});
+  if (inputs_need_convert_dist_tensor) {{
+    auto converter = egr::DistTensorPtrConverter(mesh);
+    {convert_to_dist_str}
+    return {recall_ad_func};
   }}
 """
 
@@ -1847,8 +1911,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
         record_inplace_original_dist_attr_list = []
+        grad_inputs_names = []
+        dist_recall_ad_func_names = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
+            grad_inputs_names.append(f"{name}")
+            dist_recall_ad_func_names.append(f"*dist_{name}")
             amp_inputs_call_list[pos] = f"new_{name}"
             is_optional = name in optional_inputs
             if forward_api_name in type_promote_white_list:
@@ -1974,6 +2042,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # forward attrs
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
+            dist_recall_ad_func_names.append(f"{name}")
             amp_inputs_call_list[pos] = name
             type_promote_inputs_call_list[pos] = name
             type_autocast_inputs_call_list[pos] = name
@@ -2010,6 +2079,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 )
                 inputs_args_definition_str += f", {optional_str} predefined_out"
                 inputs_call_list.append("predefined_out")
+                dist_recall_ad_func_names.append("predefined_out")
 
         inputs_call_args_str = ", ".join(inputs_call_list)
         self.inputs_call_list = inputs_call_list
@@ -2075,6 +2145,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         # Get Outputs
         get_outputs_str = ""
+        save_md5_checksum_str = ""
+        set_tensor_name_str = ""
         for name, (rtype, pos) in forward_outputs_position_map.items():
             if num_outputs == 1 and len(intermediate_outputs) == 0:
                 get_outputs_str += f"{indent}auto& {name} = api_result;\n"
@@ -2082,7 +2154,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 get_outputs_str += (
                     f"{indent}auto& {name} = std::get<{pos}>(api_result);\n"
                 )
+            set_tensor_name_str += f'{indent}{indent}egr::SetTensorName(unique_api_name, "{name}", &{name});\n'
+            save_md5_checksum_str += f"{indent}{indent}egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir, {name});\n"
 
+        get_outputs_str += SET_TENSOR_NAME_TEMPLATE.format(set_tensor_name_str)
+        get_outputs_str += SAVE_TENSOR_MD5_CHECKSUM_TEMPLATE.format(
+            save_md5_checksum_str
+        )
         # Get return type list & outputs
         returns_type_list = ["" for i in range(num_outputs)]
         returns_list = ["" for i in range(num_outputs)]
@@ -2432,6 +2510,25 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         ):
             strided_flags_check = STRIDED_FLAGS_CHECK_TEMPLATE
         # Generate forward_definition_str and forward_declaration_str
+
+        convert_input_to_dist_tensor_str = ""
+        if len(grad_inputs_names) > 1:
+            convert_to_dist_str = ""
+            for param in grad_inputs_names:
+                convert_to_dist_str += (
+                    f"{indent}  auto dist_{param} = converter({param});\n"
+                )
+
+            recall_ad_func_args_str = ", ".join(dist_recall_ad_func_names)
+            recall_ad_func = (
+                f"{forward_ad_function_name}({recall_ad_func_args_str})"
+            )
+            convert_input_to_dist_tensor_str = CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_RECALL_AD_FUNC_TEMPLATE.format(
+                grad_inputs_names=", ".join(grad_inputs_names),
+                convert_to_dist_str=convert_to_dist_str,
+                recall_ad_func=recall_ad_func,
+            )
+
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
                 amp_logic_str = f'\n VLOG(7) << " No AMP for {forward_ad_function_name} because it has no input. "; '
@@ -2451,7 +2548,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     before_log_str,
                     forward_api_name,
                     forward_call_str,
-                    forward_api_name,
+                    # forward_api_name,
                     log_memory_info_str,
                     check_nan_inf_str,
                     get_outputs_str,
@@ -2471,6 +2568,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_api_name,
                 forward_ad_function_name,
                 strided_flags_check,
+                convert_input_to_dist_tensor_str,
                 dygraph_event_str,
                 amp_logic_str,
                 type_promotion_logic_str,
@@ -2484,7 +2582,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 node_creation_before_call_str,
                 forward_api_name,
                 forward_call_str,
-                forward_api_name,
+                # forward_api_name,
                 log_memory_info_str,
                 check_nan_inf_str,
                 get_outputs_str,
@@ -2809,12 +2907,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_node_name,
             grad_node_name,
             grad_node_name,
-            grad_node_name,
             clear_tensor_wrapper_str,
             grad_node_name,
             grad_node_name,
             set_tensor_wrapper_methods_str,
             set_attribute_methods_str,
+            grad_node_name,
             tensor_wrapper_members_str,
             attribute_members_str,
         )
@@ -3275,6 +3373,8 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
         # TODO(jiabin): Optimize this with SetStopGradient instead of Pass Stop gradient
 
         num_fwd_outputs = len(backward_grad_outputs_map)
+        set_tensor_name_str = ""
+        save_md5_checksum_str = ""
         for name, (
             rtype,
             pos,
@@ -3314,9 +3414,17 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
         meta->SetStopGradient(false);
     }}
 """
+            set_tensor_name_str += f"""    egr::SetGradTensorName(&{transformed_tensor_name}, {pos}, out_metas);\n"""
+            save_md5_checksum_str += f"    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir, {transformed_tensor_name});\n"
             outputs_autograd_meta_list.append(output_autograd_meta)
 
         outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
+        outputs_autograd_meta_str += SET_TENSOR_NAME_TEMPLATE.format(
+            set_tensor_name_str
+        )
+        outputs_autograd_meta_str += SAVE_TENSOR_MD5_CHECKSUM_TEMPLATE.format(
+            save_md5_checksum_str
+        )
 
         returns_str = f"{indent}if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
         returns_str += f"{indent}return returns;\n"
@@ -3390,7 +3498,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             before_log_str,
             self.backward_api_name,
             grad_function_call_str,
-            self.backward_api_name,
+            # self.backward_api_name,
             check_nan_inf_str,
             outputs_autograd_meta_str,
             next_grad_node_creation_str,

@@ -30,7 +30,7 @@ from paddle.tensorrt.converter_utils import (
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register("pd_op.nonzero", trt_version="8.x")
+@converter_registry.register("pd_op.nonzero")
 def non_zero_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     cast_layer = network.add_cast(input_tensor, trt.float32)
@@ -93,7 +93,7 @@ def argmax_converter(network, paddle_op, inputs):
         return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.argmin", trt_version="8.x")
+@converter_registry.register("pd_op.argmin")
 def argmin_converter(network, paddle_op, inputs):
     x = inputs[0]
     input_dims = x.shape
@@ -123,7 +123,7 @@ def argmin_converter(network, paddle_op, inputs):
         return squeeze_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.argsort", trt_version="8.x")
+@converter_registry.register("pd_op.argsort")
 def argsort_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape = input_tensor.shape
@@ -197,7 +197,7 @@ def argsort_converter(network, paddle_op, inputs):
         return out_tensor, indices_tensor
 
 
-@converter_registry.register("pd_op.where", trt_version="8.x")
+@converter_registry.register("pd_op.where")
 def where_converter(network, paddle_op, inputs):
     condition = inputs[0]
     x = inputs[1]
@@ -209,7 +209,7 @@ def where_converter(network, paddle_op, inputs):
     return select_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.topk", trt_version="8.x")
+@converter_registry.register("pd_op.topk")
 def topk_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
 
@@ -267,7 +267,7 @@ def topk_converter(network, paddle_op, inputs):
     return values, indices
 
 
-@converter_registry.register("pd_op.index_select", trt_version="8.x")
+@converter_registry.register("pd_op.index_select")
 def index_select_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     index_tensor = inputs[1]

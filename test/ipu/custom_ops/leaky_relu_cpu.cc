@@ -50,7 +50,7 @@ void leaky_relu_cpu_backward_kernel(const data_t* grad_out_data,
 }
 
 std::vector<paddle::Tensor> LeakyReluCPUForward(const paddle::Tensor& x,
-                                                float alpha) {
+                                                double alpha) {
   CHECK_INPUT(x);
 
   auto out = paddle::Tensor(x);
@@ -69,7 +69,7 @@ std::vector<paddle::Tensor> LeakyReluCPUForward(const paddle::Tensor& x,
 std::vector<paddle::Tensor> LeakyReluCPUBackward(const paddle::Tensor& x,
                                                  const paddle::Tensor& out,
                                                  const paddle::Tensor& grad_out,
-                                                 float alpha) {
+                                                 double alpha) {
   CHECK_INPUT(x);
   CHECK_INPUT(out);
   CHECK_INPUT(grad_out);

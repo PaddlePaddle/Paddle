@@ -371,11 +371,11 @@ void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& dev_ctx,
 
 template <typename T>
 __global__ void RowwiseAddKernel(
-    const T* a, const T* b, T* c, int width, int num) {
+    const T* a, const T* b, T* c, int64_t width, int64_t num) {
   T tmp = 1.0 / width;
-  CUDA_KERNEL_LOOP(i, num) {
-    int h = i * tmp;
-    int w = i - h * width;
+  CUDA_KERNEL_LOOP_TYPE(i, num, int64_t) {
+    int64_t h = i * tmp;
+    int64_t w = i - h * width;
     c[i] = a[i] + b[w];
   }
 }
@@ -410,13 +410,14 @@ struct RowwiseAdd<phi::GPUContext, T> {
             in_dims_cstr,
             out_dims_cstr));
     int blocks = 512;
-    int grids = (input.numel() + blocks - 1) / blocks;
-    RowwiseAddKernel<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-        input.data<T>(),
-        vector.data<T>(),
-        output->data<T>(),
-        static_cast<int>(in_dims[1]),
-        static_cast<int>(input.numel()));
+    int64_t max_grids = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int grids = std::min((input.numel() + blocks - 1) / blocks, max_grids);
+    RowwiseAddKernel<T>
+        <<<grids, blocks, 0, dev_ctx.stream()>>>(input.data<T>(),
+                                                 vector.data<T>(),
+                                                 output->data<T>(),
+                                                 in_dims[1],
+                                                 input.numel());
   }
 };
 

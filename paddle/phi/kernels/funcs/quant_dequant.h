@@ -19,9 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#endif
 namespace phi {
 
 using backends::gpu::GpuLaunchConfig;

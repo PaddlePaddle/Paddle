@@ -27,7 +27,7 @@ namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <int BlockSize, typename T>
-__global__ void AccuracyCudaKernel(const int N,
+__global__ void AccuracyCudaKernel(const int64_t N,
                                    const int D,
                                    const int64_t* Xdata,
                                    const int64_t* labeldata,
@@ -39,7 +39,7 @@ __global__ void AccuracyCudaKernel(const int N,
   __shared__ int total[BlockSize];
 
   // support only 1 block
-  for (int i = threadIdx.x; i < (N); i += BlockSize) {
+  for (int64_t i = threadIdx.x; i < (N); i += BlockSize) {
     for (int j = 0; j < D; ++j) {
       if (Xdata[i * D + j] == labeldata[i]) {
         ++count;
@@ -95,7 +95,7 @@ void AccuracyKernel(const Context& dev_ctx,
   int* total_data = dev_ctx.template Alloc<int>(total);
   T* accuracy_data = dev_ctx.template Alloc<T>(accuracy);
 
-  int num_samples = static_cast<int>(inference.dims()[0]);
+  int64_t num_samples = inference.dims()[0];
   size_t infer_width = inference.dims()[1];
   auto stream = dev_ctx.stream();
   phi::backends::gpu::GpuMemsetAsync(accuracy_data, 0, sizeof(T), stream);
