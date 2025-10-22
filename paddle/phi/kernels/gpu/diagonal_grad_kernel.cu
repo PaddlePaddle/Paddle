@@ -63,7 +63,8 @@ void DiagonalGradKernel(const Context& dev_ctx,
   int64_t numel = dx->numel();
 
   int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + threads - 1) / threads;
+  int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((numel + threads - 1) / threads, blocks_max);
 
   int64_t dout_numel = out_grad.numel();
   phi::backends::gpu::GpuMemsetAsync(

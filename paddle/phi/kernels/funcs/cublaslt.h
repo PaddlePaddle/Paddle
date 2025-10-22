@@ -104,7 +104,7 @@ class CublasLtHelper {
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
-#if CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA)
 
     int algoId = 21;
     int swizzle = 0;
@@ -189,7 +189,7 @@ class CublasLtHelper {
                                  C_desc_,
                                  C_dev,
                                  C_desc_,
-#if CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA)
                                  &algo_,
                                  workspace,
                                  workspace_size_,

@@ -224,11 +224,9 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
     case phi::DataType::INT8:
       nv_type = nvinfer1::DataType::kINT8;
       break;
-#if IS_TRT_VERSION_GE(7000)
     case phi::DataType::BOOL:
       nv_type = nvinfer1::DataType::kBOOL;
       break;
-#endif
     default:
       common::errors::InvalidArgument(
           "phi::DataType not supported data type %s.", type);

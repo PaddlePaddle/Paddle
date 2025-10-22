@@ -530,7 +530,7 @@ void Adam(T beta1,
           T* mom2_max_out_ptr,
           T* param_out_ptr,
           bool amsgrad) {
-  for (int i = 0; i < numel; ++i) {
+  for (int64_t i = 0; i < numel; ++i) {
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
     mom2_out_ptr[i] =
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
@@ -568,7 +568,7 @@ void AdamW(T beta1,
            T* mom2_max_out_ptr,
            T* param_out_ptr,
            bool amsgrad) {
-  for (int i = 0; i < numel; ++i) {
+  for (int64_t i = 0; i < numel; ++i) {
     auto param_tmp = param_ptr[i] - old_lr * lr_ratio * coeff * param_ptr[i];
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
     mom2_out_ptr[i] =

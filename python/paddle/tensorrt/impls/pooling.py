@@ -301,7 +301,7 @@ def pool2d_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.pool3d", trt_version="8.x")
+@converter_registry.register("pd_op.pool3d")
 def pool3d_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     global_pooling = paddle_op.attrs()["global_pooling"]

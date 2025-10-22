@@ -24,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename IndT>
-__global__ void KernelUnpool2dMax(const int nthreads,
+__global__ void KernelUnpool2dMax(const int64_t nthreads,
                                   const T* input_data,
                                   const IndT* indices_data,
                                   const int input_height,
@@ -33,9 +33,9 @@ __global__ void KernelUnpool2dMax(const int nthreads,
                                   T* output_data,
                                   const int output_height,
                                   const int output_width) {
-  CUDA_KERNEL_LOOP(linearIndex, nthreads) {
-    int c = (linearIndex / input_width / input_height) % channels;
-    int n = linearIndex / input_width / input_height / channels;
+  CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
+    int64_t c = (linearIndex / input_width / input_height) % channels;
+    int64_t n = linearIndex / input_width / input_height / channels;
     output_data += (n * channels + c) * output_height * output_width;
     IndT maxind = indices_data[linearIndex];
     output_data[maxind] = input_data[linearIndex];
@@ -43,7 +43,7 @@ __global__ void KernelUnpool2dMax(const int nthreads,
 }
 
 template <typename T, typename IndT>
-__global__ void KernelUnpool3dMax(const int nthreads,
+__global__ void KernelUnpool3dMax(const int64_t nthreads,
                                   const T* input_data,
                                   const IndT* indices_data,
                                   const int input_depth,
@@ -54,9 +54,11 @@ __global__ void KernelUnpool3dMax(const int nthreads,
                                   const int output_depth,
                                   const int output_height,
                                   const int output_width) {
-  CUDA_KERNEL_LOOP(linearIndex, nthreads) {
-    int c = (linearIndex / input_depth / input_width / input_height) % channels;
-    int n = linearIndex / input_depth / input_width / input_height / channels;
+  CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
+    int64_t c =
+        (linearIndex / input_depth / input_width / input_height) % channels;
+    int64_t n =
+        linearIndex / input_depth / input_width / input_height / channels;
     output_data +=
         (n * channels + c) * output_depth * output_height * output_width;
     IndT maxind = indices_data[linearIndex];
@@ -81,7 +83,8 @@ class Unpool2dMaxFunctor {
     const IndT* indices_data = indices.data<IndT>();
     T* output_data = dev_ctx.template Alloc<T>(output);
     int threads = 1024;
-    int grid = (input.numel() + threads - 1) / threads;
+    int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
     KernelUnpool2dMax<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,
@@ -114,7 +117,8 @@ class Unpool3dMaxFunctor {
     const IndT* indices_data = indices.data<IndT>();
     T* output_data = dev_ctx.template Alloc<T>(output);
     int threads = 1024;
-    int grid = (input.numel() + threads - 1) / threads;
+    int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
     KernelUnpool3dMax<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,

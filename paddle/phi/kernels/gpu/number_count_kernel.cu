@@ -44,7 +44,7 @@ __global__ void NumberCount(const T* numbers,
   if (expert_max > upper_range) {
     expert_max = upper_range;
   }
-  for (int i = threadIdx.x; i < batch_size; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i < batch_size; i += blockDim.x) {
     T idx = numbers[i];
     if (idx == -1) {
       continue;
