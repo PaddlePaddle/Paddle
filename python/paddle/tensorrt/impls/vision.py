@@ -18,7 +18,7 @@ from paddle.tensorrt.converter_utils import set_layer_name
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register("pd_op.grid_sample", trt_version="8.x")
+@converter_registry.register("pd_op.grid_sample")
 def grid_sample_converter(network, paddle_op, inputs):
     input_tensor, grid_tensor = inputs
     padding = paddle_op.attrs().get("paddings", [0, 0])

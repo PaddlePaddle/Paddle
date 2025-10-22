@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device, is_custom_device
+from op_test import (
+    OpTest,
+    check_cudnn_version_and_compute_capability,
+    get_device,
+    is_custom_device,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -127,8 +132,9 @@ class TestSwiGLUDygraph(unittest.TestCase):
             metas.append((get_device(), paddle.float32))
             metas.append((get_device(), paddle.float64))
             metas.append((get_device(), paddle.float16))
-            prop = paddle.device.cuda.get_device_properties()
-            if prop.major >= 8:
+            if check_cudnn_version_and_compute_capability(
+                min_device_capability=8
+            ):
                 metas.append((get_device(), paddle.bfloat16))
 
         for device, dtype in metas:
@@ -232,7 +238,7 @@ class TestSwigluOp2(TestSwigluOp):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_dist(),
+    not (paddle.base.core.is_compiled_with_dist() or is_custom_device()),
     "The spmd rule is should be tested with distributed=ON",
 )
 class TestSwigluSpmd(unittest.TestCase):

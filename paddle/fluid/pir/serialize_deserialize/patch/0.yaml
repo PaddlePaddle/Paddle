@@ -1,0 +1,33 @@
+op_patches:
+  - op_name : pd_op.leaky_relu
+    actions:
+      - action : modify_attr
+        object : negative_slope
+        type : pir::DoubleAttribute
+  - op_name : pd_op.softplus
+    actions:
+      - action : modify_attr
+        object : beta
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : threshold
+        type : pir::DoubleAttribute
+  - op_name : onednn_op.fused_softplus
+    actions:
+      - action : modify_attr
+        object : beta
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : threshold
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : fuse_alpha
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : fuse_beta
+        type : pir::DoubleAttribute
+  - op_name : pd_op.logit
+    actions:
+      - action : modify_attr
+        object : eps
+        type : pir::DoubleAttribute
