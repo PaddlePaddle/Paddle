@@ -333,6 +333,9 @@ def size_args_decorator(
             kwargs['shape'] = list(args)
             args = ()
 
+        if 'shape' in kwargs and isinstance(kwargs['shape'], int):
+            kwargs['shape'] = [kwargs['shape']]
+
         return func(*args, **kwargs)
 
     wrapped_func.__signature__ = inspect.signature(func)

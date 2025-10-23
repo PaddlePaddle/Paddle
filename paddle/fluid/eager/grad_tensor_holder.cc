@@ -186,6 +186,8 @@ void GradTensorHolder::add(size_t slot_id,
         } else {
           paddle::imperative::TensorAdd<paddle::Tensor>(t, &buffer_tensor);
         }
+      } else if (buffer_tensor.is_dist_tensor()) {
+        buffer_tensor = add_ad_func(t, buffer_tensor);
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with

@@ -737,7 +737,10 @@ class TestPaddleDivideTrunc(unittest.TestCase):
 
     def test_infer_symbolic_shape(self):
         devices = [paddle.device.get_device()]
-        if "gpu:" in devices and not paddle.device.is_compiled_with_rocm():
+        if (
+            any(device.startswith("gpu:") for device in devices)
+            and not paddle.device.is_compiled_with_rocm()
+        ):
             devices.append("cpu")
 
         for device in devices:

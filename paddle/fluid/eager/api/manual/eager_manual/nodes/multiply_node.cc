@@ -36,6 +36,9 @@ using egr::InputsContainDistTensor;
 COMMON_DECLARE_bool(check_cuda_error);
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
+
 #define SEPARATOR "=========================="
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 MultiplyGradNode::operator()(
@@ -134,9 +137,14 @@ MultiplyGradNode::operator()(
   }
 
   // Call grad_api function
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("multiply_grad", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "multiply_grad" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   std::string grad_op_name = "multiply_grad";
   auto need_skip =
       paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
@@ -158,8 +166,7 @@ MultiplyGradNode::operator()(
     VLOG(4) << "Fused api multiply_grad is called ";
   }
   VLOG(3) << "\n"
-          << SEPARATOR << "Finish_C++_API: "
-          << "multiply_grad" << SEPARATOR;
+          << SEPARATOR << "Finish_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf id needed
 
   if (FLAGS_check_nan_inf) {
@@ -186,6 +193,19 @@ MultiplyGradNode::operator()(
       returns[1][0].has_allocation() ? egr::EagerUtils::autograd_meta(&grad_y)
                                      : nullptr;
   if (grad_y_autograd_meta) grad_y_autograd_meta->SetStopGradient(false);
+
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetGradTensorName(&grad_x, 0, out_metas);
+    egr::SetGradTensorName(&grad_y, 1, out_metas);
+  }
+
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_dir.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+                                     grad_x);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+                                     grad_y);
+  }
 
   // Create Grad Node
 

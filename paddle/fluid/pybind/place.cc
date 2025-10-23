@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/dense_tensor_array.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -267,6 +268,12 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("set_place",
            [](phi::Place &self, const phi::CustomPlace &plug_place) {
              self = plug_place;
+           })
+      .def("__dlpack_device__",
+           [](const phi::Place &self) {
+             ::DLDevice dl_device = paddle::framework::PlaceToDLDevice(self);
+             return py::make_tuple(static_cast<int32_t>(dl_device.device_type),
+                                   dl_device.device_id);
            })
       .def("__repr__", string::to_string<const phi::Place &>)
       .def("__str__", string::to_string<const phi::Place &>);

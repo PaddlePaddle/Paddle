@@ -702,15 +702,9 @@ void MatmulPlugin::terminate() TRT_NOEXCEPT {
 
 int MatmulPlugin::enqueue(int batchSize,
                           const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-                          void** outputs,
-                          void* workspace,
-                          cudaStream_t stream) {
-#else
                           void* const* outputs,
                           void* workspace,
                           cudaStream_t stream) TRT_NOEXCEPT {
-#endif
   if (type_ == nvinfer1::DataType::kINT8) {
     const int8_t* B = static_cast<const int8_t*>(inputs[0]);
     const int8_t* A = static_cast<const int8_t*>(inputs[1]);

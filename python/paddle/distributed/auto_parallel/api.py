@@ -1556,7 +1556,10 @@ class _ShardOptimizer(Optimizer):
         for layer in self._layers.sublayers():
             for p in layer.parameters(include_sublayers=False):
                 param2layer[id(p)] = layer
-
+        if len(self.fuse_param_view) != len(self.grad_storage):
+            raise RuntimeError(
+                f"Length mismatch: fuse_param_view ({len(self.fuse_param_view)}) vs grad_storage ({len(self.grad_storage)})"
+            )
         for i in range(len(self.fuse_param_view)):
             self._reduce_scatter_gradients(self.grad_storage[i])
 
