@@ -39,11 +39,11 @@ limitations under the License. */
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 COMMON_DECLARE_bool(check_cuda_error);
-
-using egr::ConvertToDistTensor;
-
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_int64(offload_retry_times);
 
+using egr::ConvertToDistTensor;
 namespace paddle::pybind {
 
 PyTypeObject* p_pylayer_type;
@@ -541,6 +541,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
                                                inputs_autograd_meta.size());
     VLOG(3) << "Create grad node " << grad_node->name() << " addr "
             << grad_node;
+    // For dump call stack
+    if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
 
 #ifdef PADDLE_WITH_CUDA
     has_grad = true;
