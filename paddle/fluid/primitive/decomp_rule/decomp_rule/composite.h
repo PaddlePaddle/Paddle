@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <numeric>
 #include "paddle/fluid/primitive/base/lazy_tensor.h"
 #include "paddle/fluid/primitive/decomp_utils/decomp_utils.h"
@@ -1240,11 +1241,10 @@ Tensor lerp_decomp(const Tensor& x, const Tensor& y, const Tensor& weight) {
   Tensor x_cast = ConvertToMT<T>(x);
   Tensor y_cast = ConvertToMT<T>(y);
   Tensor weight_cast = ConvertToMT<T>(weight);
-  if (x_cast.is_cpu()) {
+  if (!(x_cast.is_gpu() || x_cast.is_gpu_pinned())) {
     Tensor res = x_cast + weight_cast * (y_cast - x_cast);
     return ConvertToOrig<T>(res, x.dtype());
   }
-
   Tensor half = full_scalar<T>((0.5), x_cast.dtype(), x_cast.place());
   Tensor one = full_scalar<T>(1.0, x_cast.dtype(), x_cast.place());
   Tensor zero;
