@@ -29,6 +29,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_int32(paddle_omp_num_threads);
 
 namespace phi {
 inline int64_t DivUp(const int64_t& x, const int64_t& y) {
@@ -64,7 +65,7 @@ void StridedCopyKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA)
 // not support Windows
 #if !defined(_WIN32)
-  if (FLAGS_use_stride_kernel && FLAGS_use_stride_compute_kernel &&
+  if (FLAGS_use_stride_kernel &&
       input.place().GetType() == phi::AllocationType::CPU &&
       out->place().GetType() == phi::AllocationType::GPU &&
       input.dtype() == out->dtype() && !input.meta().is_contiguous()) {
@@ -176,7 +177,23 @@ void StridedCopyKernel(const Context& dev_ctx,
 
       int64_t* whole_stride = tmp_strides.data();
 
-      omp_set_num_threads(std::thread::hardware_concurrency());
+      int max_thread = std::thread::hardware_concurrency();
+      int real_thread = 0;
+
+      PADDLE_ENFORCE_LE(FLAGS_paddle_omp_num_threads,
+                        max_thread,
+                        ::common::errors::InvalidArgument(
+                            "The omp thread number must be less than or "
+                            "equal to %d, but got %d",
+                            max_thread,
+                            FLAGS_paddle_omp_num_threads));
+
+      if (FLAGS_paddle_omp_num_threads == -1) {
+        real_thread = max_thread;
+      } else {
+        real_thread = FLAGS_paddle_omp_num_threads;
+      }
+      omp_set_num_threads(real_thread);
 
 #pragma omp parallel
       {
