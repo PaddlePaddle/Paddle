@@ -149,6 +149,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
+          rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
           '
 
