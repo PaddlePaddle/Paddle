@@ -31,6 +31,7 @@ from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 from setuptools.command.install import install
 
+
 from .extension_utils import (
     add_compile_flag,
     find_cuda_home,
@@ -957,7 +958,6 @@ class BuildCommand(build):
             self.build_base = self._specified_build_base
 
 
-
 class InstallCommand(install):
     """
     Extend install Command to:
@@ -971,6 +971,7 @@ class InstallCommand(install):
         super().finalize_options()
         try:
             import sys
+
             # Build candidate site dirs: global + user + entries already on sys.path
             candidates = []
             try:
@@ -984,7 +985,9 @@ class InstallCommand(install):
             except Exception:
                 pass
             for sp in sys.path:
-                if isinstance(sp, str) and sp.endswith(('site-packages', 'dist-packages')):
+                if isinstance(sp, str) and sp.endswith(
+                    ('site-packages', 'dist-packages')
+                ):
                     candidates.append(sp)
             # De-dup while preserving order
             seen = set()
@@ -1010,7 +1013,9 @@ class InstallCommand(install):
                 self.install_purelib = target
                 self.install_platlib = target
         except Exception as e:
-            print(f"Warning: failed to determine preferred site-packages dir: {e}")
+            print(
+                f"Warning: failed to determine preferred site-packages dir: {e}"
+            )
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         super().run(*args, **kwargs)
@@ -1028,7 +1033,11 @@ class InstallCommand(install):
         if not install_dir or not os.path.isdir(install_dir):
             return
         pkg = self.distribution.get_name()
-        suffix = '.pyd' if IS_WINDOWS else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+        suffix = (
+            '.pyd'
+            if IS_WINDOWS
+            else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+        )
         old = os.path.join(install_dir, f"{pkg}{suffix}")
         new = os.path.join(install_dir, f"{pkg}_pd_{suffix}")
         try:
@@ -1060,7 +1069,11 @@ class InstallCommand(install):
             pkg_dir = os.path.join(install_dir, pkg)
             py_src = os.path.join(install_dir, f"{pkg}.py")
             # Find compiled lib (renamed or not)
-            suf_so = '.pyd' if IS_WINDOWS else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+            suf_so = (
+                '.pyd'
+                if IS_WINDOWS
+                else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+            )
             so_candidates = [
                 os.path.join(install_dir, f"{pkg}_pd_{suf_so}"),
                 os.path.join(install_dir, f"{pkg}{suf_so}"),
@@ -1094,6 +1107,7 @@ class InstallCommand(install):
                     try:
                         if os.path.isdir(p):
                             import shutil
+
                             shutil.rmtree(p, ignore_errors=True)
                         else:
                             os.remove(p)
@@ -1101,6 +1115,7 @@ class InstallCommand(install):
                         pass
         except Exception as e:
             print(f"Warning: failed to canonicalize install layout: {e}")
+
 
 def load(
     name: str,
