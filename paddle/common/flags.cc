@@ -2225,3 +2225,15 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
 PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
                           0,
                           "Whether use prealloc for deepep communication.");
+
+/**
+ * Torch Compatible related FLAG
+ * Name: FLAGS_torch_compatible_kernel
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use torch compatible version kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(torch_compatible_kernel,
+                         false,
+                         "Whether use torch compatible version kernel.");
