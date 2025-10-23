@@ -90,6 +90,8 @@ class AOAShardInfoContext:
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
+        self.left_var_to_right_var_mapping = {}
+        self.right_var_from_left_var_mapping = {}
 
     def get_all_dst_state_keys(self):
         dst_state_keys = set()
@@ -144,8 +146,11 @@ class AOAShardInfoContext:
         return match_expert_id
 
     def get_src_state_shard_num(self, src_state_key: str) -> int:
+        resolved_src_state_key = self.resolve_mapping_chain(
+            src_state_key, reverse=True
+        )
         model_state_key, opt_state_name = split_optimizer_state_key(
-            src_state_key
+            resolved_src_state_key
         )
 
         assert opt_state_name is None, (
@@ -185,9 +190,11 @@ class AOAShardInfoContext:
         if self.destination_state_shard_info is None:
             # Default `dst_state_shard_num=1` if `destination_state_shard_info` is missing.
             return 1
-
+        resolved_dst_state_key = self.resolve_mapping_chain(
+            dst_state_key, reverse=False
+        )
         model_state_key, opt_state_name = split_optimizer_state_key(
-            dst_state_key
+            resolved_dst_state_key
         )
 
         assert opt_state_name is None, (
@@ -222,6 +229,39 @@ class AOAShardInfoContext:
                 f"Inconsistent shard numbers among keys in destination_state_shard_info: {shard_nums}."
             )
         return shard_nums.pop()
+
+    def resolve_mapping_chain(self, key: str, reverse: bool = False) -> str:
+        """
+        Recursively resolve the mapping chain, find the final leaf node
+
+        Args:
+            key: The key to be resolved
+            reverse: False use left_var_to_right_var_mapping，True use right_var_from_left_var_mapping
+
+        For example:
+        - reverse=False: temp_var -> dst_key
+        - reverse=True: temp_var -> src_key
+        """
+        visited = set()
+        current_key = key
+
+        if reverse:
+            mapping_dict = self.right_var_from_left_var_mapping
+        else:
+            mapping_dict = self.left_var_to_right_var_mapping
+
+        while current_key in mapping_dict:
+            if current_key in visited:
+                break
+            visited.add(current_key)
+
+            mapped_vars = mapping_dict[current_key]
+            if mapped_vars and len(mapped_vars) > 0:
+                current_key = mapped_vars[0]
+            else:
+                break
+
+        return current_key
 
 
 class AOAEngine:
