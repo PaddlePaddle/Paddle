@@ -2453,12 +2453,11 @@ struct LogSigmoidFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    // For complex numbers, use the direct formula: log(1 / (1 + exp(-x)))
-    // This is mathematically correct for complex numbers
+    // For complex numbers, use log σ(x) = -log(1 + exp(-x))
     ComplexType<T> one = ComplexType<T>(T(1), T(0));
     // Cache exp(-x) to avoid redundant computation
     auto exp_neg_x = (-x).exp();
-    out.device(d) = (one / (one + exp_neg_x)).log();
+    out.device(d) = -(one + exp_neg_x).log();
   }
 };
 
@@ -2490,8 +2489,8 @@ struct LogSigmoidGradFunctor<ComplexType<T>>
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    // For complex numbers, use the direct formula: d/dx log(1/(1+exp(-x))) =
-    // exp(-x)/(1+exp(-x))
+    // For complex numbers, use the direct formula:
+    // d/dx log(1/(1+exp(-x))) = exp(-x)/(1+exp(-x))
     ComplexType<T> one = ComplexType<T>(T(1), T(0));
     // Cache exp(-x) to avoid redundant computation
     auto exp_neg_x = (-x).exp();
@@ -5143,12 +5142,13 @@ struct CudaLogSigmoidFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
   ComplexType<T> one = ComplexType<T>(T(1), T(0));
 
-  // For complex numbers, use the direct formula: log(1 / (1 + exp(-x)))
+  // For complex numbers, use log σ(x) = -log(1 + exp(-x))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_x) const {
     ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
-    auto exp_neg_x = exp(-x);  // Cache exp(-x) to avoid redundant computation
-    return log(one / (one + exp_neg_x));
+
+    // LogSigmoid formula: log σ(x) = -log(1 + exp(-x))
+    return -log(one + exp(-x));
   }
 };
 
@@ -5185,12 +5185,12 @@ struct CudaLogSigmoidGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
   ComplexType<T> one = ComplexType<T>(T(1), T(0));
 
-  // For complex numbers, use the direct formula: d/dx log(1/(1+exp(-x))) =
-  // exp(-x)/(1+exp(-x))
+  // For complex numbers, gradient of log σ(x) is σ(-x) = exp(-x)/(1+exp(-x))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
     ComplexType<T> dout = static_cast<ComplexType<T>>(arg_dout);
     ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
+    // Gradient of log σ(x) is σ(-x) = exp(-x)/(1+exp(-x))
     auto exp_neg_x = exp(-x);  // Cache exp(-x) to avoid redundant computation
     return dout * conj(exp_neg_x / (one + exp_neg_x));
   }
