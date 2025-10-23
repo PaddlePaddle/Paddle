@@ -432,8 +432,17 @@ void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_backward_graph);
 
 void SaveStringToFile(const std::string& file_path,
-                      const std::string& serialized_graph,
+                      const std::string& str,
                       const std::string& mode = "trunc");
+TEST_API void SaveTensorMD5CheckSumToFile(const std::string& file_path,
+                                          const paddle::Tensor& t);
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const paddle::optional<paddle::Tensor>& t);
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const std::vector<paddle::Tensor>& tensors);
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path,
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors);
 static inline const std::string GenerateUniqueApiName(
     const std::string& api_name, const int64_t& call_count) {
   return api_name + std::to_string(call_count);

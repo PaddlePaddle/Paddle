@@ -4199,7 +4199,12 @@ All parameter, weight, gradient are variables in Paddle.
       .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .value("PSTRING", phi::DataType::PSTRING)
       .value("ALL_DTYPE", phi::DataType::ALL_DTYPE)
-      .export_values();
+      .export_values()
+      .def("__dlpack_data_type__", [](const phi::DataType &self) {
+        ::DLDataType dl_dtype =
+            paddle::framework::PhiDataTypeToDLDataType(self);
+        return py::make_tuple(dl_dtype.code, dl_dtype.bits, dl_dtype.lanes);
+      });
 
   py::class_<paddle::platform::EngineParams> engine_params(m,
                                                            "TRTEngineParams");

@@ -3833,7 +3833,7 @@ class OpTest(unittest.TestCase):
 
                 fetch_list_grad = []
                 for inputs_to_check_name in inputs_to_check:
-                    a = inputs_grad_dict[inputs_to_check_name].gradient()
+                    a = np.array(inputs_grad_dict[inputs_to_check_name].grad)
                     fetch_list_grad.append(a)
                 return fetch_list_grad
             else:

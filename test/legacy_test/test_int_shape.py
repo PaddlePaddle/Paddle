@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
+import unittest
 
-from utils import paddle_includes
+from utils import dygraph_guard
 
-from paddle.utils.cpp_extension import CppExtension, setup
+import paddle
 
-setup(
-    name='mix_relu_extension',
-    ext_modules=CppExtension(
-        sources=["mix_relu_and_extension.cc"],
-        include_dirs=[
-            *paddle_includes,
-            Path(__file__).parent.resolve(),
-        ],
-        extra_compile_args={'cc': ['-w', '-g']},
-        verbose=True,
-    ),
-)
+
+class TestIntShape(unittest.TestCase):
+    def test_eager(self):
+        with dygraph_guard():
+            for shape in [
+                2,
+                0,
+                10,
+            ]:
+                for func in [paddle.rand]:
+                    x = func(shape=shape)
+                    self.assertEqual(x.shape, [shape])
+
+
+if __name__ == "__main__":
+    unittest.main()
