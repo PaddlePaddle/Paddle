@@ -4053,7 +4053,7 @@ struct Pad3dOpTranscriber : public OpTranscriber {
                  << " name: " << legacy_attr_name << " " << legacy_attr.index();
         pir::Attribute new_attr =
             attribute_translator(info.type_name, legacy_attr);
-        if (legacy_attr_name == "pad_value") {
+        if (info.name == "pad_value") {
           new_attr = pir::DoubleAttribute::get(
               ctx,
               static_cast<double>(
