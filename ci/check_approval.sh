@@ -537,7 +537,7 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
         echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), or phlrain, QingshuChen) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
-        check_approval 1 zhangting202phlrain QingshuChen
+        check_approval 1 zhangting2020 phlrain QingshuChen
     fi
 fi
 
