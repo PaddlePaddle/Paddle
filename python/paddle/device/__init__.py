@@ -1939,6 +1939,19 @@ class Device(str):
     def index(self):
         return self._index
 
+    def _to_place(self) -> core.Place:
+        if self.type == "cpu":
+            return core.CPUPlace()
+        elif self.type in {"gpu", "cuda"}:
+            return core.CUDAPlace(self.index)
+        elif self.type == "xpu":
+            return core.XPUPlace(self.index)
+        else:
+            raise ValueError(f"Unsupported device type: {self.type}")
+
+    def __dlpack_device__(self) -> tuple[int, int]:
+        return self._to_place().__dlpack_device__()
+
     def __enter__(self):
         current_device = paddle.get_device()
         Device._DEFAULT_DEVICE_STACK.append(current_device)

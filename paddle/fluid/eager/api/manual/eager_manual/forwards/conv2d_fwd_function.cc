@@ -24,6 +24,7 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
 
 paddle::Tensor conv2d_ad_func(
     const paddle::Tensor& input,
@@ -112,7 +113,7 @@ paddle::Tensor conv2d_ad_func(
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
   std::string unique_api_name;
-  if (VLOG_IS_ON(3)) {
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
     static int64_t call_count = 0;
     call_count++;
     unique_api_name = egr::GenerateUniqueApiName("conv2d", call_count);
@@ -136,7 +137,7 @@ paddle::Tensor conv2d_ad_func(
 
   // Get Outputs
   auto& out = api_result;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
     egr::SetTensorName(unique_api_name, "out", &out);
   }
 
@@ -159,7 +160,7 @@ paddle::Tensor conv2d_ad_func(
     auto grad_node = std::shared_ptr<Conv2dGradNodeFinal>(  // NOLINT
         new Conv2dGradNodeFinal(1, 2));
     // Set GradNodeName
-    if (VLOG_IS_ON(6)) {
+    if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
       grad_node->SetNameFromAPI(unique_api_name);
     }
     // Set forward's stack

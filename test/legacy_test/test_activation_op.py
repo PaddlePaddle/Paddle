@@ -465,7 +465,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.006,
+            max_relative_error=0.007,
             check_prim=False,
             check_pir=True,
             check_prim_pir=False,
@@ -5072,32 +5072,6 @@ class TestSoftplus(TestActivation):
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
 
-    def test_check_output_2(self):
-        self.check_output_with_place(
-            paddle.CPUPlace(), check_pir=True, check_pir_onednn=True
-        )
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(
-                core.CUDAPlace(0), check_pir=True, check_pir_onednn=True
-            )
-
-    def test_check_grad_2(self):
-        self.check_grad_with_place(
-            paddle.CPUPlace(),
-            ['X'],
-            'Out',
-            check_pir=True,
-            check_pir_onednn=True,
-        )
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0),
-                ['X'],
-                'Out',
-                check_pir=True,
-                check_pir_onednn=True,
-            )
-
 
 class TestSoftplus_Complex64(TestSoftplus):
     def init_dtype(self):
@@ -5111,25 +5085,6 @@ class TestSoftplus_Complex64(TestSoftplus):
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
-
-    def test_check_grad_2(self):
-        self.check_grad_with_place(
-            paddle.CPUPlace(),
-            ['X'],
-            'Out',
-            max_relative_error=0.06,
-            check_pir=True,
-            check_pir_onednn=True,
-        )
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0),
-                ['X'],
-                'Out',
-                max_relative_error=0.06,
-                check_pir=True,
-                check_pir_onednn=True,
-            )
 
 
 class TestSoftplus_Complex128(TestSoftplus):

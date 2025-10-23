@@ -35,6 +35,18 @@ namespace phi {
     functor(dev_ctx, x, dout, attr, 0, dx);                \
   }
 
+#define DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr)                                    \
+  template <typename T, typename Context>                         \
+  void name##GradKernel(const Context& dev_ctx,                   \
+                        const DenseTensor& x,                     \
+                        const DenseTensor& dout,                  \
+                        double attr,                              \
+                        DenseTensor* dx) {                        \
+    functor_class<T> functor;                                     \
+    functor(dev_ctx, x, dout, static_cast<float>(attr), 0, dx);   \
+  }
+
 #define DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(name, functor_class) \
   template <typename T, typename Context>                                \
   void name##GradKernel(const Context& dev_ctx,                          \
@@ -205,9 +217,9 @@ DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid,
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtOneDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
 
-DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                                  ReluOneDNNGradFunctor,
-                                                  alpha);
+DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                         ReluOneDNNGradFunctor,
+                                                         alpha);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                   MishOneDNNGradFunctor,
                                                   threshold);

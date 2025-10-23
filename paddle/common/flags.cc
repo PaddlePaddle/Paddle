@@ -749,9 +749,51 @@ PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
                            "",
                            "Dump grad node forward call stack to the dir path");
 
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_output_dir
+ * Since Version: 3.2.1
+ * Value Range: string, default=""
+ * Example:
+ * Note: Export all API output tensors to the specified directory.
+ * If tensor_md5_checksum_output_dir is "", this flag will not take effect.
+ */
+PHI_DEFINE_EXPORTED_string(
+    tensor_md5_checksum_output_dir,
+    "",
+    "Export all API output tensors to the specified directory.");
+
+/**
+ * Debug related FLAG
+ * Name: enable_unique_name
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True,the Tensor, C++ API and GradNode will has unique name,such as
+ * 'matmul2_out_float32_2x10' or 'matmul2_out_float32_2x10@Grad'
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_unique_name,
+    false,
+    "Enable unique name in Eager mode for Tensor, C++ API and GradNode.");
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_precision
+ * Since Version: 3.2.1
+ * Value Range: int32, default=3
+ * Example:
+ * Note: The precision of the tensor data used for computing the MD5 checksum
+ * (the number of decimal places after the decimal point).
+ *
+ */
+PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
+                          3,
+                          "The precision of tensor md5 checksum.");
+
 /**
  * Debug related FLAG
  * Name: sort_sum_gradient

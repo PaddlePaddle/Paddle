@@ -326,20 +326,6 @@ void TensorRTEngine::FreezeNetwork() {
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (int i = 0; i < max_profile_num_; i++) {
       for (auto &input : min_input_shape()) {
-#if IS_TRT_VERSION_LT(7100)
-        // trt6/trt7011 will check all_of input > 0
-        if (!(std::all_of(input.second.begin(),
-                          input.second.end(),
-                          [](int x) { return x > 0; }) &&
-              std::all_of(max_input_shape()[input.first].begin(),
-                          max_input_shape()[input.first].end(),
-                          [](int x) { return x > 0; }) &&
-              std::all_of(optim_input_shape()[input.first].begin(),
-                          optim_input_shape()[input.first].end(),
-                          [](int x) { return x > 0; }))) {
-          continue;
-        }
-#endif
         VLOG(4) << "TRT dynamic_shape set " << input.first
                 << " min: " << Vec2Str(input.second)
                 << ", max: " << Vec2Str(max_input_shape()[input.first])
@@ -419,10 +405,6 @@ void TensorRTEngine::FreezeNetwork() {
   }
 #endif
 
-#if IS_TRT_VERSION_LT(8000)
-  infer_engine_.reset(infer_builder_->buildEngineWithConfig(
-      *network(), *infer_builder_config_));
-#else
   ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   PADDLE_ENFORCE_NOT_NULL(
@@ -439,7 +421,6 @@ void TensorRTEngine::FreezeNetwork() {
 
   infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
       ihost_memory_->data(), ihost_memory_->size()));
-#endif
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_,
