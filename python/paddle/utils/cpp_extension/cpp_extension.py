@@ -25,9 +25,11 @@ import collections
 import setuptools
 import sys
 import paddle
+import site
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
+from setuptools.command.install import install
 
 from .extension_utils import (
     add_compile_flag,
@@ -58,6 +60,7 @@ from .extension_utils import (
     bootstrap_context,
     get_build_directory,
     add_std_without_repeat,
+    custom_write_stub,
 )
 
 from .extension_utils import (
@@ -234,6 +237,10 @@ def setup(**attr: Any) -> None:
     # Add rename .so hook in easy_install
     assert 'easy_install' not in cmdclass
     cmdclass['easy_install'] = EasyInstallCommand
+
+    # Add install hook to rename shared library for setuptools >= 80
+    assert 'install' not in cmdclass
+    cmdclass['install'] = InstallCommand
 
     # Note(Aurelius84): Add rename build_base directory hook in build command.
     # To avoid using same build directory that will lead to remove the directory
@@ -849,8 +856,32 @@ class BuildExtension(build_ext):
                         os.remove(os.path.join(root, file))
                         print(f"Removed: {os.path.join(root, file)}")
 
+    def _generate_python_api_file(self) -> None:
+        """
+        Generate the top-level python api file (package stub) alongside the
+        built shared library in build_lib. This replaces the legacy bdist_egg
+        write_stub mechanism that is no longer triggered in setuptools >= 80.
+        """
+        try:
+            outputs = self.get_outputs()
+            if not outputs:
+                return
+            # We only support a single extension per setup()
+            so_path = os.path.abspath(outputs[0])
+            so_name = os.path.basename(so_path)
+            build_dir = os.path.dirname(so_path)
+            # The package name equals distribution name
+            pkg_name = self.distribution.get_name()
+            pyfile = os.path.join(build_dir, f"{pkg_name}.py")
+            # Write stub; it will reference the _pd_ renamed resource at import time
+            custom_write_stub(so_name, pyfile)
+        except Exception as e:
+            print(f"Warning: failed to generate python api file: {e}")
+
     def run(self):
         super().run()
+        # Generate python API stub into build_lib for setuptools >= 80 installs
+        self._generate_python_api_file()
         self._clean_intermediate_files()
 
 
@@ -925,6 +956,87 @@ class BuildCommand(build):
         if self._specified_build_base is not None:
             self.build_base = self._specified_build_base
 
+
+
+class InstallCommand(install):
+    """
+    Extend install Command to rename the built shared library after it is
+    installed into site-packages, avoiding name conflicts with the generated
+    Python stub module and matching the resource name expected by the stub.
+
+    Additionally, override finalize_options to choose an installation
+    directory that is actually on sys.path (site-packages/dist-packages),
+    avoiding distro-specific mismatches (e.g., /usr/lib vs /usr/local/lib).
+    """
+
+    def finalize_options(self) -> None:
+        super().finalize_options()
+        try:
+            import sys
+            # Build candidate site dirs: global + user + entries already on sys.path
+            candidates = []
+            try:
+                candidates.extend(site.getsitepackages())
+            except Exception:
+                pass
+            try:
+                usp = site.getusersitepackages()
+                if usp:
+                    candidates.append(usp)
+            except Exception:
+                pass
+            for sp in sys.path:
+                if isinstance(sp, str) and sp.endswith(('site-packages', 'dist-packages')):
+                    candidates.append(sp)
+            # De-dup while preserving order
+            seen = set()
+            ordered = []
+            for c in candidates:
+                if c and c not in seen:
+                    seen.add(c)
+                    ordered.append(c)
+            # Prefer a candidate that is actually on sys.path
+            target = None
+            for c in ordered:
+                if c in sys.path and os.path.isdir(c):
+                    target = c
+                    break
+            # Fallback: pick the first existing candidate
+            if target is None:
+                for c in ordered:
+                    if os.path.isdir(c):
+                        target = c
+                        break
+            if target:
+                self.install_lib = target
+                self.install_purelib = target
+                self.install_platlib = target
+        except Exception as e:
+            print(f"Warning: failed to determine preferred site-packages dir: {e}")
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        super().run(*args, **kwargs)
+        self._rename_shared_library()
+
+    def _rename_shared_library(self) -> None:
+        install_dir = (
+            getattr(self, 'install_lib', None)
+            or getattr(self, 'install_purelib', None)
+            or getattr(self, 'install_platlib', None)
+        )
+        if not install_dir or not os.path.isdir(install_dir):
+            return
+        pkg = self.distribution.get_name()
+        suffix = '.pyd' if IS_WINDOWS else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+        old = os.path.join(install_dir, f"{pkg}{suffix}")
+        new = os.path.join(install_dir, f"{pkg}_pd_{suffix}")
+        try:
+            if os.path.exists(old):
+                if os.path.exists(new):
+                    os.remove(new)
+                os.rename(old, new)
+        except Exception as e:
+            print(f"Warning: failed to rename shared library: {e}")
 
 def load(
     name: str,
