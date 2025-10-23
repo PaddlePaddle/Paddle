@@ -72,6 +72,7 @@
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/core/memory/allocation/stream_safe_custom_device_allocator.h"
+#include "paddle/phi/backends/custom/cuda_graph.h"
 #endif
 
 #include "paddle/common/flags.h"
@@ -177,7 +178,7 @@ class CUDAGraphAllocator
 #endif
 
 static bool IsCUDAGraphCapturing() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
 #else
   return false;
@@ -1854,8 +1855,35 @@ void AllocatorFacade::SetDefaultStream(const phi::GPUPlace& place,
     m_->SetDefaultStream(place, stream);
   }
 }
+#elif defined(PADDLE_WITH_XPU)
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const phi::Place& place, XPUStream stream) {
+  AllocatorFacadePrivate* m = GetPrivate();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // The XPU currently does not have the concept of MallocAsyncAllocatorUsed
+  // and shares the logic of IsStreamSafeCUDAAllocatorUsed.
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator "
+               "are not used!";
+    return GetAllocator(place);
+  }
+
+  if (phi::is_xpu_place(place) && FLAGS_use_system_allocator == false) {
+    return m->GetAllocator(place,
+                           stream,
+                           /*create_if_not_found=*/true);
+  }
+  return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+}
+void AllocatorFacade::SetDefaultStream(const phi::XPUPlace& place,
+                                       XPUStream stream) {
+  if (m_->IsStreamSafeCUDAAllocatorUsed()) {
+    m_->SetDefaultStream(place, stream);
+  }
+}
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
                     AllocatorStrategy::kAutoGrowth,
@@ -1892,33 +1920,6 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
   } else {
     VLOG(10) << "Decrease memory pool ID " << id << " reference count to be "
              << ref_cnt;
-  }
-}
-#endif
-#elif defined(PADDLE_WITH_XPU)
-const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
-    const phi::Place& place, XPUStream stream) {
-  AllocatorFacadePrivate* m = GetPrivate();
-
-  // The XPU currently does not have the concept of MallocAsyncAllocatorUsed
-  // and shares the logic of IsStreamSafeCUDAAllocatorUsed.
-  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
-    VLOG(6) << "Warning: StreamSafeCUDAAllocator "
-               "are not used!";
-    return GetAllocator(place);
-  }
-
-  if (phi::is_xpu_place(place) && FLAGS_use_system_allocator == false) {
-    return m->GetAllocator(place,
-                           stream,
-                           /*create_if_not_found=*/true);
-  }
-  return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
-}
-void AllocatorFacade::SetDefaultStream(const phi::XPUPlace& place,
-                                       XPUStream stream) {
-  if (m_->IsStreamSafeCUDAAllocatorUsed()) {
-    m_->SetDefaultStream(place, stream);
   }
 }
 #endif

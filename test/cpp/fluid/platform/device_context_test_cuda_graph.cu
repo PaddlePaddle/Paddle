@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/core/platform/device_context.h"
 
+#ifdef PADDLE_WITH_CUDA
 TEST(Device, DeviceContextWithCUDAGraph) {
   using phi::DeviceContext;
   using phi::DeviceContextPool;
@@ -29,7 +30,6 @@ TEST(Device, DeviceContextWithCUDAGraph) {
   DeviceContextPool& pool = DeviceContextPool::Instance();
   Place place = GPUPlace(0);
   auto* dev_ctx = pool.Get(place);
-
   paddle::platform::BeginCUDAGraphCapture(
       place, cudaStreamCaptureMode::cudaStreamCaptureModeThreadLocal, 0);
   ASSERT_EQ(dev_ctx->IsCUDAGraphAllocatorValid(), true);
@@ -37,3 +37,4 @@ TEST(Device, DeviceContextWithCUDAGraph) {
   paddle::platform::EndCUDAGraphCapture();
   ASSERT_EQ(dev_ctx->IsCUDAGraphAllocatorValid(), false);
 }
+#endif

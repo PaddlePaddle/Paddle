@@ -205,7 +205,7 @@ class CUDAGraph {
 
   static void EndSegmentCapture();
 
-  static void BeginCapture(const Place &place,
+  static void BeginCapture(phi::CustomPlace place,
                            phi::stream::stream_t stream,
                            phi::graph::streamCaptureMode mode);
 
@@ -279,7 +279,7 @@ class CUDAGraph {
 
   static CUDAGraphID CapturingID() { return capturing_graph_->id_; }
 
-  static Place CapturingPlace() { return capturing_graph_->place_; }
+  static phi::CustomPlace CapturingPlace() { return capturing_graph_->place_; }
 
   // This API can be used to debug which GPU operation is not
   // supported during capturing CUDA Graph.
@@ -317,7 +317,7 @@ class CUDAGraph {
   std::vector<phi::graph::CUDAGraphExec_t> exec_graphs_;
   phi::graph::streamCaptureMode capture_mode_;
   phi::stream::stream_t stream_{nullptr};
-  Place place_;
+  phi::CustomPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
   bool is_reset_{false};

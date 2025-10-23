@@ -99,7 +99,7 @@ void CUDAGraph::BeginSegmentCapture() {
            << ", memory pool id " << capturing_graph_->pool_id_;
 }
 
-void CUDAGraph::BeginCapture(const Place &place,
+void CUDAGraph::BeginCapture(phi::CustomPlace place,
                              phi::stream::stream_t stream,
                              phi::graph::streamCaptureMode mode) {
   PADDLE_ENFORCE_EQ(IsCapturing(),
@@ -229,7 +229,7 @@ void CUDAGraphNodeLauncher::KernelNodeLaunch(
 
 std::vector<GraphExecuterSetter_t>
 CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(
-    const Place &place, phi::graph::CUDAGraph_t graph) {
+    const phi::Place& place, phi::graph::CUDAGraph_t graph) {
   auto *device = phi::DeviceManager::GetDeviceWithPlace(place);
   phi::graph::GraphHookManager graph_hook;
   device->GetParameterSetterForExecGraph(graph, &graph_hook);
