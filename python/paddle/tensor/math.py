@@ -2883,21 +2883,7 @@ def outer(
     else:
         ny = y.reshape((1, -1))
 
-    if in_dynamic_mode():
-        return _C_ops.multiply(nx, ny, out=out)
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val,
-                name,
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'outer',
-            )
-
-    __check_input(nx, ny)
-    if in_pir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiply(nx, ny, out=out)
     else:
         helper = LayerHelper('outer', **locals())
