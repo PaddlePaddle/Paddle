@@ -196,7 +196,11 @@ std::vector<paddle::Tensor> RunBackward(
     const std::vector<paddle::Tensor>& no_grad_vars = {},
     std::string dump_backward_graph_path = "") {
   VLOG(3) << "=================RunBackward: Start Backward =================";
-  bool need_debug_backward_graph = !dump_backward_graph_path.empty();
+
+  bool need_dump_backward_subgraph =
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().HasCapturedSubgraph();
+  bool need_debug_backward_graph =
+      !dump_backward_graph_path.empty() || need_dump_backward_subgraph;
   bool need_dump_forward_stack =
       !FLAGS_dump_grad_node_forward_stack_path.empty();
   egr::EagerBackwardStateGuard guard;
@@ -387,12 +391,20 @@ std::vector<paddle::Tensor> RunBackward(
       // Construct backward graph for debug
       std::string dot_node_label = "";
       if (need_debug_backward_graph) {
-        dot_node_label = CreateNodeLabelInDot(node);
-        if (!dot.ContainsNode(dot_node_label)) {
-          dot.AddNode(dot_node_label,
-                      paddle::inference::analysis::grey_box_attrs,
-                      dot_node_label,
-                      false);
+        // if we need capture subgraph, the gradnode not related subgraph will
+        // not be captured
+        if (need_dump_backward_subgraph &&
+            !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                 .ContainsGradNode(node)) {
+          // no need to add node to dot graph
+        } else {
+          dot_node_label = CreateNodeLabelInDot(node);
+          if (!dot.ContainsNode(dot_node_label)) {
+            dot.AddNode(dot_node_label,
+                        paddle::inference::analysis::grey_box_attrs,
+                        dot_node_label,
+                        false);
+          }
         }
       }
 
@@ -510,23 +522,32 @@ std::vector<paddle::Tensor> RunBackward(
           // Construct backward graph for debug
           if (need_debug_backward_graph && grad_output_tensor.defined() &&
               grad_output_tensor.has_allocation()) {
-            std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
-            if (!dot.ContainsNode(dot_next_node_label)) {
-              if (next_node->name() == "GradNodeAccumulation") {
-                dot.AddNode(dot_next_node_label,
-                            paddle::inference::analysis::teal_box_attrs,
-                            dot_next_node_label,
-                            false);
-              } else {
-                dot.AddNode(dot_next_node_label,
-                            paddle::inference::analysis::grey_box_attrs,
-                            dot_next_node_label,
-                            false);
+            if (need_dump_backward_subgraph &&
+                !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                     .ContainsGradNode(node)) {
+              // if we need capture subgraph, the gradnode not related subgraph
+              // will not be captured
+            } else {
+              std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
+              if (!dot.ContainsNode(dot_next_node_label)) {
+                if (next_node->name() == "GradNodeAccumulation") {
+                  dot.AddNode(dot_next_node_label,
+                              paddle::inference::analysis::teal_box_attrs,
+                              dot_next_node_label,
+                              false);
+                } else {
+                  dot.AddNode(dot_next_node_label,
+                              paddle::inference::analysis::grey_box_attrs,
+                              dot_next_node_label,
+                              false);
+                }
               }
-            }
 
-            std::string tensor_label = CreateEdgeLabelInDot(grad_output_tensor);
-            dot.AddEdge(dot_node_label, dot_next_node_label, {}, tensor_label);
+              std::string tensor_label =
+                  CreateEdgeLabelInDot(grad_output_tensor);
+              dot.AddEdge(
+                  dot_node_label, dot_next_node_label, {}, tensor_label);
+            }
           }
 
           if (!node_input_buffers_dict.count(next_node)) {

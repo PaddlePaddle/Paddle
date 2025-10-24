@@ -8606,3 +8606,12 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
+
+
+@signature_safe_contextmanager
+def capture_backward_subgraph_guard() -> Generator[None, None, None]:
+    paddle.base.core.eager._start_capture_debug_backward_subgraph()
+    try:
+        yield
+    finally:
+        paddle.base.core.eager._end_capture_debug_backward_subgraph()

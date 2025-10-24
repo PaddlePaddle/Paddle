@@ -1459,6 +1459,25 @@ PyObject* eager__for_test_check_cuda_error(PyObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+PyObject* eager__start_capture_debug_backward_subgraph(PyObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_TRY
+
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().StartCaptureSubGraph();
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager__end_capture_debug_backward_subgraph(PyObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_TRY
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().EndCaptureSubGraph();
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
@@ -1544,6 +1563,14 @@ PyMethodDef variable_functions[] = {  // NOLINT
 
     {"_add_docstr",
      (PyCFunction)(void (*)())eager__add_doc_str,
+     METH_VARARGS,
+     nullptr},
+    {"_start_capture_debug_backward_subgraph",
+     (PyCFunction)(void (*)())eager__start_capture_debug_backward_subgraph,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_end_capture_debug_backward_subgraph",
+     (PyCFunction)(void (*)())eager__end_capture_debug_backward_subgraph,
      METH_VARARGS,
      nullptr},
 /**sparse functions**/
