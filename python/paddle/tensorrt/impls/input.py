@@ -22,6 +22,7 @@ from paddle.tensorrt.converter_utils import (
     set_layer_name,
 )
 from paddle.tensorrt.register import converter_registry
+from paddle.tensorrt.util import get_trt_version_list
 
 
 @converter_registry.register(
@@ -34,6 +35,7 @@ def one_hot_converter(network, paddle_op, inputs):
 
     trt_dtype_map = {
         trt.DataType.INT32: trt.int32,
+        trt.DataType.INT64: trt.int64,
     }
     trt_dtype = trt_dtype_map.get(input_type, None)
 
@@ -48,6 +50,14 @@ def one_hot_converter(network, paddle_op, inputs):
         np_dtype = np.int64
     else:
         raise ValueError(f"Unsupported trt_dtype for one_hot: {trt_dtype}")
+
+    if get_trt_version_list()[0] >= 10:
+        input_tensor = cast_tensor(
+            network,
+            input_tensor,
+            trt.int32,
+            name=[paddle_op.name(), 'input_tensor'],
+        )
 
     values_tensor = add_1D_constant_layer(
         network,
