@@ -116,6 +116,7 @@ class CinnJitInstruction::FnPtrImpl {
       }
     }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // Launch host kernel
     if (FLAGS_cinn_measure_kernel_time ||
         FLAGS_tile_config_policy == "search") {
@@ -165,6 +166,10 @@ class CinnJitInstruction::FnPtrImpl {
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
     }
+#else
+    ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
+        static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+#endif
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

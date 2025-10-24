@@ -14,11 +14,13 @@
 
 #pragma once
 
-#ifdef __HIPCC__
+#if defined(__HIPCC__)
 #include "ck_patch/ck_matmul.h"
-#endif
 
-#ifdef __NVCC__
+#elif defined(__NVCC__)
 #include "cutlass_patch/cutlass_matmul.cuh"
+
+#else
+#include "cpu_matmul.h"
 #endif
 

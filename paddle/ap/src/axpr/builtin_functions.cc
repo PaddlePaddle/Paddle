@@ -628,11 +628,11 @@ Result<axpr::Value> GetHardwareDevice(const axpr::Value&,
   std::string str = "cpu";
 
   #ifdef CINN_WITH_CUDA
-    str = "gpu";
+    str = "cuda";
   #endif
 
   #ifdef CINN_WITH_HIP
-    str = "dcu";
+    str = "rocm";
   #endif
 
   return str;

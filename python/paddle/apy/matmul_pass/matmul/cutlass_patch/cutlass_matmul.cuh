@@ -145,11 +145,6 @@ struct MatrixLayout<true> {
 template <typename T, int N>
 using Array = cutlass::Array<T, N>;
 
-using MatrixCoord = cutlass::BatchedMatrixCoord;
-using ap_bfloat16 = nv_bfloat16;
-using ap_half = half;
-// using apStream_t = cudaStream_t;
-
 
 template <typename ElementT,
           typename ElementComputeT,

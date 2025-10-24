@@ -37,4 +37,5 @@ def GetGroupedTrivialOpNames():
         "cinn_op.broadcast",
         "pd_op.expand",
         "cinn_op.generate_shape",
+        "pd_op.full_int_array"
     ]
