@@ -1218,7 +1218,7 @@ struct MmapStorage {
   }
   ~MmapStorage() {
     if (base_ptr_) {
-#if defined(_WIN32)
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN6)
       UnmapViewOfFile(base_ptr_);
 #else
       munmap(base_ptr_, size);
