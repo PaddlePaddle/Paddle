@@ -954,12 +954,20 @@ class TestReshapeWithTensorShape(unittest.TestCase):
     """
 
     @static_guard()
-    def check_reshape_static(self, fn, x_shape, expected_out_shape):
+    def check_reshape_static(
+        self, fn, x_shape, expected_out_shape, dynamic_dims=[]
+    ):
         main_program = Program()
         with program_guard(main_program):
             x = paddle.static.data('x', shape=x_shape, dtype='float32')
             out = fn(x)
-            self.assertEqual(out.shape, expected_out_shape)
+            if dynamic_dims:
+                expected_out_shape_with_dynamic = list(expected_out_shape)
+                for dim in dynamic_dims:
+                    expected_out_shape_with_dynamic[dim] = -1
+                self.assertEqual(out.shape, expected_out_shape_with_dynamic)
+            else:
+                self.assertEqual(out.shape, expected_out_shape)
 
         exe = paddle.static.Executor()
         (out_np,) = exe.run(
@@ -994,12 +1002,38 @@ class TestReshapeWithTensorShape(unittest.TestCase):
 
         self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
 
+    def test_reshape_with_list_scalar_tensor_dynamic_dim(self):
+        def reshape_fn(x):
+            dim0 = paddle.full([], 1, dtype='int64') + 1  # dynamic dim
+            dim1 = paddle.full([], 3, dtype='int64')
+            dim2 = paddle.full([], 4, dtype='int64')
+            return paddle.reshape(x, shape=[dim0, dim1, dim2])
+
+        self.check_reshape_static(
+            reshape_fn,
+            x_shape=[2, 12],
+            expected_out_shape=[2, 3, 4],
+            dynamic_dims=[0],
+        )
+
     def test_reshape_with_list_mix_int_tensor(self):
         def reshape_fn(x):
             dim1 = paddle.full([], 3, dtype='int64')
             return paddle.reshape(x, shape=[2, dim1, 4])
 
         self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
+
+    def test_reshape_with_tensor_dynamic_dim(self):
+        def reshape_fn(x):
+            shape_tensor = paddle.to_tensor([1, 2, 3]) + 1  # all dynamic dims
+            return paddle.reshape(x, shape=shape_tensor)
+
+        self.check_reshape_static(
+            reshape_fn,
+            x_shape=[2, 12],
+            expected_out_shape=[2, 3, 4],
+            dynamic_dims=[0, 1, 2],
+        )
 
     def test_reshape_with_tensor(self):
         def reshape_fn(x):
