@@ -546,7 +546,6 @@ if(NOT WITH_GPU
     test_incubate_cal_aux_loss
     test_incubate_expand_modality_expert_id
     test_incubate_fused_loss
-    test_incubate_fused_rmsnorm_ext
     test_incubate_int_bincount
     test_incubate_moe_combine
     test_incubate_moe_combine_no_weight
@@ -564,6 +563,16 @@ if(NOT WITH_GPU
     test_fused_transpose_spilt_quant_op
     test_fused_transpose_wlch_split_quant_op
     test_fused_weighted_swiglu_act_quant_op)
+endif()
+
+# Using fused_rms_norm in windows
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
 endif()
 
 set(has_arch_ge80 FALSE)
