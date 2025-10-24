@@ -565,6 +565,7 @@ if(NOT WITH_GPU
     test_fused_weighted_swiglu_act_quant_op)
 endif()
 
+# Using fused_rms_norm in windows
 if(NOT WITH_GPU
    OR APPLE
    OR WITH_ROCM
