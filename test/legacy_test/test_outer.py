@@ -307,13 +307,13 @@ class TestOuterAlias(unittest.TestCase):
             [2, 4, 8],
         ]
         dtype_cases = [
-            "float16",
-            "bfloat16",
             "float32",
             "float64",
             "int32",
             "int64",
         ]
+        if paddle.is_compiled_with_cuda():
+            dtype_cases.extend(["float16", "bfloat16"])
 
         for shape in shape_cases:
             for dtype in dtype_cases:
