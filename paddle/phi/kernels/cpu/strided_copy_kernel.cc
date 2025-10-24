@@ -188,11 +188,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                             max_thread,
                             FLAGS_paddle_omp_num_threads));
 
-      if (FLAGS_paddle_omp_num_threads == -1) {
-        real_thread = max_thread;
-      } else {
-        real_thread = FLAGS_paddle_omp_num_threads;
-      }
+      real_thread = FLAGS_paddle_omp_num_threads == -1
+                        ? max_thread
+                        : FLAGS_paddle_omp_num_threads;
       omp_set_num_threads(real_thread);
 
 #pragma omp parallel
