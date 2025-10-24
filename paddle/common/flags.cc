@@ -2292,6 +2292,19 @@ PHI_DEFINE_EXPORTED_bool(
     "Whether force Stride_Compute_Kernel output contiguous.");
 
 /**
+ * Operator related FLAG
+ * Name: FLAGS_paddle_omp_num_threads
+ * Since Version: 3.2.1
+ * Value Range: int32, default=-1
+ * Example: FLAGS_paddle_omp_num_threads=-1,
+ * Note:
+ */
+PHI_DEFINE_EXPORTED_int32(
+    paddle_omp_num_threads,
+    -1,
+    "The number of threads utilized by Paddle OMP kernel.");
+
+/**
  * Torch Compatible related FLAG
  * Name: FLAGS_torch_compatible_kernel
  * Since Version: 3.2.2
@@ -2302,16 +2315,3 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(torch_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
-
-/**
- * Operator related FLAG
- * Name: FLAGS_paddle_omp_num_threads
- * Since Version: 3.2.2
- * Value Range: int32, default=-1
- * Example: FLAGS_paddle_omp_num_threads=-1,
- * Note:
- */
-PHI_DEFINE_EXPORTED_int32(
-    paddle_omp_num_threads,
-    -1,
-    "The number of threads utilized by Paddle OMP kernel.");
