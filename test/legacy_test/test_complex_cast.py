@@ -18,6 +18,9 @@ import numpy as np
 
 import paddle
 
+# This test file covers casting operations between different data types,
+# including lightweight float formats (float8, float16, bfloat16) and complex types.
+
 
 class TestComplexCastOp(unittest.TestCase):
     def test_complex_to_real(self):
