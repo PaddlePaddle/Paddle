@@ -2276,7 +2276,9 @@ add_doc_and_signature(
             [0.40000001, 0.20000000, 0.10000000, 0.30000001])
 """,
     """
-def abs(x: Tensor, name: str | None = None,  *, out: Tensor | None = None) -> Tensor
+def abs(
+    x: Tensor, name: str | None = None,  *, out: Tensor | None = None
+) -> Tensor
 """,
 )
 
