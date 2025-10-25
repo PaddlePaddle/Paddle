@@ -747,7 +747,11 @@ def fused_qkv(tokens, expression, context):
         return expression
 
 
-@macro(name='get_var_mapping_chain_macro', priority=3)
+# This macro processes variable mappings between source and destination states,
+# but it requires that all expansion macros (layer_id_macro, expert_id_macro,
+# star_macro, array_macro, etc.) have already been executed to expand template
+# variables into concrete variable names.
+@macro(name='get_var_mapping_chain_macro', priority=4)
 def get_var_mapping_chain_macro(tokens, expression, context):
     flag_left_var = True
     left_var_list = []
