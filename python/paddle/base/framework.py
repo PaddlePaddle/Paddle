@@ -8617,6 +8617,7 @@ def capture_backward_subgraph_guard() -> Generator[None, None, None]:
         paddle.base.core.eager._end_capture_debug_backward_subgraph()
 
 
+@signature_safe_contextmanager
 def vlog_guard(module_levels: int | dict) -> Generator[None, None, None]:
     if not isinstance(module_levels, (int, dict)):
         raise TypeError(
