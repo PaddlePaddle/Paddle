@@ -35,8 +35,10 @@ def one_hot_converter(network, paddle_op, inputs):
 
     trt_dtype_map = {
         trt.DataType.INT32: trt.int32,
-        trt.DataType.INT64: trt.int64,
     }
+    if get_trt_version_list()[0] >= 10:
+        trt_dtype_map[trt.DataType.INT64] = trt.int64
+
     trt_dtype = trt_dtype_map.get(input_type, None)
 
     trt_dtype = trt_dtype_map[input_type]
