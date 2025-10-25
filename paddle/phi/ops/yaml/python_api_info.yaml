@@ -184,6 +184,7 @@
     x : [input]
   args_mapper :
     func : GeluMapper
+
 - op : sum
   name : [paddle.sum, paddle.Tensor.sum]
   args_alias:
@@ -192,3 +193,8 @@
     func : SumPreProcess(x, axis)
   args_mapper :
     func : ArgSumMapper
+
+- op : abs
+  name : [paddle.abs, paddle.Tensor.abs]
+  args_alias:
+    use_default_mapping : True

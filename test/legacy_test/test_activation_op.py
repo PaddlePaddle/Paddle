@@ -2089,6 +2089,75 @@ class TestAbs_ZeroDim(TestAbs):
         self.shape = []
 
 
+class TestAbsAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = devices
+        self.shape = [50]
+        self.dtype = "float32"
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = (
+            np.random.rand(*self.shape).astype(self.dtype) * 2 - 1
+        )  # 范围[-1, 1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.abs(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.abs(x=x)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch compatibility
+        out3 = paddle.abs(input=x)
+        paddle_dygraph_out.append(out3)
+        # Tensor method args
+        out4 = x.abs()
+        paddle_dygraph_out.append(out4)
+        # Test 'out' parameter for torch compatibility
+        out5 = paddle.empty_like(x)
+        paddle.abs(x, out=out5)
+        paddle_dygraph_out.append(out5)
+        # Numpy reference output
+        ref_out = np.abs(self.np_x)
+        # Check all dygraph results
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            # Define static data placeholders
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.abs(x)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.abs(x=x)
+            # Key words args for torch compatibility
+            out3 = paddle.abs(input=x)
+            # Tensor method args
+            out4 = x.abs()
+            # Numpy reference output
+            ref_out = np.abs(self.np_x)
+            fetch_list = [out1, out2, out3, out4]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+
 class TestCeil(TestActivation):
     def setUp(self):
         self.op_type = "ceil"
