@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Find Existing Comment
         id: fc
-        uses: peter-evans/find-comment@a487a14796a243589365181e015759899f932159 # v3.0.0
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
@@ -31,7 +31,7 @@ jobs:
 
       - name: Create Comment if Not Found
         if: steps.fc.outputs.comment-id == ''
-        uses: peter-evans/create-or-update-comment@a2f53d7b52588576b793a032301963570333059c # v4.0.0
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
