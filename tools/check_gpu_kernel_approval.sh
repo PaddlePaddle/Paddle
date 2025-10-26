@@ -29,15 +29,17 @@ pip install --force-reinstall "${pr_whl_path}"/*.whl
 python -c 'import paddle;import json;print(json.dumps(paddle.base.core._get_all_register_op_kernels("phi"), indent=4))' > pr_phi_kernels.json
 echo "::endgroup::"
 
-if ! python "${PADDLE_ROOT}/tools/gpu_kernel_compare.py" dev_phi_kernels.json pr_phi_kernels.json --ignore-data-type-changes; then
+echo -e "\e[33mBegin to compare GPU kernels between dev and pr...\e[0m"
+if ! python "${PADDLE_ROOT}/tools/gpu_kernel_compare.py" dev_phi_kernels.json pr_phi_kernels.json; then
   APPROVALS=$(echo "${approval_line}"|python "${PADDLE_ROOT}"/tools/check_pr_approval.py 1 wanghuancoder)
   if [[ "${APPROVALS}" == "FALSE" ]]; then
-	echo "**************************************************************"
-	echo "Please ensure the added GPU kernel supports large tensors, defined as those with a number of elements (numel) greater than 2^31 - 1. In the PR description, please describe how you tested this scenario and validated the data accuracy."
-	echo "You must have one RD (wanghuancoder) approval"
-	echo "**************************************************************"
+	echo -e "\e[31m**************************************************************\e[0m"
+	echo -e "\e[31mPlease ensure the added GPU kernel supports big tensors, defined as those with a number of elements (numel) greater than 2^31 - 1. In the PR description, please describe how you tested this scenario and validated the data accuracy.\e[0m"
+	echo -e "\e[31mYou must have one RD (wanghuancoder) approval.\e[0m"
+	echo -e "\e[31m**************************************************************\e[0m"
 	exit 6
   fi
 fi
+echo -e "\e[33mComparison completed.\e[0m"
 
-echo "GPU kernel approval check passed."
+echo -e "\e[32mGPU kernel approval check passed.\e[0m"
