@@ -1,9 +1,9 @@
-name: Comment Preview URLs
+name: Comment Detail API Preview URLs
 
 on:
   workflow_run:
-    # A workflow triggered by workflow_run cannot directly be triggered by a workflow that only has the workflow_call trigger.
-    # TODO(ooooo): So now change it to CI-Build, but comment is not timely, at least it's better than nothing.
+    # The `workflow_run` trigger cannot be initiated by reusable workflows because it runs as a job.
+    # Therefore, the 'CI-Build' workflow is specified here directly.
     workflows: ["CI-Build"]
     types:
       - completed
@@ -49,7 +49,7 @@ jobs:
         with:
           issue-number: ${{ steps.artifacts-data.outputs.pr_number }}
           comment-author: 'github-actions[bot]'
-          body-includes: 'Preview documentation links for API changes in this PR'
+          body-includes: 'Preview documentation'
 
       - name: Create or update comment
         if: steps.download.outcome == 'success'

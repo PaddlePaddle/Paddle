@@ -1,0 +1,42 @@
+name: Comment Doc Preview URL
+
+on:
+  pull_request_target:
+    branches:
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  comment-doc-preview-url:
+    name: Comment Doc Preview URL
+    if: contains(github.event.pull_request.title, 'API Compatibility') # Now just to
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Find Existing Comment
+        id: fc
+        uses: peter-evans/find-comment@a487a14796a243589365181e015759899f932159 # v3.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: 'Preview documentation'
+
+      - name: Create Comment if Not Found
+        if: steps.fc.outputs.comment-id == ''
+        uses: peter-evans/create-or-update-comment@a2f53d7b52588576b793a032301963570333059c # v4.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🔗 Helpful Links
+
+            - **Preview documentation built from this pr:** [Preview Link](http://preview-paddle-pr-${{ github.event.pull_request.number }}.paddle-docs-preview.paddlepaddle.org.cn/documentation/docs/en/develop/api/paddle/abs_en.html)
+
+            > **Note:** These links may not be available immediately. They become active after the `Doc-Preview` workflow has successfully completed. If you did not modify any API documentation, this build may not be triggered.
