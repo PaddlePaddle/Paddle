@@ -234,8 +234,10 @@ def main():
             print(f"  - {kernel}: New data types - {data_types_str}")
 
     if has_reportable_changes:
+        print("\nGPU kernel changes detected.")
         sys.exit(1)
 
+    print("\nNo GPU kernel changes detected.")
     sys.exit(0)
 
 

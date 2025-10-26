@@ -140,7 +140,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           bash ${work_dir}/tools/check_gpu_kernel_approval.sh;approval_error=$?
           if [ "$approval_error" != 0 ];then
-            exit 9
+            exit 6
           fi
           '
 

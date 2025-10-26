@@ -36,7 +36,7 @@ if ! python "${PADDLE_ROOT}/tools/gpu_kernel_compare.py" dev_phi_kernels.json pr
 	echo "Please ensure the added GPU kernel supports large tensors, defined as those with a number of elements (numel) greater than 2^31 - 1. In the PR description, please describe how you tested this scenario and validated the data accuracy."
 	echo "You must have one RD (wanghuancoder) approval"
 	echo "**************************************************************"
-	exit 9
+	exit 6
   fi
 fi
 
