@@ -138,7 +138,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          bash ${work_dir}/ci/check_gpu_kernel_approval.sh;approval_error=$?
+          bash ${work_dir}/tools/check_gpu_kernel_approval.sh;approval_error=$?
           if [ "$approval_error" != 0 ];then
             exit 9
           fi

@@ -177,6 +177,14 @@ def cli():
 
 def main():
     args = cli()
+    if not args.baseline_manifest.exists():
+        raise ValueError(
+            f"Baseline manifest file not found: {args.baseline_manifest.resolve()}"
+        )
+    if not args.target_manifest.exists():
+        raise ValueError(
+            f"Target manifest file not found: {args.target_manifest.resolve()}"
+        )
 
     with args.baseline_manifest.open("r", encoding="utf-8") as f:
         baseline_data = json.load(f)

@@ -19,14 +19,17 @@ dev_whl_path=${PADDLE_ROOT}/build/python/dist/
 approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
 
 # Install dev wheel
+echo "::group::Generate dev_phi_kernels.json"
 pip install "${dev_whl_path}"/*.whl
 python -c 'import paddle;import json;print(json.dumps(paddle.base.core._get_all_register_op_kernels("phi"), indent=4))' > dev_phi_kernels.json
+echo "::endgroup::"
 # Install pr wheel
-pip install "${pr_whl_path}"/*.whl
+echo "::group::Generate pr_phi_kernels.json"
+pip install --force-reinstall "${pr_whl_path}"/*.whl
 python -c 'import paddle;import json;print(json.dumps(paddle.base.core._get_all_register_op_kernels("phi"), indent=4))' > pr_phi_kernels.json
+echo "::endgroup::"
 
-
-if ! python "${PADDLE_ROOT}/ci/gpu_kernel_compare.py" dev_phi_kernels.json pr_phi_kernels.json; then
+if ! python "${PADDLE_ROOT}/tools/gpu_kernel_compare.py" dev_phi_kernels.json pr_phi_kernels.json; then
   APPROVALS=$(echo "${approval_line}"|python "${PADDLE_ROOT}"/tools/check_pr_approval.py 1 wanghuancoder)
   if [[ "${APPROVALS}" == "FALSE" ]]; then
 	echo "**************************************************************"
@@ -36,3 +39,5 @@ if ! python "${PADDLE_ROOT}/ci/gpu_kernel_compare.py" dev_phi_kernels.json pr_ph
 	exit 9
   fi
 fi
+
+echo "GPU kernel approval check passed."
