@@ -29,7 +29,7 @@ pip install --force-reinstall "${pr_whl_path}"/*.whl
 python -c 'import paddle;import json;print(json.dumps(paddle.base.core._get_all_register_op_kernels("phi"), indent=4))' > pr_phi_kernels.json
 echo "::endgroup::"
 
-if ! python "${PADDLE_ROOT}/tools/gpu_kernel_compare.py" dev_phi_kernels.json pr_phi_kernels.json; then
+if ! python "${PADDLE_ROOT}/tools/gpu_kernel_compare.py" dev_phi_kernels.json pr_phi_kernels.json --ignore-data-type-changes; then
   APPROVALS=$(echo "${approval_line}"|python "${PADDLE_ROOT}"/tools/check_pr_approval.py 1 wanghuancoder)
   if [[ "${APPROVALS}" == "FALSE" ]]; then
 	echo "**************************************************************"

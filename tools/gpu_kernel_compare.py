@@ -226,7 +226,7 @@ def main():
             print(f"  - {kernel}")
 
     if summary["gpu_kernels_with_new_data_types"]:
-        print("\nGPU Kernels with Data Type Changes:")
+        print("\nGPU Kernels with new Data Type:")
         for kernel, data_types in summary[
             "gpu_kernels_with_new_data_types"
         ].items():
@@ -234,10 +234,8 @@ def main():
             print(f"  - {kernel}: New data types - {data_types_str}")
 
     if has_reportable_changes:
-        print("\nGPU kernel changes detected.")
         sys.exit(1)
 
-    print("\nNo GPU kernel changes detected.")
     sys.exit(0)
 
 
