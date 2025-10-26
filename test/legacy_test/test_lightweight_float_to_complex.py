@@ -22,12 +22,10 @@ import paddle
 class TestLightweightFloatToComplex(unittest.TestCase):
     """Test casting from lightweight float formats (float8, float16, bfloat16) to complex types."""
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(),
-        "float16/bfloat16 test runs only on CUDA",
-    )
     def test_float16_to_complex(self):
         """Test float16 to complex64/complex128 conversion."""
+        paddle.set_device('cpu')
+
         r_fp16 = np.random.random(size=[10, 10]).astype('float16')
         r_fp16_t = paddle.to_tensor(r_fp16, dtype='float16')
 
@@ -57,12 +55,10 @@ class TestLightweightFloatToComplex(unittest.TestCase):
             np.zeros([10, 10], dtype='float64'),
         )
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(),
-        "bfloat16 test runs only on CUDA",
-    )
     def test_bfloat16_to_complex(self):
         """Test bfloat16 to complex64/complex128 conversion."""
+        paddle.set_device('cpu')
+
         r_bf16 = np.random.random(size=[10, 10]).astype('float32')
         r_bf16_t = paddle.to_tensor(r_bf16, dtype='bfloat16')
 
@@ -92,12 +88,10 @@ class TestLightweightFloatToComplex(unittest.TestCase):
             np.zeros([10, 10], dtype='float64'),
         )
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(),
-        "float8 test runs only on CUDA",
-    )
     def test_float8_e4m3fn_to_complex(self):
         """Test float8_e4m3fn to complex64/complex128 conversion."""
+        paddle.set_device('cpu')
+
         r_fp32 = np.random.uniform(1.0, 10.0, size=[10, 10]).astype('float32')
         r_fp32_t = paddle.to_tensor(r_fp32)
         r_fp8_e4m3fn_t = r_fp32_t.astype('float8_e4m3fn')
@@ -132,12 +126,10 @@ class TestLightweightFloatToComplex(unittest.TestCase):
             np.zeros([10, 10], dtype='float64'),
         )
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(),
-        "float8 test runs only on CUDA",
-    )
     def test_float8_e5m2_to_complex(self):
         """Test float8_e5m2 to complex64/complex128 conversion."""
+        paddle.set_device('cpu')
+
         r_fp32 = np.random.uniform(1.0, 10.0, size=[10, 10]).astype('float32')
         r_fp32_t = paddle.to_tensor(r_fp32)
         r_fp8_e5m2_t = r_fp32_t.astype('float8_e5m2')
