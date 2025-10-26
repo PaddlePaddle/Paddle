@@ -2098,18 +2098,16 @@ class TestAbsAPI_Compatibility(unittest.TestCase):
         self.init_data()
 
     def init_data(self):
-        self.np_x = (
-            np.random.rand(*self.shape).astype(self.dtype) * 2 - 1
-        )  # 范围[-1, 1]
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype) * 2 - 1
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         paddle_dygraph_out = []
-        # Position args (args)
+        # Position args
         out1 = paddle.abs(x)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Key words args for paddle
         out2 = paddle.abs(x=x)
         paddle_dygraph_out.append(out2)
         # Key words args for torch compatibility
@@ -2136,9 +2134,9 @@ class TestAbsAPI_Compatibility(unittest.TestCase):
         with base.program_guard(main, startup):
             # Define static data placeholders
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            # Position args (args)
+            # Position args
             out1 = paddle.abs(x)
-            # Key words args (kwargs) for paddle
+            # Key words args for paddle
             out2 = paddle.abs(x=x)
             # Key words args for torch compatibility
             out3 = paddle.abs(input=x)
