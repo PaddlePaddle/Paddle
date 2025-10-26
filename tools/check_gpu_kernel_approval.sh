@@ -20,7 +20,7 @@ approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.g
 
 # Install dev wheel
 echo "::group::Generate dev_phi_kernels.json"
-pip install "${dev_whl_path}"/*.whl
+pip install --force-reinstall "${dev_whl_path}"/*.whl
 python -c 'import paddle;import json;print(json.dumps(paddle.base.core._get_all_register_op_kernels("phi"), indent=4))' > dev_phi_kernels.json
 echo "::endgroup::"
 # Install pr wheel
