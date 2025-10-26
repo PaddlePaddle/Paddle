@@ -19,12 +19,10 @@ dev_whl_path=${PADDLE_ROOT}/build/python/dist/
 approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
 
 # Install dev wheel
-echo "::group::Generate dev_phi_kernels.json"
+echo "::group::Generate dev_phi_kernels.json and pr_phi_kernels.json"
 pip install --force-reinstall "${dev_whl_path}"/*.whl
 python -c 'import paddle;import json;print(json.dumps(paddle.base.core._get_all_register_op_kernels("phi"), indent=4))' > dev_phi_kernels.json
-echo "::endgroup::"
 # Install pr wheel
-echo "::group::Generate pr_phi_kernels.json"
 pip install --force-reinstall "${pr_whl_path}"/*.whl
 python -c 'import paddle;import json;print(json.dumps(paddle.base.core._get_all_register_op_kernels("phi"), indent=4))' > pr_phi_kernels.json
 echo "::endgroup::"
