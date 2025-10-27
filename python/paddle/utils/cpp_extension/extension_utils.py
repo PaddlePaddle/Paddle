@@ -728,7 +728,7 @@ def find_cuda_home():
     # step 1. find in $CUDA_HOME or $CUDA_PATH
     cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
 
-    # step 2.  find path by `which nvcc`
+    # step 2. find path by `which nvcc`
     if cuda_home is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
@@ -770,7 +770,7 @@ def find_rocm_home():
     # step 1. find in $ROCM_HOME or $ROCM_PATH
     rocm_home = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH')
 
-    # step 2.  find path by `which nvcc`
+    # step 2. find path by `which nvcc`
     if rocm_home is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
@@ -1102,7 +1102,7 @@ def _generate_python_module(
 
     # NOTE: Use unique id as suffix to avoid write same file at same time in
     # both multi-thread and multi-process.
-    thread_id = str(threading.currentThread().ident)
+    thread_id = str(threading.current_thread().ident)
     api_file = os.path.join(
         build_directory, module_name + '_' + thread_id + '.py'
     )
