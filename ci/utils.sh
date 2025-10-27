@@ -297,19 +297,7 @@ function cmake_base() {
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp38-cp38" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
-            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
-            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib"
-                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp39-cp39" ]; then
+        if [ "$1" == "cp39-cp39" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
@@ -373,15 +361,7 @@ function cmake_base() {
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            if [ "$1" == "cp38-cp38" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
-                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.8.0/bin/python3.8
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
-                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp39-cp39" ]; then
+            if [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.9.0/bin/python3.9
@@ -413,7 +393,7 @@ function cmake_base() {
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.12.0/lib/libpython3.so"
                 pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-	    elif [ "$1" == "cp313-cp313" ]; then
+	        elif [ "$1" == "cp313-cp313" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.13.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.13.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.13.0/bin/python3.13
@@ -421,13 +401,6 @@ function cmake_base() {
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.13.0/lib/libpython3.so"
                 pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "conda-python3.8" ]; then
-                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/conda/bin/:${PATH}
-                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
-                                     -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.8m
-                                     -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
-                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
             fi
             # for CINN, to find libcuda.so.1
             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda-11.2/compat/
@@ -484,7 +457,7 @@ function cmake_base() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-        -DPY_VERSION=${PY_VERSION:-3.8}
+        -DPY_VERSION=${PY_VERSION:-3.9}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_PSCORE=${pscore_flag}
         -DWITH_PSLIB=${pslib_flag}
@@ -537,7 +510,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
-        -DPY_VERSION=${PY_VERSION:-3.8} \
+        -DPY_VERSION=${PY_VERSION:-3.9} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_PSCORE=${pscore_flag} \
         -DWITH_PSLIB=${pslib_flag} \

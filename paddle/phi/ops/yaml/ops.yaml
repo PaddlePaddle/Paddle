@@ -4110,7 +4110,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pad3d
-  args : (Tensor x, IntArray paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCDHW")
+  args : (Tensor x, IntArray paddings, str mode = "constant", double pad_value = 0.0, str data_format = "NCDHW")
   output : Tensor(out)
   infer_meta :
     func : Pad3dInferMeta

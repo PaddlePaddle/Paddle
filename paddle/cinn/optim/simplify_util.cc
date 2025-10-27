@@ -29,25 +29,44 @@
 namespace cinn {
 namespace optim {
 
-bool ComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs) {
+int ComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs) {
   if (lhs.node_type() == ir::IrNodeTy::IntImm &&
       rhs.node_type() != ir::IrNodeTy::IntImm)
-    return false;
+    return -1;
   if (rhs.node_type() == ir::IrNodeTy::IntImm &&
       lhs.node_type() != ir::IrNodeTy::IntImm)
-    return true;
-  if (auto lhsVar = lhs.As<ir::_Var_>())
-    if (auto rhsVar = rhs.As<ir::_Var_>())
-      return std::make_tuple(lhsVar->name.length(), lhsVar->name) <=
-             std::make_tuple(rhsVar->name.length(), rhsVar->name);
+    return 1;
+  if (auto lhsVar = lhs.As<ir::_Var_>()) {
+    if (auto rhsVar = rhs.As<ir::_Var_>()) {
+      if (std::make_tuple(lhsVar->name.length(), lhsVar->name) <
+          std::make_tuple(rhsVar->name.length(), rhsVar->name))
+        return 1;
+      else if (std::make_tuple(lhsVar->name.length(), lhsVar->name) ==
+               std::make_tuple(rhsVar->name.length(), rhsVar->name))
+        return 0;
+      else
+        return -1;
+    }
+  }
   auto lhsLen = lhs.length();
   auto rhsLen = rhs.length();
-  if (lhsLen < rhsLen) return false;
-  // Add < Mul < Div < Mod < Min < Max < Cast < Load.
-  else if (lhsLen == rhsLen)
-    return lhs.node_type() <= rhs.node_type();
-  else
-    return true;
+  if (lhsLen < rhsLen) {
+    return -1;
+  } else if (lhsLen == rhsLen) {
+    // Add < Mul < Div < Mod < Min < Max < Cast < Load.
+    if (lhs.node_type() < rhs.node_type())
+      return 1;
+    else if (lhs.node_type() == rhs.node_type())
+      return 0;
+    else
+      return -1;
+  } else {
+    return 1;
+  }
+}
+
+bool SortComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs) {
+  return ComparePriority(lhs, rhs) > 0;
 }
 
 bool IsSumPartialBySymbol(const ir::IndexExpr &expr,
