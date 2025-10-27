@@ -1288,8 +1288,6 @@ void ConstructAttrMapForLegacyRunProgram(
       {"x_names", CastPyArg2AttrStrings},
       {"out_grad_names", CastPyArg2AttrStrings},
       {"x_grad_names", CastPyArg2AttrStrings},
-      {"cuda_graph_capture_mode", CastPyArg2AttrString},
-      {"cuda_graph_pool_id", CastPyArg2AttrLong},
       {"in_pir_pt_mode", CastPyArg2AttrBoolean},
       {"use_interpretorcore", CastPyArg2AttrBoolean},
       {"global_block", CastPyArg2AttrBlock},

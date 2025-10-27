@@ -118,13 +118,6 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
         "program_id",
         "(int64_t)"
         "The unique hash id used as cache key for ExecutorInfoCache.");
-    AddAttr<std::string>("cuda_graph_capture_mode",
-                         "(str, default '') The CUDA Graph capture mode. "
-                         "Default '' means no CUDA Graph capturing.")
-        .SetDefault("");
-    AddAttr<int64_t>("cuda_graph_pool_id",
-                     "(int64_t, default 0) The CUDA Graph memory pool ID.")
-        .SetDefault(0);
     AddAttr<bool>("use_interpretorcore",
                   "(bool, default false) Set to true for use interpretercore.")
         .SetDefault(false);
