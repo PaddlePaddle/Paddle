@@ -24,7 +24,7 @@ class TestCaptureBackwardSubGraphGuard(unittest.TestCase):
     # Just run it for coverage ci and don't check the res
     def test_guard(self):
         # windows ci may have some permission issues
-        if 'Windows' == platform.system():
+        if 'Windows' == platform.system() or not paddle.is_compiled_with_cuda():
             return
         import paddle.nn.functional as F
         from paddle import nn
@@ -53,7 +53,6 @@ class TestCaptureBackwardSubGraphGuard(unittest.TestCase):
             conv_x.stop_gradient = False
             conv_w.stop_gradient = False
             sync_bn_input.stop_gradient = False
-
             with paddle.amp.auto_cast(enable=True):
                 out1 = paddle.add_n([x, y])
                 out2 = paddle.multiply(x, y)
