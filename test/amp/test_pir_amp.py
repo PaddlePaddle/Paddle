@@ -103,7 +103,7 @@ class TestPirAMPProgram(unittest.TestCase):
             main = paddle.static.Program()
             with paddle.static.program_guard(main, startup):
                 x = paddle.static.data('x', [3, 4], 'float32')
-                linear = paddle.nn.Linear(4, 5)  #
+                linear = paddle.nn.Linear(4, 5)
                 optimizer = paddle.optimizer.Adam(
                     learning_rate=0.001, parameters=linear.parameters()
                 )
