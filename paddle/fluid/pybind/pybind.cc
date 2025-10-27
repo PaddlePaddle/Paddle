@@ -1129,6 +1129,16 @@ struct MmapStorage {
     }
 #endif
   }
+  ~MmapStorage() {
+    if (base_ptr_) {
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN6)
+      UnmapViewOfFile(base_ptr_);
+#else
+      munmap(base_ptr_, size);
+#endif
+      base_ptr_ = nullptr;
+    }
+  }
   void *base_ptr_;
   int64_t size;
 };
