@@ -254,6 +254,14 @@ def setup(**attr: Any) -> None:
     # See http://peak.telecommunity.com/DevCenter/setuptools#setting-the-zip-safe-flag
     attr['zip_safe'] = False
 
+    # Ensure modern metadata format for pip compatibility.
+    # Setting metadata_version >= 2.1 (introduced in PEP 566) forces setuptools
+    # to create .dist-info directories instead of .egg-info, which allows pip
+    # to properly detect and list installed packages via `pip list`.
+    # Version 2.1 is sufficient for this purpose and maintains compatibility.
+    if 'metadata_version' not in attr:
+        attr['metadata_version'] = '2.1'
+
     # switch `write_stub` to inject paddle api in .egg
     with bootstrap_context():
         setuptools.setup(**attr)
@@ -1053,7 +1061,7 @@ class InstallCommand(install):
         Ensure only one top-level item in install_dir contains the package name by:
           - moving {pkg}.py -> {pkg}/__init__.py
           - moving {pkg}_pd_.so -> {pkg}/{pkg}_pd_.so
-          - removing any {pkg}-*.egg-info left by setuptools install
+          - removing any {pkg}-*.egg-info left by setuptools install (only if dist-info exists)
         This keeps legacy tests that scan os.listdir(site_dir) happy.
         """
         try:
@@ -1065,6 +1073,11 @@ class InstallCommand(install):
             if not install_dir or not os.path.isdir(install_dir):
                 return
             pkg = self.distribution.get_name()
+            # Check if dist-info exists
+            has_dist_info = any(
+                name.endswith('.dist-info') and name.startswith(pkg)
+                for name in os.listdir(install_dir)
+            )
             # Prepare paths
             pkg_dir = os.path.join(install_dir, pkg)
             py_src = os.path.join(install_dir, f"{pkg}.py")
@@ -1100,19 +1113,22 @@ class InstallCommand(install):
                     os.replace(so_src, so_dst)
                 except Exception:
                     pass
-            # Remove egg-info entries for this package to keep a single match
-            for name in os.listdir(install_dir):
-                if name.startswith(f"{pkg}-") and name.endswith(".egg-info"):
-                    p = os.path.join(install_dir, name)
-                    try:
-                        if os.path.isdir(p):
-                            import shutil
+            # Remove egg-info entries for this package only if dist-info exists
+            if has_dist_info:
+                for name in os.listdir(install_dir):
+                    if name.startswith(f"{pkg}-") and name.endswith(
+                        ".egg-info"
+                    ):
+                        p = os.path.join(install_dir, name)
+                        try:
+                            if os.path.isdir(p):
+                                import shutil
 
-                            shutil.rmtree(p, ignore_errors=True)
-                        else:
-                            os.remove(p)
-                    except Exception:
-                        pass
+                                shutil.rmtree(p, ignore_errors=True)
+                            else:
+                                os.remove(p)
+                        except Exception:
+                            pass
         except Exception as e:
             print(f"Warning: failed to canonicalize install layout: {e}")
 
