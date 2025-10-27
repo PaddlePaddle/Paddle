@@ -95,7 +95,6 @@ class TestPirAMPProgram(unittest.TestCase):
             np.testing.assert_equal(len(_white_list), 0)
             np.testing.assert_equal(len(_black_list), 0)
 
-    #
     def test_linear_amp_o2_without_scaler(self):
         if not core.is_compiled_with_cuda():
             return
