@@ -400,7 +400,12 @@ class AmpTestBase(unittest.TestCase):
 
         for op_type, expected_value in expected_bf16_calls.items():
             # print(f"[BF16] op_type={op_type}, value={value}")
-            if isinstance(op_stats_dict[op_type], str):
+            if op_type not in op_stats_dict:
+                self.fail(
+                    f"[{debug_info}] Operator '{op_type}' not found in op_stats_dict."
+                )
+            item = op_stats_dict[op_type]
+            if isinstance(item, str):
                 actual_value = _extract_op_call(op_stats_dict[op_type], 1)
             else:
                 actual_value = op_stats_dict[op_type].bf16_calls
