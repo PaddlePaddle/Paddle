@@ -146,22 +146,24 @@ class AOAShardInfoContext:
         return match_expert_id
 
     def get_src_state_shard_num(self, src_state_key: str) -> int:
-        resolved_src_state_key = self.resolve_mapping_chain(
-            src_state_key, reverse=True
-        )
         model_state_key, opt_state_name = split_optimizer_state_key(
-            resolved_src_state_key
+            src_state_key
         )
 
         assert opt_state_name is None, (
             "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
         )
 
+        # Only need to parse the model state key for optimizer state shard num, because the optimizer state slice info is completely consistent with the model state slice info.
+        resolved_model_state_key = self.resolve_mapping_chain(
+            model_state_key, reverse=False
+        )
+
         state_keys = [
-            model_state_key,
-            f"{model_state_key}.w_0",
-            f"{model_state_key}.moment1_0",
-            f"{model_state_key}.moment2_0",
+            resolved_model_state_key,
+            f"{resolved_model_state_key}.w_0",
+            f"{resolved_model_state_key}.moment1_0",
+            f"{resolved_model_state_key}.moment2_0",
         ]
 
         shard_nums = {
@@ -190,22 +192,24 @@ class AOAShardInfoContext:
         if self.destination_state_shard_info is None:
             # Default `dst_state_shard_num=1` if `destination_state_shard_info` is missing.
             return 1
-        resolved_dst_state_key = self.resolve_mapping_chain(
-            dst_state_key, reverse=False
-        )
         model_state_key, opt_state_name = split_optimizer_state_key(
-            resolved_dst_state_key
+            dst_state_key
         )
 
         assert opt_state_name is None, (
             "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
         )
 
+        # Only need to parse the model state key for optimizer state shard num, because the optimizer state slice info is completely consistent with the model state slice info.
+        resolved_model_state_key = self.resolve_mapping_chain(
+            model_state_key, reverse=False
+        )
+
         state_keys = [
-            model_state_key,
-            f"{model_state_key}.w_0",
-            f"{model_state_key}.moment1_0",
-            f"{model_state_key}.moment2_0",
+            resolved_model_state_key,
+            f"{resolved_model_state_key}.w_0",
+            f"{resolved_model_state_key}.moment1_0",
+            f"{resolved_model_state_key}.moment2_0",
         ]
 
         shard_nums = {
@@ -242,7 +246,7 @@ class AOAShardInfoContext:
         - reverse=False: temp_var -> dst_key
         - reverse=True: temp_var -> src_key
         """
-        visited = set()
+        visited = set()  # avoid infinite loop
         current_key = key
 
         if reverse:
@@ -251,9 +255,14 @@ class AOAShardInfoContext:
             mapping_dict = self.left_var_to_right_var_mapping
 
         while current_key in mapping_dict:
-            if current_key in visited:
-                break
+            assert current_key not in visited, (
+                "Infinite loop detected in resolve_mapping_chain,which means the start key is not src_key or the end key is not dst_key, the aoa_config is error"
+            )
             visited.add(current_key)
+            if reverse and current_key in self.get_all_src_state_keys():
+                break
+            elif not reverse and current_key in self.get_all_dst_state_keys():
+                break
 
             mapped_vars = mapping_dict[current_key]
             if mapped_vars and len(mapped_vars) > 0:
@@ -305,14 +314,17 @@ class AOAEngine:
 
     def build_input_vars(self):
         input_vars = {}
-        for key, shards in self.source_state_shard_info.items():
+        dtype = None
+        for key, shards in sorted(self.source_state_shard_info.items()):
             global_shape = shards[0].global_shape
-            dtype = shards[0].dtype
             model_state_key, opt_state_name = split_optimizer_state_key(key)
-            if opt_state_name in [".w_0", ".moment1_0", ".moment2_0", None]:
-                input_vars[model_state_key] = self.make_input_tensor(
-                    model_state_key, global_shape, dtype
-                )
+            if opt_state_name is None:
+                dtype = shards[0].dtype
+            if model_state_key in input_vars.keys():
+                continue
+            input_vars[model_state_key] = self.make_input_tensor(
+                model_state_key, global_shape, dtype
+            )
         return input_vars
 
     def split(
@@ -707,10 +719,14 @@ class AOAEngine:
 
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
-            assert src_var.dtype == target.dtype, (
-                "Direct assignment of Tensors with different types is prohibited in AOA. "
-                "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+            target_model_state_key, target_opt_state_name = (
+                split_optimizer_state_key(target.key)
             )
+            if target_opt_state_name is None:
+                assert src_var.dtype == target.dtype, (
+                    "Direct assignment of Tensors with different types is prohibited in AOA. "
+                    "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+                )
 
             src_global_shape = src_var.shape
 

@@ -122,6 +122,7 @@ def star_macro(tokens, expression, context):
     return new_expression
 
 
+# TODO: need to adapt the scene of temp_layers.\$LAYER_ID.weight -> dst_layers.\$LAYER_ID.weight
 @macro(name='layer_id_macro', priority=1)
 def layer_id_macro(tokens, expression, context):
     LAYER_ID_MACRO_TAG = "$LAYER_ID"
