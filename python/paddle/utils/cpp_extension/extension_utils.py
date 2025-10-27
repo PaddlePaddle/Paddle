@@ -1111,7 +1111,7 @@ def _generate_python_module(
     # delete the temp file before exit python process
     atexit.register(lambda: remove_if_exit(api_file))
 
-    # write into .py file with RWLockc
+    # write into .py file with RWLock
     api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
         f.write('\n\n'.join(api_content))
