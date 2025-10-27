@@ -368,31 +368,36 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
 }
 
+/**
+ * @brief Get the string representation of the current Python stack
+ *
+ * Use Python’s traceback module to obtain the current stack information and
+ * convert it into a string representation for return.
+ *
+ * @return String representation of the current Python stack
+ */
+std::string GetPythonStack() {
+  pybind11::gil_scoped_acquire gil;
+  PyObject* mod = PyImport_ImportModule("traceback");
+  PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
+  std::string str = "";
+  for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
+    PyObject* line = PyList_GetItem(traceback_list, i);
+    str += py::str(PyUnicode_AsUTF8(line));
+  }
+  return str;
+}
 void SetPythonStack() {
   if (FLAGS_check_nan_inf && FLAGS_check_nan_inf_level == 0) {
     VLOG(4) << "this is SetPythonStack";
-    pybind11::gil_scoped_acquire gil;
-    PyObject* mod = PyImport_ImportModule("traceback");
-    PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
-    std::string str = "";
-    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
-      PyObject* line = PyList_GetItem(traceback_list, i);
-      str += py::str(PyUnicode_AsUTF8(line));
-    }
+    std::string str = GetPythonStack();
     std::string last = str + egr::Controller::Instance().GetPythonStack();
     egr::Controller::Instance().SetPythonStack(last);
   }
 
   if (FLAGS_call_stack_level == 3) {
     VLOG(6) << "this is SetPythonStack";
-    pybind11::gil_scoped_acquire gil;
-    PyObject* mod = PyImport_ImportModule("traceback");
-    PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
-    std::string str = "";
-    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
-      PyObject* line = PyList_GetItem(traceback_list, i);
-      str += py::str(PyUnicode_AsUTF8(line));
-    }
+    std::string str = GetPythonStack();
     egr::Controller::Instance().SetPythonStack(str);
   }
 }

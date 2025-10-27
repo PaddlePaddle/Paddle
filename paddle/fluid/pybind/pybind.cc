@@ -85,6 +85,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/logging_utils.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #include "paddle/phi/core/raw_tensor.h"
@@ -1215,6 +1216,16 @@ struct MmapStorage {
           size_ / 1073741824));
     }
 #endif
+  }
+  ~MmapStorage() {
+    if (base_ptr_) {
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN6)
+      UnmapViewOfFile(base_ptr_);
+#else
+      munmap(base_ptr_, size);
+#endif
+      base_ptr_ = nullptr;
+    }
   }
   void *base_ptr_;
   int64_t size;
@@ -3312,6 +3323,7 @@ All parameter, weight, gradient are variables in Paddle.
           // It may cause configuration effects for a single module
           VLOG(3) << "Set the VLOG level of all modules to " << level;
           FLAGS_v = level;
+          phi::set_phi_vlog_level(level);
         } else if (py::isinstance<py::dict>(module_levels)) {
           auto module_levels_dict = module_levels.cast<py::dict>();
           for (auto &item : module_levels_dict) {
@@ -3320,8 +3332,10 @@ All parameter, weight, gradient are variables in Paddle.
             if (module_name == "*") {
               VLOG(3) << "Set the VLOG level of all modules to " << level;
               FLAGS_v = level;
+              phi::set_phi_vlog_level(level);
             } else {
               google::SetVLOGLevel(module_name.c_str(), level);
+              phi::set_phi_vlog_level(module_name.c_str(), level);
             }
           }
         } else {
@@ -4199,7 +4213,12 @@ All parameter, weight, gradient are variables in Paddle.
       .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .value("PSTRING", phi::DataType::PSTRING)
       .value("ALL_DTYPE", phi::DataType::ALL_DTYPE)
-      .export_values();
+      .export_values()
+      .def("__dlpack_data_type__", [](const phi::DataType &self) {
+        ::DLDataType dl_dtype =
+            paddle::framework::PhiDataTypeToDLDataType(self);
+        return py::make_tuple(dl_dtype.code, dl_dtype.bits, dl_dtype.lanes);
+      });
 
   py::class_<paddle::platform::EngineParams> engine_params(m,
                                                            "TRTEngineParams");
