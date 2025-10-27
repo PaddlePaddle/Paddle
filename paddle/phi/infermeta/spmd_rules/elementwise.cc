@@ -710,15 +710,15 @@ SpmdInfo StanhGradInfoSpmd(const DistMetaTensor& x,
 
 // softplus
 SpmdInfo SoftplusInfoSpmd(const DistMetaTensor& x,
-                          const float beta,
-                          const float threshold) {
+                          const double beta,
+                          const double threshold) {
   return ElementwiseUnaryInferSpmd(x);
 }
 
 SpmdInfo SoftplusGradInfoSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad,
-                              const float beta,
-                              const float threshold) {
+                              const double beta,
+                              const double threshold) {
   return ElementwiseUnaryGradInferSpmd(x, out_grad);
 }
 
@@ -748,13 +748,13 @@ SpmdInfo ThresholdedReluGradInfoSpmd(const DistMetaTensor& x,
 }
 
 // logit
-SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const float eps) {
+SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const double eps) {
   return ElementwiseUnaryInferSpmd(x);
 }
 
 SpmdInfo LogitGradInfoSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
-                           const float eps) {
+                           const double eps) {
   return ElementwiseUnaryGradInferSpmd(x, out_grad);
 }
 

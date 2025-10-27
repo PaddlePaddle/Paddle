@@ -105,6 +105,21 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
         dev_ctx, &x, nullptr, &dout, dx, functor);              \
   }
 
+#define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(  \
+    name, functor_class, attr)                                  \
+  template <typename T, typename Context>                       \
+  void name##GradKernel(const Context& dev_ctx,                 \
+                        const DenseTensor& x,                   \
+                        const DenseTensor& dout,                \
+                        double attr,                            \
+                        DenseTensor* dx) {                      \
+    funcs::functor_class<T> functor;                            \
+    auto attrs = functor.GetAttrs();                            \
+    *(attrs[0].second) = attr;                                  \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, &x, nullptr, &dout, dx, functor);              \
+  }
+
 #define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(         \
     name, functor_class, attr1, attr2)                          \
   template <typename T, typename Context>                       \
@@ -113,6 +128,23 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
                         const DenseTensor& dout,                \
                         float attr1,                            \
                         float attr2,                            \
+                        DenseTensor* dx) {                      \
+    funcs::functor_class<T> functor;                            \
+    auto attrs = functor.GetAttrs();                            \
+    *(attrs[0].second) = attr1;                                 \
+    *(attrs[1].second) = attr2;                                 \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, &x, nullptr, &dout, dx, functor);              \
+  }
+
+#define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX(  \
+    name, functor_class, attr1, attr2)                          \
+  template <typename T, typename Context>                       \
+  void name##GradKernel(const Context& dev_ctx,                 \
+                        const DenseTensor& x,                   \
+                        const DenseTensor& dout,                \
+                        double attr1,                           \
+                        double attr2,                           \
                         DenseTensor* dx) {                      \
     funcs::functor_class<T> functor;                            \
     auto attrs = functor.GetAttrs();                            \
@@ -146,6 +178,21 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
     *(attrs[0].second) = attr;                                  \
     ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>( \
         dev_ctx, nullptr, &out, &dout, dx, functor);            \
+  }
+
+#define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPOUT( \
+    name, functor_class, attr)                                   \
+  template <typename T, typename Context>                        \
+  void name##GradKernel(const Context& dev_ctx,                  \
+                        const DenseTensor& out,                  \
+                        const DenseTensor& dout,                 \
+                        double attr,                             \
+                        DenseTensor* dx) {                       \
+    funcs::functor_class<T> functor;                             \
+    auto attrs = functor.GetAttrs();                             \
+    *(attrs[0].second) = attr;                                   \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(  \
+        dev_ctx, nullptr, &out, &dout, dx, functor);             \
   }
 
 #define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(       \
@@ -211,9 +258,9 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log10, CudaLog10GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log1p, CudaLog1pGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, CudaSwishGradFunctor);
 
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                               CudaLeakyReluGradFunctor,
-                                               alpha);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                      CudaLeakyReluGradFunctor,
+                                                      alpha);
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
                                                CudaSoftShrinkGradFunctor,
                                                lambda);
@@ -227,9 +274,9 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Celu,
                                                CudaCELUGradFunctor,
                                                alpha);
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT(LogitCUDA,
-                                                 CudaLogitGradFunctor,
-                                                 eps);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPOUT(LogitCUDA,
+                                                        CudaLogitGradFunctor,
+                                                        eps);
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh,
                                                CudaHardTanhGradFunctor,
@@ -241,10 +288,10 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
                                                scale_a,
                                                scale_b);
 
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               CudaSoftplusGradFunctor,
-                                               beta,
-                                               threshold);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX(Softplus,
+                                                      CudaSoftplusGradFunctor,
+                                                      beta,
+                                                      threshold);
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  CudaHardSigmoidGradFunctor,
                                                  slope,
@@ -253,6 +300,7 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(ThresholdedRelu,
                                                CudaThresholdedReluGradFunctor,
                                                threshold,
                                                value);
+
 template <typename T, typename Context>
 void SiluGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,

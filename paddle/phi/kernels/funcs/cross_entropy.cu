@@ -51,11 +51,11 @@ __global__ void SoftCrossEntropyKernel(T* Y,
                                        const T* X,
                                        const T* label,
                                        const int class_num) {
-  int tid = threadIdx.x;
+  int64_t tid = threadIdx.x;
   T val(0);
 
-  int idx = blockIdx.x * class_num + tid;
-  int end = blockIdx.x * class_num + class_num;
+  int64_t idx = blockIdx.x * class_num + tid;
+  int64_t end = blockIdx.x * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
     val += phi::funcs::TolerableValue<T>()(phi::funcs::real_log(X[idx])) *
            label[idx];
@@ -125,6 +125,14 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   int batch_size = prob->dims()[0];
   int class_num = prob->dims()[1];
   constexpr int kMaxBlockDim = 512;
+
+  // big tensor currently not supported
+  PADDLE_ENFORCE_LE(out->numel(),
+                    (1LL << 31) - 1,
+                    ::common::errors::PreconditionNotMet(
+                        "out's numel too large "
+                        "allowed size is 2 ^ 31 - 1 elements, but got %lld",
+                        out->numel()));
 
   if (softLabel) {
     const T* label_data = labels->data<T>();
