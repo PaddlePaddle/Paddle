@@ -108,6 +108,19 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
             )
             ckpt_path.cleanup()
 
+    def test_save_safetensors_load_fc(self):
+        """Test saving safetensors files and loading with flex checkpoint."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        self.run_test_case(
+            "save_safetensors_load_fc.py",
+            user_defined_envs={
+                "device_num": "2",
+                "ckpt_path": ckpt_path.name,
+            },
+        )
+        ckpt_path.cleanup()
+
 
 if __name__ == '__main__':
     unittest.main()
