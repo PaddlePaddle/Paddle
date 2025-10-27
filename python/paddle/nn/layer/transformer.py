@@ -567,9 +567,9 @@ class TransformerEncoderLayer(Layer):
     """
     TransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
     attention and feedforward network. Before and after each sub-layer, pre-process
-    and post-precess would be applied on the input and output accordingly. If
-    `normalize_before` is True, pre-process is layer normalization and post-precess
-    includes dropout, residual connection. Otherwise, no pre-process and post-precess
+    and post-process would be applied on the input and output accordingly. If
+    `normalize_before` is True, pre-process is layer normalization and post-process
+    includes dropout, residual connection. Otherwise, no pre-process and post-process
     includes dropout, residual connection, layer normalization.
 
     Parameters:
@@ -577,7 +577,7 @@ class TransformerEncoderLayer(Layer):
         nhead (int): The number of heads in multi-head attention(MHA).
         dim_feedforward (int): The hidden layer size in the feedforward network(FFN).
         dropout (float, optional): The dropout probability used in pre-process
-            and post-precess of MHA and FFN sub-layer. Default 0.1
+            and post-process of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
             network. Default relu.
         attn_dropout (float, optional): The dropout probability used
@@ -587,8 +587,8 @@ class TransformerEncoderLayer(Layer):
             activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
-            normalization and post-precess includes dropout, residual connection.
-            Otherwise, no pre-process and post-precess includes dropout, residual
+            normalization and post-process includes dropout, residual connection.
+            Otherwise, no pre-process and post-process includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
             If it is a list/tuple, `weight_attr[0]` would be used as `weight_attr` for
@@ -927,10 +927,10 @@ class TransformerDecoderLayer(Layer):
     """
     TransformerDecoderLayer is composed of three sub-layers which are decoder
     self (multi-head) attention, decoder-encoder cross attention and feedforward
-    network. Before and after each sub-layer, pre-process and post-precess would
+    network. Before and after each sub-layer, pre-process and post-process would
     be applied on the input and output accordingly. If `normalize_before` is True,
-    pre-process is layer normalization and post-precess includes dropout, residual
-    connection. Otherwise, no pre-process and post-precess includes dropout, residual
+    pre-process is layer normalization and post-process includes dropout, residual
+    connection. Otherwise, no pre-process and post-process includes dropout, residual
     connection, layer normalization.
 
     Parameters:
@@ -938,7 +938,7 @@ class TransformerDecoderLayer(Layer):
         nhead (int): The number of heads in multi-head attention(MHA).
         dim_feedforward (int): The hidden layer size in the feedforward network(FFN).
         dropout (float, optional): The dropout probability used in pre-process
-            and post-precess of MHA and FFN sub-layer. Default 0.1
+            and post-process of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
             network. Default relu.
         attn_dropout (float, optional): The dropout probability used
@@ -948,8 +948,8 @@ class TransformerDecoderLayer(Layer):
             activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
-            normalization and post-precess includes dropout, residual connection.
-            Otherwise, no pre-process and post-precess includes dropout, residual
+            normalization and post-process includes dropout, residual connection.
+            Otherwise, no pre-process and post-process includes dropout, residual
             connection, layer normalization. Default False
         weight_attr (ParamAttr|list|tuple|None, optional): To specify the weight parameter property.
             If it is a list/tuple, `weight_attr[0]` would be used as `weight_attr` for
@@ -1438,7 +1438,7 @@ class Transformer(Layer):
 
     Users can configure the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
-    normalization (in pre-process or post-precess of multi-head attention or FFN),
+    normalization (in pre-process or post-process of multi-head attention or FFN),
     and some transformer like models are different on this, such as
     `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ .
     The default architecture here places layer normalization in post-process and
@@ -1452,7 +1452,7 @@ class Transformer(Layer):
         num_decoder_layers (int, optional): The number of layers in decoder. Default 6
         dim_feedforward (int, optional): The hidden layer size in the feedforward network(FFN). Default 2048
         dropout (float, optional): The dropout probability used in pre-process
-            and post-precess of MHA and FFN sub-layer. Default 0.1
+            and post-process of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
             network. Default relu.
         attn_dropout (float, optional): The dropout probability used
@@ -1462,8 +1462,8 @@ class Transformer(Layer):
             activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
-            normalization and post-precess includes dropout, residual connection.
-            Otherwise, no pre-process and post-precess includes dropout, residual
+            normalization and post-process includes dropout, residual connection.
+            Otherwise, no pre-process and post-process includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|list|tuple|None, optional): To specify the weight parameter property.
             If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3,

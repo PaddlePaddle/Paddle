@@ -535,7 +535,7 @@ class FusedFeedForward(Layer):
         d_model (int): The expected feature size in the input and output.
         dim_feedforward (int): The hidden layer size.
         dropout_rate (float, optional): The dropout probability used in pre-process
-            and post-precess. Default 0.1
+            and post-process. Default 0.1
         epsilon (float, optional): he small value added to the variance to prevent
             division by zero. Default: 1e-05.
         activation (str, optional): The activation function. Default relu.
@@ -750,9 +750,9 @@ class FusedTransformerEncoderLayer(Layer):
 
     FusedTransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
     attention and feedforward network. Before and after each sub-layer, pre-process
-    and post-precess would be applied on the input and output accordingly. If
-    `normalize_before` is True, pre-process is layer normalization and post-precess
-    includes dropout, residual connection. Otherwise, no pre-process and post-precess
+    and post-process would be applied on the input and output accordingly. If
+    `normalize_before` is True, pre-process is layer normalization and post-process
+    includes dropout, residual connection. Otherwise, no pre-process and post-process
     includes dropout, residual connection, layer normalization.
 
     Parameters:
@@ -760,7 +760,7 @@ class FusedTransformerEncoderLayer(Layer):
         nhead (int): The number of heads in multi-head attention(MHA).
         dim_feedforward (int): The hidden layer size in the feedforward network(FFN).
         dropout_rate (float, optional): The dropout probability used in pre-process
-            and post-precess of MHA and FFN sub-layer. Default 0.1
+            and post-process of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
             network. Default relu.
         attn_dropout_rate (float, optional): The dropout probability used
@@ -770,8 +770,8 @@ class FusedTransformerEncoderLayer(Layer):
             activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
-            normalization and post-precess includes dropout, residual connection.
-            Otherwise, no pre-process and post-precess includes dropout, residual
+            normalization and post-process includes dropout, residual connection.
+            Otherwise, no pre-process and post-process includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
             If it is a list/tuple, `weight_attr[0]` would be used as `weight_attr` for
@@ -957,7 +957,7 @@ class FusedTransformer(Layer):
 
     Users can configure the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
-    normalization (in pre-process or post-precess of multi-head attention or FFN),
+    normalization (in pre-process or post-process of multi-head attention or FFN),
     and some transformer like models are different on this, such as
     `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ .
     The default architecture here places layer normalization in post-process and
@@ -971,7 +971,7 @@ class FusedTransformer(Layer):
         num_decoder_layers (int, optional): The number of layers in decoder. Default 6
         dim_feedforward (int, optional): The hidden layer size in the feedforward network(FFN). Default 2048
         dropout (float, optional): The dropout probability used in pre-process
-            and post-precess of MHA and FFN sub-layer. Default 0.1
+            and post-process of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
             network. Default relu.
         attn_dropout (float, optional): The dropout probability used
@@ -981,8 +981,8 @@ class FusedTransformer(Layer):
             activation.  If None, use the value of `dropout`. Default None
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
-            normalization and post-precess includes dropout, residual connection.
-            Otherwise, no pre-process and post-precess includes dropout, residual
+            normalization and post-process includes dropout, residual connection.
+            Otherwise, no pre-process and post-process includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
             If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3,
@@ -1112,13 +1112,13 @@ class FusedMultiTransformer(Layer):
         num_heads (int): The number of heads in multi-head attention(MHA).
         dim_feedforward (int): The hidden layer size in the feedforward network(FFN).
         dropout_rate (float, optional): The dropout probability used in pre-process
-            and post-precess of MHA and FFN sub-layer. Default 0.0
+            and post-process of MHA and FFN sub-layer. Default 0.0
         activation (str, optional): The activation function in the feedforward
             network. Default "gelu".
         normalize_before (bool, optional): Indicate whether to put layer normalization
             into preprocessing of MHA and FFN sub-layers. If True, pre-process is layer
-            normalization and post-precess includes dropout, residual connection.
-            Otherwise, no pre-process and post-precess includes dropout, residual
+            normalization and post-process includes dropout, residual connection.
+            Otherwise, no pre-process and post-process includes dropout, residual
             connection, layer normalization. Default True
         ln_scale_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
             for Attention layer_norm. For Attention layer_norm weight, if it is a list/tuple, `attrs[0]`
