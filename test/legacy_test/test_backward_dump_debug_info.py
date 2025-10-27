@@ -250,5 +250,22 @@ class TestSetVlogLevelError(unittest.TestCase):
             paddle.base.core.set_vlog_level("3")
 
 
+class TestVlogGuard(unittest.TestCase):
+    # Just run it for coverage ci and don't check the res
+    def test_guard(self):
+        with paddle.base.framework.vlog_guard(0):
+            x = paddle.randn([3, 3], dtype='float16')
+        with paddle.base.framework.vlog_guard({"api": 0}):
+            y = paddle.randn([3, 3], dtype='float16')
+
+    # Check the invalid input
+    def test_error(self):
+        def test_invalid_input():
+            with paddle.base.framework.vlog_guard("api"):
+                x = paddle.randn([3, 3], dtype='float16')
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -830,7 +830,8 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
 
   for (size_t i = 0; i < in_shape.size(); ++i) {
     if (in_shape[i].isa<int64_t>()) {
-      if (x_shape[i].Get<int64_t>() == 0) {  // x is 0-size
+      if (x_shape[i].isa<int64_t>() &&
+          x_shape[i].Get<int64_t>() == 0) {  // x is 0-size
         out_dims.push_back(symbol::DimExpr(x_shape[i]));
       } else if (in_shape[i].Get<int64_t>() == -1) {
         out_dims.push_back(symbol::DimExpr(x_shape[i] - offsets[i]));
