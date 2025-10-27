@@ -118,6 +118,7 @@ class TestFullParamLogic:
         aoa_config = {
             "aoa_statements": [
                 "_layers.linear1.weight, _layers.linear2.weight -> _layers.fused_weight, axis=1"
+                "_layers.embedding.weight -> _layers.embedding.weight, dtype = 'float32'"
             ]
         }
 
@@ -144,7 +145,8 @@ class TestFullParamLogic:
             tensor = full_param[name]
             answer = paddle.ones_like(tensor)
             assert tensor._md5sum() == answer._md5sum()
-
+            if name == "_layers.embedding.weight":
+                assert tensor.dtype == paddle.float32
         assert "_layers.fused_weight" in full_param.keys()
         ones = paddle.ones([32, 32], 'float16')
         zeros = paddle.zeros([32, 32], 'float16')
