@@ -32,7 +32,7 @@
 import sys as _sys
 import ast as _ast
 from ast import boolop, cmpop, excepthandler, expr, expr_context, operator
-from ast import slice, stmt, unaryop, mod, AST
+from ast import Slice, stmt, unaryop, mod, AST
 from ast import iter_child_nodes, walk
 
 try:
@@ -994,7 +994,7 @@ _nodes = (
                 'end_lineno',
                 'end_col_offset',
             ),
-            (slice,),
+            (Slice,),
         ),
     ),
     # boolop

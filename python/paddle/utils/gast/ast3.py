@@ -49,7 +49,7 @@ class Ast3ToGAst(AstToGAst):
 
     if sys.version_info.minor < 9:
 
-        def visit_ExtSlice(self, node):
+        def visit_Tuple(self, node):
             new_node = gast.Tuple(self._visit(node.dims), gast.Load())
             return gast.copy_location(new_node, node)
 
@@ -199,7 +199,7 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
-        def visit_NameConstant(self, node):
+        def visit_Constant(self, node):
             if node.value is None:
                 new_node = gast.Constant(None, None)
             elif node.value is True:
@@ -323,7 +323,7 @@ class GAstToAst3(GAstToAst):
 
             if isinstance(node.slice, gast.Tuple):
                 if any(isinstance(elt, gast.slice) for elt in node.slice.elts):
-                    new_slice = ast.ExtSlice(
+                    new_slice = ast.Tuple(
                         [adjust_slice(x) for x in self._visit(node.slice.elts)]
                     )
                 else:
@@ -357,11 +357,11 @@ class GAstToAst3(GAstToAst):
 
         def visit_Constant(self, node):
             if node.value is None:
-                new_node = ast.NameConstant(node.value)
+                new_node = ast.Constant(node.value)
             elif node.value is Ellipsis:
                 new_node = ast.Ellipsis()
             elif isinstance(node.value, bool):
-                new_node = ast.NameConstant(node.value)
+                new_node = ast.Constant(node.value)
             elif isinstance(node.value, (int, float, complex)):
                 new_node = ast.Num(node.value)
             elif isinstance(node.value, str):
