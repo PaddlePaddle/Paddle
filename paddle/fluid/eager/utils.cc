@@ -1406,7 +1406,8 @@ TEST_API void SaveTensorMD5CheckSumToFile(
 void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,
                    const std::string& call_stack,
-                   const std::string& serialized_backward_graph) {
+                   const std::string& serialized_backward_graph,
+                   const std::string& debug_grad_tensors) {
   // Use timestamps to distinguish multiple logs
   auto now = std::chrono::system_clock::now();
   auto now_time_t = std::chrono::system_clock::to_time_t(now);
@@ -1448,6 +1449,13 @@ void SaveDebugInfo(std::string dir_path,
         file_path_prefix + "_backward_graph" + ".dot";
     VLOG(4) << "Save backward graph to file : " << backward_graph_file_path;
     SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
+  }
+  if (debug_grad_tensors.empty() == false) {
+    std::string grad_tensors_file_path =
+        file_path_prefix + "_grad_tensors" + ".log";
+    VLOG(4) << "Save grad tensors for debug to file : "
+            << grad_tensors_file_path;
+    SaveStringToFile(grad_tensors_file_path, debug_grad_tensors);
   }
 }
 const std::string GenerateUniqueTensorName(const std::string& unique_api_name,
@@ -1614,4 +1622,24 @@ void AddEdgeToDebugBackwardGraph(Dot* dot,
     dot->AddEdge(dot_node_label, dot_next_node_label, {}, tensor_label);
   }
 }
+const std::string FormatTensor(const paddle::Tensor& t) {
+  if (!t.defined() || !t.has_allocation()) {
+    return "None";
+  }
+  // only data
+  phi::funcs::TensorFormatter formatter;
+
+  phi::DenseTensor* dense_tensor_ptr = nullptr;
+  if (t.is_dist_tensor()) {
+    auto dist_t =
+        std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+    dense_tensor_ptr = dist_t->unsafe_mutable_value();
+  } else {
+    dense_tensor_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+  }
+  auto& dense_tensor = *(dense_tensor_ptr);
+
+  return formatter.Format(dense_tensor, t.name());
+}
+
 }  // namespace egr

@@ -201,10 +201,18 @@ class EagerBackwardSubGraphNodeRecorder {
   bool NeedCaptureSubGraph() { return need_capture_subgraph_; }
   void StartCaptureSubGraph() { need_capture_subgraph_ = true; }
   void EndCaptureSubGraph() { need_capture_subgraph_ = false; }
+  void SetDumpDirPath(const std::string& path) { dump_dir_path_ = path; }
+  const std::string& GetDumpDirPath() { return dump_dir_path_; }
+  void SetNeedDumpGradTensors(bool need_dump) {
+    need_dump_grad_tensors_ = need_dump;
+  }
+  bool GetNeedDumpGradTensors() { return need_dump_grad_tensors_; }
   bool HasCapturedSubgraph() { return !set_.empty(); }
 
  private:
   std::unordered_set<const GradNodeBase*> set_;
+  std::string dump_dir_path_;
+  bool need_dump_grad_tensors_ = false;
   bool need_capture_subgraph_ = false;
 };
 

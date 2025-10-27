@@ -1478,6 +1478,22 @@ PyObject* eager__end_capture_debug_backward_subgraph(PyObject* self,
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+PyObject* eager__init_backward_subgraph_recorder(PyObject* self,
+                                                 PyObject* args,
+                                                 PyObject* kwargs) {
+  EAGER_TRY
+  std::string dump_dir_path =
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+  bool need_dump_grad_tensors =
+      CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().SetDumpDirPath(
+      dump_dir_path);
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().SetNeedDumpGradTensors(
+      need_dump_grad_tensors);
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
@@ -1571,6 +1587,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
      nullptr},
     {"_end_capture_debug_backward_subgraph",
      (PyCFunction)(void (*)())eager__end_capture_debug_backward_subgraph,
+     METH_VARARGS,
+     nullptr},
+    {"_init_backward_subgraph_recorder",
+     (PyCFunction)(void (*)())eager__init_backward_subgraph_recorder,
      METH_VARARGS,
      nullptr},
 /**sparse functions**/

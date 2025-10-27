@@ -429,7 +429,8 @@ std::string CreateForwardNodeLabelInDot(GradNodeBase* node);
 void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,
                    const std::string& call_stack,
-                   const std::string& serialized_backward_graph);
+                   const std::string& serialized_backward_graph,
+                   const std::string& debug_grad_tensors);
 
 void SaveStringToFile(const std::string& file_path,
                       const std::string& str,
@@ -480,4 +481,6 @@ void AddEdgeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
                                  const paddle::Tensor& t,
                                  const std::string& node_label,
                                  bool need_dump_backward_subgraph);
+
+const std::string FormatTensor(const paddle::Tensor& t);
 }  // namespace egr
