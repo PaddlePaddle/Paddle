@@ -1,4 +1,4 @@
-name: Coverage
+name: H-Coverage
 
 on:
   pull_request:
@@ -20,7 +20,7 @@ env:
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   GIT_PR_ID: ${{ github.event.pull_request.number }}
-  CI_name: coverage
+  CI_name: h-coverage
   CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
@@ -33,7 +33,7 @@ jobs:
     name: Coverage clone
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      workflow-name: 'coverage'
+      workflow-name: 'h-coverage'
       clone_dir: Paddle-coverage
 
   build:
