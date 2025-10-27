@@ -720,18 +720,23 @@ void* GetCusolverDsoHandle() {
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, SOLVER_LIB_NAME);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  if (CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
-  if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
-    return GetDsoHandleFromSearchPath(
-        FLAGS_cuda_dir, "cusolver64_12.dll", true, {cuda_lib_path});
-  } else {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, "cusolver64_11.dll", true, {cuda_lib_path});
-  }
 #else
-  return GetDsoHandleFromSearchPath(
-      FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
 #endif
+  } else {
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, "cusolver64_12.dll", true, {cuda_lib_path});
+#else
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
+#endif
+  }
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsolver.so");
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
