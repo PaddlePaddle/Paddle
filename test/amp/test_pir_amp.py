@@ -209,7 +209,7 @@ class TestPirAMPProgram(unittest.TestCase):
                     out = linear(x)
                     loss = paddle.mean(out)
                 optimizer.minimize(loss)
-            cast_op_count = 0
+            cast_op_count = 0  #
             for op in main.global_block().ops:
                 if op.name() == 'pd_op.cast':
                     cast_op_count += 1
