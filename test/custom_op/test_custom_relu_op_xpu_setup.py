@@ -77,7 +77,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             for x in os.listdir(site_dir)
             if 'custom_relu_xpu_module_setup' in x
         ]
-        assert len(custom_egg_path) == 1, (
+        assert len(custom_egg_path) == 2, (
             f"Matched egg number is {len(custom_egg_path)}."
         )
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
