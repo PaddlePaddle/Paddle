@@ -59,23 +59,19 @@ ENV PATH=/opt/py310/bin:/opt/py39/bin:/opt/py38/bin:$PATH
 
 # upgrade pip
 RUN pip3.10 install --upgrade pip setuptools wheel && \
-    pip3.9 install --upgrade pip setuptools wheel && \
-    pip3.8 install --upgrade pip setuptools wheel
+    pip3.9 install --upgrade pip setuptools wheel
 
 # install pylint and pre-commit
 RUN pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
-    pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
-    pip3.8 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
+    pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
 
 RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub && \
-    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub  && \
-    pip3.8  install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub
+    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub
 
 # install Paddle requirement
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
     pip3.10 install -r requirements.txt && \
-    pip3.9 install -r requirements.txt && \
-    pip3.8 install -r requirements.txt && rm -rf requirements.txt
+    pip3.9 install -r requirements.txt && rm -rf requirements.txt
 
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
     pip3.10 install -r requirements.txt && \

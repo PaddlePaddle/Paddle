@@ -39,11 +39,11 @@ limitations under the License. */
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 COMMON_DECLARE_bool(check_cuda_error);
-
-using egr::ConvertToDistTensor;
-
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_int64(offload_retry_times);
 
+using egr::ConvertToDistTensor;
 namespace paddle::pybind {
 
 PyTypeObject* p_pylayer_type;
@@ -192,7 +192,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
                                PyObject* kwargs) {
   EAGER_TRY
   SetPythonStack();
-  VLOG(6) << "Begin run PyLayer apply...";
+  std::string classname =
+      std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
+  VLOG(3) << classname << ":Running PyLayer Apply ";
+  VLOG(4) << classname << ":"
+          << "Construct PyLayerContext";
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
@@ -230,7 +234,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   forward_args = PyTuple_New(args_size + 1);  // NOLINT
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
-
+  VLOG(6) << classname << ":Prepare Pylayer forward args ";
+  VLOG(6) << classname << ":Input size is " << inputs_size;
   std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
   inputs_autograd_meta.reserve(inputs_size);
   std::vector<std::vector<paddle::Tensor*>> inputs_tensor;
@@ -374,6 +379,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   VLOG(6)
+      << classname << ":"
       << "PyLayer forward args is ready, begin call user's forward function...";
   // call forward
   auto forward_fn = PyObject_GetAttrString(cls, "forward");
@@ -502,7 +508,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
     PADDLE_THROW(common::errors::InvalidArgument(
         "At least one output of `PyLayer.forward` is a `Tensor`."));
   }
-  VLOG(6) << "PyLayer forward function finish...";
+  VLOG(6) << classname << ":"
+          << "PyLayer forward function finish...";
 
 #ifdef PADDLE_WITH_CUDA
   bool has_grad = false;
@@ -539,8 +546,13 @@ PyObject* pylayer_method_apply(PyObject* cls,
         std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
                                                outputs_autograd_meta.size(),
                                                inputs_autograd_meta.size());
-    VLOG(3) << "Create grad node " << grad_node->name() << " addr "
+    VLOG(3) << classname << ":"
+            << "Create grad node " << grad_node->name() << " addr "
             << grad_node;
+    // For dump call stack
+    if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
 
 #ifdef PADDLE_WITH_CUDA
     has_grad = true;
@@ -575,7 +587,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
         grad_node->SetGradInMeta(*outputs_tensor[i][0], i);
       }
     }
-    VLOG(6) << "PyLayer construct backward node finish...";
+    VLOG(6) << classname << ":"
+            << "PyLayer construct backward node finish...";
   }
 
   if (outputs_size == 1) {
@@ -586,6 +599,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_XDECREF(outputs_tuple);
     }
   }
+  VLOG(3) << classname << ":"
+          << "PyLayer output size " << outputs_size;
 
   if (PyList_Check(outputs)) {
     Py_XDECREF(outputs_tuple);
@@ -610,7 +625,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
     egr::CUDAErrorCheck("pylayer_method_apply " +
                         std::string(Py_TYPE(ctx)->tp_name) + " finish");
   }
-
+  VLOG(3) << classname << ":"
+          << "Finish PyLayer Apply";
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
