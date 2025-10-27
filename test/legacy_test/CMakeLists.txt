@@ -486,6 +486,7 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_fast_h2d_copy)
 list(REMOVE_ITEM TEST_OPS test_index_put_op)
 list(REMOVE_ITEM TEST_OPS test_reduce_stride_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
@@ -551,7 +552,6 @@ if(NOT WITH_GPU
     test_incubate_cal_aux_loss
     test_incubate_expand_modality_expert_id
     test_incubate_fused_loss
-    test_incubate_fused_rmsnorm_ext
     test_incubate_int_bincount
     test_incubate_moe_combine
     test_incubate_moe_combine_no_weight
@@ -569,6 +569,15 @@ if(NOT WITH_GPU
     test_fused_transpose_spilt_quant_op
     test_fused_transpose_wlch_split_quant_op
     test_fused_weighted_swiglu_act_quant_op)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
 endif()
 
 set(has_arch_ge80 FALSE)
@@ -654,6 +663,10 @@ if(WITH_GPU
 endif()
 py_test_modules(test_index_put_op MODULES test_index_put_op ENVS
                 FLAGS_use_stride_compute_kernel=1)
+if((NOT WIN32) AND (NOT WITH_ROCM))
+  py_test_modules(test_fast_h2d_copy MODULES test_fast_h2d_copy ENVS
+                  FLAGS_use_stride_compute_kernel=1)
+endif()
 py_test_modules(test_reduce_stride_op MODULES test_reduce_stride_op ENVS
                 FLAGS_use_stride_compute_kernel=1)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS

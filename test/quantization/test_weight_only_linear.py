@@ -14,8 +14,6 @@
 
 import copy
 import math
-import os
-import re
 import struct
 import unittest
 
@@ -30,18 +28,6 @@ from paddle.pir_utils import IrGuard
 
 np.random.seed(123)
 paddle.seed(123)
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def convert_uint16_to_float(in_list):

@@ -62,7 +62,6 @@ class ActivationOpConverter : public OpConverter {
           engine_, Activation, *input_tensor, op_pair->second);
     }
 
-#if IS_TRT_VERSION_GE(5130)
     // max(alpha, min(beta, x))
     if (op_type_ == "relu6") {
       layer->setAlpha(0.);
@@ -106,7 +105,6 @@ class ActivationOpConverter : public OpConverter {
               : 1.0f;
       layer->setAlpha(threshold);
     }
-#endif
 
     auto output_name = op_desc.Output("Out")[0];
 
@@ -123,7 +121,6 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"relu", nvinfer1::ActivationType::kRELU},
         {"sigmoid", nvinfer1::ActivationType::kSIGMOID},
         {"tanh", nvinfer1::ActivationType::kTANH},
-#if IS_TRT_VERSION_GE(5130)
         {"relu6", nvinfer1::ActivationType::kCLIP},
         {"elu", nvinfer1::ActivationType::kELU},
         {"selu", nvinfer1::ActivationType::kSELU},
@@ -131,7 +128,6 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"softplus", nvinfer1::ActivationType::kSOFTPLUS},
         {"stanh", nvinfer1::ActivationType::kSCALED_TANH},
         {"thresholded_relu", nvinfer1::ActivationType::kTHRESHOLDED_RELU}};
-#endif
 
 class ReluOpConverter : public ActivationOpConverter {
  public:
@@ -148,7 +144,6 @@ class TanhOpConverter : public ActivationOpConverter {
   TanhOpConverter() { op_type_ = "tanh"; }
 };
 
-#if IS_TRT_VERSION_GE(5130)
 class Relu6OpConverter : public ActivationOpConverter {
  public:
   Relu6OpConverter() { op_type_ = "relu6"; }
@@ -183,14 +178,12 @@ class ThresholdedReluOpConverter : public ActivationOpConverter {
  public:
   ThresholdedReluOpConverter() { op_type_ = "thresholded_relu"; }
 };
-#endif
 
 }  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
-#if IS_TRT_VERSION_GE(5130)
 REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);
 REGISTER_TRT_OP_CONVERTER(elu, EluOpConverter);
 REGISTER_TRT_OP_CONVERTER(selu, SeluOpConverter);
@@ -198,4 +191,3 @@ REGISTER_TRT_OP_CONVERTER(softsign, SoftsignOpConverter);
 REGISTER_TRT_OP_CONVERTER(softplus, SoftplusOpConverter);
 REGISTER_TRT_OP_CONVERTER(stanh, STanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(thresholded_relu, ThresholdedReluOpConverter);
-#endif

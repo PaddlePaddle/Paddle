@@ -658,7 +658,7 @@ std::vector<paddle::Tensor> RunBackward(
   // FLAGS_dump_grad_node_forward_stack_path
   if (need_dump_forward_stack) {
     SaveStringToFile(
-        FLAGS_dump_grad_node_forward_stack_path, debug_call_stack, "app");
+        FLAGS_dump_grad_node_forward_stack_path, debug_call_stack, "append");
   }
   VLOG(4) << "RunBackward: Final hook size: "
           << egr::Controller::Instance().FinalBackwardHooks().size();

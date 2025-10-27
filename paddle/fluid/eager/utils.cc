@@ -28,10 +28,15 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
+
+#include "paddle/utils/md5.h"
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_int32(tensor_md5_checksum_precision);
 namespace egr {
 
 void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
@@ -805,6 +810,52 @@ std::string EagerUtils::GradNodeStr(const paddle::Tensor& t) {
     return "None";
   }
 }
+std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
+  if (!t.defined() || !t.has_allocation()) {
+    return "None";
+  }
+  // only data
+  phi::funcs::TensorFormatter formatter;
+  std::stringstream data_stream;
+  phi::DenseTensor* dense_tensor_ptr = nullptr;
+  if (t.is_dist_tensor()) {
+    auto dist_t =
+        std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+    dense_tensor_ptr = dist_t->unsafe_mutable_value();
+  } else {
+    dense_tensor_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+  }
+  auto& dense_tensor = *(dense_tensor_ptr);
+  auto dtype = dense_tensor.dtype();
+  int precision = FLAGS_tensor_md5_checksum_precision;
+
+  if (dtype == phi::DataType::FLOAT32) {
+    formatter.FormatData<float>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT64) {
+    formatter.FormatData<double>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::INT32) {
+    formatter.FormatData<int>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::INT64) {
+    formatter.FormatData<int64_t>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::BOOL) {
+    formatter.FormatData<bool>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT16) {
+    formatter.FormatData<phi::float16>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::BFLOAT16) {
+    formatter.FormatData<phi::bfloat16>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
+    formatter.FormatData<phi::float8_e4m3fn>(
+        dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT8_E5M2) {
+    formatter.FormatData<phi::float8_e5m2>(
+        dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::COMPLEX64) {
+    formatter.FormatData<phi::complex64>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::COMPLEX128) {
+    formatter.FormatData<phi::complex128>(dense_tensor, data_stream, precision);
+  }
+  return paddle::md5(data_stream.str());
+}
 /**
  * Print Input Output (level 0 means least info, level 2 means most info)
  * **/
@@ -1289,7 +1340,7 @@ std::string CreateForwardNodeLabelInDot(GradNodeBase* node) {
 }
 std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor) {
   std::ostringstream oss;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
     oss << tensor.name() << "\\n"
         << tensor.place() << "\\n"
         << tensor.dtype() << "[" << tensor.dims() << "]";
@@ -1306,10 +1357,10 @@ std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor) {
   return oss.str();
 }
 void SaveStringToFile(const std::string& file_path,
-                      const std::string& serialized_graph,
+                      const std::string& str,
                       const std::string& mode) {
   std::ios_base::openmode open_mode = std::ios::out;
-  if (mode == "app") {
+  if (mode == "append") {
     open_mode |= std::ios::app;
   } else if (mode == "trunc") {
     open_mode |= std::ios::trunc;
@@ -1322,9 +1373,34 @@ void SaveStringToFile(const std::string& file_path,
     return;
   }
 
-  outFile << serialized_graph;
+  outFile << str;
   outFile.close();
   return;
+}
+
+TEST_API void SaveTensorMD5CheckSumToFile(const std::string& file_path,
+                                          const paddle::Tensor& t) {
+  const std::string& md5_checksum = GetTensorMD5Checksum(t);
+  SaveStringToFile(file_path, t.name() + ":" + md5_checksum + "\n", "append");
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const paddle::optional<paddle::Tensor>& t) {
+  if (t.get_ptr()) {
+    SaveTensorMD5CheckSumToFile(file_path, *t.get_ptr());
+  }
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const std::vector<paddle::Tensor>& tensors) {
+  for (auto& t : tensors) {
+    SaveTensorMD5CheckSumToFile(file_path, t);
+  }
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path,
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  if (tensors.get_ptr()) {
+    SaveTensorMD5CheckSumToFile(file_path, *(tensors.get_ptr()));
+  }
 }
 void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,
