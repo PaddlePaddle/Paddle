@@ -887,10 +887,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bilinear_interp_v2") {
-      // trt 7011 result in test_solov2_trt_fp32.py TRT fp32 diff
-#if IS_TRT_VERSION_LT(7100)
-      return false;
-#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -1010,9 +1006,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
     if (op_type == "linear_interp_v2") {
-#if IS_TRT_VERSION_LT(7100)
-      return false;
-#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -1670,13 +1663,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << desc.Output("Out").size();
         return false;
       }
-
-#if IS_TRT_VERSION_LT(7000)
-      if (desc.HasAttr("approximate")) {
-        VLOG(3) << "approximate gelu op needs TensorRT 7.0 and after";
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
-      }
-#endif
     }
 
     if (op_type == "layer_norm") {
@@ -2154,8 +2140,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100)) || \
-    (IS_TRT_VERSION_LT(7200))
+#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100))
         VLOG(3) << "There are some bugs with trt 8.0";
         return false;
 #endif
@@ -2691,15 +2676,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-
-#if IS_TRT_VERSION_LT(8000)
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVarRecursive(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 0) {
-        return false;  // not supported 0 dim.
-      }
-#endif
     }
 
     if (op_type == "grid_sampler") {

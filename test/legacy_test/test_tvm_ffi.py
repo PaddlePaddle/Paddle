@@ -22,6 +22,7 @@ import numpy as np
 import tvm_ffi.cpp
 
 import paddle
+from paddle.utils.dlpack import DLDeviceType
 
 if TYPE_CHECKING:
     from tvm_ffi import Module
@@ -145,6 +146,78 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         x = paddle.full((3,), 1.0, dtype='float32').cpu()
         y = mod.add_one_cpu(x)
         np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
+
+
+class TestDLPackDataType(unittest.TestCase):
+    @staticmethod
+    def _paddle_dtype_to_tvm_ffi_dtype(paddle_dtype: paddle.dtype):
+        dtype_str = str(paddle_dtype).split('.')[-1]
+        return tvm_ffi.dtype(dtype_str)
+
+    def test_dlpack_data_type_base_protocol(self):
+        for dtype in [
+            paddle.uint8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.float32,
+            paddle.float64,
+            paddle.float16,
+            paddle.bfloat16,
+        ]:
+            tvm_ffi_dtype = TestDLPackDataType._paddle_dtype_to_tvm_ffi_dtype(
+                dtype
+            )
+            self.assertEqual(
+                dtype.__dlpack_data_type__(),
+                (
+                    tvm_ffi_dtype.type_code,
+                    tvm_ffi_dtype.bits,
+                    tvm_ffi_dtype.lanes,
+                ),
+            )
+
+    # TODO(SigureMo): add e2e test case pass a paddle.dtype to TVM FFI Function
+    # in tvm_ffi next release
+
+
+class TestDLPackDeviceType(unittest.TestCase):
+    def test_dlpack_device_type_base_protocol_from_place(self):
+        self.assertEqual(
+            paddle.CPUPlace().__dlpack_device__(),
+            (DLDeviceType.kDLCPU.value, 0),
+        )
+
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.CUDAPlace(0).__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+            self.assertEqual(
+                paddle.CUDAPinnedPlace().__dlpack_device__(),
+                (DLDeviceType.kDLCUDAHost.value, 0),
+            )
+
+    def test_dlpack_device_type_base_protocol_from_device(self):
+        self.assertEqual(
+            paddle.device('cpu').__dlpack_device__(),
+            (DLDeviceType.kDLCPU.value, 0),
+        )
+
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.device('cuda:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+            self.assertEqual(
+                paddle.device('gpu:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+    # TODO(SigureMo): add e2e test case pass a paddle.base.core.Place to TVM FFI Function
+    # in tvm_ffi next release
 
 
 if __name__ == '__main__':
