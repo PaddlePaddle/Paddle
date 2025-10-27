@@ -42,6 +42,10 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
 
+  if (out->numel() == 0) {
+    return;
+  }
+
   if (x.numel() == 0 || index.numel() == 0) return;
 
   const auto& index_dtype = index.dtype();
@@ -124,6 +128,6 @@ PD_REGISTER_KERNEL(take_along_axis,
                    XPU,
                    ALL_LAYOUT,
                    phi::TakeAlongAxisKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float) {}

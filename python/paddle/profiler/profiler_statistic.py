@@ -52,7 +52,7 @@ class SortedKeys(Enum):
 
     The meaning of each SortedKeys is as following
 
-    - **SortedKeys.CPUTotal** :  Sorted by CPU total time.
+    - **SortedKeys.CPUTotal** : Sorted by CPU total time.
 
     - **SortedKeys.CPUAvg**  : Sorted by CPU average time.
 

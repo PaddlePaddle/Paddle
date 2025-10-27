@@ -633,6 +633,31 @@ void FlashAttnKernel(const Context& dev_ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    }
+    if (softmax) {
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(softmax->dims())),
+                       0,
+                       softmax);
+    }
+    if (softmax_lse) {
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(softmax_lse->dims())),
+                       0,
+                       softmax_lse);
+    }
+    if (seed_offset) {
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(seed_offset->dims())),
+                       0,
+                       seed_offset);
+    }
+    return;
+  }
   FlashAttnBaseKernel<T, Context>(dev_ctx,
                                   q,
                                   k,
@@ -733,8 +758,8 @@ PD_REGISTER_KERNEL(flash_attn_unpadded,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnUnpaddedKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(5).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -743,8 +768,8 @@ PD_REGISTER_KERNEL(flash_attn_varlen_qkvpacked,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnVarlenQKVPackedKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -753,8 +778,8 @@ PD_REGISTER_KERNEL(flash_attn,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -763,8 +788,8 @@ PD_REGISTER_KERNEL(flash_attn_qkvpacked,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnQKVPackedKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(1).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -773,8 +798,8 @@ PD_REGISTER_KERNEL(flashmask_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashMaskKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(4).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

@@ -70,15 +70,12 @@ bool IsDynamicShapeOp(const framework::OpDesc& desc) {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {  // NOLINT
-#if IS_TRT_VERSION_GE(7130)
     // use TensorRT plugin
     teller_set.insert("group_norm");
     teller_set.insert("multiclass_nms3");
     teller_set.insert("multiclass_nms");
     int8_teller_set.insert("multiclass_nms3");
     int8_teller_set.insert("multiclass_nms");
-#endif
-#if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     int8_teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
@@ -87,19 +84,14 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("rnn");
     teller_set.insert("fill_constant_batch_size_like");
     int8_teller_set.insert("fill_constant_batch_size_like");
-#endif
-#if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
     int8_teller_set.insert("reshape");
     int8_teller_set.insert("reshape2");
-#endif
-#if IS_TRT_VERSION_GE(8000)
     teller_set.insert("sparse_fc");
     int8_teller_set.insert("sparse_fc");
     teller_set.insert("sparse_multihead_matmul");
     int8_teller_set.insert("sparse_multihead_matmul");
-#endif
 #if IS_TRT_VERSION_GE(8522)
     teller_set.insert("flash_multihead_matmul");
     int8_teller_set.insert("flash_multihead_matmul");
@@ -195,12 +187,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-#if !IS_TRT_VERSION_GE(7000)
-      if (op_type == "erf") {
-        VLOG(3) << op_type << " op does not support tensorrt.";
-        return false;
-      }
-#endif
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVarRecursive(x_var_name);
       auto x_dtype = x_var_desc->GetDataType();
@@ -347,26 +333,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-// strides > 1 and 'SAME' is only supported by trt7.0 above
-#if !IS_TRT_VERSION_GE(7000)
-      if (op_type == "conv2d" || op_type == "fused_conv2d_add_act" ||
-          op_type == "depthwise_conv2d") {
-        if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
-          auto padding_algorithm =
-              PADDLE_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-          if (padding_algorithm == "SAME" && desc.HasAttr("strides")) {
-            const std::vector<int> strides =
-                PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
-            // there is no issue if strides.size() less than 2
-            if (strides.size() > 1) {
-              for (size_t i = 0; i < strides.size(); i++) {
-                if (strides[i] > 1) return false;
-              }
-            }
-          }
-        }
-      }
-#endif
       auto* block = desc.Block();
       if (block) {
         auto* filter_var_desc =
@@ -571,10 +537,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("axis")) {
         return false;
       } else {
-#if IS_TRT_VERSION_GE(7130)
-#else
-        if (with_dynamic_shape) return false;
-#endif
         int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
@@ -637,14 +599,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                      "the pass.";
           return false;
         }
-#if !IS_TRT_VERSION_GE(7000)
-        auto* x_var_desc = block->FindVarRecursive(desc.Input("X")[0]);
-        const auto x_shape = x_var_desc->GetShape();
-        if (x_shape.size() == 1) {
-          VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
-          return false;
-        }
-#endif
       }
     }
 
@@ -933,10 +887,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bilinear_interp_v2") {
-      // trt 7011 result in test_solov2_trt_fp32.py TRT fp32 diff
-#if IS_TRT_VERSION_LT(7100)
-      return false;
-#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -1056,9 +1006,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
     if (op_type == "linear_interp_v2") {
-#if IS_TRT_VERSION_LT(7100)
-      return false;
-#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -1252,15 +1199,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "sections and num cannot be equal to 0 at the same time";
         return false;
       }
-      if (with_dynamic_shape) {
-#if IS_TRT_VERSION_GE(6000)
-#else
-        VLOG(3) << "You are running the TRT Dynamic Shape mode, need to "
-                   "confirm that "
-                   "your TRT version is no less than 6.0";
-        return false;
-#endif
-      }
       axis += (axis < 0) ? x_shape.size() : 0;
       if (x_shape[axis] == -1) {
         VLOG(3) << "The (" << axis << ") dim of input should not be -1";
@@ -1326,21 +1264,12 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "roll") {
-#if !IS_TRT_VERSION_GE(7000)
-      VLOG(3) << "roll converter does not support trt versions below 7.0";
-      return false;
-#endif
       if (!with_dynamic_shape) {
         return false;
       }
     }
 
     if (op_type == "strided_slice") {
-#if !IS_TRT_VERSION_GE(7000)
-      VLOG(3)
-          << "strided_slice converter does not support trt versions below 7.0";
-      return false;
-#endif
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
         VLOG(3)
@@ -1420,7 +1349,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
       if (dtype != -1 && dtype != 2 && dtype != 3 && dtype != 5 && dtype != 6) {
         VLOG(3)
-            << "the fill_any_like only supports int32/int64/float32/float64 by"
+            << "the fill_any_like only supports int32/int64/float32/float64 by "
                "trt8.4 below";
         return false;
       }
@@ -1430,7 +1359,7 @@ struct SimpleOpTypeSetTeller : public Teller {
             input_type != framework::proto::VarType::FP32 &&
             input_type != framework::proto::VarType::FP64) {
           VLOG(3) << "the fill_any_like only supports "
-                     "int32/int64/float32/float64 by"
+                     "int32/int64/float32/float64 by "
                      "trt8.4 below";
           return false;
         }
@@ -1734,13 +1663,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << desc.Output("Out").size();
         return false;
       }
-
-#if IS_TRT_VERSION_LT(7000)
-      if (desc.HasAttr("approximate")) {
-        VLOG(3) << "approximate gelu op needs TensorRT 7.0 and after";
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
-      }
-#endif
     }
 
     if (op_type == "layer_norm") {
@@ -2218,8 +2140,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100)) || \
-    (IS_TRT_VERSION_LT(7200))
+#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100))
         VLOG(3) << "There are some bugs with trt 8.0";
         return false;
 #endif
@@ -2409,7 +2330,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-#if IS_TRT_VERSION_GE(7000)
         if (dtype != framework::proto::VarType::INT32 &&
             dtype != framework::proto::VarType::INT64 &&
             dtype != framework::proto::VarType::FP32 &&
@@ -2419,18 +2339,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                      "float64";
           return false;
         }
-#else
-        if (dtype != framework::proto::VarType::FP32 &&
-            dtype != framework::proto::VarType::FP64) {
-          VLOG(3) << "reduce op input data type must be float32 or float64 "
-                     "using TensorRT "
-                     "< 7.0";
-          return false;
-        }
-#endif
       }
     }
-#if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
       // Paddle-TRT does not support the input tensors.
       auto tile_inputs = desc.Inputs();
@@ -2453,7 +2363,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
     }
-#endif
 
     // conv3d_transpose
     if (op_type == "conv3d_transpose") {
@@ -2483,13 +2392,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-
-#if !IS_TRT_VERSION_GE(7000)
-      // looks like some issues with trt6.0
-      if (with_dynamic_shape) {
-        return false;
-      }
-#endif
 
       std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
@@ -2533,10 +2435,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "cast") {
-// trt 6015 result in Windows ppyolo_mbv3 TRT fp32 diff
-#if !IS_TRT_VERSION_GE(7000)
-      return false;
-#endif
       if (!(desc.HasAttr("in_dtype") && desc.HasAttr("out_dtype"))) {
         VLOG(3) << "the " << op_type
                 << " does not have attr (in_dtype or "
@@ -2778,15 +2676,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-
-#if IS_TRT_VERSION_LT(8000)
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVarRecursive(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 0) {
-        return false;  // not supported 0 dim.
-      }
-#endif
     }
 
     if (op_type == "grid_sampler") {
@@ -2832,10 +2721,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "cumsum") {
-#if !IS_TRT_VERSION_GE(7220)
-      VLOG(3) << "cumsum is not supported when TensorRT < 7.2.2";
-      return false;
-#endif
       if (!with_dynamic_shape) {
         VLOG(3) << "the cumsum does not support "
                    "static shape yet";
@@ -3048,10 +2933,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "static shape yet";
         return false;
       }
-#if !IS_TRT_VERSION_GE(7220)
-      VLOG(3) << "flip is not supported when TensorRT below 7.2.2";
-      return false;
-#endif
     }
 
     if (use_no_calib_int8) {

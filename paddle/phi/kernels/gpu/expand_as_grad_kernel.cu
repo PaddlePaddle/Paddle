@@ -23,14 +23,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandAsGradKernel(const Context& context,
+void ExpandAsGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& out_grad,
                         const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad) {
   if (out_grad.numel() == 0) {
     phi::Full<T, Context>(
-        context, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
     return;
   }
   auto in_dims = x.dims();
@@ -46,14 +46,14 @@ void ExpandAsGradKernel(const Context& context,
                               "to 6, but the value received is %d.",
                               out_rank));
 
-  context.template Alloc<T>(in_grad);
+  dev_ctx.template Alloc<T>(in_grad);
   if (in_dims == out_dims) {
-    phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
   } else {
     std::vector<int> reduce_dims = funcs::GetReduceDim(in_dims, out_dims, -1);
 
     phi::SumKernel<T, Context>(
-        context, out_grad, reduce_dims, out_grad.dtype(), false, in_grad);
+        dev_ctx, out_grad, reduce_dims, out_grad.dtype(), false, in_grad);
   }
 }
 
@@ -67,4 +67,4 @@ PD_REGISTER_KERNEL(expand_as_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

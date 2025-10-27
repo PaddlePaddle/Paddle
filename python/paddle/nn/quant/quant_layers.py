@@ -318,9 +318,9 @@ class FakeQuantChannelWiseAbsMax(Layer):
         quant_on_weight: bool = False,
         reduce_type: Literal['max'] | None = None,
     ) -> None:
-        assert (
-            quant_on_weight
-        ), "Channel_wise only can be used on weight quantization."
+        assert quant_on_weight, (
+            "Channel_wise only can be used on weight quantization."
+        )
         super().__init__()
         self._quant_bits = quant_bits
         self._quant_axis = quant_axis
@@ -865,19 +865,19 @@ class QuantizedColumnParallelLinear(Layer):
         activation_quantize_type: _QuantType = 'abs_max',
         weight_pre_layer: Layer | None = None,
         act_pre_layer: Layer | None = None,
-        weight_quant_layer: Literal[None] = None,
-        act_quant_layer: Literal[None] = None,
+        weight_quant_layer: None = None,
+        act_quant_layer: None = None,
     ) -> None:
         super().__init__()
         '''
 
         '''
-        assert (
-            weight_quant_layer is None
-        ), "When quantizing ColumnParallelLinear, weight_quant_layer should be None."
-        assert (
-            act_quant_layer is None
-        ), "When quantizing ColumnParallelLinear, act_quant_layer should be None."
+        assert weight_quant_layer is None, (
+            "When quantizing ColumnParallelLinear, weight_quant_layer should be None."
+        )
+        assert act_quant_layer is None, (
+            "When quantizing ColumnParallelLinear, act_quant_layer should be None."
+        )
 
         self.weight = layer.weight
         self.bias = layer.bias
@@ -968,16 +968,16 @@ class QuantizedRowParallelLinear(Layer):
         activation_quantize_type: _QuantType = 'abs_max',
         weight_pre_layer: Layer | None = None,
         act_pre_layer: Layer | None = None,
-        weight_quant_layer: Literal[None] = None,
-        act_quant_layer: Literal[None] = None,
+        weight_quant_layer: None = None,
+        act_quant_layer: None = None,
     ) -> None:
         super().__init__()
-        assert (
-            weight_quant_layer is None
-        ), "When quantizing RowParallelLinear, weight_quant_layer cannot defined by yourself."
-        assert (
-            act_quant_layer is None
-        ), "When quantizing RowParallelLinear, act_quant_layer cannot defined by yourself."
+        assert weight_quant_layer is None, (
+            "When quantizing RowParallelLinear, weight_quant_layer cannot defined by yourself."
+        )
+        assert act_quant_layer is None, (
+            "When quantizing RowParallelLinear, act_quant_layer cannot defined by yourself."
+        )
 
         # For Linear
         self.weight = layer.weight

@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import tempfile
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 
@@ -110,7 +110,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         self.check_num_nan_inf(
             x_np, use_cuda=False, subdir="check_nan_inf_dir_cpu"
         )
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             self.check_num_nan_inf(
                 x_np, use_cuda=True, subdir="check_nan_inf_dir_gpu"
             )

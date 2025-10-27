@@ -19,6 +19,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "xpudnn/xpudnn.h"
+namespace xpudnn = baidu::xpu::xpudnn;
+
 namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& dev_ctx,
@@ -100,7 +103,7 @@ void Pool2dKernel(const Context& dev_ctx,
       kernel_size[1] = in_w + paddings[2] + paddings[3];
     }
     if (pooling_type == "max") {
-      r = xpu::max_pool2d<XPUType>(
+      r = xpudnn::max_pool2d<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
@@ -113,8 +116,9 @@ void Pool2dKernel(const Context& dev_ctx,
           strides,
           paddings,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d");
     } else if (pooling_type == "avg") {
-      r = xpu::avg_pool2d<XPUType>(
+      r = xpudnn::avg_pool2d<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<XPUType*>(out->data<T>()),
@@ -127,6 +131,7 @@ void Pool2dKernel(const Context& dev_ctx,
           paddings,
           !exclusive,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "avg_pool2d");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -145,6 +150,7 @@ void Pool2dKernel(const Context& dev_ctx,
           out_h,
           out_w,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_max_pool2d");
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d<XPUType>(
           dev_ctx.x_context(),
@@ -157,12 +163,12 @@ void Pool2dKernel(const Context& dev_ctx,
           out_h,
           out_w,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_avg_pool2d");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
 }
 
 template <typename T, typename Context>
@@ -180,8 +186,13 @@ void Pool3dKernel(const Context& dev_ctx,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    if (pooling_type == "max" || pooling_type == "avg") {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -366,32 +377,32 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto output = reinterpret_cast<XPUType*>(out->data<T>());
   int r = 0;
-  r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
-                               input,
-                               output,
-                               index_data,
-                               n,
-                               c,
-                               in_h,
-                               in_w,
-                               kernel_size,
-                               strides,
-                               paddings,
-                               true);
+  r = xpudnn::max_pool2d<XPUType>(dev_ctx.x_context(),
+                                  input,
+                                  output,
+                                  index_data,
+                                  n,
+                                  c,
+                                  in_h,
+                                  in_w,
+                                  kernel_size,
+                                  strides,
+                                  paddings,
+                                  true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index");
 }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::dtype::float16) {}
+    pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::float16) {}
 PD_REGISTER_KERNEL(
-    pool3d, XPU, ALL_LAYOUT, phi::Pool3dKernel, float, phi::dtype::float16) {}
+    pool3d, XPU, ALL_LAYOUT, phi::Pool3dKernel, float, phi::float16) {}
 
 PD_REGISTER_KERNEL(max_pool2d_with_index,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
 }

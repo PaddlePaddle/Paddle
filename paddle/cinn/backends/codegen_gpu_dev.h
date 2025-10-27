@@ -119,6 +119,37 @@ class CodeGenGpuDev : public CodeGenC {
    */
   virtual void PrintFunctionDeclaration(const ir::_LoweredFunc_* op);
 
+  inline void ProcessMinMaxOperand(ir::Expr* a,
+                                   ir::Expr* b,
+                                   int unify_bit,
+                                   bool both_dyn) {
+    if (unify_bit > 0) {
+      std::string type_func = "int" + std::to_string(unify_bit) + "_t";
+      if (both_dyn) {
+        // if both contains dynamic symbol, like: min(S0, S1), it it likely that
+        // S0 is int and S1 is int64_t. So we need to enforce the type cast by
+        // ir::Call
+        *a = ir::Call::Make(common::Int(unify_bit),
+                            type_func,
+                            {*a},
+                            {},
+                            ir::CallType::Intrinsic);
+        *b = ir::Call::Make(common::Int(unify_bit),
+                            type_func,
+                            {*b},
+                            {},
+                            ir::CallType::Intrinsic);
+      } else {
+        *a = ir::Cast::Make(common::Int(unify_bit), *a);
+        *b = ir::Cast::Make(common::Int(unify_bit), *b);
+      }
+    }
+  }
+
+  std::unordered_map<std::string, common::Type>& DynamicShapeMap() {
+    return dynamic_shape_map_;
+  }
+
  private:
   Target target_;
   bool use_rtc_{false};
@@ -126,6 +157,10 @@ class CodeGenGpuDev : public CodeGenC {
   // tensors are customized_type with customized_type::k_builtin_vector_t
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
+
+  // This map is used to store the name and type of the dynamic shape func args
+  // so that during codegen of ir::Min & ir::Max call, we can have correct type
+  std::unordered_map<std::string, common::Type> dynamic_shape_map_;
 
   ir::Expr dyn_shared_mem_offset_{-1};
   std::vector<ir::Buffer> dynamic_alloc_buffers_;

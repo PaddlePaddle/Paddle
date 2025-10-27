@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 
@@ -125,6 +125,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             dy_last_cell_value = last_cell.numpy()
             dy_last_hidden_value = last_hidden.numpy()
 
+        paddle.enable_static()
         with new_program_scope():
             paddle.seed(seed)
             if paddle.framework.use_pir_api():
@@ -146,8 +147,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
 
             exe = base.Executor(
                 base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
+                if not (core.is_compiled_with_cuda() or is_custom_device())
+                else get_device_place()
             )
             sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             x = paddle.static.data(
@@ -244,6 +245,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             np.testing.assert_allclose(
                 value, dy_param_updated[key], atol=1e-10, rtol=1e-6
             )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

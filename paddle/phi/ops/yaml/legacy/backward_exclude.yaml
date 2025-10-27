@@ -23,7 +23,12 @@
 - fused_softmax_mask_grad
 - fused_softmax_mask_upper_triangle_grad
 - hsigmoid_loss_grad
+- softplus_grad
+- softplus_double_grad
+- kthvalue_grad
 - lp_pool2d_grad
+- leaky_relu_double_grad
+- leaky_relu_grad
 - max_grad
 - mean_double_grad
 - mean_grad
@@ -59,3 +64,6 @@
 - triu_grad
 - unpool_grad
 - unsqueeze_grad
+- logit_grad
+- pad3d_grad
+- pad3d_double_grad

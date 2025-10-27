@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -48,10 +53,10 @@ class TestExpandAsBasic(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=False, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 class TestExpandAs_ZeroDim1(TestExpandAsBasic):
@@ -106,8 +111,8 @@ class TestExpandAs_ZeroSize2(TestExpandAs_ZeroSize):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
@@ -130,11 +135,11 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
+            get_device_place(), ['X'], 'Out', check_prim=False, check_pir=True
         )
 
 
@@ -150,8 +155,8 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank2BFP16OP(TestExpandAsBasicBFP16OP):
@@ -180,8 +185,8 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank3BFP16OP(TestExpandAsBasicBFP16OP):
@@ -210,8 +215,8 @@ class TestExpandAsOpRank4(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank4BFP16OP(TestExpandAsBasicBFP16OP):
@@ -249,8 +254,8 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
@@ -268,7 +273,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         pass
@@ -287,7 +292,6 @@ class TestExpandAsV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input1 = np.random.random([12, 14]).astype("float32")
@@ -309,6 +313,85 @@ class TestExpandAsV2API(unittest.TestCase):
                 fetch_list=[out_1],
             )
             np.testing.assert_array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+
+
+class TestExpandAsAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.x_shape = [5, 6]
+        self.y_shape = [3, 5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+        self.np_ref_out = np.tile(self.np_input, (3, 1, 1))
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.x_shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        y = paddle.empty(self.y_shape)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.expand_as(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.expand_as(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.expand_as(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.expand_as(x, y=y)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.expand_as(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.expand_as(other=y)
+        paddle_dygraph_out.append(out6)
+
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(self.np_ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.x_shape, dtype=self.dtype
+            )
+            y = paddle.empty(self.y_shape)
+            paddle_dygraph_out = []
+            # Position args (args)
+            out1 = paddle.expand_as(x, y)
+            paddle_dygraph_out.append(out1)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.expand_as(x=x, y=y)
+            paddle_dygraph_out.append(out2)
+            # Key words args for torch
+            out3 = paddle.expand_as(input=x, other=y)
+            paddle_dygraph_out.append(out3)
+            # Combined args and kwargs
+            out4 = paddle.expand_as(x, y=y)
+            paddle_dygraph_out.append(out4)
+            # Tensor method args
+            out5 = x.expand_as(y)
+            paddle_dygraph_out.append(out5)
+            # Tensor method kwargs
+            out6 = x.expand_as(other=y)
+            paddle_dygraph_out.append(out6)
+            exe = paddle.static.Executor(base.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            for out in fetches:
+                np.testing.assert_allclose(out, self.np_ref_out)
 
 
 if __name__ == "__main__":

@@ -255,9 +255,9 @@ class RecomputeFunction(PyLayer):
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
             elif type(arg) is tuple:
-                assert (
-                    i not in ctx.offload_indices
-                ), f"offload_indices should not contain tensor tuple in position{i}"
+                assert i not in ctx.offload_indices, (
+                    f"offload_indices should not contain tensor tuple in position{i}"
+                )
                 is_tensors = [paddle.is_tensor(a) for a in arg]
                 if all(is_tensors):
                     # the tuple is a tuple of tensors
@@ -411,7 +411,7 @@ def _recompute_without_reentrant(
 
     if preserve_rng_state:
         cur_device = paddle.get_device()
-        if 'gpu:' in cur_device:
+        if cur_device.startswith('gpu:'):
             fw_cuda_rng_state = paddle.get_cuda_rng_state()
         elif 'cpu' in cur_device:
             fw_cuda_rng_state = paddle.get_rng_state()
@@ -471,21 +471,11 @@ def _recompute_without_reentrant(
                 if inner_x is None:
                     storage[holder_list[unpack_counter - 1]()] = None
                     return
-                if hasattr(inner_x, "main_grad"):
+                if hasattr(inner_x, "main_grad") or inner_x.grad is not None:
                     storage[holder_list[unpack_counter - 1]()] = inner_x
                 else:
                     if inner_x.is_dist():
-                        # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
-                        # but other errors will be triggered during the current period, and can be modified after resolution
-                        tmp_tensor = core.eager.Tensor(
-                            inner_x.dtype,
-                            inner_x.shape,
-                            inner_x.name + "cpy",
-                            core.VarDesc.VarType.DENSE_TENSOR,
-                            inner_x.persistable,
-                            inner_x.process_mesh,
-                            inner_x.placements,
-                        )
+                        tmp_tensor = core.eager.Tensor(inner_x)
                     else:
                         tmp_tensor = core.eager.Tensor(
                             inner_x.dtype,

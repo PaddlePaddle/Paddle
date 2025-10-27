@@ -101,7 +101,9 @@ void BindGuard(pybind11::module *m) {
            py::arg("attr_name"));
   py::class_<ShapeMatchGuard, GuardBase, std::shared_ptr<ShapeMatchGuard>>(
       *m, "ShapeMatchGuard", R"DOC(ShapeMatchGuard Class.)DOC")
-      .def(py::init<const std::vector<py::object> &>(), py::arg("shape"));
+      .def(py::init<const std::vector<py::object> &, int64_t>(),
+           py::arg("shape"),
+           py::arg("min_non_specialized_number"));
   py::class_<LayerMatchGuard, GuardBase, std::shared_ptr<LayerMatchGuard>>(
       *m, "LayerMatchGuard", R"DOC(LayerMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("layer_obj"));
@@ -128,7 +130,9 @@ void BindGuard(pybind11::module *m) {
       *m,
       "NumPyArrayShapeMatchGuard",
       R"DOC(NumPyArrayShapeMatchGuard Class.)DOC")
-      .def(py::init<const std::vector<py::object> &>(), py::arg("shape"));
+      .def(py::init<const std::vector<py::object> &, int64_t>(),
+           py::arg("shape"),
+           py::arg("min_non_specialized_number"));
   py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
       *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("func"));

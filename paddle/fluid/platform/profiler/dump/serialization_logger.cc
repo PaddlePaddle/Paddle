@@ -350,9 +350,9 @@ void SerializationLogger::LogExtraInfo(
 }
 
 void SerializationLogger::LogMetaInfo(const std::string& version,
-                                      uint32_t span_indx) {
+                                      uint32_t span_index) {
   node_trees_proto_->set_version(version);
-  node_trees_proto_->set_span_indx(span_indx);
+  node_trees_proto_->set_span_index(span_index);
 }
 
 SerializationLogger::SerializationLogger(const std::string& filename) {

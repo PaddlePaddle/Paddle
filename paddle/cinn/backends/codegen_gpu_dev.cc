@@ -153,6 +153,12 @@ std::vector<ir::stmt::StmtRef> CodeGenGpuDev::FilterDeallocTempBuffers(
 void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
+  dynamic_shape_map_.clear();
+  for (const auto &arg : op->args) {
+    if (arg.is_var()) {
+      dynamic_shape_map_.emplace(arg.name(), arg.type());
+    }
+  }
   str_ += "__global__\n";
 
   PrintFunctionDeclaration(op);
@@ -213,17 +219,25 @@ void CodeGenGpuDev::VisitStmt(const ir::stmt::Alloc &stmt) {
 
 void CodeGenGpuDev::Visit(const ir::Min *op) {
   str_ += "min(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 
 void CodeGenGpuDev::Visit(const ir::Max *op) {
   str_ += "max(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 

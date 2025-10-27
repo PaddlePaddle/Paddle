@@ -127,6 +127,7 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
         {"fused_reshape_out", res.VectorInt32Attr({})},
         {"fused_transpose_out", res.VectorInt32Attr({})},
         {"mkldnn_data_type", res.StrAttr("float32")},
+        {"onednn_data_type", res.StrAttr("")},
         {"scale_x", res.Float32Attr(1.0f)},
         {"scale_y", res.Float32Attr(1.0f)},
         {"scale_in_eltwise", res.Float32Attr(0.0f)},
@@ -141,7 +142,11 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
     } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
                act_type_ == paddle::dialect::LeakyReluOp::name()) {
-      fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      const auto &fuse_alpha = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> float {
+            return static_cast<float>(match_ctx.Attr<double>("fuse_alpha"));
+          });
+      fused_attrs["fuse_alpha"] = fuse_alpha;
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
     } else if (act_type_ == paddle::dialect::Relu6Op::name()) {
@@ -214,6 +219,7 @@ class MatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
         {"fused_reshape_out", res.VectorInt32Attr({})},
         {"fused_transpose_out", res.VectorInt32Attr({})},
         {"mkldnn_data_type", res.StrAttr("float32")},
+        {"onednn_data_type", res.StrAttr("")},
         {"scale_x", res.Float32Attr(1.0f)},
         {"scale_y", res.Float32Attr(1.0f)},
         {"scale_in_eltwise", res.Float32Attr(0.0f)},
@@ -297,6 +303,7 @@ class MatmulClipFusePattern : public paddle::drr::DrrPatternBase {
         {"fused_reshape_out", res.VectorInt32Attr({})},
         {"fused_transpose_out", res.VectorInt32Attr({})},
         {"mkldnn_data_type", res.StrAttr("float32")},
+        {"onednn_data_type", res.StrAttr("")},
         {"scale_x", res.Float32Attr(1.0f)},
         {"scale_y", res.Float32Attr(1.0f)},
         {"scale_in_eltwise", res.Float32Attr(0.0f)},
@@ -350,6 +357,7 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
                 {"fused_reshape_out", pat.Attr("fused_reshape_out")},
                 {"fused_transpose_out", pat.Attr("fused_transpose_out")},
                 {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                {"onednn_data_type", pat.Attr("onednn_data_type")},
                 {"scale_x", pat.Attr("scale_x")},
                 {"scale_y", pat.Attr("scale_y")},
                 {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
@@ -401,6 +409,7 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
         {"fused_reshape_out", pat.Attr("fused_reshape_out")},
         {"fused_transpose_out", pat.Attr("fused_transpose_out")},
         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+        {"onednn_data_type", pat.Attr("onednn_data_type")},
         {"scale_x", pat.Attr("scale_x")},
         {"scale_y", pat.Attr("scale_y")},
         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
@@ -471,6 +480,7 @@ class FusedMatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
                 {"fused_reshape_out", pat.Attr("fused_reshape_out")},
                 {"fused_transpose_out", pat.Attr("fused_transpose_out")},
                 {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                {"onednn_data_type", pat.Attr("onednn_data_type")},
                 {"scale_x", pat.Attr("scale_x")},
                 {"scale_y", pat.Attr("scale_y")},
                 {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
@@ -513,6 +523,7 @@ class FusedMatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
         {"fused_reshape_out", pat.Attr("fused_reshape_out")},
         {"fused_transpose_out", pat.Attr("fused_transpose_out")},
         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+        {"onednn_data_type", pat.Attr("onednn_data_type")},
         {"scale_x", pat.Attr("scale_x")},
         {"scale_y", pat.Attr("scale_y")},
         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
@@ -566,6 +577,7 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
                 {"fused_reshape_out", pat.Attr("fused_reshape_out")},
                 {"fused_transpose_out", pat.Attr("fused_transpose_out")},
                 {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                {"onednn_data_type", pat.Attr("onednn_data_type")},
                 {"scale_x", pat.Attr("scale_x")},
                 {"scale_y", pat.Attr("scale_y")},
                 {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
@@ -621,6 +633,7 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
         {"fused_reshape_out", pat.Attr("fused_reshape_out")},
         {"fused_transpose_out", pat.Attr("fused_transpose_out")},
         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+        {"onednn_data_type", pat.Attr("onednn_data_type")},
         {"scale_x", pat.Attr("scale_x")},
         {"scale_y", pat.Attr("scale_y")},
         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},

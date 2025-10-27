@@ -73,9 +73,9 @@ class UtilBase:
         self.role_maker = role_maker
 
     def _set_file_system(self, fs_client: FS) -> None:
-        assert isinstance(
-            fs_client, FS
-        ), "fs_client must be the instance of paddle.distributed.fleet.utils.FS"
+        assert isinstance(fs_client, FS), (
+            "fs_client must be the instance of paddle.distributed.fleet.utils.FS"
+        )
         self.fs_client = fs_client
 
     def all_reduce(

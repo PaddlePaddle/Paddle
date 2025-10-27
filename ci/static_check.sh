@@ -31,6 +31,7 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
+        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
         python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu; example_error=$?
     fi
@@ -53,21 +54,12 @@ function exec_type_checking() {
     cd ${PADDLE_ROOT}/tools
 
     # check all sample code
-    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[typing\]" || true`
     DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[debug\]" || true`
 
-    if [[ ${TITLE_CHECK_ALL} ]]; then
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug --full-test; type_checking_error=$?
-        else
-            python type_checking.py --full-test; type_checking_error=$?
-        fi
+    if [[ ${DEBUG_MODE} ]]; then
+        python type_checking.py --debug --full-test; type_checking_error=$?
     else
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug; type_checking_error=$?
-        else
-            python type_checking.py; type_checking_error=$?
-        fi
+        python type_checking.py --full-test; type_checking_error=$?
     fi
 
     if [ "$type_checking_error" != "0" ];then
@@ -148,6 +140,9 @@ function exec_samplecode_checking() {
     # exit with error code
     if [ $example_code -ne 0 ];then
         exit $example_code
+    fi
+    if [ $example_code_gpu -ne 0 ];then
+        exit $example_code_gpu
     fi
     if [ $type_checking_code -ne 0 ];then
         exit $type_checking_code

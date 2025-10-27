@@ -310,10 +310,10 @@ DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS);
 
-#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#if !defined(__APPLE__) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_XCCL))
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 #endif
-
 }  // namespace details
 
 template <typename T>

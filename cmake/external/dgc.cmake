@@ -29,10 +29,17 @@ set(DGC_INCLUDE_DIR
 set(DGC_LIBRARIES
     "${DGC_INSTALL_DIR}/lib/libdgc.a"
     CACHE FILEPATH "dgc library." FORCE)
-set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_7369ff.tgz")
 include_directories(${DGC_INCLUDE_DIR})
-set(DGC_CACHE_FILENAME "collective_7369ff.tgz")
-set(DGC_URL_MD5 ede459281a0f979da8d84f81287369ff)
+
+if(CUDA_VERSION LESS 13.0)
+  set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_7369ff.tgz")
+  set(DGC_CACHE_FILENAME "collective_7369ff.tgz")
+  set(DGC_URL_MD5 ede459281a0f979da8d84f81287369ff)
+else()
+  set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_250918cuda13.tgz")
+  set(DGC_CACHE_FILENAME "collective_250918cuda13.tgz")
+  set(DGC_URL_MD5 82ea96cfca668b8f8731613827658444)
+endif()
 
 function(download_dgc)
   message(

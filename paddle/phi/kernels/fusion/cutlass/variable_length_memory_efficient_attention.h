@@ -21,7 +21,7 @@ namespace fusion {
 
 template <typename T, typename Context>
 void MultiHeadAttentionVariableForwardKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,

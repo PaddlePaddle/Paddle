@@ -39,20 +39,19 @@ namespace cub = hipcub;
 namespace rocprim {
 namespace detail {
 template <>
-struct radix_key_codec_base<phi::dtype::float16>
-    : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+struct radix_key_codec_base<phi::float16>
+    : radix_key_codec_integral<phi::float16, uint16_t> {};
 
 template <>
-struct radix_key_codec_base<phi::dtype::bfloat16>
-    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
+struct radix_key_codec_base<phi::bfloat16>
+    : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
 
 #if HIP_VERSION >= 50400000
 template <>
-struct float_bit_mask<phi::dtype::float16> : float_bit_mask<rocprim::half> {};
+struct float_bit_mask<phi::float16> : float_bit_mask<rocprim::half> {};
 
 template <>
-struct float_bit_mask<phi::dtype::bfloat16>
-    : float_bit_mask<rocprim::bfloat16> {};
+struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
 #endif
 }  // namespace detail
 }  // namespace rocprim
@@ -60,13 +59,12 @@ struct float_bit_mask<phi::dtype::bfloat16>
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
-struct NumericTraits<phi::dtype::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+struct NumericTraits<phi::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::float16> {};
 
 template <>
-struct NumericTraits<phi::dtype::bfloat16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
-};
+struct NumericTraits<phi::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::bfloat16> {};
 }  // namespace cub
 
 #endif
@@ -97,7 +95,7 @@ __global__ void merge_kernel(const T* A,
                              bool descending) {
   int64_t thread = blockDim.x * gridDim.x;
   int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
-  for (int offset = 0; offset < num_per_thread; offset++) {
+  for (int64_t offset = 0; offset < num_per_thread; offset++) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset * thread;
     size_t total = sizeA + sizeB;
     if (idx >= total) return;
@@ -198,6 +196,13 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
                  const int64_t num_rows,
                  const int64_t num_cols,
                  const bool descending) {
+  PADDLE_ENFORCE_LE(num_cols,
+                    std::numeric_limits<int>::max(),
+                    ::common::errors::PreconditionNotMet(
+                        "The dimension being sorted should be less than "
+                        "2^31, but got %lld. Please check the input tensor. ",
+                        num_cols));
+
   auto cu_stream = dev_ctx.stream();
   auto ComputeBlockSize = [](IndType col) {
     if (col > 512)
@@ -228,8 +233,14 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
   const int64_t total_elements = num_cols * num_rows;
   const int64_t segment_size = num_cols;
   const int64_t element_per_call = std::min(max_elements, total_elements);
+
+  // make sure element_per_call >= segment_size
+  const int64_t adjusted_elements_per_call =
+      std::max(max_elements, segment_size);
+
   // make sure batch size is the multiple of segment_size
-  const int64_t batch_size = (element_per_call / segment_size) * segment_size;
+  const int64_t batch_size =
+      (adjusted_elements_per_call / segment_size) * segment_size;
   int64_t offset = 0;
   DenseTensor input_indices;
 
@@ -473,7 +484,9 @@ PD_REGISTER_KERNEL(argsort,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   uint8_t,
+                   int16_t,
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

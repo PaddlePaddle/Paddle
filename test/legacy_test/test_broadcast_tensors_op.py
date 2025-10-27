@@ -16,7 +16,12 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -111,8 +116,8 @@ class TestCPUBroadcastTensorsOp(OpTest):
 
     def setUp(self):
         self.op_type = "broadcast_tensors"
-        self.use_mkldnn = False
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.use_onednn = False
+        self.attrs = {'use_onednn': self.use_onednn}
         self.test_gen_func_list = [
             gen_rank_diff_test,
             gen_no_broadcast_test,
@@ -177,19 +182,20 @@ class TestCPUBroadcastTensorsOp_complex128(TestCPUBroadcastTensorsOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBroadcastTensorsFP16Op(TestCPUBroadcastTensorsOp):
     def set_place(self):
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def set_dtypes(self):
         self.dtypes = ['float16']
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestBroadcastTensorsBF16Op(OpTest):
@@ -197,15 +203,15 @@ class TestBroadcastTensorsBF16Op(OpTest):
         self.op_type = "broadcast_tensors"
         self.dtype = np.uint16
         self.np_dtype = "float32"
-        self.use_mkldnn = False
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.use_onednn = False
+        self.attrs = {'use_onednn': self.use_onednn}
         self.test_gen_func_list = [
             gen_rank_diff_test,
             gen_no_broadcast_test,
             gen_mixed_tensors_test,
         ]
         self.python_api = paddle.broadcast_tensors
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def run_dual_test(self, test_func, args):
         for gen_func in self.test_gen_func_list:
@@ -259,7 +265,6 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
         self.dtype = 'float32'
 
     def test_api(self):
-
         def test_static():
             with (
                 static_guard(),
@@ -501,7 +506,27 @@ class TestBroadcastTensorsAPIZeroSize(unittest.TestCase):
             ]
             outputs = paddle.broadcast_tensors(inputs)
             self.assertEqual(outputs[0].shape, self.expected_shape)
+
+    def test_zero_size_dynamic_backward(self):
+        with dygraph_guard():
+            data1 = np.ones(self.shape1, dtype=self.dtype)
+            data2 = np.ones(self.shape2, dtype=self.dtype)
+            input1 = paddle.to_tensor(
+                data1, dtype=self.dtype, stop_gradient=False
+            )
+            input2 = paddle.to_tensor(
+                data2, dtype=self.dtype, stop_gradient=False
+            )
+            inputs = [
+                input1,
+                input2,
+            ]
+            outputs = paddle.broadcast_tensors(inputs)
+            self.assertEqual(outputs[0].shape, self.expected_shape)
             self.assertEqual(outputs[1].shape, self.expected_shape)
+            grads = paddle.grad(
+                inputs, outputs, retain_graph=True, allow_unused=True
+            )
 
 
 class TestBroadcastTensorsAPIZeroSize_bool(TestBroadcastTensorsAPIZeroSize):

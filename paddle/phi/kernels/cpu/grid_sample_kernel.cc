@@ -209,7 +209,7 @@ static void BilinearInter(const CPUContext& dev_ctx,
   auto v_ws_t = EigenTensor<T, 4>::From(v_ws);
   auto v_es_t = EigenTensor<T, 4>::From(v_es);
   auto output_t = EigenTensor<T, 4>::From(*out);
-  // bilinear interpolaetion by 4 corner points
+  // bilinear interpolation by 4 corner points
   output_t.device(place) = v_wn_t * d_e_scaled_t * d_s_scaled_t +
                            v_en_t * d_w_scaled_t * d_s_scaled_t +
                            v_ws_t * d_e_scaled_t * d_n_scaled_t +
@@ -292,7 +292,7 @@ static void Bilinear3DInter(const CPUContext& dev_ctx,
   auto v_bws_t = EigenTensor<T, 5>::From(v_bws);
   auto v_bes_t = EigenTensor<T, 5>::From(v_bes);
   auto output_t = EigenTensor<T, 5>::From(*out);
-  // bilinear interpolaetion by 4 corner points
+  // bilinear interpolation by 4 corner points
   output_t.device(place) =
       v_twn_t * d_e_scaled_t * d_s_scaled_t * d_b_scaled_t +
       v_ten_t * d_w_scaled_t * d_s_scaled_t * d_b_scaled_t +
@@ -316,6 +316,14 @@ void GridSampleKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
+
+  std::string enum_mode;
+  if (mode == "nearest") {
+    enum_mode = "nearest";
+  } else {
+    enum_mode = "bilinear";
+  }
+
   if (x.dims().size() == 4) {
     const int n = static_cast<int>(grid.dims()[0]);
     const int out_h = static_cast<int>(grid.dims()[1]);
@@ -338,14 +346,10 @@ void GridSampleKernel(const Context& dev_ctx,
                          &grid_x,
                          &grid_y);
 
-    if (mode == "bilinear") {
+    if (enum_mode == "bilinear") {
       BilinearInter<T>(dev_ctx, x, &grid_x, &grid_y, out);
-    } else if (mode == "nearest") {
-      auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
-      auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
-      grid_x_t = grid_x_t.round();
-      grid_y_t = grid_y_t.round();
-      GetGridPointValue<T>(x, out, grid_x, grid_y);
+    } else if (enum_mode == "nearest") {
+      GetGridPointValue_nearest<T>(x, out, grid_x, grid_y);
     }
   } else {
     const int n = static_cast<int>(grid.dims()[0]);
@@ -372,10 +376,10 @@ void GridSampleKernel(const Context& dev_ctx,
                            &grid_x,
                            &grid_y,
                            &grid_z);
-    if (mode == "bilinear") {
+    if (enum_mode == "bilinear") {
       Bilinear3DInter<T>(dev_ctx, x, &grid_x, &grid_y, &grid_z, out);
-    } else if (mode == "nearest") {
-      Get3DGridPointValue<T>(x, out, grid_x, grid_y, grid_z);
+    } else if (enum_mode == "nearest") {
+      Get3DGridPointValue_nearest<T>(x, out, grid_x, grid_y, grid_z);
     }
   }
 }

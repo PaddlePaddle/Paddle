@@ -17,11 +17,11 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/utils/string/string_helper.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -43,15 +43,33 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   std::vector<int64_t> repeat_times;
   std::vector<int64_t> resize_dims;
   std::vector<int64_t> recover_shape;
-  for (int c : op_label) {
+  std::vector<int64_t> t_shape = common::vectorize<int64_t>(t.dims());
+  for (size_t i = 0; i < op_label.size(); i++) {
+    int c = op_label[i];
     if (label2type[c] == LabelType::Reduction) {
       repeat_times.push_back(label2shape[c]);
       resize_dims.push_back(1);
       recover_shape.push_back(label2shape[c]);
+      t_shape.insert(t_shape.begin() + i, 1);
     } else {
       resize_dims.push_back(label2shape[c]);
       repeat_times.push_back(1);
       recover_shape.push_back(label2shape[c]);
+    }
+  }
+  PADDLE_ENFORCE_EQ(op_label.size(),
+                    t_shape.size(),
+                    common::errors::InvalidArgument(
+                        "Input shape size doesn't match label nums, input "
+                        "shape size: `%d`, but got label nums: `%d`",
+                        t_shape.size(),
+                        op_label.size()));
+  for (size_t i = 0; i < op_label.size(); i++) {
+    int c = op_label[i];
+    if (label2type[c] == LabelType::Contraction &&
+        t_shape[i] != label2shape[c]) {
+      repeat_times[i] = label2shape[c];
+      resize_dims[i] = 1;
     }
   }
   t.Resize(common::make_ddim(resize_dims));
@@ -117,6 +135,17 @@ void EinsumGradKernel(const Context& dev_ctx,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad) {
   VLOG(5) << "Start EinsumGradKernel:";
+  bool has_zero_size_tensor = out_grad.numel() == 0;
+  for (auto& i : x_grad) {
+    if (i != nullptr) {
+      if (i->numel() == 0) {
+        has_zero_size_tensor = true;
+      }
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(i->dims())), 0, i);
+    }
+  }
+  if (has_zero_size_tensor) return;
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(x.size(), LabelMap(-1));
@@ -204,6 +233,7 @@ void EinsumGradKernel(const Context& dev_ctx,
     }
     EinsumKernelImpl<T, Context>(dev_ctx,
                                  all_labels,
+                                 labelshape,
                                  operands_for_A,
                                  equation_for_A,
                                  &dA,
@@ -212,6 +242,7 @@ void EinsumGradKernel(const Context& dev_ctx,
 
     EinsumKernelImpl<T, Context>(dev_ctx,
                                  all_labels,
+                                 labelshape,
                                  operands_for_B,
                                  equation_for_B,
                                  &dB,

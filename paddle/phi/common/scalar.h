@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/exception.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -147,9 +148,21 @@ class ScalarBase {
       case DataType::FLOAT64:
         return static_cast<RT>(data_.f64);
       case DataType::FLOAT16:
-        return static_cast<RT>(data_.f16);
+        if constexpr (std::is_same<RT, ::phi::complex64>::value) {
+          return ::phi::complex64(static_cast<float>(data_.f16));
+        } else if constexpr (std::is_same<RT, ::phi::complex128>::value) {
+          return ::phi::complex128(static_cast<double>(data_.f16));
+        } else {
+          return static_cast<RT>(data_.f16);
+        }
       case DataType::BFLOAT16:
-        return static_cast<RT>(data_.bf16);
+        if constexpr (std::is_same<RT, ::phi::complex64>::value) {
+          return ::phi::complex64(static_cast<float>(data_.bf16));
+        } else if constexpr (std::is_same<RT, ::phi::complex128>::value) {
+          return ::phi::complex128(static_cast<double>(data_.bf16));
+        } else {
+          return static_cast<RT>(data_.bf16);
+        }
       case DataType::INT32:
         return static_cast<RT>(data_.i32);
       case DataType::INT64:
@@ -279,6 +292,9 @@ class ScalarBase {
       case DataType::BFLOAT16:
         ss << data_.bf16;
         break;
+      case DataType::FLOAT8_E4M3FN:
+        ss << data_.f8e4m3;
+        break;
       case DataType::INT32:
         ss << data_.i32;
         break;
@@ -382,6 +398,7 @@ class ScalarBase {
     float16 f16;
     float f32;
     double f64;
+    float8_e4m3fn f8e4m3;
     complex64 c64;
     complex128 c128;
   } data_;
@@ -394,9 +411,9 @@ void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst) {
 }
 
 using Scalar = paddle::experimental::ScalarBase<Tensor>;
-TEST_API bool operator==(const Scalar& lhs, const Scalar& rhs);
+PADDLE_API bool operator==(const Scalar& lhs, const Scalar& rhs);
 
-TEST_API std::ostream& operator<<(std::ostream& os, const Scalar& s);
+PADDLE_API std::ostream& operator<<(std::ostream& os, const Scalar& s);
 
 template <typename T>
 std::vector<T> ExtractPlainVector(

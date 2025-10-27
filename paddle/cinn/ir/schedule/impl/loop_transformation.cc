@@ -120,7 +120,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     std::vector<Var> new_loop_vars;
     Expr substitute_value(0);
     for (int i = 0; i < processed_factors.size(); ++i) {
-      Var temp_var(cinn::common::UniqName(for_node->loop_var->name));
+      Var temp_var(Expr(0),
+                   Expr(processed_factors[i]),
+                   cinn::common::UniqName(for_node->loop_var->name));
       substitute_value =
           Expr(temp_var) + substitute_value * Expr(processed_factors[i]);
       new_loop_vars.push_back(temp_var);
@@ -227,7 +229,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
   for (int i = 0; i < process_factors.size(); ++i) {
-    Var temp_var(common::UniqName(for_node->loop_var->name));
+    Var temp_var(Expr(0),
+                 process_factors[i],
+                 common::UniqName(for_node->loop_var->name));
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
     new_loop_vars.push_back(temp_var);
   }
@@ -338,7 +342,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
   for (int i = 0; i < process_factors.size(); ++i) {
-    Var temp_var(common::UniqName(for_node->loop_var->name));
+    Var temp_var(Expr(0),
+                 process_factors[i],
+                 common::UniqName(for_node->loop_var->name));
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
     new_loop_vars.push_back(temp_var);
   }

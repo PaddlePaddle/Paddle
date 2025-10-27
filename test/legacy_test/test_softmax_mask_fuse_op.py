@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle import base, incubate
@@ -37,7 +37,8 @@ def _get_softmax(x, mask, fp16=True):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
@@ -65,7 +66,8 @@ class TestSoftmaxMaskFuseOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp0(OpTest):
     def setUp(self):
@@ -79,16 +81,17 @@ class TestSoftmaxMaskFuseOp0(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ["X"], "Out", check_pir=True
+            get_device_place(), ["X"], "Out", check_pir=True
         )
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp01(OpTest):
     def setUp(self):
@@ -107,19 +110,19 @@ class TestSoftmaxMaskFuseOp01(OpTest):
         self.mask_shape = (1, 1, 8, 32)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ["X"], "Out", check_pir=True
+            get_device_place(), ["X"], "Out", check_pir=True
         )
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestDropoutBiasFuseOp3(unittest.TestCase):
-
     def test_static_result(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -137,7 +140,7 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
             mask_in_np = np.where(mask == 1, -10000.0, mask)
             rst_np = _get_softmax(x_in_np, mask_in_np, False)
 
-            exe = base.Executor(base.CUDAPlace(0))
+            exe = base.Executor(get_device_place())
             fetches = exe.run(
                 paddle.static.default_main_program(),
                 feed={"x": x_in_np, "mask": mask_in_np},
@@ -146,7 +149,7 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], rst_np, rtol=1e-05)
 
     def test_dygraph(self):
-        with base.dygraph.guard(base.CUDAPlace(0)):
+        with base.dygraph.guard(get_device_place()):
             x_in_np = np.random.random((1, 1, 8, 32)).astype("float32")
             mask = np.random.randint(0, 2, (1, 1, 8, 32)).astype("float32")
             mask_in_np = np.where(mask == 1, -10000.0, mask)
@@ -159,7 +162,8 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp04(TestSoftmaxMaskFuseOp01):
     def init_shape(self):
@@ -168,7 +172,7 @@ class TestSoftmaxMaskFuseOp04(TestSoftmaxMaskFuseOp01):
 
     def test_dygraph(self):
         self.init_shape()
-        with base.dygraph.guard(base.CUDAPlace(0)):
+        with base.dygraph.guard(get_device_place()):
             x_in_np = np.random.random(self.x_shape).astype("float32")
             mask = np.random.randint(-8, 8, self.mask_shape).astype("float32")
             mask_in_np = np.where(mask == 1, -10000.0, mask)
@@ -180,7 +184,8 @@ class TestSoftmaxMaskFuseOp04(TestSoftmaxMaskFuseOp01):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp05(TestSoftmaxMaskFuseOp04):
     def init_shape(self):
@@ -204,6 +209,45 @@ create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 512)
 create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 1024)
 create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 2048)
 create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 4096)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestSoftmaxMaskFuseAPI_ZeroSize(unittest.TestCase):
+    def init_shape(self):
+        self.x_shape = (0, 1, 8, 32)
+        self.mask_shape = (1, 1, 8, 32)
+        self.out_shape = (0, 1, 8, 32)
+
+    def test_dygraph_api(self):
+        paddle.disable_static()
+        self.init_shape()
+        paddle.disable_static()
+        paddle.set_device(get_device())
+        x = paddle.to_tensor(np.random.random(self.x_shape)).astype(
+            paddle.float32
+        )
+        x.stop_gradient = False
+        mask = paddle.to_tensor(np.random.random(self.mask_shape))
+        expect_out = paddle.incubate.softmax_mask_fuse(x, mask)
+        expect_out.sum().backward()
+        np_out = np.zeros(self.out_shape)
+        np.testing.assert_allclose(expect_out.numpy(), np_out, rtol=1e-05)
+        np.testing.assert_allclose(x.grad.numpy(), np.zeros(x.shape))
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestSoftmaxMaskFuseAPI_ZeroSize2(TestSoftmaxMaskFuseAPI_ZeroSize):
+    def init_shape(self):
+        self.x_shape = (1, 1, 8, 32)
+        self.mask_shape = (1, 0, 8, 32)
+        self.out_shape = (1, 0, 8, 32)
+
 
 if __name__ == '__main__':
     unittest.main()

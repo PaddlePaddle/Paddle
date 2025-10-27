@@ -17,6 +17,9 @@ limitations under the License. */
 
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/eager/activation_offloader.h"
+#endif
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
@@ -36,9 +39,11 @@ limitations under the License. */
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_int64(offload_retry_times);
 
 using egr::ConvertToDistTensor;
-
 namespace paddle::pybind {
 
 PyTypeObject* p_pylayer_type;
@@ -77,11 +82,15 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
     auto v = reinterpret_cast<PyLayerObject*>(obj);
+    v->container = nullptr;
     v->materialize_grads = true;
     v->container_be_packed = false;
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
+#ifdef PADDLE_WITH_CUDA
+    new (&v->reload_functors) std::vector<egr::ReloadFunctor>();
+#endif
   }
   return obj;
 }
@@ -100,6 +109,9 @@ static void PyLayerDealloc(PyLayerObject* self) {
   self->unpack_hook = nullptr;
   self->forward_input_tensor_is_duplicable.~vector();
   self->forward_output_tensor_is_duplicable.~vector();
+#ifdef PADDLE_WITH_CUDA
+  self->reload_functors.~vector();
+#endif
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
@@ -127,12 +139,64 @@ PyObject* new_tensor_with_impl(paddle::Tensor* tensor) {
   return obj;
 }
 
+#ifdef PADDLE_WITH_CUDA
+template <typename Callback>
+static void GetTensorWithCallbackRecursively(PyObject* obj,
+                                             const Callback& callback) {
+  if (obj == nullptr || obj == Py_None) {
+    return;
+  } else if (paddle::pybind::PyCheckTensor(obj)) {
+    const auto& tensor =
+        reinterpret_cast<paddle::pybind::TensorObject*>(obj)->tensor;
+    callback(tensor);
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t n = PyTuple_GET_SIZE(obj);
+    for (Py_ssize_t i = 0; i < n; ++i) {
+      auto* item = PyTuple_GET_ITEM(obj, i);
+      GetTensorWithCallbackRecursively(item, callback);
+    }
+  } else if (PyList_Check(obj)) {
+    Py_ssize_t n = PyList_GET_SIZE(obj);
+    for (Py_ssize_t i = 0; i < n; ++i) {
+      auto* item = PyList_GET_ITEM(obj, i);
+      GetTensorWithCallbackRecursively(item, callback);
+    }
+  }
+}
+
+static void PyLayerAddOffloadActivation(PyLayerObject* ctx,
+                                        const std::string& name) {
+  PADDLE_ENFORCE_NOT_NULL(
+      ctx,
+      phi::errors::InvalidArgument("PyLayerObject should not be nullptr."));
+  if (ctx->container_be_packed) {
+    VLOG(10) << "Return directly because of packed value";
+    return;
+  }
+
+  auto add_functor = [ctx, &name](const paddle::Tensor& t) {
+    VLOG(10) << "Add offload tensor to PyLayer starts: " << name;
+    auto reload_functor = egr::ActivationOffloader::Instance()->Add(t);
+    if (const auto* rf_ptr = reload_functor.get_ptr()) {
+      ctx->reload_functors.push_back(*rf_ptr);
+    }
+    VLOG(10) << "Add offload tensor to PyLayer ends: " << name;
+  };
+
+  GetTensorWithCallbackRecursively(ctx->container, add_functor);
+}
+#endif
+
 PyObject* pylayer_method_apply(PyObject* cls,
                                PyObject* args,
                                PyObject* kwargs) {
   EAGER_TRY
   SetPythonStack();
-  VLOG(6) << "Begin run PyLayer apply...";
+  std::string classname =
+      std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
+  VLOG(3) << classname << ":Running PyLayer Apply ";
+  VLOG(4) << classname << ":"
+          << "Construct PyLayerContext";
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
@@ -170,7 +234,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   forward_args = PyTuple_New(args_size + 1);  // NOLINT
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
-
+  VLOG(6) << classname << ":Prepare Pylayer forward args ";
+  VLOG(6) << classname << ":Input size is " << inputs_size;
   std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
   inputs_autograd_meta.reserve(inputs_size);
   std::vector<std::vector<paddle::Tensor*>> inputs_tensor;
@@ -314,6 +379,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   VLOG(6)
+      << classname << ":"
       << "PyLayer forward args is ready, begin call user's forward function...";
   // call forward
   auto forward_fn = PyObject_GetAttrString(cls, "forward");
@@ -442,8 +508,12 @@ PyObject* pylayer_method_apply(PyObject* cls,
     PADDLE_THROW(common::errors::InvalidArgument(
         "At least one output of `PyLayer.forward` is a `Tensor`."));
   }
-  VLOG(6) << "PyLayer forward function finish...";
+  VLOG(6) << classname << ":"
+          << "PyLayer forward function finish...";
 
+#ifdef PADDLE_WITH_CUDA
+  bool has_grad = false;
+#endif
   if (require_any_grad && trace_backward) {
     auto non_differentiable = GetTensorsFromPyObject(ctx->non_differentiable);
     for (size_t i = 0; i < outputs_autograd_meta.size(); i++) {
@@ -476,8 +546,18 @@ PyObject* pylayer_method_apply(PyObject* cls,
         std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
                                                outputs_autograd_meta.size(),
                                                inputs_autograd_meta.size());
-    VLOG(3) << "Create grad node " << grad_node->name() << " addr "
+    VLOG(3) << classname << ":"
+            << "Create grad node " << grad_node->name() << " addr "
             << grad_node;
+    // For dump call stack
+    if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+
+#ifdef PADDLE_WITH_CUDA
+    has_grad = true;
+#endif
+
     ctx->grad_node = grad_node;
 
     if (ctx->materialize_grads) {
@@ -507,7 +587,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
         grad_node->SetGradInMeta(*outputs_tensor[i][0], i);
       }
     }
-    VLOG(6) << "PyLayer construct backward node finish...";
+    VLOG(6) << classname << ":"
+            << "PyLayer construct backward node finish...";
   }
 
   if (outputs_size == 1) {
@@ -518,6 +599,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_XDECREF(outputs_tuple);
     }
   }
+  VLOG(3) << classname << ":"
+          << "PyLayer output size " << outputs_size;
 
   if (PyList_Check(outputs)) {
     Py_XDECREF(outputs_tuple);
@@ -527,13 +610,23 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(kwargs_value_list);
   Py_XDECREF(backward_function);
   Py_XDECREF(forward_fn);
+
+#ifdef PADDLE_WITH_CUDA
+  if (has_grad && FLAGS_offload_retry_times > 0) {
+    auto grad_node = ctx->grad_node.lock();
+    PADDLE_ENFORCE_NOT_NULL(grad_node,
+                            phi::errors::InvalidArgument("Cannot be null"));
+    PyLayerAddOffloadActivation(ctx, grad_node->name());
+  }
+#endif
   Py_XDECREF(ctx);
 
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("pylayer_method_apply " +
                         std::string(Py_TYPE(ctx)->tp_name) + " finish");
   }
-
+  VLOG(3) << classname << ":"
+          << "Finish PyLayer Apply";
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

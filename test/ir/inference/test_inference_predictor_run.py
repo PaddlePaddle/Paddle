@@ -39,7 +39,6 @@ class TestNet(paddle.nn.Layer):
 )
 class TestPredictorRunWithTensor(unittest.TestCase):
     def setUp(self):
-
         self.temp_dir = tempfile.TemporaryDirectory()
         net = TestNet()
         model = paddle.jit.to_static(

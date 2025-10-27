@@ -19,6 +19,7 @@ import unittest
 import warnings
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -53,7 +54,7 @@ def static_program(net, data):
 
 class TestAutoTune(unittest.TestCase):
     def set_flags(self, enable_autotune):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             if enable_autotune:
                 paddle.set_flags({'FLAGS_conv_workspace_size_limit': -1})
             else:
@@ -69,7 +70,7 @@ class TestAutoTune(unittest.TestCase):
             "cache_size": 0,
             "cache_hit_rate": 0,
         }
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             # Total 3 * num_iters cache accesses, only iter 2 hits the cache.
             expected_res["cache_size"] = 3
             expected_res["cache_hit_rate"] = (step_id + 0.0) / (step_id + 1.0)
@@ -133,11 +134,7 @@ class TestStaticAutoTuneStatus(TestAutoTune):
                 )
                 net = SimpleNet()
                 loss = static_program(net, data)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.base.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             exe.run(startup_program)
             x = np.random.random(size=data_shape).astype('float32')

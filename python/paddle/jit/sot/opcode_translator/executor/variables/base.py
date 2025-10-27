@@ -343,7 +343,6 @@ class VariableBase:
     mutable_attrs = []
 
     def __init__(self, graph: FunctionGraph, tracker: Tracker):
-
         self.graph = graph
         self.tracker = tracker
         self.id = VariableBase.name_generator.next()

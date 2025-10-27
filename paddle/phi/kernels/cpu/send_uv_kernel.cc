@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
@@ -105,6 +106,14 @@ void SendUVKernel(const Context& dev_ctx,
                   const std::string& message_op,
                   DenseTensor* out) {
   auto index_type = src_index.dtype();
+
+  if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
+      dst_index.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
+
   if (index_type == phi::DataType::INT32) {
     GraphSendUVOpKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx, x, y, src_index, dst_index, message_op, out);

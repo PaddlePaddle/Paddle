@@ -21,10 +21,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class MatmulElementwiseAddMKLDNNFusePass : public FusePassBase {
+class MatmulElementwiseAddONEDNNFusePass : public FusePassBase {
  public:
-  MatmulElementwiseAddMKLDNNFusePass();
-  virtual ~MatmulElementwiseAddMKLDNNFusePass() {}
+  MatmulElementwiseAddONEDNNFusePass();
+  virtual ~MatmulElementwiseAddONEDNNFusePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const;

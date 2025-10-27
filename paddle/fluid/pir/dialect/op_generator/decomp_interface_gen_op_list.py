@@ -65,6 +65,7 @@ GENERATE_IMPL_DECOMP = [
     "reciprocal",
     "relu",
     "relu6",
+    "rms_norm",
     "sigmoid_cross_entropy_with_logits",
     "silu",
     "softmax",

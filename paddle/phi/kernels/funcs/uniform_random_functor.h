@@ -51,7 +51,7 @@ inline void UniformRealDistribution(T* data,
 }
 
 template <>
-inline void UniformRealDistribution(phi::dtype::bfloat16* data,
+inline void UniformRealDistribution(phi::bfloat16* data,
                                     const int64_t& size,
                                     const float& min,
                                     const float& max,
@@ -61,7 +61,7 @@ inline void UniformRealDistribution(phi::dtype::bfloat16* data,
   auto engine = phi::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {
-    data[i] = static_cast<phi::dtype::bfloat16>(dist(*engine));
+    data[i] = static_cast<phi::bfloat16>(dist(*engine));
   }
 }
 
@@ -94,7 +94,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
                 &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
-    for (int i = 0; i < new_data_tensor->numel(); ++i) {
+    for (int64_t i = 0; i < new_data_tensor->numel(); ++i) {
       vec_new_data.push_back(static_cast<int64_t>(*(new_data + i)));
     }
     return vec_new_data;

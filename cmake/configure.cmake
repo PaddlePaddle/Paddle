@@ -73,14 +73,6 @@ if(WITH_MUSL)
   set(WITH_GPU OFF)
 endif()
 
-if(WITH_PSLIB)
-  add_definitions(-DPADDLE_WITH_PSLIB)
-endif()
-
-if(WITH_ARM_BRPC)
-  add_definitions(-DPADDLE_WITH_ARM_BRPC)
-endif()
-
 if(WITH_FLPS)
   add_definitions(-DPADDLE_WITH_FLPS)
 endif()
@@ -187,6 +179,7 @@ if(WITH_MKLML AND MKLML_IOMP_LIB)
     set(OPENMP_FLAGS "")
   else()
     set(OPENMP_FLAGS "-fopenmp")
+    add_definitions(-DPADDLE_WITH_OPENMP)
   endif()
   set(CMAKE_C_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
   set(CMAKE_CXX_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS ${OPENMP_FLAGS})
@@ -199,18 +192,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
 
 if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
-endif()
-
-if(WITH_PSCORE)
-  add_definitions(-DPADDLE_WITH_PSCORE)
-endif()
-
-if(WITH_RPC)
-  add_definitions(-DPADDLE_WITH_RPC)
-endif()
-
-if(WITH_HETERPS)
-  add_definitions(-DPADDLE_WITH_HETERPS)
 endif()
 
 if(WITH_BRPC_RDMA)

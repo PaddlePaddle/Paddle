@@ -34,9 +34,9 @@ class ToDistributedConfig:
 
 def cost_model(matched_programs, device_num, node_num):
     # TODO(jeff41404): multi-node will be supported later
-    assert (
-        node_num == 1
-    ), "we only support single node now, multi-node will be supported later"
+    assert node_num == 1, (
+        "we only support single node now, multi-node will be supported later"
+    )
 
     # TODO(jeff41404): will evaluate the best combination of parallel strategies
     # based on cost_model and return global_mesh, currently using pre-defined parallel strategy
@@ -224,7 +224,9 @@ def record_program_ops_post_hook(layer, inputs, outputs):
         assert (
             layer._op_recorder.start >= 0
             and layer._op_recorder.is_valid is True
-        ), f"{layer._full_name} has not recorded the start of the corresponding ops before"
+        ), (
+            f"{layer._full_name} has not recorded the start of the corresponding ops before"
+        )
         end = len(default_main_program().global_block().ops)
         # some layers, such as rotary_embedding, will not add new ops to program
         # assert end > layer._op_recorder.start, f"{layer._full_name} has not added new ops to the program"
@@ -754,9 +756,9 @@ def to_distributed(
     for pattern_name, matched_patterns in results.items():
         # process one pattern
         pattern_ops_dist_infos = get_pattern(pattern_name).ops_dist_infos
-        assert (
-            pattern_ops_dist_infos is not None
-        ), f"{pattern_name} does not contain ops_dist_infos, cannot reshard, please check"
+        assert pattern_ops_dist_infos is not None, (
+            f"{pattern_name} does not contain ops_dist_infos, cannot reshard, please check"
+        )
         processed_patterns = []
         for matched_pattern in matched_patterns:
             # convert pattern_ops_dist_infos to program_ops_dist_infos
@@ -764,9 +766,9 @@ def to_distributed(
             for pattern_ops_id, op_dist_info in pattern_ops_dist_infos.items():
                 program_ops_id = []
                 for pattern_op_id in pattern_ops_id:
-                    assert (
-                        pattern_op_id in matched_pattern.keys()
-                    ), f"please check ops_dist_infos of {pattern_name}, {pattern_op_id} not in matched_pattern: {matched_pattern.keys()}"
+                    assert pattern_op_id in matched_pattern.keys(), (
+                        f"please check ops_dist_infos of {pattern_name}, {pattern_op_id} not in matched_pattern: {matched_pattern.keys()}"
+                    )
                     program_op_id = matched_pattern[pattern_op_id]
                     program_ops_id.append(program_op_id)
                 program_ops_dist_infos[tuple(program_ops_id)] = op_dist_info
@@ -789,9 +791,9 @@ def to_distributed(
     if with_mp:
         num_hidden_layers = len(matched_programs[DECODER_LAYER_NAME])
         for pattern_name, processed_patterns in matched_programs.items():
-            assert (
-                len(processed_patterns) == num_hidden_layers
-            ), "transformer patterns matched are incomplete"
+            assert len(processed_patterns) == num_hidden_layers, (
+                "transformer patterns matched are incomplete"
+            )
             for idx, processed_pattern in enumerate(processed_patterns):
                 local_mesh = mesh
                 if with_pp:
@@ -801,9 +803,9 @@ def to_distributed(
                     local_mesh = mesh.get_mesh_with_dim("pp", pp_stage_id)
 
                 for program_ops_id, dist_infos in processed_pattern.items():
-                    assert (
-                        program_ops_id in ops_id_to_layer.keys()
-                    ), f"program_ops: {program_ops_id} is not corresponding to a dynamic layer"
+                    assert program_ops_id in ops_id_to_layer.keys(), (
+                        f"program_ops: {program_ops_id} is not corresponding to a dynamic layer"
+                    )
                     dynamic_layer = ops_id_to_layer[program_ops_id]
                     mesh_num_dims = len(local_mesh.shape)
                     sharding_info = dist_infos.get_dist_info(mesh_num_dims)
@@ -832,9 +834,9 @@ def to_distributed(
 
         if decoder_layers is not None:
             num_decoder_blocks = len(decoder_layers)
-            assert (
-                num_decoder_blocks == num_hidden_layers
-            ), f"decoder pattern layers matched are incomplete, num_decoder_blocks: {num_decoder_blocks} should be equal to num_hidden_layers: {num_hidden_layers}"
+            assert num_decoder_blocks == num_hidden_layers, (
+                f"decoder pattern layers matched are incomplete, num_decoder_blocks: {num_decoder_blocks} should be equal to num_hidden_layers: {num_hidden_layers}"
+            )
 
             pp_degree = mesh.get_dim_size("pp")
             num_blocks_per_stage = num_decoder_blocks // pp_degree

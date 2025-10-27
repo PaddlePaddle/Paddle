@@ -75,9 +75,9 @@ class TestLayer(unittest.TestCase):
         if to_static:
             paddle.base.core._set_prim_all_enabled(with_prim)
             if with_cinn:
-                assert (
-                    with_prim
-                ), "with_cinn=True but with_prim=False is unsupported"
+                assert with_prim, (
+                    "with_cinn=True but with_prim=False is unsupported"
+                )
                 net = paddle.jit.to_static(net, backend="CINN", full_graph=True)
             else:
                 net = paddle.jit.to_static(net, backend=None, full_graph=True)

@@ -26,6 +26,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'model-benchmark'
@@ -34,7 +35,8 @@ jobs:
 
   model-benchmark:
     name: Benchmark test
-    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: model-bm
     steps:
@@ -93,7 +95,7 @@ jobs:
           echo "export DEVICE_ID=$DEVICE_ID" >> ~/.bashrc
           echo $DEVICE_ID
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz
           rm build.tar.gz
@@ -135,6 +137,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
+          export EXCODE=0
           source ${ci_scripts}/model_benchmark.sh
           check_model_benchmark
           if [[ $EXCODE -eq 0 ]];then

@@ -48,6 +48,7 @@ from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, gast
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
+    IntegerEnvironmentVariable,
 )
 
 from .ast_utils import ast_to_source_code
@@ -83,6 +84,7 @@ NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.FETCH_LIST,
 ]
 
+ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True
@@ -128,7 +130,6 @@ class CUDAGraphState(IntEnum):
 
 
 class TransformOptions:
-
     class ToStaticMode(Flag):
         SOT = auto()
         AST = auto()
@@ -139,8 +140,24 @@ class TransformOptions:
 
     TRANSFORM_OPTIONS_ATTR_NAME = "___jit_transform_options___"
 
-    def __init__(self, skip_transform_mode: ToStaticMode = ToStaticMode.Nil()):
+    def __init__(
+        self,
+        skip_transform_mode: ToStaticMode = ToStaticMode.Nil(),
+        need_capture_control_flow: bool = False,
+    ):
         self.skip_transform_mode = skip_transform_mode
+        self._need_capture_control_flow = need_capture_control_flow
+
+    # Builder pattern methods
+    def with_skip_transform_mode(self, skip_transform_mode: ToStaticMode):
+        self.skip_transform_mode |= skip_transform_mode
+        return self
+
+    def with_need_capture_control_flow(
+        self, need_capture_control_flow: bool = True
+    ):
+        self._need_capture_control_flow = need_capture_control_flow
+        return self
 
     def attach(self, fn):
         if inspect.ismethod(fn):
@@ -156,6 +173,9 @@ class TransformOptions:
     def need_transform(self, mode: ToStaticMode):
         return not (self.skip_transform_mode & mode)
 
+    def need_capture_control_flow(self):
+        return self._need_capture_control_flow
+
     @staticmethod
     def check_fn_need_transform(fn, mode: ToStaticMode):
         if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
@@ -163,6 +183,14 @@ class TransformOptions:
         return getattr(
             fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
         ).need_transform(mode)
+
+    @staticmethod
+    def check_fn_need_capture_control_flow(fn):
+        if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
+            return False
+        return getattr(
+            fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
+        ).need_capture_control_flow()
 
 
 class TimeCounter:
@@ -638,6 +666,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         argdefs=callable_func.__defaults__,
         closure=get_new_closure(dyfunc, callable_func),
     )
+    new_fn.__kwdefaults__ = callable_func.__kwdefaults__
 
     return new_fn, f.name
 
@@ -789,9 +818,9 @@ class GetterSetterHelper:
         if vars is None:
             return ()
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
@@ -803,9 +832,9 @@ class GetterSetterHelper:
         if vars is None:
             return
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         vars = list(vars)
         indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):
@@ -1047,7 +1076,7 @@ def patch_method_guard(
 
 def extract_tensor_dynamic_dims(
     tensor: paddle.Tensor,
-) -> tuple[int]:
+) -> tuple[int, ...]:
     """
     Extract dynamic dimensions from a paddle.Tensor.
     Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
@@ -1058,7 +1087,7 @@ def extract_tensor_dynamic_dims(
         )
 
     if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
-        return []
+        return ()
 
     dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
     if not isinstance(dynamic_dims, tuple):

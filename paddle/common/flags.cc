@@ -63,7 +63,7 @@ PHI_DEFINE_EXPORTED_int32(paddle_num_threads,
  */
 PHI_DEFINE_EXPORTED_int32(low_precision_op_list,
                           0,
-                          "Setting the level of low precision op"
+                          "Setting the level of low precision op "
                           "list printing. It will be return the "
                           "low precision op list of current module.");
 
@@ -171,8 +171,8 @@ PHI_DEFINE_EXPORTED_string(
     "This option is useful when doing multi process training and "
     "each process have only one device (GPU). If you want to use "
     "all visible devices, set this to empty string. NOTE: the "
-    "reason of doing this is that we want to use P2P communication"
-    "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
+    "reason of doing this is that we want to use P2P communication "
+    "between GPU devices, use CUDA_VISIBLE_DEVICES can only use "
     "share-memory only.");
 #endif
 
@@ -697,6 +697,16 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 /**
+ * ONEDNN related FLAG
+ * Name: use_onednn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
+PHI_DEFINE_EXPORTED_bool(use_onednn, false, "Use ONEDNN to run");
+
+/**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
  * Since Version: 2.0.0
@@ -727,10 +737,62 @@ PHI_DEFINE_EXPORTED_int32(
     "summary will be shown."
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
+/**
+ * Debug related FLAG
+ * Name: dump_grad_node_forward_stack_path
+ * Since Version: 3.2.1
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump grad node forward call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
+                           "",
+                           "Dump grad node forward call stack to the dir path");
 
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_output_dir
+ * Since Version: 3.2.1
+ * Value Range: string, default=""
+ * Example:
+ * Note: Export all API output tensors to the specified directory.
+ * If tensor_md5_checksum_output_dir is "", this flag will not take effect.
+ */
+PHI_DEFINE_EXPORTED_string(
+    tensor_md5_checksum_output_dir,
+    "",
+    "Export all API output tensors to the specified directory.");
+
+/**
+ * Debug related FLAG
+ * Name: enable_unique_name
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True,the Tensor, C++ API and GradNode will has unique name,such as
+ * 'matmul2_out_float32_2x10' or 'matmul2_out_float32_2x10@Grad'
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_unique_name,
+    false,
+    "Enable unique name in Eager mode for Tensor, C++ API and GradNode.");
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_precision
+ * Since Version: 3.2.1
+ * Value Range: int32, default=3
+ * Example:
+ * Note: The precision of the tensor data used for computing the MD5 checksum
+ * (the number of decimal places after the decimal point).
+ *
+ */
+PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
+                          3,
+                          "The precision of tensor md5 checksum.");
 
 /**
  * Debug related FLAG
@@ -759,7 +821,7 @@ PHI_DEFINE_EXPORTED_int32(
     0,
     "The maximum number of inplace grad_add. When doing "
     "gradient accumulation, if the number of gradients need to that "
-    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add"
+    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add "
     "instead of sum. Default is 0.");
 
 /**
@@ -1360,12 +1422,14 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Doing memory benchmark. It will make deleting scope synchronized, "
     "and add some memory usage logs."
-    "Default cuda is asynchronous device, set to True will"
+    "Default cuda is asynchronous device, set to True will "
     "force op run in synchronous mode.");
 
 PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
                          false,
                          "enable eager to create nccl comm");
+
+PHI_DEFINE_EXPORTED_bool(tcp_store_using_libuv, true, "enable libuv tcp store");
 
 PHI_DEFINE_EXPORTED_int64(
     tcp_max_syn_backlog,
@@ -1789,6 +1853,15 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Remove some redundant information when printing the pir program");
 
+#ifdef _WIN32
+PHI_DEFINE_EXPORTED_string(
+    flagcx_dir,  // NOLINT
+    "",
+    "Specify path for loading libflagcx.so. For instance, "
+    "For instance, /usr/local/flagcx/lib. If default, "
+    "dlopen will search flagcx from LD_LIBRARY_PATH");
+#endif
+
 /**
  * ProcessGroupNCCL related FLAG
  * Name: enable_async_trace
@@ -2130,6 +2203,16 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Enable add lock when call AutoGrowthBestFitAllocator::ReleaseImpl");
 
+PHI_DEFINE_EXPORTED_int64(offload_retry_times, -1, "Offload retry times.");
+
+PHI_DEFINE_EXPORTED_bool(offload_inplace_tensor,
+                         true,
+                         "Whether to allow offload inplace tensor.");
+
+PHI_DEFINE_EXPORTED_bool(print_offload_info,
+                         false,
+                         "Whether to print the offload information.");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * FlashAttention related FLAG
@@ -2158,3 +2241,64 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(check_cuda_error,
                          false,
                          "Checking whether CUDA error occurred or not.");
+
+/**
+ * Stream related FLAG
+ * Name: FLAGS_use_default_stream
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use default stream.
+ */
+PHI_DEFINE_EXPORTED_bool(use_default_stream,
+                         false,
+                         "Whether use default stream.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_use_stride_compute_kernel
+ * Since Version: 3.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use Stride_Compute_Kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
+                         false,
+                         "Whether use Stride_Compute_Kernel.");
+
+/**
+ * Allocator related FLAG
+ * Name: FLAGS_deep_ep_comm_prealloc_in_mb
+ * Since Version: 3.2
+ * Value Range: int64, default=0
+ * Example:
+ * Note: Whether use prealloc for deepep communication.
+ */
+PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
+                          0,
+                          "Whether use prealloc for deepep communication.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_force_stride_compute_contig_out
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether force Stride_Compute_Kernel output contiguous.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    force_stride_compute_contig_out,
+    false,
+    "Whether force Stride_Compute_Kernel output contiguous.");
+
+/**
+ * Torch Compatible related FLAG
+ * Name: FLAGS_torch_compatible_kernel
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use torch compatible version kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(torch_compatible_kernel,
+                         false,
+                         "Whether use torch compatible version kernel.");

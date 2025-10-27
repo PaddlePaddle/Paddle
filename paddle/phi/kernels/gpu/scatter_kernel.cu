@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/scatter_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
@@ -29,6 +28,15 @@ void ScatterKernel(const Context &dev_ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
+  if (index.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t
   auto index_type = index.dtype();
@@ -61,5 +69,5 @@ PD_REGISTER_KERNEL(scatter,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

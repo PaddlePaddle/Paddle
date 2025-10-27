@@ -15,7 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_uint16_to_float,
+    get_device,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -29,13 +36,13 @@ class TestGaussianRandomOp(OpTest):
         self.python_api = paddle.tensor.random.gaussian
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn,
+            "use_onednn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -61,7 +68,8 @@ class TestGaussianRandomOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestGaussianRandomFP16Op(OpTest):
     def setUp(self):
@@ -69,14 +77,14 @@ class TestGaussianRandomFP16Op(OpTest):
         self.python_api = paddle.tensor.random.gaussian
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
             "dtype": paddle.float16,
-            "use_mkldnn": self.use_mkldnn,
+            "use_onednn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -111,7 +119,8 @@ def gaussian_wrapper(dtype_=np.uint16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
@@ -120,14 +129,14 @@ class TestGaussianRandomBF16Op(OpTest):
         self.__class__.op_type = self.op_type
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
             "dtype": paddle.bfloat16,
-            "use_mkldnn": self.use_mkldnn,
+            "use_onednn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -177,7 +186,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
             'mean': self.mean,
             'std': self.std,
             'seed': self.seed,
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -186,7 +195,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, 92]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -201,7 +210,7 @@ class TestGaussianRandomOp2_ShapeTensorList(
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, -1]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -213,7 +222,7 @@ class TestGaussianRandomOp3_ShapeTensorList(
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -225,7 +234,7 @@ class TestGaussianRandomOp4_ShapeTensorList(
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -237,20 +246,20 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
         '''Test gaussian_random op with specified value'''
         self.op_type = "gaussian_random"
         self.init_data()
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.python_api = paddle.tensor.random.gaussian
         self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
         self.attrs = {
             'mean': self.mean,
             'std': self.std,
             'seed': self.seed,
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 
     def init_data(self):
         self.shape = [123, 92]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -354,8 +363,8 @@ class TestGaussianRandomAPI(unittest.TestCase):
             out = paddle.tensor.random.gaussian([2, 3])
             self.assertEqual(out.dtype, paddle.float64)
 
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.set_device(get_device())
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
@@ -378,8 +387,8 @@ class TestStandardNormalDtype(unittest.TestCase):
             out = paddle.tensor.random.standard_normal([2, 3])
             self.assertEqual(out.dtype, paddle.float64)
 
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.set_device(get_device())
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
@@ -404,7 +413,7 @@ class TestStandardNormalDtype(unittest.TestCase):
 class TestComplexRandnAPI(unittest.TestCase):
     def test_dygraph(self):
         place = (
-            paddle.CUDAPlace(0)
+            get_device_place()
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
@@ -424,7 +433,7 @@ class TestComplexRandnAPI(unittest.TestCase):
 
     def test_static(self):
         place = (
-            paddle.CUDAPlace(0)
+            get_device_place()
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
@@ -469,7 +478,7 @@ class TestRandomValue(unittest.TestCase):
 
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(2021)
         expect = [
             -0.79037829,

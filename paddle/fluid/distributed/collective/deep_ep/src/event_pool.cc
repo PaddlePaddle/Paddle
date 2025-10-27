@@ -22,6 +22,16 @@ EventPool &EventPool::Instance() {
   return pool;
 }
 
+EventPool::EventPool() {
+  for (size_t i = 0; i < 1000; ++i) {
+    cudaEvent_t new_event;
+    CUDA_CHECK(cudaEventCreate(&new_event));
+
+    cudaEventRecord(new_event, 0);
+    incomplished_events_.push(new_event);
+  }
+}
+
 EventPool::~EventPool() {
   const auto &DestroyEvent = [](cudaEvent_t event) {
     cudaError_t e = cudaEventDestroy(event);

@@ -177,7 +177,9 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     assert (
                         op.type == "reduce"
                         and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
-                    ), "Grad in Sharding group should be reduce rather than allreduce"
+                    ), (
+                        "Grad in Sharding group should be reduce rather than allreduce"
+                    )
                     if var_name in vars_status:
                         _status = vars_status[var_name]
                     else:
@@ -632,9 +634,9 @@ def insert_reduce_ops(
             # 'FusedMergedGrad.cast_fp16._'
             grad_var = var.replace('FusedMergedGrad_', '')
         root_id = get_grad_device(grad_var, shard)
-        assert (
-            root_id >= 0
-        ), f"root id should be a positive int, but now root id is {root_id}"
+        assert root_id >= 0, (
+            f"root id should be a positive int, but now root id is {root_id}"
+        )
         if rank is not None and rank == root_id:
             grad_in_this_device.append(var)
         block._insert_op_without_sync(
@@ -737,9 +739,9 @@ def insert_broadcast_param_ops(
     param_in_this_device = []
     for param in params:
         root_id = shard.device(param)
-        assert (
-            root_id >= 0
-        ), f"root id should be a positive int, but now root id is {root_id}"
+        assert root_id >= 0, (
+            f"root id should be a positive int, but now root id is {root_id}"
+        )
         if rank is not None and rank == root_id:
             param_in_this_device.append(param)
         block._insert_op_without_sync(
@@ -824,9 +826,9 @@ def get_grad_device(grad_name, shard):
             base_name = re.sub(suffix, '', grad_name)
             break
 
-    assert (
-        base_name in shard.global_param2device
-    ), f"[{base_name}] should be a param variable."
+    assert base_name in shard.global_param2device, (
+        f"[{base_name}] should be a param variable."
+    )
 
     return shard.global_param2device[base_name]
 

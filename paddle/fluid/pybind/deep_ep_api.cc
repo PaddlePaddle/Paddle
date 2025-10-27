@@ -41,6 +41,10 @@ void BindDeepEPApi(pybind11::module *m) {
            &deep_ep::Config::get_rdma_buffer_size_hint);
   m->def("get_low_latency_rdma_size_hint",
          &deep_ep::get_low_latency_rdma_size_hint);
+  m->def("get_low_latency_rdma_size_hint_two_stage",
+         &deep_ep::get_low_latency_rdma_size_hint_two_stage);
+  m->def("get_low_latency_nvl_size_hint_two_stage",
+         &deep_ep::get_low_latency_nvl_size_hint_two_stage);
 
   pybind11::class_<deep_ep::EventHandle>(*m, "EventHandle")
       .def(pybind11::init<>())
@@ -52,6 +56,9 @@ void BindDeepEPApi(pybind11::module *m) {
          &deep_ep::GetEventHandleFromCalcStream);
   m->def("get_event_handle_from_comm_stream",
          &deep_ep::GetEventHandleFromCommStream);
+
+  m->def("get_event_handle_from_custom_stream",
+         &deep_ep::GetEventHandleFromCustomStream);
 
   pybind11::class_<deep_ep::Buffer>(*m, "Buffer")
       .def(pybind11::init<int, int, int64_t, int64_t, bool, int>())
@@ -92,8 +99,18 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("barrier_all", &deep_ep::Buffer::barrier_all)
       .def("clean_low_latency_buffer",
            &deep_ep::Buffer::clean_low_latency_buffer)
+      .def("clean_low_latency_two_stage_buffer",
+           &deep_ep::Buffer::clean_low_latency_two_stage_buffer)
       .def("low_latency_dispatch", &deep_ep::Buffer::low_latency_dispatch_api)
-      .def("low_latency_combine", &deep_ep::Buffer::low_latency_combine_api);
+      .def("low_latency_combine", &deep_ep::Buffer::low_latency_combine_api)
+      .def("low_latency_dispatch_two_stage",
+           &deep_ep::Buffer::low_latency_dispatch_two_stage_api)
+      .def("low_latency_combine_two_stage",
+           &deep_ep::Buffer::low_latency_combine_two_stage_api)
+      .def("m2n_low_latency_dispatch_two_stage",
+           &deep_ep::Buffer::m2n_low_latency_dispatch_two_stage_api)
+      .def("m2n_low_latency_combine_two_stage",
+           &deep_ep::Buffer::m2n_low_latency_combine_two_stage_api);
 #endif
 }
 

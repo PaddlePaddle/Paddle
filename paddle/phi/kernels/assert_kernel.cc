@@ -31,7 +31,7 @@ void AssertKernel(const Context& dev_ctx,
     return;
   }
 
-  paddle::funcs::TensorFormatter formatter;
+  phi::funcs::TensorFormatter formatter;
   formatter.SetSummarize(summarize);
 
   for (size_t i = 0; i < data.size(); ++i) {

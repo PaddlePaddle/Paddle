@@ -275,14 +275,24 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
                                           config);
     if (value_grad) {
       DenseTensor zero_tensor;
-      FullLikeKernel<T, phi::GPUContext>(
-          dev_ctx, out_grad, Scalar(T(0.0)), out_grad.dtype(), &zero_tensor);
+      phi::Full<T, phi::GPUContext>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out_grad.dims())),
+          T(0.0),
+          &zero_tensor);
       DenseTensor value_grad_tensor;
       value_grad_tensor.set_meta(out_grad.meta());
       WhereKernel<T, phi::GPUContext>(
           dev_ctx, mask, out_grad, zero_tensor, &value_grad_tensor);
-      SumKernel<T, phi::GPUContext>(
-          dev_ctx, value_grad_tensor, {1}, out_grad.dtype(), false, value_grad);
+      std::vector<int> v_dims(value_grad_tensor.dims().size());
+      std::iota(v_dims.begin(), v_dims.end(), 0);
+      IntArray v_axis(v_dims);
+      SumKernel<T, phi::GPUContext>(dev_ctx,
+                                    value_grad_tensor,
+                                    v_axis,
+                                    value_grad->dtype(),
+                                    false,
+                                    value_grad);
     }
 
   } else {
@@ -319,7 +329,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     return;
   }
   auto out_grad_dims = out_grad.dims();
-  auto x_grad_dims = x_grad->dims();
+  auto x_dims = x.dims();
   auto mask_dims = mask.dims();
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
@@ -327,10 +337,10 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   bool expand_x = false;
   bool expand_v = false;
   auto expanded_size =
-      common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
+      common::vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
   auto expanded_dims = common::make_ddim(expanded_size);
   bool flag = funcs::CanDispatchMaskFillShortcut(out_grad_dims, mask_dims);
-  if (expanded_dims != x_grad_dims) flag = false;
+  if (expanded_dims != x_dims) flag = false;
   if (v_grad && v_grad->dims() != expanded_dims && v_grad->numel() != 1)
     flag = false;
 
@@ -399,9 +409,9 @@ PD_REGISTER_KERNEL(masked_fill_grad,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }

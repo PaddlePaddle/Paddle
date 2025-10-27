@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/impl/cross_entropy2_kernel_impl.h"
 
 PD_REGISTER_KERNEL(cross_entropy,
@@ -21,7 +20,7 @@ PD_REGISTER_KERNEL(cross_entropy,
                    phi::CrossEntropyOpKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(cross_entropy2,
                    GPU,
@@ -29,4 +28,4 @@ PD_REGISTER_KERNEL(cross_entropy2,
                    phi::CrossEntropyOpKernel2,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

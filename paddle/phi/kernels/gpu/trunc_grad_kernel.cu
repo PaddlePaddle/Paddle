@@ -41,7 +41,8 @@ void TruncGradKernel(const Context& dev_ctx,
   int64_t numel = out_grad.numel();
 
   int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + threads - 1) / threads;
+  int64_t blocks_grid = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((numel + threads - 1) / threads, blocks_grid);
 
   TruncGrad<<<blocks, threads>>>(in_grad_data, numel);
 }
@@ -56,5 +57,5 @@ PD_REGISTER_KERNEL(trunc_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

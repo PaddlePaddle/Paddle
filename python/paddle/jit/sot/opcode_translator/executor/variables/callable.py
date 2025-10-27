@@ -62,11 +62,13 @@ from ....utils import (
     log_do,
     magic_method_builtin_dispatch,
     map_if,
+    need_capture_control_flow,
 )
 from ....utils.exceptions import (
     BreakGraphError,
     BreakGraphInlineCallBreak,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     DataDependencyOperationBreak,
     FallbackError,
     FallbackInlineCallBreak,
@@ -325,7 +327,11 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
-        except (SotCapturedException, InnerError) as e:
+        except (
+            SotCapturedException,
+            InnerError,
+            ConditionalFallbackError,
+        ) as e:
             raise e
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
@@ -415,6 +421,15 @@ class PaddleApiVariable(FunctionVariable):
             value
         ):
             return PaddleApiVariable(value, graph, tracker)
+        if callable(value) and need_capture_control_flow(value):
+            # NOTE(SigureMo): We assume that if a function use AST transform,
+            # it already be already unified in dynamic and static graph.
+            to_unified_fn = (
+                paddle.jit.dy2static.program_translator.convert_to_static
+            )
+            unified_fn = to_unified_fn(value)
+            paddle.jit.marker.unified(unified_fn, for_sot=True)
+            return PaddleApiVariable(unified_fn, graph, tracker)
         return None
 
     @property
@@ -1166,9 +1181,9 @@ class UserDefinedGeneratorFunctionVariable(FunctionVariable):
                 vframe, code_var, self.graph
             )
             gen = inline_gen_executor.inline_call()
-            assert isinstance(
-                gen, GeneratorVariable
-            ), f"GeneratorFunction calling result should be GeneratorVariable, but got {type(gen)}"
+            assert isinstance(gen, GeneratorVariable), (
+                f"GeneratorFunction calling result should be GeneratorVariable, but got {type(gen)}"
+            )
             gen.tracker = DummyTracker([self, *args, *kwargs.values()])
             return gen
         return GeneratorVariable(
@@ -1261,9 +1276,9 @@ class PaddleLayerClassVariable(ClassVariable):
         input_py_args = [var.get_py_value() for var in args]
         input_py_kwargs = {k: v.get_py_value() for k, v in kwargs.items()}
         new_layer = self.value(*input_py_args, **input_py_kwargs)
-        assert self.check_no_weight_and_buffers(
-            new_layer
-        ), "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
+        assert self.check_no_weight_and_buffers(new_layer), (
+            "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
+        )
         return VariableFactory.from_value(
             new_layer, self.graph, CreateLayerTracker(self, args, kwargs)
         )
@@ -1367,9 +1382,9 @@ class NamedTupleClassVariable(ClassVariable):
 
         parameters = fn_bind_inputs(self.value, self.graph, *args, **kwargs)
         fields = self.get_py_value()._fields
-        assert all(
-            field in parameters for field in fields
-        ), f"All fields of namedtuple should be in parameters, but got parameter {parameters} and fields {fields}"
+        assert all(field in parameters for field in fields), (
+            f"All fields of namedtuple should be in parameters, but got parameter {parameters} and fields {fields}"
+        )
 
         parameters_tuple = tuple(parameters[field] for field in fields)
         return NamedTupleVariable(

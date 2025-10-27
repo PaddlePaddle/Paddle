@@ -285,6 +285,10 @@ int get_tile_size_config_in_small_area(int dimension_lower) {
     return 1024;
   } else if (dimension_lower <= 2048) {
     return 2048;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "dimension_lower (%d) exceeds the supported range (<=2048).",
+        dimension_lower));
   }
 }
 
@@ -299,6 +303,10 @@ int get_tile_size_config_in_large_area(int dimension_lower) {
     return 8192;
   } else if (dimension_lower <= 16384) {
     return 16384;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "dimension_lower (%d) exceeds the supported range (<=16384).",
+        dimension_lower));
   }
 }
 

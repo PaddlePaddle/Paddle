@@ -239,8 +239,9 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
+  std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
+  std::vector<int64_t> strides_(strides.begin(), strides.end());
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
@@ -253,12 +254,12 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
     case 2: {
       funcs::MaxPool2dWithIndexFunctor<Context, T1, T2> pool2d_forward;
       pool2d_forward(
-          dev_ctx, x, kernel_size_, strides, paddings_, adaptive, out, mask);
+          dev_ctx, x, kernel_size_, strides_, paddings_, adaptive, out, mask);
     } break;
     case 3: {
       funcs::MaxPool3dWithIndexFunctor<Context, T1, T2> pool3d_forward;
       pool3d_forward(
-          dev_ctx, x, kernel_size_, strides, paddings_, adaptive, out, mask);
+          dev_ctx, x, kernel_size_, strides_, paddings_, adaptive, out, mask);
     } break;
     default: {
       PADDLE_THROW(
@@ -387,6 +388,16 @@ void Pool3dKernel(const Context& dev_ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  if (x.numel() == 0) {
+    if (pooling_type == "max" || (!adaptive && pooling_type == "avg")) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    return;
+  }
   PoolRawKernel<T, Context>(dev_ctx,
                             x,
                             kernel_size,
@@ -445,15 +456,16 @@ void FractionalMaxPoolRawKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> output_size_ = output_size;
+  std::vector<int64_t> output_size_(output_size.begin(), output_size.end());
+  std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
 
   switch (output_size_.size()) {
     case 2: {
       funcs::FractionalMaxPool2dFunctor<Context, T1, T2> pool2d_forward;
       pool2d_forward(dev_ctx,
                      x,
-                     output_size,
-                     kernel_size,
+                     output_size_,
+                     kernel_size_,
                      random_u,
                      return_mask,
                      out,
@@ -463,8 +475,8 @@ void FractionalMaxPoolRawKernel(const Context& dev_ctx,
       funcs::FractionalMaxPool3dFunctor<Context, T1, T2> pool3d_forward;
       pool3d_forward(dev_ctx,
                      x,
-                     output_size,
-                     kernel_size,
+                     output_size_,
+                     kernel_size_,
                      random_u,
                      return_mask,
                      out,

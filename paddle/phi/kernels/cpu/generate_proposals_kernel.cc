@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/generate_proposals_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 
@@ -314,6 +315,18 @@ void GenerateProposalsKernel(const Context& dev_ctx,
 
   rpn_roi_probs->Resize(common::make_ddim({scores.numel(), 1}));
   dev_ctx.template Alloc<T>(rpn_roi_probs);
+  if (scores.numel() == 0) {
+    rpn_rois->Resize(common::make_ddim({0, 4}));
+    if (rpn_rois_num != nullptr) {
+      rpn_rois_num->Resize(common::make_ddim({}));
+      phi::Full<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(rpn_rois_num->dims())),
+          0,
+          rpn_rois_num);
+    }
+    return;
+  }
 
   DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize(common::make_ddim({num, h_bbox, w_bbox, c_bbox}));

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
 
@@ -22,14 +23,12 @@ template <typename T, typename Context>
 void IndexElementwisePutGradKernel(const Context& dev_ctx,
                                    const DenseTensor& input,
                                    const std::vector<const DenseTensor*>& index,
-                                   const DenseTensor& value,
                                    const DenseTensor& out_grad,
                                    const std::vector<int64_t>& input_dims,
                                    const std::vector<int64_t>& input_strides,
                                    const std::vector<int64_t>& index_dims,
                                    const std::vector<int64_t>& index_strides,
                                    const int64_t slice_offset,
-                                   DenseTensor* x_grad,
-                                   DenseTensor* value_grad);
+                                   DenseTensor* x_grad);
 
 }  // namespace phi

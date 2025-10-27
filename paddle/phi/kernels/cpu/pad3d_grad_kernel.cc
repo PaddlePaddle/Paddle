@@ -364,7 +364,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value UNUSED,
+                     double pad_value UNUSED,
                      const std::string& data_format,
                      DenseTensor* x_grad) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -375,6 +375,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
   auto d_out_dims = d_out->dims();
   const T* d_out_data = d_out->data<T>();
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
+  if (x.numel() == 0) return;
   phi::funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
 
   const int pad_left = static_cast<int>(pads[0]);
@@ -482,5 +483,5 @@ PD_REGISTER_KERNEL(pad3d_grad,
                    phi::Pad3dGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

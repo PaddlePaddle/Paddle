@@ -67,10 +67,14 @@ class TestEmbeddingSubgraphSemiAutoParallel:
         # The threshold setting refers to Megatron-LM
         assert (
             np.max(np.abs(actual_out.numpy() - desired_out.numpy())) < 1.0e-12
-        ), f'embedding dp forward error. actual: {actual_out}, desired: {desired_out}'
+        ), (
+            f'embedding dp forward error. actual: {actual_out}, desired: {desired_out}'
+        )
         assert (
             np.max(np.abs(actual_grad.numpy() - desired_grad.numpy())) < 1.0e-12
-        ), f'embedding dp backward error. actual: {actual_out}, desired: {desired_out}'
+        ), (
+            f'embedding dp backward error. actual: {actual_out}, desired: {desired_out}'
+        )
 
     def test_mp(self):
         paddle.seed(self._seed)
@@ -109,10 +113,14 @@ class TestEmbeddingSubgraphSemiAutoParallel:
         # The threshold setting refers to Megatron-LM
         assert (
             np.max(np.abs(actual_out.numpy() - desired_out.numpy())) < 1.0e-12
-        ), f'embedding mp forward error. actual: {actual_out}, desired: {desired_out}'
+        ), (
+            f'embedding mp forward error. actual: {actual_out}, desired: {desired_out}'
+        )
         assert (
             np.max(np.abs(actual_grad.numpy() - desired_grad.numpy())) < 1.0e-12
-        ), f'embedding mp backward error. actual: {actual_out}, desired: {desired_out}'
+        ), (
+            f'embedding mp backward error. actual: {actual_out}, desired: {desired_out}'
+        )
 
     def run_test_case(self):
         if self._backend == "cpu":

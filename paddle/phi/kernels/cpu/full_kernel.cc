@@ -57,12 +57,12 @@ void FullLikeKernel(const Context& dev_ctx,
     out->Resize(x.dims());
     return;
   }
-  if (!std::is_same<T, phi::dtype::complex<float>>::value &&
-      !std::is_same<T, phi::dtype::complex<double>>::value) {
+  if (!std::is_same<T, phi::complex64>::value &&
+      !std::is_same<T, phi::complex128>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
+        typename std::conditional<std::is_same<T, phi::float16>::value,
                                   float,
                                   T>::type>::type;
 
@@ -113,7 +113,23 @@ void FullIntArrayKernel(const Context& dev_ctx,
     out_data[i] = static_cast<T>(val);
   }
 }
-
+#ifdef _WIN32
+template PADDLE_API void FullKernel<int, CPUContext>(const CPUContext&,
+                                                     const IntArray&,
+                                                     const Scalar&,
+                                                     DataType dtype UNUSED,
+                                                     DenseTensor*);
+template PADDLE_API void FullKernel<int64_t, CPUContext>(const CPUContext&,
+                                                         const IntArray&,
+                                                         const Scalar&,
+                                                         DataType dtype UNUSED,
+                                                         DenseTensor*);
+template PADDLE_API void FullKernel<float, CPUContext>(const CPUContext&,
+                                                       const IntArray&,
+                                                       const Scalar&,
+                                                       DataType dtype UNUSED,
+                                                       DenseTensor*);
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full,
@@ -128,12 +144,12 @@ PD_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(full_like,
                    CPU,
@@ -142,14 +158,15 @@ PD_REGISTER_KERNEL(full_like,
                    float,
                    double,
                    uint8_t,
+                   int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -168,9 +185,9 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }

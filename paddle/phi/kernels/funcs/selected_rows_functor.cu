@@ -18,8 +18,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
@@ -27,7 +25,7 @@ namespace phi {
 namespace funcs {
 template <typename T>
 struct SelectedRowsAdd<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   const phi::SelectedRows& input2,
                   phi::SelectedRows* output) {
@@ -87,7 +85,7 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
-    auto out_place = context.GetPlace();
+    auto out_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
@@ -98,7 +96,7 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
                        in1_place,
                        in1_data,
                        in1_value.numel() * sizeof(T),
-                       context.stream());
+                       dev_ctx.stream());
 
     auto* in2_data = in2_value.data<T>();
     memory_utils::Copy(out_place,
@@ -106,11 +104,11 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
                        in2_place,
                        in2_data,
                        in2_value.numel() * sizeof(T),
-                       context.stream());
+                       dev_ctx.stream());
   }
 };
 
-template struct SelectedRowsAdd<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAdd<phi::GPUContext, float>;
 template struct SelectedRowsAdd<phi::GPUContext, double>;
 
 namespace {
@@ -125,7 +123,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
   selected_rows += ty * row_numel;
   tensor_out += rows[ty] * row_numel;
 
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we can not use
     // tensor_out[index] += selected_rows[index]; Instead, we have to use
     // AtomicAdd to avoid concurrent write error.
@@ -136,7 +134,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
 
 template <typename T>
 struct SelectedRowsAddTensor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   const phi::DenseTensor& input2,
                   phi::DenseTensor* output) {
@@ -186,33 +184,33 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     auto* out_data = output->data<T>();
 
     phi::funcs::SetConstant<phi::GPUContext, T> functor;
-    functor(context, output, static_cast<T>(0));
+    functor(dev_ctx, output, static_cast<T>(0));
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid(in1_rows.size(), 1);
     phi::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddTensorKernel<T, block_size>
-        <<<grid, threads, 0, context.stream()>>>(
+        <<<grid, threads, 0, dev_ctx.stream()>>>(
             in1_data,
-            mixv_in1_rows.CUDAData(context.GetPlace()),
+            mixv_in1_rows.CUDAData(dev_ctx.GetPlace()),
             out_data,
             in1_row_numel);
 
     auto out_eigen = EigenVector<T>::Flatten(*output);
     auto in2_eigen = EigenVector<T>::Flatten(input2);
-    out_eigen.device(*context.eigen_device()) = out_eigen + in2_eigen;
+    out_eigen.device(*dev_ctx.eigen_device()) = out_eigen + in2_eigen;
   }
 };
 
-template struct SelectedRowsAddTensor<phi::GPUContext, float>;
-template struct SelectedRowsAddTensor<phi::GPUContext, double>;
-template struct SelectedRowsAdd<phi::GPUContext, phi::dtype::float16>;
-template struct SelectedRowsAddTensor<phi::GPUContext, phi::dtype::float16>;
+template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, double>;
+template struct SelectedRowsAdd<phi::GPUContext, phi::float16>;
+template struct SelectedRowsAddTensor<phi::GPUContext, phi::float16>;
 
 template <typename T>
 struct SelectedRowsAddTo<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   const int64_t input2_offset,
                   phi::SelectedRows* input2) {
@@ -256,15 +254,15 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
                        in1_place,
                        in1_data,
                        in1_value.numel() * sizeof(T),
-                       context.stream());
+                       dev_ctx.stream());
   }
 };
 
-template struct SelectedRowsAddTo<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddTo<phi::GPUContext, float>;
 template struct SelectedRowsAddTo<phi::GPUContext, double>;
 template struct SelectedRowsAddTo<phi::GPUContext, int>;
 template struct SelectedRowsAddTo<phi::GPUContext, int64_t>;
-template struct SelectedRowsAddTo<phi::GPUContext, phi::dtype::float16>;
+template struct SelectedRowsAddTo<phi::GPUContext, phi::float16>;
 
 namespace {
 template <typename T, int block_size>
@@ -278,7 +276,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
   selected_rows += ty * row_numel;
   tensor_out += rows[ty] * row_numel;
 
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
     phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
@@ -288,7 +286,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
 
 template <typename T>
 struct SelectedRowsAddToTensor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   phi::DenseTensor* input2) {
     auto in1_height = input1.height();
@@ -322,23 +320,21 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
     dim3 grid(in1_rows.size(), 1);
     phi::MixVector<int64_t> mixv_in1_rows(&in1_rows);
     SelectedRowsAddToTensorKernel<T, block_size>
-        <<<grid, threads, 0, context.stream()>>>(
+        <<<grid, threads, 0, dev_ctx.stream()>>>(
             in1_data,
-            mixv_in1_rows.CUDAData(context.GetPlace()),
+            mixv_in1_rows.CUDAData(dev_ctx.GetPlace()),
             in2_data,
             in1_row_numel);
   }
 };
 
-template struct SelectedRowsAddToTensor<phi::GPUContext, float>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, double>;
+template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, phi::dtype::float16>;
-template struct SelectedRowsAddToTensor<phi::GPUContext,
-                                        phi::dtype::complex<float>>;
-template struct SelectedRowsAddToTensor<phi::GPUContext,
-                                        phi::dtype::complex<double>>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, phi::float16>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, phi::complex64>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, phi::complex128>;
 
 namespace scatter {
 
@@ -365,22 +361,22 @@ __global__ void MergeAddKernel(const T* input,
 
   input += ty * row_numel;
   out += out_idx * row_numel;
-  for (int index = tid; index < row_numel; index += block_size) {
+  for (int64_t index = tid; index < row_numel; index += block_size) {
     phi::CudaAtomicAdd(out + index, input[index]);
   }
 }
 
 template <typename DeviceContext, typename T>
 struct MergeAddImpl {
-  phi::SelectedRows operator()(const DeviceContext& context,
+  phi::SelectedRows operator()(const DeviceContext& dev_ctx,
                                const phi::SelectedRows& input,
                                const bool sorted_result = false) {
     phi::SelectedRows out;
-    (*this)(context, input, &out);
+    (*this)(dev_ctx, input, &out);
     return out;
   }
 
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
@@ -401,10 +397,10 @@ struct MergeAddImpl {
     DenseTensor* out_tensor = out.mutable_value();
     out_tensor->Resize(common::make_ddim(
         {static_cast<int64_t>(merge_rows.size()), input_width}));
-    context.template Alloc<T>(out_tensor);
+    dev_ctx.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
-    constant_functor(context, out.mutable_value(), static_cast<T>(0));
+    constant_functor(dev_ctx, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
     auto* input_data = input.value().data<T>();
@@ -415,17 +411,17 @@ struct MergeAddImpl {
 
     phi::MixVector<int64_t> mix_vector_input(&input_rows);
     phi::MixVector<int64_t> mix_vector_out(out.mutable_rows());
-    MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
+    MergeAddKernel<T, 256><<<grid1, threads, 0, dev_ctx.stream()>>>(
         input_data,
-        mix_vector_input.CUDAData(context.GetPlace()),
+        mix_vector_input.CUDAData(dev_ctx.GetPlace()),
         out_data,
-        mix_vector_out.CUDAMutableData(context.GetPlace()),
+        mix_vector_out.CUDAMutableData(dev_ctx.GetPlace()),
         out.rows().size(),
         input_width);
     mix_vector_out.CopyToCPU();
   }
 
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
@@ -473,10 +469,10 @@ struct MergeAddImpl {
     DenseTensor* out_tensor = out.mutable_value();
     out_tensor->Resize(common::make_ddim(
         {static_cast<int64_t>(merge_rows.size()), input_width}));
-    context.template Alloc<T>(out_tensor);
+    dev_ctx.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
-    constant_functor(context, out.mutable_value(), static_cast<T>(0));
+    constant_functor(dev_ctx, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
 
@@ -493,11 +489,11 @@ struct MergeAddImpl {
 
       phi::MixVector<int64_t> mix_vector_input(&input_rows);
       phi::MixVector<int64_t> mix_vector_out(out.mutable_rows());
-      MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
+      MergeAddKernel<T, 256><<<grid1, threads, 0, dev_ctx.stream()>>>(
           input_data,
-          mix_vector_input.CUDAData(context.GetPlace()),
+          mix_vector_input.CUDAData(dev_ctx.GetPlace()),
           out_data,
-          mix_vector_out.CUDAMutableData(context.GetPlace()),
+          mix_vector_out.CUDAMutableData(dev_ctx.GetPlace()),
           out.rows().size(),
           input_width);
       mix_vector_out.CopyToCPU();
@@ -509,39 +505,39 @@ template <typename T>
 struct MergeAdd<phi::GPUContext, T> {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
-  phi::SelectedRows operator()(const phi::GPUContext& context,
+  phi::SelectedRows operator()(const phi::GPUContext& dev_ctx,
                                const phi::SelectedRows& input,
                                const bool sorted_result) {
-    return MergeAddImpl<phi::GPUContext, T>()(context, input, sorted_result);
+    return MergeAddImpl<phi::GPUContext, T>()(dev_ctx, input, sorted_result);
   }
 
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result) {
-    MergeAddImpl<phi::GPUContext, T>()(context, input, output, sorted_result);
+    MergeAddImpl<phi::GPUContext, T>()(dev_ctx, input, output, sorted_result);
   }
 
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output,
                   const bool sorted_result) {
-    MergeAddImpl<phi::GPUContext, T>()(context, inputs, output, sorted_result);
+    MergeAddImpl<phi::GPUContext, T>()(dev_ctx, inputs, output, sorted_result);
   }
 };
 
 #define TEMPLATE_SPECIALIZED_FOR_MERGEADD(dtype)        \
   template struct MergeAddImpl<phi::GPUContext, dtype>; \
-  template struct MergeAdd<phi::GPUContext, dtype>;
+  template struct PADDLE_API MergeAdd<phi::GPUContext, dtype>;
 
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(float)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(double)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(int)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(int64_t)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::float16)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::bfloat16)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::complex<float>)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::complex<double>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::float16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::bfloat16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::complex64)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::complex128)
 
 template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,
@@ -557,37 +553,37 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
   // FIXME(typhoonzero): use macro fix the below messy code.
   switch (op) {
     case ScatterOps::ASSIGN:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] = selected_rows[index];
       }
       break;
     case ScatterOps::ADD:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] += selected_rows[index];
       }
       break;
     case ScatterOps::SUB:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] -= selected_rows[index];
       }
       break;
     case ScatterOps::SUBBY:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] = selected_rows[index] - tensor_out[index];
       }
       break;
     case ScatterOps::MUL:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] *= selected_rows[index];
       }
       break;
     case ScatterOps::DIV:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] /= selected_rows[index];
       }
       break;
     case ScatterOps::DIVBY:
-      for (int index = tid; index < row_numel; index += block_size) {
+      for (int64_t index = tid; index < row_numel; index += block_size) {
         tensor_out[index] = selected_rows[index] / tensor_out[index];
       }
       break;
@@ -596,14 +592,14 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
 
 template <typename T>
 struct UpdateToTensor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
                   DenseTensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.
     MergeAdd<phi::GPUContext, T> merge_func;
-    auto merged_in1 = merge_func(context, input1);
+    auto merged_in1 = merge_func(dev_ctx, input1);
 
     auto in1_height = merged_in1.height();
     auto in2_dims = input2->dims();
@@ -635,7 +631,7 @@ struct UpdateToTensor<phi::GPUContext, T> {
     dim3 threads(phi::PADDLE_CUDA_NUM_THREADS, 1);
     dim3 grid(in1_rows.size(), 1);
     UpdateToTensorKernel<T, phi::PADDLE_CUDA_NUM_THREADS>
-        <<<grid, threads, 0, context.stream()>>>(
+        <<<grid, threads, 0, dev_ctx.stream()>>>(
             in1_data, in1_rows.cuda_data(), op, in2_data, in1_row_numel);
   }
 };

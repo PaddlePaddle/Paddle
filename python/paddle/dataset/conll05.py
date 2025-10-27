@@ -190,7 +190,17 @@ def reader_creator(
             pred_idx = [predicate_dict.get(predicate)] * sen_len
             label_idx = [label_dict.get(w) for w in labels]
 
-            yield word_idx, ctx_n2_idx, ctx_n1_idx, ctx_0_idx, ctx_p1_idx, ctx_p2_idx, pred_idx, mark, label_idx
+            yield (
+                word_idx,
+                ctx_n2_idx,
+                ctx_n1_idx,
+                ctx_0_idx,
+                ctx_p1_idx,
+                ctx_p2_idx,
+                pred_idx,
+                mark,
+                label_idx,
+            )
 
     return reader
 

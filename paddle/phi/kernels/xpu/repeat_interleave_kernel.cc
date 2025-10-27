@@ -24,6 +24,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             int repeats,
                             int dim,
+                            int64_t output_size,
                             DenseTensor* out) {
   PADDLE_ENFORCE_GT(repeats,
                     0,
@@ -70,6 +71,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                                            const DenseTensor& x,
                                            const DenseTensor& repeats_tensor,
                                            int dim,
+                                           int64_t output_size,
                                            DenseTensor* out) {
   auto input_dim = x.dims();
   if (dim < 0) {
@@ -99,10 +101,52 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           DataTypeToString(phi::DataType::INT64)));
   auto xshape = common::vectorize(x.dims());
   auto out_shape = xshape;
+  if (x.numel() == 0) {
+    // infer out shape
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+          dev_ctx, repeats_tensor, &index);
+
+    } else if (index_type == phi::DataType::INT64) {
+      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+          dev_ctx, repeats_tensor, &index);
+    }
+    auto output_dim = common::vectorize(x.dims());
+    if (output_size > 0) {
+      PADDLE_ENFORCE_EQ(
+          output_size,
+          index.dims()[0],
+          common::errors::InvalidArgument(
+              "When output_size is provided, it should equal to "
+              "sum of repeats tensor. But received output_size = %d, "
+              "sum of repeats = %d.",
+              output_size,
+              index.dims()[0]));
+      output_dim[dim] = output_size;
+    } else {
+      output_dim[dim] = index.dims()[0];
+    }
+    out->Resize(common::make_ddim(output_dim));
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   if (index_type == phi::DataType::INT64) {
     phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
-    out_shape[dim] = index.dims()[0];
+    if (output_size > 0) {
+      PADDLE_ENFORCE_EQ(
+          output_size,
+          index.dims()[0],
+          common::errors::InvalidArgument(
+              "When output_size is provided, it should equal to "
+              "sum of repeats tensor. But received output_size = %d, "
+              "sum of repeats = %d.",
+              output_size,
+              index.dims()[0]));
+      out_shape[dim] = output_size;
+    } else {
+      out_shape[dim] = index.dims()[0];
+    }
     out->Resize(common::make_ddim(out_shape));
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int64_t>(
@@ -117,7 +161,20 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   } else {
     phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
-    out_shape[dim] = index.dims()[0];
+    if (output_size > 0) {
+      PADDLE_ENFORCE_EQ(
+          output_size,
+          index.dims()[0],
+          common::errors::InvalidArgument(
+              "When output_size is provided, it should equal to "
+              "sum of repeats tensor. But received output_size = %d, "
+              "sum of repeats = %d.",
+              output_size,
+              index.dims()[0]));
+      out_shape[dim] = output_size;
+    } else {
+      out_shape[dim] = index.dims()[0];
+    }
     out->Resize(common::make_ddim(out_shape));
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int>(
@@ -140,8 +197,8 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    XPU,
@@ -150,5 +207,5 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

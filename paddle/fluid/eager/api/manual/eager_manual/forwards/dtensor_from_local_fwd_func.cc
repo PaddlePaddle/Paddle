@@ -25,7 +25,8 @@ COMMON_DECLARE_bool(check_cuda_error);
 paddle::Tensor dtensor_from_local_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::ProcessMesh& process_mesh,
-    const phi::distributed::Placements& placements) {
+    const phi::distributed::Placements& placements,
+    paddle::optional<paddle::Tensor*> predefined_out) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_from_local dygraph";
@@ -96,7 +97,14 @@ paddle::Tensor dtensor_from_local_ad_function(
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // SetGradOutMeta & SetEdges
-    grad_node->SetGradOutMeta(input, 0);
+    if (input_autograd_meta) {
+      grad_node->SetGradOutMeta(input, 0);
+      input_autograd_meta->SetGradNode(grad_node);
+      input_autograd_meta->SetSingleOutRankWithSlot(0, 0);
+    } else {
+      grad_node->SetGradOutMeta(input, 0);
+    }
+
     // SetOutRank & SetHistory & SetGradInMeta
     if (out_autograd_meta) {
       egr::EagerUtils::SetOutRankWithSlot(out_autograd_meta, 0);

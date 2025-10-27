@@ -72,9 +72,9 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
 
         if is_enable_auto_rand_ctrl() and not op_dist_attr.is_recompute:
-            assert (
-                op_dist_attr is not None
-            ), f"forward op [{src_op}] don't have dist attribute !"
+            assert op_dist_attr is not None, (
+                f"forward op [{src_op}] don't have dist attribute !"
+            )
 
             assert 'seed_tensor' in kwargs, "input [{}] is not given".format(
                 'seed_tensor'

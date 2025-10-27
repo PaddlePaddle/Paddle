@@ -24,16 +24,29 @@
 #ifndef SETUP_LAUNCH_CONFIG
 #define SETUP_LAUNCH_CONFIG(num_sms, num_threads, stream)                     \
   cudaLaunchConfig_t cfg = {(num_sms), (num_threads), 0, stream, nullptr, 0}; \
-  cudaLaunchAttribute attr[1];                                                \
+  cudaLaunchAttribute attr[2];                                                \
   attr[0].id = cudaLaunchAttributeCooperative;                                \
   attr[0].val.cooperative = 1;                                                \
+  attr[1].id = cudaLaunchAttributeClusterDimension;                           \
+  attr[1].val.clusterDim.x = (num_sms % 2 == 0 ? 2 : 1);                      \
+  attr[1].val.clusterDim.y = 1;                                               \
+  attr[1].val.clusterDim.z = 1;                                               \
   cfg.attrs = attr;                                                           \
-  cfg.numAttrs = 1
+  cfg.numAttrs = 2
 #endif
 
 #ifndef LAUNCH_KERNEL
 #define LAUNCH_KERNEL(config, kernel, ...) \
   CUDA_CHECK(cudaLaunchKernelEx(config, kernel, ##__VA_ARGS__))
+#endif
+
+#ifndef SET_SHARED_MEMORY_FOR_TMA
+#define SET_SHARED_MEMORY_FOR_TMA(kernel)                               \
+  EP_HOST_ASSERT(                                                       \
+      cudaFuncSetAttribute(kernel,                                      \
+                           cudaFuncAttributeMaxDynamicSharedMemorySize, \
+                           smem_size) == cudaSuccess);                  \
+  cfg.dynamicSmemBytes = smem_size;
 #endif
 
 #define SWITCH_RANKS(case_macro)                     \
@@ -114,3 +127,91 @@
       EP_HOST_ASSERT(false && "Unsupported hidden"); \
   }                                                  \
   while (false)
+
+#define DISPATCH_HIDDEN_SIZE(hidden, kHidden, ...) \
+  if (hidden == 1536) {                            \
+    constexpr size_t kHidden = 1536;               \
+    __VA_ARGS__                                    \
+  } else if (hidden == 4096) {                     \
+    constexpr size_t kHidden = 4096;               \
+    __VA_ARGS__                                    \
+  } else if (hidden == 7168) {                     \
+    constexpr size_t kHidden = 7168;               \
+    __VA_ARGS__                                    \
+  } else if (hidden == 8192) {                     \
+    constexpr size_t kHidden = 8192;               \
+    __VA_ARGS__                                    \
+  } else {                                         \
+    EP_HOST_ASSERT(false && "Unsupported hidden"); \
+  }
+
+#define DISPATCH_NUM_TOPK(num_topk, kTopk, ...)      \
+  if (num_topk == 8) {                               \
+    constexpr int kTopk = 8;                         \
+    __VA_ARGS__                                      \
+  } else {                                           \
+    EP_HOST_ASSERT(false && "Unsupported num_topk"); \
+  }
+
+#define DISPATCH_RDMA_RANKS(num_rdma_ranks, kNumRdmaRanks, ...) \
+  if (num_rdma_ranks == 1) {                                    \
+    constexpr int kNumRdmaRanks = 1;                            \
+    __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 2) {                             \
+    constexpr int kNumRdmaRanks = 2;                            \
+    __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 3) {                             \
+    constexpr int kNumRdmaRanks = 3;                            \
+    __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 4) {                             \
+    constexpr int kNumRdmaRanks = 4;                            \
+    __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 8) {                             \
+    constexpr int kNumRdmaRanks = 8;                            \
+    __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 16) {                            \
+    constexpr int kNumRdmaRanks = 16;                           \
+    __VA_ARGS__                                                 \
+  } else {                                                      \
+    EP_HOST_ASSERT(false && "Unsupported num_rdma_ranks");      \
+  }
+
+#define DISPATCH_NUM_EXPERTS(num_experts, kNumExperts, ...) \
+  if (num_experts == 64) {                                  \
+    constexpr int kNumExperts = 64;                         \
+    __VA_ARGS__                                             \
+  } else if (num_experts == 72) {                           \
+    constexpr int kNumExperts = 72;                         \
+    __VA_ARGS__                                             \
+  } else if (num_experts == 128) {                          \
+    constexpr int kNumExperts = 128;                        \
+    __VA_ARGS__                                             \
+  } else if (num_experts == 192) {                          \
+    constexpr int kNumExperts = 192;                        \
+    __VA_ARGS__                                             \
+  } else if (num_experts == 384) {                          \
+    constexpr int kNumExperts = 384;                        \
+    __VA_ARGS__                                             \
+  } else {                                                  \
+    EP_HOST_ASSERT(false && "Unsupported num_experts");     \
+  }
+
+#define DISPATCH_NUM_WARP_GROUPS(num_warp_groups, kNumWarpGroups, ...) \
+  if (num_warp_groups == 1) {                                          \
+    constexpr int kNumWarpGroups = 1;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 2) {                                   \
+    constexpr int kNumWarpGroups = 2;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 3) {                                   \
+    constexpr int kNumWarpGroups = 3;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 4) {                                   \
+    constexpr int kNumWarpGroups = 4;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 8) {                                   \
+    constexpr int kNumWarpGroups = 8;                                  \
+    __VA_ARGS__                                                        \
+  } else {                                                             \
+    EP_HOST_ASSERT(false && "Unsupported num_warp_groups");            \
+  }

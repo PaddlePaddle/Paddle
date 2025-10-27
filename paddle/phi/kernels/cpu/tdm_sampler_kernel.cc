@@ -218,7 +218,8 @@ void TDMSamplerInner(const Context &dev_ctx,
             layer_data[layer_offset[layer_idx] + sample_res],
             node_id_max,
             common::errors::InvalidArgument(
-                "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
+                "Negative node id of OP(fluid.layers.tdm_sampler) at layer "
+                "%ld, "
                 "expected >= %ld and <= %ld, but got %ld. Please check input "
                 "tdm tree structure and tdm travel info.",
                 layer_idx,

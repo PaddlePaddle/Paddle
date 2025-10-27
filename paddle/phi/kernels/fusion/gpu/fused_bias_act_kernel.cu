@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_bias_act_kernel.h"
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
@@ -496,17 +497,17 @@ void DispatchWithDtype(const Context &dev_ctx,
                            out);
   } else {
     if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      DispatchComputeImpl<T, phi::dtype::float8_e4m3fn>(dev_ctx,
-                                                        x,
-                                                        bias_p,
-                                                        act_method,
-                                                        rows,
-                                                        cols,
-                                                        quant_scale,
-                                                        quant_round_type,
-                                                        quant_max_bound,
-                                                        quant_min_bound,
-                                                        out);
+      DispatchComputeImpl<T, phi::float8_e4m3fn>(dev_ctx,
+                                                 x,
+                                                 bias_p,
+                                                 act_method,
+                                                 rows,
+                                                 cols,
+                                                 quant_scale,
+                                                 quant_round_type,
+                                                 quant_max_bound,
+                                                 quant_min_bound,
+                                                 out);
     } else {
       DispatchComputeImpl<T>(dev_ctx,
                              x,
@@ -556,11 +557,25 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
+  if (out && out->numel() == 0) {
+    if (quant_scale > 0) {
+      dev_ctx.template Alloc<int8_t>(out);
+    } else if (compute_dtype == "fp16") {
+      dev_ctx.template Alloc<phi::float16>(out);
+    } else if (compute_dtype == "bf16") {
+      dev_ctx.template Alloc<phi::bfloat16>(out);
+    } else if (compute_dtype == "fp32") {
+      dev_ctx.template Alloc<float>(out);
+    } else {
+      dev_ctx.template Alloc<T>(out);
+    }
+    return;
+  }
   int64_t cols = x.dims()[x.dims().size() - 1];
   int64_t rows = x.numel() / cols;
   if (x.dtype() == phi::DataType::INT32) {
     if (compute_dtype == "bf16") {
-      DispatchWithDtype<phi::dtype::bfloat16, Context>(
+      DispatchWithDtype<phi::bfloat16, Context>(
           dev_ctx,
           x,
           bias,
@@ -575,9 +590,9 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_max_bound,
           quant_min_bound,
           out,
-          typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
+          typename DispatchDtypeTrait<phi::bfloat16>::FuncVersion{});
     } else if (compute_dtype == "fp16") {
-      DispatchWithDtype<phi::dtype::float16, Context>(
+      DispatchWithDtype<phi::float16, Context>(
           dev_ctx,
           x,
           bias,
@@ -592,7 +607,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_max_bound,
           quant_min_bound,
           out,
-          typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
+          typename DispatchDtypeTrait<phi::float16>::FuncVersion{});
     } else if (compute_dtype == "fp32") {
       DispatchWithDtype<float, Context>(
           dev_ctx,
@@ -645,6 +660,6 @@ PD_REGISTER_KERNEL(fused_bias_act,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasActKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t) {}

@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import os
 import pickle
 import tempfile
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -250,8 +249,8 @@ class TestSaveLoadBase(unittest.TestCase):
     def set_place(self):
         return (
             base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            if not (core.is_compiled_with_cuda() or is_custom_device())
+            else get_device_place()
         )
 
     def test_ptb_rnn_cpu_float32(self):
@@ -395,8 +394,8 @@ class TestSaveLoadPartial(unittest.TestCase):
     def set_place(self):
         return (
             base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            if not (core.is_compiled_with_cuda() or is_custom_device())
+            else get_device_place()
         )
 
     def test_ptb_rnn_cpu_float32(self):
@@ -552,8 +551,8 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
     def set_place(self):
         return (
             base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            if not (core.is_compiled_with_cuda() or is_custom_device())
+            else get_device_place()
         )
 
     def test_ptb_rnn_cpu_float32(self):
@@ -696,8 +695,8 @@ class TestProgramStatePartial(unittest.TestCase):
     def set_place(self):
         return (
             base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            if not (core.is_compiled_with_cuda() or is_custom_device())
+            else get_device_place()
         )
 
     def test_ptb_rnn_cpu_float32(self):
@@ -959,8 +958,8 @@ class TestVariableInit(unittest.TestCase):
     def set_place(self):
         return (
             base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            if not (core.is_compiled_with_cuda() or is_custom_device())
+            else get_device_place()
         )
 
     def test_variable_init(self):
@@ -988,7 +987,7 @@ class TestVariableInit(unittest.TestCase):
             else:
                 p = paddle.base.core.Place()
                 p.set_place(t._place())
-                place = paddle.base.CUDAPlace(p.gpu_device_id())
+                place = get_device_place(p.gpu_device_id())
 
             t.set(ndarray, place)
 
@@ -1017,9 +1016,9 @@ class TestVariableInit(unittest.TestCase):
             load_dict = pickle.load(f)
 
         for v in parameter_list:
-            assert (
-                v.name in load_dict
-            ), f"Can not find [{v.name}] in model file [{parameter_file_name}]"
+            assert v.name in load_dict, (
+                f"Can not find [{v.name}] in model file [{parameter_file_name}]"
+            )
             new_v = new_scope.find_var(v.name)
             set_var(new_v, load_dict[v.name])
 
@@ -1046,9 +1045,9 @@ class TestVariableInit(unittest.TestCase):
             load_dict = pickle.load(f)
 
         for v in opt_list:
-            assert (
-                v.name in load_dict
-            ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
+            assert v.name in load_dict, (
+                f"Can not find [{v.name}] in model file [{opt_file_name}]"
+            )
 
             new_v = new_scope.find_var(v.name)
             set_var(new_v, load_dict[v.name])
@@ -1072,7 +1071,6 @@ class TestVariableInit(unittest.TestCase):
 
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
-
     def test_pickle_protocol(self):
         # enable static graph mode
         paddle.enable_static()

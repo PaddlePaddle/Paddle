@@ -723,8 +723,12 @@ void BrpcPsClient::FinalizeWorker() {
   Flush();
   VLOG(0) << "BrpcPsClient::FinalizeWorker begin join thread";
   _running = false;
-  _async_push_dense_thread.join();
-  _async_push_sparse_thread.join();
+  if (_async_push_sparse_thread.joinable()) {
+    _async_push_sparse_thread.join();
+  }
+  if (_async_push_dense_thread.joinable()) {
+    _async_push_dense_thread.join();
+  }
   // _print_thread.join();
   VLOG(0) << "BrpcPsClient::FinalizeWorker begin join server";
   _server.Stop(1000);

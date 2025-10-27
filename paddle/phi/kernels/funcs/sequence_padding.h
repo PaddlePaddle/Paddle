@@ -96,7 +96,7 @@ inline static void CheckDims(const phi::DDim& seq_tensor_dims,
  *    seq     (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
  *    padding (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
  *
- * \param context       device context of this functor.
+ * \param dev_ctx       device context of this functor.
  * \param seq           phi::DenseTensor which is stored in sequence format, the
  * shape is [total_sequence_length, sequence_width] where total_sequence_length
  * is the sum of all sequences' length. \param padding       Tensor which is
@@ -108,7 +108,7 @@ inline static void CheckDims(const phi::DDim& seq_tensor_dims,
 template <typename DeviceContext, typename T>
 class PaddingDenseTensorFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& seq_tensor,
                   phi::DenseTensor* pad_tensor,
                   const phi::DenseTensor& pad_value,
@@ -121,7 +121,7 @@ class PaddingDenseTensorFunctor {
 template <typename DeviceContext, typename T>
 class UnpaddingDenseTensorFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
                   int pad_seq_len = -1,

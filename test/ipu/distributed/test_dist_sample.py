@@ -31,6 +31,7 @@ poprun \
 --print-topology=yes \
 python3.8 test/ipu/distributed/test_dist_sample.py
 '''
+
 '''
 Multi hosts:
 python3.8 -m paddle.distributed.launch \

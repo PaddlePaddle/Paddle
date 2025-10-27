@@ -92,7 +92,7 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
                                            const MT rescale_grad,
                                            const int tid,
                                            const int grid_stride,
-                                           const int numel,
+                                           const int64_t numel,
                                            MT* master_param_out = nullptr) {
   using VecType = phi::AlignedVector<T, VecSize>;
   using VecMType = phi::AlignedVector<MT, VecSize>;
@@ -133,7 +133,7 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
     }
   }
 
-  for (int i = tid + tail_offset; i < numel; i += grid_stride) {
+  for (int64_t i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad_val = static_cast<MT>(grad[i]) * rescale_grad;
     MT param_val = param[i];
     MT velocity_tmp =
@@ -514,7 +514,7 @@ void LarsMomentumKernel(
         op_num,
         LARS_MAX_MERGED_OPS,
         errors::InvalidArgument(
-            "The maximum number of merged-ops supported is (%d), but"
+            "The maximum number of merged-ops supported is (%d), but "
             "lars op required for training this model is (%d)\n",
             LARS_MAX_MERGED_OPS,
             op_num));
@@ -678,7 +678,7 @@ PD_REGISTER_KERNEL(lars_momentum,
                    phi::LarsMomentumKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

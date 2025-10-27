@@ -37,7 +37,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& indices,
                         const DenseTensor& d_out,
-                        int k,
+                        int64_t k,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
@@ -83,5 +83,5 @@ PD_REGISTER_KERNEL(kthvalue_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

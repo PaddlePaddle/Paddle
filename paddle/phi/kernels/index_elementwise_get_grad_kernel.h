@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexElementwiseGetGradKernel(const Context& ctx,
+void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
                                    const std::vector<const DenseTensor*>& index,
                                    const DenseTensor& out_grad,
@@ -30,6 +30,7 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const std::vector<int64_t>& index_strides,
                                    const int64_t slice_offset,
                                    const bool accumulate,
+                                   const bool is_combined,
                                    DenseTensor* x_grad);
 
 }  // namespace phi

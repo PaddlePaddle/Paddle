@@ -38,11 +38,11 @@ void MeanKernel(const Context& dev_ctx,
                                   T>::type;
     DenseTensor x_float =
         phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
-    DenseTensor* out_float = new DenseTensor();
-    out_float->Resize(out->dims());
+    DenseTensor out_float;
+    out_float.Resize(out->dims());
     MeanRawKernel<Type>(
-        dev_ctx, x_float, dims, keep_dim, reduce_all, out_float);
-    phi::CastKernel<Type, Context>(dev_ctx, *out_float, x.dtype(), out);
+        dev_ctx, x_float, dims, keep_dim, reduce_all, &out_float);
+    phi::CastKernel<Type, Context>(dev_ctx, out_float, x.dtype(), out);
   } else {
     MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
   }
@@ -59,8 +59,8 @@ PD_REGISTER_KERNEL(mean,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(mean,
@@ -72,10 +72,11 @@ PD_REGISTER_KERNEL(mean,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
@@ -84,7 +85,7 @@ PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
 
 #if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
-    mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::dtype::bfloat16) {
+    mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::ReduceMeanCheckIfOneDNNSupport;
 }
 #endif
@@ -95,6 +96,6 @@ PD_REGISTER_KERNEL(mean,
                    ALL_LAYOUT,
                    phi::MeanKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

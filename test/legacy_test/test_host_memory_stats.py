@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import is_custom_device
 
 import paddle
 from paddle.base import core
@@ -22,7 +23,7 @@ paddle.set_device('cpu')
 
 class TestHostMemoryStats(unittest.TestCase):
     def test_memory_allocated_with_pinned(self, device=None):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             tensor = paddle.zeros(shape=[256])
             tensor_pinned = tensor.pin_memory()
             alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one

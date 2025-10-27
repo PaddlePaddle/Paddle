@@ -38,6 +38,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     DenseTensor* in_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(in_grad);
+  if (in_grad && in_grad->numel() == 0) return;
 
   // allocate temp memory
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());

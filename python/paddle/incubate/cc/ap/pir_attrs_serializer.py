@@ -24,7 +24,6 @@ from .apy_to_axpr_json import convert_python_stmts_to_axpr_json
 
 
 class PirAttrsSerializer:
-
     def __init__(self, func):
         self.attributes_schema = self._get_attributes_schema(func)
         self._check_attributes_schema(self.attributes_schema)
@@ -38,9 +37,9 @@ class PirAttrsSerializer:
         print(attributes)
         attributes_names = {name for name, _ in attributes.items()}
         attr_names = {name for name, _ in self.attributes_schema}
-        assert (
-            attributes_names == attr_names
-        ), f"expected attr_names: {attr_names}, but actual attr_names are {attributes_names}"
+        assert attributes_names == attr_names, (
+            f"expected attr_names: {attr_names}, but actual attr_names are {attributes_names}"
+        )
         py_assigns = "\n".join(
             py_stmt
             for attr_name, attr_val in attributes.items()
@@ -77,15 +76,15 @@ class PirAttrsSerializer:
     def _check_attributes_schema_item_is_valid(self, attr_type):
         if attr_type in self._supported_basic_types():
             return
-        assert isinstance(
-            attr_type, list
-        ), f"attribute type {attr_type} is not supported."
-        assert (
-            len(attr_type) == 1
-        ), "only syntax like [bool], [int], [float], [str] supported."
-        assert (
-            attr_type[0] in self._supported_basic_types()
-        ), f"supported list element types are bool/int/float/str, not include {attr_type[0]}."
+        assert isinstance(attr_type, list), (
+            f"attribute type {attr_type} is not supported."
+        )
+        assert len(attr_type) == 1, (
+            "only syntax like [bool], [int], [float], [str] supported."
+        )
+        assert attr_type[0] in self._supported_basic_types(), (
+            f"supported list element types are bool/int/float/str, not include {attr_type[0]}."
+        )
 
     def _supported_basic_types(self):
         return (bool, int, float, str, DType)
@@ -107,7 +106,6 @@ class PirAttrsSerializer:
 
 
 class PirAttributeSerializer:
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -117,7 +115,6 @@ class PirAttributeSerializer:
 
 
 class BoolAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -127,7 +124,6 @@ class BoolAttributeSerializer(PirAttributeSerializer):
 
 
 class IntAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -137,7 +133,6 @@ class IntAttributeSerializer(PirAttributeSerializer):
 
 
 class FloatAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -147,7 +142,6 @@ class FloatAttributeSerializer(PirAttributeSerializer):
 
 
 class StrAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -157,7 +151,6 @@ class StrAttributeSerializer(PirAttributeSerializer):
 
 
 class DTypeAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -168,7 +161,6 @@ class DTypeAttributeSerializer(PirAttributeSerializer):
 
 
 class BoolArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -180,7 +172,6 @@ class BoolArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class IntArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -192,7 +183,6 @@ class IntArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class FloatArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -204,7 +194,6 @@ class FloatArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class StrArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -216,7 +205,6 @@ class StrArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class DTypeArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 

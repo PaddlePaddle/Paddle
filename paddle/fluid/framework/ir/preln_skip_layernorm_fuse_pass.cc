@@ -113,9 +113,9 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
         graph->Has(framework::ir::kMultiheadMatmulPass) && !pos_id.empty() &&
         !mask_id.empty() && with_dynamic_shape)) {
     VLOG(3) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
-               "with_interleaved"
+               "with_interleaved, "
                "use_varseqlen, preln_embedding_eltwise_layernorm_fuse_pass, "
-               "trt_multihead_matmul_fuse_pass"
+               "trt_multihead_matmul_fuse_pass, "
                "set pos_id, set mask_id, with_dynamic_shape. Stop this pass, "
                "please "
                "reconfig.";

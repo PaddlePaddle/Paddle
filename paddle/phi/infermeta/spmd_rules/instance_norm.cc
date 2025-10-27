@@ -131,6 +131,7 @@ SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
 
 SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
                                    const DistMetaTensor& scale,
+                                   const DistMetaTensor& bias UNUSED,
                                    const DistMetaTensor& saved_mean,
                                    const DistMetaTensor& saved_variance,
                                    const DistMetaTensor& y_grad,

@@ -6,13 +6,13 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 function(_inference_analysis_python_api_int8_test target model_dir data_path
-         filename use_mkldnn)
+         filename use_onednn)
   py_test(
     ${target}
     SRCS ${filename}
          ENVS
          CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=${use_mkldnn}
+         FLAGS_use_onednn=${use_onednn}
          ARGS
          --infer_model
          ${model_dir}/model
@@ -39,7 +39,7 @@ function(inference_analysis_python_api_int8_test_custom_warmup_batch_size
                                           ${filename})
 endfunction()
 
-function(inference_analysis_python_api_int8_test_mkldnn target model_dir
+function(inference_analysis_python_api_int8_test_onednn target model_dir
          data_path filename)
   _inference_analysis_python_api_int8_test(${target} ${model_dir} ${data_path}
                                            ${filename} True)
@@ -89,7 +89,7 @@ function(inference_quant_int8_image_classification_test target quant_model_dir
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -113,7 +113,7 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -145,7 +145,7 @@ function(
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -179,7 +179,7 @@ function(inference_quant2_int8_lstm_model_test target fp32_model quant_model
          ${dataset_path}
          --num_threads
          1
-         --mkldnn_cache_capacity
+         --onednn_cache_capacity
          100
          --warmup_iter
          100
@@ -271,7 +271,7 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT_RESNET50_MODEL_DIR} ${QUANT_RESNET50_MODEL_ARCHIVE}
     ff89b934ab961c3a4a844193ece2e8a7)
   inference_quant_int8_image_classification_test(
-    test_quant_int8_resnet50_mkldnn ${QUANT_RESNET50_MODEL_DIR}/model
+    test_quant_int8_resnet50_onednn ${QUANT_RESNET50_MODEL_DIR}/model
     ${IMAGENET_DATA_PATH})
 
   # Quant ResNet101
@@ -281,7 +281,7 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT_RESNET101_MODEL_DIR} ${QUANT_RESNET101_MODEL_ARCHIVE}
     95c6d01e3aeba31c13efb2ba8057d558)
   # inference_quant_int8_image_classification_test( \
-  #   test_quant_int8_resnet101_mkldnn \
+  #   test_quant_int8_resnet101_onednn \
   #   ${QUANT_RESNET101_MODEL_DIR}/model \
   #   ${IMAGENET_DATA_PATH})
 
@@ -292,7 +292,7 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT_GOOGLENET_MODEL_DIR} ${QUANT_GOOGLENET_MODEL_ARCHIVE}
     1d4a7383baa63e7d1c423e8db2b791d5)
   #inference_quant_int8_image_classification_test(
-  #  test_quant_int8_googlenet_mkldnn ${QUANT_GOOGLENET_MODEL_DIR}/model
+  #  test_quant_int8_googlenet_onednn ${QUANT_GOOGLENET_MODEL_DIR}/model
   #  ${IMAGENET_DATA_PATH})
 
   # Quant MobileNetV1
@@ -309,7 +309,7 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT_MOBILENETV2_MODEL_DIR} ${QUANT_MOBILENETV2_MODEL_ARCHIVE}
     758a99d9225d8b73e1a8765883f96cdd)
   inference_quant_int8_image_classification_test(
-    test_quant_int8_mobilenetv2_mkldnn ${QUANT_MOBILENETV2_MODEL_DIR}/model
+    test_quant_int8_mobilenetv2_onednn ${QUANT_MOBILENETV2_MODEL_DIR}/model
     ${IMAGENET_DATA_PATH})
 
   # Quant VGG16
@@ -318,7 +318,7 @@ if(LINUX AND WITH_ONEDNN)
   download_quant_model(${QUANT_VGG16_MODEL_DIR} ${QUANT_VGG16_MODEL_ARCHIVE}
                        c37e63ca82a102f47be266f8068b0b55)
   # inference_quant_int8_image_classification_test( \
-  #   test_quant_int8_vgg16_mkldnn \
+  #   test_quant_int8_vgg16_onednn \
   #   ${QUANT_VGG16_MODEL_DIR}/model \
   #   ${IMAGENET_DATA_PATH})
 
@@ -328,7 +328,7 @@ if(LINUX AND WITH_ONEDNN)
   download_quant_model(${QUANT_VGG19_MODEL_DIR} ${QUANT_VGG19_MODEL_ARCHIVE}
                        62bcd4b6c3ca2af67e8251d1c96ea18f)
   # inference_quant_int8_image_classification_test( \
-  #   test_quant_int8_vgg19_mkldnn ${QUANT_VGG19_MODEL_DIR}/model \
+  #   test_quant_int8_vgg19_onednn ${QUANT_VGG19_MODEL_DIR}/model \
   #   ${IMAGENET_DATA_PATH})
 
   ### Quant2 for image classification
@@ -420,15 +420,15 @@ if(LINUX AND WITH_ONEDNN)
     ${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_FP32_LSTM_MODEL_ARCHIVE}
     eecd9f44d69a84acc1cf2235c4b8b743)
   inference_quant2_int8_lstm_model_test(
-    test_quant2_int8_lstm_mkldnn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model
+    test_quant2_int8_lstm_onednn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model
     ${QUANT2_LSTM_MODEL_DIR}/lstm_quant
     ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
 
 endif()
 
 # Since the tests for Quant & INT8 comparison support only testing on Linux
-# with MKL-DNN, we remove it here to not test it on other systems.
-list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy
+# with One-DNN, we remove it here to not test it on other systems.
+list(REMOVE_ITEM TEST_OPS test_onednn_int8_quantization_strategy
      quant_int8_image_classification_comparison quant_int8_nlp_comparison)
 
 #TODO(wanghaoshuang): Fix this unittest failed on GCC8.
@@ -477,11 +477,11 @@ set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 if(LINUX AND WITH_ONEDNN)
-  set_tests_properties(test_quant_int8_mobilenetv2_mkldnn PROPERTIES TIMEOUT
+  set_tests_properties(test_quant_int8_mobilenetv2_onednn PROPERTIES TIMEOUT
                                                                      120)
-  set_tests_properties(test_quant_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
-  #set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_quant_int8_resnet50_onednn PROPERTIES TIMEOUT 120)
+  #set_tests_properties(test_quant_int8_googlenet_onednn PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_quant2_int8_lstm_onednn PROPERTIES TIMEOUT 120)
 endif()
 
 if(APPLE)

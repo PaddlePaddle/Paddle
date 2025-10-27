@@ -23,10 +23,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class MatmulActivationMkldnnFusePass : public FusePassBase {
+class MatmulActivationOnednnFusePass : public FusePassBase {
  public:
-  MatmulActivationMkldnnFusePass();
-  virtual ~MatmulActivationMkldnnFusePass() {}
+  MatmulActivationOnednnFusePass();
+  virtual ~MatmulActivationOnednnFusePass() {}
 
  protected:
   void ApplyImpl(Graph *graph) const override;

@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <ostream>
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -24,11 +28,15 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
+#include "paddle/utils/md5.h"
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_int32(tensor_md5_checksum_precision);
 namespace egr {
 
 void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
@@ -696,14 +704,45 @@ void EagerUtils::FillZeroForEmptyGradInput(
     FillZeroForEmptyGradInput(&in_grads->at(i), grad_in_metas[i]);
   }
 }
+static std::string indent_after_newlines(const std::string& input,
+                                         const std::string& indent = "\t",
+                                         int count = 1) {
+  std::string result;
+
+  std::string indentation;
+  for (int i = 0; i < count; i++) {
+    indentation += indent;
+  }
+
+  bool need_indent = false;
+
+  for (char c : input) {
+    if (need_indent && c != '\n' && c != '\r') {
+      result += indentation;
+      need_indent = false;
+    }
+
+    result += c;
+
+    if (c == '\n') {
+      need_indent = true;
+    }
+  }
+
+  if (need_indent) {
+    result += indentation;
+  }
+
+  return result;
+}
 
 std::string EagerUtils::GradNodeStr(const egr::GradNodeBase& node) {
   if (VLOG_IS_ON(6)) {
     const char* GRAD_NODE_TEMPLATE =
-        "BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ]";
-    const char* GRAD_SLOT_META_TEMPLATE = " {SlotSize: [%d]: %s} ";
+        "\nBackwardOutMeta:  %s ,\nBackwardInMeta:  %s \n";
+    const char* GRAD_SLOT_META_TEMPLATE = " {\nSlotSize: [%d]: %s\n} ";
     const char* SLOT_INFO_TEMPLATE =
-        "SlotID: %s, StopGradients: %s, Edges[ %s ]";
+        "\nSlotID: %s,\nStopGradients: %s,\nEdges[ %s ]\n";
     auto out_metas = node.OutputMeta();
     auto in_metas = node.InputMeta();
     std::string out_slot_str = "";
@@ -744,18 +783,20 @@ std::string EagerUtils::GradNodeStr(const egr::GradNodeBase& node) {
     }
     std::string in_meta_str = paddle::string::Sprintf(
         GRAD_SLOT_META_TEMPLATE, in_metas.size(), in_slot_str);
-    return paddle::string::Sprintf(
-        GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
+    return paddle::string::Sprintf(GRAD_NODE_TEMPLATE,
+                                   indent_after_newlines(out_meta_str),
+                                   indent_after_newlines(in_meta_str));
   } else if (VLOG_IS_ON(5)) {
     const char* GRAD_NODE_TEMPLATE =
-        "BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ]";
-    const char* GRAD_SLOT_META_TEMPLATE = "SlotSize: %d";
+        "\nBackwardOutMeta:  %s ,\nBackwardInMeta:  %s \n";
+    const char* GRAD_SLOT_META_TEMPLATE = "\nSlotSize: %d";
     std::string out_meta_str = paddle::string::Sprintf(
         GRAD_SLOT_META_TEMPLATE, node.OutputMeta().size());
     std::string in_meta_str = paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE,
                                                       node.InputMeta().size());
-    return paddle::string::Sprintf(
-        GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
+    return paddle::string::Sprintf(GRAD_NODE_TEMPLATE,
+                                   indent_after_newlines(out_meta_str),
+                                   indent_after_newlines(in_meta_str));
   } else {
     return "[ Not specified grad node log level. ] ";
   }
@@ -769,7 +810,52 @@ std::string EagerUtils::GradNodeStr(const paddle::Tensor& t) {
     return "None";
   }
 }
+std::string GetTensorMD5Checksum(const paddle::Tensor& t) {
+  if (!t.defined() || !t.has_allocation()) {
+    return "None";
+  }
+  // only data
+  phi::funcs::TensorFormatter formatter;
+  std::stringstream data_stream;
+  phi::DenseTensor* dense_tensor_ptr = nullptr;
+  if (t.is_dist_tensor()) {
+    auto dist_t =
+        std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+    dense_tensor_ptr = dist_t->unsafe_mutable_value();
+  } else {
+    dense_tensor_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+  }
+  auto& dense_tensor = *(dense_tensor_ptr);
+  auto dtype = dense_tensor.dtype();
+  int precision = FLAGS_tensor_md5_checksum_precision;
 
+  if (dtype == phi::DataType::FLOAT32) {
+    formatter.FormatData<float>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT64) {
+    formatter.FormatData<double>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::INT32) {
+    formatter.FormatData<int>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::INT64) {
+    formatter.FormatData<int64_t>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::BOOL) {
+    formatter.FormatData<bool>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT16) {
+    formatter.FormatData<phi::float16>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::BFLOAT16) {
+    formatter.FormatData<phi::bfloat16>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
+    formatter.FormatData<phi::float8_e4m3fn>(
+        dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::FLOAT8_E5M2) {
+    formatter.FormatData<phi::float8_e5m2>(
+        dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::COMPLEX64) {
+    formatter.FormatData<phi::complex64>(dense_tensor, data_stream, precision);
+  } else if (dtype == phi::DataType::COMPLEX128) {
+    formatter.FormatData<phi::complex128>(dense_tensor, data_stream, precision);
+  }
+  return paddle::md5(data_stream.str());
+}
 /**
  * Print Input Output (level 0 means least info, level 2 means most info)
  * **/
@@ -781,13 +867,15 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
     tensor_name_str = t.name();
   }
   const char* TENSOR_INFO_TEMPLATE =
-      "Type: %s, Dtype: %s, Place: %s, Shape: %s, DistAttr: %s";
+      "\n\tType: %s,\n\tDtype: %s,\n\tPlace: %s,\n\tShape: %s,\n\tDistAttr: "
+      "%s\n";
   std::string tensor_info_str = "";
   if (t.defined()) {
     if (t.is_dist_tensor()) {
       const char* DIST_TENSOR_INFO_TEMPLATE =
-          "Type: %s, Dtype: %s, Place: %s, Is_defined: %s, Is_initialized: %s, "
-          "Shape: %s, DistAttr: %s";
+          "\n\tType: %s,\n\tDtype: %s,\n\t Place: %s,\n\tIs_defined: "
+          "%s,\n\tIs_initialized: %s,\n  "
+          "Shape: %s,\n  DistAttr: %s";
       auto dist_t =
           std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
       if (t.initialized()) {
@@ -835,34 +923,38 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
   }
   if (VLOG_IS_ON(11)) {
     const char* TENSOR_PRINT_TEMPLATE =
-        "{Name: %s, Initialized: %d, Ptr: %d, "
-        "TensorInfo: [ %s ], Value:[ %s ], ADInfo:[ %s ]}";
+        "{\n\tName: %s,\n\tInitialized: "
+        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d,\n\t "
+        "\n\tTensorInfo:{ %s },\n\tValue:{ %s },\n\tADInfo:[ %s ]}";
     auto* ad_meta = nullable_autograd_meta(t);
     if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
       std::string ad_info_str = "";
       const char* AD_INFO_TEMPLATE =
-          "Grad: [ %s ],  GradNode: [ %s ], StopGradient: [ %d ]";
-      ad_info_str += paddle::string::Sprintf(AD_INFO_TEMPLATE,
-                                             TensorStr(ad_meta->Grad()),
-                                             GradNodeStr(t),
-                                             ad_meta->StopGradient());
+          "\n\tGrad:  %s ,\n\tGradNode:  %s ,\n\tStopGradient: [ %d ]";
+      ad_info_str += paddle::string::Sprintf(
+          AD_INFO_TEMPLATE,
+          indent_after_newlines(TensorStr(ad_meta->Grad())),
+          indent_after_newlines(GradNodeStr(t)),
+          ad_meta->StopGradient());
       auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
       if (t.has_allocation() && data_ptr) {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
                                        t.has_allocation(),
+                                       &t,
                                        t.impl(),
-                                       tensor_info_str,
+                                       indent_after_newlines(tensor_info_str),
                                        *data_ptr,
-                                       ad_info_str);
+                                       indent_after_newlines(ad_info_str));
       } else {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
                                        t.has_allocation(),
+                                       &t,
                                        t.impl(),
-                                       tensor_info_str,
+                                       indent_after_newlines(tensor_info_str),
                                        "None",
-                                       ad_info_str);
+                                       indent_after_newlines(ad_info_str));
       }
     } else {
       auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
@@ -870,61 +962,73 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
                                        t.has_allocation(),
+                                       &t,
                                        t.impl(),
-                                       tensor_info_str,
+                                       indent_after_newlines(tensor_info_str),
                                        *data_ptr,
                                        "None");
       } else {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
                                        t.has_allocation(),
+                                       &t,
                                        t.impl(),
-                                       tensor_info_str,
+                                       indent_after_newlines(tensor_info_str),
                                        "None",
                                        "None");
       }
     }
   } else if (VLOG_IS_ON(6)) {
     const char* TENSOR_PRINT_TEMPLATE =
-        "{Name: %s, Initialized: %d, Ptr: %d,"
-        "TensorInfo: [ %s ], ADInfo:[ %s ]}";
+        "{\n\tName: %s,\n\tInitialized: "
+        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d,"
+        "\n\tTensorInfo: { %s \n\t},\n\tADInfo:{ %s \n\t}\n}";
     auto* ad_meta = nullable_autograd_meta(t);
     if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
       std::string ad_info_str = "";
       const char* AD_INFO_TEMPLATE =
-          "Grad: [ %s ],  GradNode: [ %s ], StopGradient: [ %d ]";
-      ad_info_str += paddle::string::Sprintf(AD_INFO_TEMPLATE,
-                                             TensorStr(ad_meta->Grad()),
-                                             GradNodeStr(t),
-                                             ad_meta->StopGradient());
+          "\n\tGrad:  %s ,\n\tGradNode:  %s ,\n\tStopGradient: [ %d ]";
+      ad_info_str += paddle::string::Sprintf(
+          AD_INFO_TEMPLATE,
+          indent_after_newlines(TensorStr(ad_meta->Grad())),
+          indent_after_newlines(GradNodeStr(t), "\t", 2),
+          ad_meta->StopGradient());
       return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                      tensor_name_str,
                                      t.has_allocation(),
+                                     &t,
                                      t.impl(),
-                                     tensor_info_str,
-                                     ad_info_str);
+                                     indent_after_newlines(tensor_info_str),
+                                     indent_after_newlines(ad_info_str));
     } else {
       return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                      tensor_name_str,
                                      t.has_allocation(),
+                                     &t,
                                      t.impl(),
-                                     tensor_info_str,
+                                     indent_after_newlines(tensor_info_str),
                                      "None");
     }
   } else if (VLOG_IS_ON(5)) {
     const char* TENSOR_PRINT_TEMPLATE =
-        "{Name: %s, Initialized: %d , Ptr: %d, "
-        "TensorInfo: [ %s ]}";
+        "{\n\tName: %s,\n\tInitialized: "
+        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d, "
+        "\n\tTensorInfo: [ %s ]}";
     return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                    tensor_name_str,
                                    t.has_allocation(),
+                                   &t,
                                    t.impl(),
-                                   tensor_info_str);
+                                   indent_after_newlines(tensor_info_str));
   } else if (VLOG_IS_ON(4)) {
     const char* TENSOR_PRINT_TEMPLATE =
-        "{ Name: %s, Initialized: %d, Ptr: %d }";
-    return paddle::string::Sprintf(
-        TENSOR_PRINT_TEMPLATE, tensor_name_str, t.has_allocation(), t.impl());
+        "{\n\tName: %s,\n\tInitialized: "
+        "%d,\n\tTensor_Ptr:%d,\n\tTensor_Impl_Ptr: %d }";
+    return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                   tensor_name_str,
+                                   t.has_allocation(),
+                                   &t,
+                                   t.impl());
   } else {
     return "[ Not specified tensor log level ]";
   }
@@ -1005,6 +1109,71 @@ void DistTensorTypeParser::operator()(
           result = true;
           break;
         }
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(const paddle::Tensor& x) {
+  if (x.defined()) {
+    if (x.is_dist_tensor()) {
+      *mesh =
+          &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                ->process_mesh());
+      have_dist = true;
+    } else if (x.is_dense_tensor()) {
+      have_dense = true;
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const paddle::optional<paddle::Tensor>& x) {
+  if (x) {
+    if (x.get_ptr()->defined()) {
+      if (x.get_ptr()->is_dist_tensor()) {
+        *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                      x.get_ptr()->impl())
+                      ->process_mesh());
+        have_dist = true;
+      } else if (x.get_ptr()->is_dense_tensor()) {
+        have_dense = true;
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const std::vector<paddle::Tensor>& x) {
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.defined()) {
+        if (t.is_dist_tensor()) {
+          *mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+          have_dist = true;
+        } else if (t.is_dense_tensor()) {
+          have_dense = true;
+        }
+      }
+    }
+  }
+}
+
+void CheckInputsNeedConvertDistTensor::operator()(
+    const paddle::optional<std::vector<paddle::Tensor>>& x) {
+  if (x) {
+    if (x.get_ptr()->empty()) return;
+    for (auto& t : *(x.get_ptr())) {
+      if (!t.defined()) continue;
+      if (t.is_dist_tensor()) {
+        *mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->process_mesh());
+        have_dist = true;
+      } else if (t.is_dense_tensor()) {
+        have_dense = true;
       }
     }
   }
@@ -1094,6 +1263,269 @@ void ConvertToDistTensor(paddle::Tensor* x,
     }
     x->set_impl(std::make_shared<phi::distributed::DistTensor>(
         dense_t, *mesh, placements));
+  }
+}
+
+std::shared_ptr<paddle::Tensor> DistTensorPtrConverter::builder(
+    const paddle::Tensor& x) {
+  PADDLE_ENFORCE_EQ(
+      x.defined(),
+      true,
+      common::errors::InvalidArgument(
+          "Input tensor for DistTensor conversion is not defined. "
+          "All inputs must be valid tensors."));
+  if (x.is_dist_tensor()) {
+    auto dist_impl =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl());
+    PADDLE_ENFORCE_NE(
+        dist_impl,
+        nullptr,
+        common::errors::InvalidArgument("Input tensor claims to be DistTensor "
+                                        "but has invalid implementation."));
+    PADDLE_ENFORCE_EQ(
+        dist_impl->process_mesh(),
+        *mesh,
+        common::errors::InvalidArgument(
+            "Input DistTensor's mesh does not match builder's mesh. "
+            "Expected mesh: %s, Got mesh: %s",
+            mesh->to_string(),
+            dist_impl->process_mesh().to_string()));
+    return std::make_shared<paddle::Tensor>(x);
+  }
+  auto dense_impl = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
+  PADDLE_ENFORCE_NE(dense_impl,
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "Failed to convert input tensor '%s' to DistTensor: "
+                        "Tensor implementation is not DenseTensor.",
+                        x.name()));
+  std::shared_ptr<phi::DenseTensor> dense_tensor =
+      std::make_shared<phi::DenseTensor>(*dense_impl);
+  phi::distributed::Placements placements;
+  placements.reserve(mesh->ndim());
+  for (int64_t i = 0; i < mesh->ndim(); ++i) {
+    placements.emplace_back(std::make_shared<phi::distributed::Replicate>());
+  }
+  auto dist_tensor_impl = std::make_shared<phi::distributed::DistTensor>(
+      dense_tensor, *mesh, placements);
+  return std::make_shared<paddle::Tensor>(dist_tensor_impl);
+}
+
+std::shared_ptr<paddle::Tensor> DistTensorPtrConverter::operator()(
+    const paddle::Tensor& x) {
+  return builder(x);
+}
+
+std::string CreateNodeLabelInDot(GradNodeBase* node) {
+  std::ostringstream oss;
+  oss << node->name() << "\\nPtr: " << std::hex << node;
+  return oss.str();
+}
+std::string CreateForwardNodeLabelInDot(GradNodeBase* node) {
+  std::ostringstream oss;
+  std::string name = node->name();
+  if (name == "GradNodeAccumulation") {
+    name = "Node";
+  } else {
+    // erase "GradNode"
+    const std::string suffix = "GradNode";
+    size_t pos = name.find(suffix);
+    if (pos != std::string::npos) {
+      name.erase(pos, suffix.length());
+    }
+  }
+  oss << name << "\\nGradNode: " << std::hex << node;
+
+  return oss.str();
+}
+std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor) {
+  std::ostringstream oss;
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    oss << tensor.name() << "\\n"
+        << tensor.place() << "\\n"
+        << tensor.dtype() << "[" << tensor.dims() << "]";
+  } else {
+    oss << tensor.place() << "\\n"
+        << tensor.dtype() << "[" << tensor.dims() << "]";
+  }
+
+  return oss.str();
+}
+std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor) {
+  std::ostringstream oss;
+  oss << tensor.dtype << " [" << tensor.dims << "]";
+  return oss.str();
+}
+void SaveStringToFile(const std::string& file_path,
+                      const std::string& str,
+                      const std::string& mode) {
+  std::ios_base::openmode open_mode = std::ios::out;
+  if (mode == "append") {
+    open_mode |= std::ios::app;
+  } else if (mode == "trunc") {
+    open_mode |= std::ios::trunc;
+  }
+  std::ofstream outFile(file_path, open_mode);
+
+  if (!outFile) {
+    PADDLE_THROW(
+        common::errors::Fatal("Cannot open file %s for writing.", file_path));
+    return;
+  }
+
+  outFile << str;
+  outFile.close();
+  return;
+}
+
+TEST_API void SaveTensorMD5CheckSumToFile(const std::string& file_path,
+                                          const paddle::Tensor& t) {
+  const std::string& md5_checksum = GetTensorMD5Checksum(t);
+  SaveStringToFile(file_path, t.name() + ":" + md5_checksum + "\n", "append");
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const paddle::optional<paddle::Tensor>& t) {
+  if (t.get_ptr()) {
+    SaveTensorMD5CheckSumToFile(file_path, *t.get_ptr());
+  }
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const std::vector<paddle::Tensor>& tensors) {
+  for (auto& t : tensors) {
+    SaveTensorMD5CheckSumToFile(file_path, t);
+  }
+}
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path,
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  if (tensors.get_ptr()) {
+    SaveTensorMD5CheckSumToFile(file_path, *(tensors.get_ptr()));
+  }
+}
+void SaveDebugInfo(std::string dir_path,
+                   const std::string& serialized_forward_graph,
+                   const std::string& call_stack,
+                   const std::string& serialized_backward_graph) {
+  // Use timestamps to distinguish multiple logs
+  auto now = std::chrono::system_clock::now();
+  auto now_time_t = std::chrono::system_clock::to_time_t(now);
+  auto now_tm = *std::localtime(&now_time_t);
+
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
+                          now.time_since_epoch())
+                          .count() %
+                      1000000;
+  std::ostringstream oss;
+  oss << std::put_time(&now_tm, "%Y-%m-%d_%H:%M:%S");
+  oss << "." << std::setfill('0') << std::setw(6) << microseconds;
+  std::string timestamp = oss.str();
+#ifdef _WIN32
+  auto sep = '\\';
+  std::for_each(dir_path.begin(), dir_path.end(), [](char& ch) {
+    if (ch == '/') {
+      ch = '\\';
+    }
+  });
+#else
+  auto sep = '/';
+#endif  // _WIN32
+  std::string file_path_prefix =
+      (dir_path.back() == sep ? dir_path : dir_path + sep) + timestamp;
+  if (serialized_forward_graph.empty() == false) {
+    std::string forward_graph_file_path =
+        file_path_prefix + "_ref_forward_graph" + ".dot";
+    VLOG(4) << "Save forward graph to file : " << forward_graph_file_path;
+    SaveStringToFile(forward_graph_file_path, serialized_forward_graph);
+  }
+  if (call_stack.empty() == false) {
+    std::string call_stack_file = file_path_prefix + "_call_stack" + ".log";
+    VLOG(4) << "Save call stack to file : " << call_stack_file;
+    SaveStringToFile(call_stack_file, call_stack);
+  }
+  if (serialized_backward_graph.empty() == false) {
+    std::string backward_graph_file_path =
+        file_path_prefix + "_backward_graph" + ".dot";
+    VLOG(4) << "Save backward graph to file : " << backward_graph_file_path;
+    SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
+  }
+}
+const std::string GenerateUniqueTensorName(const std::string& unique_api_name,
+                                           const std::string& var_name,
+                                           const paddle::Tensor* tensor) {
+  // example: {unique_api_name}_{var_name}_fp16_1024x1024
+  std::ostringstream oss;
+  oss << unique_api_name << "_" << var_name << "_" << tensor->dtype() << "_";
+  for (int i = 0; i < tensor->dims().size(); ++i) {
+    if (i != 0) {
+      oss << "x";
+    }
+    oss << tensor->dims()[i];
+  }
+  return oss.str();
+}
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::Tensor* tensor) {
+  if (!tensor->defined() || !tensor->has_allocation()) return;
+  const std::string& unique_name =
+      egr::GenerateUniqueTensorName(unique_api_name, var_name, tensor);
+  tensor->set_name(unique_name);
+}
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::optional<paddle::Tensor>* tensor) {
+  if (tensor->get_ptr() != nullptr) {
+    paddle::Tensor* t = tensor->get_ptr();
+    if (!t->defined() || !t->has_allocation()) return;
+    t->set_name(egr::GenerateUniqueTensorName(unique_api_name, var_name, t));
+  }
+}
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor>* tensors) {
+  for (int i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t.defined() && t.has_allocation()) {
+      t.set_name(egr::GenerateUniqueTensorName(
+          unique_api_name, var_name + std::to_string(i), &t));
+    }
+  }
+}
+
+TEST_API void SetTensorName(
+    const std::string& unique_api_name,
+    const std::string& var_name,
+    paddle::optional<std::vector<paddle::Tensor>>* tensors) {
+  if (tensors->get_ptr() != nullptr) {
+    SetTensorName(unique_api_name, var_name, tensors->get_ptr());
+  }
+}
+static std::string GenerateGradTensorName(const GradSlotMeta& meta) {
+  const std::string& forward_name = meta.GetForwardTensorName();
+  std::string grad_name = forward_name + "@Grad";
+  return grad_name;
+}
+TEST_API void SetGradTensorName(
+    paddle::Tensor* tensor,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        bwd_out_meta) {
+  const auto& metas = bwd_out_meta[slot];
+  std::string name = GenerateGradTensorName(metas[0]);
+  tensor->set_name(name);
+}
+TEST_API void SetGradTensorName(
+    std::vector<paddle::Tensor>* tensors,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+        bwd_out_meta) {
+  const auto& metas = bwd_out_meta[slot];
+  for (int i = 0; i < tensors->size(); i++) {
+    auto& t = (*tensors)[i];
+    if (t.defined() && t.has_allocation()) {
+      std::string name = GenerateGradTensorName(metas[i]);
+      t.set_name(name);
+    }
   }
 }
 }  // namespace egr

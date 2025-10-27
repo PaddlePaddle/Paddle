@@ -36,7 +36,7 @@ inline DenseTensor UnsqueezeTo(const DenseTensor &src, int ndims) {
       rank,
       ndims,
       errors::InvalidArgument(
-          "The input Tensor's rank should be less than or equal to ndims"
+          "The input Tensor's rank should be less than or equal to ndims. "
           "Received input Tensor's rank = %d, ndims = %d",
           rank,
           ndims));

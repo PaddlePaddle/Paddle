@@ -16,14 +16,19 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle.base import core
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
-
     def test_main(self):
         dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
         if paddle.in_dynamic_mode():
@@ -232,8 +237,8 @@ class TestEmbeddingFP16OP(TestLookupTableOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestEmbeddingBF16OP(OpTest):
@@ -254,13 +259,13 @@ class TestEmbeddingBF16OP(OpTest):
         return "int64"
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_cinn=True, check_pir=True, check_prim_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['W'],
@@ -269,6 +274,40 @@ class TestEmbeddingBF16OP(OpTest):
             check_cinn=True,
             check_pir=True,
         )
+
+
+class TestLookupTableOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table_v2"
+        self.public_python_api = paddle.nn.functional.embedding
+        self.python_api = paddle.nn.functional.embedding
+        table = np.random.random((2, 10)).astype("float64")
+        ids = np.random.randint(low=0, high=17, size=(0, 1)).astype("int32")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((0, 1, 10))}
+
+    def test_check_output(self):
+        self.check_output(check_cinn=True, check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+class TestLookupTableOp_ZeroSize2(TestLookupTableOp_ZeroSize):
+    def setUp(self):
+        self.op_type = "lookup_table_v2"
+        self.public_python_api = paddle.nn.functional.embedding
+        self.python_api = paddle.nn.functional.embedding
+        table = np.random.random((0, 10)).astype("float64")
+        ids = np.random.randint(low=0, high=17, size=(0, 1)).astype("int32")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((0, 1, 10))}
 
 
 if __name__ == "__main__":

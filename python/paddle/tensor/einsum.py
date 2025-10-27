@@ -60,21 +60,21 @@ def parse_op_labels(labelstr: str, operand: Tensor) -> str:
     '''
     # Sanity checks
     for c in labelstr.replace('.', ''):
-        assert (
-            c.isalpha()
-        ), f"Invalid equation: {c} is not a valid label, which should be letters."
+        assert c.isalpha(), (
+            f"Invalid equation: {c} is not a valid label, which should be letters."
+        )
 
-    assert (
-        labelstr.replace('...', '', 1).find('.') == -1
-    ), "Invalid equation: `.` is found outside of an ellipsis."
+    assert labelstr.replace('...', '', 1).find('.') == -1, (
+        "Invalid equation: `.` is found outside of an ellipsis."
+    )
 
     ndims = len(operand.shape)
 
     full_labelstr = labelstr.replace('...', '.' * (ndims - len(labelstr) + 3))
 
-    assert (
-        len(full_labelstr) == ndims
-    ), f"Invalid equation: the label string '{labelstr}' misses dimensions."
+    assert len(full_labelstr) == ndims, (
+        f"Invalid equation: the label string '{labelstr}' misses dimensions."
+    )
 
     return full_labelstr
 
@@ -112,9 +112,9 @@ def validate_rhs(
     '''
     # Sanity check.
     if n_bcast_dims > 0:
-        assert (
-            '...' in rhs
-        ), "Invalid equation: missing ellipsis in output labels."
+        assert '...' in rhs, (
+            "Invalid equation: missing ellipsis in output labels."
+        )
 
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
@@ -129,9 +129,9 @@ def validate_rhs(
         f"output label {sorted(non_input_labels)} not used by any input."
     )
     # Verify that output labels are not duplicate
-    assert len(rhs) == len(
-        rhs_set
-    ), "Invalid equation: duplicate output labels are found."
+    assert len(rhs) == len(rhs_set), (
+        "Invalid equation: duplicate output labels are found."
+    )
 
 
 def build_view(in_labels: str, out_labels: str) -> list[int]:
@@ -320,9 +320,9 @@ def diagonalize(labels: str, operand: Tensor) -> tuple[str, Tensor]:
     --------
     'ijj...i' would be merged into 'ij...'
     '''
-    assert not has_duplicated_labels(
-        labels
-    ), 'Duplicate labels are not supported.'
+    assert not has_duplicated_labels(labels), (
+        'Duplicate labels are not supported.'
+    )
 
     return labels, operand
 
@@ -786,9 +786,9 @@ def preprocess(
     """
     equation = equation.replace(" ", "")
     nop = len(operands)
-    assert (
-        nop > 0
-    ), f"Required at least one operand in Einsum API, but received {nop}"
+    assert nop > 0, (
+        f"Required at least one operand in Einsum API, but received {nop}"
+    )
 
     # Part the equation to left hand side and right hand side
     lhs, *rhs = equation.lower().split('->')
@@ -805,9 +805,9 @@ def preprocess(
         f"but found {len(lhs.split(','))} segments in the label equation."
     )
 
-    assert not (
-        '...' in lhs and '...' not in rhs
-    ), 'Invalid equation: missing ellipsis in output labels.'
+    assert not ('...' in lhs and '...' not in rhs), (
+        'Invalid equation: missing ellipsis in output labels.'
+    )
 
     lhs, rhs, new_operands = replace_ellipsis(lhs, rhs, *operands)
     return lhs, rhs, labels, new_operands
@@ -838,9 +838,9 @@ def parse_fake_shape(
         1. ori_label is the original labels, not aligned by '....'
         2. if the '...' is evaluated to empty list, there is no '.' in label
         """
-        assert len(op.shape) == len(
-            label
-        ), f"length of shape and length of label must be the same, but received {len(op.shape)} != {len(label)}"
+        assert len(op.shape) == len(label), (
+            f"length of shape and length of label must be the same, but received {len(op.shape)} != {len(label)}"
+        )
         fakes = [s for i, (l, s) in enumerate(zip(label, op.shape))]
         fakes = list(map(abs, fakes))  # make -1 -> 1
         if '.' in ori_label:
@@ -904,15 +904,15 @@ def einsum_v2(equation: str, *operands: Tensor) -> Tensor:
     var_list = new_operands
     for path in cons:
         (a, b), _, eq, *__ = path
-        assert (
-            a > b
-        ), "Assume the first var_idx is smaller than the second_idx. opt_einsum can guarantee it."
+        assert a > b, (
+            "Assume the first var_idx is smaller than the second_idx. opt_einsum can guarantee it."
+        )
         var_s = [var_list.pop(a), var_list.pop(b)]
         eq = eq.replace(broadcast_label, "...")
         var_list.append(gen_einsum_op(eq, *var_s))
-    assert (
-        len(var_list) == 1
-    ), f"There must be one elements in list, but received {len(var_list)}."
+    assert len(var_list) == 1, (
+        f"There must be one elements in list, but received {len(var_list)}."
+    )
     return var_list[0]
 
 

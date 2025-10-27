@@ -304,6 +304,16 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
                         bool adaptive,
                         const std::string& padding_algorithm,
                         DenseTensor* out) {
+  if (x.numel() == 0) {
+    if (pooling_type == "max" || (!adaptive && pooling_type == "avg")) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    return;
+  }
   PoolRawGPUDNNKernel<T, Context>(dev_ctx,
                                   x,
                                   kernel_size,
@@ -320,7 +330,7 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using phi::dtype::float16;
+using phi::float16;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double

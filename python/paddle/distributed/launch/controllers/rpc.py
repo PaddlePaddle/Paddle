@@ -27,9 +27,9 @@ class RpcController(Controller):
             return False
 
     def build_pod(self):
-        assert (
-            self.ctx.args.master is not None
-        ), "Master is None, Please set master address!"
+        assert self.ctx.args.master is not None, (
+            "Master is None, Please set master address!"
+        )
         self._build_pod_with_master()
 
     def _build_pod_with_master(self):

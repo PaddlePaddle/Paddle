@@ -38,9 +38,13 @@ void InterpolateKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   phi::funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -228,7 +232,7 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    XPU,
                    ALL_LAYOUT,
                    phi::BilinearInterpKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
@@ -238,7 +242,7 @@ PD_REGISTER_KERNEL(nearest_interp,
                    XPU,
                    ALL_LAYOUT,
                    phi::NearestInterpKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    int64_t) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);

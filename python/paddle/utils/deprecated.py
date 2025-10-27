@@ -91,9 +91,9 @@ def deprecated(
             msg += f" since {_since}"
         msg += ", and will be removed in future versions."
         if len(_update_to) > 0:
-            assert _update_to.startswith(
-                "paddle."
-            ), f'Argument update_to must start with "paddle.", your value is "{update_to}"'
+            assert _update_to.startswith("paddle."), (
+                f'Argument update_to must start with "paddle.", your value is "{update_to}"'
+            )
             msg += f' Please use "{_update_to}" instead.'
         if len(_reason) > 0:
             msg += f"\n    Reason: {_reason}"

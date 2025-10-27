@@ -106,7 +106,6 @@ class TestMVAPI(unittest.TestCase):
 
 
 class TestMVError(unittest.TestCase):
-
     def test_input(self):
         def test_shape():
             paddle.enable_static()

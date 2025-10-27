@@ -31,7 +31,7 @@ __global__ void AdamaxGPUKernel(const T* param,
                                 MT d_beta1,
                                 MT d_beta2,
                                 MT d_epsilon,
-                                int num,
+                                int64_t num,
                                 T* param_out,
                                 MT* moment_out,
                                 MT* inf_norm_out,
@@ -43,7 +43,7 @@ __global__ void AdamaxGPUKernel(const T* param,
   MT one = static_cast<MT>(1.0f);
   auto l_r = lr / (one - d_pow);
 
-  for (int index = idx; index < num; index += gridDim.x * blockDim.x) {
+  for (int64_t index = idx; index < num; index += gridDim.x * blockDim.x) {
     // load and cast input to MT
     MT d_param =
         master_param ? master_param[index] : static_cast<MT>(param[index]);
@@ -102,7 +102,7 @@ void AdamaxKernel(const Context& dev_ctx,
   MPDType beta2_ = static_cast<MPDType>(beta2);
   MPDType epsilon_ = static_cast<MPDType>(epsilon);
 
-  int numel = param.numel();
+  int64_t numel = param.numel();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid = config.block_per_grid.x;
   int block = config.thread_per_block.x;
@@ -126,13 +126,8 @@ void AdamaxKernel(const Context& dev_ctx,
                                    master_out_data);
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(adamax,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AdamaxKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
+PD_REGISTER_KERNEL(
+    adamax, GPU, ALL_LAYOUT, phi::AdamaxKernel, float, double, phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

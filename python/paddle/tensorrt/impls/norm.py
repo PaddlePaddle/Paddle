@@ -155,16 +155,16 @@ def batch_norm_converter(network, paddle_op, inputs):
 
     input_tensor_shape = paddle_op.operands()[0].source().shape
     if has_dynamic_shape(input_tensor_shape):
-        assert (
-            input_tensor.shape[1] != -1
-        ), "Channel dim can't be dynamic for batch norm."
+        assert input_tensor.shape[1] != -1, (
+            "Channel dim can't be dynamic for batch norm."
+        )
 
     output_shape = input_tensor_shape
 
     if not network.has_implicit_batch_dimension and len(input_tensor_shape) < 4:
-        assert (
-            len(get_dynamic_dims(input_tensor.shape)) <= 1
-        ), "BatchNorm1D with more than one dynamic dims is not currently supported."
+        assert len(get_dynamic_dims(input_tensor.shape)) <= 1, (
+            "BatchNorm1D with more than one dynamic dims is not currently supported."
+        )
         reshape_layer = network.add_shuffle(input_tensor)
         if len(input_tensor_shape) == 2:
             reshape_layer.reshape_dims = (

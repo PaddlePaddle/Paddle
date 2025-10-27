@@ -40,7 +40,9 @@ PD_REGISTER_SPMD_RULE(matmul,
 PD_REGISTER_SPMD_RULE(matmul_v2,  // static mode
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
-
+PD_REGISTER_SPMD_RULE(bmm,
+                      PD_INFER_SPMD(phi::distributed::BmmInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::BmmGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     elementwise_unary,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
@@ -381,6 +383,10 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
     floor_divide,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    trunc_divide,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
@@ -824,4 +830,25 @@ PD_REGISTER_SPMD_RULE(
     depthwise_conv2d,
     PD_INFER_SPMD(phi::distributed::DepthwiseConv2dInferSpmd),
     PD_INFER_SPMD(phi::distributed::DepthwiseConv2dGradInferSpmd));
+
+// conv2d_transpose
+PD_REGISTER_SPMD_RULE(
+    conv2d_transpose,
+    PD_INFER_SPMD(phi::distributed::Conv2dTransposeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::Conv2dTransposeGradInferSpmd));
+
+// einsum
+PD_REGISTER_SPMD_RULE(einsum,
+                      PD_INFER_SPMD(phi::distributed::EinsumInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::EinsumGradInferSpmd));
+// moe_gate_dispatch
+PD_REGISTER_SPMD_RULE(
+    moe_gate_dispatch,
+    PD_INFER_SPMD(phi::distributed::MoEGateDispatchInferSpmd),
+    PD_INFER_SPMD(phi::distributed::MoEGateDispatchGradInferSpmd));
+
+// moe_combine
+PD_REGISTER_SPMD_RULE(moe_combine,
+                      PD_INFER_SPMD(phi::distributed::MoECombineInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MoECombineGradInferSpmd));
 }  // namespace phi::distributed

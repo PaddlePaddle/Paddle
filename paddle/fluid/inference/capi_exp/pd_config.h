@@ -505,17 +505,35 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSwitchIrDebug(
 /// \param[in] pd_config config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMKLDNN(
+    __pd_keep PD_Config* pd_config);  // deprecated
+///
+/// \brief Turn on OneDNN.
+///
+/// \param[in] pd_config config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONEDNN(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Set the cache capacity of different input shapes for OneDNN.
 /// Default value 0 means not caching any shape.
 /// Please see MKL-DNN Data Caching Design Document:
-/// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
+/// https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md
 ///
 /// \param[in] pd_config config
 /// \param[in] capacity The cache capacity.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnCacheCapacity(
+    __pd_keep PD_Config* pd_config, int32_t capacity);  // deprecated
+///
+/// \brief Set the cache capacity of different input shapes for OneDNN.
+/// Default value 0 means not caching any shape.
+/// Please see MKL-DNN Data Caching Design Document:
+/// https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md
+///
+/// \param[in] pd_config config
+/// \param[in] capacity The cache capacity.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigSetOnednnCacheCapacity(
     __pd_keep PD_Config* pd_config, int32_t capacity);
 ///
 /// \brief A boolean state telling whether to use the OneDNN.
@@ -524,6 +542,14 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnCacheCapacity(
 /// \return Whether to use the OneDNN.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnEnabled(
+    __pd_keep PD_Config* pd_config);  // deprecated
+///
+/// \brief A boolean state telling whether to use the OneDNN.
+///
+/// \param[in] pd_config config
+/// \return Whether to use the OneDNN.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigOnednnEnabled(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Set the number of cpu math library threads.
@@ -551,14 +577,16 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGetCpuMathLibraryNumThreads(
 /// \param[in] op_list The name of operator type list.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnOp(
-    __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
+    __pd_keep PD_Config* pd_config,
+    size_t ops_num,
+    const char** op_list);  // deprecated
 ///
 /// \brief Turn on OneDNN bfloat16.
 ///
 /// \param[in] pd_config config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnBfloat16(
-    __pd_keep PD_Config* pd_config);
+    __pd_keep PD_Config* pd_config);  // deprecated
 ///
 /// \brief A boolean state telling whether to use the OneDNN Bfloat16.
 ///
@@ -566,6 +594,30 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnBfloat16(
 /// \return Whether to use the OneDNN Bfloat16.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnBfloat16Enabled(
+    __pd_keep PD_Config* pd_config);  // deprecated
+///
+/// \brief Specify the operator type list to use OneDNN acceleration.
+///
+/// \param[in] pd_config config
+/// \param[in] ops_num The number of operator type list.
+/// \param[in] op_list The name of operator type list.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigSetOnednnOp(
+    __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
+///
+/// \brief Turn on OneDNN bfloat16.
+///
+/// \param[in] pd_config config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableOnednnBfloat16(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether to use the OneDNN Bfloat16.
+///
+/// \param[in] pd_config config
+/// \return Whether to use the OneDNN Bfloat16.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigOnednnBfloat16Enabled(
     __pd_keep PD_Config* pd_config);
 /// \brief Specify the operator type list to use Bfloat16 acceleration.
 ///
@@ -581,7 +633,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSetBfloat16Op(
 /// \param[in] pd_config config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnInt8(
-    __pd_keep PD_Config* pd_config);
+    __pd_keep PD_Config* pd_config);  // deprecated
 ///
 /// \brief A boolean state telling whether to use the OneDNN int8.
 ///
@@ -589,6 +641,21 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMkldnnInt8(
 /// \return Whether to use the OneDNN int8.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigMkldnnInt8Enabled(
+    __pd_keep PD_Config* pd_config);  // deprecated
+///
+/// \brief Turn on OneDNN int8.
+///
+/// \param[in] pd_config config
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableOnednnInt8(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether to use the OneDNN int8.
+///
+/// \param[in] pd_config config
+/// \return Whether to use the OneDNN int8.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigOnednnInt8Enabled(
     __pd_keep PD_Config* pd_config);
 
 ///

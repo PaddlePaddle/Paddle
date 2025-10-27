@@ -27,6 +27,15 @@ void ScatterKernel(const Context &dev_ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
+  if (index.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
   out->Resize(x.dims());
   auto *x_data = reinterpret_cast<const XPUTypeT *>(x.data<T>());
@@ -34,6 +43,7 @@ void ScatterKernel(const Context &dev_ctx,
   auto *out_data = reinterpret_cast<XPUTypeT *>(dev_ctx.template Alloc<T>(out));
   int ret = xpu::copy(dev_ctx.x_context(), x_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
@@ -119,5 +129,5 @@ PD_REGISTER_KERNEL(scatter,
                    float,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

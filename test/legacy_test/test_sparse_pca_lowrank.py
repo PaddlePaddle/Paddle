@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import random
 import re
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 
@@ -54,7 +54,7 @@ class TestSparsePcaLowrankAPI(unittest.TestCase):
         indices = [row_indices, column_indices]
         values = paddle.randn((nonzero_elements,), dtype=dtype)
         values *= paddle.to_tensor(
-            [-float(i - j) ** 2 for i, j in zip(*indices)], dtype=dtype
+            [-(float(i - j) ** 2) for i, j in zip(*indices)], dtype=dtype
         ).exp()
         indices_tensor = paddle.to_tensor(indices)
         x = paddle.sparse.sparse_coo_tensor(
@@ -90,7 +90,8 @@ class TestSparsePcaLowrankAPI(unittest.TestCase):
         np.testing.assert_allclose(A1.numpy(), A2.numpy(), atol=1e-5)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        or get_cuda_version() < 11000,
         "only support cuda>=11.0",
     )
     def test_sparse(self):

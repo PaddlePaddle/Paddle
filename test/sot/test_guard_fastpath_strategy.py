@@ -45,7 +45,6 @@ class TestUnsafeCacheFastPath(TestCaseBase):
         # subsequent guard checks will be skipped to improve performance.
         # The related logic is implemented in the OpcodeExecutorCache class.
         with EnvironmentVariableGuard(ENV_SOT_UNSAFE_CACHE_FASTPATH, True):
-
             self.assertTrue(ENV_SOT_UNSAFE_CACHE_FASTPATH.get())
 
             self.assertFalse(

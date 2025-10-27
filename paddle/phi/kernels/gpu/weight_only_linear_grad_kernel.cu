@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 
 #if defined(PADDLE_WITH_CUTLASS)
@@ -51,6 +52,11 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
   int n = weight_scale.dims()[0];
   int k = weight.dims()[1];
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0 || out_grad.numel() == 0) {
+    Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   DenseTensor weight_dequantized;
   weight_dequantized.Resize({{n, k}});
   dev_ctx.template Alloc<T>(&weight_dequantized);
@@ -77,5 +83,5 @@ PD_REGISTER_KERNEL(weight_only_linear_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::WeightOnlyLinearGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

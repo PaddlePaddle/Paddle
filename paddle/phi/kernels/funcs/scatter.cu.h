@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
@@ -159,11 +161,17 @@ __global__ void ScatterNdCUDAKernel(const T* update,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void GPUScatterAssign(const phi::GPUContext& ctx,
+void GPUScatterAssign(const phi::GPUContext& dev_ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output,
                       bool overwrite = true) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for GPUScatterAssign since inputs has 0-size tensor.";
+    return;
+  }
+
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -204,15 +212,16 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(ctx, &grid);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
 
   // if not overwrite mode, init data
   if (!overwrite) {
-    ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
+    ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, dev_ctx.stream()>>>(
         p_index, p_output, output_dims[0], index_size, slice_size);
 
-    ScatterCUDAKernel<T, IndexT, false, 1><<<grid, block, 0, ctx.stream()>>>(
-        p_src, p_index, p_output, output_dims[0], index_size, slice_size);
+    ScatterCUDAKernel<T, IndexT, false, 1>
+        <<<grid, block, 0, dev_ctx.stream()>>>(
+            p_src, p_index, p_output, output_dims[0], index_size, slice_size);
     return;
   }
 
@@ -225,14 +234,16 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   }
 
   constexpr int loop_count = 4;
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n, vec_size * loop_count);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, n, vec_size * loop_count);
   switch (vec_size) {
-#define CASE_VEC_SIZE(__Sz)                                                    \
-  case __Sz:                                                                   \
-    ScatterCUDAKernel<T, IndexT, true, __Sz>                                   \
-        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
-            p_src, p_index, p_output, output_dims[0], index_size, slice_size); \
+#define CASE_VEC_SIZE(__Sz)                                                \
+  case __Sz:                                                               \
+    ScatterCUDAKernel<T, IndexT, true, __Sz><<<config.block_per_grid,      \
+                                               config.thread_per_block,    \
+                                               0,                          \
+                                               dev_ctx.stream()>>>(        \
+        p_src, p_index, p_output, output_dims[0], index_size, slice_size); \
     break
     CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
@@ -248,9 +259,13 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void GPUScatterGradForX(const phi::GPUContext& ctx,
+void GPUScatterGradForX(const phi::GPUContext& dev_ctx,
                         const DenseTensor& index,
                         DenseTensor* output) {
+  if (index.numel() == 0) {
+    VLOG(6) << "Do nothing for GPUScatterGradX since index is 0-size tensor.";
+    return;
+  }
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   // slice size
@@ -265,14 +280,14 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   int64_t n = slice_size * index_size;
   int64_t height = (n + block - 1) / block;
   dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(ctx, &grid);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
 
-  ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
+  ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, dev_ctx.stream()>>>(
       p_index, p_output, dst_dims[0], index_size, slice_size);
 }
 
 template <typename T, typename IndexT = int>
-void GPUScatterNdAdd(const phi::GPUContext& ctx,
+void GPUScatterNdAdd(const phi::GPUContext& dev_ctx,
                      const DenseTensor& update,
                      const DenseTensor& index,
                      DenseTensor* output) {
@@ -312,9 +327,9 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
 
   constexpr int loop_count = 4;
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      ctx, remain_numel * slice_size, vec_size * loop_count);
+      dev_ctx, remain_numel * slice_size, vec_size * loop_count);
 
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                              \
   case __Sz:                                                             \
@@ -337,6 +352,151 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported vectorized size: %d", vec_size));
   }
+}
+
+inline int64_t ensure_nonempty_size(const phi::DenseTensor& t, int64_t dim) {
+  return t.dims().size() == 0 ? 1 : t.dims()[dim];
+}
+
+inline int64_t ensure_nonempty_stride(const phi::DenseTensor& t, int64_t dim) {
+  if (t.dims().size() == 0) {
+    return 1;
+  }
+  auto strides = common::stride(t.dims());
+  return strides[dim];
+}
+
+using IdxVec = std::vector<int64_t>;
+inline IdxVec ensure_nonempty_vec(IdxVec vec) {
+  if (vec.empty()) {
+    vec.push_back(1);
+  }
+  return vec;
+}
+
+inline phi::DDim ensure_nonempty_ddim(phi::DDim dim) {
+  if (dim.size() == 0) {
+    return phi::make_ddim({1});
+  }
+  return dim;
+}
+
+inline DenseTensor as_strided(const DenseTensor& src,
+                              const std::vector<int64_t>& shape,
+                              const std::vector<int64_t>& strides) {
+  phi::DenseTensor out;
+  out.ShareDataWith(src);
+  out.Resize(phi::make_ddim(shape));
+  out.set_strides(phi::make_ddim(strides));
+  return out;
+}
+
+inline DenseTensor restride_dim(const phi::DenseTensor& src,
+                                int dim,
+                                const std::vector<int64_t>& replacement_shape) {
+  auto strides = ensure_nonempty_vec(common::vectorize(src.strides()));
+  strides[dim] = 0;
+  return as_strided(src, replacement_shape, strides);
+}
+
+template <int nt, int vt, typename func_t>
+__global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
+  constexpr int nv = nt * vt;
+  int idx = nv * blockIdx.x + threadIdx.x;
+
+#pragma unroll
+  for (int i = 0; i < vt; ++i) {
+    if (idx < N) {
+      f(idx);
+      idx += nt;
+    }
+  }
+}
+
+template <typename T, typename IndexT = int>
+void GPUScatterAdd(const phi::GPUContext& dev_ctx,
+                   const DenseTensor& src,
+                   const DenseTensor& index,
+                   DenseTensor* output,
+                   int dim) {
+  if (index.numel() == 0 || src.numel() == 0) return;
+
+  auto index_dims = src.dims();
+  auto index_sizes = ensure_nonempty_vec(common::vectorize(index_dims));
+  auto self_strides = ensure_nonempty_vec(common::vectorize(output->strides()));
+  auto src_strides = ensure_nonempty_vec(common::vectorize(src.strides()));
+
+  auto self_restrided = restride_dim(*output, dim, index_sizes);
+  auto src_restrided = as_strided(src, index_sizes, src_strides);
+
+  int64_t numel = 0;
+  std::vector<int64_t> desired_shape;
+  std::array<int64_t*, 3> strides_array;
+  std::array<std::vector<int64_t>, 3> strides_vec;
+
+  std::vector<int64_t> new_strides(index_dims.size(), 0);
+  if (!new_strides.empty()) {
+    new_strides[0] = index.strides()[0];
+  }
+
+  ScatterAddStride<3>(common::vectorize(src_restrided.dims()),
+                      common::vectorize(src_restrided.strides()),
+                      phi::SizeOf(src_restrided.dtype()),
+                      common::vectorize(self_restrided.dims()),
+                      common::vectorize(self_restrided.strides()),
+                      phi::SizeOf(self_restrided.dtype()),
+                      index_sizes,
+                      new_strides,
+                      phi::SizeOf(index.dtype()),
+                      &desired_shape,
+                      &strides_array,
+                      &numel,
+                      strides_vec);
+
+  auto self_dim_stride = ensure_nonempty_stride(*output, dim);
+  auto self_dim_size = ensure_nonempty_size(*output, dim);
+  auto index_stride = self_dim_stride;
+  auto index_size = self_dim_size;
+
+  char* self_ptr = reinterpret_cast<char*>(self_restrided.data<T>());
+  const char* src_ptr = reinterpret_cast<const char*>(src_restrided.data<T>());
+  const char* index_ptr = reinterpret_cast<const char*>(index.data<IndexT>());
+
+  auto offset_calc =
+      make_offset_calculator_put<3>(desired_shape, strides_array);
+
+  auto reduce_add = [=] __device__(int i) {
+    const auto offsets = offset_calc.get(i);
+    int64_t idx_dim = *reinterpret_cast<const int64_t*>(index_ptr + offsets[2]);
+
+    T* self_data = reinterpret_cast<T*>(self_ptr + offsets[0]);
+    const T* src_data = reinterpret_cast<const T*>(src_ptr + offsets[1]);
+
+    phi::fastAtomicAdd(self_data, idx_dim * index_stride, numel, *src_data);
+  };  // NOLINT
+
+  int64_t N;
+  const auto output_dims = common::vectorize(output->dims());
+
+  if (index.numel() == output_dims[dim]) {
+    N = output->numel();
+  } else {
+    auto adjusted_dims = output_dims;
+    adjusted_dims[dim] = index.numel();
+    N = std::accumulate(adjusted_dims.begin(),
+                        adjusted_dims.end(),
+                        1LL,
+                        std::multiplies<int64_t>());
+  }
+
+  constexpr int nt = 128;
+  constexpr int vt = 8;
+  const dim3 block(nt);
+  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  auto stream = dev_ctx.stream();
+
+  scatter_gather_elementwise_kernel<nt, vt>
+      <<<grid, block, 0, stream>>>(N, reduce_add);
 }
 
 }  // namespace funcs

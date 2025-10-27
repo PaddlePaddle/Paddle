@@ -298,9 +298,11 @@ class TestSemiAutoParallelNdCrossMeshReshard:
         if dist.get_rank() in self._dst_rank:
             assert np.equal(out.shape, input_tensor.shape).all()
             assert np.equal(out._local_shape, expect_out_shape).all()
+            local_rank_in_mesh = dist.get_rank() - 4
+            shard_idx = local_rank_in_mesh % 2
             np.testing.assert_equal(
                 out._local_value().numpy(),
-                expect_out[dist.get_rank() % 2].numpy(),
+                expect_out[shard_idx].numpy(),
             )
 
     def test_sr_to_rp(self):

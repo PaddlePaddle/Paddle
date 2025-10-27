@@ -53,9 +53,9 @@ class BatchCommHelper:
         shape_message = self._send_recv_meta.recv_shape_message
         dtype_message = self._send_recv_meta.recv_dtype_message
         stop_gradient = self._send_recv_meta.recv_stop_gradient
-        assert (shape_message is not None) and (
-            dtype_message is not None
-        ), "Failed to build from meta."
+        assert (shape_message is not None) and (dtype_message is not None), (
+            "Failed to build from meta."
+        )
 
         res = []
         if isinstance(shape_message, tuple):
@@ -79,9 +79,9 @@ class BatchCommHelper:
         shape_message = self._send_recv_meta.recv_shape_message
         dtype_message = self._send_recv_meta.recv_dtype_message
 
-        assert (shape_message is not None) and (
-            dtype_message is not None
-        ), "Failed to build from meta."
+        assert (shape_message is not None) and (dtype_message is not None), (
+            "Failed to build from meta."
+        )
 
         if isinstance(shape_message, tuple):
             assert isinstance(tensors, (list, tuple))
@@ -108,8 +108,17 @@ class BatchCommHelper:
             return
         self._recv_meta(group, broadcast=True)
 
-    def append_irecv(self, ops, src, group):
-        tensors = self._build_from_meta()
+    def append_irecv(self, ops, src, group, alloc_on_comm_stream=False):
+        if alloc_on_comm_stream:
+            send_recv_stream = paddle.device.Stream(
+                stream_base=group.process_group.get_stream(
+                    paddle.framework._current_expected_place_()
+                )
+            )
+            with paddle.device.stream_guard(send_recv_stream):
+                tensors = self._build_from_meta()
+        else:
+            tensors = self._build_from_meta()
         for tensor in tensors:
             if tensor is not None:
                 ops.append(P2POp(paddle.distributed.irecv, tensor, src, group))

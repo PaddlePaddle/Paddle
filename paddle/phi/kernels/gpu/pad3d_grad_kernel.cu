@@ -52,9 +52,13 @@ __global__ void Pad3DGradConstNCDHW(const IndexType in_size,
     const IndexType out_d = in_d + pad_front;
     const IndexType out_h = in_h + pad_top;
     const IndexType out_w = in_w + pad_left;
+    bool out_of_bound = out_d < 0 || out_h < 0 || out_w < 0;
+
     d_in_data[in_index] =
-        d_out_data[nc * out_depth * out_height * out_width +
-                   out_d * out_height * out_width + out_h * out_width + out_w];
+        out_of_bound ? static_cast<T>(0)
+                     : d_out_data[nc * out_depth * out_height * out_width +
+                                  out_d * out_height * out_width +
+                                  out_h * out_width + out_w];
   }
 }
 
@@ -89,11 +93,13 @@ __global__ void Pad3DGradConstNDHWC(const IndexType in_size,
     const IndexType out_d = in_d + pad_front;
     const IndexType out_h = in_h + pad_top;
     const IndexType out_w = in_w + pad_left;
-
+    bool out_of_bound = out_d < 0 || out_h < 0 || out_w < 0;
     d_in_data[in_index] =
-        d_out_data[n * out_depth * out_height * out_width * channels +
-                   out_d * out_height * out_width * channels +
-                   out_h * out_width * channels + out_w * channels + c];
+        out_of_bound
+            ? static_cast<T>(0)
+            : d_out_data[n * out_depth * out_height * out_width * channels +
+                         out_d * out_height * out_width * channels +
+                         out_h * out_width * channels + out_w * channels + c];
   }
 }
 
@@ -337,7 +343,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value,
+                     double pad_value,
                      const std::string& data_format,
                      DenseTensor* x_grad) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -347,6 +353,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
   auto d_out_dims = d_out->dims();
   const T* d_out_data = d_out->data<T>();
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
+  if (x.numel() == 0) return;
 
   phi::funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
 
@@ -683,7 +690,9 @@ PD_REGISTER_KERNEL(pad3d_grad,
                    phi::Pad3dGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

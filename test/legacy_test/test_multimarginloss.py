@@ -239,7 +239,6 @@ def calc_multi_margin_loss(
 
 
 class TestMultiMarginLoss(unittest.TestCase):
-
     def test_MultiMarginLoss(self):
         batch_size = 5
         num_classes = 2

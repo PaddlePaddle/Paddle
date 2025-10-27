@@ -27,6 +27,8 @@ from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import (
     ConditionalFallbackError,
     allow_dynamic_shape_guard,
+    enable_0_size_fallback_guard,
+    specialized_dim_numbers_guard,
 )
 
 
@@ -247,7 +249,7 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             )
             for i in range(1, 5):
                 self.assert_results(pad_func, paddle.randn([1, 3, 224, 224]), i)
-                self.assertEqual(ctx.translate_count, i)
+                self.assertEqual(ctx.translate_count, 1 if i == 1 else 2)
 
     def test_dynamic_shape_int_mul_float(self):
         with (
@@ -302,14 +304,16 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_shape_constraint, paddle.randn([8, 7, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 4  # add constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                4,  # add constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([9, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 4  # hit constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                4,  # hit constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
@@ -336,7 +340,8 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_shape_constraint, paddle.randn([8, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 5  # hit 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                5,  # hit 2 * (s0 + s1 - 2) <= 30
             )
 
             with self.assertRaises(ConditionalFallbackError):
@@ -513,6 +518,75 @@ class TestDynamicShapeNonBreakOps(TestCaseBase):
                     paddle.randn([i, 5, 6]),
                 )
                 self.assertEqual(ctx.translate_count, 2)
+
+
+def dynamic_shape_for_specialized_dim_numbers(x):
+    return x + 1
+
+
+class TestSpecializedDimNumbers(TestCaseBase):
+    def test_specialized_dim_numbers_01(self):
+        with (
+            specialized_dim_numbers_guard("01"),
+            allow_dynamic_shape_guard(True),
+            test_instruction_translator_cache_context() as ctx,
+            enable_0_size_fallback_guard(False),
+        ):
+            x = paddle.randn([0, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 1)
+            x = paddle.randn([1, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
+            x = paddle.randn([2, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 3)
+            x = paddle.randn([3, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 3)
+
+    def test_specialized_dim_numbers_0(self):
+        with (
+            specialized_dim_numbers_guard("0"),
+            allow_dynamic_shape_guard(True),
+            test_instruction_translator_cache_context() as ctx,
+            enable_0_size_fallback_guard(False),
+        ):
+            x = paddle.randn([0, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 1)
+            x = paddle.randn([1, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
+            x = paddle.randn([2, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
+            x = paddle.randn([3, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
+
+    def test_specialized_dim_numbers_no(self):
+        with (
+            specialized_dim_numbers_guard("no"),
+            allow_dynamic_shape_guard(True),
+            test_instruction_translator_cache_context() as ctx,
+            enable_0_size_fallback_guard(False),
+        ):
+            x = paddle.randn([10, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 1)
+            x = paddle.randn([0, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
+            x = paddle.randn([1, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
+            x = paddle.randn([2, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
+            x = paddle.randn([3, 5, 6])
+            self.assert_results(dynamic_shape_for_specialized_dim_numbers, x)
+            self.assertEqual(ctx.translate_count, 2)
 
 
 if __name__ == '__main__':

@@ -74,7 +74,7 @@ void zero_copy_run() {
 TEST(PD_PredictorZeroCopyRun, zero_copy_run) { zero_copy_run(); }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(PD_AnalysisConfig, profile_mkldnn) {
+TEST(PD_AnalysisConfig, profile_onednn) {
   std::string model_dir = FLAGS_infer_model;
   std::string prog_file = model_dir + "/model";
   std::string params_file = model_dir + "/params";
@@ -83,11 +83,11 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_SetCpuMathLibraryNumThreads(config, 10);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
-  PD_EnableMKLDNN(config);
-  bool mkldnn_enable = PD_MkldnnEnabled(config);
-  EXPECT_TRUE(mkldnn_enable);
-  PD_EnableMkldnnBfloat16(config);
-  PD_SetMkldnnCacheCapacity(config, 0);
+  PD_EnableONEDNN(config);
+  bool onednn_enable = PD_OnednnEnabled(config);
+  EXPECT_TRUE(onednn_enable);
+  PD_EnableOnednnBfloat16(config);
+  PD_SetOnednnCacheCapacity(config, 0);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_DeleteAnalysisConfig(config);
 }

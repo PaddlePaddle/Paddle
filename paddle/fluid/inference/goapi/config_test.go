@@ -67,7 +67,7 @@ func TestNewConfig(t *testing.T) {
 
 	config.SwitchIrDebug(false)
 
-	config.EnableMKLDNN()
+	config.EnableONEDNN()
 
 	config.EnableMemoryOptim(true)
 	t.Logf("MemoryOptimEnabled:%+v", config.MemoryOptimEnabled())
@@ -89,23 +89,23 @@ func TestNewConfig(t *testing.T) {
 	t.Log(config.Summary())
 }
 
-func TestMkldnn(t *testing.T) {
+func TestOnednn(t *testing.T) {
 	config := NewConfig()
 	config.SetModelDir("modelDir")
 	t.Log(config.ModelDir())
 
-	config.EnableMKLDNN()
-	t.Logf("MkldnnEnabled:%+v", config.MkldnnEnabled())
+	config.EnableONEDNN()
+	t.Logf("OnednnEnabled:%+v", config.OnednnEnabled())
 
-	config.SetMkldnnCacheCapacity(4)
+	config.SetOnednnCacheCapacity(4)
 
 	config.SetCpuMathLibraryNumThreads(4)
 	t.Logf("CpuMathLibraryNumThreads:%+v", config.CpuMathLibraryNumThreads())
 
-	config.SetMKLDNNOp([]string{"fc", "conv"})
+	config.SetONEDNNOp([]string{"fc", "conv"})
 
-	config.EnableMkldnnBfloat16()
-	t.Logf("MkldnnBfloat16Enabled:%+v", config.MkldnnBfloat16Enabled())
+	config.EnableOnednnBfloat16()
+	t.Logf("OnednnBfloat16Enabled:%+v", config.OnednnBfloat16Enabled())
 
 	config.SetBfloat16Op([]string{"fc", "mul"})
 }

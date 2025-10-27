@@ -251,7 +251,6 @@ void WarpctcKernel(const Context& dev_ctx,
                           "greater than zero "
                           "but received %d. ",
                           max_sequence_length));
-
     PADDLE_ENFORCE_GT(num_sequences,
                       0,
                       common::errors::InvalidArgument(
@@ -259,7 +258,6 @@ void WarpctcKernel(const Context& dev_ctx,
                           "greater than zero "
                           "but received %d. ",
                           num_sequences));
-
     PADDLE_ENFORCE_GT(sequence_width,
                       0,
                       common::errors::InvalidArgument(
@@ -267,6 +265,15 @@ void WarpctcKernel(const Context& dev_ctx,
                           "greater than zero "
                           "but received %d. ",
                           sequence_width));
+    PADDLE_ENFORCE_LT(
+        num_sequences * sequence_width * max_sequence_length,
+        std::numeric_limits<int>::max(),
+        errors::InvalidArgument(
+            "The total number of elements in Input(Logits) should be less than "
+            "%d, "
+            "but received %d",
+            std::numeric_limits<int>::max(),
+            num_sequences * sequence_width * max_sequence_length));
 
     DenseTensor logits_length_cpu;
     DenseTensor labels_length_cpu;

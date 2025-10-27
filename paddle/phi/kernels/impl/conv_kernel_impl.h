@@ -39,7 +39,7 @@ void ConvKernelImpl(const Context& dev_ctx,
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;
-  if (input.numel() == 0) {
+  if (input.numel() == 0 || filter.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;

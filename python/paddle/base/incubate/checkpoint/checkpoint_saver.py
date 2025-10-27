@@ -94,9 +94,9 @@ class CheckpointSaver:
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
-                assert local_fs.is_dir(
-                    cache_path
-                ), f"cache path:{cache_path} must be a directory"
+                assert local_fs.is_dir(cache_path), (
+                    f"cache path:{cache_path} must be a directory"
+                )
 
             saved_path = cache_path
 
@@ -195,30 +195,3 @@ class CheckpointSaver:
             return a[-1]
 
         return -1
-
-    def clean_redundant_checkpoints(self, root_path, reserved=[]):
-        max_no = self._get_last_checkpoint_no(root_path)
-        if max_no < 0:
-            return
-
-        s = set(reserved)
-        if len(s) == 0:
-            s.add(max_no)
-
-        dirs = self._fs.list_dirs(root_path)
-        for d in dirs:
-            g = d.split(".")
-            if len(g) != 2:
-                continue
-
-            if g[0] != self._checkpoint_prefix:
-                continue
-
-            try:
-                n = int(g[1])
-                if n not in s:
-                    path = f"{root_path}/{self._checkpoint_prefix}.{n}"
-                    self._fs.delete(path)
-            except Exception as e:
-                print(e)
-                continue

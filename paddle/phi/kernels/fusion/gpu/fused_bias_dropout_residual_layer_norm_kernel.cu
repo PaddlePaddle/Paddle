@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_dropout_residual_layer_norm_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -61,7 +62,7 @@ void FusedBiasDropoutResidualLnKernel(
           : dev_ctx.template Alloc<uint8_t>(
                 dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t));
   auto* y_data = dev_ctx.template Alloc<T>(y, y->numel() * sizeof(T));
-
+  if (y->numel() == 0) return;
   const auto input_x_dims = x.dims();
   int bsz_seq = 1;
   for (int i = 0; i < input_x_dims.size() - 1; i++) {
@@ -102,7 +103,7 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasDropoutResidualLnKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 #else
@@ -112,7 +113,7 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm,
                    phi::fusion::FusedBiasDropoutResidualLnKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 #endif

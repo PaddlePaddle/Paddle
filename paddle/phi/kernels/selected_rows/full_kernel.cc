@@ -18,8 +18,6 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
@@ -57,10 +55,10 @@ PD_REGISTER_KERNEL(full_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(full_sr,
@@ -74,9 +72,9 @@ PD_REGISTER_KERNEL(full_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
@@ -90,7 +88,7 @@ PD_REGISTER_KERNEL(full_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 
 PD_REGISTER_KERNEL(full_with_tensor_sr,
@@ -104,10 +102,10 @@ PD_REGISTER_KERNEL(full_with_tensor_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }
 
@@ -123,9 +121,9 @@ PD_REGISTER_KERNEL(full_with_tensor_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }
 #endif
@@ -141,7 +139,7 @@ PD_REGISTER_KERNEL(full_with_tensor_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }
 #endif

@@ -148,9 +148,9 @@ class DistributedTensor:
         local_sizes = DistributedTensor.get_local_sizes(
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
-        assert len(local_sizes) == len(
-            local_offsets
-        ), f"The length of local_sizes must be equal to local_offsets, but got {len(local_sizes)} and {len(local_offsets)}."
+        assert len(local_sizes) == len(local_offsets), (
+            f"The length of local_sizes must be equal to local_offsets, but got {len(local_sizes)} and {len(local_offsets)}."
+        )
 
         local_end_offsets = [
             x[0] + x[1] for x in zip(local_offsets, local_sizes)
@@ -359,9 +359,9 @@ class DistributedTensor:
 
     def local_tensor(self, rank=None):
         rank = paddle.distributed.get_rank() if rank is None else rank
-        assert (
-            rank in self._local_tensor_map
-        ), f"The rank {rank} local tensor has not been created."
+        assert rank in self._local_tensor_map, (
+            f"The rank {rank} local tensor has not been created."
+        )
         return self._local_tensor_map[rank]
 
     def __deepcopy__(self, memo):

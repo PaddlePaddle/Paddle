@@ -125,7 +125,7 @@ class TestDeleteRepeatedShapeCastPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -211,7 +211,7 @@ class TestDeleteRepeatedSlicePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -292,7 +292,7 @@ class TestDeleteRepeatedAddPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -375,7 +375,7 @@ class TestDeleteRepeatedScalePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -385,9 +385,10 @@ class TestDeleteRepeatedScalePass(PassAutoScanTest):
 class TestDeleteRepeatedSqueezePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ['scale', 'squeeze2', 'relu', 'relu', 'relu'], (
-            1e-5,
-            1e-5,
+        yield (
+            config,
+            ['scale', 'squeeze2', 'relu', 'relu', 'relu'],
+            (1e-5, 1e-5),
         )
 
     def sample_program_config(self, draw):
@@ -499,9 +500,10 @@ class TestDeleteRepeatedSqueezePass(PassAutoScanTest):
 class TestDeleteRepeatedUnSqueezePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ['scale', 'unsqueeze2', 'relu', 'relu', 'relu'], (
-            1e-5,
-            1e-5,
+        yield (
+            config,
+            ['scale', 'unsqueeze2', 'relu', 'relu', 'relu'],
+            (1e-5, 1e-5),
         )
 
     def sample_program_config(self, draw):
@@ -720,7 +722,7 @@ class TestDeleteRepeatedGatherPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],
@@ -805,7 +807,7 @@ class TestDeleteRepeatedTransposePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["delete_repeated_ops_pass"],

@@ -118,9 +118,10 @@ def get_best_configs(
     for block_m in block_ms:
         for block_n in block_ns:
             success = False
-            num_waves, best_num_waves = get_num_waves(
-                block_m, block_n
-            ), get_num_waves(best_block_m, best_block_n)
+            num_waves, best_num_waves = (
+                get_num_waves(block_m, block_n),
+                get_num_waves(best_block_m, best_block_n),
+            )
             if best_block_m is None or best_block_n is None:
                 success = True
             elif num_waves < best_num_waves:
@@ -255,7 +256,6 @@ def gemm_fp8_fp8_bf16_nt(
     # NOTES: `get_tma_aligned_lhs_scales` may launch a kernel if not processed by previous kernels
     lhs_scales = get_col_major_tma_aligned_tensor(lhs_scales)
     assert rhs_scales.is_contiguous()
-    paddle.base.core.nvprof_nvtx_pop()
 
     # Do nothing if `m` is zero
     if m == 0:
@@ -275,4 +275,3 @@ def gemm_fp8_fp8_bf16_nt(
 
     # Run the kernel.
     runtime(*args)
-    paddle.base.core.nvprof_nvtx_pop()

@@ -646,9 +646,9 @@ class Transformer(Layer):
             src_word_embedder,
         )
         if weight_sharing:
-            assert (
-                src_vocab_size == trg_vocab_size
-            ), "Vocabularies in source and target should be same for weight sharing."
+            assert src_vocab_size == trg_vocab_size, (
+                "Vocabularies in source and target should be same for weight sharing."
+            )
             trg_word_embedder = src_word_embedder
         else:
             trg_word_embedder = Embedder(

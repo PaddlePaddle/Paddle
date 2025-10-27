@@ -97,6 +97,9 @@ message PpConfig {
     optional NCCLConfig coll_nccl_config = 15;
     optional NCCLConfig p2p_nccl_config = 16;
     optional NCCLConfig shared_nccl_config = 17;
+    optional bool sync_param = 18 [ default = false ];
+    optional bool sync_moment = 19 [ default = false ];
+    optional string sync_mode = 20 [ default = 'broadcast' ];
 }
 
 message DygraphShardingConfig {
@@ -112,6 +115,7 @@ message DygraphShardingConfig {
   optional bool enable_fuse_optimizer_states = 10 [ default = false ];
   optional NCCLConfig nccl_config = 11;
   optional NCCLConfig check_nccl_config = 12;
+  optional int32 offload_opt_buffer_size = 13 [ default = -1 ];
 }
 
 message HybridConfig {
@@ -134,6 +138,12 @@ message HybridConfig {
   optional EpConfig ep_configs = 17;
   optional MoeShardingConfig moe_sharding_configs = 18;
   optional DefaultCommGroupConfig default_comm_group_configs = 19;
+  optional int32 cp_degree = 20 [ default = 1 ];
+  optional int32 cp_sharding_degree = 21 [ default = 1 ];
+  optional CpConfig cp_configs = 22;
+  optional CpShardingConfig cp_sharding_configs = 23;
+  optional DpCpConfig dp_cp_configs = 24;
+  optional CpMpConfig cp_mp_configs = 25;
 }
 
 message AMPConfig {
@@ -497,6 +507,22 @@ message EpConfig {
 message MoeShardingConfig {
   optional NCCLConfig nccl_config = 1;
   optional NCCLConfig check_nccl_config = 2;
+}
+
+message CpConfig {
+  optional NCCLConfig nccl_config = 1;
+}
+
+message CpShardingConfig {
+  optional NCCLConfig nccl_config = 1;
+}
+
+message DpCpConfig {
+  optional NCCLConfig nccl_config = 1;
+}
+
+message CpMpConfig {
+  optional NCCLConfig nccl_config = 1;
 }
 
 message DefaultCommGroupConfig {

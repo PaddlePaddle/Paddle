@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 
@@ -140,12 +140,11 @@ def calc_multi_label_margin_loss(
 
 
 class TestMultiLabelMarginLoss(unittest.TestCase):
-
     def test_MultiLabelSoftMarginLoss(self):
         input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
 
-        places = get_places(string_format=True)
+        places = get_devices()
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:

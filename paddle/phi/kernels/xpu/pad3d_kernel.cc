@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -25,7 +26,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode,
-                 float pad_value,
+                 double pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -51,6 +52,11 @@ void Pad3dKernel(const Context& dev_ctx,
   }
 
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    return;
+  }
 
   const int64_t num = in_dims[0];  // n
   int64_t channels = in_dims[1];   // c
@@ -143,8 +149,8 @@ void Pad3dKernel(const Context& dev_ctx,
   pads_xpu[5] = pads[1];  // pr
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
-  using XPUTypeBF16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
+  using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
   // Because the xpu api do not support pad3d with bf16 type, we use fp16
   // temporarily. This would not cause problem because it is a memcpy-only
   // operator.
@@ -204,5 +210,5 @@ PD_REGISTER_KERNEL(pad3d,
                    ALL_LAYOUT,
                    phi::Pad3dKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

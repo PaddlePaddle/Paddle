@@ -29,6 +29,7 @@ void PadGradKernel(const Context& dev_ctx,
   std::vector<int64_t> pad_left, pad_right;
   std::vector<int64_t> out_shape = common::vectorize<int64_t>(d_out.dims());
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x && d_x->numel() == 0) return;
 
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     pad_left.push_back(-paddings[i * 2]);
@@ -48,16 +49,16 @@ void PadGradKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void PadGradKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& d_out,
-    const std::vector<int>& paddings,
-    const Scalar& pad_value,
-    DenseTensor* d_x) {
-  using T = phi::dtype::complex<float>;
+void PadGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                               const DenseTensor& d_out,
+                                               const std::vector<int>& paddings,
+                                               const Scalar& pad_value,
+                                               DenseTensor* d_x) {
+  using T = phi::complex64;
   std::vector<int64_t> pad_left, pad_right;
   std::vector<int64_t> out_shape = common::vectorize<int64_t>(d_out.dims());
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x && d_x->numel() == 0) return;
 
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     pad_left.push_back(-paddings[i * 2]);
@@ -107,8 +108,8 @@ PD_REGISTER_KERNEL(pad_grad,
                    int16_t,
                    int64_t,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
 }

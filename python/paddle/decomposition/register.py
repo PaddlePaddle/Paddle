@@ -26,9 +26,9 @@ class Registry:
     def register(self, op_type, rule):
         assert isinstance(op_type, str)
         assert inspect.isfunction(rule)
-        assert (
-            op_type not in self.rules
-        ), f'name "{op_type}" should not be registered before.'
+        assert op_type not in self.rules, (
+            f'name "{op_type}" should not be registered before.'
+        )
         self.rules[op_type] = rule
 
     def lookup(self, op_type):

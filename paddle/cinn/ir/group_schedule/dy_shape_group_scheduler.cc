@@ -136,7 +136,7 @@ std::vector<std::pair<SymbolicPredicate, ir::Expr>>
 DynamicShapeGroupScheduler::GetCX86IRs() {
   std::vector<std::pair<SymbolicPredicate, ir::Expr>> irs(1);
   irs[0].first = ir::EQ::Make(ir::Expr(1), ir::Expr(1));
-  irs[1].second = ir_sch_->GetModule().GetExprs()[0];
+  irs[0].second = ir_sch_->GetModule().GetExprs()[0];
   return irs;
 }
 

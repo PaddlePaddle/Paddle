@@ -75,7 +75,7 @@ void AssertInstruction::Run() {
     return;
   }
 
-  funcs::TensorFormatter formatter;
+  phi::funcs::TensorFormatter formatter;
   formatter.SetSummarize(
       op_->attribute<::pir::Int64Attribute>("summarize").data());
 

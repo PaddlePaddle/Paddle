@@ -17,46 +17,40 @@ import unittest
 import paddle
 from paddle import pir
 from paddle.base import core
-from paddle.framework import LayerHelper
 
 paddle.enable_static()
 
 
 class TestShadowOutputSlice(unittest.TestCase):
     def test_op(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                x = paddle.ones([3, 9, 5], dtype='float32')
-                y = paddle.static.data(
-                    name="y", shape=[3, 9, 5], dtype="float32"
-                )
-                z = x * y  # will be eliminated
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with (
+            paddle.static.scope_guard(new_scope),
+            paddle.static.program_guard(main_program),
+        ):
+            x = paddle.ones([3, 9, 5], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3, 9, 5], dtype="float32")
+            z = x * y  # will be eliminated
 
-                _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
-                helper = LayerHelper('shadow_output')
-                helper.append_op(
-                    type="shadow_output",
-                    inputs={"x": [out.name]},
-                    outputs={"out": [y.name]},
-                    attrs={"name": out.name},
-                )
+            _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
+            paddle.base.libpaddle.pir.append_shadow_output(
+                main_program,
+                out,
+                "out",
+                len(main_program.global_block().ops),
+            )
 
-            new_program = pir.translate_to_pir(main_program.desc)
-            op_names = [op.name() for op in new_program.global_block().ops]
+            op_names = [op.name() for op in main_program.global_block().ops]
             self.assertTrue('pd_op.multiply' in op_names)
             pm = pir.PassManager()
             pm.add_pass(
                 'dead_code_elimination_pass', {}
             )  # apply pass to eliminate dead code
-            pm.run(new_program)
-            op_names = [op.name() for op in new_program.global_block().ops]
+            pm.run(main_program)
+            op_names = [op.name() for op in main_program.global_block().ops]
             self.assertEqual(pm.passes(), ['dead_code_elimination_pass'])
             self.assertFalse(pm.empty())
             self.assertTrue(

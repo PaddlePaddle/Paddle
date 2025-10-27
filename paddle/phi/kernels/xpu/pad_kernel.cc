@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -27,6 +28,15 @@ void PadKernel(const Context& dev_ctx,
                DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(out->dims())),
+                            pad_value,
+                            out);
+      return;
+    }
+  }
   std::vector<int64_t> pad_left, pad_right;
   std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
 
@@ -48,13 +58,12 @@ void PadKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void PadKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    const std::vector<int>& paddings,
-    const Scalar& pad_value,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void PadKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                           const DenseTensor& x,
+                                           const std::vector<int>& paddings,
+                                           const Scalar& pad_value,
+                                           DenseTensor* out) {
+  using T = phi::complex64;
   dev_ctx.template Alloc<T>(out);
   std::vector<int64_t> pad_left, pad_right;
   std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
@@ -107,8 +116,8 @@ PD_REGISTER_KERNEL(pad,
                    int16_t,
                    int64_t,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
 }

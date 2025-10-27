@@ -70,7 +70,9 @@ void StridedCopyKernel(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
-    int64_t data_size = input.Holder()->size() - input.meta().offset;
+    int64_t data_size_in = input.Holder()->size() - input.meta().offset;
+    int64_t data_size_out = out->Holder()->size() - out->meta().offset;
+    int64_t data_size = std::max(data_size_in, data_size_out);
     r = xpu::strided_copy<XPUType>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
@@ -85,14 +87,14 @@ void StridedCopyKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void StridedCopyKernel<phi::dtype::complex<float>, XPUContext>(
+void StridedCopyKernel<phi::complex64, XPUContext>(
     const XPUContext& dev_ctx,
     const DenseTensor& input,
     const std::vector<int64_t>& dims,
     const std::vector<int64_t>& out_stride,
     int64_t offset,
     DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+  using T = phi::complex64;
   dev_ctx.template Alloc<T>(out);
   const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
   const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
@@ -122,8 +124,8 @@ PD_REGISTER_KERNEL(strided_copy,
                    float,
                    double,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
-                   ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
 }

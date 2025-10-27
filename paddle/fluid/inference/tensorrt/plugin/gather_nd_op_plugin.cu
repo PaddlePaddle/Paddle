@@ -30,8 +30,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
-
 template <typename T, typename IndexT = int>
 __global__ void GatherNdCUDAKernel(const T* input,
                                    const int32_t* input_dims,
@@ -257,7 +255,6 @@ int GatherNdPluginDynamic::enqueue(
 
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

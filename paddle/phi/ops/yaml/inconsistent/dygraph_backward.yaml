@@ -128,6 +128,7 @@
   infer_meta :
     func : UnchangedMultiInferMeta
     param : [x_shape]
+    spmd_rule : EinsumGradInferSpmd
   kernel :
     func : einsum_grad
 
@@ -353,7 +354,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
-    spmd_rule : TileGradInferSpmd
+    spmd_rule : TileGradInferSpmdDynamic
   kernel :
     func : tile_grad
   no_need_buffer : x

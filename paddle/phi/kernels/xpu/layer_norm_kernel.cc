@@ -43,6 +43,7 @@ void LayerNormKernelImpl(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<T>(out);
   auto* mean_data = dev_ctx.template Alloc<float>(mean);
   auto* variance_data = dev_ctx.template Alloc<float>(variance);
+  if (x.numel() == 0) return;
 
   int r = xpu::layer_norm(dev_ctx.x_context(),
                           reinterpret_cast<const XPUType*>(x_data),
@@ -108,8 +109,8 @@ PD_REGISTER_KERNEL(layer_norm,
                    ALL_LAYOUT,
                    phi::LayerNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }

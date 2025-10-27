@@ -41,7 +41,8 @@ __global__ void KernelNanCounts(const T* input,
                                 const int64_t numel,
                                 const int64_t pre_dim,
                                 const int64_t stride,
-                                int64_t* nan_counts) {
+                                int64_t* nan_counts,
+                                int64_t* nan_indices) {
   int bx = blockIdx.x;
   int tx = threadIdx.x;
   int64_t total1 = 0;
@@ -54,7 +55,10 @@ __global__ void KernelNanCounts(const T* input,
       int64_t offset = i + j * stride;
 
       T x = input[offset];
-      if (isnan(static_cast<float>(x))) num += 1;
+      if (isnan(static_cast<float>(x))) {
+        if (i < nan_indices[j]) nan_indices[j] = offset;
+        num += 1;
+      }
 
       i += blockDim.x;
     }
@@ -70,6 +74,9 @@ __global__ void KernelNanCounts(const T* input,
 template <typename T>
 __global__ void CalcMedianMeanKernel(const T* sort_out_ptr,
                                      const int64_t* sort_indices_ptr,
+                                     int64_t* nan_counts,
+                                     int64_t* nan_indice,
+                                     T nan_val,
                                      int64_t* median_val,
                                      T* output,
                                      T div_factor,
@@ -80,6 +87,11 @@ __global__ void CalcMedianMeanKernel(const T* sort_out_ptr,
   int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
 
   for (int64_t index = begin; index < pre_dim; index += step) {
+    if (nan_counts[index] > 0) {
+      output[index] = nan_val;
+      median_val[index] = nan_indice[index];
+      continue;
+    }
     int64_t pos = static_cast<int64_t>((index + 1) * stride) - 1;
     if (is_odd) {
       median_val[index * 2] = sort_indices_ptr[pos];
@@ -99,6 +111,9 @@ __global__ void CalcMedianMeanKernel(const T* sort_out_ptr,
 template <typename T>
 __global__ void CalcMedianMinKernel(const T* sort_out_ptr,
                                     const int64_t* sort_indices_ptr,
+                                    int64_t* nan_counts,
+                                    int64_t* nan_indice,
+                                    T nan_val,
                                     int64_t* median_val,
                                     T* output,
                                     T div_factor,
@@ -109,6 +124,11 @@ __global__ void CalcMedianMinKernel(const T* sort_out_ptr,
   int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
 
   for (int64_t index = begin; index < pre_dim; index += step) {
+    if (nan_counts[index] > 0) {
+      output[index] = nan_val;
+      median_val[index] = nan_indice[index];
+      continue;
+    }
     int64_t pos = static_cast<int64_t>((index + 1) * stride) - 1;
     if (is_odd) {
       median_val[index] = sort_indices_ptr[pos];
@@ -210,6 +230,7 @@ template <typename T, typename Context>
 void ProcessMedianKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const std::string& mode,
+                         bool ignore_nan,
                          DenseTensor* out,
                          DenseTensor* median_index) {
 #ifdef PADDLE_WITH_CUDA
@@ -237,49 +258,52 @@ void ProcessMedianKernel(const Context& dev_ctx,
   int64_t pre_dim = numel / stride;
 
   DenseTensor nan_counts;
+  DenseTensor nan_indices;
   int64_t* nan_counts_ptr;
+  int64_t* nan_indices_ptr;
   int64_t max_valid_num = 0;
 
-  bool ignore_nan = true;
-  if (ignore_nan) {
-    nan_counts.Resize(common::make_ddim({pre_dim}));
-    dev_ctx.template Alloc<int64_t>(&nan_counts);
-    nan_counts_ptr = nan_counts.data<int64_t>();
-    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, stride);
-    int64_t grid_size = pre_dim;
-    int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
-    grid_size = std::min(grid_size, max_grid_dim);
-    KernelNanCounts<T><<<grid_size, block_size, 0, stream>>>(
-        x_data, numel, pre_dim, stride, nan_counts_ptr);
-    auto nan_stat_mem_cpu =
-        phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
-    int64_t* nan_stat_cpu_ptr =
-        reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
-    int64_t sum =
-        thrust::reduce(exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
-    nan_stat_cpu_ptr[0] = sum;
-    auto maxx_ptr = thrust::max_element(
-        exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
-    memory_utils::Copy(phi::CPUPlace(),
-                       nan_stat_cpu_ptr + 1,
-                       dev_ctx.GetPlace(),
-                       maxx_ptr,
-                       sizeof(int64_t),
-                       stream);
-    // all elements are nan values
-    T nan_val = std::numeric_limits<T>::quiet_NaN();
-    if (nan_stat_cpu_ptr[0] == numel) {
-      phi::funcs::SetConstant<Context, T> set_nan;
-      set_nan(dev_ctx, out, nan_val);
+  nan_counts.Resize(common::make_ddim({pre_dim}));
+  dev_ctx.template Alloc<int64_t>(&nan_counts);
+  nan_counts_ptr = nan_counts.data<int64_t>();
+  nan_indices.Resize(common::make_ddim({pre_dim}));
+  dev_ctx.template Alloc<int64_t>(&nan_indices);
+  phi::funcs::SetConstant<phi::GPUContext, int64_t> set_const;
+  set_const(dev_ctx, &nan_indices, numel);
+  nan_indices_ptr = nan_indices.data<int64_t>();
 
-      phi::funcs::SetConstant<Context, int64_t> set_negatvie;
-      set_negatvie(dev_ctx, median_index, static_cast<int64_t>(-1));
-      return;
-    }
+  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, stride);
+  int64_t grid_size = pre_dim;
+  int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  grid_size = std::min(grid_size, max_grid_dim);
+  KernelNanCounts<T><<<grid_size, block_size, 0, stream>>>(
+      x_data, numel, pre_dim, stride, nan_counts_ptr, nan_indices_ptr);
+  auto nan_stat_mem_cpu =
+      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
+  int64_t* nan_stat_cpu_ptr =
+      reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
+  int64_t sum =
+      thrust::reduce(exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
+  nan_stat_cpu_ptr[0] = sum;
+  auto min_nan_ptr = thrust::min_element(
+      exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
+  memory_utils::Copy(phi::CPUPlace(),
+                     nan_stat_cpu_ptr + 1,
+                     dev_ctx.GetPlace(),
+                     min_nan_ptr,
+                     sizeof(int64_t),
+                     stream);
+  T nan_val = std::numeric_limits<T>::quiet_NaN();
+  if (nan_stat_cpu_ptr[0] == numel) {
+    phi::funcs::SetConstant<Context, T> set_nan;
+    set_nan(dev_ctx, out, nan_val);
 
-    ignore_nan = nan_stat_cpu_ptr[0] > 0;
-    max_valid_num = nan_stat_cpu_ptr[1];
+    phi::funcs::SetConstant<Context, int64_t> set_negatvie;
+    set_negatvie(dev_ctx, median_index, static_cast<int64_t>(numel / 2));
+    return;
   }
+
+  max_valid_num = stride - nan_stat_cpu_ptr[1];
 
   int64_t sort_k = ignore_nan ? max_valid_num : ((stride >> 1) + 1);
   bool is_ori_odd = stride & 1;
@@ -300,7 +324,6 @@ void ProcessMedianKernel(const Context& dev_ctx,
       dev_ctx, x, Scalar(sort_k), -1, false, true, &sort_out, &sort_indices);
 
   T div_factor = static_cast<T>(2.0);
-  T nan_val = std::numeric_limits<T>::quiet_NaN();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pre_dim);
   if (ignore_nan) {
     if (mode == "avg") {
@@ -338,6 +361,9 @@ void ProcessMedianKernel(const Context& dev_ctx,
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               sort_out_ptr,
               sort_indices_ptr,
+              nan_counts_ptr,
+              nan_indices_ptr,
+              nan_val,
               m_data,
               out_data,
               div_factor,
@@ -349,6 +375,9 @@ void ProcessMedianKernel(const Context& dev_ctx,
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               sort_out_ptr,
               sort_indices_ptr,
+              nan_counts_ptr,
+              nan_indices_ptr,
+              nan_val,
               m_data,
               out_data,
               div_factor,
@@ -386,7 +415,8 @@ void NanmedianKernel(const Context& dev_ctx,
     funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
   }
 
-  ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, mode, out, median_index);
+  ProcessMedianKernel<T, Context>(
+      dev_ctx, tmp_x, mode, true, out, median_index);
 }
 }  // namespace phi
 
@@ -398,7 +428,7 @@ PD_REGISTER_KERNEL(nanmedian,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

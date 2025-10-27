@@ -30,7 +30,7 @@ from paddle.tensorrt.register import converter_registry
 from paddle.tensorrt.util import get_trt_version_list
 
 
-@converter_registry.register("pd_op.dropout", trt_version="8.x")
+@converter_registry.register("pd_op.dropout")
 def dropout_converter(network, paddle_op, inputs):
     input_x = inputs[0]
     dropout_prob = get_input_constant_value(paddle_op, inputs, 2)[0]
@@ -67,9 +67,7 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     set_layer_name(input_shape_tensor, paddle_op)
     input_shape_tensor = input_shape_tensor.get_output(0)
 
-    input_rank = (
-        input_shape_tensor.shape
-    )  # The reason is unknown that adding this unused code make input_shape_tensor maintain the correct result.
+    input_rank = input_shape_tensor.shape  # The reason is unknown that adding this unused code make input_shape_tensor maintain the correct result.
     data_format = paddle_op.attrs().get("data_format")
     interp_method = paddle_op.attrs().get("interp_method")
     align_corners = paddle_op.attrs().get("align_corners")
@@ -371,9 +369,7 @@ def nearest_interp_converter(network, paddle_op, inputs):
     input_shape_tensor = network.add_shape(input_tensor)
     set_layer_name(input_shape_tensor, paddle_op)
     input_shape_tensor = input_shape_tensor.get_output(0)
-    input_rank = (
-        input_shape_tensor.shape
-    )  # The reason is unknown that adding this unused code make input_shape_tensor maintain the correct result.
+    input_rank = input_shape_tensor.shape  # The reason is unknown that adding this unused code make input_shape_tensor maintain the correct result.
     data_format = paddle_op.attrs().get("data_format")
     interp_method = paddle_op.attrs().get("interp_method")
     align_corners = paddle_op.attrs().get("align_corners")

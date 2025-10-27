@@ -27,6 +27,9 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+
+#define SEPARATOR "=========================="
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 AddNGradNodeFinal::operator()(
@@ -34,8 +37,9 @@ AddNGradNodeFinal::operator()(
         &grads,
     bool create_graph,
     bool is_new_grad) {
-  VLOG(3) << "Running AD API GRAD: "
-          << "add_n_grad";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API_GRAD: "
+          << "add_n_grad" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("AddNGradNodeFinal begin");
   }
@@ -78,12 +82,20 @@ AddNGradNodeFinal::operator()(
     }
   }
   // Call grad_api function
-  VLOG(3) << "Final State Running: AddNGradNodeFinal";
-
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("add_n_grad", call_count);
+  }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // dygraph function
   for (auto &item : returns[0]) {
     item = ::scale_ad_func(out_grad, phi::Scalar(1.0), 0.0, true);
   }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_C++_API: " << unique_api_name << SEPARATOR;
 
   // Check NaN and Inf id needed
   if (FLAGS_check_nan_inf) {
@@ -123,5 +135,8 @@ AddNGradNodeFinal::operator()(
     egr::CUDAErrorCheck("AddNGradNodeFinal finish");
   }
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API_GRAD: "
+          << "add_n_grad" << SEPARATOR;
   return returns;
 }

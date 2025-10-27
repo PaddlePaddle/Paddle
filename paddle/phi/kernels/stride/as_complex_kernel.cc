@@ -14,7 +14,6 @@
 #include "paddle/phi/kernels/as_complex_kernel.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -91,7 +90,7 @@ PD_REGISTER_KERNEL(
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(
     as_complex, Custom, STRIDED, phi::AsComplexStridedKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));

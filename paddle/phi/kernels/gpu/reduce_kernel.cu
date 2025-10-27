@@ -238,8 +238,8 @@ PD_REGISTER_KERNEL(reduce,
                    int8_t,
                    uint8_t,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(reduce,
                    GPU,
@@ -252,7 +252,7 @@ PD_REGISTER_KERNEL(reduce,
                    int8_t,
                    uint8_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 
 PD_REGISTER_KERNEL(amax_grad,
@@ -262,7 +262,9 @@ PD_REGISTER_KERNEL(amax_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(amin_grad,
                    GPU,
@@ -281,8 +283,8 @@ PD_REGISTER_KERNEL(max_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(mean_grad,
                    GPU,
@@ -291,10 +293,11 @@ PD_REGISTER_KERNEL(mean_grad,
                    bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::float8_e4m3fn,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
                    int,
                    int64_t) {}
 
@@ -306,8 +309,8 @@ PD_REGISTER_KERNEL(min_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(sum_grad,
                    GPU,
@@ -316,14 +319,14 @@ PD_REGISTER_KERNEL(sum_grad,
                    bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

@@ -15,7 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -121,7 +128,8 @@ class TestModeOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestModeFP16Op(TestModeOp):
     def init_dtype(self):
@@ -130,7 +138,7 @@ class TestModeFP16Op(TestModeOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestModeBF16Op(TestModeOp):
@@ -145,13 +153,13 @@ class TestModeBF16Op(TestModeOp):
         self.inputs = {'X': convert_float_to_uint16(self.input_data)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         paddle.enable_static()
         if core.is_bfloat16_supported(place):
             self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         paddle.enable_static()
         grad = self.init_numeric_grads()
 
@@ -168,7 +176,8 @@ class TestModeOpLastdim(TestModeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestModeFP16OpLastdim(TestModeFP16Op):
     def init_args(self):
@@ -177,7 +186,8 @@ class TestModeFP16OpLastdim(TestModeFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestModeBF16OpLastdim(TestModeBF16Op):
     def init_args(self):
@@ -207,7 +217,7 @@ class TestModeOpKernels(unittest.TestCase):
                 np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
 
         def test_gpu_kernel():
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             tensor = paddle.to_tensor(self.inputs)
             for axis in self.axes:
                 value_expect, indice_expect = cal_mode(self.inputs, axis)

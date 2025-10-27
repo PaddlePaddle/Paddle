@@ -55,6 +55,19 @@ void ActivationXPUImpl(const Context& dev_ctx,
     ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
   }
 
+#define DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_DOUBLE_ATTRS(                    \
+    name, functor_class, attr)                                                 \
+  template <typename T, typename Context>                                      \
+  void name##Kernel(const Context& dev_ctx,                                    \
+                    const DenseTensor& x,                                      \
+                    double attr,                                               \
+                    DenseTensor* out) {                                        \
+    functor_class<T> functor;                                                  \
+    auto attrs = functor.GetAttrs();                                           \
+    *(attrs[0].second) = static_cast<float>(attr);                             \
+    ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
+  }
+
 #define DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(                           \
     name, functor_class, attr1, attr2)                                         \
   template <typename T, typename Context>                                      \
@@ -205,12 +218,13 @@ struct XPURoundFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor& x,
                   DenseTensor* out) const {
     using XPUType = typename XPUTypeTrait<T>::Type;
-    int r = xpu::round<XPUType>(dev_ctx.x_context(),
-                                reinterpret_cast<const XPUType*>(x.data<T>()),
-                                reinterpret_cast<XPUType*>(out->data<T>()),
-                                x.numel(),
-                                decimals);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "round");
+    int r = xpu::paddle_round<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        x.numel(),
+        decimals);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_round");
   }
 };
 
@@ -342,22 +356,22 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
 
     auto xpu_context = dev_ctx.x_context();
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      if (!std::is_same<T, ::phi::dtype::bfloat16>::value) {
+      if (!std::is_same<T, phi::bfloat16>::value) {
         // use fast_swish if NOT bf16
-        int r = xpu::fast_swish(
+        int r = xpu::fast_silu(
             xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish");
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_silu");
       } else {
         // use plain swish
-        int r = xpu::swish(
-            xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+        int r =
+            xpu::silu(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "silu");
       }
     } else {
       // use plain swish
       int r =
-          xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+          xpu::silu(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "silu");
     }
   }
 };
@@ -591,17 +605,27 @@ DEFINE_XPU_ACTIVATION_KERNEL(Tan, XPUTanFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Acos, XPUAcosFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
-                                            XPULeakyReluFunctor,
-                                            alpha)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
-                                            XPUSoftplusFunctor,
-                                            beta,
-                                            threshold)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
+                                                   XPULeakyReluFunctor,
+                                                   alpha)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                             XPUHardSigmoidFunctor,
                                             slope,
                                             offset)
+
+template <typename T, typename Context>
+void SoftplusKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    double beta,
+                    double threshold,
+                    DenseTensor* out) {
+  XPUSoftplusFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = static_cast<float>(beta);
+  *(attrs[1].second) = static_cast<float>(threshold);
+  ActivationXPUImpl<T, Context, XPUSoftplusFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -637,146 +661,117 @@ PD_REGISTER_KERNEL(relu,
                    ALL_LAYOUT,
                    phi::ReluKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(silu,
                    XPU,
                    ALL_LAYOUT,
                    phi::SiluKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(
-    elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::dtype::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::float16) {}
 PD_REGISTER_KERNEL(sigmoid,
                    XPU,
                    ALL_LAYOUT,
                    phi::SigmoidKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(swish,
                    XPU,
                    ALL_LAYOUT,
                    phi::SwishKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(hardsigmoid,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::HardSigmoidKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(hardswish,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::HardSwishKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(leaky_relu,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::LeakyReluKernel,
-                   float,
-                   phi::dtype::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(
+    hardsigmoid, XPU, ALL_LAYOUT, phi::HardSigmoidKernel, float, phi::float16) {
+}
+PD_REGISTER_KERNEL(
+    hardswish, XPU, ALL_LAYOUT, phi::HardSwishKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(
+    leaky_relu, XPU, ALL_LAYOUT, phi::LeakyReluKernel, float, phi::float16) {}
 PD_REGISTER_KERNEL(sqrt,
                    XPU,
                    ALL_LAYOUT,
                    phi::SqrtKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(tanh,
                    XPU,
                    ALL_LAYOUT,
                    phi::TanhKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(square,
                    XPU,
                    ALL_LAYOUT,
                    phi::SquareKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(log,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::LogKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(
-    relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::dtype::float16) {}
+    log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::float16, phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(sin,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SinKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(cos,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::CosKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::float16) {}
 
-PD_REGISTER_KERNEL(pow,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::PowKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    sin, XPU, ALL_LAYOUT, phi::SinKernel, float, phi::float16, phi::bfloat16) {}
+PD_REGISTER_KERNEL(
+    cos, XPU, ALL_LAYOUT, phi::CosKernel, float, phi::float16, phi::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    pow, XPU, ALL_LAYOUT, phi::PowKernel, float, phi::float16, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(rsqrt,
                    XPU,
                    ALL_LAYOUT,
                    phi::RsqrtKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(exp,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ExpKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    exp, XPU, ALL_LAYOUT, phi::ExpKernel, float, phi::float16, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(round,
                    XPU,
                    ALL_LAYOUT,
                    phi::RoundKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    tan, XPU, ALL_LAYOUT, phi::TanKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(tan, XPU, ALL_LAYOUT, phi::TanKernel, float, phi::float16) {}
 
 PD_REGISTER_KERNEL(acos,
                    XPU,
                    ALL_LAYOUT,
                    phi::AcosKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
 
-PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
+
+PD_REGISTER_KERNEL(floor,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FloorKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {}

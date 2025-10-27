@@ -17,27 +17,37 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import pir
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.autograd.ir_backward import grad
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 paddle.enable_static()
 
 
+@signature_safe_contextmanager
+def dygraph_guard():
+    in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+    try:
+        if not in_dygraph_outside:
+            paddle.disable_static()
+        yield
+    finally:
+        if not in_dygraph_outside:
+            paddle.enable_static()
+
+
 def get_ir_program_0():
     paddle.enable_static()
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([4, 4])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
-            k_s = paddle.tanh(x_s)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+    x = paddle.randn([4, 4])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        k_s = paddle.tanh(x_s)
+    return main_program
 
 
 class TesBackward_1(unittest.TestCase):
@@ -140,21 +150,19 @@ class TesBackward_1(unittest.TestCase):
 
 def get_ir_program_1():
     paddle.enable_static()
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([2, 2])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
+    x = paddle.randn([2, 2])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
 
-            k_s = paddle.tanh(x_s)
-            z_x = paddle.tanh(x_s)
-            out = paddle.add(z_x, k_s)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+        k_s = paddle.tanh(x_s)
+        z_x = paddle.tanh(x_s)
+        out = paddle.add(z_x, k_s)
+    return main_program
 
 
 class TesBackward_2(unittest.TestCase):
@@ -218,18 +226,16 @@ class TesBackward_2(unittest.TestCase):
 
 def get_ir_program_2():
     paddle.enable_static()
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([2, 2])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
-            k_s = paddle.sum(x_s, axis=(-1,), keepdim=False)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+    x = paddle.randn([2, 2])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        k_s = paddle.sum(x_s, axis=(-1,), keepdim=False)
+    return main_program
 
 
 class TestBackward_3(unittest.TestCase):
@@ -310,6 +316,81 @@ class TestBackward_5(unittest.TestCase):
                 relu_grad_number += 1
 
         self.assertEqual(relu_grad_number, 1)
+
+
+class TestBackward_6(unittest.TestCase):
+    def test_negative_shape(self):
+        with dygraph_guard():
+            model = paddle.nn.Linear(2, 3)
+
+            def f(x):
+                y = model(x)
+                y = paddle.tanh(y)
+                return paddle.grad(
+                    y, x, create_graph=True, grad_outputs=paddle.randn_like(y)
+                )[0]
+
+            f = paddle.jit.to_static(
+                f,
+                full_graph=True,
+                backend=None,
+                input_spec=[paddle.static.InputSpec([-1, -1], dtype="float32")],
+            )
+            x = paddle.randn(4, 2, requires_grad=True)
+            y = f(x)
+            self.assertEqual(x.shape, y.shape)
+
+    def test_negative_shape_error1(self):
+        with dygraph_guard():
+            model = paddle.nn.Linear(2, 3)
+
+            def f(x):
+                y = model(x)
+                y = paddle.tanh(y)
+                return paddle.grad(
+                    y, x, create_graph=True, grad_outputs=paddle.randn(1, 3)
+                )[0]
+
+            with self.assertRaisesRegex(
+                ValueError,
+                r"The shape of grad_output\[0\] \[1, 3\] should be the same as the shape of output\[0\] \[4, 3\]",
+            ):
+                x = paddle.randn(4, 2, requires_grad=True)
+                f = paddle.jit.to_static(
+                    f,
+                    full_graph=True,
+                    backend=None,
+                    input_spec=[
+                        paddle.static.InputSpec(x.shape, dtype="float32")
+                    ],
+                )
+                y = f(x)
+
+    def test_negative_shape_error2(self):
+        with dygraph_guard():
+            model = paddle.nn.Linear(2, 3)
+
+            def f(x):
+                y = model(x)
+                y = paddle.tanh(y)
+                return paddle.grad(
+                    y, x, create_graph=True, grad_outputs=paddle.randn(4)
+                )[0]
+
+            with self.assertRaisesRegex(
+                ValueError,
+                r"The shape of grad_output\[0\] \[4\] should be the same as the shape of output\[0\] \[4, 3\]",
+            ):
+                x = paddle.randn(4, 2, requires_grad=True)
+                f = paddle.jit.to_static(
+                    f,
+                    full_graph=True,
+                    backend=None,
+                    input_spec=[
+                        paddle.static.InputSpec(x.shape, dtype="float32")
+                    ],
+                )
+                y = f(x)
 
 
 class TestValueSet(unittest.TestCase):

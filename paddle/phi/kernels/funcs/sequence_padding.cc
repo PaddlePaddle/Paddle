@@ -97,7 +97,7 @@ static void fast_mem_init(void* dest,
 template <typename T>
 class PaddingDenseTensorFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const phi::CPUContext& dev_ctx UNUSED,
                   const phi::DenseTensor& seq_tensor,
                   phi::DenseTensor* pad_tensor,
                   const phi::DenseTensor& pad_value,
@@ -138,7 +138,7 @@ class PaddingDenseTensorFunctor<phi::CPUContext, T> {
       fast_mem_init<T>(
           pad_data, pad_tensor->numel(), pad_value_data, sizeof(T));
     } else {
-      for (int i = 0; i < pad_tensor->numel(); i += step_width) {
+      for (int64_t i = 0; i < pad_tensor->numel(); i += step_width) {
         memcpy(pad_data + i, pad_value_data, step_width * sizeof(T));
       }
     }
@@ -157,7 +157,7 @@ class PaddingDenseTensorFunctor<phi::CPUContext, T> {
 template <typename T>
 class UnpaddingDenseTensorFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const phi::CPUContext& dev_ctx UNUSED,
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
@@ -194,7 +194,7 @@ class UnpaddingDenseTensorFunctor<phi::CPUContext, T> {
 template <typename T>
 class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const phi::XPUContext& context,
+  void operator()(const phi::XPUContext& dev_ctx,
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
@@ -207,7 +207,7 @@ class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
-    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    int64_t step_width = seq_tensor->numel() / seq_tensor_dims[0];
 
     CheckDims(seq_tensor_dims,
               pad_tensor_dims,
@@ -223,7 +223,7 @@ class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
         reinterpret_cast<int64_t*>(seq_offsets.data()),
         static_cast<int>(seq_offsets.size()),
         nullptr};
-    int r = xpu::sequence_unpad<T, int64_t>(context.x_context(),
+    int r = xpu::sequence_unpad<T, int64_t>(dev_ctx.x_context(),
                                             pad_data,
                                             seq_data,
                                             seq_offsets_param,
@@ -234,15 +234,15 @@ class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
 };
 #endif
 
-template class PaddingDenseTensorFunctor<phi::CPUContext, int>;
-template class PaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
-template class PaddingDenseTensorFunctor<phi::CPUContext, float>;
-template class PaddingDenseTensorFunctor<phi::CPUContext, double>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, int>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, float>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, double>;
 
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, int>;
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, float>;
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, double>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, int>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, float>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, double>;
 
 #ifdef PADDLE_WITH_XPU
 template class UnpaddingDenseTensorFunctor<phi::XPUContext, float>;

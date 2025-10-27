@@ -38,10 +38,10 @@ void ReduceGradFunctor(const Context& dev_ctx,
   auto x_dims = input0.dims();
   auto reduced_dims_v = common::vectorize(x_dims);
   std::vector<int> dims_ref = dims;
-  Eigen::array<int, D> broadcast_dim;
+  Eigen::array<int64_t, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
 
-  int broad_cast_times = 1;
+  int64_t broad_cast_times = 1;
   for (size_t i = 0; i < dims_ref.size(); ++i) {
     if (dims_ref[i] < 0) {
       dims_ref[i] = x_rank + dims_ref[i];
@@ -142,7 +142,7 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
     auto& place = *dev_ctx.eigen_device();
     // *dev_ctx.eigen_device();
     auto broadcast_dim =
-        Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
+        Eigen::array<int64_t, 1>({{static_cast<int64_t>(input0->numel())}});
     functor(place,
             &x,
             &x_reduce,

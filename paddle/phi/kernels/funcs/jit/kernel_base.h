@@ -53,6 +53,38 @@ typedef enum {
   kVTanh,
 } KernelType;
 
+#ifdef _WIN32
+#define FOREACH_JIT_KERNEL_TYPE(_) \
+  _(None)                          \
+  _(Adam)                          \
+  _(AdamW)                         \
+  _(CRFDecoding)                   \
+  _(EmbSeqPool)                    \
+  _(GRUH1)                         \
+  _(GRUHtPart1)                    \
+  _(GRUHtPart2)                    \
+  _(LSTMCtHt)                      \
+  _(LSTMC1H1)                      \
+  _(LayerNorm)                     \
+  _(MatMul)                        \
+  _(SeqPool)                       \
+  _(VAdd)                          \
+  _(VAddBias)                      \
+  _(VAddRelu)                      \
+  _(VBroadcast)                    \
+  _(VCopy)                         \
+  _(VExp)                          \
+  _(VIdentity)                     \
+  _(VMul)                          \
+  _(VRelu)                         \
+  _(VScal)                         \
+  _(Sgd)                           \
+  _(VSigmoid)                      \
+  _(VSquare)                       \
+  _(VSub)                          \
+  _(VTanh)
+#endif
+
 typedef enum {
   kNonePoolType = 0,
   kSum = 1,

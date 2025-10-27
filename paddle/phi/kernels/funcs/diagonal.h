@@ -63,7 +63,7 @@ struct DiagonalFunctor {
 };
 
 template <typename T, typename DeviceContext>
-DenseTensor Diagonal(const DeviceContext& context,
+DenseTensor Diagonal(const DeviceContext& dev_ctx,
                      const DenseTensor* input,
                      int64_t offset,
                      int64_t dim1,
@@ -105,7 +105,7 @@ DenseTensor Diagonal(const DeviceContext& context,
     DDim diag_dims = common::make_ddim(ret_dims);
     auto dig_stride = common::stride(diag_dims);
     diag.Resize(diag_dims);
-    auto diag_data = context.template Alloc<T>(&diag);
+    auto diag_data = dev_ctx.template Alloc<T>(&diag);
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
@@ -119,8 +119,8 @@ DenseTensor Diagonal(const DeviceContext& context,
     const auto* ret_arr = ret_strides.data();
 #endif
 
-    // auto& dev_ctx = context.template device_context<DeviceContext>();
-    phi::funcs::ForRange<DeviceContext> for_range(context, diag.numel());
+    // auto& dev_ctx2 = dev_ctx.template device_context<DeviceContext>();
+    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, diag.numel());
     DiagonalFunctor<T> functor(
         input_data, diag_arr, ret_arr, pos, dim_size, diag_data);
     for_range(functor);
@@ -158,7 +158,7 @@ __global__ void DiagonalCuda(const T* data1,
                              int64_t numel,
                              int64_t out_numel,
                              bool is_grad) {
-  CUDA_KERNEL_LOOP(idx, out_numel) {
+  CUDA_KERNEL_LOOP_TYPE(idx, out_numel, int64_t) {
     int64_t idx_dim[OUT_DIM_SIZE] = {0};
     int64_t temp = 0;
     for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {

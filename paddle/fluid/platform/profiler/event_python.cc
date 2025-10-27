@@ -135,7 +135,7 @@ ProfilerResult::ProfilerResult(
     : tree_(tree.release()),
       extra_info_(extra_info),
       device_property_map_(device_property_map),
-      span_indx_(0) {
+      span_index_(0) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto& nodetree : nodetrees) {
@@ -147,7 +147,7 @@ ProfilerResult::ProfilerResult(
 
 ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
                                const ExtraInfo& extra_info)
-    : tree_(tree.release()), extra_info_(extra_info), span_indx_(0) {
+    : tree_(tree.release()), extra_info_(extra_info), span_index_(0) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto& nodetree : nodetrees) {
@@ -167,7 +167,7 @@ void ProfilerResult::Save(const std::string& file_name,
                           const std::string format) {
   if (format == std::string("json")) {
     ChromeTracingLogger logger(file_name);
-    logger.LogMetaInfo(version_, span_indx_);
+    logger.LogMetaInfo(version_, span_index_);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     logger.LogDeviceProperty(device_property_map_);
 #endif
@@ -175,7 +175,7 @@ void ProfilerResult::Save(const std::string& file_name,
     logger.LogExtraInfo(GetExtraInfo());
   } else if (format == std::string("pb")) {
     SerializationLogger logger(file_name);
-    logger.LogMetaInfo(version_, span_indx_);
+    logger.LogMetaInfo(version_, span_index_);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     logger.LogDeviceProperty(device_property_map_);
 #endif

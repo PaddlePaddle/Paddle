@@ -51,12 +51,12 @@ class PEP508LikeEnvironmentVariable(EnvironmentVariable[dict[str, list[str]]]):
 
     def convert_to_string(self, value: dict[str, list[str]]) -> str:
         assert isinstance(value, dict), "The input must be a dict"
-        assert all(
-            isinstance(x, str) for x in value.keys()
-        ), "Keys must be a string"
-        assert all(
-            isinstance(x, list) for x in value.values()
-        ), "Values must be a list"
+        assert all(isinstance(x, str) for x in value.keys()), (
+            "Keys must be a string"
+        )
+        assert all(isinstance(x, list) for x in value.values()), (
+            "Values must be a list"
+        )
 
         env_list = []
         for k, v in value.items():
@@ -135,7 +135,6 @@ ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
     "SOT_ENABLE_GUARD_TREE",
     False,
 )
-ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
     "ENABLE_SOT_STEP_PROFILER", False
 )
@@ -154,6 +153,9 @@ ENV_SOT_UNSAFE_CACHE_FASTPATH = BooleanEnvironmentVariable(
 )
 ENV_SOT_ENABLE_0_SIZE_FALLBACK = BooleanEnvironmentVariable(
     "SOT_ENABLE_0_SIZE_FALLBACK", True
+)
+ENV_SOT_SPECIALIZED_DIM_NUMBERS = StringEnvironmentVariable(
+    "SOT_SPECIALIZED_DIM_NUMBERS", "0"
 )
 
 
@@ -218,4 +220,16 @@ def guard_tree_guard(value: bool):
 @contextmanager
 def sot_step_profiler_guard(value: bool):
     with EnvironmentVariableGuard(ENV_ENABLE_SOT_STEP_PROFILER, value):
+        yield
+
+
+@contextmanager
+def specialized_dim_numbers_guard(value: str):
+    with EnvironmentVariableGuard(ENV_SOT_SPECIALIZED_DIM_NUMBERS, value):
+        yield
+
+
+@contextmanager
+def enable_0_size_fallback_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_ENABLE_0_SIZE_FALLBACK, value):
         yield

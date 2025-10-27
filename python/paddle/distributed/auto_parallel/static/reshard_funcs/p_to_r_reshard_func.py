@@ -105,9 +105,9 @@ class PToRReshardFunctionCrossMesh(ReshardFunction):
         )
 
         p_to_r_func = PToRReshardFunction()
-        assert p_to_r_func.is_suitable(
-            tmp_dist_attr, dst_dist_attr
-        ), f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+        assert p_to_r_func.is_suitable(tmp_dist_attr, dst_dist_attr), (
+            f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+        )
         return p_to_r_func.reshard(
             tmp_dist_attr, dst_dist_attr, src_value, dst_type
         )

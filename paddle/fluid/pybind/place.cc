@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/dense_tensor_array.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -161,6 +162,7 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(phi::TensorArray);
@@ -267,6 +269,12 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](phi::Place &self, const phi::CustomPlace &plug_place) {
              self = plug_place;
            })
+      .def("__dlpack_device__",
+           [](const phi::Place &self) {
+             ::DLDevice dl_device = paddle::framework::PlaceToDLDevice(self);
+             return py::make_tuple(static_cast<int32_t>(dl_device.device_type),
+                                   dl_device.device_id);
+           })
       .def("__repr__", string::to_string<const phi::Place &>)
       .def("__str__", string::to_string<const phi::Place &>);
 
@@ -341,9 +349,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
              }
 #else
              LOG(ERROR) << string::Sprintf(
-                 "Cannot use CustomDevice because you have installed CPU/GPU"
+                 "Cannot use CustomDevice because you have installed CPU/GPU "
                  "version PaddlePaddle.\n"
-                 "If you want to use CustomDevice, please try to install"
+                 "If you want to use CustomDevice, please try to install "
                  "CustomDevice version "
                  "PaddlePaddle by: pip install paddlepaddle\n"
                  "If you only have CPU, please change "
@@ -360,6 +368,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](const phi::CustomPlace &self) { return self.GetDeviceType(); })
       .def("__repr__", string::to_string<const phi::CustomPlace &>)
       .def("__str__", string::to_string<const phi::CustomPlace &>);
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  m.def("is_float16_supported", [](const phi::CustomPlace &place) -> bool {
+    return phi::DeviceManager::IsFloat16Supported(place);
+  });
+  m.def("is_bfloat16_supported", [](const phi::CustomPlace &place) -> bool {
+    return phi::DeviceManager::IsBFloat16Supported(place);
+  });
+#endif
   py::class_<phi::GPUPlace, phi::Place> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.

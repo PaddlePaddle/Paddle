@@ -108,8 +108,13 @@ def create_async_load():
     Constructs a new AsyncLoad object.
     It is used to load/reload data asynchronously on GPU.
     """
+    custom_devices = paddle.device.get_all_custom_device_type()
     if paddle.is_compiled_with_xpu():
         return core.XpuAsyncLoad()
+    elif any(
+        paddle.is_compiled_with_custom_device(dev) for dev in custom_devices
+    ):
+        return None
     else:  # default is GPU or CUDA
         return core.AsyncLoad()
 
@@ -154,7 +159,17 @@ def async_offload(src_tensor, async_load):
         and src_tensor.place.is_xpu_place()
     )
 
-    if is_xpu_tensor:
+    # async_offload does not support custom device now
+    custom_devices = paddle.device.get_all_custom_device_type()
+    is_custom_tensor = (
+        any(
+            paddle.is_compiled_with_custom_device(dev) for dev in custom_devices
+        )
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.custom_device_type() in custom_devices
+    )
+
+    if is_xpu_tensor or is_custom_tensor:
         # sync fallback
         host_tensor = src_tensor.cpu()
         out = paddle.to_tensor(host_tensor.numpy(), place=paddle.CPUPlace())
@@ -213,3 +228,17 @@ def async_offload_with_offset(
     return async_loader.offload_with_offset(
         dst_tensor, src_tensor, dst_offset, src_offset, offload_size
     )
+
+
+def enable_activation_offload(model, enable=True, retry_times=1):
+    """
+    Enable activation offload
+    """
+    if enable:
+        paddle.set_flags({"FLAGS_offload_retry_times": retry_times})
+        paddle.core.register_offload_callback()
+        paddle.core.set_skip_offload_callback_tensors(model.parameters())
+    else:
+        paddle.set_flags({"FLAGS_offload_retry_times": -1})
+        paddle.core.clear_offload_callback()
+        paddle.core.set_skip_offload_callback_tensors([])

@@ -121,4 +121,6 @@ inline float FN_FP32(cbrt)(float x);
 inline double FN_FP64(cbrt)(double x);
 
 #undef FN_FP64
+
+int64_t cinn_get_value_in_kernel_args(void* v_args, int idx);
 }

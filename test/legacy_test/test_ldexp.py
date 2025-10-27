@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_devices, get_places
 
 import paddle
 
@@ -47,9 +47,7 @@ def _run_ldexp_static(x, y, device='cpu'):
             x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
             y_ = y
             res = paddle.ldexp(x_, y_)
-            place = (
-                paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
-            )
+            place = paddle.CPUPlace() if device == 'cpu' else get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -65,9 +63,7 @@ def _run_ldexp_static(x, y, device='cpu'):
             x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
             y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
             res = paddle.ldexp(x_, y_)
-            place = (
-                paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
-            )
+            place = paddle.CPUPlace() if device == 'cpu' else get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -86,7 +82,7 @@ def check_dtype(input, desired_dtype):
 
 class TestLdexpAPIWithDynamic(unittest.TestCase):
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def test_ldexp_dynamic(self):
         np.random.seed(7)
@@ -136,7 +132,7 @@ class TestLdexpAPIWithDynamic(unittest.TestCase):
 
 class TestLdexpAPIWithStatic(unittest.TestCase):
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def test_ldexp_static(self):
         np.random.seed(7)

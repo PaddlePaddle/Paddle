@@ -16,7 +16,7 @@ ARG PYTHON_VERSION=3.10
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VERSION}/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VERSION}/compat:/usr/local/cuda-${CUDA_VERSION}/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
 
 ENV HOME /root
 
@@ -33,6 +33,8 @@ RUN apt-get update --allow-unauthenticated && \
       autoconf \
       automake \
       libtool \
+      libmlx5-1 \
+      libibverbs-dev \
       python${PYTHON_VERSION} \
       python${PYTHON_VERSION}-dev \
       python3-pip && \
@@ -40,12 +42,12 @@ RUN apt-get update --allow-unauthenticated && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && \
-    tar -zxf cmake-3.18.0-Linux-x86_64.tar.gz && \
-    rm cmake-3.18.0-Linux-x86_64.tar.gz && \
-    rm -rf /home/cmake-3.18.0-Linux-x86_64/doc /home/cmake-3.18.0-Linux-x86_64/man
+RUN wget -q https://cmake.org/files/v3.31/cmake-3.31.0-linux-x86_64.tar.gz && \
+    tar -zxf cmake-3.31.0-linux-x86_64.tar.gz && \
+    rm cmake-3.31.0-linux-x86_64.tar.gz && \
+    rm -rf /home/cmake-3.31.0-linux-x86_64/doc /home/cmake-3.31.0-linux-x86_64/man
 
-ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
+ENV PATH=/home/cmake-3.31.0-linux-x86_64/bin:$PATH
 
 
 ARG TMP_DIR=patchelf_tmp
@@ -62,18 +64,8 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
     ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
     cd ../../ && rm -rf ccache-4.8.2.tar.gz && rm -rf ccache-4.8.2
 
-RUN pip install --no-cache-dir \
-    nvidia-cuda-nvrtc-cu12==12.9.41 \
-    nvidia-cuda-runtime-cu12==12.9.37 \
-    nvidia-cuda-cupti-cu12==12.9.19 \
-    nvidia-cudnn-cu12==9.9.0.52 \
-    nvidia-cublas-cu12==12.9.0.13 \
-    nvidia-cufft-cu12==11.4.0.6 \
-    nvidia-curand-cu12==10.3.10.19 \
-    nvidia-cusolver-cu12==11.7.4.40 \
-    nvidia-cusparse-cu12==12.5.9.5 \
-    nvidia-cusparselt-cu12==0.7.1 \
-    nvidia-nccl-cu12==2.26.5 \
-    nvidia-nvtx-cu12==12.9.19 \
-    nvidia-nvjitlink-cu12==12.9.41 \
-    nvidia-cufile-cu12==1.14.0.30
+COPY paddle/scripts/compile_requirements.txt /root
+COPY python/requirements.txt /root
+RUN pip install -r /root/requirements.txt && \
+    pip install -r /root/compile_requirements.txt && \
+    rm -rf /root/compile_requirements.txt /root/requirements.txt

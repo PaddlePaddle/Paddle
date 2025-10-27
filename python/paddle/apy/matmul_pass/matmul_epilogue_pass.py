@@ -63,7 +63,6 @@ class RemoveDataOp2SumOp2DataOpPass(access_topo_drr.DrrPass):
 
 
 class RemoveElementInputIndexPass(access_topo_drr.DrrPass):
-
     def __init__(self, src_data_op_name, dst_load_from_global_op_name):
         self.src_data_op_name = pir.a_str(src_data_op_name)
         self.dst_load_from_global_op_name = pir.a_str(
@@ -119,7 +118,6 @@ class RemoveBroadcastInputIndexPass(access_topo_drr.DrrPass):
 
 
 class RemoveOutputIndexPass(access_topo_drr.DrrPass):
-
     def __init__(self, src_data_op_name, dst_store_to_global_op_name):
         self.src_data_op_name = pir.a_str(src_data_op_name)
         self.dst_store_to_global_op_name = pir.a_str(

@@ -24,10 +24,10 @@ namespace funcs {
 
 template <typename Context, typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
-    const Context &ctx, const DenseTensor &repeats, DenseTensor *index) {
+    const Context &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
   DenseTensor repeats_cpu_copy;
   if (repeats.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+    phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT *repeats_data =
       repeats.place().GetType() == phi::AllocationType::CPU
@@ -51,7 +51,7 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
   }
   index->Resize(common::make_ddim({index_size}));
 
-  phi::TensorFromVector<RepeatsT>(index_vec, ctx, index);
+  phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
 
 template <typename RepeatsT>

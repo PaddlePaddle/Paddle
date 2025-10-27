@@ -23,7 +23,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.framework import use_pir_api
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
@@ -201,10 +200,8 @@ class TestInputSpec(Dy2StTestBase):
             input_spec=[InputSpec([-1, 10]), InputSpec([-1, 10], name='y')],
         )
         cp1 = net.add_func.concrete_program
-        if use_pir_api():
-            self.assertTrue(cp1.inputs[-1].shape == [-1, 10])
-        else:
-            self.assertTrue(cp1.inputs[-1].shape == (-1, 10))
+        self.assertTrue(cp1.inputs[-1].shape == [-1, 10])
+
         self.assertTrue(cp1.inputs[-1].name == 'y')
 
         # generate another program
@@ -213,10 +210,8 @@ class TestInputSpec(Dy2StTestBase):
             input_spec=[InputSpec([10]), InputSpec([10], name='label')],
         )
         cp2 = net.add_func.concrete_program
-        if use_pir_api():
-            self.assertTrue(cp2.inputs[-1].shape == [10])
-        else:
-            self.assertTrue(cp2.inputs[-1].shape == (10,))
+        self.assertTrue(cp2.inputs[-1].shape == [10])
+
         self.assertTrue(cp2.inputs[-1].name == 'label')
         # Note(Aurelius84): New instance will be returned if we use `to_static(foo)` every time.
         # So number of cache program is 1.

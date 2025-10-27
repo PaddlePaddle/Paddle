@@ -46,6 +46,14 @@ void WeightQuantizeKernel(const Context& dev_ctx,
 
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
+  if (out->numel() == 0) {
+    if (algo == "llm.int8") {
+      dev_ctx.template Alloc<float>(scale);
+    } else {
+      dev_ctx.template Alloc<T>(scale);
+    }
+    return;
+  }
   quanted_x.Resize({m, n});
   dev_ctx.template Alloc<int8_t>(&quanted_x);
   std::vector<int64_t> weight_shape{m, n};
@@ -118,7 +126,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int8_t>(&x_int_tmp);
     int8_t* x_int_tmp_data = x_int_tmp.data<int8_t>();
     int8_t* quanted_x_data = quanted_x.data<int8_t>();
-    for (int i = 0; i < out->numel(); ++i) {
+    for (int64_t i = 0; i < out->numel(); ++i) {
       x_int_tmp_data[i] = quanted_x_data[i];
     }
     std::vector<int> axis = {1, 0};
@@ -139,10 +147,17 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                      weight_shape,
                                      arch,
                                      algo);
+  } else if (algo == "w4afp8") {
+    weight_permute_gpu_w4afp8<Context>(dev_ctx,
+                                       x.data<int8_t>(),
+                                       out->data<int8_t>(),
+                                       weight_shape,
+                                       arch,
+                                       algo);
   } else {
     PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8', 'w4a8'], but got[%s]",
+        "'llm.int8', 'w4a8', 'w4afp8'], but got[%s]",
         algo);
   }
 }
@@ -152,6 +167,6 @@ PD_REGISTER_KERNEL(weight_quantize,
                    GPU,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int8_t) {}

@@ -17,7 +17,6 @@
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -34,6 +33,18 @@ namespace phi {
                         DenseTensor* dx) {                 \
     functor_class<T> functor;                              \
     functor(dev_ctx, x, dout, attr, 0, dx);                \
+  }
+
+#define DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr)                                    \
+  template <typename T, typename Context>                         \
+  void name##GradKernel(const Context& dev_ctx,                   \
+                        const DenseTensor& x,                     \
+                        const DenseTensor& dout,                  \
+                        double attr,                              \
+                        DenseTensor* dx) {                        \
+    functor_class<T> functor;                                     \
+    functor(dev_ctx, x, dout, static_cast<float>(attr), 0, dx);   \
   }
 
 #define DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(name, functor_class) \
@@ -206,9 +217,9 @@ DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid,
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtOneDNNGradUseOutFunctor);
 DEFINE_ONEDNN_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhOneDNNGradUseOutFunctor);
 
-DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                                  ReluOneDNNGradFunctor,
-                                                  alpha);
+DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                         ReluOneDNNGradFunctor,
+                                                         alpha);
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                   MishOneDNNGradFunctor,
                                                   threshold);
@@ -274,16 +285,11 @@ void Relu6GradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(relu_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ReluGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    relu_grad, OneDNN, ONEDNN, phi::ReluGradKernel, float, phi::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(                                  \
-      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
+  PD_REGISTER_KERNEL(name, OneDNN, ONEDNN, phi::func, float, phi::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(abs_grad, AbsGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)

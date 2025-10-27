@@ -19,7 +19,7 @@
 namespace phi {
 namespace distributed {
 
-class SameStatusReshardFunction final : public ReshardFunction {
+class PADDLE_API SameStatusReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;

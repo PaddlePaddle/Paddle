@@ -14,7 +14,6 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
@@ -101,7 +100,7 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
           x_fp16.Resize(common::make_ddim(out_dims));
         }
         auto* x_fp16_data_t = reinterpret_cast<XPUTypeFP16*>(
-            dev_ctx.template Alloc<phi::dtype::float16>(&x_fp16));
+            dev_ctx.template Alloc<phi::float16>(&x_fp16));
         int r_cast_x;
         XPUTypeFP16* q_data_fp16 = nullptr;
         XPUTypeFP16* k_data_fp16 = nullptr;
@@ -135,7 +134,7 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
         PADDLE_ENFORCE_XDNN_SUCCESS(
             r_cast_x, "multi_encoder_xpu(cast x from fp32 to fp16)");
         auto* out_fp16_data = reinterpret_cast<XPUTypeFP16*>(
-            dev_ctx.template Alloc<phi::dtype::float16>(&out_fp16));
+            dev_ctx.template Alloc<phi::float16>(&out_fp16));
         int r = xpu::qkv_attention<XPUTypeFP16,
                                    XPUTypeFP16,
                                    XPUTypeFP16,
@@ -300,11 +299,9 @@ void QKVAttentionXPUKernel(const Context& dev_ctx,
       v.dtype() == DataType::FLOAT16 && qkv_dtype == DataType::FLOAT16) {
     // float16 kernel
     if (use_int8) {
-      QKV_ATTENTION_XPU_KERNEL_IMPL(
-          phi::dtype::float16, phi::dtype::float16, int8_t);
+      QKV_ATTENTION_XPU_KERNEL_IMPL(phi::float16, phi::float16, int8_t);
     } else {
-      QKV_ATTENTION_XPU_KERNEL_IMPL(
-          phi::dtype::float16, phi::dtype::float16, int16_t);
+      QKV_ATTENTION_XPU_KERNEL_IMPL(phi::float16, phi::float16, int16_t);
     }
 
   } else if (q.dtype() == DataType::FLOAT32 && k.dtype() == DataType::FLOAT32 &&
@@ -321,7 +318,7 @@ void QKVAttentionXPUKernel(const Context& dev_ctx,
 
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
+        "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s "
         "and qkv_dtype is %s.",
         DataTypeToString(q.dtype()),
         DataTypeToString(k.dtype()),
@@ -339,5 +336,5 @@ PD_REGISTER_KERNEL(qkv_attention_xpu,
                    ALL_LAYOUT,
                    phi::fusion::QKVAttentionXPUKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int8_t) {}

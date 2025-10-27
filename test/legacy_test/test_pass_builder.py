@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
 import os
 import sys
@@ -19,6 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from simple_nets import simple_fc_net
 
 import paddle
@@ -42,7 +42,7 @@ class TestPassBuilder(unittest.TestCase):
             image = np.random.normal(size=(batch_size, 784)).astype('float32')
             label = np.random.randint(0, 10, (batch_size, 1), dtype="int64")
 
-            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            place = get_device_place() if use_cuda else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(startup)
             feed_dict = {'image': image, 'label': label}
@@ -115,7 +115,7 @@ class TestPassBuilder(unittest.TestCase):
             viz_pass.set("graph_viz_path", graph_viz_path)
 
             self.check_network_convergence(
-                use_cuda=core.is_compiled_with_cuda(),
+                use_cuda=(core.is_compiled_with_cuda() or is_custom_device()),
                 build_strategy=build_strategy,
             )
             try:

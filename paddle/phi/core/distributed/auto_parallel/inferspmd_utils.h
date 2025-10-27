@@ -35,7 +35,7 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-class InferSpmdContext {
+class PADDLE_API InferSpmdContext {
  public:
   InferSpmdContext() = default;
   InferSpmdContext(
@@ -229,7 +229,7 @@ class SpmdRule {
 
 // SpmdRuleFactory manage the spmd rules and cache the propagate results
 // TODO(chenweihang): Add spmd caching impl later
-class SpmdRuleFactory {
+class PADDLE_API SpmdRuleFactory {
  public:
   static SpmdRuleFactory& Instance();
 

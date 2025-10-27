@@ -75,11 +75,11 @@ void FlattenWithXShapeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 PD_REGISTER_KERNEL(
-    flatten, OneDNN, ONEDNN, phi::FlattenKernel, float, phi::dtype::bfloat16) {}
+    flatten, OneDNN, ONEDNN, phi::FlattenKernel, float, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(flatten_with_xshape,
                    OneDNN,
                    ONEDNN,
                    phi::FlattenWithXShapeKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

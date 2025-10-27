@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -36,11 +37,7 @@ class TestPdistAPI(unittest.TestCase):
         self.x = np.random.rand(10, 20).astype('float32')
         self.p = 2.0
         self.init_input()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_input(self):
         pass
@@ -122,11 +119,7 @@ class TestPdistAPI_ZeroSize(unittest.TestCase):
         self.init_shape()
         self.x = np.random.rand(*self.shape).astype('float32')
         self.p = 2.0
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_shape(self):
         self.shape = (0, 20)

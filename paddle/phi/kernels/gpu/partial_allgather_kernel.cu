@@ -72,7 +72,7 @@ void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   int64_t send_numel = numel / nranks;
-  int offset = send_numel * rank;
+  int64_t offset = send_numel * rank;
 
   auto send_buf = distributed::GetPartialTensor(*in, offset, send_numel);
   comm_ctx->AllGather(out, send_buf, stream);
@@ -92,10 +92,10 @@ PD_REGISTER_KERNEL(partial_allgather,
                    phi::PartialAllGatherOpCUDAKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(partial_allgather,
                    GPU,
@@ -105,5 +105,5 @@ PD_REGISTER_KERNEL(partial_allgather,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

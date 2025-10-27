@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -241,9 +241,8 @@ def linear_interp_np(
 
 class TestBilinearInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
     def test_case(self):
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 
@@ -284,9 +283,8 @@ class TestBilinearInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
 
 class TestBilinearInterpOpAPI_RecomputeScaleFactorList(unittest.TestCase):
     def test_case(self):
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 
@@ -330,9 +328,8 @@ class TestBilinearInterpOpAPI_RecomputeScaleFactorDifferentTensors(
     unittest.TestCase
 ):
     def test_case(self):
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 
@@ -378,8 +375,8 @@ class TestBilinearInterpOpAPI_RecomputeScaleFactorScalarTensor(
     unittest.TestCase
 ):
     def test_case(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 
@@ -422,9 +419,8 @@ class TestBilinearInterpOpAPI_RecomputeScaleFactorScalarTensor(
 
 class TestNearestInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
     def test_case(self):
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 
@@ -472,8 +468,8 @@ class TestNearestInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
 
 class TestLinearInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
     def test_case(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 
@@ -511,9 +507,8 @@ class TestLinearInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
 
 class TestInterpRecomputeScaleFactorError(unittest.TestCase):
     def test_size_and_recompute_scale_factor_error(self):
-
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 
@@ -549,8 +544,8 @@ class TestInterpRecomputeScaleFactorError(unittest.TestCase):
 
 class TestInterpRecomputeScaleFactorScaleShapeError(unittest.TestCase):
     def test_incorrect_scale_shape(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
 

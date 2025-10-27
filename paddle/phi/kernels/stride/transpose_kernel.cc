@@ -22,7 +22,7 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 template <typename Context>
-void TransposeStridedKernel(const Context& ctx,
+void TransposeStridedKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const std::vector<int>& axis,
                             DenseTensor* out) {

@@ -229,9 +229,9 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
     }
   }
 
-  // Step3: Mark is_run_mkldnn_kernel=true
+  // Step3: Mark is_run_onednn_kernel=true
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
-  new_config.is_run_mkldnn_kernel = true;
+  new_config.is_run_onednn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
 
   // Step4: Handle skip_transform_inputs

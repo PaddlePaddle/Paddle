@@ -101,3 +101,9 @@ def get_event_from_comm_stream(group_id: int) -> EventOverlap:
     return EventOverlap(
         event=paddle.base.core.get_event_handle_from_comm_stream(group_id)
     )
+
+
+def get_event_from_custom_stream(stream) -> EventOverlap:
+    return EventOverlap(
+        event=paddle.base.core.get_event_handle_from_custom_stream(stream)
+    )

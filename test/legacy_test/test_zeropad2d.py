@@ -112,6 +112,19 @@ class TestZeroPad2dAPI(unittest.TestCase):
         ret_res = zeropad2d(x_tensor, pad_tensor).numpy()
         np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
+    def test_support_pad5(self):
+        """
+        test the zero size Tensor.
+        """
+        pad = (1, 2, 3, 4)
+        x = np.random.randint(-255, 255, size=[0, 2, 3])
+        x_tensor = to_tensor(x, stop_gradient=False)
+        ret_res = zeropad2d(x_tensor, pad)
+        ret_res.backward()
+        np.testing.assert_allclose(
+            x_tensor.shape, x_tensor.grad.shape, rtol=1e-05
+        )
+
 
 class TestZeroPad2DLayer(unittest.TestCase):
     """

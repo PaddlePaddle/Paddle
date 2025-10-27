@@ -17,9 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -32,7 +30,7 @@ namespace funcs {
 // and only failed for this case. So reimplemented it.
 template <>
 void ColwiseSum<phi::GPUContext, double>::operator()(
-    const phi::GPUContext& context,
+    const phi::GPUContext& dev_ctx,
     const phi::DenseTensor& input,
     phi::DenseTensor* vector) {
   auto in_dims = input.dims();
@@ -47,11 +45,11 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
                         vector->numel()));
   phi::DenseTensor one;
   one.Resize({in_dims[0]});
-  context.template Alloc<double>(&one);
+  dev_ctx.template Alloc<double>(&one);
 
   SetConstant<phi::GPUContext, double> set;
-  set(context, &one, static_cast<double>(1.0));
-  phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
+  set(dev_ctx, &one, static_cast<double>(1.0));
+  phi::funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
       true,
       static_cast<int>(in_dims[0]),
       static_cast<int>(in_dims[1]),
@@ -68,7 +66,7 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
 // mode,
 template <>
 void RowwiseSum<phi::GPUContext, double>::operator()(
-    const phi::GPUContext& context,
+    const phi::GPUContext& dev_ctx,
     const phi::DenseTensor& input,
     phi::DenseTensor* vector) {
   auto in_dims = input.dims();
@@ -83,11 +81,11 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
                         vector->numel()));
   phi::DenseTensor one;
   one.Resize({size});
-  context.template Alloc<double>(&one);
+  dev_ctx.template Alloc<double>(&one);
 
   SetConstant<phi::GPUContext, double> set;
-  set(context, &one, static_cast<double>(1.0));
-  phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
+  set(dev_ctx, &one, static_cast<double>(1.0));
+  phi::funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
       true,
       static_cast<int>(in_dims[1]),
       static_cast<int>(in_dims[0]),

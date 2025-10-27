@@ -17,7 +17,15 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    check_cudnn_version_and_compute_capability,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -35,7 +43,7 @@ class TestTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -45,7 +53,7 @@ class TestTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -146,7 +154,7 @@ class TestCase10(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -169,7 +177,7 @@ class TestCase_ZeroDim(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -191,7 +199,7 @@ class TestAutoTuneTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -207,7 +215,7 @@ class TestAutoTuneTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -223,6 +231,39 @@ class TestAutoTuneTransposeOp(OpTest):
         )
 
 
+@unittest.skipIf(
+    not check_cudnn_version_and_compute_capability(min_device_capability=9.0),
+    "core is not compiled with CUDA or not support native fp8",
+)
+class TestFP8FastTranspose(unittest.TestCase):
+    def setUp(self):
+        self.dtype = paddle.float8_e4m3fn
+        self.test_cases = [
+            {"shape": (7168, 16384), "perm": [1, 0], "name": "2D(7168,16384)"},
+            {
+                "shape": (8, 7168, 4096),
+                "perm": [0, 2, 1],
+                "name": "3D(8,7168,4096)",
+            },
+            {
+                "shape": (8, 2048, 7168),
+                "perm": [0, 2, 1],
+                "name": "3D(8,2048,7168)",
+            },
+        ]
+
+    def test_verify_transpose(self):
+        paddle.disable_static()
+        with paddle.no_grad():
+            for case in self.test_cases:
+                x = paddle.randn(case["shape"]).cast(self.dtype)
+                np_data = x.numpy()
+                gold = np.transpose(np_data, case["perm"])
+                out = paddle.transpose(x, case["perm"]).contiguous()
+                np.testing.assert_equal(out.numpy(), gold)
+        paddle.enable_static()
+
+
 class TestAutoTuneTransposeFP16Op(OpTest):
     def setUp(self):
         self.init_op_type()
@@ -234,7 +275,7 @@ class TestAutoTuneTransposeFP16Op(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(self.dtype),
@@ -250,7 +291,7 @@ class TestAutoTuneTransposeFP16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -279,7 +320,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -300,7 +341,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -330,7 +371,7 @@ class TestTransposeFP16Op(OpTest):
         self.inputs = {'X': x}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(self.dtype),
@@ -342,7 +383,7 @@ class TestTransposeFP16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -376,7 +417,7 @@ class TestTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -390,7 +431,7 @@ class TestTransposeBF16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -497,7 +538,6 @@ class TestTransposeOpBool8D(TestTransposeOpBool):
 
 
 class TestTransposeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -534,7 +574,6 @@ class TestTransposeOpError(unittest.TestCase):
 
 
 class TestTransposeApi(unittest.TestCase):
-
     def test_static_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -572,7 +611,6 @@ class TestTransposeApi(unittest.TestCase):
 
 
 class TestTAPI(unittest.TestCase):
-
     def test_static_out(self):
         with base.program_guard(base.Program()):
             data = paddle.static.data(shape=[10], dtype="float64", name="data")
@@ -644,7 +682,6 @@ class TestTAPI(unittest.TestCase):
 
 
 class TestMoveAxis(unittest.TestCase):
-
     def test_static_moveaxis1(self):
         x_np = np.random.randn(2, 3, 4, 5, 7)
         expected = np.moveaxis(x_np, [0, 4, 3, 2], [1, 3, 2, 0])
@@ -867,7 +904,7 @@ class TestMatrixTransposeApiFPPrecision(unittest.TestCase):
         self.check_dtype_transpose('float64')
 
     def test_fp16(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_dtype_transpose('float16')
 
     def test_int8(self):
@@ -884,6 +921,89 @@ class TestMatrixTransposeApiFPPrecision(unittest.TestCase):
 
     def tearDown(self):
         paddle.enable_static()
+
+
+class TestTransposeCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
+        self.func = paddle.transpose
+        self.init_data()
+
+    def init_data(self):
+        self.shape = [4, 5, 6]
+        self.dtype = 'float32'
+        self.dim0 = 0
+        self.dim1 = 1
+        self.perm = [1, 0, 2]
+
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_out = np.transpose(self.np_input, axes=self.perm)
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                outs = []
+                outs.append(paddle.transpose(x, perm=self.perm))
+                outs.append(paddle.transpose(x=x, perm=self.perm))
+                outs.append(paddle.transpose(input=x, perm=self.perm))
+                outs.append(paddle.transpose(x, self.dim0, self.dim1))
+                outs.append(
+                    paddle.transpose(x=x, dim0=self.dim0, dim1=self.dim1)
+                )
+                outs.append(
+                    paddle.transpose(input=x, dim0=self.dim0, dim1=self.dim1)
+                )
+
+                outs.append(x.transpose(self.perm))
+                outs.append(x.transpose(self.dim0, self.dim1))
+                outs.append(x.transpose(perm=self.perm))
+                outs.append(x.transpose(dim0=self.dim0, dim1=self.dim1))
+                outs.append(x.transpose(self.dim0, dim1=self.dim1))
+
+                for out in outs:
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    outs = []
+                    outs.append(paddle.transpose(x, perm=self.perm))
+                    outs.append(paddle.transpose(x=x, perm=self.perm))
+                    outs.append(paddle.transpose(input=x, perm=self.perm))
+                    outs.append(paddle.transpose(x, self.dim0, self.dim1))
+                    outs.append(
+                        paddle.transpose(x=x, dim0=self.dim0, dim1=self.dim1)
+                    )
+                    outs.append(
+                        paddle.transpose(
+                            input=x, dim0=self.dim0, dim1=self.dim1
+                        )
+                    )
+
+                    outs.append(x.transpose(self.perm))
+                    outs.append(x.transpose(self.dim0, self.dim1))
+                    outs.append(x.transpose(perm=self.perm))
+                    outs.append(x.transpose(dim0=self.dim0, dim1=self.dim1))
+                    outs.append(x.transpose(self.dim0, dim1=self.dim1))
+
+                    exe = paddle.base.Executor(place)
+                    fetches = exe.run(
+                        main,
+                        feed={"x": self.np_input},
+                        fetch_list=outs,
+                    )
+                    for out in fetches:
+                        np.testing.assert_array_equal(self.np_out, out)
 
 
 if __name__ == '__main__':

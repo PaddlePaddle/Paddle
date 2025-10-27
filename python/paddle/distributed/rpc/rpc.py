@@ -67,9 +67,9 @@ def _exchange_all_service_infos(world_size):
     s = set()
     for rank in range(world_size):
         info = pickle.loads(_barrier_store.get(str(rank)))
-        assert (
-            info.name not in s
-        ), "The Worker name must be unique, but name `{}` is repeated."
+        assert info.name not in s, (
+            "The Worker name must be unique, but name `{}` is repeated."
+        )
         s.add(info.name)
         all_infos.append(info)
     return all_infos

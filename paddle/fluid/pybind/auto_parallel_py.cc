@@ -875,7 +875,7 @@ static void parse_tensors(PyObject *obj,
                           phi::distributed::InferSpmdContext *ctx,
                           const size_t arg_pos) {
   Py_ssize_t len = PyList_Size(obj);
-  VLOG(6) << "args indx: [" << arg_pos << "] input vector of ["
+  VLOG(6) << "args index: [" << arg_pos << "] input vector of ["
           << static_cast<size_t>(len) << "] tensors.";
   paddle::small_vector<phi::distributed::DistMetaTensor,
                        phi::kInputSmallVectorSize>
@@ -893,7 +893,7 @@ static void parse_tensors(PyObject *obj,
 static void parse_tensor(PyObject *obj,
                          phi::distributed::InferSpmdContext *ctx,
                          const size_t arg_pos) {
-  VLOG(6) << "args indx: [" << arg_pos << "] input one tensor.";
+  VLOG(6) << "args index: [" << arg_pos << "] input one tensor.";
   DistTensorSpec in = py::cast<DistTensorSpec>(obj);
   VLOG(6) << "DistTensorSpec: " << in.to_string();
   ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(

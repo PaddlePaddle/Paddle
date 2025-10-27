@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -114,8 +114,8 @@ class TestEigvalshGPUCase(unittest.TestCase):
         self.x_np = np.random.random(self.x_shape).astype(self.dtype)
 
     def test_check_output_gpu(self):
-        if paddle.is_compiled_with_cuda():
-            paddle.disable_static(place=paddle.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.disable_static(place=get_device_place())
             input_real_data = paddle.to_tensor(self.x_np)
             expected_w = np.linalg.eigvalsh(self.x_np)
             actual_w = paddle.linalg.eigvalsh(input_real_data)
@@ -128,11 +128,7 @@ class TestEigvalshAPI(unittest.TestCase):
         self.UPLO = 'L'
         self.rtol = 1e-5  # test_eigvalsh_grad
         self.atol = 1e-5  # test_eigvalsh_grad
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         np.random.seed(123)
         self.init_input_shape()
         self.init_input_data()
@@ -226,7 +222,6 @@ class TestEigvalshBatchAPI(TestEigvalshAPI):
 
 
 class TestEigvalshAPIError(unittest.TestCase):
-
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -260,11 +255,7 @@ class TestEigvalshAPIError(unittest.TestCase):
 class TestEigvalshAPIZeroSize(unittest.TestCase):
     def setUp(self):
         self.dtype = "float32"
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         np.random.seed(123)
         self.init_input_shape()
         self.init_input_data()

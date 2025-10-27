@@ -18,9 +18,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
@@ -334,7 +333,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode,
-                 float pad_value,
+                 double pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -359,6 +358,11 @@ void Pad3dKernel(const Context& dev_ctx,
   }
   out->Resize(out_dims);
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    return;
+  }
 
   int64_t channels = in_dims[1];
   int64_t in_depth = in_dims[2];
@@ -729,11 +733,11 @@ PD_REGISTER_KERNEL(pad3d,
                    GPU,
                    ALL_LAYOUT,
                    phi::Pad3dKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

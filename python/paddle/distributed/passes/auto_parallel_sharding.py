@@ -171,9 +171,9 @@ class ShardingPass(PassBase):
             "enable_hierarchical_comm"
         )
         if self.param_comm_stream_num > 1 or self.grad_comm_stream_num > 1:
-            assert (
-                self.enable_overlap
-            ), "multiple comm stream need enable_overlap to be True"
+            assert self.enable_overlap, (
+                "multiple comm stream need enable_overlap to be True"
+            )
         self.param_bucket_size_numel = int(
             self.get_attr("param_bucket_size_numel")
         )
@@ -243,27 +243,27 @@ class ShardingPass(PassBase):
 
         # partition
         for dp_group in self.dp_groups:
-            assert (
-                dp_group.nranks >= self.sharding_world_size
-            ), f"sharding world size [{self.sharding_world_size}] should not larger than dp world size [{dp_group.nranks}]"
-            assert (
-                dp_group.nranks % self.sharding_world_size == 0
-            ), f"sharding world size [{self.sharding_world_size}] should be divisible by dp world size [{dp_group.nranks}]"
-            assert (
-                self.global_rank in dp_group.ranks
-            ), f"current ranks [{self.global_rank}] does NOT belong to the data parallel group [{dp_group.ranks}]"
-            assert (
-                len(params_grads) >= self.sharding_world_size
-            ), f"number of parameters [{len(params_grads)}] is not enough to be shard among [{self.sharding_world_size}] ranks"
+            assert dp_group.nranks >= self.sharding_world_size, (
+                f"sharding world size [{self.sharding_world_size}] should not larger than dp world size [{dp_group.nranks}]"
+            )
+            assert dp_group.nranks % self.sharding_world_size == 0, (
+                f"sharding world size [{self.sharding_world_size}] should be divisible by dp world size [{dp_group.nranks}]"
+            )
+            assert self.global_rank in dp_group.ranks, (
+                f"current ranks [{self.global_rank}] does NOT belong to the data parallel group [{dp_group.ranks}]"
+            )
+            assert len(params_grads) >= self.sharding_world_size, (
+                f"number of parameters [{len(params_grads)}] is not enough to be shard among [{self.sharding_world_size}] ranks"
+            )
 
             # sharding hybrid data parallel: partial sharding param within
             if dp_group.nranks > self.sharding_world_size:
                 self.sharding_hybrid_dp = True
                 assert self.param_comm_stream_num < 2
                 assert self.grad_comm_stream_num < 2
-                assert (
-                    len(self.dp_groups) == 1
-                ), "hybrid sharding and data parallelism are supported only when there is exactly one data parallel group in the network"
+                assert len(self.dp_groups) == 1, (
+                    "hybrid sharding and data parallelism are supported only when there is exactly one data parallel group in the network"
+                )
                 outer_dp_group, sharding_group = _get_dp_and_sharding_groups(
                     dp_group.ranks, self.sharding_world_size, self.global_rank
                 )
@@ -729,9 +729,9 @@ class ShardingPass(PassBase):
         self.comm_op_scheduling_priority = -1
 
         # TODO support multiple sub_blocks
-        assert (
-            len(self.sharding_infos) == 1
-        ), f"gradient synchronization optimization only support one sharding group right now, but got [{len(self.sharding_infos)}]."
+        assert len(self.sharding_infos) == 1, (
+            f"gradient synchronization optimization only support one sharding group right now, but got [{len(self.sharding_infos)}]."
+        )
         sharding_info = self.sharding_infos[0]
 
         with paddle.static.program_guard(main_program, startup_program):
@@ -893,9 +893,9 @@ class ShardingPass(PassBase):
                     prior_var = main_block.vars[op.output("ParamOut")[0]]
                 else:
                     pre_op = main_block.ops[i - self.param_comm_stream_num]
-                    assert is_sharding_param_broadcast_op(
-                        pre_op
-                    ), "Unexpected: sharding broadcast pre op should be broadcast."
+                    assert is_sharding_param_broadcast_op(pre_op), (
+                        "Unexpected: sharding broadcast pre op should be broadcast."
+                    )
                     prior_var = main_block.vars[pre_op.output("Out")[0]]
                 # broadcast order dependencies
                 dep_map[i] = [(i, [prior_var], [broadcast_var], comm_stream)]
@@ -1002,9 +1002,9 @@ class ShardingPass(PassBase):
                     dist.ReduceOp.AVG,
                     dist.ReduceOp.SUM,
                 ]
-                assert (
-                    is_reduce
-                ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                assert is_reduce, (
+                    "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                )
 
                 grad_name = op.output_arg_names[0]
                 param_name = _get_base_name_from_grad_name(grad_name)
@@ -1041,10 +1041,12 @@ class ShardingPass(PassBase):
                         'reduce_type'
                     ) in [
                         paddle.distributed.ReduceOp.SUM,
-                    ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
-                    assert (
-                        ops[i + 1].output_arg_names[0] == grad_name
-                    ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
+                    ], (
+                        "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                    )
+                    assert ops[i + 1].output_arg_names[0] == grad_name, (
+                        "Hybrid Sharding with Data-Parallel should sync same gradient var"
+                    )
                     cur_group.allreduce_op_indices.append(i + 1)
                     i += 1
             elif op_depend_on_group(op, cur_group):
@@ -1120,9 +1122,9 @@ class ShardingPass(PassBase):
             if idx in modify_reduce_op_map:
                 group = modify_reduce_op_map[idx]
                 grad_name = op.output_arg_names[0]
-                assert (
-                    grad_name == group.vars[-1].name
-                ), f"Unexpected: it is supposed to sync [{group.vars[-1].name}] but got [{grad_name}]"
+                assert grad_name == group.vars[-1].name, (
+                    f"Unexpected: it is supposed to sync [{group.vars[-1].name}] but got [{grad_name}]"
+                )
                 op._rename_input(grad_name, group.coalesce_var.name)
                 op._rename_output(grad_name, group.coalesce_var.name)
 
@@ -1132,9 +1134,9 @@ class ShardingPass(PassBase):
             if idx in coalesce_op_map:
                 group = coalesce_op_map[idx]
                 first_grad_name = group.vars[0].name
-                assert (
-                    first_grad_name in op.output_arg_names
-                ), f"Unexpected: op is supposed to generate grad [{first_grad_name}] but got [{op}]"
+                assert first_grad_name in op.output_arg_names, (
+                    f"Unexpected: op is supposed to generate grad [{first_grad_name}] but got [{op}]"
+                )
                 grad_names = [grad.name for grad in group.vars]
 
                 concated_shapes = []
@@ -1560,9 +1562,9 @@ def _insert_reduce_op(
     reduce_type,
     op_role=OpRole.Backward,
 ):
-    assert (
-        root_id >= 0
-    ), f"root id should be a positive int, but now root id is {root_id}"
+    assert root_id >= 0, (
+        f"root id should be a positive int, but now root id is {root_id}"
+    )
     new_op = block._insert_op_without_sync(
         insert_idx,
         type=op_type,
@@ -1775,9 +1777,9 @@ def partition_by_greedy_even(params, group_size):
         rank = sizes.index(min(sizes))
         mapping[rank].append(param)
         numel = reduce(lambda x, y: x * y, param.shape, 1)
-        assert (
-            numel > 0
-        ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
+        assert numel > 0, (
+            f"param [{param.name}] should larger than 0, but it is [{numel}]"
+        )
         sizes[rank] += numel
 
     return mapping
@@ -1889,9 +1891,9 @@ class ShardingInfo:
     def __init__(self, group, rank, params_grads, partition_algor):
         self.group = group
         self.params_grads = {p.name: (p, g) for p, g in params_grads}
-        assert len(self.params_grads) == len(
-            set(self.params_grads)
-        ), "found duplicated param in params_grads"
+        assert len(self.params_grads) == len(set(self.params_grads)), (
+            "found duplicated param in params_grads"
+        )
 
         self.params = [p for p, _ in params_grads]
         self.param_names = [p.name for p in self.params]

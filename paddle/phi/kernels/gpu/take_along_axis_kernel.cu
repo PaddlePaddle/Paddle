@@ -42,6 +42,10 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
 
+  if (out->numel() == 0) {
+    return;
+  }
+
   const auto& index_type = index.dtype();
   if (index_type == DataType::INT32) {
     phi::funcs::gpu_gather_kernel<T, int32_t>(
@@ -67,5 +71,7 @@ PD_REGISTER_KERNEL(take_along_axis,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   int16_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::bfloat16) {}

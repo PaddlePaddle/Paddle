@@ -78,9 +78,9 @@ class ImperativePTQ:
         Return
             quantized_model(paddle.nn.Layer): The quantized model.
         """
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The model must be the instance of paddle.nn.Layer."
+        )
         if not inplace:
             model = copy.deepcopy(model)
         if fuse:
@@ -139,9 +139,9 @@ class ImperativePTQ:
             None
         """
 
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The model must be the instance of paddle.nn.Layer."
+        )
 
         # Convert and save dygraph quantized model
         self._convert(model)
@@ -235,9 +235,9 @@ class ImperativePTQ:
         Returns:
             None
         """
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The input model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The input model must be the instance of paddle.nn.Layer."
+        )
 
         total_num = 0
         cur_num = 0
@@ -272,9 +272,9 @@ class ImperativePTQ:
         Returns:
             None
         """
-        assert isinstance(
-            sub_layer, paddle.nn.Layer
-        ), "The input model must be the instance of paddle.nn.Layer."
+        assert isinstance(sub_layer, paddle.nn.Layer), (
+            "The input model must be the instance of paddle.nn.Layer."
+        )
 
         layer_info = PTQRegistry.layer_info(sub_layer)
 
@@ -299,9 +299,9 @@ class ImperativePTQ:
         Returns:
             None
         """
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The input model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The input model must be the instance of paddle.nn.Layer."
+        )
 
         for name, sub_layer in model.named_sublayers():
             if self._is_quant_layer(

@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -162,7 +161,6 @@ class UnuseGradVarLayer(paddle.nn.Layer):
 
 
 class TestUnuseGradVar(Dy2StTestBase):
-    @test_pir_only
     def test_run(self):
         layer = UnuseGradVarLayer()
         layer = paddle.jit.to_static(layer)
@@ -191,7 +189,6 @@ class NoGradNet(paddle.nn.Layer):
 
 
 class TestNoGrad(Dy2StTestBase):
-    @test_pir_only
     def test_run(self):
         net = NoGradNet()
         net = paddle.jit.to_static(net)
@@ -209,7 +206,6 @@ def grad_with_if_case(x):
 
 
 class TestGradWithIf(Dy2StTestBase):
-    @test_pir_only
     @test_ast_only
     def test_grad_with_if(self):
         fn = grad_with_if_case

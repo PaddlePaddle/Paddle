@@ -607,7 +607,8 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                 bool is_mean,
                                 MPType* tmp_data,
                                 bool need_store_tmp = false) {
-  IndexType input_idx, left_idx, stride;
+  int64_t input_idx;
+  IndexType left_idx, stride;
   IndexType block_size = 0;
   bool need_store = true;
   IndexType loop_left = 0;
@@ -644,7 +645,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
   // 1. reduce for each thread
   MPType input_compute[REDUCE_VEC_SIZE];
   Tx input_reg[REDUCE_VEC_SIZE];
-  IndexType input_idx_tmp = input_idx;
+  int64_t input_idx_tmp = input_idx;
   for (IndexType i = 0; i < loop_left; i += stride_left) {
     IndexType input_offset = left_index_calculator(left_idx + i);
     const _ptr_ Tx* input = x + input_offset;
@@ -653,7 +654,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     IndexType bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
     input_idx = input_idx_tmp;
     for (; input_idx + block_size < bound;
-         input_idx += REDUCE_VEC_SIZE * stride) {
+         input_idx += REDUCE_VEC_SIZE * static_cast<int64_t>(stride)) {
       kps::ReadDataReduce<Tx,
                           Tx,
                           1,
@@ -971,16 +972,15 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-static
-    typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value &&
-                                !std::is_same<Tx, phi::dtype::bfloat16>::value,
-                            void>::type
-    CubTensorReduceImpl(const Tx* x_data,
-                        Ty* y_data,
-                        const TransformOp& transform,
-                        int64_t reduce_num,
-                        const KPDevice& dev_ctx,
-                        KPStream stream) {
+static typename std::enable_if<!std::is_same<Tx, phi::float16>::value &&
+                                   !std::is_same<Tx, phi::bfloat16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int64_t reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -1013,14 +1013,14 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<std::is_same<Tx, phi::dtype::float16>::value,
-                               void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
-                    int64_t reduce_num,
-                    const KPDevice& dev_ctx,
-                    KPStream stream) {
+static
+    typename std::enable_if<std::is_same<Tx, phi::float16>::value, void>::type
+    CubTensorReduceImpl(const Tx* x_data,
+                        Ty* y_data,
+                        const TransformOp& transform,
+                        int64_t reduce_num,
+                        const KPDevice& dev_ctx,
+                        KPStream stream) {
   PADDLE_THROW(common::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
@@ -1029,14 +1029,14 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<std::is_same<Tx, phi::dtype::bfloat16>::value,
-                               void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
-                    int64_t reduce_num,
-                    const KPDevice& dev_ctx,
-                    KPStream stream) {
+static
+    typename std::enable_if<std::is_same<Tx, phi::bfloat16>::value, void>::type
+    CubTensorReduceImpl(const Tx* x_data,
+                        Ty* y_data,
+                        const TransformOp& transform,
+                        int64_t reduce_num,
+                        const KPDevice& dev_ctx,
+                        KPStream stream) {
   PADDLE_THROW(common::errors::InvalidArgument(
       "Tx should not be bfloat16 when using cub::DeviceReduce::Reduce()."));
 }
@@ -1133,8 +1133,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
   }
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
-  constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
-  constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
+  constexpr bool kIsTxFP16 = std::is_same<Tx, phi::float16>::value;
+  constexpr bool kIsTxBF16 = std::is_same<Tx, phi::bfloat16>::value;
   bool use_cub_reduce =
       config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16 &&
       config.reduce_num <= std::numeric_limits<int32_t>::max();

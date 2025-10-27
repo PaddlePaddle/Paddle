@@ -126,18 +126,15 @@ class LPPoolGrad {
 
 /* used for adaptive pool to calculate start and end index of each divided grid
  */
-template <typename T = int>
+template <typename T = int64_t>
 HOSTDEVICE inline T AdaptStartIndex(T ph, T input_size, T output_size) {
-  return static_cast<T>(
-      floor(static_cast<float>(ph * input_size) / output_size));
+  return (ph * input_size) / output_size;
 }
 
-template <typename T = int>
+template <typename T = int64_t>
 HOSTDEVICE inline T AdaptEndIndex(T ph, T input_size, T output_size) {
-  return static_cast<T>(
-      ceil(static_cast<float>((ph + 1) * input_size) / output_size));
+  return ((ph + 1) * input_size + output_size - 1) / output_size;
 }
-
 /* used for fractional pool to calculate start and end index of each divided
  * grid
  */
@@ -332,9 +329,9 @@ class MaxPool2dWithIndexFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -346,9 +343,9 @@ class MaxPool2dWithIndexGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -358,9 +355,9 @@ class MaxPool3dWithIndexFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -372,9 +369,9 @@ class MaxPool3dWithIndexGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -390,8 +387,8 @@ class FractionalMaxPool2dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* output,
@@ -404,8 +401,8 @@ class FractionalMaxPool2dGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* input_grad);
@@ -416,8 +413,8 @@ class FractionalMaxPool3dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* output,
@@ -430,8 +427,8 @@ class FractionalMaxPool3dGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* input_grad);

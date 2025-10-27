@@ -35,7 +35,7 @@ template <typename InT, typename OutT>
 __global__ void InputTypeConvert(const InT* in_ids,
                                  const int64_t K,
                                  OutT* out_ids) {
-  for (int i = 0; i < K; i++) {
+  for (int64_t i = 0; i < K; i++) {
     out_ids[i] = static_cast<OutT>(in_ids[i]);
   }
 }
@@ -57,7 +57,7 @@ __global__ void EmbeddingGrad(T* table,
 #ifdef PADDLE_WITH_CUDA
     phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int64_t i = idx; i < D; i += blockDim.x) {
       phi::CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
@@ -265,10 +265,10 @@ PD_REGISTER_KERNEL(embedding_grad,
                    phi::EmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    GPU,
@@ -276,7 +276,7 @@ PD_REGISTER_KERNEL(embedding_sparse_grad,
                    phi::EmbeddingSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

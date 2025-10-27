@@ -65,7 +65,7 @@ PD_REGISTER_KERNEL(mask_adaptive_xpu,
                    ALL_LAYOUT,
                    phi::fusion::MaskAdaptiveXPUKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(1).SetBackend(phi::Backend::CPU);

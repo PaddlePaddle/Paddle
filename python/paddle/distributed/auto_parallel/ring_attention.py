@@ -161,8 +161,9 @@ def update_out_and_lse(
         old_lse[:, old_lse.shape[1] // 2 :, :, :] = second_chunk_lse
         return old_out, old_lse
     else:
-        block_out, block_lse = paddle.cast(block_out, "float32"), paddle.cast(
-            block_lse, "float32"
+        block_out, block_lse = (
+            paddle.cast(block_out, "float32"),
+            paddle.cast(block_lse, "float32"),
         )
         with paddle.amp.auto_cast(enable=False):
             return old_out - (old_out - block_out) * F.sigmoid(
