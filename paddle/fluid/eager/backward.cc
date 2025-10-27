@@ -75,6 +75,7 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 // graph
 void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
                                    Dot* dot,
+                                   bool need_dump_backward_subgraph,
                                    std::string* call_stack) {
   std::deque<GradNodeBase*> queue = init_queue;
   std::unordered_set<GradNodeBase*> visited;
@@ -89,14 +90,21 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
       continue;
     }
     visited.insert(node);
-
-    if (!dot->ContainsNode(dot_node_label)) {
-      dot->AddNode(dot_node_label,
-                   paddle::inference::analysis::grey_box_attrs,
-                   dot_node_label,
-                   false);
+    if (need_dump_backward_subgraph &&
+        !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+            node)) {
+      // if we enable the need_dump_backward_subgraph the gradnode which is not
+      // related to subgraph will not be recorded
+    } else {
+      if (!dot->ContainsNode(dot_node_label)) {
+        dot->AddNode(dot_node_label,
+                     paddle::inference::analysis::grey_box_attrs,
+                     dot_node_label,
+                     false);
+      }
+      call_stack_map[node] = node->GetForwardTrace();
     }
-    call_stack_map[node] = node->GetForwardTrace();
+
     PADDLE_ENFORCE_NOT_NULL(
         node,
         common::errors::Fatal(
@@ -115,6 +123,15 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
         if (!next_node) {
           continue;
         }
+        // need_dump_backward_subgraph but the node and next node is not in
+        // subgraph
+        if (need_dump_backward_subgraph &&
+            !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                 .ContainsGradNode(node) &&
+            !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                 .ContainsGradNode(next_node)) {
+          continue;
+        }
         std::string dot_next_node_label =
             CreateForwardNodeLabelInDot(next_node);
         auto& tm = meta.GetTensorMeta();
@@ -126,9 +143,35 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
                          dot_next_node_label,
                          false);
           } else {
-            dot->AddNode(dot_next_node_label,
-                         paddle::inference::analysis::grey_box_attrs,
-                         dot_next_node_label,
+            if (need_dump_backward_subgraph &&
+                !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                     .ContainsGradNode(next_node)) {
+              dot->AddNode(dot_next_node_label,
+                           paddle::inference::analysis::orange_box_attrs,
+                           dot_next_node_label,
+                           false);
+            } else {
+              dot->AddNode(dot_next_node_label,
+                           paddle::inference::analysis::grey_box_attrs,
+                           dot_next_node_label,
+                           false);
+            }
+          }
+        }
+        // if need_dump_backward_subgraph but next_node is in subgraph and node
+        // is not in subgraph we will add node in subgraph and add edge
+        if (need_dump_backward_subgraph &&
+            egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+                next_node) &&
+            !egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                 .ContainsGradNode(node)) {
+          dot_node_label = CreateNodeLabelInDot(node);
+          // The node is not in subgraph but the node_next node is in subgraph
+          // we use orange_box to mark it too
+          if (!dot->ContainsNode(dot_node_label)) {
+            dot->AddNode(dot_node_label,
+                         paddle::inference::analysis::orange_box_attrs,
+                         dot_node_label,
                          false);
           }
         }
@@ -340,8 +383,10 @@ std::vector<paddle::Tensor> RunBackward(
   Dot forward_debug_dot_graph;
   std::string debug_call_stack = "";
   if (need_debug_backward_graph || need_dump_forward_stack)
-    ConstructForwardDebugDotGraph(
-        queue, &forward_debug_dot_graph, &debug_call_stack);
+    ConstructForwardDebugDotGraph(queue,
+                                  &forward_debug_dot_graph,
+                                  need_dump_backward_subgraph,
+                                  &debug_call_stack);
   std::deque<GradNodeBase*> ready_queue;
   for (GradNodeBase* item : queue) {
     if (!node_in_degree_map.count(item)) {
@@ -391,21 +436,8 @@ std::vector<paddle::Tensor> RunBackward(
       // Construct backward graph for debug
       std::string dot_node_label = "";
       if (need_debug_backward_graph) {
-        // if we need capture subgraph, the gradnode not related subgraph will
-        // not be captured
-        if (need_dump_backward_subgraph &&
-            !egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                 .ContainsGradNode(node)) {
-          // no need to add node to dot graph
-        } else {
-          dot_node_label = CreateNodeLabelInDot(node);
-          if (!dot.ContainsNode(dot_node_label)) {
-            dot.AddNode(dot_node_label,
-                        paddle::inference::analysis::grey_box_attrs,
-                        dot_node_label,
-                        false);
-          }
-        }
+        dot_node_label = egr::AddNodeToDebugBackwardGraph(
+            &dot, node, need_dump_backward_subgraph);
       }
 
       // Run node: This is where Hook happens
@@ -522,32 +554,12 @@ std::vector<paddle::Tensor> RunBackward(
           // Construct backward graph for debug
           if (need_debug_backward_graph && grad_output_tensor.defined() &&
               grad_output_tensor.has_allocation()) {
-            if (need_dump_backward_subgraph &&
-                !egr::EagerBackwardSubGraphNodeRecorder::Instance()
-                     .ContainsGradNode(node)) {
-              // if we need capture subgraph, the gradnode not related subgraph
-              // will not be captured
-            } else {
-              std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
-              if (!dot.ContainsNode(dot_next_node_label)) {
-                if (next_node->name() == "GradNodeAccumulation") {
-                  dot.AddNode(dot_next_node_label,
-                              paddle::inference::analysis::teal_box_attrs,
-                              dot_next_node_label,
-                              false);
-                } else {
-                  dot.AddNode(dot_next_node_label,
-                              paddle::inference::analysis::grey_box_attrs,
-                              dot_next_node_label,
-                              false);
-                }
-              }
-
-              std::string tensor_label =
-                  CreateEdgeLabelInDot(grad_output_tensor);
-              dot.AddEdge(
-                  dot_node_label, dot_next_node_label, {}, tensor_label);
-            }
+            egr::AddEdgeToDebugBackwardGraph(&dot,
+                                             node,
+                                             next_node,
+                                             grad_output_tensor,
+                                             dot_node_label,
+                                             need_dump_backward_subgraph);
           }
 
           if (!node_input_buffers_dict.count(next_node)) {

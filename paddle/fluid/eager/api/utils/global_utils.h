@@ -195,19 +195,16 @@ class EagerBackwardSubGraphNodeRecorder {
   }
 
  public:
-  void AddGradNode(GradNodeBase* node) { set_.insert(node); }
-  void RemoveGradNode(GradNodeBase* node) { set_.erase(node); }
-  bool ContainsGradNode(GradNodeBase* node) { return set_.count(node); }
+  void AddGradNode(const GradNodeBase* node) { set_.insert(node); }
+  void RemoveGradNode(const GradNodeBase* node) { set_.erase(node); }
+  bool ContainsGradNode(const GradNodeBase* node) { return set_.count(node); }
   bool NeedCaptureSubGraph() { return need_capture_subgraph_; }
   void StartCaptureSubGraph() { need_capture_subgraph_ = true; }
   void EndCaptureSubGraph() { need_capture_subgraph_ = false; }
-  bool HasCapturedSubgraph() {
-    std::cout << "set size" << set_.size() << std::endl;
-    return !set_.empty();
-  }
+  bool HasCapturedSubgraph() { return !set_.empty(); }
 
  private:
-  std::unordered_set<GradNodeBase*> set_;
+  std::unordered_set<const GradNodeBase*> set_;
   bool need_capture_subgraph_ = false;
 };
 

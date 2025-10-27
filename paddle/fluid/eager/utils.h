@@ -17,11 +17,11 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/utils/test_macros.h"
-
 namespace egr {
 
 class TensorWrapper;
@@ -471,4 +471,13 @@ TEST_API void SetGradTensorName(
     const int slot,
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
         bwd_out_meta);
+std::string AddNodeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
+                                        GradNodeBase* node,
+                                        bool need_dump_backward_subgraph);
+void AddEdgeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
+                                 GradNodeBase* node,
+                                 GradNodeBase* next_node,
+                                 const paddle::Tensor& t,
+                                 const std::string& node_label,
+                                 bool need_dump_backward_subgraph);
 }  // namespace egr
