@@ -506,7 +506,7 @@ def fused_ffn_macro(tokens, expression, context):
     return results
 
 
-@macro(name='transpose_macro', priority=3)
+@macro(name='transpose_macro', priority=5)
 def transpose_macro(tokens, expression, context):
     TRANSPOSE_TAG = "^T"
 
@@ -712,6 +712,7 @@ class IDMatcher:
 _REGISTERED_PLACEHOLDERS = ['$EXPERT_ID', '$LAYER_ID']
 
 
+# TODO: need to adapt the scene of temp_layers.\$LAYER_ID.weight -> dst_layers.\$LAYER_ID.weight
 @macro(name='id_macro', priority=1)
 def id(tokens, expression, context):
     allowed_placeholders = _REGISTERED_PLACEHOLDERS
@@ -784,6 +785,7 @@ def id(tokens, expression, context):
         results.append(cur_statement)
 
     return results
+
 
 # This macro processes variable mappings between source and destination states,
 # but it requires that all expansion macros (layer_id_macro, expert_id_macro,

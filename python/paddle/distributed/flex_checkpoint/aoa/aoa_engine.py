@@ -139,7 +139,7 @@ class AOAShardInfoContext:
 
         # Only need to parse the model state key for optimizer state shard num, because the optimizer state slice info is completely consistent with the model state slice info.
         resolved_model_state_key = self.resolve_mapping_chain(
-            model_state_key, reverse=False
+            model_state_key, reverse=True
         )
 
         state_keys = [

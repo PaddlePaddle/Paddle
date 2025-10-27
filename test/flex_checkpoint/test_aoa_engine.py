@@ -464,7 +464,7 @@ class TestAOAEngine(unittest.TestCase):
 
         result = aoa_engine.find_shard_sources(query)
         self.assertEqual(result, answer)
-    
+
     def test_mixed_aoa_statements(self):
         # test fused_ffn and transposed,rename,test_get_var_mapping_chain_macro
         s0 = ShardedWeightDesc(
@@ -684,7 +684,6 @@ class TestAOAEngine(unittest.TestCase):
 
         result = aoa_engine.find_shard_sources(query)
         self.assertEqual(result, answer)
-
 
 
 if __name__ == '__main__':
