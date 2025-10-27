@@ -8606,3 +8606,20 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
+
+
+@signature_safe_contextmanager
+def vlog_guard(module_levels: int | dict) -> Generator[None, None, None]:
+    if not isinstance(module_levels, (int, dict)):
+        raise TypeError(
+            f"The input of vlog_guard must be int or dict but got {type(module_levels).__name__}"
+        )
+    paddle.base.core.set_vlog_level(module_levels)
+    try:
+        yield
+    finally:
+        # Reset the verbose log level to 0
+        if isinstance(module_levels, int):
+            paddle.base.core.set_vlog_level(0)
+        elif isinstance(module_levels, dict):
+            paddle.base.core.set_vlog_level(dict.fromkeys(module_levels, 0))
