@@ -1272,9 +1272,9 @@ def monkey_patch_tensor():
                 >>> sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
                 >>> print(sparse_x)
                 Tensor(shape=[2, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
-                        indices=[[0, 0, 1, 1],
+                       indices=[[0, 0, 1, 1],
                                 [1, 3, 2, 3]],
-                        values=[1., 2., 3., 4.])
+                       values=[1., 2., 3., 4.])
         """
         if self.is_sparse_coo():
             return self
