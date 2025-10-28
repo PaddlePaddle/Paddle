@@ -14,21 +14,14 @@
 
 import unittest
 
-import collective.test_communication_api_base as test_base
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestLoadStateDictTranspose(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=2)
-
-    def test_metadata(self):
-        envs = {
-            "aoa_statements": "linear.weight^T -> linear.weight",
-        }
-        self.run_test_case(
-            "load_static_dict_transpose_logic.py",
-            user_defined_envs=envs,
-        )
+class TestShardingParallel(TestMultipleAccelerators):
+    def test_sharding_parallel(self):
+        self.run_mnist_2accelerators('dygraph_group_sharded_stage3_fix_test.py')
 
 
 if __name__ == "__main__":

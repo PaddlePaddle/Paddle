@@ -106,9 +106,9 @@ __device__ __forceinline__ void ReadData(T* dst,
  * dst: The register pointer of the thread, the size is NX * NY.
  * src: The data pointer of the current block.
  * size_nx: The maximum offset of the current block is size_nx elements in the
- * lowest dimension. The parameters are only calculated when isboundary = true.
+ * lowest dimension. The parameters are only calculated when IsBoundary = true.
  * size_ny: The maximum offset of the current block is size_ny elements in the
- * first dimension. The parameters are only calculated when isboundary = true.
+ * first dimension. The parameters are only calculated when IsBoundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
@@ -463,9 +463,9 @@ __device__ __forceinline__ void ReadDataBc(
  * index_cal: Calculation configuration of Reduce. It is used to calculate the
  * coordinate mapping relationship between output data and input data.
  * size_nx: The current block needs to load size_nx columns of data, this
- * parameter will participate in the calculation when isboundary = true.
+ * parameter will participate in the calculation when IsBoundary = true.
  * size_ny: The current block needs to load size_ny rows of data, this parameter
- * will participate in the calculation when isboundary = true.
+ * will participate in the calculation when IsBoundary = true.
  * will be used when IsBoundary = true.
  * stride_nx: Each read one element stride stride_nx columns.
  * stride_ny: Each read one element stride stride_ny raws.
@@ -630,9 +630,9 @@ __device__ __forceinline__ void WriteData(T* dst,
  * dst: The data pointer of the current block.
  * src: The register pointer of the thread, the size is NX * NY.
  * size_nx: The maximum offset of the current block is size_nx elements in the
- * lowest dimension. The parameters are only calculated when isboundary = true.
+ * lowest dimension. The parameters are only calculated when IsBoundary = true.
  * size_ny: The maximum offset of the current block is size_ny elements in the
- * first dimension. The parameters are only calculated when isboundary = true.
+ * first dimension. The parameters are only calculated when IsBoundary = true.
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */

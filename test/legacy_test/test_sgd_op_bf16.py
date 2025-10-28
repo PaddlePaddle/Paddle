@@ -22,6 +22,7 @@ from op_test import (
     OpTestTool,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
 )
 from utils import compare_legacy_with_pt
 
@@ -32,7 +33,8 @@ from paddle.static import amp
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+    not core.is_bfloat16_supported(get_device_place()),
+    'place does not support BF16 evaluation',
 )
 class TestSGDOpBF16(OpTest):
     def setUp(self):
@@ -62,7 +64,8 @@ class TestSGDOpBF16(OpTest):
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+    not core.is_bfloat16_supported(get_device_place()),
+    'place does not support BF16 evaluation',
 )
 class TestSGDOpBF16Case2(TestSGDOpBF16):
     def conf(self):
@@ -129,7 +132,8 @@ class TestSparseSGDOpBF16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+    not core.is_bfloat16_supported(get_device_place()),
+    'place does not support BF16 evaluation',
 )
 class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
     def setUp(self):
@@ -169,7 +173,8 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+    not core.is_bfloat16_supported(get_device_place()),
+    'place does not support BF16 evaluation',
 )
 class TestSparseGradSGDOpBF16Case2(TestSparseGradSGDOpBF16):
     def setup_params(self):
@@ -186,7 +191,8 @@ class TestSparseGradSGDOpBF16Case3(TestSparseGradSGDOpBF16):
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+    not core.is_bfloat16_supported(get_device_place()),
+    'place does not support BF16 evaluation',
 )
 class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
     def setUp(self):
