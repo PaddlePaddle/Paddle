@@ -704,11 +704,19 @@ class AOAEngine:
 
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
-            if src_var.dtype != target.dtype:
-                assert pp_list is not None and target.dtype in str(pp_list), (
-                    "Direct assignment of Tensors with different types is prohibited in AOA. "
-                    "If you want to achieve this functionality, please use the cast semantics provided by AOA."
-                )
+            target_model_state_key, target_opt_state_name = (
+                split_optimizer_state_key(target.key)
+            )
+            if target_opt_state_name is None:
+                if src_var.dtype != target.dtype:
+                    assert pp_list is not None and target.dtype in str(
+                        pp_list
+                    ), (
+                        "Direct assignment of Tensors with different types is prohibited in AOA. "
+                        "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+                    )
+            else:
+                src_var.dtype = target.dtype
 
             src_global_shape = src_var.shape
 
