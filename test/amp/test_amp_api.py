@@ -81,6 +81,34 @@ class TestAutoCast(AmpTestBase):
             self.assertEqual(out3.dtype, core.DataType.FLOAT32)
 
 
+class TestCudaAutoCast(unittest.TestCase):
+    def setUp(self):
+        self._conv = paddle.nn.Conv2D(1, 1, 3, bias_attr=False)
+        self._linear = paddle.nn.Linear(4, 4)
+
+    def _run_autocast_test(self, ctx):
+        with ctx:
+            out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
+            out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
+            out3 = self._linear(out2)
+
+        self.assertEqual(out1.dtype, paddle.float16)
+        self.assertEqual(out2.dtype, paddle.float16)
+        self.assertEqual(out3.dtype, paddle.float32)
+
+    def test_amp_autocast(self):
+        self._run_autocast_test(paddle.amp.autocast())
+
+    def test_cuda_amp_autocast(self):
+        self._run_autocast_test(paddle.cuda.amp.autocast())
+
+    def test_device_amp_autocast(self):
+        self._run_autocast_test(paddle.device.amp.autocast())
+
+    def test_cuda_amp_autocast_mode_autocast(self):
+        self._run_autocast_test(paddle.cuda.amp.autocast_mode.autocast())
+
+
 class SimpleConvNet(nn.Layer):
     def __init__(self):
         super().__init__()
