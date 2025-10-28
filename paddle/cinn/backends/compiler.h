@@ -131,6 +131,16 @@ class Compiler final {
 
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
+  /**
+   * Set kernel cache mode
+   */
+  void SetKernelCache(bool enable) { cinn_kernel_cache_ = enable; }
+
+  /**
+   * Get kernel cache mode
+   */
+  bool GetKernelCache() const { return cinn_kernel_cache_; }
+
  private:
   // do not register device symbol until end=true for build function
   void RegisterDeviceModuleSymbol();
@@ -164,6 +174,8 @@ class Compiler final {
   // only heterogeneous systems need to record device func and module
   std::vector<std::string> device_fn_name_;
   std::string device_fn_code_;
+  // kernel cache control
+  bool cinn_kernel_cache_{true};
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
   // dynamic library support
@@ -179,9 +191,24 @@ class Compiler final {
 
   // Dynamic library helper methods
 #ifdef CINN_WITH_CUDA
-  std::string GenerateDynamicLibrary(const std::string& source_code);
-  void* LoadDynamicLibrary(const std::string& library_path);
-  void* GetFunctionFromLibrary(void* library_handle, const std::string& function_name);
+  std::string ComputeSourceHash(const std::string& source_code);
+  std::string ExtractKernelName(const std::string& source_code);
+  std::string GenerateFatbinWithoutCache(const std::string& source_code);
+  std::pair<bool, std::string> FindKernelInCache(const std::string& so_path, 
+                                               const std::string& kernel_name);
+  std::string UpdateKernelInCache(const std::string& so_path,
+                                const std::string& kernel_name,
+                                const std::string& source_code,
+                                const std::string& source_hash);
+  std::string AddKernelToCache(const std::string& so_path,
+                             const std::string& kernel_name,
+                             const std::string& source_code,
+                             const std::string& source_hash);
+  std::string CreateNewCache(const std::string& so_path,
+                           const std::string& kernel_name,
+                           const std::string& source_code,
+                           const std::string& source_hash);
+  std::vector<char> ExtractFatbinFromSo(const std::string& so_path);
   void* CreateLibraryInfo(const std::string& library_path, const std::string& function_name);
 #endif
 };
