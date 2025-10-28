@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/frame_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/frame_grad_kernel_impl.h"
 
@@ -27,5 +26,5 @@ PD_REGISTER_KERNEL(frame_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

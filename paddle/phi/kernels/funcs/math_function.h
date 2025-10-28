@@ -58,7 +58,7 @@ struct Transpose {
 };
 
 template <typename DeviceContext, typename T>
-struct SetConstant {
+struct PADDLE_API SetConstant {
   void operator()(const DeviceContext& dev_ctx,
                   phi::DenseTensor* tensor,
                   T num);
@@ -78,9 +78,9 @@ void set_constant_with_place(const phi::DeviceContext& dev_ctx,
                              phi::DenseTensor* tensor,
                              float value);
 
-void set_constant(const phi::DeviceContext& dev_ctx,
-                  phi::DenseTensor* tensor,
-                  float value);
+PADDLE_API void set_constant(const phi::DeviceContext& dev_ctx,
+                             phi::DenseTensor* tensor,
+                             float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {
@@ -120,9 +120,9 @@ struct TensorSetConstantXPU {
   void apply() const {
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto begin = dev_ctx->Alloc<T>(tensor_);
-    int numel = tensor_->numel();
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    int64_t numel = tensor_->numel();
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       std::unique_ptr<T[]> data_cpu(new T[numel]);
       std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
       memory_utils::Copy(place_,
@@ -130,8 +130,8 @@ struct TensorSetConstantXPU {
                          phi::CPUPlace(),
                          static_cast<void*>(data_cpu.get()),
                          numel * sizeof(T));
-    } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value ||
-               std::is_same<T, phi::dtype::float8_e5m2>::value) {
+    } else if (std::is_same<T, phi::float8_e4m3fn>::value ||
+               std::is_same<T, phi::float8_e5m2>::value) {
       PADDLE_THROW(common::errors::Fatal("XPU does not support fp8"));
     } else {
       auto* dev_ctx2 = static_cast<phi::XPUContext*>(dev_ctx);

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
@@ -53,7 +52,7 @@ __global__ void LookupTable(T *output,
         id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int64_t i = idx; i < D; i += BlockDimX) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
@@ -128,6 +127,6 @@ PD_REGISTER_KERNEL(lookup_table,
                    phi::LookupTableCUDAKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int8_t,
                    int16_t) {}

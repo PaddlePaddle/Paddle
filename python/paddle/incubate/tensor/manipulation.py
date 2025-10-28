@@ -228,3 +228,17 @@ def async_offload_with_offset(
     return async_loader.offload_with_offset(
         dst_tensor, src_tensor, dst_offset, src_offset, offload_size
     )
+
+
+def enable_activation_offload(model, enable=True, retry_times=1):
+    """
+    Enable activation offload
+    """
+    if enable:
+        paddle.set_flags({"FLAGS_offload_retry_times": retry_times})
+        paddle.core.register_offload_callback()
+        paddle.core.set_skip_offload_callback_tensors(model.parameters())
+    else:
+        paddle.set_flags({"FLAGS_offload_retry_times": -1})
+        paddle.core.clear_offload_callback()
+        paddle.core.set_skip_offload_callback_tensors([])

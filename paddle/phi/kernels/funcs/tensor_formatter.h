@@ -23,7 +23,7 @@ class DenseTensor;
 
 namespace phi::funcs {
 
-class TensorFormatter {
+class PADDLE_API TensorFormatter {
  public:
   TensorFormatter() {}
 
@@ -33,7 +33,8 @@ class TensorFormatter {
 
   template <typename T>
   void FormatData(const phi::DenseTensor& print_tensor,
-                  std::stringstream& log_stream);
+                  std::stringstream& log_stream,
+                  int precision = 6);
 
   void Print(const phi::DenseTensor& print_tensor,
              const std::string& tensor_name = "",

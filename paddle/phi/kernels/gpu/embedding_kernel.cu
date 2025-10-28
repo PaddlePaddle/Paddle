@@ -46,7 +46,7 @@ __global__ void EmbeddingFW(T *output,
     }
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += blockDim.x) {
+    for (int64_t i = idx; i < D; i += blockDim.x) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);
@@ -135,7 +135,7 @@ PD_REGISTER_KERNEL(embedding,
                    float,
                    double,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

@@ -37,7 +37,7 @@ def build_program():
     ):
         data = paddle.ones([1024, 2048], dtype='float32', name='data')
         weight = paddle.randn([2048, 2048], name='weight')  # gpu
-        matmul_out = paddle.matmul(data, weight, name='matmul_out')  # gpus
+        matmul_out = data @ weight
         bias = paddle.ones([1024, 2048], dtype='float32', name='bias')
         add_out = paddle.add(matmul_out, bias, name='add_out')
         # add_out -> [sub] -> sub_out -> [tanh] -> tanh_out
@@ -46,7 +46,7 @@ def build_program():
         bias_1 = paddle.add(bias, sub_out, name='bias_1')
         out_before = paddle.tanh(bias_1, name='out_before')
         out_last = paddle.subtract(tanh_out, data, name='out_last')
-        out_last2 = paddle.matmul(out_last, weight, name="matmul_2_out")
+        out_last2 = out_last @ weight
 
         out = paddle.add(out_before, out_last2, name='out')
         mean = paddle.mean(out, name='mean_out')
@@ -54,7 +54,7 @@ def build_program():
     return main_program, startup_program, [mean]
 
 
-class TestMannulEvent(unittest.TestCase):
+class TestManualEvent(unittest.TestCase):
     """
     fill_constant(def)     gaussian_random(def)
       |     |        |        |
@@ -110,10 +110,8 @@ class TestMannulEvent(unittest.TestCase):
 
     def create_standalone_exe(self, main_progs, startup_progs, fetch_list):
         micro_batch_num = 1
-        micro_batch_id = 0
         job_list = []
         prog_num = len(main_progs)
-        fetch_op_num = len(fetch_list)
 
         if prog_num == 1:  # single prog
             main_progs[0] = _add_feed_fetch_ops(
@@ -124,8 +122,6 @@ class TestMannulEvent(unittest.TestCase):
                 "fetch",
                 use_fetch_v2=True,
             )
-            op_num = len(main_progs[0].block(0).ops)
-            fetch_op_indics = list(range(op_num - fetch_op_num, op_num))
         else:
             main_progs[-1] = _add_feed_fetch_ops(
                 main_progs[-1],
@@ -135,8 +131,6 @@ class TestMannulEvent(unittest.TestCase):
                 "fetch",
                 use_fetch_v2=True,
             )
-            op_num = len(main_progs[-1].block(0).ops)
-            fetch_op_indics = list(range(op_num - fetch_op_num, op_num))
 
         # create jobs
         for program_id in range(prog_num):

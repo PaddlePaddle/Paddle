@@ -221,7 +221,7 @@ inline const IntT* PrepareSubm(const Context& dev_ctx,
   if (indices_pairs != nullptr) {
     *need_product_rulebook = false;
     const DenseTensor& rulebook = indices_pairs->first;
-    const int counter_size = indices_pairs->second.numel();
+    const int64_t counter_size = indices_pairs->second.numel();
     memcpy(
         counter, indices_pairs->second.data<int>(), counter_size * sizeof(int));
     out->SetIndicesDict(x.GetIndicesDict());

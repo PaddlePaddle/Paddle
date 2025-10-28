@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -342,6 +343,92 @@ void GridSampleKernel(const Context& dev_ctx,
   } else {
     enum_mode = Mode::bilinear;
   }
+
+#ifndef PADDLE_WITH_HIP
+  if (condCudnnGridSampler<T>(x, grid) &&
+      enum_padding_mode == PaddingMode::zeros && enum_mode == Mode::bilinear &&
+      align_corners) {
+    const int64_t N = x.dims()[0];
+    const int64_t C = x.dims()[1];
+    const int64_t H_in = x.dims()[2];
+    const int64_t W_in = x.dims()[3];
+    const int64_t H_out = grid.dims()[1];
+    const int64_t W_out = grid.dims()[2];
+
+    out->Resize({N, C, H_out, W_out});
+    auto* out_data = dev_ctx.template Alloc<T>(out);
+
+    cudnnHandle_t handle = dev_ctx.cudnn_handle();
+
+    // Create and set Tensor descriptors (NCHW) for x and out
+    cudnnTensorDescriptor_t x_desc, y_desc;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+
+    const cudnnDataType_t cudnn_dtype =
+        std::is_same<T, float>::value ? CUDNN_DATA_FLOAT : CUDNN_DATA_DOUBLE;
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetTensor4dDescriptor(x_desc,
+                                                 CUDNN_TENSOR_NCHW,
+                                                 cudnn_dtype,
+                                                 static_cast<int>(N),
+                                                 static_cast<int>(C),
+                                                 static_cast<int>(H_in),
+                                                 static_cast<int>(W_in)));
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
+                                                 CUDNN_TENSOR_NCHW,
+                                                 cudnn_dtype,
+                                                 static_cast<int>(N),
+                                                 static_cast<int>(C),
+                                                 static_cast<int>(H_out),
+                                                 static_cast<int>(W_out)));
+
+    // Spatial Transformer descriptor: specifies sampler type and output
+    // dimension (N, C, H_out, W_out)
+    cudnnSpatialTransformerDescriptor_t st_desc;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnCreateSpatialTransformerDescriptor(&st_desc));
+    int st_dims[4] = {static_cast<int>(N),
+                      static_cast<int>(C),
+                      static_cast<int>(H_out),
+                      static_cast<int>(W_out)};
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnSetSpatialTransformerNdDescriptor(
+            st_desc, CUDNN_SAMPLER_BILINEAR, cudnn_dtype, 4, st_dims));
+
+    const T* x_data = x.data<T>();
+    const T* grid_data = grid.data<T>();
+    using AlphaBetaT = typename std::
+        conditional<std::is_same<T, float>::value, float, double>::type;
+    const AlphaBetaT alpha = static_cast<AlphaBetaT>(1.0);
+    const AlphaBetaT beta = static_cast<AlphaBetaT>(0.0);
+
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSpatialTfSamplerForward(
+        handle,
+        st_desc,
+        static_cast<const void*>(&alpha),
+        x_desc,
+        static_cast<const void*>(x_data),
+        static_cast<const void*>(grid_data),
+        static_cast<const void*>(&beta),
+        y_desc,
+        static_cast<void*>(out_data)));
+
+    // resource release
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroySpatialTransformerDescriptor(st_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
+    return;
+  }
+#endif
 
   bool use_int32_index = x.numel() <= std::numeric_limits<int>::max() &&
                          grid.numel() <= std::numeric_limits<int>::max() &&

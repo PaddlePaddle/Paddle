@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include "paddle/phi/kernels/partial_recv_kernel.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -105,10 +105,10 @@ PD_REGISTER_KERNEL(partial_recv,
                    phi::PartialRecvKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(partial_recv,
                    GPU,
@@ -118,5 +118,5 @@ PD_REGISTER_KERNEL(partial_recv,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

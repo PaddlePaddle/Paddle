@@ -213,9 +213,10 @@ jobs:
           WITH_RCCL: "ON"
           WITH_AVX: "ON"
           WITH_MKL: "ON"
-          IF_DCU: "ON"
+          IF_DCU: "OFF"
           WITH_TENSORRT: "OFF"
           WITH_XPU: "OFF"
+          WITH_CINN: "ON"
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PADDLE_VERSION: 0.0.0
           WITH_TESTING: "ON"

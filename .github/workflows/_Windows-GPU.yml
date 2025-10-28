@@ -39,7 +39,7 @@ jobs:
       WITH_UNITY_BUILD: "ON"
       WITH_TPCACHE: "ON"
       WITH_SCCACHE: "ON"
-      WITH_SHARED_PHI: "OFF"
+      WITH_SHARED_PHI: "ON"
       GIT_PR_ID: ${{ github.event.pull_request.number }}
       WITH_TESTING: "ON"
       PRECISION_TEST: "OFF"
@@ -75,6 +75,7 @@ jobs:
 
       - name: Config env
         run: |
+          call %ACTION_DIR%\proxy.bat
           call %ci_scripts%\config_env.bat
 
       - name: Build paddle

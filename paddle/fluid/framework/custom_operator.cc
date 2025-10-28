@@ -161,6 +161,8 @@ static void RunKernelFunc(
       kernel_ctx.EmplaceBackAttr(ctx.Attr<int>(attr_name));
     } else if (attr_type_str == "float") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<float>(attr_name));
+    } else if (attr_type_str == "double") {
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<double>(attr_name));
     } else if (attr_type_str == "int64_t") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<int64_t>(attr_name));
     } else if (attr_type_str == "std::string") {
@@ -169,6 +171,8 @@ static void RunKernelFunc(
       kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<int>>(attr_name));
     } else if (attr_type_str == "std::vector<float>") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<float>>(attr_name));
+    } else if (attr_type_str == "std::vector<double>") {
+      kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<double>>(attr_name));
     } else if (attr_type_str == "std::vector<int64_t>") {
       kernel_ctx.EmplaceBackAttr(ctx.Attr<std::vector<int64_t>>(attr_name));
     } else if (attr_type_str == "std::vector<std::string>") {
@@ -178,8 +182,9 @@ static void RunKernelFunc(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, `double`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
-          "`std::vector<float>`, `std::vector<int64_t>`, "
-          "`std::vector<std::string>`, Please check whether "
+          "`std::vector<float>`, `std::vector<double>`, "
+          "`std::vector<int64_t>`,`std::vector<std::string>`, Please check "
+          "whether "
           "the attribute data type and data type string are matched.",
           attr_type_str));
     }
@@ -1283,11 +1288,11 @@ RegisterOperatorWithMetaInfoMap(const paddle::OpMetaInfoMap& op_meta_info_map,
   std::unordered_map<std::string, std::vector<OpMetaInfo>> diff_map;
   for (auto& pair : meta_info_map) {
     VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
-
-    // Register PIR op
-
+    auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(pair.second[0]);
+    auto postfix = inplace_map.empty() ? "" : "_";
+    // Custom dialect register
     if (custom_dialect->HasRegistered(paddle::framework::kCustomDialectPrefix +
-                                      pair.first)) {
+                                      pair.first + postfix)) {
       VLOG(3) << "The operator `" << pair.first
               << "` has been registered. "
                  "Therefore, we will not repeat the registration here.";

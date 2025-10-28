@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 import random
 import sys
@@ -19,6 +18,7 @@ import unittest
 from itertools import product
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.distributed.fleet.layers.mpu.mp_ops import _c_lookup_table
@@ -109,7 +109,10 @@ def generate_input_data(
 
 
 def get_all_dtypes():
-    if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+    if (
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        or paddle.is_compiled_with_rocm()
+    ):
         return []
 
     dtypes = [
@@ -118,7 +121,7 @@ def get_all_dtypes():
         paddle.complex64,
         paddle.complex128,
     ]
-    if 'A100' in paddle.device.cuda.get_device_properties().name:
+    if 'A100' in paddle.device.get_device_properties().name:
         dtypes.append(paddle.bfloat16)
     return dtypes
 

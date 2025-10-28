@@ -29,7 +29,7 @@
 
 namespace phi {
 
-TEST_API std::string VarDataTypeToString(
+PADDLE_API std::string VarDataTypeToString(
     const paddle::framework::proto::VarType::Type type);
 TEST_API extern size_t SizeOfType(paddle::framework::proto::VarType::Type type);
 

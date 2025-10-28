@@ -96,10 +96,8 @@ static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
       return phi::DataType::FLOAT16;
     case nvinfer1::DataType::kINT8:
       return phi::DataType::INT8;
-#if IS_TRT_VERSION_GE(7000)
     case nvinfer1::DataType::kBOOL:
       return phi::DataType::BOOL;
-#endif
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
@@ -669,7 +667,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
         if (engine->engine()->isShapeInferenceIO(x.c_str()) &&
             engine->engine()->getTensorIOMode(x.c_str()) ==
@@ -739,7 +736,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
-#endif
 #endif
       }
       runtime_batch = t_shape[0];

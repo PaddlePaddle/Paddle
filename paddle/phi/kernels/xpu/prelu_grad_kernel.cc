@@ -94,9 +94,5 @@ void PReluGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prelu_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::PReluGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    prelu_grad, XPU, ALL_LAYOUT, phi::PReluGradKernel, float, phi::float16) {}

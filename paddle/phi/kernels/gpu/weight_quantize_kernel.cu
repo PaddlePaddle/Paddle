@@ -126,7 +126,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int8_t>(&x_int_tmp);
     int8_t* x_int_tmp_data = x_int_tmp.data<int8_t>();
     int8_t* quanted_x_data = quanted_x.data<int8_t>();
-    for (int i = 0; i < out->numel(); ++i) {
+    for (int64_t i = 0; i < out->numel(); ++i) {
       x_int_tmp_data[i] = quanted_x_data[i];
     }
     std::vector<int> axis = {1, 0};
@@ -167,6 +167,6 @@ PD_REGISTER_KERNEL(weight_quantize,
                    GPU,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int8_t) {}

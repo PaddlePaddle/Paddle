@@ -41,7 +41,7 @@ namespace framework {
 class ProgramDesc;
 class Scope;
 
-class NaiveExecutor {
+class PADDLE_API NaiveExecutor {
  public:
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 

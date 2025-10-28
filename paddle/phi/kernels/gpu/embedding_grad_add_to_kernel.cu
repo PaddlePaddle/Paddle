@@ -44,7 +44,7 @@ __global__ void EmbeddingGradAddTo(T* main_grad_out,
     auto id = static_cast<int64_t>(token_indices[idy]);
     const phi::bfloat16* token_out_grad = out_grad + idy * token_length;
     T* token_main_grad = main_grad_out + id * token_length;
-    for (int i = idx; i < token_length; i += blockDim.x) {
+    for (int64_t i = idx; i < token_length; i += blockDim.x) {
       phi::CudaAtomicAdd(&token_main_grad[i],
                          static_cast<T>(token_out_grad[i]));
     }
@@ -77,7 +77,7 @@ struct EmbeddingGradAddToCUDAFunctor {
       const auto* token_indices = token_indices_.template data<IndexT>();
       T* main_grad_out = dev_ctx_.template Alloc<T>(main_grad_out_t);
       const phi::bfloat16* out_grad = reinterpret_cast<const phi::bfloat16*>(
-          out_grad_.template data<phi::dtype::bfloat16>());
+          out_grad_.template data<phi::bfloat16>());
 
       const int gridx = 2 * dev_ctx_.GetSMCount();
       dim3 threads(128, 8);
@@ -126,5 +126,5 @@ PD_REGISTER_KERNEL(embedding_grad_add_to,
                    phi::EmbeddingGradAddToAddToKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

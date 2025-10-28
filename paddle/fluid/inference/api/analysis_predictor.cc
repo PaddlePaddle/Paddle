@@ -938,8 +938,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
         const std::vector<std::string> FusedOpPasses{// Operator fusion pass
                                                      "map_op_to_another_pass",
                                                      "conv2d_bn_fuse_pass",
+#ifndef PADDLE_WITH_HIP
                                                      "conv2d_add_act_fuse_pass",
-                                                     "conv2d_add_fuse_pass"};
+                                                     "conv2d_add_fuse_pass"
+#endif
+        };
 
         for (const auto &fused_op : FusedOpPasses) {
           fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
@@ -3598,14 +3601,12 @@ USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(index_select);
 USE_TRT_CONVERTER(temporal_shift)
 #endif
-#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
+#if PADDLE_WITH_CUSPARSELT
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
 #endif
-#if IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(quantize_linear)
 USE_TRT_CONVERTER(dequantize_linear)
-#endif
 #endif
 
 namespace paddle_infer {

@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
+from utils import dygraph_guard
 
 import paddle
 from paddle.base import core
@@ -26,8 +27,8 @@ class TestPaddleDivide(unittest.TestCase):
         self.y_np = np.array([2, 3, 4], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -85,31 +86,38 @@ class TestPaddleDivide(unittest.TestCase):
         expected_floor = np.array([2.0, -3.0, 1.0, -2.0])
         np.testing.assert_allclose(out.numpy(), expected_floor, rtol=1e-20)
 
-    # def test_paddle_divide_mixed_dtypes(self):
-    #     """Test paddle.divide with mixed dtypes (int/float combinations)"""
-    #     test_cases = [
-    #         # (x_dtype, y_dtype, expected_dtype)
-    #         ('int8', 'float16', 'float16'),
-    #         ('int16', 'float32', 'float32'),
-    #         ('uint8', 'float64', 'float64'),
-    #         ('int32', 'bfloat16', 'bfloat16'),
-    #         ('float16', 'int64', 'float16'),
-    #         ('bfloat16', 'uint8', 'bfloat16'),
-    #         ('float64', 'int8', 'float64'),
-    #     ]
+    def test_paddle_divide_mixed_dtypes(self):
+        """Test paddle.divide with mixed dtypes (int/float combinations)"""
+        test_cases = [
+            # (x_dtype, y_dtype, expected_dtype, rounding_mode)
+            # ('int8', 'float16', 'float16', None),
+            # ('int16', 'float32', 'float32', None),
+            # ('uint8', 'float64', 'float64', None),
+            # ('int32', 'bfloat16', 'bfloat16', None),
+            # ('float16', 'int64', 'float16', None),
+            # ('bfloat16', 'uint8', 'bfloat16', None),
+            # ('float64', 'int8', 'float64', None),
+            # ('int8', 'int32', 'int32', 'trunc'),
+            # ('int32', 'int64', 'int64', 'trunc'),
+            ('int32', 'int32', 'int32', 'trunc'),
+            ('int64', 'int64', 'int64', 'trunc'),
+            ('int16', 'int16', 'int16', 'trunc'),
+            ('int8', 'int8', 'int8', 'trunc'),
+            ('uint8', 'uint8', 'uint8', 'trunc'),
+        ]
 
-    #     for x_dtype, y_dtype, expected_dtype in test_cases:
-    #         with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
-    #             x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
-    #             y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
+        for x_dtype, y_dtype, expected_dtype, rounding_mode in test_cases:
+            with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
+                x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
+                y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
 
-    #             out = paddle.divide(x, y)
+                out = paddle.divide(x, y, rounding_mode=rounding_mode)
 
-    #             self.assertEqual(
-    #                 out.dtype,
-    #                 getattr(paddle, expected_dtype),
-    #                 f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
-    #             )
+                self.assertEqual(
+                    out.dtype,
+                    getattr(paddle, expected_dtype),
+                    f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
+                )
 
     def test_paddle_divide_static_graph(self):
         """Test paddle.divide in static graph"""
@@ -215,8 +223,8 @@ class TestPaddleDiv(unittest.TestCase):
         self.y_np = np.array([2, 3, 4], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -368,6 +376,39 @@ class TestPaddleDivideInplace(unittest.TestCase):
         expected2 = np.array([2.0, -3.0, 1.0, -2.0])
         np.testing.assert_allclose(x_clone.numpy(), expected2, rtol=1e-6)
 
+    def test_paddle_divide__mixed_dtypes(self):
+        """Test paddle.divide_ with mixed dtypes (int/float combinations)"""
+        test_cases = [
+            # (x_dtype, y_dtype, expected_dtype, rounding_mode)
+            # ('int8', 'float16', 'float16', None),
+            # ('int16', 'float32', 'float32', None),
+            # ('uint8', 'float64', 'float64', None),
+            # ('int32', 'bfloat16', 'bfloat16', None),
+            # ('float16', 'int64', 'float16', None),
+            # ('bfloat16', 'uint8', 'bfloat16', None),
+            # ('float64', 'int8', 'float64', None),
+            # ('int8', 'int32', 'int32', 'trunc'),
+            # ('int32', 'int64', 'int64', 'trunc'),
+            ('int32', 'int32', 'int32', 'trunc'),
+            ('int64', 'int64', 'int64', 'trunc'),
+            ('int16', 'int16', 'int16', 'trunc'),
+            ('int8', 'int8', 'int8', 'trunc'),
+            ('uint8', 'uint8', 'uint8', 'trunc'),
+        ]
+
+        for x_dtype, y_dtype, expected_dtype, rounding_mode in test_cases:
+            with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
+                x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
+                y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
+
+                x.divide_(y, rounding_mode=rounding_mode)
+
+                self.assertEqual(
+                    x.dtype,
+                    getattr(paddle, expected_dtype),
+                    f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
+                )
+
 
 class TestPaddleDivInplace(unittest.TestCase):
     def setUp(self):
@@ -422,8 +463,8 @@ class TestPaddleTrueDivide(unittest.TestCase):
         self.y_np = np.array([2, 3, 4], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -481,8 +522,8 @@ class TestPaddleDivWithOut(unittest.TestCase):
         self.x_np = np.array([4.0, 9.0, 16.0], dtype='float32')
         self.y_np = np.array([2.0, 3.0, 4.0], dtype='float32')
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -563,8 +604,8 @@ class TestPaddleDivideWithOut(unittest.TestCase):
         self.x_np = np.array([4.0, 9.0, 16.0], dtype='float32')
         self.y_np = np.array([2.0, 3.0, 4.0], dtype='float32')
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -638,6 +679,102 @@ class TestPaddleDivideWithOut(unittest.TestCase):
         np.testing.assert_equal(o2, None)
         np.testing.assert_equal(o3, None)
         np.testing.assert_equal(o4, None)
+
+
+class TestPaddleDivideTrunc(unittest.TestCase):
+    def setUp(self):
+        self.data = [5, -5, 3, -3]
+        self.divisor = [2, 2, 2, 2]
+        self.data_vec = [5, 10]
+        self.data_mat = [[2, 2], [3, 3]]
+
+        self.expected_f32 = [2.0, -2.0, 1.0, -1.0]
+        self.expected_int = [2, -2, 1, -1]
+        self.expected_b_f32 = [[2.0, 5.0], [1.0, 3.0]]
+        self.expected_b_int = [[2, 5], [1, 3]]
+
+    def _test_dtype_division(self, dtype, place, expected=None):
+        x = paddle.to_tensor(self.data, dtype=dtype, place=place)
+        y = paddle.to_tensor(self.divisor, dtype=dtype, place=place)
+        out = paddle.divide(x, y, rounding_mode='trunc')
+        if expected is not None:
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+    def _test_broadcast_division(self, dtype, place, expected=None):
+        x = paddle.to_tensor(self.data_vec, dtype=dtype, place=place)
+        y = paddle.to_tensor(self.data_mat, dtype=dtype, place=place)
+        out = paddle.divide(x, y, rounding_mode='trunc')
+        if expected is not None:
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+    def _test_divide_by_zero(self, place):
+        y_f32 = paddle.to_tensor(self.divisor, dtype='float32', place=place)
+        y_b_f32 = paddle.to_tensor(self.data_mat, dtype='float32', place=place)
+        zero_f32 = paddle.to_tensor([0.0], dtype='float32', place=place)
+        out_f32 = paddle.divide(y_f32, zero_f32, rounding_mode='trunc')
+        out_b_f32 = paddle.divide(y_b_f32, zero_f32, rounding_mode='trunc')
+
+    def _run_all_tests(self, place):
+        self._test_dtype_division('float32', place, self.expected_f32)
+        self._test_broadcast_division('float32', place, self.expected_b_f32)
+        self._test_dtype_division('float16', place, self.expected_f32)
+        self._test_broadcast_division('float16', place, self.expected_b_f32)
+        self._test_dtype_division('bfloat16', place, None)
+        self._test_broadcast_division('bfloat16', place, None)
+        self._test_dtype_division('int32', place, self.expected_int)
+        self._test_broadcast_division('int32', place, self.expected_b_int)
+        self._test_divide_by_zero(place)
+
+    def test_cpu(self):
+        self._run_all_tests(paddle.CPUPlace())
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "skip gpu test in TestPaddleDivideTrunc",
+    )
+    def test_gpu(self):
+        self._run_all_tests(paddle.CUDAPlace(0))
+
+    def test_infer_symbolic_shape(self):
+        devices = [paddle.device.get_device()]
+        if (
+            any(device.startswith("gpu:") for device in devices)
+            and not paddle.device.is_compiled_with_rocm()
+        ):
+            devices.append("cpu")
+
+        for device in devices:
+            with paddle.device.device_guard(device), dygraph_guard():
+                x = paddle.randn([2, 2], dtype="float32")
+                y = paddle.randn([2, 2], dtype="float32")
+                x.stop_gradient = False
+                y.stop_gradient = False
+
+                def divide_trunc(x, y):
+                    return paddle.divide(x, y, rounding_mode='trunc')
+
+                def divide_floor(x, y):
+                    return paddle.divide(x, y, rounding_mode='floor')
+
+                st_f = paddle.jit.to_static(
+                    divide_trunc,
+                    full_graph=True,
+                    input_spec=[
+                        paddle.static.InputSpec(
+                            shape=[-1, -1], dtype="float32"
+                        ),
+                        paddle.static.InputSpec(
+                            shape=[-1, -1], dtype="float32"
+                        ),
+                    ],
+                )
+
+                out = st_f(x, y)
+                self.assertEqual(
+                    out.shape,
+                    x.shape,
+                    msg=f"shape mismatch for 2D input, got {out.shape}, expected {x.shape}",
+                )
 
 
 if __name__ == "__main__":

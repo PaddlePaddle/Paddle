@@ -16,10 +16,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle._C_ops import (  # noqa: F401
+    ceil,
     cos,
     floor,
     rsqrt,
+    sigmoid,
     sin,
+    sqrt,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -427,59 +430,6 @@ def atanh(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def ceil(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Ceil Operator. Computes ceil of x element-wise.
-
-    .. math::
-        out = \\left \\lceil x \\right \\rceil
-
-    Args:
-        x (Tensor): Input of Ceil operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Ceil operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.ceil(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0., -0., 1. , 1. ])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.ceil(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'ceil',
-        )
-        helper = LayerHelper('ceil', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='ceil', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 def cosh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Cosh Activation Operator.
@@ -763,61 +713,6 @@ def round_(x, decimals=0, name=None):
     return _C_ops.round_(x, decimals)
 
 
-def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Sigmoid Activation.
-
-    .. math::
-       out = \\frac{1}{1 + e^{-x}}
-
-    Args:
-        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Sigmoid operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = F.sigmoid(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.40131235, 0.45016602, 0.52497917, 0.57444251])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.sigmoid(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'sigmoid',
-        )
-        helper = LayerHelper('sigmoid', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='sigmoid', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 def sinh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Sinh Activation Operator.
@@ -869,60 +764,6 @@ def sinh(x: Tensor, name: str | None = None) -> Tensor:
         helper = LayerHelper('sinh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='sinh', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def sqrt(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Sqrt Activation Operator.
-
-    .. math::
-       out=\\sqrt{x}=x^{1/2}
-
-    Args:
-        x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Sqrt operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
-            >>> out = paddle.sqrt(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.31622776, 0.44721359, 0.54772258, 0.63245553])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.sqrt(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'sqrt',
-        )
-        helper = LayerHelper('sqrt', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='sqrt', inputs={"X": x}, outputs={"Out": out})
         return out
 
 

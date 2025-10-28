@@ -17,6 +17,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "xpudnn/xpudnn.h"
+namespace xpudnn = baidu::xpu::xpudnn;
 
 namespace phi {
 template <typename T, typename Context>
@@ -143,7 +145,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
     }
     if (pooling_type == "max") {
       // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
-      r = xpu::max_pool2d_grad<XPUType>(
+      r = xpudnn::max_pool2d_grad<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
@@ -159,7 +161,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
           paddings,
           true);
     } else if (pooling_type == "avg") {
-      r = xpu::avg_pool2d_grad<XPUType>(
+      r = xpudnn::avg_pool2d_grad<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
@@ -329,7 +331,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
     if (pooling_type == "max") {
       if (kernel_size[0] == 1 && kernel_size.size() == 3 &&
           strides.size() == 3 && paddings.size() == 6) {
-        r = xpu::max_pool2d_grad<XPUType>(
+        r = xpudnn::max_pool2d_grad<XPUType>(
             dev_ctx.x_context(),
             reinterpret_cast<const XPUType*>(x.data<T>()),
             reinterpret_cast<const XPUType*>(out.data<T>()),
@@ -434,39 +436,31 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
 
   int r = 0;
   // pass a nullptr as input to XDNN is fine as long as index_data exists
-  r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
-                                    /*input*/ nullptr,
-                                    /*output*/ nullptr,
-                                    index_data,
-                                    output_grad,
-                                    input_grad,
-                                    n,
-                                    c,
-                                    in_h,
-                                    in_w,
-                                    kernel_size,
-                                    strides,
-                                    paddings,
-                                    true);
+  r = xpudnn::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
+                                       /*input*/ nullptr,
+                                       /*output*/ nullptr,
+                                       index_data,
+                                       output_grad,
+                                       input_grad,
+                                       n,
+                                       c,
+                                       in_h,
+                                       in_w,
+                                       kernel_size,
+                                       strides,
+                                       paddings,
+                                       true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index_grad");
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pool2d_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::Pool2dGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(pool3d_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::Pool3dGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    pool2d_grad, XPU, ALL_LAYOUT, phi::Pool2dGradKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(
+    pool3d_grad, XPU, ALL_LAYOUT, phi::Pool3dGradKernel, float, phi::float16) {}
 PD_REGISTER_KERNEL(max_pool2d_with_index_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -60,6 +60,7 @@ SET_METHOD_TEMPLATE = """
     local_tensor = core.eager.Tensor
     for method_name, method in methods_map:
         setattr(local_tensor, method_name, method)
+        setattr(paddle.tensor, method_name, method)
 
 """
 SET_FUNCTION_TEMPLATE = """

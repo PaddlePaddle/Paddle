@@ -17,12 +17,13 @@ if(APPLE AND WITH_ARM)
   cmake_minimum_required(VERSION 3.19.2)
   cmake_policy(VERSION 3.19.2)
 else()
-  cmake_minimum_required(VERSION 3.15)
+  cmake_minimum_required(VERSION 3.18)
   cmake_policy(VERSION 3.10)
 endif()
-# use to get_property location of static lib
-# https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
-cmake_policy(SET CMP0026 OLD)
+# use modern CMake target handling, disable deprecated LOCATION property
+# use $<TARGET_FILE> generator expression instead of get_property LOCATION
+# https://cmake.org/cmake/help/v4.0/policy/CMP0026.html#cmp0026
+cmake_policy(SET CMP0026 NEW)
 cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -156,9 +157,12 @@ if(WIN32)
   # re-runs CMake to regenerate the build system when the target specification source changes.
   set(CMAKE_SUPPRESS_REGENERATION OFF)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
-  set(WITH_SHARED_PHI
-      OFF
-      CACHE BOOL "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32" FORCE)
+  # set(WITH_SHARED_PHI
+  #     ON
+  #     CACHE
+  #       BOOL
+  #       "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32 with static library"
+  #       FORCE)
 
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /bigobj")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /bigobj")
@@ -315,6 +319,9 @@ option(
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_FLAGCX "Compile PaddlePaddle with FLAGCX support" OFF)
+option(KERNEL_WITH_FLAGCX
+       "Use FlagCX as communication backend in kernels involving communication"
+       OFF)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
@@ -366,9 +373,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.8)
-elseif(${PY_VERSION} VERSION_LESS 3.8)
-  message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
+  set(PY_VERSION 3.9)
+elseif(${PY_VERSION} VERSION_LESS 3.9)
+  message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
@@ -548,6 +555,9 @@ endif()
 
 if(WITH_FLAGCX)
   add_definitions("-DPADDLE_WITH_FLAGCX")
+  if(KERNEL_WITH_FLAGCX)
+    add_definitions("-DPADDLE_KERNEL_WITH_FLAGCX")
+  endif()
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -599,6 +609,9 @@ if(WITH_PROFILER)
 endif()
 
 include_directories("${PADDLE_SOURCE_DIR}")
+include_directories("${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/")
+include_directories(
+  "${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/torch/csrc/api/include/")
 
 if(WITH_NV_JETSON)
   set(WITH_ARM

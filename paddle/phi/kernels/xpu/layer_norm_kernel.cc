@@ -109,8 +109,8 @@ PD_REGISTER_KERNEL(layer_norm,
                    ALL_LAYOUT,
                    phi::LayerNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }

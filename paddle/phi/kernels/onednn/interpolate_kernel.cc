@@ -336,8 +336,8 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    ONEDNN,
                    phi::BilinearInterpKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   kernel->get_kerneltype_forvar_fn_ = phi::InterpolateGetKernelTypeForVar;
 }
 
@@ -346,8 +346,8 @@ PD_REGISTER_KERNEL(nearest_interp,
                    ONEDNN,
                    phi::NearestInterpKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::InterpolateGetKernelTypeForVar;
@@ -357,8 +357,8 @@ PD_REGISTER_KERNEL(legacy_bilinear_interp,
                    ONEDNN,
                    phi::LegacyBilinearInterpKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   kernel->get_kerneltype_forvar_fn_ = phi::InterpolateGetKernelTypeForVar;
 }
 PD_REGISTER_KERNEL(legacy_nearest_interp,
@@ -366,8 +366,8 @@ PD_REGISTER_KERNEL(legacy_nearest_interp,
                    ONEDNN,
                    phi::LegacyNearestInterpKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::InterpolateGetKernelTypeForVar;

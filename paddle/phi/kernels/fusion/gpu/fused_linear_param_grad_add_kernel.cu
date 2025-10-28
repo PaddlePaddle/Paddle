@@ -285,5 +285,5 @@ PD_REGISTER_KERNEL(fused_linear_param_grad_add,
                    phi::fusion::FusedLinearParamGradAdd,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

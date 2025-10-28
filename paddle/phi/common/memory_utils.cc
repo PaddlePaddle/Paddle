@@ -14,6 +14,13 @@
 
 #include "paddle/phi/common/memory_utils.h"
 
+namespace phi {
+MemoryUtils& MemoryUtils::Instance() {
+  static MemoryUtils g_memory_utils;
+  return g_memory_utils;
+}
+}  // namespace phi
+
 namespace phi::memory_utils {
 
 Allocator::AllocationPtr Alloc(const phi::Place& place,

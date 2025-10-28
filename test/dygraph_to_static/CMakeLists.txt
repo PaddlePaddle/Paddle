@@ -6,6 +6,13 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 MIN_GRAPH_SIZE=0 STRICT_MODE=False
              SOT_ENABLE_STRICT_GUARD_CHECK=True)
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_for_enumerate)
+  # CUDAGraph is temporarily not supported on Windows platform
+  list(REMOVE_ITEM TEST_OPS test_cudagraph)
+endif()
+
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout
   list(REMOVE_ITEM TEST_OPS test_resnet_amp)

@@ -47,9 +47,7 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/framework/*' \
         '/paddle/paddle/fluid/imperative/*' \
         '/paddle/paddle/fluid/inference/*' \
-        '/paddle/paddle/fluid/memory/*' \
         '/paddle/paddle/fluid/operators/*' \
-        '/paddle/paddle/fluid/recordio/*' \
         '/paddle/paddle/fluid/eager/*' \
         '/paddle/paddle/phi/*' \
         '/paddle/paddle/utils/*' \
@@ -64,8 +62,6 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/*/*/*test*' \
         '/paddle/paddle/fluid/inference/tests/*' \
         '/paddle/paddle/fluid/inference/api/demo_ci/*' \
-        '/paddle/paddle/fluid/eager/tests/*' \
-        '/paddle/paddle/phi/tests/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 

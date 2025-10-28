@@ -19,7 +19,7 @@ import unittest
 sys.path.append("../../legacy_test")
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -243,8 +243,8 @@ class TestEyeComplex128OP(TestEyeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestEyeBF16OP(OpTest):
@@ -262,7 +262,7 @@ class TestEyeBF16OP(OpTest):
         self.outputs = {'Out': np.eye(219, 319)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
 

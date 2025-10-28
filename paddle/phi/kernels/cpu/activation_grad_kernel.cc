@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
@@ -48,6 +47,21 @@ namespace phi {
         dev_ctx, &x, nullptr, &dout, dx, functor);           \
   }
 
+#define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr)                                 \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr,                           \
+                        DenseTensor* dx) {                     \
+    funcs::functor_class<T> functor;                           \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = attr;                                 \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>(   \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
+  }
+
 #define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(      \
     name, functor_class, attr1, attr2)                       \
   template <typename T, typename Context>                    \
@@ -63,6 +77,23 @@ namespace phi {
     *(attrs[1].second) = attr2;                              \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>( \
         dev_ctx, &x, nullptr, &dout, dx, functor);           \
+  }
+
+#define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr1, attr2)                         \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr1,                          \
+                        double attr2,                          \
+                        DenseTensor* dx) {                     \
+    funcs::functor_class<T> functor;                           \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = attr1;                                \
+    *(attrs[1].second) = attr2;                                \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>(   \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
   }
 
 #define DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(name, functor_class) \
@@ -155,9 +186,9 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, ZeroGradFunctor);
 
-DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                               LeakyReluGradFunctor,
-                                               alpha);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                      LeakyReluGradFunctor,
+                                                      alpha);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
                                                SoftShrinkGradFunctor,
                                                lambda);
@@ -179,11 +210,10 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
                                                STanhGradFunctor,
                                                scale_a,
                                                scale_b);
-
-DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               SoftplusGradFunctor,
-                                               beta,
-                                               threshold);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX(Softplus,
+                                                      SoftplusGradFunctor,
+                                                      beta,
+                                                      threshold);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  HardSigmoidGradFunctor,
                                                  slope,
@@ -298,12 +328,12 @@ PD_REGISTER_KERNEL(
                      phi::func,                                     \
                      float,                                         \
                      double,                                        \
-                     phi::dtype::complex<float>,                    \
-                     phi::dtype::complex<double>) {}
+                     phi::complex64,                                \
+                     phi::complex128) {}
 
 #define PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                                         \
-      name, CPU, ALL_LAYOUT, phi::func, float, double, phi::dtype::float16) {}
+      name, CPU, ALL_LAYOUT, phi::func, float, double, phi::float16) {}
 
 #define PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL_WITH_COMPLEX(name, func) \
   PD_REGISTER_KERNEL(name,                                                 \
@@ -312,9 +342,9 @@ PD_REGISTER_KERNEL(
                      phi::func,                                            \
                      float,                                                \
                      double,                                               \
-                     phi::dtype::float16,                                  \
-                     phi::dtype::complex<float>,                           \
-                     phi::dtype::complex<double>) {}
+                     phi::float16,                                         \
+                     phi::complex64,                                       \
+                     phi::complex128) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(sin_grad, SinGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(cos_grad, CosGradKernel)
@@ -367,9 +397,9 @@ PD_REGISTER_KERNEL(tanh_triple_grad,
                    phi::TanhTripleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(exp_grad,
                    CPU,
@@ -379,8 +409,8 @@ PD_REGISTER_KERNEL(exp_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(expm1_grad,
                    CPU,
@@ -388,9 +418,9 @@ PD_REGISTER_KERNEL(expm1_grad,
                    phi::Expm1GradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(
     logit_grad, CPU, ALL_LAYOUT, phi::LogitGradKernel, float, double) {}
@@ -402,19 +432,19 @@ PD_REGISTER_KERNEL(square_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(square_double_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::SquareDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(sin_double_grad,
                    CPU,
@@ -422,11 +452,11 @@ PD_REGISTER_KERNEL(sin_double_grad,
                    phi::SinDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(sin_triple_grad,
                    CPU,
@@ -434,11 +464,11 @@ PD_REGISTER_KERNEL(sin_triple_grad,
                    phi::SinTripleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(cos_double_grad,
                    CPU,
@@ -446,11 +476,11 @@ PD_REGISTER_KERNEL(cos_double_grad,
                    phi::CosDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(cos_triple_grad,
                    CPU,
@@ -458,11 +488,11 @@ PD_REGISTER_KERNEL(cos_triple_grad,
                    phi::CosTripleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(softsign_grad,
                                                 SoftsignGradKernel)
@@ -504,8 +534,8 @@ PD_REGISTER_KERNEL(round_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(pow_grad,
                    CPU,
@@ -515,8 +545,8 @@ PD_REGISTER_KERNEL(pow_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(pow_double_grad,
                    CPU,
@@ -526,8 +556,8 @@ PD_REGISTER_KERNEL(pow_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(pow_triple_grad,
                    CPU,
@@ -537,8 +567,8 @@ PD_REGISTER_KERNEL(pow_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(ceil_grad,
                    CPU,
@@ -551,8 +581,8 @@ PD_REGISTER_KERNEL(ceil_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(floor_grad,
                    CPU,
@@ -565,5 +595,5 @@ PD_REGISTER_KERNEL(floor_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

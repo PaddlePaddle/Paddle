@@ -135,7 +135,6 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
 
 using half = phi::dtype::float16;
 
-#if IS_TRT_VERSION_GE(6000)
 int PrelnResidualBiasPluginDynamic::initialize() TRT_NOEXCEPT {
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
   cudaMemcpy(bias_gpu_,
@@ -1065,8 +1064,6 @@ nvinfer1::IPluginV2 *PIRPrelnResidualBiasPluginDynamicCreator::createPlugin(
                                                  with_fp16);
   }
 }
-
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

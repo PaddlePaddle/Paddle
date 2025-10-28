@@ -194,23 +194,23 @@ struct BuildStrategy {
     is_finalized_ = false;
   }
 
-  bool IsMultiDevPass(const std::string &pass_name) const;
+  PADDLE_API bool IsMultiDevPass(const std::string &pass_name) const;
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  ir::Graph *Apply(ir::Graph *graph,
-                   const std::vector<phi::Place> &places,
-                   const std::string &loss_var_name,
-                   const std::vector<Scope *> &local_scopes,
-                   const size_t &nranks,
+  PADDLE_API ir::Graph *Apply(ir::Graph *graph,
+                              const std::vector<phi::Place> &places,
+                              const std::string &loss_var_name,
+                              const std::vector<Scope *> &local_scopes,
+                              const size_t &nranks,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-                   DeviceType use_device,
-                   platform::NCCLCommunicator *nccl_ctxs) const;
+                              DeviceType use_device,
+                              platform::NCCLCommunicator *nccl_ctxs) const;
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-                   DeviceType use_device,
-                   platform::BKCLCommunicator *bkcl_ctxs) const;
+                              DeviceType use_device,
+                              platform::BKCLCommunicator *bkcl_ctxs) const;
 #else
-                   DeviceType use_device) const;
+                              DeviceType use_device) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

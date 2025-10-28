@@ -935,7 +935,22 @@ void StridedCopyKernel(const Context& dev_ctx,
     }
   }
 }
-
+#ifdef _WIN32
+INSTANTIATE_STRIDEDCOPY_KERNEL(bool, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int64_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(float, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(double, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float16, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::bfloat16, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<float>, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<double>, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e4m3fn, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e5m2, GPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(strided_copy,
@@ -950,9 +965,9 @@ PD_REGISTER_KERNEL(strided_copy,
                    int64_t,
                    float,
                    double,
-                   ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16,
-                   ::phi::dtype::complex<float>,
-                   ::phi::dtype::complex<double>,
-                   ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

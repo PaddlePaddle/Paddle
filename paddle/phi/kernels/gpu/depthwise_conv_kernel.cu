@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -152,5 +150,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    phi::DepthwiseConvKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

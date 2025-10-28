@@ -24,7 +24,6 @@ namespace cub = hipcub;
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -34,15 +33,15 @@ template <typename T, int BlockDim>
 __global__ void NormalizeGradient(const T* x,
                                   const T* x_norm,
                                   const T* y_grad,
-                                  const int pre,
+                                  const int64_t pre,
                                   const int axis_n,
-                                  const int post,
+                                  const int64_t post,
                                   T* x_grad) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage_sum;
-  int num = pre * post;
-  for (int i = blockIdx.x; i < num; i += gridDim.x) {
+  int64_t num = pre * post;
+  for (int64_t i = blockIdx.x; i < num; i += gridDim.x) {
     MT sum = 0.0;
     __shared__ MT row_sum;
     __shared__ MT row_sqrt_norm;
@@ -51,7 +50,7 @@ __global__ void NormalizeGradient(const T* x,
     auto base = (i / post) * post * axis_n + (i % post);
 
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      int index = base + j * post;
+      int64_t index = base + j * post;
       sum += static_cast<MT>(x[index]) * static_cast<MT>(y_grad[index]);
     }
     MT reduce_result = BlockReduce(temp_storage_sum).Sum(sum);
@@ -63,7 +62,7 @@ __global__ void NormalizeGradient(const T* x,
     }
     __syncthreads();
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      int index = base + j * post;
+      int64_t index = base + j * post;
       const MT x_ij = static_cast<MT>(x[index]);
       const MT dy_ij = static_cast<MT>(y_grad[index]);
       x_grad[index] =
@@ -93,12 +92,12 @@ void NormGradKernel(const Context& dev_ctx,
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
-  int pre, n, post;
+  int64_t pre, n, post;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  const int max_blocks = std::max(max_threads / block, 1);
+  const int64_t max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);
   NormalizeGradient<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
       x_data, x_norm, dy, pre, n, post, dx);
@@ -112,5 +111,5 @@ PD_REGISTER_KERNEL(norm_grad,
                    phi::NormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -15,6 +15,7 @@
 import os
 import sys
 import unittest
+from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
@@ -22,6 +23,9 @@ from utils import check_output
 
 import paddle
 from paddle.utils.cpp_extension import load
+from paddle.utils.cpp_extension.extension_utils import (
+    _get_all_paddle_includes_from_include_root,
+)
 
 if os.name == 'nt' or sys.platform.startswith('darwin'):
     # only support Linux now
@@ -34,12 +38,11 @@ if paddle.is_compiled_with_cuda():
 
 paddle_includes = []
 for site_packages_path in getsitepackages():
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include')
+    paddle_include_dir = Path(site_packages_path) / "paddle/include"
+    paddle_includes.extend(
+        _get_all_paddle_includes_from_include_root(str(paddle_include_dir))
     )
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
-    )
+
 # include "custom_power.h"
 paddle_includes.append(os.path.dirname(os.path.abspath(__file__)))
 

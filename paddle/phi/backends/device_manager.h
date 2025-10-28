@@ -29,7 +29,7 @@
 #include "paddle/phi/common/port.h"
 
 namespace phi {
-class Device final {
+class PADDLE_API Device final {
  public:
   Device(size_t dev_id, DeviceInterface* impl) : dev_id_(dev_id), impl_(impl) {}
 
@@ -132,7 +132,7 @@ class Device final {
   bool initialized_{false};
 };
 
-class DeviceManager {
+class PADDLE_API DeviceManager {
  public:
   static bool Register(std::unique_ptr<DeviceInterface> device);
   static bool RegisterPinnedDevice(DeviceInterface* device);
@@ -189,6 +189,8 @@ class DeviceManager {
   static bool IsFloat16Supported(const Place& place);
 
   static bool IsBFloat16Supported(const Place& place);
+
+  static bool IsDnnAvailable(const Place& place);
 
   static void* InitEigenDevice(const Place& place,
                                phi::stream::stream_t stream,

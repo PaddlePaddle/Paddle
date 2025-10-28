@@ -24,7 +24,6 @@ disable_wingpu_test="^test_model$|\
 ^test_generator_dataloader_deprecated$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
-^test_program_prune_backward_deprecated$|\
 ^test_decoupled_py_reader_data_check_deprecated$|\
 ^test_fleet_base_single$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
@@ -63,9 +62,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_mul_op$|\
 ^test_bmn$|\
 ^test_memory_efficient_attention$|\
-^test_fuse_gemm_epilogue_pass_deprecated$|\
 ^test_tril_triu_op$|\
-^test_elementwise_add_mkldnn_op$|\
+^test_elementwise_add_onednn_op$|\
 ^test_comp_high_grad$|\
 ^test_multi_precision_fp16_train$|\
 ^test_imperative_skip_op$|\
@@ -95,7 +93,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_dygraph_multi_forward$|\
 ^test_instance_norm_op_v2$|\
 ^test_rnn_op$|\
-^test_composite_batch_norm_deprecated$|\
 ^test_prim_amp$|\
 ^test_cumprod_op$|\
 ^test_elementwise_sub_op$|\
@@ -108,7 +105,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_dygraph_mnist_fp16$|\
 ^test_sparse_conv_op$|\
 ^test_sparse_conv_op_static_build$|\
-^test_conv2d_transpose_mkldnn_op$|\
+^test_conv2d_transpose_onednn_op$|\
 ^test_ptq$|\
 ^test_stub$|\
 ^test_lu_unpack_op$|\
@@ -147,20 +144,20 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_analyzer_int8_mobilenetv3_large$|\
 ^test_analyzer_bfloat16_mobilenetv3_large$|\
 ^test_api_impl$|\
-^test_mkldnn_conv_affine_channel_fuse_pass$|\
-^test_mkldnn_conv_gelu_fuse_pass$|\
-^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
-^test_mkldnn_conv_hard_swish_fuse_pass$|\
-^test_mkldnn_conv_mish_fuse_pass$|\
-^test_mkldnn_conv_transpose_bias_fuse_pass$|\
-^test_mkldnn_depthwise_conv_pass$|\
-^test_mkldnn_matmul_elementwise_add_fuse_pass$|\
-^test_mkldnn_matmul_v2_elementwise_add_fuse_pass$|\
-^test_mkldnn_matmul_v2_transpose_reshape_fuse_pass$|\
-^test_mkldnn_mish_op$|\
-^test_mkldnn_pad3d_op$|\
-^test_mkldnn_prelu_op$|\
-^test_mkldnn_shuffle_channel_detect_pass$|\
+^test_onednn_conv_affine_channel_fuse_pass$|\
+^test_onednn_conv_gelu_fuse_pass$|\
+^test_onednn_conv_hard_sigmoid_fuse_pass$|\
+^test_onednn_conv_hard_swish_fuse_pass$|\
+^test_onednn_conv_mish_fuse_pass$|\
+^test_onednn_conv_transpose_bias_fuse_pass$|\
+^test_onednn_depthwise_conv_pass$|\
+^test_onednn_matmul_elementwise_add_fuse_pass$|\
+^test_onednn_matmul_v2_elementwise_add_fuse_pass$|\
+^test_onednn_matmul_v2_transpose_reshape_fuse_pass$|\
+^test_onednn_mish_op$|\
+^test_onednn_pad3d_op$|\
+^test_onednn_prelu_op$|\
+^test_onednn_shuffle_channel_detect_pass$|\
 ^test_onednn_batch_norm_act_fuse_pass$|\
 ^test_onednn_conv_bias_fuse_pass$|\
 ^test_onednn_conv_bn_fuse_pass$|\
@@ -175,7 +172,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_decorator$|\
 ^test_flash_attention$|\
 ^test_flash_attention_deterministic$|\
-^test_conv3d_mkldnn_op$|\
+^test_conv3d_onednn_op$|\
 ^test_functional_conv2d$|\
 ^test_functional_conv2d_transpose$|\
 ^test_functional_conv3d$|\
@@ -289,6 +286,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_trt_convert_clip$|\
 ^test_trt_convert_grid_sampler$|\
 ^test_trt_convert_p_norm$|\
+^new_profiler_test$|\
+^save_load_version_compat_test$|\
 ^disable_wingpu_cuda12_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
@@ -351,9 +350,9 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_basic_api_transformation$|\
 ^test_deformable_conv_op$|\
 ^test_variable$|\
-^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
-^test_mkldnn_conv_hard_swish_fuse_pass$|\
-^test_conv_act_mkldnn_fuse_pass$|\
+^test_onednn_conv_hard_sigmoid_fuse_pass$|\
+^test_onednn_conv_hard_swish_fuse_pass$|\
+^test_conv_act_onednn_fuse_pass$|\
 ^test_matmul_scale_fuse_pass$|\
 ^test_addmm_op$|\
 ^test_inverse_op$|\
@@ -420,7 +419,139 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
 ^test_cuda_graph_partial_graph_static_run$|\
-^test_imperative_triple_grad$"
+^test_imperative_triple_grad$|\
+^test_mul_op$|\
+^test_quant_linear_op$|\
+^test_fused_gemm_epilogue_op$|\
+^test_fused_gemm_epilogue_op_with_es$|\
+^test_fused_linear_param_grad_add$|\
+^test_fused_matmul_bias$|\
+^test_fused_gemm_epilogue_pass$|\
+^test_params_quantization_onednn_pass$|\
+^test_depthwise_conv_onednn_pass$|\
+^cc_imp_py_test$|\
+^test_depthwise_conv_onednn_pass$|\
+^test_compute_propagate_scales_onednn_pass$|\
+^test_onednn_placement_pass$|\
+^test_shuffle_channel_onednn_detect_pass$|\
+^test_cpu_quantize_placement_pass$|\
+^test_cpu_quantize_pass$|\
+^test_cpu_quantize_squash_pass$|\
+^test_cpu_bfloat16_placement_pass$|\
+^test_cpu_bfloat16_pass$|\
+^test_int8_scale_calculation_onednn_pass$|\
+^test_while_api$|\
+^test_sparse_matmul_op$|\
+^test_standalone_cuda_graph_multi_stream_deprecated$|\
+^test_standalone_cuda_graph_multi_stream_deprecated_static_build_deprecated$|\
+^test_cuda_graph$|\
+^test_cuda_graph_static_mode$|\
+^test_cuda_graphed_layer$|\
+^test_switch_autotune$|\
+^test_nn_margin_rank_loss$|\
+^test_no_grad$|\
+^test_memory_efficient_attention$|\
+^test_fused_flash_attn_pass$|\
+^test_convert_mea_2_fa_pass$|\
+^test_flash_attention_deterministic$|\
+^test_map_op_another_pass$|\
+^test_conv2d_add_fuse_pass$|\
+^test_cutlass_fused_conv2d_add_act_op$|\
+^test_multihead_matmul_roformer_fuse_pass_pir$|\
+^test_mobile_net$|\
+^test_IntermediateLayerGetter$|\
+^test_se_resnet$|\
+^test_amp_api$|\
+^test_prim_amp$|\
+^test_fuse_resnet_unit$|\
+^test_dygraph_multi_forward$|\
+^test_instance_norm_op_v2$|\
+^test_multi_precision_fp16_train$|\
+^test_imperative_skip_op$|\
+^test_qat$|\
+^test_bmn$|\
+^test_imperative_layer_children$|\
+^test_trans_layout_op$|\
+^test_resnet$|\
+^test_resnet_amp$|\
+^test_resnet_pure_fp16$|\
+^test_image_classification_fp16$|\
+^test_tensorrt_engine$|\
+^test_collect_operator_stats$|\
+^test_conv1d_layer$|\
+^test_conv1d_transpose_layer$|\
+^test_dygraph_weight_norm$|\
+^test_mnist$|\
+^test_mnist_amp$|\
+^test_hapi_amp$|\
+^test_imperative_mnist_sorted_gradient$|\
+^test_imperative_qat_fuse$|\
+^test_imperative_qat_lsq$|\
+^test_imperative_qat_matmul$|\
+^test_sot_resnet50_backward$|\
+^test_asp_optimize_static_deprecated$|\
+^test_asp_save_load_deprecated$|\
+^test_conv2d_api_deprecated$|\
+^test_user_defined_quantization_deprecated$|\
+^test_quantization_scale_pass_deprecated$|\
+^test_mnist_pure_fp16$|\
+^test_callback_reduce_lr_on_plateau$|\
+^test_callback_visualdl$|\
+^test_imperative_qat$|\
+^test_step_profiler$|\
+^test_conv2d_bn_fuse_pass$|\
+^test_onednn_shape_op$|\
+^test_recognize_digits_deprecated$|\
+^test_conv2d_layer_deprecated$|\
+^test_graph_deprecated$|\
+^test_onednn_multi_gru_fuse_pass$|\
+^test_onednn_multi_gru_seq_fuse_pass$|\
+^test_conv2d_layer$|\
+^test_conv3d_layer$|\
+^test_initializer$|\
+^test_forbid_dynamic_op_api$|\
+^test_nn_dtype_device_bias$|\
+^test_sot_dynamic_shape$|\
+^test_asp_optimize_dynamic_deprecated$|\
+^test_amp_decorate$|\
+^test_amp_promote$|\
+^test_conv2d_transpose_onednn_op$|\
+^test_conv2d_transpose_op_depthwise_conv$|\
+^test_dygraph_mnist_fp16$|\
+^test_stub$|\
+^test_save_load$|\
+^test_conv_transpose_nn_grad$|\
+^test_dygraph_spectral_norm$|\
+^test_lambv2_op$|\
+^test_retain_graph$|\
+^test_multihead_matmul_roformer_fuse_pass$|\
+^test_imperative_qat_user_defined$|\
+^test_sot_resnet$|\
+^test_fused_conv2d_add_act_op$|\
+^test_standalone_executor_aot_choose_kernel_deprecated$|\
+^test_image_classification_deprecated$|\
+^test_functional_conv2d_transpose_deprecated$|\
+^test_inference_api_deprecated$|\
+^test_inplace_addto_strategy_deprecated$|\
+^test_dynamic_shape_infermeta$|\
+^test_conv2d_add_act_fuse_pass$|\
+^test_conv3d_layer_deprecated$|\
+^test_conv3d_transpose_part2_op_deprecated$|\
+^test_split_program_deprecated$|\
+^test_trt_convert_multihead_matmul_roformer$|\
+^test_cudnn_placement_pass$|\
+^operator_test$|\
+^new_profiler_test$|\
+^test_kernel_factory$|\
+^save_load_version_compat_test$|\
+^trt_mobilenet_test$|\
+^trt_disable_tensorrt_half_ops_test$|\
+^trt_quant_int8_test$|\
+^trt_dynamic_shape_test$|\
+^paddle_infer_api_test$|\
+^device_context_test_cuda_graph$|\
+^cudnn_helper_test$|\
+^test_cudnn_norm_conv$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -430,7 +561,6 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_vision_models$|\
 ^test_dygraph_multi_forward$|\
 ^test_imperative_transformer_sorted_gradient$|\
-^test_program_prune_backward_deprecated$|\
 ^test_imperative_resnet$|\
 ^test_imperative_resnet_sorted_gradient$|\
 ^test_imperative_se_resnext$|\
@@ -438,6 +568,9 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_mobile_net$|\
 ^test_build_strategy$|\
 ^test_se_resnet$|\
+^operator_test|\
+^new_profiler_test$|\
+^save_load_version_compat_test|\
 ^disable_wincpu_test$"
 
 # these unittest that cost long time, disabled temporarily, Maybe moved to the night
@@ -459,7 +592,6 @@ long_time_test="^test_gru_op$|\
 ^test_cross_op$|\
 ^test_elementwise_nn_grad$|\
 ^test_fused_elemwise_activation_op$|\
-^test_imperative_lod_tensor_to_selected_rows_deprecated$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
 ^test_layer_norm_op_static_build$|\
@@ -588,10 +720,17 @@ function run_unittest_gpu() {
     export CUDA_VISIBLE_DEVICES=0
 
     if nvcc --version | grep 11.2; then
+        echo "CUDA version is 11.2, disable win_inference_test"
+        disable_wingpu_test=${disable_win_inference_test}
+    fi
+
+    if nvcc --version | grep 11.7; then
+        echo "CUDA version is 11.7, disable win_inference_test"
         disable_wingpu_test=${disable_win_inference_test}
     fi
 
     if nvcc --version | grep 12.0; then
+        echo "CUDA version is 12.0, disable wingpu_cuda12_test"
         disable_wingpu_test=${disable_wingpu_cuda12_test}
     fi
 

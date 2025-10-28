@@ -77,5 +77,66 @@ class TestTakeAlongAxisOutAndParamDecorator(unittest.TestCase):
             )
 
 
+class TestTensorTakeAlongAxisParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+        self.input_shape = [2, 3, 4]
+        self.axis = 1
+        self.out_shape = [2, 2, 4]
+
+        self.x_np = np.random.rand(*self.input_shape).astype(np.float32)
+
+        self.indices_np = np.random.randint(
+            0, self.input_shape[self.axis], size=self.out_shape
+        ).astype('int64')
+
+        self.method_names = [
+            'take_along_dim',
+            'take_along_axis',
+        ]
+
+        self.test_types = ["kwargs"]
+
+    def do_test(self, method_name, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        indices = paddle.to_tensor(self.indices_np)
+        out_tensor = paddle.empty(self.out_shape, dtype='float32')
+        out_tensor.stop_gradient = False
+
+        api_to_call = getattr(x, method_name)
+
+        if test_type == 'raw':
+            result = api_to_call(indices, self.axis)
+        elif test_type == 'kwargs':
+            result = api_to_call(indices=indices, axis=self.axis)
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+        result.mean().backward()
+
+        return result, x.grad
+
+    def test_tensor_methods(self):
+        for method in self.method_names:
+            out_std, grad_std = self.do_test(method, 'raw')
+
+            for test_type in self.test_types:
+                with self.subTest(method=method, type=test_type):
+                    out, grad = self.do_test(method, test_type)
+
+                    np.testing.assert_allclose(
+                        out.numpy(),
+                        out_std.numpy(),
+                        rtol=1e-20,
+                    )
+
+                    np.testing.assert_allclose(
+                        grad.numpy(),
+                        grad_std.numpy(),
+                        rtol=1e-20,
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()

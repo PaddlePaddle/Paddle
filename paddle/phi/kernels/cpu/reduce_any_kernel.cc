@@ -17,13 +17,9 @@
 #include <type_traits>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
-
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
 
 namespace phi {
 
@@ -50,7 +46,7 @@ PD_REGISTER_KERNEL(any_raw,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }

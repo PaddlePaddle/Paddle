@@ -139,7 +139,6 @@ __global__ void GPUROIAlignOpt(const int nthreads,
   }
 }
 
-#if IS_TRT_VERSION_GE(6000)
 RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
                                              const int pooled_height,
                                              const int pooled_width,
@@ -445,7 +444,6 @@ nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-#endif
 
 PIRRoiAlignPluginDynamic::PIRRoiAlignPluginDynamic(
     const nvinfer1::DataType data_type,

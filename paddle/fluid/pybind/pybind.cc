@@ -25,6 +25,7 @@ limitations under the License. */
 #endif
 #include <Python.h>
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -80,9 +81,11 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/pybind/torch_compat.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/logging_utils.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #include "paddle/phi/core/raw_tensor.h"
@@ -106,6 +109,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/cudart_py.h"
 #include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
@@ -204,7 +208,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CINN
-#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
 
@@ -244,9 +247,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/tensorrt/trt_plugin.h"
 #endif
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/eager/activation_offloader.h"
+#endif
+#include "paddle/phi/core/memory/allocation/retry_allocator.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_onednn);
+COMMON_DECLARE_int64(offload_retry_times);
 COMMON_DECLARE_string(prim_backward_blacklist);
 
 // disable auto conversion to list in Python
@@ -475,37 +483,30 @@ struct iinfo {
   int bits;
   std::string dtype;
 
-  explicit iinfo(const framework::proto::VarType::Type &type) {
+#define CASE_IINFO_BODY(type, ctype)         \
+  do {                                       \
+    min = std::numeric_limits<ctype>::min(); \
+    max = std::numeric_limits<ctype>::max(); \
+    bits = sizeof(ctype) * 8;                \
+    dtype = #type;                           \
+  } while (0)
+
+  explicit iinfo(const phi::DataType &type) {
     switch (type) {
-      case framework::proto::VarType::INT16:
-        min = std::numeric_limits<int16_t>::min();
-        max = std::numeric_limits<int16_t>::max();
-        bits = 16;
-        dtype = "int16";
+      case phi::DataType::UINT8:
+        CASE_IINFO_BODY(uint8, uint8_t);
         break;
-      case framework::proto::VarType::INT32:
-        min = std::numeric_limits<int32_t>::min();
-        max = std::numeric_limits<int32_t>::max();
-        bits = 32;
-        dtype = "int32";
+      case phi::DataType::INT8:
+        CASE_IINFO_BODY(int8, int8_t);
         break;
-      case framework::proto::VarType::INT64:
-        min = std::numeric_limits<int64_t>::min();
-        max = std::numeric_limits<int64_t>::max();
-        bits = 64;
-        dtype = "int64";
+      case phi::DataType::INT16:
+        CASE_IINFO_BODY(int16, int16_t);
         break;
-      case framework::proto::VarType::INT8:
-        min = std::numeric_limits<int8_t>::min();  // NOLINT
-        max = std::numeric_limits<int8_t>::max();
-        bits = 8;
-        dtype = "int8";
+      case phi::DataType::INT32:
+        CASE_IINFO_BODY(int32, int32_t);
         break;
-      case framework::proto::VarType::UINT8:
-        min = std::numeric_limits<uint8_t>::min();
-        max = std::numeric_limits<uint8_t>::max();
-        bits = 8;
-        dtype = "uint8";
+      case phi::DataType::INT64:
+        CASE_IINFO_BODY(int64, int64_t);
         break;
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
@@ -514,6 +515,7 @@ struct iinfo {
         break;
     }
   }
+#undef CASE_IINFO_BODY
 };
 
 struct finfo {
@@ -526,60 +528,50 @@ struct finfo {
   double resolution;
   std::string dtype;
 
-  explicit finfo(const framework::proto::VarType::Type &type) {
+#define CASE_FINFO_BODY(type, ctype)                                  \
+  do {                                                                \
+    eps = std::numeric_limits<ctype>::epsilon();                      \
+    min = std::numeric_limits<ctype>::lowest();                       \
+    max = std::numeric_limits<ctype>::max();                          \
+    smallest_normal = std::numeric_limits<ctype>::min();              \
+    tiny = smallest_normal;                                           \
+    resolution = std::pow(10, -std::numeric_limits<ctype>::digits10); \
+    bits = sizeof(ctype) * 8;                                         \
+    dtype = #type;                                                    \
+  } while (0)
+
+  explicit finfo(const phi::DataType &type) {
     switch (type) {
-      case framework::proto::VarType::FP16:
-        eps = std::numeric_limits<phi::dtype::float16>::epsilon();
-        min = std::numeric_limits<phi::dtype::float16>::lowest();
-        max = std::numeric_limits<phi::dtype::float16>::max();
-        smallest_normal = std::numeric_limits<phi::dtype::float16>::min();
-        tiny = smallest_normal;
-        resolution =
-            std::pow(10, -std::numeric_limits<phi::dtype::float16>::digits10);
-        bits = 16;
-        dtype = "float16";
+      case phi::DataType::FLOAT8_E4M3FN:
+        CASE_FINFO_BODY(float8_e4m3fn, phi::dtype::float8_e4m3fn);
         break;
-      case framework::proto::VarType::FP32:
-      case framework::proto::VarType::COMPLEX64:
-        eps = std::numeric_limits<float>::epsilon();
-        min = std::numeric_limits<float>::lowest();
-        max = std::numeric_limits<float>::max();
-        smallest_normal = std::numeric_limits<float>::min();
-        tiny = smallest_normal;
-        resolution = std::pow(10, -std::numeric_limits<float>::digits10);
-        bits = 32;
-        dtype = "float32";
+      case phi::DataType::FLOAT8_E5M2:
+        CASE_FINFO_BODY(float8_e5m2, phi::dtype::float8_e5m2);
         break;
-      case framework::proto::VarType::FP64:
-      case framework::proto::VarType::COMPLEX128:
-        eps = std::numeric_limits<double>::epsilon();
-        min = std::numeric_limits<double>::lowest();
-        max = std::numeric_limits<double>::max();
-        smallest_normal = std::numeric_limits<double>::min();
-        tiny = smallest_normal;
-        resolution = std::pow(10, -std::numeric_limits<double>::digits10);
-        bits = 64;
-        dtype = "float64";
+      case phi::DataType::FLOAT16:
+        CASE_FINFO_BODY(float16, phi::dtype::float16);
         break;
-      case framework::proto::VarType::BF16:
-        eps = std::numeric_limits<phi::dtype::bfloat16>::epsilon();
-        min = std::numeric_limits<phi::dtype::bfloat16>::lowest();
-        max = std::numeric_limits<phi::dtype::bfloat16>::max();
-        smallest_normal = std::numeric_limits<phi::dtype::bfloat16>::min();
-        tiny = smallest_normal;
-        resolution =
-            std::pow(10, -std::numeric_limits<phi::dtype::bfloat16>::digits10);
-        bits = 16;
-        dtype = "bfloat16";
+      case phi::DataType::BFLOAT16:
+        CASE_FINFO_BODY(bfloat16, phi::dtype::bfloat16);
+        break;
+      case phi::DataType::FLOAT32:
+      case phi::DataType::COMPLEX64:
+        CASE_FINFO_BODY(float32, float);
+        break;
+      case phi::DataType::FLOAT64:
+      case phi::DataType::COMPLEX128:
+        CASE_FINFO_BODY(float64, double);
         break;
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
-            "the argument of paddle.finfo can only be paddle.float32, "
-            "paddle.float64, paddle.float16, paddle.bfloat16"
-            "paddle.complex64, or paddle.complex128"));
+            "The argument of paddle.finfo can only be paddle.float32, "
+            "paddle.float64, paddle.float16, paddle.bfloat16, "
+            "paddle.float8_e4m3fn, paddle.float8_e5m2, "
+            "paddle.complex64 or paddle.complex128"));
         break;
     }
   }
+#undef CASE_FINFO_BODY
 };
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
@@ -770,6 +762,108 @@ class PyLayerBlockContextManager {
  private:
   // disable default constructor
   PyLayerBlockContextManager() = default;
+};
+
+int DLPackDLTensorFromPyObjectNoSync(void *py_obj, DLTensor *out) {
+  try {
+    // Use handle (non-owning) to avoid unnecessary refcount operations
+    py::handle handle(static_cast<PyObject *>(py_obj));
+    paddle::Tensor tensor = handle.cast<paddle::Tensor>();
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, *out);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackManagedTensorFromPyObjectNoSync(void *py_obj,
+                                          DLManagedTensorVersioned **out) {
+  try {
+    py::handle handle(static_cast<PyObject *>(py_obj));
+    paddle::Tensor tensor = handle.cast<paddle::Tensor>();
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackManagedTensorToPyObjectNoSync(DLManagedTensorVersioned *src,
+                                        void **py_obj_out) {
+  try {
+    phi::DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
+    paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(dense_tensor));
+    egr::EagerUtils::autograd_meta(&tensor)->SetPersistable(false);
+    *py_obj_out = ToPyObject(tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackManagedTensorAllocator(::DLTensor *prototype,
+                                 ::DLManagedTensorVersioned **out,
+                                 void *error_ctx,
+                                 void (*SetError)(void *error_ctx,
+                                                  const char *kind,
+                                                  const char *message)) {
+  try {
+    phi::IntArray shape(prototype->shape, prototype->ndim);
+    phi::Place place(paddle::framework::DLDeviceToPlace(prototype->device));
+    phi::DataType dtype =
+        paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
+    paddle::Tensor tensor = paddle::empty(shape, dtype, place);
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    SetError(error_ctx, "DLPackManagedTensorAllocator", e.what());
+    return -1;
+  }
+}
+
+int DLPackCurrentWorkStream(DLDeviceType device_type,
+                            int32_t device_id,
+                            void **out_stream) {
+  try {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    if (device_type == kDLCUDA || device_type == kDLROCM) {
+      *out_stream = platform::get_current_stream(device_id)->raw_stream();
+    }
+#endif
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+struct PaddleDLPackExchangeAPI : public ::DLPackExchangeAPI {
+  PaddleDLPackExchangeAPI() {
+    header.version.major = DLPACK_MAJOR_VERSION;
+    header.version.minor = DLPACK_MINOR_VERSION;
+    header.prev_api = nullptr;
+    managed_tensor_allocator = DLPackManagedTensorAllocator;
+    managed_tensor_from_py_object_no_sync =
+        DLPackManagedTensorFromPyObjectNoSync;
+    managed_tensor_to_py_object_no_sync = DLPackManagedTensorToPyObjectNoSync;
+    dltensor_from_py_object_no_sync = DLPackDLTensorFromPyObjectNoSync;
+    current_work_stream = DLPackCurrentWorkStream;
+  }
+
+  static const DLPackExchangeAPI *Instance() {
+    static PaddleDLPackExchangeAPI inst;
+    return &inst;
+  }
 };
 
 // NOTE: use to load file by Mmap
@@ -1122,6 +1216,16 @@ struct MmapStorage {
           size_ / 1073741824));
     }
 #endif
+  }
+  ~MmapStorage() {
+    if (base_ptr_) {
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN6)
+      UnmapViewOfFile(base_ptr_);
+#else
+      munmap(base_ptr_, size);
+#endif
+      base_ptr_ = nullptr;
+    }
   }
   void *base_ptr_;
   int64_t size;
@@ -1481,8 +1585,26 @@ PYBIND11_MODULE(libpaddle, m) {
 
   BindException(&m);
 
+#define SET_STR_DEFINE(name) m.attr("_" #name) = std::string(name);
+
+#ifdef PYBIND11_COMPILER_TYPE
+  SET_STR_DEFINE(PYBIND11_COMPILER_TYPE);
+#endif
+#ifdef PYBIND11_STDLIB
+  SET_STR_DEFINE(PYBIND11_STDLIB);
+#endif
+#ifdef PYBIND11_BUILD_ABI
+  SET_STR_DEFINE(PYBIND11_BUILD_ABI);
+#endif
+
+#ifdef _GLIBCXX_USE_CXX11_ABI
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = true;
+#else
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = false;
+#endif
+
   py::class_<iinfo>(m, "iinfo")
-      .def(py::init<const framework::proto::VarType::Type &>())
+      .def(py::init<const phi::DataType &>())
       .def_readonly("min", &iinfo::min)
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits)
@@ -1497,7 +1619,7 @@ PYBIND11_MODULE(libpaddle, m) {
       });
 
   py::class_<finfo>(m, "finfo")
-      .def(py::init<const framework::proto::VarType::Type &>())
+      .def(py::init<const phi::DataType &>())
       .def_readonly("min", &finfo::min)
       .def_readonly("max", &finfo::max)
       .def_readonly("bits", &finfo::bits)
@@ -1758,23 +1880,62 @@ PYBIND11_MODULE(libpaddle, m) {
       py::arg("count") = -1,
       py::arg("offset") = 0);
 
+  m.def("place_to_dl_device", [](const phi::Place &place) {
+    ::DLDevice dl_device = PlaceToDLDevice(place);
+    return py::make_tuple(static_cast<int>(dl_device.device_type),
+                          dl_device.device_id);
+  });
+
+  m.def("dlpack_exchange_api_ptr", []() -> int64_t {
+    return reinterpret_cast<int64_t>(PaddleDLPackExchangeAPI::Instance());
+  });
+
   m.def("from_dlpack", [](py::object data) {
-    DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(
-        PyCapsule_GetPointer(data.ptr(), "dltensor"));
+    if (PyCapsule_IsValid(data.ptr(),
+                          DLPackTraits<DLManagedTensorVersioned>::capsule)) {
+      DLManagedTensorVersioned *dlMTensor =
+          reinterpret_cast<DLManagedTensorVersioned *>(PyCapsule_GetPointer(
+              data.ptr(), DLPackTraits<DLManagedTensorVersioned>::capsule));
+      PADDLE_ENFORCE_NOT_NULL(
+          dlMTensor,
+          common::errors::InvalidArgument(
+              "from_dlpack received an invalid capsule. "
+              "Note that DLTensor capsules can be consumed only once, "
+              "so you might have already constructed a tensor from it once."));
+      PADDLE_ENFORCE_LE(
+          dlMTensor->version.major,
+          DLPACK_MAJOR_VERSION,
+          common::errors::InvalidArgument(
+              "The major version of DLManagedTensorVersioned (%d) is "
+              "greater than the supported version (%d).",
+              dlMTensor->version.major,
+              DLPACK_MAJOR_VERSION));
 
-    PADDLE_ENFORCE_NOT_NULL(
-        dlMTensor,
-        common::errors::InvalidArgument(
-            "from_dlpack received an invalid capsule. "
-            "Note that DLTensor capsules can be consumed only once, "
-            "so you might have already constructed a tensor from it once."));
+      // NOTE: Might meet bugged numpy version, see:
+      // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
+      auto ptensor =
+          DLPackTraits<DLManagedTensorVersioned>::FromDLPack(dlMTensor);
 
-    // NOTE: Might meet bugged numpy version, see:
-    // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
-    auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor);
+      PyCapsule_SetName(data.ptr(),
+                        DLPackTraits<DLManagedTensorVersioned>::used);
+      return ptensor;
+    } else {
+      DLManagedTensor *dlMTensor =
+          reinterpret_cast<DLManagedTensor *>(PyCapsule_GetPointer(
+              data.ptr(), DLPackTraits<DLManagedTensor>::capsule));
 
-    PyCapsule_SetName(data.ptr(), "used_dltensor");
-    return ptensor;
+      PADDLE_ENFORCE_NOT_NULL(
+          dlMTensor,
+          common::errors::InvalidArgument(
+              "from_dlpack received an invalid capsule. "
+              "Note that DLTensor capsules can be consumed only once, "
+              "so you might have already constructed a tensor from it once."));
+
+      auto ptensor = DLPackTraits<DLManagedTensor>::FromDLPack(dlMTensor);
+
+      PyCapsule_SetName(data.ptr(), DLPackTraits<DLManagedTensor>::used);
+      return ptensor;
+    }
   });
 
   m.def("tensor_from_cuda_array_interface", [](py::object obj) {
@@ -3054,7 +3215,7 @@ All parameter, weight, gradient are variables in Paddle.
         std::make_unique<paddle::prim::StaticTensorOperants>();
     paddle::OperantsManager::Instance().phi_operants =
         std::make_unique<paddle::operants::PhiTensorOperants>();
-    VLOG(4) << "Initialize tensor operants successfully";
+    VLOG(7) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_flagcx", IsCompiledWithFlagcx);
   m.def("is_compiled_with_deepep", IsCompiledWithDeepEP);
@@ -3153,6 +3314,60 @@ All parameter, weight, gradient are variables in Paddle.
             Scope *,
             const phi::DenseTensor &,
             const std::string &)>(&framework::SetVariable));
+  m.def(
+      "set_vlog_level",
+      [](py::object module_levels) {
+        if (py::isinstance<py::int_>(module_levels)) {
+          auto level = module_levels.cast<int>();
+          // Do not using google::SetVLOGLevel("*", level);
+          // It may cause configuration effects for a single module
+          VLOG(3) << "Set the VLOG level of all modules to " << level;
+          FLAGS_v = level;
+          phi::set_phi_vlog_level(level);
+        } else if (py::isinstance<py::dict>(module_levels)) {
+          auto module_levels_dict = module_levels.cast<py::dict>();
+          for (auto &item : module_levels_dict) {
+            auto module_name = item.first.cast<std::string>();
+            auto level = item.second.cast<int>();
+            if (module_name == "*") {
+              VLOG(3) << "Set the VLOG level of all modules to " << level;
+              FLAGS_v = level;
+              phi::set_phi_vlog_level(level);
+            } else {
+              google::SetVLOGLevel(module_name.c_str(), level);
+              phi::set_phi_vlog_level(module_name.c_str(), level);
+            }
+          }
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The parameters of set_vlog_level must be int or dict! "));
+        }
+      },
+      py::arg("module_levels"),
+      R"DOC(
+    Set the verbosity logging level for specified modules.
+
+    This function allows setting the VLOG level for specific modules or for all modules.
+    The VLOG level controls the verbosity of logging output, with higher levels producing more
+    detailed logs.
+
+    Parameters:
+      module_levels (dict|int): A dictionary where the keys are module names (str) and
+                                the values are the corresponding verbosity levels (int),
+                                or an int variable that represents the verbosity level set globally for all modules.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # case1: Set GLOG_v=1
+            >>> paddle.base.core.set_vlog_level(1)
+            >>> # case2: Another way to set GLOG_v=1
+            >>> paddle.base.core.set_vlog_level({"*": 1})
+            >>> # case3: Set GLOG_vmodule=dygraph_functions=4,nodes=5
+            >>> paddle.base.core.set_vlog_level({"dygraph_functions": 4, "nodes": 5})
+
+)DOC");
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
@@ -3181,7 +3396,23 @@ All parameter, weight, gradient are variables in Paddle.
             .GetAutoGrowthAllocator(place));
     allocator->DumpInfo();
   });
+
+  m.def("set_skip_offload_callback_tensors",
+        [](const std::vector<paddle::Tensor> &tensors) {
+          egr::ActivationOffloader::Instance()->SetSkipTensors(tensors);
+        });
+  m.def("register_offload_callback", [] {
+    paddle::memory::allocation::RegisterOOMCallback(
+        [](phi::Place place, size_t size) -> size_t {
+          return egr::ActivationOffloader::Instance()->Offload(place, size);
+        });
+  });
+  m.def("clear_offload_callback",
+        [] { paddle::memory::allocation::RegisterOOMCallback(nullptr); });
+  m.def("offload_cached_size",
+        [] { return egr::ActivationOffloader::Instance()->CachedSize(); });
 #endif
+
   BindProgramDesc(&m);
   BindBlockDesc(&m);
   BindVarDesc(&m);
@@ -3707,7 +3938,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
   m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
   m.def("get_cublas_switch", phi::AllowTF32Cublas);
   m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);
@@ -3981,7 +4213,12 @@ All parameter, weight, gradient are variables in Paddle.
       .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .value("PSTRING", phi::DataType::PSTRING)
       .value("ALL_DTYPE", phi::DataType::ALL_DTYPE)
-      .export_values();
+      .export_values()
+      .def("__dlpack_data_type__", [](const phi::DataType &self) {
+        ::DLDataType dl_dtype =
+            paddle::framework::PhiDataTypeToDLDataType(self);
+        return py::make_tuple(dl_dtype.code, dl_dtype.bits, dl_dtype.lanes);
+      });
 
   py::class_<paddle::platform::EngineParams> engine_params(m,
                                                            "TRTEngineParams");
@@ -4118,11 +4355,18 @@ All parameter, weight, gradient are variables in Paddle.
   BindVjp(&m);
   BindDecompRule(&m);
   BindDecompVjp(&m);
+  py::module torch_compat = m.def_submodule(
+      "torch_compat", "Compatibility layer for PyTorch-like APIs");
+  BindTorchCompat(&torch_compat);
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindDistApi(&m);
 #endif
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
   BindDeepEPApi(&m);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+  BindCudaRt(&m);
 #endif
 }
 }  // namespace paddle::pybind

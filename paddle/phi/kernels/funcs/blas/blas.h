@@ -75,9 +75,9 @@ struct MatDescriptor {
  *
  * @param trans: True if the matrix is transposed.
  */
-extern MatDescriptor CreateMatrixDescriptor(const DDim& tensor_dim,
-                                            int num_flatten_cols,
-                                            bool trans);
+extern PADDLE_API MatDescriptor CreateMatrixDescriptor(const DDim& tensor_dim,
+                                                       int num_flatten_cols,
+                                                       bool trans);
 
 template <typename DeviceContext>
 class Blas {
@@ -282,6 +282,10 @@ class Blas {
 
   template <typename T>
   T DOT(int n, const T* x, const T* y) const;
+
+  template <typename T>
+  void CUDOT(
+      int n, const T* x, int incx, const T* y, int incy, T* result) const;
 
   template <typename T>
   void SCAL(int n, const T a, T* x) const;
@@ -541,6 +545,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   T DOT(ARGS... args) const {
     return Base()->template DOT<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void CUDOT(ARGS... args) const {
+    Base()->template CUDOT<T>(args...);
   }
 
   template <typename... ARGS>

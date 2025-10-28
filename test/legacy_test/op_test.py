@@ -402,7 +402,7 @@ def get_places():
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
         in ['1', 'true', 'on']
         or not core.is_compiled_with_cuda()
-    ):
+    ) and not is_custom_device():
         places.append(base.CPUPlace())
     if core.is_compiled_with_cuda():
         places.append(base.CUDAPlace(0))
@@ -424,18 +424,37 @@ def get_devices():
         devices.append('gpu')
     if is_custom_device():
         dev_type = paddle.device.get_all_custom_device_type()[0]
-        devices.append(f'{dev_type}:0')
+        devices.append(f'{dev_type}')
     return devices
 
 
-def get_device_place():
+def get_device(with_device_id=False):
+    if paddle.is_compiled_with_cuda():
+        return 'gpu' if not with_device_id else 'gpu:0'
+    elif is_custom_device():
+        dev_type = paddle.device.get_all_custom_device_type()[0]
+        return f'{dev_type}' if not with_device_id else f'{dev_type}:0'
+    else:
+        return None
+
+
+def get_device_class():
+    if paddle.is_compiled_with_cuda():
+        return core.CUDAPlace
+    elif is_custom_device():
+        return core.CustomPlace
+    else:
+        return core.CPUPlace
+
+
+def get_device_place(device_id: int = 0):
     if core.is_compiled_with_cuda():
-        return base.CUDAPlace(0)
+        return base.CUDAPlace(device_id)
     custom_dev_types = paddle.device.get_all_custom_device_type()
     if custom_dev_types and core.is_compiled_with_custom_device(
         custom_dev_types[0]
     ):
-        return base.CustomPlace(custom_dev_types[0], 0)
+        return base.CustomPlace(custom_dev_types[0], device_id)
     return base.CPUPlace()
 
 
@@ -446,6 +465,60 @@ def is_custom_device():
     ):
         return True
     return False
+
+
+def check_cudnn_version_and_compute_capability(
+    min_cudnn_version=None, min_device_capability=None
+):
+    """
+    Check if the current environment meets the specified cuDNN version and device capability requirements.
+
+    Args:
+        min_cudnn_version (int, optional): Minimum required cuDNN version. If None, cuDNN version check is skipped.
+        min_device_capability (int, optional): Minimum required device capability. If None, device capability check is skipped.
+
+    Returns:
+        bool: True if the environment meets the requirements or if using custom device, False otherwise.
+    """
+    if is_custom_device():
+        return True
+
+    if not core.is_compiled_with_cuda():
+        return False
+
+    # Check cuDNN version if specified
+    cudnn_check = True
+    if min_cudnn_version is not None:
+        cudnn_check = core.cudnn_version() >= min_cudnn_version
+
+    # Check device capability if specified
+    device_check = True
+    if min_device_capability is not None:
+        device_check = (
+            paddle.device.cuda.get_device_capability()[0]
+            >= min_device_capability
+        )
+
+    return cudnn_check and device_check
+
+
+def get_cuda_version():
+    if paddle.is_compiled_with_cuda():
+        import re
+
+        result = os.popen("nvcc --version").read()
+        regex = r'release (\S+),'
+        match = re.search(regex, result)
+        if match:
+            num = str(match.group(1))
+            integer, decimal = num.split('.')
+            return int(integer) * 1000 + int(float(decimal) * 10)
+        else:
+            return -1
+    elif is_custom_device():
+        return 13000
+    else:
+        return -1
 
 
 @contextmanager
@@ -614,8 +687,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'bfloat16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "bfloat16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'bfloat16'
             )
         )
 
@@ -635,8 +709,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'float16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "float16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'float16'
             )
         )
 
@@ -2975,8 +3050,13 @@ class OpTest(unittest.TestCase):
                 'on',
             ]
             or not (
-                core.is_compiled_with_cuda()
-                and core.op_support_gpu(self.op_type)
+                (
+                    (
+                        core.is_compiled_with_cuda()
+                        and core.op_support_gpu(self.op_type)
+                    )
+                    or is_custom_device()
+                )
                 and not cpu_only
             )
             or self.op_type
@@ -3345,6 +3425,22 @@ class OpTest(unittest.TestCase):
         check_auto_parallel=False,
         check_pir_onednn=False,
     ):
+        if os.getenv("FLAG_SKIP_FLOAT64", "0") in ["1", "ON", "TRUE"]:
+            for name, value in self.inputs.items():
+                if isinstance(value, list):
+                    for item in value:
+                        if (
+                            hasattr(item[1], 'dtype')
+                            and item[1].dtype == np.float64
+                        ):
+                            self.skipTest(
+                                "Skipping test due to float64 inputs and FLAG_SKIP_FLOAT64 is set"
+                            )
+                elif hasattr(value, 'dtype') and value.dtype == np.float64:
+                    self.skipTest(
+                        "Skipping test due to float64 inputs and FLAG_SKIP_FLOAT64 is set"
+                    )
+
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
@@ -3439,7 +3535,7 @@ class OpTest(unittest.TestCase):
                     num_devices = len(
                         runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")
                     )
-                    if num_devices > paddle.device.cuda.device_count():
+                    if num_devices > paddle.device.device_count():
                         self.skipTest("number of GPUs is not enough")
 
                     start_command = get_subprocess_command(
@@ -3737,7 +3833,7 @@ class OpTest(unittest.TestCase):
 
                 fetch_list_grad = []
                 for inputs_to_check_name in inputs_to_check:
-                    a = inputs_grad_dict[inputs_to_check_name].gradient()
+                    a = np.array(inputs_grad_dict[inputs_to_check_name].grad)
                     fetch_list_grad.append(a)
                 return fetch_list_grad
             else:

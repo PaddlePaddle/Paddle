@@ -163,6 +163,62 @@ size_t AnchorGeneratorPlugin::getWorkspaceSize(int max_batch_size) const
   return 0;
 }
 
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
+template <typename T>
+__global__ void GenAnchors(T* out,
+                           const T* aspect_ratios,
+                           const int ar_num,
+                           const T* anchor_sizes,
+                           const int as_num,
+                           const T* stride,
+                           const int sd_num,
+                           const int height,
+                           const int width,
+                           const T offset) {
+  int num_anchors = as_num * ar_num;
+  int box_num = height * width * num_anchors;
+  CUDA_KERNEL_LOOP(i, box_num) {
+    int h_idx = i / (num_anchors * width);
+    int w_idx = (i / num_anchors) % width;
+    T stride_width = stride[0];
+    T stride_height = stride[1];
+    T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
+    T y_ctr = (h_idx * stride_height) + offset * (stride_height - 1);
+    T area, area_ratios;
+    T base_w, base_h;
+    T scale_w, scale_h;
+    T anchor_width, anchor_height;
+    int anch_idx = i % num_anchors;
+    int ar_idx = anch_idx / as_num;
+    int as_idx = anch_idx % as_num;
+    T aspect_ratio = aspect_ratios[ar_idx];
+    T anchor_size = anchor_sizes[as_idx];
+    area = stride_width * stride_height;
+    area_ratios = area / aspect_ratio;
+    base_w = round(sqrt(area_ratios));
+    base_h = round(base_w * aspect_ratio);
+    scale_w = anchor_size / stride_width;
+    scale_h = anchor_size / stride_height;
+    anchor_width = scale_w * base_w;
+    anchor_height = scale_h * base_h;
+
+    T xmin = (x_ctr - .5f * (anchor_width - 1));
+    T ymin = (y_ctr - .5f * (anchor_height - 1));
+    T xmax = (x_ctr + .5f * (anchor_width - 1));
+    T ymax = (y_ctr + .5f * (anchor_height - 1));
+    reinterpret_cast<float4*>(out)[i] = make_float4(xmin, ymin, xmax, ymax);
+  }
+}
+
+template <typename T>
+__global__ void SetVariance(T* out,
+                            const T* var,
+                            const int vnum,
+                            const int num) {
+  CUDA_KERNEL_LOOP(i, num) { out[i] = var[i % vnum]; }
+}
+#endif
+
 template <typename T>
 int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
                                         const void* const* inputs,
@@ -177,6 +233,18 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
+  GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(anchors,
+                                                       aspect_ratios_device,
+                                                       aspect_ratios_.size(),
+                                                       anchor_sizes_device,
+                                                       anchor_sizes_.size(),
+                                                       stride_device,
+                                                       stride_.size(),
+                                                       height_,
+                                                       width_,
+                                                       offset_);
+#else
   phi::GenAnchors<T>
       <<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                               aspect_ratios_device,
@@ -188,21 +256,22 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
                                               height_,
                                               width_,
                                               offset_);
+#endif
   const int var_grid = (box_num_ * 4 + block - 1) / block;
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
+  SetVariance<T><<<var_grid, block, 0, stream>>>(
+      vars, variances_device, variances_.size(), box_num_ * 4);
+#else
   phi::SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num_ * 4);
+#endif
   return cudaGetLastError() != cudaSuccess;
 }
 
 int AnchorGeneratorPlugin::enqueue(int batch_size,
                                    const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-                                   void** outputs,
-                                   void* workspace,
-#else
                                    void* const* outputs,
                                    void* workspace,
-#endif
                                    cudaStream_t stream) TRT_NOEXCEPT {
   return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
 }
@@ -382,7 +451,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::deserializePlugin(
   return plugin;
 }
 
-#if IS_TRT_VERSION_GE(6000)
 AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
     const nvinfer1::DataType data_type,
     const std::vector<float>& anchor_sizes,
@@ -476,11 +544,7 @@ bool AnchorGeneratorPluginDynamic::supportsFormatCombination(
   // anchor generator doesn't read input raw data, only need the shape info
   auto type = inOut[pos].type;
   auto format = inOut[pos].format;
-#if IS_TRT_VERSION_GE(7234)
   if (pos == 0) return true;
-#else
-  if (pos == 0) return format == nvinfer1::TensorFormat::kLINEAR;
-#endif
   return (type == nvinfer1::DataType::kFLOAT &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
@@ -518,6 +582,18 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
+  GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(anchors,
+                                                       aspect_ratios_device,
+                                                       aspect_ratios_.size(),
+                                                       anchor_sizes_device,
+                                                       anchor_sizes_.size(),
+                                                       stride_device,
+                                                       stride_.size(),
+                                                       height,
+                                                       width,
+                                                       offset_);
+#else
   phi::GenAnchors<T>
       <<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                               aspect_ratios_device,
@@ -529,9 +605,15 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
                                               height,
                                               width,
                                               offset_);
+#endif
   const int var_grid = (box_num * 4 + block - 1) / block;
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
+  SetVariance<T><<<var_grid, block, 0, stream>>>(
+      vars, variances_device, variances_.size(), box_num * 4);
+#else
   phi::SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num * 4);
+#endif
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -665,7 +747,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-#endif
 
 PIRAnchorGeneratorPluginDynamic::PIRAnchorGeneratorPluginDynamic(
     const nvinfer1::DataType data_type,
@@ -760,11 +841,7 @@ bool PIRAnchorGeneratorPluginDynamic::supportsFormatCombination(
   // anchor generator doesn't read input raw data, only need the shape info
   auto type = inOut[pos].type;
   auto format = inOut[pos].format;
-#if IS_TRT_VERSION_GE(7234)
   if (pos == 0) return true;
-#else
-  if (pos == 0) return format == nvinfer1::TensorFormat::kLINEAR;
-#endif
   return (type == nvinfer1::DataType::kFLOAT &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
@@ -802,6 +879,18 @@ int PIRAnchorGeneratorPluginDynamic::enqueue_impl(
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
+  GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(anchors,
+                                                       aspect_ratios_device,
+                                                       aspect_ratios_.size(),
+                                                       anchor_sizes_device,
+                                                       anchor_sizes_.size(),
+                                                       stride_device,
+                                                       stride_.size(),
+                                                       height,
+                                                       width,
+                                                       offset_);
+#else
   phi::GenAnchors<T>
       <<<gen_anchor_grid, block, 0, stream>>>(anchors,
                                               aspect_ratios_device,
@@ -813,9 +902,15 @@ int PIRAnchorGeneratorPluginDynamic::enqueue_impl(
                                               height,
                                               width,
                                               offset_);
+#endif
   const int var_grid = (box_num * 4 + block - 1) / block;
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 13000 || defined(_WIN32)
+  SetVariance<T><<<var_grid, block, 0, stream>>>(
+      vars, variances_device, variances_.size(), box_num * 4);
+#else
   phi::SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num * 4);
+#endif
   return cudaGetLastError() != cudaSuccess;
 }
 

@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
@@ -70,8 +69,11 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -159,8 +161,11 @@ void GPUIndexElementwisePutWithTensorKernel(
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -277,10 +282,10 @@ PD_REGISTER_KERNEL(index_elementwise_put,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    GPU,
@@ -294,7 +299,7 @@ PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

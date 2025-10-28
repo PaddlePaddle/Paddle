@@ -85,7 +85,7 @@ class TestSimplifyWithBasicOpsPassUpscale(PassAutoScanTest):
         yield config, ['relu'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=30,
             passes=["simplify_with_basic_ops_pass"],
@@ -154,7 +154,7 @@ class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
         yield config, ['scale', 'relu'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=30,
             passes=["simplify_with_basic_ops_pass"],

@@ -64,7 +64,7 @@ class DenseTensor;
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(run_kp_kernel);
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle::framework {
 
@@ -1839,7 +1839,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << phi_kernel_name << " | kernel key: " << phi_kernel_key
                 << " | kernel: " << *phi_kernel_;
       } else {
-        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `"
+        VLOG(1) << "Static graph mode ChoosePhiKernel - kernel `"
                 << phi_kernel_name << "` not found.";
       }
     } else {
@@ -2306,7 +2306,7 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
             << phi_kernel_name << " | kernel key: " << phi_kernel_key
             << " | kernel: " << *phi_kernel_;
   } else {
-    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
+    VLOG(1) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
             << "` not found.";
   }
   return phi_kernel_key;
@@ -3128,6 +3128,26 @@ static void SetDnnAttrIntoDeviceContext(
     }
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (phi::CustomContext::classof(dev_ctx) &&
+      attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
+    VLOG(4) << "Runtime attr `" << attr_name << "` is passed to CustomContext.";
+    phi::CustomContext* custom_dnn_ctx =
+        static_cast<phi::CustomContext*>(dev_ctx);
+    switch (AttrTypeID(attr)) {
+      case proto::AttrType::INT:
+        custom_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+        break;
+      case proto::AttrType::BOOLEAN:
+        custom_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+        break;
+      default:
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported Attribute value type `%s` for phi.",
+            common::demangle(attr.type().name())));
+    }
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   if (phi::GPUContext::classof(dev_ctx) &&
       attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
@@ -3494,6 +3514,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(float, attr_iter->second));
             break;
           case phi::AttributeType::FLOAT64:
+            if (AttrTypeID(attr_iter->second) ==
+                framework::proto::AttrType::FLOAT) {
+              const auto val = PADDLE_GET_CONST(float, attr_iter->second);
+              phi_kernel_context->EmplaceBackAttr(static_cast<double>(val));
+              break;
+            }
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(double, attr_iter->second));
             break;
@@ -3605,7 +3631,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   #endif
   */
   // For compatible with Op with extra attrs for specific backend
-#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;

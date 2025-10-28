@@ -17,7 +17,14 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    check_cudnn_version_and_compute_capability,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -222,6 +229,39 @@ class TestAutoTuneTransposeOp(OpTest):
             check_prim_pir=True,
             check_pir=True,
         )
+
+
+@unittest.skipIf(
+    not check_cudnn_version_and_compute_capability(min_device_capability=9.0),
+    "core is not compiled with CUDA or not support native fp8",
+)
+class TestFP8FastTranspose(unittest.TestCase):
+    def setUp(self):
+        self.dtype = paddle.float8_e4m3fn
+        self.test_cases = [
+            {"shape": (7168, 16384), "perm": [1, 0], "name": "2D(7168,16384)"},
+            {
+                "shape": (8, 7168, 4096),
+                "perm": [0, 2, 1],
+                "name": "3D(8,7168,4096)",
+            },
+            {
+                "shape": (8, 2048, 7168),
+                "perm": [0, 2, 1],
+                "name": "3D(8,2048,7168)",
+            },
+        ]
+
+    def test_verify_transpose(self):
+        paddle.disable_static()
+        with paddle.no_grad():
+            for case in self.test_cases:
+                x = paddle.randn(case["shape"]).cast(self.dtype)
+                np_data = x.numpy()
+                gold = np.transpose(np_data, case["perm"])
+                out = paddle.transpose(x, case["perm"]).contiguous()
+                np.testing.assert_equal(out.numpy(), gold)
+        paddle.enable_static()
 
 
 class TestAutoTuneTransposeFP16Op(OpTest):
@@ -864,7 +904,7 @@ class TestMatrixTransposeApiFPPrecision(unittest.TestCase):
         self.check_dtype_transpose('float64')
 
     def test_fp16(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_dtype_transpose('float16')
 
     def test_int8(self):
@@ -886,8 +926,8 @@ class TestMatrixTransposeApiFPPrecision(unittest.TestCase):
 class TestTransposeCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.func = paddle.transpose
         self.init_data()
 

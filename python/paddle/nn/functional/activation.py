@@ -14,13 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     param_one_alias,
+    softmax_param_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -30,13 +31,14 @@ from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh, tanh_  # noqa: F401
 from ...tensor.ops import sigmoid
-from ...tensor.softmax import softmax as softmax
 
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DataLayout2D, DTypeLike
 
-__all__ = []
+from paddle._C_ops import (  # noqa: F401
+    gelu,
+)
 
 
 def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
@@ -151,89 +153,6 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
     return _C_ops.elu_(x, alpha)
-
-
-def gelu(
-    x: Tensor,
-    approximate: Literal["tanh", "none"] | bool = False,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    gelu activation.
-
-    The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
-
-    approximate parameter must be True, False, "tanh", "none".
-
-    if approximate is True or "tanh"
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
-
-    else
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        approximate (str|bool, optional): Whether to enable approximation. Default is False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
-            >>> out1 = F.gelu(x)
-            >>> print(out1)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15865529,  0.34573123],
-             [ 0.84134471,  1.39978933]])
-            >>> out2 = F.gelu(x, True)
-            >>> print(out2)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15880796,  0.34571400],
-             [ 0.84119201,  1.39957154]])
-            >>> out3 = F.gelu(x, "none")
-            >>> print(out3)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15865529,  0.34573123],
-             [ 0.84134471,  1.39978933]])
-            >>> out4 = F.gelu(x, "tanh")
-            >>> print(out4)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15880796,  0.34571400],
-             [ 0.84119201,  1.39957154]])
-    """
-
-    if approximate == "tanh":
-        approximate = True
-    elif approximate == "none":
-        approximate = False
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.gelu(x, approximate)
-    else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'gelu'
-        )
-        helper = LayerHelper("gelu", **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='gelu',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'approximate': approximate},
-        )
-        return out
 
 
 def hardshrink(
@@ -1080,7 +999,7 @@ def selu(
 
 
 @param_one_alias(["x", "input"])
-def silu(x: Tensor, name: str | None = None) -> Tensor:
+def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     silu activation
 
@@ -1097,6 +1016,7 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
             alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1113,10 +1033,21 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+
+            >>> out = F.silu(x, True)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.silu(x)
+        if inplace:
+            return _C_ops.silu_(x)
+        else:
+            return _C_ops.silu(x)
     else:
         check_variable_and_dtype(
             x,
@@ -1135,6 +1066,185 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(type='silu', inputs={'X': x}, outputs={'Out': out})
         return out
+
+
+@softmax_param_alias
+def softmax(
+    x: Tensor,
+    axis: int = -1,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    This operator implements the softmax layer. The calculation process is as follows:
+
+    1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
+
+    2. Then ``x`` will be logically flattened to a 2-D matrix. The matrix's second
+    dimension(row length) is the same as the dimension :attr:`axis` of ``x``,
+    and the first dimension(column length) is the product of all other dimensions
+    of ``x``. For each row of the matrix, the softmax operator squashes the
+    K-dimensional(K is the width of the matrix, which is also the size of ``x``'s
+    dimension :attr:`axis`) vector of arbitrary real values to a K-dimensional
+    vector of real values in the range [0, 1] that add up to 1.
+
+    3. After the softmax operation is completed, the inverse operations of steps 1 and 2
+    are performed to restore the two-dimensional matrix to the same dimension as the ``x`` .
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
+
+    .. math::
+
+        softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+
+    Example:
+
+    .. code-block:: text
+
+        Case 1:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+
+          Attrs:
+            axis = -1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+
+        Case 2:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+          Attrs:
+            axis = 1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
+                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
+                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
+
+    Parameters:
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+        axis (int, optional): The axis along which to perform softmax
+            calculations. It should be in range [-D, D), where D is the
+            rank of ``x`` . If ``axis`` < 0, it works the same way as
+            :math:`axis + D` . Default is -1.
+        dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor, optional): The output Tensor.
+
+    Returns:
+        A Tensor with the same shape and data type (use ``dtype`` if it is
+        specified) as x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
+            ...                        [3.0, 4.0, 5.0, 6.0],
+            ...                        [7.0, 8.0, 8.0, 9.0]],
+            ...                       [[1.0, 2.0, 3.0, 4.0],
+            ...                        [5.0, 6.0, 7.0, 8.0],
+            ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            >>> out1 = F.softmax(x)
+            >>> out2 = F.softmax(x, dtype='float64')
+            >>> #out1's data type is float32; out2's data type is float64
+            >>> #out1 and out2's value is as follows:
+            >>> print(out1)
+            >>> print(out2)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.07232949, 0.19661194, 0.19661194, 0.53444666]],
+             [[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428]]])
+            Tensor(shape=[2, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+             [[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
+    """
+    if (
+        (dtype is not None)
+        and (not isinstance(dtype, core.VarDesc.VarType))
+        and (not isinstance(dtype, core.DataType))
+    ):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dynamic_or_pir_mode():
+        outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
+        return _C_ops.softmax(outs_cast, axis, out=out)
+    else:
+        use_cudnn = True
+        if dtype is None:
+            check_variable_and_dtype(
+                x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'softmax'
+            )
+        else:
+            check_dtype(
+                dtype,
+                'dtype',
+                ['uint16', 'float16', 'float32', 'float64'],
+                'softmax',
+                'If dtype is not None, it only support uint16, float16, float32 or float64.',
+            )
+
+        helper = LayerHelper("softmax", **locals())
+        outs_cast = x
+        if dtype is not None:
+            outs_cast = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='cast',
+                inputs={'X': x},
+                outputs={'Out': outs_cast},
+                attrs={'in_dtype': x.dtype, 'out_dtype': dtype},
+            )
+
+        outs_softmax = helper.create_variable_for_type_inference(
+            outs_cast.dtype
+        )
+        helper.append_op(
+            type='softmax',
+            inputs={'X': outs_cast},
+            outputs={'Out': outs_softmax},
+            attrs={'axis': axis, 'use_cudnn': use_cudnn},
+        )
+
+        return outs_softmax
 
 
 @inplace_apis_in_dygraph_only
@@ -1587,12 +1697,11 @@ def log_softmax(
               [-12.31326640, -1.31326640 , -0.31326640 , -15.31326640],
               [-3.44018970 , -2.44018970 , -1.44018970 , -0.44018970 ]]])
     """
-
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        if dtype is not None:
+        if dtype is not None and x.dtype != dtype:
             x = _C_ops.cast(x, dtype)
         return _C_ops.log_softmax(x, axis)
     else:

@@ -52,7 +52,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode UNUSED,
-                 float pad_value,
+                 double pad_value,
                  const std::string& data_format UNUSED,
                  DenseTensor* out) {
   PadOpKernel<T, Context>(dev_ctx, x, paddings.GetData(), pad_value, out);
@@ -63,8 +63,8 @@ PD_REGISTER_KERNEL(pad3d,
                    OneDNN,
                    ONEDNN,
                    phi::Pad3dKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float) {
   kernel->get_kerneltype_forvar_fn_ = phi::Pad3dGetKernelTypeForVar;
   kernel->check_if_onednn_kernel_support_ = phi::Pad3dCheckIfOneDNNSupport;

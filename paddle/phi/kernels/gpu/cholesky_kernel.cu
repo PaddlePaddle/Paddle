@@ -122,10 +122,8 @@ FUNC_WITH_TYPES(POTRF_INSTANCE);
         dev_ctx.GetPlace(),                                               \
         workspace_device_size,                                            \
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));  \
-    auto workspace_host = phi::memory_utils::Alloc(                       \
-        phi::CPUPlace(),                                                  \
-        workspace_host_size,                                              \
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));  \
+    auto workspace_host =                                                 \
+        phi::memory_utils::Alloc(phi::CPUPlace(), workspace_host_size);   \
     PADDLE_ENFORCE_GPU_SUCCESS(                                           \
         dynload::cusolverDnXpotrf(handle,                                 \
                                   params,                                 \

@@ -16,13 +16,13 @@
 #include <type_traits>
 
 #include "paddle/common/errors.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/emb_eltwise_layer_norm_functor.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_embedding_eltwise_layernorm_kernel.h"
 
 namespace phi {
 namespace fusion {
@@ -90,7 +90,7 @@ void EmbeddingEltWiseLayerNormKernel(
   auto* scale_d = scale.data<T>();
   auto* output_d = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  if (std::is_same<T, phi::float16>::value) {
     const half* scale_new = reinterpret_cast<const half*>(scale_d);
     const half* bias_new = reinterpret_cast<const half*>(bias_d);
     half* output_new = reinterpret_cast<half*>(output_d);
@@ -126,13 +126,13 @@ void EmbeddingEltWiseLayerNormKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(fused_embedding_eltwise_layernorm,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::EmbeddingEltWiseLayerNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(fused_embedding_eltwise_layernorm,
                    GPU,

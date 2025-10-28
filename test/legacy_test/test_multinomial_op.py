@@ -18,7 +18,13 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    is_custom_device,
+)
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -173,8 +179,8 @@ class TestMultinomialFP16Op3(TestMultinomialFP16Op):
 
 # BF16 OP
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestMultinomialBF16OP(OpTest):
@@ -193,7 +199,7 @@ class TestMultinomialBF16OP(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place_customized(
             self.verify_output, place, check_pir=True
         )
@@ -215,8 +221,8 @@ class TestMultinomialBF16OP(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestMultinomialBF16OP2(TestMultinomialBF16OP):
@@ -231,8 +237,8 @@ class TestMultinomialBF16OP2(TestMultinomialBF16OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestMultinomialBF16OP3(TestMultinomialBF16OP):
@@ -321,8 +327,8 @@ class TestMultinomialApi(unittest.TestCase):
             out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
 
         exe.run(startup_program)
@@ -338,6 +344,144 @@ class TestMultinomialApi(unittest.TestCase):
             atol=0.01,
             err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
         )
+
+
+class TestMultinomialOutParameter(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(100)
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_out_parameter_basic(self):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy)
+
+        out = paddle.empty([1000], dtype='int64')
+        paddle.multinomial(x, num_samples=1000, replacement=True, out=out)
+
+        self.assertEqual(out.shape, [1000])
+        self.assertEqual(out.dtype, paddle.int64)
+
+        self.assertTrue(paddle.all(out >= 0))
+        self.assertTrue(paddle.all(out < 4))
+
+    def test_out_parameter_2d(self):
+        x_numpy = np.random.rand(3, 4)
+        x = paddle.to_tensor(x_numpy)
+
+        out = paddle.empty([3, 100], dtype='int64')
+
+        paddle.multinomial(x, num_samples=100, replacement=True, out=out)
+
+        self.assertEqual(out.shape, [3, 100])
+        self.assertEqual(out.dtype, paddle.int64)
+
+        self.assertTrue(paddle.all(out >= 0))
+        self.assertTrue(paddle.all(out < 4))
+
+    def test_out_parameter_with_alias(self):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy)
+
+        out = paddle.empty([1000], dtype='int64')
+        paddle.multinomial(input=x, num_samples=1000, replacement=True, out=out)
+
+        self.assertEqual(out.shape, [1000])
+        self.assertEqual(out.dtype, paddle.int64)
+
+    def test_out_parameter_different_scenarios(self):
+        x_numpy = np.random.rand(100)
+        x = paddle.to_tensor(x_numpy)
+        out = paddle.empty([50], dtype='int64')
+
+        paddle.multinomial(x, num_samples=50, replacement=False, out=out)
+
+        unique_values = paddle.unique(out)
+        self.assertEqual(len(unique_values), 50)
+
+        out_small = paddle.empty([5], dtype='int64')
+        paddle.multinomial(x, num_samples=5, replacement=True, out=out_small)
+        self.assertEqual(out_small.shape, [5])
+
+    def test_out_parameter_none_default(self):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy)
+
+        result1 = paddle.multinomial(
+            x, num_samples=100, replacement=True, out=None
+        )
+        result2 = paddle.multinomial(x, num_samples=100, replacement=True)
+
+        self.assertEqual(result1.shape, result2.shape)
+        self.assertEqual(result1.dtype, result2.dtype)
+
+
+class TestMultinomialOutAndAliasDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def do_test(self, test_type):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy, stop_gradient=False)
+
+        if test_type == "raw":
+            result = paddle.multinomial(x, num_samples=1000, replacement=True)
+            loss = paddle.cast(result, 'float32').mean()
+            loss.backward()
+            return result, x.grad
+
+        elif test_type == "alias":
+            result = paddle.multinomial(
+                input=x, num_samples=1000, replacement=True
+            )
+            loss = paddle.cast(result, 'float32').mean()
+            loss.backward()
+            return result, x.grad
+
+        elif test_type == "out":
+            out = paddle.empty([1000], dtype='int64')
+            out.stop_gradient = False
+            paddle.multinomial(x, num_samples=1000, replacement=True, out=out)
+            loss = paddle.cast(out, 'float32').mean()
+            loss.backward()
+            return out, x.grad
+
+        elif test_type == "out_alias":
+            out = paddle.empty([1000], dtype='int64')
+            out.stop_gradient = False
+            paddle.multinomial(
+                input=x, num_samples=1000, replacement=True, out=out
+            )
+            loss = paddle.cast(out, 'float32').mean()
+            loss.backward()
+            return out, x.grad
+
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_multinomial_out_and_alias_combination(self):
+        test_types = ["raw", "alias", "out", "out_alias"]
+
+        results = {}
+        grads = {}
+
+        for test_type in test_types:
+            paddle.seed(42)
+            result, grad = self.do_test(test_type)
+            results[test_type] = result
+            grads[test_type] = grad
+
+        base_shape = results["raw"].shape
+        base_dtype = results["raw"].dtype
+
+        for test_type in test_types:
+            self.assertEqual(results[test_type].shape, base_shape)
+            self.assertEqual(results[test_type].dtype, base_dtype)
 
 
 class TestMultinomialAlias(unittest.TestCase):
@@ -356,7 +500,7 @@ class TestMultinomialAlias(unittest.TestCase):
             return
 
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(100)
 
         x = paddle.randint(0, 100, [1024, 10000]).astype('float32')
@@ -444,7 +588,7 @@ class TestRandomValue(unittest.TestCase):
 
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(100)
 
         x = paddle.randint(0, 100, [1024, 10000]).astype('float32')

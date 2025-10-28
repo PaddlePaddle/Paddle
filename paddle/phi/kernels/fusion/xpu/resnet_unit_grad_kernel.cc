@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/utils/optional.h"
 
@@ -199,5 +198,5 @@ PD_REGISTER_KERNEL(resnet_unit_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::ResNetUnitGradXPUKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float) {}

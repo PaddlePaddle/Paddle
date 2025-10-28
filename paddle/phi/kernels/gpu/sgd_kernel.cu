@@ -27,12 +27,12 @@ template <typename T, typename MT>
 __global__ void SGDKernelMT(const T* param,
                             const T* grad,
                             const T* learning_rate,
-                            const int num,
+                            const int64_t num,
                             T* param_out,
                             const MT* master_param,
                             MT* master_param_out) {
   MT lr = static_cast<MT>(learning_rate[0]);
-  CUDA_KERNEL_LOOP(i, num) {
+  CUDA_KERNEL_LOOP_TYPE(i, num, int64_t) {
     MT p_data = master_param ? master_param[i] : static_cast<MT>(param[i]);
     MT g_data = static_cast<MT>(grad[i]);
     p_data = p_data - lr * g_data;
@@ -87,7 +87,8 @@ void SGDDenseKernel(const Context& dev_ctx,
                       : nullptr;
 
   int block = 512;
-  int grid = (param.numel() + block - 1) / block;
+  int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((param.numel() + block - 1) / block, grid_max);
 
   SGDKernelMT<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
       param.data<T>(),
@@ -188,8 +189,8 @@ PD_REGISTER_KERNEL(sgd,
                    GPU,
                    ALL_LAYOUT,
                    phi::SGDDenseKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
@@ -200,13 +201,8 @@ PD_REGISTER_KERNEL(sgd,
 #endif
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(sgd,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SGDDenseKernel,
-                   phi::dtype::float16,
-                   float,
-                   double) {
+PD_REGISTER_KERNEL(
+    sgd, GPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::float16, float, double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
   }
@@ -217,7 +213,7 @@ PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::SGDDenseParamSparseGradKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double) {}
 
@@ -225,6 +221,6 @@ PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::SGDSparseParamSparseGradKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double) {}

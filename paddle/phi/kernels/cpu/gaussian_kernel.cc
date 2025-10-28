@@ -20,13 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& dev_ctx,
-                    const IntArray& shape,
-                    float mean,
-                    float std,
-                    int seed,
-                    DataType dtype,
-                    DenseTensor* out) {
+PADDLE_API void GaussianKernel(const Context& dev_ctx,
+                               const IntArray& shape,
+                               float mean,
+                               float std,
+                               int seed,
+                               DataType dtype,
+                               DenseTensor* out) {
   out->Resize(common::make_ddim(shape.GetData()));
   int64_t size = out->numel();
   T* data = dev_ctx.template Alloc<T>(out);
@@ -67,12 +67,12 @@ PD_REGISTER_KERNEL(gaussian,
                    CPU,
                    ALL_LAYOUT,
                    phi::GaussianKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(gaussian_inplace,
                    CPU,
@@ -80,5 +80,5 @@ PD_REGISTER_KERNEL(gaussian_inplace,
                    phi::GaussianInplaceKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

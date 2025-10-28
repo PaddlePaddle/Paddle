@@ -93,6 +93,12 @@ int32_t MemorySparseTable::InitializeValue() {
             "equal to '_avg_local_shard_num' (%d).",
             _m_avg_local_shard_num,
             _avg_local_shard_num));
+    PADDLE_ENFORCE_LE(
+        _shard_merge_rate,
+        1.0f,
+        common::errors::InvalidArgument(
+            "The '_shard_merge_rate' (%f) must be less than or equal to 1.0.",
+            _shard_merge_rate));
 
     _m_real_local_shard_num =
         static_cast<int>(std::ceil(_real_local_shard_num * _shard_merge_rate));

@@ -37,6 +37,7 @@ from .pipeline_parallel import (
     PipelineParallel,
 )
 from .pp_utils.batch_comm_helper import BatchCommHelper
+from .pp_utils.forward_backward_overlap_utils import ScheduleChunk
 from .zero_bubble_utils import EventStore, WeightGradStore
 
 __all__ = []
@@ -225,9 +226,20 @@ class DualPipeVParallel(PipelineParallel):
                 loss = self.loss_tensors[acc_id]
                 if self.overlapped_forward_backward:
                     loss_fn_node = self.loss_fn_chunks[acc_id]
-                    input_grads = loss_fn_node.backward(scaler=self.scaler)
                     backward_chunk = self.schedule_chunks[phase][acc_id]
-                    input_grads = backward_chunk.backward(input_grads)
+                    _, _, input_grads = (
+                        self._layers.overlapped_forward_backward(
+                            ScheduleChunk([]),  # forward_chunk
+                            None,  # forward_inputs
+                            None,  # forward_loss_fn_node
+                            backward_chunk,
+                            loss_fn_node,
+                            None,  # input_grads
+                            self.scaler,
+                            combine_bw_event_to_wait=None,
+                            pp_stream=None,
+                        )
+                    )
                     self.loss_fn_chunks[acc_id] = None
                     self.schedule_chunks[phase][acc_id] = None
                 else:
@@ -239,7 +251,19 @@ class DualPipeVParallel(PipelineParallel):
                 outputs, output_grads = self._get_backward_inputs(phase, acc_id)
                 if self.overlapped_forward_backward:
                     backward_chunk = self.schedule_chunks[phase][acc_id]
-                    input_grads = backward_chunk.backward(output_grads)
+                    _, _, input_grads = (
+                        self._layers.overlapped_forward_backward(
+                            ScheduleChunk([]),  # forward_chunk
+                            None,  # forward_inputs
+                            None,  # forward_loss_fn_node
+                            backward_chunk,
+                            None,  # backward_loss_fn_node
+                            output_grads,
+                            None,  # scaler
+                            combine_bw_event_to_wait=None,
+                            pp_stream=None,
+                        )
+                    )
                     self.schedule_chunks[phase][acc_id] = None
                 else:
                     if len(outputs) > 0:

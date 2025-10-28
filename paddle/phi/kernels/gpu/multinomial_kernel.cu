@@ -113,7 +113,7 @@ __global__ void sampleMultinomialWithReplacement(
 #endif
 
   int sample = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
+  for (int64_t dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
     if (sample < num_samples) {
 #if defined(__NVCC__)
       T rng_number = static_cast<T>(curand_uniform4(&state).x);
@@ -265,8 +265,8 @@ PD_REGISTER_KERNEL(multinomial,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultinomialKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);

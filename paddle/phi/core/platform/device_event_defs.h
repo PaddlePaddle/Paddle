@@ -42,9 +42,9 @@ inline int DeviceTypeToId(const DeviceType& device_type) {
   return static_cast<int>(device_type);
 }
 
-unsigned int GenerateDeviceEventFlag(bool enable_timing = false,
-                                     bool blocking = false,
-                                     bool interprocess = false);
+PADDLE_API unsigned int GenerateDeviceEventFlag(bool enable_timing = false,
+                                                bool blocking = false,
+                                                bool interprocess = false);
 
 enum EventStatus {
   INITIALIZED = 0,
@@ -53,7 +53,7 @@ enum EventStatus {
   FAILED = 3,
 };
 
-class DeviceEvent {
+class PADDLE_API DeviceEvent {
  public:
   explicit DeviceEvent(const phi::Place& place, unsigned int flag);
   ~DeviceEvent() {}

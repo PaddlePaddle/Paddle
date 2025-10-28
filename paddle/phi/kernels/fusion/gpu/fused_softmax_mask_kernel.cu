@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fused_softmax_mask_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_softmax_mask_utils.h"
 
 namespace phi {
@@ -594,4 +595,4 @@ PD_REGISTER_KERNEL(fused_softmax_mask,
                    ALL_LAYOUT,
                    phi::fusion::FusedSoftmaxMaskKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

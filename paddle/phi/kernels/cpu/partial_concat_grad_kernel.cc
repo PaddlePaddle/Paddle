@@ -15,7 +15,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/partial_concat_kernel_impl.h"
 #include "paddle/phi/kernels/partial_concat_kernel.h"
-
 PD_REGISTER_KERNEL(partial_concat_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -24,5 +23,5 @@ PD_REGISTER_KERNEL(partial_concat_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

@@ -38,7 +38,7 @@ from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
-# windows and xpu not support tensort
+# windows and xpu not support tensorrt
 if os.name != 'nt' and (not os.getenv('WITH_XPU')):
     try:
         from paddle.tensorrt.export import (
@@ -171,7 +171,7 @@ class AutoScanTest(unittest.TestCase):
             trt_config.precision_mode = PrecisionMode.FP16
 
         paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
-        # translalte pir program to trt program
+        # translate pir program to trt program
         scope = paddle.static.global_scope()
         program_with_trt = convert_to_trt(pir_program, trt_config, scope)
 
@@ -440,7 +440,7 @@ class PassAutoScanTest(AutoScanTest):
             f"Expected operator list after fusion is {op_list_after_fusion}, but now it's {after_op_list}",
         )
 
-    def run_and_statis(
+    def run_and_statistics(
         self,
         quant=False,
         max_examples=100,
@@ -466,7 +466,7 @@ class PassAutoScanTest(AutoScanTest):
         )
         settings.load_profile("ci")
         assert passes is not None, (
-            "Parameter of passes must be defined in function run_and_statis."
+            "Parameter of passes must be defined in function run_and_statistics."
         )
         self.passes = passes
 

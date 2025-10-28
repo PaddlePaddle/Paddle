@@ -1434,7 +1434,8 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
       if (self->tensor.has_allocation() && self->tensor.initialized() &&
           (!dst_tensor->meta().is_contiguous() ||
-           !src_tensor->meta().is_contiguous())) {
+           !src_tensor->meta().is_contiguous()) &&
+          dst_tensor->place().GetType() == src_tensor->place().GetType()) {
         VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous ";
         if (!FLAGS_use_stride_kernel) {
           PADDLE_THROW(common::errors::Fatal(
@@ -1451,6 +1452,17 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
                   dst_tensor);
             }));
       } else {
+        if (!dst_tensor->meta().is_contiguous()) {
+          PADDLE_THROW(common::errors::Fatal(
+              "dst_tensor is not contiguous and src_tesnor has different place "
+              "with dst_tensor, so Strided kernel "
+              "can't be called, please change src_tensor'place as same as "
+              "dst_tensor'place or change dst_tensor to be contiguous"));
+        } else if (!src_tensor->meta().is_contiguous()) {
+          VLOG(6) << "src_tensor is not contiguous, so dst_tensor will be not "
+                     "contiguous after set_value ";
+        }
+
         if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
           framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
         } else if (src_tensor->place().GetType() !=
@@ -3362,9 +3374,9 @@ Examples:
         []
 )DOC");                                  // NOLINT
 
-static PyObject* tensor_method_strides(TensorObject* self,
-                                       PyObject* args,
-                                       PyObject* kwargs) {
+static PyObject* tensor_method_get_strides(TensorObject* self,
+                                           PyObject* args,
+                                           PyObject* kwargs) {
   EAGER_TRY
   std::vector<int64_t> value;
   if (!self->tensor.defined() ||
@@ -3378,6 +3390,88 @@ static PyObject* tensor_method_strides(TensorObject* self,
     value[i] = stride[i];
   }
   return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyDoc_STRVAR(tensor_stride__doc__,  // NOLINT
+             R"DOC(stride($self, dim=None, /)
+--
+
+Returns the stride of self tensor.
+
+Stride is the jump necessary to go from one element to the next one in the specified dimension dim.
+A tuple of all strides is returned when no argument is passed in. Otherwise, an integer value is
+returned as the stride in the particular dimension dim.
+
+Args:
+    dim (int, optional): If specified, return the stride in the particular dimension dim.
+                         If None, return the strides of all dimensions. Default: None.
+
+Returns:
+    int or tuple: The stride of the tensor. If dim is None, returns a tuple of all strides.
+       If dim is specified, returns the stride in that dimension.
+
+Examples:
+
+    .. code-block:: python
+
+        >>> import paddle
+        >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+        >>> x.stride()
+        [3, 1]
+        >>> x.stride(0)
+        3
+        >>> x.stride(1)
+        1
+        >>> x.stride(-1)
+        1
+)DOC");                             // NOLINT
+
+static PyObject* tensor_method_stride(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  static char* kwlist[] = {const_cast<char*>("dim"), nullptr};
+  PyObject* dim_obj = nullptr;
+
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, &dim_obj)) {
+    RETURN_PY_NONE
+  }
+
+  std::vector<int64_t> value;
+  if (!self->tensor.defined() ||
+      (!self->tensor.is_dense_tensor() && !self->tensor.is_dist_tensor())) {
+    return ToPyObject(value);
+  }
+
+  auto stride = self->tensor.strides();
+  int rank = static_cast<int>(stride.size());
+  value.resize(rank);
+  for (int i = 0; i < rank; i++) {
+    value[i] = stride[i];
+  }
+
+  if (dim_obj == nullptr || dim_obj == Py_None) {
+    return ToPyObject(value);
+  }
+
+  if (!PyLong_Check(dim_obj)) {
+    PADDLE_THROW(common::errors::InvalidArgument("dim must be an integer"));
+  }
+
+  int dim = static_cast<int>(PyLong_AsLong(dim_obj));
+  dim = dim < 0 ? dim + rank : dim;
+  PADDLE_ENFORCE_EQ(
+      dim >= 0 && dim < rank,
+      true,
+      common::errors::InvalidArgument(
+          "Dimension out of range (expected to be in range of [%d, %d], "
+          "but got %d)",
+          -rank,
+          rank - 1,
+          static_cast<int>(PyLong_AsLong(dim_obj))));
+
+  return ToPyObject(value[dim]);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3959,9 +4053,13 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      tensor_is_contiguous__doc__},
     {"get_strides",
-     (PyCFunction)(void (*)())tensor_method_strides,
+     (PyCFunction)(void (*)())tensor_method_get_strides,
      METH_VARARGS | METH_KEYWORDS,
      tensor_get_strides__doc__},
+    {"stride",
+     (PyCFunction)(void (*)())tensor_method_stride,
+     METH_VARARGS | METH_KEYWORDS,
+     tensor_stride__doc__},
     {"_set_impl",
      (PyCFunction)(void (*)())tensor_method__set_impl,
      METH_VARARGS | METH_KEYWORDS,
@@ -3979,7 +4077,8 @@ PyMethodDef variable_methods[] = {  // NOLINT
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
-PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
+PyMethodDef string_tensor_variable_methods[] = {
+    // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS,

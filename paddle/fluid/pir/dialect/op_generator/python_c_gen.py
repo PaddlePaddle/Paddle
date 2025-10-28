@@ -80,8 +80,8 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         // Parse Attributes
         {attrs}
 
-        // Parse input_out if needed
-        {input_out}
+        // Parse predefined_out if needed
+        {predefined_out}
 
         // Check Reminding Params validity if needed
         {check_remaining_params_valid}
@@ -181,8 +181,8 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         // Parse Attributes
         {attrs_py_obj}
 
-        // Parse input_out if needed
-        {input_out}
+        // Parse predefined_out if needed
+        {predefined_out}
 
         // Check for mutable attrs
         {init_attrs}
@@ -225,6 +225,8 @@ MUTABLE_ATTR_LIST_TEMPLATE = """
            {mutable_cast_attrs}
         }}else if (PyObject_CheckIRVectorOfValue({name}_obj)){{
            {mutable_vector_cast_attrs}
+        }}else if (PyObject_CheckIRVectorOfValueOrLong({name}_obj)){{
+           {mix_vector_cast_attrs}
         }}else{{
            {no_mutable_cast_attrs}
         }}"""
@@ -525,6 +527,18 @@ class PythonCCodeGen(CodeGen):
                         name=name
                     )
 
+                    mix_vector_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
+                        type='std::vector<pir::Value>',
+                        name_=name + '_tmp',
+                        name=name,
+                        cast_func='CastPyArg2VectorOfValueOrLong',
+                        api_name=op_name,
+                        index=input_size + i,
+                    )
+                    mix_vector_cast_str += BUILTIN_STACK_OP_TEMPLATE.format(
+                        name=name
+                    )
+
                 else:
                     mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
                         type='',
@@ -570,6 +584,7 @@ class PythonCCodeGen(CodeGen):
                         name=name,
                         mutable_cast_attrs=mutable_cast_str,
                         mutable_vector_cast_attrs=mutable_vector_cast_str,
+                        mix_vector_cast_attrs=mix_vector_cast_str,
                         no_mutable_cast_attrs=no_mutable_cast_str,
                     )
                 else:
@@ -672,8 +687,6 @@ class PythonCCodeGen(CodeGen):
         return custom_args_mapper_str
 
     def _gen_pre_process(self, pre_process):
-        if self.use_custom_args_mapper:
-            return DISABLE_TIPS
         pre_process_str = ""
         if pre_process is not None and self.need_parse_python_api_args:
             if "static_func" in pre_process.keys():
@@ -707,8 +720,10 @@ class PythonCCodeGen(CodeGen):
         need_check_params_count = False
         self.need_parse_python_api_args = False
         self.use_custom_args_mapper = False
-
-        if op_name in python_api_info_from_yaml.keys():
+        # Do not parse sparse op's python_api_info
+        if (
+            not op_info.is_sparse_op
+        ) and op_name in python_api_info_from_yaml.keys():
             python_api_info = python_api_info_from_yaml[op_name]
         if python_api_info is not None:
             self.need_parse_python_api_args = True
@@ -745,13 +760,13 @@ class PythonCCodeGen(CodeGen):
                 args=', '.join(input_name_list + attr_name_list),
             )
         elif len(mutable_attr_name_list) > 0:
-            get_input_out_str = ""
+            get_predefined_out_str = ""
             if (
                 not op_name[-1:] == "_"
                 and not op_name[-4:] == "grad"
                 and "sparse" not in op_name
             ):
-                get_input_out_str = "Check_PIR_not_support_out(kwargs);"
+                get_predefined_out_str = "Check_PIR_not_support_out(kwargs);"
             ret = MUTABLE_ATTR_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
                 check_params_count=self._gen_check_params_count(
@@ -775,16 +790,16 @@ class PythonCCodeGen(CodeGen):
                     + mutable_attr_name_list
                     + no_mutable_attr_name_list
                 ),
-                input_out=get_input_out_str,
+                predefined_out=get_predefined_out_str,
             )
         else:
-            get_input_out_str = ""
+            get_predefined_out_str = ""
             if (
                 not op_name[-1:] == "_"
                 and not op_name[-4:] == "grad"
                 and "sparse" not in op_name
             ):
-                get_input_out_str = "Check_PIR_not_support_out(kwargs);"
+                get_predefined_out_str = "Check_PIR_not_support_out(kwargs);"
             ret = NO_MUTABLE_ATTR_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
                 check_params_count=self._gen_check_params_count(
@@ -802,7 +817,7 @@ class PythonCCodeGen(CodeGen):
                     need_check=need_check_params_count
                 ),
                 pre_process=self._gen_pre_process(pre_process),
-                input_out=get_input_out_str,
+                predefined_out=get_predefined_out_str,
             )
         ret = re.sub(r' +\n', '', ret)
         return ret

@@ -19,8 +19,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-from paddle import get_flags
+from paddle import Tensor, get_flags
 from paddle.base.framework import in_dygraph_mode
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...device import (
     get_cudnn_version,
@@ -42,7 +43,9 @@ if TYPE_CHECKING:
         DataLayout2D,
         DataLayout3D,
         DataLayoutND,
+        DTypeLike,
         ParamAttrLike,
+        PlaceLike,
         Size1,
         Size2,
         Size3,
@@ -51,7 +54,6 @@ if TYPE_CHECKING:
     )
 
     from ..functional.common import _PaddingSizeMode, _PaddingTensorMode
-
 
 __all__ = []
 
@@ -92,6 +94,8 @@ class _ConvNd(Layer):
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = "NCHW",
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__()
         assert weight_attr is not False, (
@@ -103,6 +107,8 @@ class _ConvNd(Layer):
         self._in_channels = in_channels
         self._out_channels = out_channels
         self._data_format = data_format
+        self._device = device
+        self._dtype = dtype
 
         valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
         if padding_mode not in valid_padding_modes:
@@ -183,12 +189,16 @@ class _ConvNd(Layer):
         self.weight = self.create_parameter(
             shape=filter_shape,
             attr=self._param_attr,
+            dtype=self._dtype,
             default_initializer=_get_default_param_initializer(),
+            device=self._device,
         )
         self.bias = self.create_parameter(
             attr=self._bias_attr,
             shape=[self._out_channels],
             is_bias=True,
+            dtype=self._dtype,
+            device=self._device,
         )
 
         cudnn_version = get_cudnn_version()
@@ -305,12 +315,16 @@ class Conv1D(_ConvNd):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
+        bias(bool, optional): Whether to learn and add the bias of this layer. If set
+            to False, no bias will be created and :attr:`bias_attr` is ignored. Default: True.
         padding_mode(str, optional): Four modes: 'zeros', 'reflect', 'replicate', 'circular'.
             When in 'zeros' mode, this op uses zeros to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'zeros'.
+        device(PlaceLike, optional): Device where the computation takes place. Default: None
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
         weight_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv1d. If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -368,11 +382,17 @@ class Conv1D(_ConvNd):
         padding: _PaddingSizeMode | Size1 | Size2 | Sequence[Size2] = 0,
         dilation: Size1 = 1,
         groups: int = 1,
+        *,
+        bias: bool = True,
         padding_mode: _PaddingTensorMode = 'zeros',
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout1D = "NCL",
     ) -> None:
+        if bias is False:
+            bias_attr = False
         super().__init__(
             in_channels,
             out_channels,
@@ -387,8 +407,11 @@ class Conv1D(_ConvNd):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            device=device,
+            dtype=dtype,
         )
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         padding = 0
         if self._padding_mode != "zeros":
@@ -412,6 +435,9 @@ class Conv1D(_ConvNd):
             data_format=self._data_format,
         )
         return out
+
+
+Conv1d = Conv1D
 
 
 class Conv1DTranspose(_ConvNd):
@@ -647,7 +673,11 @@ class Conv2D(_ConvNd):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
+        bias(bool, optional): Whether to learn and add the bias of this layer. If set
+            to False, no bias will be created and :attr:`bias_attr` is ignored. Default: True.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
+        device(PlaceLike, optional): Device where the computation takes place. Default: None
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
@@ -660,7 +690,6 @@ class Conv2D(_ConvNd):
             is not set, the bias is initialized zero. The default value is None.
         data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCHW" or "NHWC". Default: "NCHW".
-
     Attribute:
 
         **weight** (Parameter): the learnable weights of filter of this layer.
@@ -711,11 +740,17 @@ class Conv2D(_ConvNd):
         padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
         dilation: Size2 = 1,
         groups: int = 1,
+        *,
+        bias: bool = True,
         padding_mode: _PaddingTensorMode = 'zeros',
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout2D = "NCHW",
     ) -> None:
+        if bias is False:
+            bias_attr = False
         super().__init__(
             in_channels,
             out_channels,
@@ -730,8 +765,11 @@ class Conv2D(_ConvNd):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            device=device,
+            dtype=dtype,
         )
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         if self._padding_mode != 'zeros':
             x = F.pad(
@@ -783,6 +821,9 @@ class Conv2D(_ConvNd):
             use_cudnn=self._use_cudnn,
         )
         return out
+
+
+Conv2d = Conv2D
 
 
 class Conv2DTranspose(_ConvNd):
@@ -1004,7 +1045,11 @@ class Conv3D(_ConvNd):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
+        bias(bool, optional): Whether to learn and add the bias of this layer. If set
+            to False, no bias will be created and :attr:`bias_attr` is ignored. Default: True.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
+        device(PlaceLike, optional): Device where the computation takes place. Default: None
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
@@ -1070,11 +1115,18 @@ class Conv3D(_ConvNd):
         padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
         dilation: Size3 = 1,
         groups: int = 1,
+        *,
+        bias: bool = True,
         padding_mode: _PaddingTensorMode = 'zeros',
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout3D = "NCDHW",
     ) -> None:
+        if bias is False:
+            bias_attr = False
+
         super().__init__(
             in_channels,
             out_channels,
@@ -1089,8 +1141,11 @@ class Conv3D(_ConvNd):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            device=device,
+            dtype=dtype,
         )
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         if self._padding_mode != 'zeros':
             x = F.pad(
@@ -1115,6 +1170,9 @@ class Conv3D(_ConvNd):
             use_cudnn=self._use_cudnn,
         )
         return out
+
+
+Conv3d = Conv3D
 
 
 class Conv3DTranspose(_ConvNd):

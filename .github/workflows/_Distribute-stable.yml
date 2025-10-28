@@ -330,6 +330,28 @@ jobs:
           bash ${ci_scripts}/distribute_test.sh
           '
 
+      - name: Upload and display logs
+        if: always()
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export AK=paddle
+          export SK=paddle
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
+          fi
+          cd /case_logs
+          for FILE in /case_logs/*; do
+            file=$(basename "$FILE")
+            python ${{ env.bos_file }} $file paddle-github-action/PR/Distribute-Stable/${PR_ID}/${COMMIT_ID}/logs
+            echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Distribute-Stable/${PR_ID}/${COMMIT_ID}/logs/$file"
+          done
+          '
+
       - name: Terminate and delete the container
         if: always()
         run: |

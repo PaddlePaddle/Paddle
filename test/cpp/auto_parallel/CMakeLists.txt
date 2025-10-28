@@ -1,6 +1,16 @@
-cc_test(device_mesh_test SRCS device_mesh_test.cc)
-
-cc_test(process_mesh_test SRCS process_mesh_test.cc)
+if(WIN32)
+  cc_test(
+    device_mesh_test
+    SRCS device_mesh_test.cc
+    DEPS type_info)
+  cc_test(
+    process_mesh_test
+    SRCS process_mesh_test.cc
+    DEPS type_info)
+else()
+  cc_test(device_mesh_test SRCS device_mesh_test.cc)
+  cc_test(process_mesh_test SRCS process_mesh_test.cc)
+endif()
 
 cc_test(
   dist_attr_test
@@ -25,6 +35,8 @@ if(WITH_DISTRIBUTE)
 
   paddle_test(tile_spmd_rule_test SRCS tile_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
+  paddle_test(tile_co_shard_spmd_rule_test SRCS tile_co_shard_spmd_rule_test.cc
+              DEPS spmd_rule_test_util phi)
 
   paddle_test(
     fused_linear_param_grad_add_spmd_rule_test SRCS
@@ -40,6 +52,9 @@ if(WITH_DISTRIBUTE)
   paddle_test(expand_as_spmd_rule_test SRCS expand_as_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
 
+  paddle_test(matmul_co_shard_spmd_rule_test SRCS
+              matmul_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+
   paddle_test(custom_op_spmd_rule_test SRCS custom_op_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
 
@@ -51,12 +66,31 @@ if(WITH_DISTRIBUTE)
   paddle_test(moe_combine_spmd_rule_test SRCS moe_combine_spmd_rule_test.cc
               DEPS spmd_rule_test_util phi)
 
+  paddle_test(softmax_co_shard_spmd_rule_test SRCS
+              softmax_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+
+  paddle_test(
+    index_select_co_shard_spmd_rule_test SRCS
+    index_select_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+
   paddle_test(reshape_co_shard_spmd_rule_test SRCS
               reshape_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
 
+  paddle_test(argsort_co_shard_spmd_rule_test SRCS
+              argsort_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+  paddle_test(transpose_co_shard_spmd_rule_test SRCS
+              transpose_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+
 endif()
 
-cc_test(
-  dist_mapper_test
-  SRCS dist_mapper_test.cc
-  DEPS phi)
+if(WIN32)
+  cc_test(
+    dist_mapper_test
+    SRCS dist_mapper_test.cc
+    DEPS type_info)
+else()
+  cc_test(
+    dist_mapper_test
+    SRCS dist_mapper_test.cc
+    DEPS phi)
+endif()

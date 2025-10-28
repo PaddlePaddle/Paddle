@@ -98,11 +98,11 @@ PD_REGISTER_KERNEL(fake_quantize_dequantize_abs_max_grad,
                    ALL_LAYOUT,
                    phi::FakeQuantizeDequantizeAbsMaxGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(fake_quantize_dequantize_moving_average_abs_max_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FakeQuantizeDequantizeMovingAverageAbsMaxGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

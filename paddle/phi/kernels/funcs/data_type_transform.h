@@ -40,9 +40,9 @@ phi::DenseTensor TransDataType(const Context& dev_ctx,
     case DataType::INT64:
       return phi::Cast<int64_t>(dev_ctx, x, dtype);
     case DataType::FLOAT16:
-      return phi::Cast<phi::dtype::float16>(dev_ctx, x, dtype);
+      return phi::Cast<phi::float16>(dev_ctx, x, dtype);
     case DataType::BFLOAT16:
-      return phi::Cast<phi::dtype::bfloat16>(dev_ctx, x, dtype);
+      return phi::Cast<phi::bfloat16>(dev_ctx, x, dtype);
     case DataType::BOOL:
       return phi::Cast<bool>(dev_ctx, x, dtype);
     case DataType::INT16:

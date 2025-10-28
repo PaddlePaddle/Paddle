@@ -1422,51 +1422,64 @@ def convert_np_dtype_to_proto_type(
     """
 
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
-        dtype = np.uint16
-    elif isinstance(np_dtype, str) and np_dtype == "float8_e4m3fn":
-        dtype = 'float8_e4m3fn'
-    elif isinstance(np_dtype, str) and np_dtype == "float8_e5m2":
-        dtype = 'float8_e5m2'
-    else:
-        dtype = np.dtype(np_dtype)
 
-    if dtype == np.float32:
-        return core.VarDesc.VarType.FP32
-    elif dtype == np.float64:
-        return core.VarDesc.VarType.FP64
-    elif dtype == 'float8_e4m3fn':
-        return core.VarDesc.VarType.FP8_E4M3FN
-    elif dtype == 'float8_e5m2':
-        return core.VarDesc.VarType.FP8_E5M2
-    elif dtype == np.float16:
-        return core.VarDesc.VarType.FP16
-    elif dtype == np.int32:
-        return core.VarDesc.VarType.INT32
-    elif dtype == np.int16:
-        return core.VarDesc.VarType.INT16
-    elif dtype == np.int64:
-        return core.VarDesc.VarType.INT64
-    elif dtype == np.bool_:
-        return core.VarDesc.VarType.BOOL
-    elif dtype == np.uint16:
-        # since there is still no support for bfloat16 in NumPy,
-        # uint16 is used for casting bfloat16
-        return core.VarDesc.VarType.BF16
-    elif dtype == np.uint8:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == np.int8:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.complex64:
-        return core.VarDesc.VarType.COMPLEX64
-    elif dtype == np.complex128:
-        return core.VarDesc.VarType.COMPLEX128
+    str_to_var_type = {
+        'float32': core.VarDesc.VarType.FP32,
+        'float64': core.VarDesc.VarType.FP64,
+        'float16': core.VarDesc.VarType.FP16,
+        'int32': core.VarDesc.VarType.INT32,
+        'int16': core.VarDesc.VarType.INT16,
+        'int64': core.VarDesc.VarType.INT64,
+        'bool': core.VarDesc.VarType.BOOL,
+        'uint8': core.VarDesc.VarType.UINT8,
+        'int8': core.VarDesc.VarType.INT8,
+        'complex64': core.VarDesc.VarType.COMPLEX64,
+        'complex128': core.VarDesc.VarType.COMPLEX128,
+        'bfloat16': core.VarDesc.VarType.BF16,
+        'float8_e4m3fn': core.VarDesc.VarType.FP8_E4M3FN,
+        'float8_e5m2': core.VarDesc.VarType.FP8_E5M2,
+    }
+
+    np_dtype_to_var_type = {
+        np.dtype("float32"): core.VarDesc.VarType.FP32,
+        np.dtype("float64"): core.VarDesc.VarType.FP64,
+        np.dtype("float16"): core.VarDesc.VarType.FP16,
+        np.dtype("int32"): core.VarDesc.VarType.INT32,
+        np.dtype("int16"): core.VarDesc.VarType.INT16,
+        np.dtype("int64"): core.VarDesc.VarType.INT64,
+        np.dtype("bool_"): core.VarDesc.VarType.BOOL,
+        np.dtype("uint16"): core.VarDesc.VarType.BF16,
+        np.dtype("uint8"): core.VarDesc.VarType.UINT8,
+        np.dtype("int8"): core.VarDesc.VarType.INT8,
+        np.dtype("complex64"): core.VarDesc.VarType.COMPLEX64,
+        np.dtype("complex128"): core.VarDesc.VarType.COMPLEX128,
+        np.float32: core.VarDesc.VarType.FP32,
+        np.float64: core.VarDesc.VarType.FP64,
+        np.float16: core.VarDesc.VarType.FP16,
+        np.int32: core.VarDesc.VarType.INT32,
+        np.int16: core.VarDesc.VarType.INT16,
+        np.int64: core.VarDesc.VarType.INT64,
+        np.bool_: core.VarDesc.VarType.BOOL,
+        np.uint8: core.VarDesc.VarType.UINT8,
+        np.int8: core.VarDesc.VarType.INT8,
+        np.uint16: core.VarDesc.VarType.BF16,
+        np.complex64: core.VarDesc.VarType.COMPLEX64,
+        np.complex128: core.VarDesc.VarType.COMPLEX128,
+    }
+
+    if isinstance(np_dtype, str):
+        if np_dtype in str_to_var_type:
+            return str_to_var_type[np_dtype]
+    dtype = np.dtype(np_dtype)
+
+    if dtype in np_dtype_to_var_type:
+        return np_dtype_to_var_type[dtype]
     else:
         raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
 def convert_np_dtype_to_dtype_(
-    np_dtype: np.dtype | str,
+    np_dtype: np.dtype | str | core.VarDesc.VarType | core.DataType,
 ) -> core.VarDesc.VarType | core.DataType:
     """
     Convert the data type in numpy to the data type in Paddle.
@@ -1480,8 +1493,12 @@ def convert_np_dtype_to_dtype_(
 
     """
     if use_pir_api():
+        if isinstance(np_dtype, core.DataType):
+            return np_dtype
         return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
+    if isinstance(np_dtype, core.VarDesc.VarType):
+        return np_dtype
     return convert_np_dtype_to_proto_type(np_dtype)
 
 
@@ -2474,7 +2491,7 @@ class Variable(metaclass=VariableMetaClass):
                 LoD Level of current Var is: 0
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
-            raise Exception("SelectedRows DO NOT support lod")
+            raise NotImplementedError("SelectedRows DO NOT support lod")
         if self.type == core.VarDesc.VarType.STRINGS:
             return None
         return self.desc.lod_level()
@@ -8280,10 +8297,12 @@ def _get_paddle_place(place):
 
     if not isinstance(place, str):
         raise ValueError(
-            "place only support string which is 'Place' and so on."
+            f"place only support string which is 'Place' and so on, but got {place}"
         )
 
     place = place.lower()
+    if place.startswith("cuda"):
+        place = place.replace("cuda", "gpu")
     if place == "cpu":
         return core.CPUPlace()
 
@@ -8347,9 +8366,12 @@ def _get_paddle_place(place):
     place_info_list = place.split(":", 1)
     device_type = place_info_list[0]
     if device_type in core.get_all_custom_device_type():
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.CustomPlace(device_type, device_id)
+        if len(place_info_list) == 1:
+            return core.CustomPlace(device_type, 0)
+        else:
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.CustomPlace(device_type, device_id)
 
     raise ValueError(
         f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, XPUPinnedPlace, IPUPlace and CustomPlace, but received {place}."
@@ -8584,3 +8606,20 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
+
+
+@signature_safe_contextmanager
+def vlog_guard(module_levels: int | dict) -> Generator[None, None, None]:
+    if not isinstance(module_levels, (int, dict)):
+        raise TypeError(
+            f"The input of vlog_guard must be int or dict but got {type(module_levels).__name__}"
+        )
+    paddle.base.core.set_vlog_level(module_levels)
+    try:
+        yield
+    finally:
+        # Reset the verbose log level to 0
+        if isinstance(module_levels, int):
+            paddle.base.core.set_vlog_level(0)
+        elif isinstance(module_levels, dict):
+            paddle.base.core.set_vlog_level(dict.fromkeys(module_levels, 0))

@@ -615,8 +615,8 @@ def nccl() -> str:
     """
     return nccl_version
 
-def cuda() -> str:
-    """Get cuda version of paddle package.
+import inspect
+CUDA_FUNC_DOC = """Get cuda version of paddle package.
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
@@ -631,7 +631,30 @@ def cuda() -> str:
             '10.2'
 
     """
-    return cuda_version
+class CudaVersion(str):
+    def __new__(cls, version: str):
+        return super().__new__(cls, version)
+
+    def __call__(self) -> str:
+        # When users check for GPU devices using paddle.version.cuda is None, we cannot align this behavior with other frameworks .
+        # Note: This discrepancy arises because the is operator checks for object identity (memory address equality) rather than value equality.
+        return str(self)
+
+    def __repr__(self) -> str:
+        return f"CudaVersion('{self}')"
+
+    @property
+    def __doc__(self):
+        return CUDA_FUNC_DOC
+
+    @property
+    def __signature__(self):
+        return inspect.Signature(
+            parameters=[],
+            return_annotation=str
+        )
+
+cuda = CudaVersion(cuda_version)
 
 def cudnn() -> str:
     """Get cudnn version of paddle package.
@@ -922,6 +945,7 @@ def cmake_run(build_path):
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
+                "FA_JOB_POOLS_COMPILE",
             )
         }
     )
@@ -1152,6 +1176,22 @@ def get_paddle_extra_install_requirements():
                     "nvidia-nvjitlink-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
+                "13.0": (
+                    "nvidia-cuda-nvrtc==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-runtime==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-cupti==13.0.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu13==9.13.0.50; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cublas==13.0.2.14; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufft==12.0.0.61; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-curand==10.4.0.35; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusolver==12.0.4.66; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparse==12.6.3.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu13==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvtx==13.0.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvjitlink==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                ),
             }
             if env_dict.get("WITH_CINN") == "ON":
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["12.3"] += (
@@ -1168,6 +1208,9 @@ def get_paddle_extra_install_requirements():
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["12.9"] += (
                     " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["13.0"] += (
+                    " | nvidia-cuda-cccl==13.0.85;platform_system == 'Linux' and platform_machine == 'x86_64' "
                 )
 
         elif platform.system() == 'Windows':
@@ -1347,7 +1390,6 @@ def get_apy_files():
 def get_typing_libs_packages(paddle_binary_dir):
     """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
     e.g.
-        'paddle._typing.libs.libpaddle.cinn'
         'paddle._typing.libs.libpaddle.pir'
         'paddle._typing.libs.libpaddle.eager'
         'paddle._typing.libs.libpaddle.eager.ops'
@@ -1448,18 +1490,20 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
-        ]
-        shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
-        if (
-            env_dict.get("WITH_GPU") == "ON"
-            or env_dict.get("WITH_ROCM") == "ON"
-        ):
+        if os.name != 'nt':
             package_data['paddle.libs'] += [
-                ('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_suffix
+                ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
             ]
-            shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
+            shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
+            if (
+                env_dict.get("WITH_GPU") == "ON"
+                or env_dict.get("WITH_ROCM") == "ON"
+            ):
+                package_data['paddle.libs'] += [
+                    ('libphi_gpu' if os.name != 'nt' else 'phi_gpu')
+                    + ext_suffix
+                ]
+                shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -1530,6 +1574,11 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_V3_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_V3_LIBRARIES"), libs_path)
+        if len(env_dict.get("FLASHMASK_V2_LIBRARIES", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("FLASHMASK_V2_LIBRARIES"))
+            ]
+            shutil.copy(env_dict.get("FLASHMASK_V2_LIBRARIES"), libs_path)
 
     if (
         env_dict.get("WITH_DISTRIBUTE") == 'ON'
@@ -1580,6 +1629,11 @@ def get_package_data_and_package_dir():
             env_dict.get("CINN_INCLUDE_DIR")
             + '/paddle/cinn/runtime/cuda/float16.h'
         )
+        if env_dict.get("WITH_ROCM") == 'ON':
+            cinn_fp16_file = (
+                env_dict.get("CINN_INCLUDE_DIR")
+                + '/paddle/cinn/runtime/hip/float16.h'
+            )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
@@ -1864,6 +1918,14 @@ def get_headers():
         )
         + list(  # common api
             find_files('*.h', paddle_source_dir + '/paddle/common')
+        )
+        # torch compatible apis
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/include/compat',
+                recursive=True,
+            )
         )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header
@@ -2386,6 +2448,7 @@ def get_setup_parameters():
         'paddle.io.dataloader',
         'paddle.optimizer',
         'paddle.nn',
+        'paddle.nn.attention',
         'paddle.nn.functional',
         'paddle.nn.layer',
         'paddle.nn.quant',
@@ -2403,6 +2466,7 @@ def get_setup_parameters():
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
+        'paddle.cuda',
         'paddle.device',
         'paddle.device.cuda',
         'paddle.device.xpu',
@@ -2608,6 +2672,8 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
             paddle_source_dir
             + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
         ],
+        python_api_info_yaml_path=paddle_source_dir
+        + "/paddle/phi/ops/yaml/python_api_info.yaml",
     )
 
     libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'

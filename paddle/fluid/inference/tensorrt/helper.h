@@ -71,16 +71,12 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
   return static_cast<nvinfer1::IRuntime*>(
       dy::createInferRuntime_INTERNAL(logger, NV_TENSORRT_VERSION));
 }
-#if IS_TRT_VERSION_GE(6000)
 static nvinfer1::IPluginRegistry* GetPluginRegistry() {
   return static_cast<nvinfer1::IPluginRegistry*>(dy::getPluginRegistry());
 }
 static int GetInferLibVersion() {
   return static_cast<int>(dy::getInferLibVersion());
 }
-#else
-static int GetInferLibVersion() { return 0; }
-#endif
 
 static std::tuple<int, int, int> GetTrtRuntimeVersion() {
   int ver = GetInferLibVersion();
@@ -216,17 +212,21 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
       nv_type = nvinfer1::DataType::kHALF;
       break;
     case phi::DataType::INT32:
-    case phi::DataType::INT64:
       nv_type = nvinfer1::DataType::kINT32;
+      break;
+    case phi::DataType::INT64:
+#if IS_TRT_VERSION_GE(10000)
+      nv_type = nvinfer1::DataType::kINT64;
+#else
+      nv_type = nvinfer1::DataType::kINT32;
+#endif
       break;
     case phi::DataType::INT8:
       nv_type = nvinfer1::DataType::kINT8;
       break;
-#if IS_TRT_VERSION_GE(7000)
     case phi::DataType::BOOL:
       nv_type = nvinfer1::DataType::kBOOL;
       break;
-#endif
     default:
       common::errors::InvalidArgument(
           "phi::DataType not supported data type %s.", type);
