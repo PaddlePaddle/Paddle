@@ -159,6 +159,13 @@ class TestCudaCompat(unittest.TestCase):
             x_gpu = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
             self.assertEqual(paddle.get_device(x_gpu), 0)
 
+    def test_version_hip(self):
+        version = paddle.version.hip
+        if paddle.is_compiled_with_rocm():
+            self.assertIsInstance(version, str)
+        else:
+            self.assertEqual(version, None)
+
     def test_set_default_device(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_default_device("gpu")
