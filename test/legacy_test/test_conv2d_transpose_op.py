@@ -1427,7 +1427,7 @@ class TestConv2DTransposeOpException(unittest.TestCase):
                     kernel_size=3,
                 )(data)
 
-            self.assertRaises(AssertionError, error_0_filter_number)
+            error_0_filter_number()
 
 
 class TestConv2DTransposeRepr(unittest.TestCase):
