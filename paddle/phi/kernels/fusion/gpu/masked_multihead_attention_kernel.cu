@@ -89,7 +89,7 @@ __global__ void masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params,
     LoadFunc load_func,
     StoreFunc store_func) {
-#if defined(PADDLE_WITH_CUDA)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.z;
   // params.sequence_lengths[bi] means how many k and v we have cached in
   // cache_kv.
