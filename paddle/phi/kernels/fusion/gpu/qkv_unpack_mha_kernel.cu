@@ -60,7 +60,7 @@ template <typename T,
 __global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
                                      LoadFunc load_func,
                                      StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   const int bi = blockIdx.y;
 
   typedef PDDataTypeTraits<T> traits_;

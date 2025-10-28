@@ -11,28 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/phi/core/kernel_registry.h"
+
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void PartialAllGatherOpCPUKernel(const Context &dev_ctx,
-                                 const DenseTensor &x,
-                                 int nranks,
-                                 int rank,
-                                 DenseTensor *out) {
-  PADDLE_THROW(common::errors::Unavailable(
-      "Do not support partial_allgather for cpu kernel now."));
-}
+void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
+                                  const DenseTensor& x_in,
+                                  int nranks,
+                                  int rank,
+                                  DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(partial_allgather,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::PartialAllGatherOpCPUKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::float16) {}
