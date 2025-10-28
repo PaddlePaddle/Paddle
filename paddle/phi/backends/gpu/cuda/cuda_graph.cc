@@ -18,13 +18,6 @@
 
 #ifdef PADDLE_WITH_CUDA
 
-#if CUDA_VERSION < 11000
-cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
-                                const void *symbolPtr) {
-  return cudaSuccess;
-}
-#endif
-
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
