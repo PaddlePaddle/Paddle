@@ -17,6 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"

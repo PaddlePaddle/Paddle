@@ -15,6 +15,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
