@@ -1253,27 +1253,32 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def to_sparse_coo(self: Tensor, sparse_dim: int) -> Tensor:
         """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **Notes**:
+                **This API is ONLY available in Dygraph mode**
 
-        Convert the current DenseTensor to SparseTensor in COO format.
+            Convert the current DenseTensor to SparseTensor in COO format.
+            When the input is already a SparseCooTensor, this function will directly return
+        the input itself without performing any conversion.
 
-        Returns:
-            Tensor: A SparseCooTensor
 
-        Examples:
-            .. code-block:: python
+            Returns:
+                Tensor: A SparseCooTensor
 
-                >>> import paddle
-                >>> dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
-                >>> dense_x = paddle.to_tensor(dense_x, dtype='float32')
-                >>> sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
-                >>> print(sparse_x)
-                Tensor(shape=[2, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
-                       indices=[[0, 0, 1, 1],
-                                [1, 3, 2, 3]],
-                       values=[1., 2., 3., 4.])
+            Examples:
+                .. code-block:: python
+
+                    >>> import paddle
+                    >>> dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
+                    >>> dense_x = paddle.to_tensor(dense_x, dtype='float32')
+                    >>> sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+                    >>> print(sparse_x)
+                    Tensor(shape=[2, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                           indices=[[0, 0, 1, 1],
+                                    [1, 3, 2, 3]],
+                           values=[1., 2., 3., 4.])
         """
+        if self.is_sparse_coo():
+            return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
