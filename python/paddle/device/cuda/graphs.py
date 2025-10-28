@@ -14,7 +14,6 @@
 
 import os
 
-import paddle
 from paddle.base.core import (
     CUDAPlace,
     is_compiled_with_cuda,
@@ -77,12 +76,3 @@ class CUDAGraph:
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)
         self._graph.print_to_dot_files(dirname, flags)
-
-
-def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
-    assert mode in ALL_MODES
-    if not paddle.in_dynamic_mode():
-        raise NotImplementedError
-
-    new_function = paddle.jit.to_static(function)
-    return new_function
