@@ -189,7 +189,7 @@ class TestSparseConvert(unittest.TestCase):
             shape=[3, 4],
             stop_gradient=False,
         )
-        sparse_x_ = sparse_x.to_sparse_coo()
+        sparse_x_ = sparse_x.to_sparse_coo(2)
         assert sparse_x is sparse_x_
 
     def test_csr_to_csr(self):
