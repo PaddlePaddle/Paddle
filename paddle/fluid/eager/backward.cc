@@ -579,7 +579,11 @@ std::vector<paddle::Tensor> RunBackward(
                                              grad_output_tensor,
                                              dot_node_label,
                                              need_dump_backward_subgraph);
-            if (need_dump_grad_tensors) {
+            if (need_dump_grad_tensors &&
+                (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                     .ContainsGradNode(node) ||
+                 egr::EagerBackwardSubGraphNodeRecorder::Instance()
+                     .ContainsGradNode(next_node))) {
               debug_grad_tensors_str += egr::FormatTensor(grad_output_tensor);
             }
           }
