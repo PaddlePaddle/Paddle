@@ -2351,7 +2351,6 @@ add_doc_and_signature(
         axis1 (int, optional): The first axis with respect to take diagonal. Default: 0. Alias: ``dim1``.
         axis2 (int, optional): The second axis with respect to take diagonal. Default: 1. Alias: ``dim2``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor.
 
     Returns:
         Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
@@ -2403,7 +2402,6 @@ def diagonal(
     axis1: int = 0,
     axis2: int = 1,
     name: str | None = None,
-    out: Tensor | None = None,
 ) -> Tensor
 """,
 )

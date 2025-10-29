@@ -234,5 +234,108 @@ class TestDiagonalBF16OP(OpTest):
         ).copy()
 
 
+class TestDiagonalAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6, 7]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.diagonal(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args for paddle
+        out2 = paddle.diagonal(x=x, offset=1, axis1=0, axis2=2)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.diagonal(input=x, offset=-1, dim1=1, dim2=2)
+        paddle_dygraph_out.append(out3)
+        # Mixed args - paddle parameters prioritized
+        out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
+        paddle_dygraph_out.append(out4)
+        # Mixed args - torch parameters prioritized
+        out5 = paddle.diagonal(input=x, offset=0, dim1=1, dim2=2)
+        paddle_dygraph_out.append(out5)
+        # Tensor method args
+        out6 = x.diagonal()
+        paddle_dygraph_out.append(out6)
+        # Tensor method kwargs
+        out7 = x.diagonal(offset=2, dim1=0, dim2=1)
+        paddle_dygraph_out.append(out7)
+
+        ref_out1 = np.diagonal(self.np_input)
+        ref_out2 = np.diagonal(self.np_input, offset=1, axis1=0, axis2=2)
+        ref_out3 = np.diagonal(self.np_input, offset=-1, axis1=1, axis2=2)
+        ref_out4 = np.diagonal(self.np_input, offset=0, axis1=1, axis2=2)
+        ref_out5 = np.diagonal(self.np_input, offset=0, axis1=1, axis2=2)
+        ref_out6 = np.diagonal(self.np_input)
+        ref_out7 = np.diagonal(self.np_input, offset=2, axis1=0, axis2=1)
+        ref_outs = [
+            ref_out1,
+            ref_out2,
+            ref_out3,
+            ref_out4,
+            ref_out5,
+            ref_out6,
+            ref_out7,
+        ]
+        for out, ref_out in zip(paddle_dygraph_out, ref_outs):
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.diagonal(x)
+            # Key words args for paddle
+            out2 = paddle.diagonal(x=x, offset=1, axis1=0, axis2=2)
+            # Key words args for torch
+            out3 = paddle.diagonal(input=x, offset=-1, dim1=1, dim2=2)
+            # Mixed args - paddle parameters prioritized
+            out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
+            # Mixed args - torch parameters prioritized
+            out5 = paddle.diagonal(input=x, offset=0, dim1=1, dim2=2)
+            # Tensor method args
+            out6 = x.diagonal()
+            # Tensor method kwargs
+            out7 = x.diagonal(offset=2, dim1=0, dim2=1)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+            )
+            ref_out1 = np.diagonal(self.np_input)
+            ref_out2 = np.diagonal(self.np_input, offset=1, axis1=0, axis2=2)
+            ref_out3 = np.diagonal(self.np_input, offset=-1, axis1=1, axis2=2)
+            ref_out4 = np.diagonal(self.np_input, offset=0, axis1=1, axis2=2)
+            ref_out5 = np.diagonal(self.np_input, offset=0, axis1=1, axis2=2)
+            ref_out6 = np.diagonal(self.np_input)
+            ref_out7 = np.diagonal(self.np_input, offset=2, axis1=0, axis2=1)
+            ref_outs = [
+                ref_out1,
+                ref_out2,
+                ref_out3,
+                ref_out4,
+                ref_out5,
+                ref_out6,
+                ref_out7,
+            ]
+            for out, ref_out in zip(fetches, ref_outs):
+                np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
 if __name__ == '__main__':
     unittest.main()
