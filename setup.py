@@ -361,7 +361,7 @@ def get_cuda_version() -> str:
 def get_hip_version() -> str | None:
     with_hip = env_dict.get("WITH_ROCM")
     if with_hip == 'ON':
-        return env_dict.get("HIP_VERSION")
+        return str(env_dict.get("HIP_VERSION"))
     else:
         return None
 
