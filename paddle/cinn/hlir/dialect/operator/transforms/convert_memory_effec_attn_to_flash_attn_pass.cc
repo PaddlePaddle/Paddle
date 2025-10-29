@@ -85,9 +85,16 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
     }
 
     auto max_seqlen_q =
-        op->attribute("max_seqlen_q").dyn_cast<pir::FloatAttribute>().data();
+        op->attribute("max_seqlen_q")
+            .template dyn_cast<paddle::dialect::ScalarAttribute>()
+            .data()
+            .to<int64_t>();
     auto max_seqlen_k =
-        op->attribute("max_seqlen_k").dyn_cast<pir::FloatAttribute>().data();
+        op->attribute("max_seqlen_k")
+            .template dyn_cast<paddle::dialect::ScalarAttribute>()
+            .data()
+            .to<int64_t>();
+
     if (max_seqlen_q > 0 || max_seqlen_k > 0) {
       return false;
     }
