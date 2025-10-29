@@ -29,8 +29,9 @@ void CEmbeddingKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_XPU_BKCL)
   const T* table_data = w.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
-  using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out->numel() == 0) return;
 
+  using XPUType = typename XPUTypeTrait<T>::Type;
   const int64_t height = w.dims()[0];
   const int64_t width = w.dims()[1];
 

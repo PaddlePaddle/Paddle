@@ -30,6 +30,8 @@ void AllReduceKernel(const Context& dev_ctx,
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
 
+  if (out->numel() == 0) return;
+
   auto comm_ctx =
       static_cast<distributed::BKCLCommContext*>(dev_ctx.GetCommContext());
   PADDLE_ENFORCE_NE(comm_ctx,
