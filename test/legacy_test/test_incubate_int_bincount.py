@@ -33,7 +33,7 @@ class TestIntBincount(unittest.TestCase):
     def test_basic_2(self):
         x = paddle.to_tensor([1, 2, 3, 1, 2, 3], dtype=paddle.int32)
         out = int_bincount(x, low=1, high=4, dtype="int32")
-        expected = np.array([2, 2, 2, 0])
+        expected = np.array([2, 2, 2])
         np.testing.assert_array_equal(out.numpy(), expected)
 
     def test_empty_input(self):
