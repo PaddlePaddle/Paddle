@@ -14,31 +14,13 @@
 
 #pragma once
 
-#include <algorithm>
-#include <utility>
-#include <vector>
-
-#include "paddle/phi/core/kernel_registry.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
-#endif
-
-#ifdef PADDLE_WITH_GPU
-#include "glog/logging.h"
-#include "paddle/phi/core/distributed/utils.h"
-#endif
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void PartialSendKernel(const Context& dev_ctx UNUSED,
-                       const DenseTensor& x UNUSED,
-                       int peer UNUSED,
-                       int num UNUSED,
-                       int id UNUSED) {
-  PADDLE_THROW(common::errors::Unavailable(
-      "Do not support partial_send for cpu kernel now."));
-}
+void PartialSendKernel(
+    const Context& dev_ctx, const DenseTensor& x, int peer, int num, int id);
 
 }  // namespace phi
