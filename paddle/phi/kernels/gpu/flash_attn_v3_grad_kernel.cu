@@ -511,13 +511,18 @@ void FlashAttnV3GradBaseKernel(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::fa3_bwd_params_set_dq_semaphore(params_handle,
                                            dq_semaphore.data<int>());
+  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::fa3_bwd_params_get_deterministic(params_handle)) {
-    // TODO(tridao): do we need to zero them out?
-    DenseTensor dk_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-    DenseTensor dv_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+    // xiangrui: we need to zero them out
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
+    set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dv;
+    set_zero_dv(dev_ctx, &dv_semaphore, static_cast<int32_t>(0));
+
     dynload::fa3_bwd_params_set_dk_semaphore(params_handle,
                                              dk_semaphore.data<int>());
     dynload::fa3_bwd_params_set_dv_semaphore(params_handle,
@@ -599,11 +604,11 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
       0,
       common::errors::InvalidArgument(
           "sm_margin is not supported, please set sm_margin to 0"));
-  PADDLE_ENFORCE_EQ(FLAGS_cudnn_deterministic,
-                    false,
-                    common::errors::InvalidArgument(
-                        "deterministic is not supported in flash attention 3, "
-                        "please set FLAGS_cudnn_deterministic to false"));
+  // PADDLE_ENFORCE_EQ(FLAGS_cudnn_deterministic,
+  //                   false,
+  //                   common::errors::InvalidArgument(
+  //                       "deterministic is not supported in flash attention 3, "
+  //                       "please set FLAGS_cudnn_deterministic to false"));
   // umiswing: fake grad tensor for FlashAttnV3GradBaseKernel
   DenseTensor softmax_d;
   DenseTensor softmax_lse_log2;
@@ -737,11 +742,11 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
       0,
       common::errors::InvalidArgument(
           "sm_margin is not supported, please set sm_margin to 0"));
-  PADDLE_ENFORCE_EQ(FLAGS_cudnn_deterministic,
-                    false,
-                    common::errors::InvalidArgument(
-                        "deterministic is not supported in flash attention 3, "
-                        "please set FLAGS_cudnn_deterministic to false"));
+  // PADDLE_ENFORCE_EQ(FLAGS_cudnn_deterministic,
+  //                   false,
+  //                   common::errors::InvalidArgument(
+  //                       "deterministic is not supported in flash attention 3, "
+  //                       "please set FLAGS_cudnn_deterministic to false"));
 
   PADDLE_ENFORCE_EQ(
       q.dims()[q.dims().size() - 1],
@@ -1391,13 +1396,18 @@ void FlashMaskV2GradBaseKernel(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
+  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
-    // TODO(tridao): do we need to zero them out?
-    DenseTensor dk_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-    DenseTensor dv_semaphore = phi::Empty<int32_t>(
-        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+    // xiangrui: we need to zero them out
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dk;
+    set_zero_dk(dev_ctx, &dk_semaphore, static_cast<int32_t>(0));
+    phi::funcs::SetConstant<Context, int32_t> set_zero_dv;
+    set_zero_dv(dev_ctx, &dv_semaphore, static_cast<int32_t>(0));
+
     dynload::flashmaskv2_bwd_params_set_dk_semaphore(params_handle,
                                                      dk_semaphore.data<int>());
     dynload::flashmaskv2_bwd_params_set_dv_semaphore(params_handle,
@@ -1546,7 +1556,7 @@ void FlashMaskV2GradKernel(
                                         -1,     // window_size_left,
                                         -1,     // window_size_right,
                                         0,      // softcap,
-                                        false,  // deterministic,
+                                        FLAGS_cudnn_deterministic,  // deterministic,
                                         0,      // sm_margin,
                                         dq,
                                         dk,
