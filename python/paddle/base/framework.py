@@ -8252,39 +8252,6 @@ def device_guard(device: str | None = None) -> Generator[None, None, None]:
         switch_device(pre_device)
 
 
-def _switch_cuda_graph_mode(cuda_graph_attr):
-    global _current_cuda_graph_mode
-    pre_mode = _current_cuda_graph_mode
-    _current_cuda_graph_mode = cuda_graph_attr
-    return pre_mode
-
-
-@signature_safe_contextmanager
-def _cuda_graph_guard(cuda_graph_attr=None):
-    """
-
-    Note:
-        The API only supports static graph mode.
-
-    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static graph mode.
-
-    Args:
-        cuda_graph_attr(str|None): The cuda graph attr with the format of:
-                                   cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
-    """
-    assert not in_dygraph_mode(), (
-        "cuda_graph_guard only works under static graph mode"
-    )
-    assert core.is_compiled_with_cuda(), (
-        "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
-    )
-    pre_mode = _switch_cuda_graph_mode(cuda_graph_attr)
-    try:
-        yield
-    finally:
-        _switch_cuda_graph_mode(pre_mode)
-
-
 def _get_paddle_place(place):
     """
     Convert given place to standard paddle Place object
@@ -8606,3 +8573,20 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
+
+
+@signature_safe_contextmanager
+def vlog_guard(module_levels: int | dict) -> Generator[None, None, None]:
+    if not isinstance(module_levels, (int, dict)):
+        raise TypeError(
+            f"The input of vlog_guard must be int or dict but got {type(module_levels).__name__}"
+        )
+    paddle.base.core.set_vlog_level(module_levels)
+    try:
+        yield
+    finally:
+        # Reset the verbose log level to 0
+        if isinstance(module_levels, int):
+            paddle.base.core.set_vlog_level(0)
+        elif isinstance(module_levels, dict):
+            paddle.base.core.set_vlog_level(dict.fromkeys(module_levels, 0))

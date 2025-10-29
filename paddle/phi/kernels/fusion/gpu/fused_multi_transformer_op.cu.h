@@ -116,7 +116,7 @@ __global__ void masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params,
     LoadFunc load_func,
     StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   const int bi = blockIdx.y;
   if (params.sequence_lengths && params.sequence_lengths[bi] == 0) {
     return;
@@ -729,7 +729,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params,
     LoadFunc load_func,
     StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   const int bi = blockIdx.y;
   // Each Partition responsible for partial KeyCache and Value Cache Compute.
   const int partition_idx = blockIdx.z;

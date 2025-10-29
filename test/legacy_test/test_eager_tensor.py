@@ -2179,5 +2179,39 @@ class TestSetDynamicAttributeToEagerTensorInstance(unittest.TestCase):
         self.assertEqual(tensor_instance.__dict__["_custom_flag"], True)
 
 
+class TestListToTensor(unittest.TestCase):
+    def test_list_to_tensor_bfloat16(self):
+        a = [paddle.to_tensor(2, dtype=paddle.bfloat16)]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.bfloat16)
+        self.assertEqual(b[0], 2.0)
+
+    def test_list_to_tensor_float16(self):
+        a = [paddle.to_tensor(2, dtype=paddle.float16)]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float16)
+        self.assertEqual(b[0], 2.0)
+
+    def test_list_to_tensor_bfloat16_float32(self):
+        a = [
+            paddle.to_tensor(2, dtype=paddle.bfloat16),
+            paddle.to_tensor(2, dtype=paddle.float32),
+        ]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float32)
+        self.assertEqual(b[0], 2.0)
+        self.assertEqual(b[1], 2.0)
+
+    def test_list_to_tensor_float16_float32(self):
+        a = [
+            paddle.to_tensor(2, dtype=paddle.float16),
+            paddle.to_tensor(2, dtype=paddle.float32),
+        ]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float32)
+        self.assertEqual(b[0], 2.0)
+        self.assertEqual(b[1], 2.0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -100,3 +100,4 @@
 - zeros
 - zeros_like
 - logit
+- pad3d
