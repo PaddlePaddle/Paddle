@@ -52,6 +52,8 @@ class MacroContext:
             "layers.2.experts.1.weight",
             "layers.2.self_attn.qkv_proj.bias",
             "layers.2.mlp.gate_up_fused_proj.bias",
+            "layers.3.experts.0.up_gate_proj.weight",
+            "layers.3.experts.1.up_gate_proj.weight",
         }
 
         self.dst_keys = {
@@ -87,6 +89,8 @@ class MacroContext:
             "layers.2.self_attn.qkv_proj.bias",
             "layers.2.mlp.gate_up_fused_proj.bias",
             "layers.2.mlp.gate_up_fused_proj.weight",
+            "layers.3.experts.0.up_gate_proj.weight",
+            "layers.3.experts.1.up_gate_proj.weight",
         }
 
         # Build _ShardInfo mapping for AOAShardInfoContext based on existing keys
@@ -120,6 +124,12 @@ class MacroContext:
     def get_all_src_state_keys(self) -> Iterable[str]:
         return self._ctx.get_all_src_state_keys()
 
+    def get_src_state_shard_num(self, src_state_key: str) -> int:
+        return self._ctx.get_src_state_shard_num(src_state_key)
+
+    def get_dst_state_shard_num(self, dst_state_key: str) -> int:
+        return self._ctx.get_dst_state_shard_num(dst_state_key)
+
     def get_num_hidden_layers(
         self,
         name_with_layer_id: str,
@@ -128,19 +138,6 @@ class MacroContext:
         return self._ctx.get_num_hidden_layers(
             name_with_layer_id, layer_id_macro_tag
         )
-
-    def get_num_experts(
-        self, name_with_expert_id: str, expert_id_macro_tag: str
-    ) -> set:
-        return self._ctx.get_num_experts(
-            name_with_expert_id, expert_id_macro_tag
-        )
-
-    def get_src_state_shard_num(self, src_state_key: str) -> int:
-        return self._ctx.get_src_state_shard_num(src_state_key)
-
-    def get_dst_state_shard_num(self, dst_state_key: str) -> int:
-        return self._ctx.get_dst_state_shard_num(dst_state_key)
 
 
 def get_macro(macro_name):
@@ -192,7 +189,7 @@ class TestStarMacro(TestMacro):
 
 class TestLayerIdMacro(TestMacro):
     def macro_name(self):
-        return "layer_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight\n"
@@ -208,7 +205,7 @@ class TestLayerIdMacro(TestMacro):
 
 class Test_expert_id_Macro(TestMacro):
     def macro_name(self):
-        return "expert_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight"
@@ -278,7 +275,7 @@ class TestTransposeMacro(TestMacro):
 
 class TestFusedQKVMacro(TestMacro):
     def macro_name(self):
-        return "fused_qkv"
+        return "fused_qkv_macro"
 
     def source_code(self):
         return "layers.2.self_attn.qkv_proj.weight -> Q, K, V, fused_qkv, num_heads = 8, num_key_value_groups = 2"
@@ -297,7 +294,7 @@ class TestFusedQKVMacro(TestMacro):
 
 class TestFusedQKVMacro2(TestMacro):
     def macro_name(self):
-        return "fused_qkv"
+        return "fused_qkv_macro"
 
     def source_code(self):
         return "Q, K, V -> layers.2.self_attn.qkv_proj.weight, fused_qkv, num_heads = 8, num_key_value_groups = 8"
@@ -455,9 +452,9 @@ class TestLayerIdOffsetMacro(TestMacro):
         self.start_macro_test()
 
 
-class TestLayerIdMacro_with_Fused_qkv_old_macro(TestMacro):
+class TestIdMacroCase0(TestMacro):
     def macro_name(self):
-        return "layer_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4\n"
@@ -471,9 +468,9 @@ class TestLayerIdMacro_with_Fused_qkv_old_macro(TestMacro):
         self.start_macro_test()
 
 
-class Test_expert_id_Macro_with_Fused_ffn_macro(TestMacro):
+class TestIdMacroCase1(TestMacro):
     def macro_name(self):
-        return "expert_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight, fused_ffn"
@@ -482,6 +479,44 @@ class Test_expert_id_Macro_with_Fused_ffn_macro(TestMacro):
         return [
             'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight,fused_ffn\n',
             'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight,fused_ffn\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestIdMacroCase2(TestMacro):
+    def macro_name(self):
+        return "id_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID.experts.$EXPERT_ID.up_gate_proj.weight -> layers.$LAYER_ID.experts.$EXPERT_ID.gate_proj.weight, fused_ffn"
+
+    def expected(self):
+        return [
+            'layers.3.experts.0.up_gate_proj.weight->layers.3.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.3.experts.1.up_gate_proj.weight->layers.3.experts.1.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,fused_ffn\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestIdMacroCase3(TestMacro):
+    def macro_name(self):
+        return "id_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID.experts.$EXPERT_ID.up_gate_proj.weight^T -> layers.$LAYER_ID.experts.$EXPERT_ID.gate_proj.weight, fused_ffn"
+
+    def expected(self):
+        return [
+            'layers.3.experts.0.up_gate_proj.weight^T->layers.3.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.0.up_gate_proj.weight^T->layers.5.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.3.experts.1.up_gate_proj.weight^T->layers.3.experts.1.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.1.up_gate_proj.weight^T->layers.5.experts.1.gate_proj.weight,fused_ffn\n',
         ]
 
     def test(self):

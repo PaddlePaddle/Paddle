@@ -32,7 +32,13 @@ class GradNodePyLayer : public GradNodeBase {
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
-    name_ = "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
+    std::string str = std::string(Py_TYPE(ctx_)->tp_name);
+    std::string suffix = "_backward";
+    if (str.size() >= suffix.size() &&
+        str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0) {
+      str.erase(str.size() - suffix.size(), suffix.size());
+    }
+    name_ = "GradNodePyLayer_" + str;
     Py_INCREF(ctx_);
   }
 

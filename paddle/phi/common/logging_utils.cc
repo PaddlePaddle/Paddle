@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/common/logging_utils.h"
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/dense_tensor.h"
-
+#include <glog/logging.h>
+#include <iostream>
 namespace phi {
-
-template <typename T, typename Context>
-void Pad3dGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& out_grad,
-                     const IntArray& paddings,
-                     const std::string& mode,
-                     double pad_value,
-                     const std::string& data_format,
-                     DenseTensor* x_grad);
-
+PADDLE_API void set_phi_vlog_level(int level) { FLAGS_v = level; }
+PADDLE_API void set_phi_vlog_level(const char* module_pattern, int level) {
+  google::SetVLOGLevel(module_pattern, level);
+}
 }  // namespace phi

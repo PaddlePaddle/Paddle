@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void Pad3dGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& out_grad,
-                     const IntArray& paddings,
-                     const std::string& mode,
-                     double pad_value,
-                     const std::string& data_format,
-                     DenseTensor* x_grad);
+void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
+                                  const DenseTensor& x_in,
+                                  int nranks,
+                                  int rank,
+                                  DenseTensor* out);
 
 }  // namespace phi

@@ -103,6 +103,9 @@ jobs:
           for name in "${!docker_files[@]}"
           do
             md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
+            if [ $name == "docker_dcu" ]; then
+                md5_value="76937a563116f6008c8ca4cb4f592759"
+            fi
             if [ $name == "docker_npu" ]; then
                 md5_value="a3793bdeea5ae881a0c1eaf4d7c30c64"
             fi
