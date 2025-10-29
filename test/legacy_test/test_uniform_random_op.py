@@ -207,6 +207,16 @@ class TestUniformRandomBF16Op(TestUniformRandomOp):
         self.dtype = np.uint16
 
 
+class TestUniformRandomComplex64Op(TestUniformRandomOp):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestUniformRandomComplex128Op(TestUniformRandomOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestUniformRandomOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()

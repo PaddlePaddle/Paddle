@@ -15,6 +15,9 @@
 #include "paddle/phi/kernels/uniform_kernel.h"
 
 #include <thrust/random.h>
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -63,21 +66,64 @@ void UniformKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
-  if (seed == 0) {
-    // Use global Generator seed
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    funcs::uniform_distribution<MT> dist;
-    funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
-    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+
+  // Handle complex types separately
+  if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
+                std::is_same_v<T, phi::dtype::complex<double>>) {
+    using RealType = phi::dtype::Real<T>;  // float or double
+    RealType min_val = min.to<RealType>();
+    RealType max_val = max.to<RealType>();
+
+    if (seed == 0) {
+      // Use global Generator seed
+      funcs::uniform_distribution<RealType> dist;
+      funcs::uniform_real_transform<RealType> trans(min_val, max_val);
+
+      // Generate random values for real and imaginary parts separately
+      DenseTensor real_part, imag_part;
+      real_part.Resize(out->dims());
+      imag_part.Resize(out->dims());
+      dev_ctx.template Alloc<RealType>(&real_part);
+      dev_ctx.template Alloc<RealType>(&imag_part);
+
+      funcs::distribution_and_transform<RealType>(
+          dev_ctx, &real_part, dist, trans);
+      funcs::distribution_and_transform<RealType>(
+          dev_ctx, &imag_part, dist, trans);
+
+      // Combine real and imaginary parts using ComplexKernel
+      ComplexKernel<RealType, Context>(dev_ctx, real_part, imag_part, out);
+    } else {
+      // Use OP seed
+      auto func = [=] __device__(int64_t idx) {
+        thrust::minstd_rand engine;
+        engine.seed(seed);
+        engine.discard(idx * 2);
+        thrust::uniform_real_distribution<RealType> dist(min_val, max_val);
+        RealType real_val = dist(engine);
+        RealType imag_val = dist(engine);
+        return T(real_val, imag_val);
+      };  // NOLINT(readability/braces)
+      IndexKernel<T, decltype(func)>(dev_ctx, out, func);
+    }
   } else {
-    // Use OP seed
-    auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
-                                    static_cast<T>(max.to<float>()),
-                                    seed,
-                                    0,
-                                    0,
-                                    static_cast<T>(0.0));
-    IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
+    // Original implementation for non-complex types
+    if (seed == 0) {
+      // Use global Generator seed
+      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+      funcs::uniform_distribution<MT> dist;
+      funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
+      funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+    } else {
+      // Use OP seed
+      auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
+                                      static_cast<T>(max.to<float>()),
+                                      seed,
+                                      0,
+                                      0,
+                                      static_cast<T>(0.0));
+      IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
+    }
   }
 }
 
@@ -91,4 +137,6 @@ PD_REGISTER_KERNEL(uniform,
                    double,
                    phi::float16,
                    phi::bfloat16,
-                   phi::float8_e4m3fn) {}
+                   phi::float8_e4m3fn,
+                   phi::complex64,
+                   phi::complex128) {}
