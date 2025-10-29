@@ -21,12 +21,18 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import numpy as np
+from safetensors.numpy import safe_open
 
 import paddle
 from paddle.distributed.fleet.utils.log_util import logger
 
 from ..aoa.aoa_engine import (
     postprocess_transpose,
+)
+from .metadata import (
+    LocalTensorIndex,
+    LocalTensorMetadata,
+    Metadata,
 )
 from .sharded_weight import (
     ShardedWeight,
@@ -286,11 +292,6 @@ def assign_sharded_slice(
             ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
         )
 
-        for ps in postprocess_list:
-            is_list, result = is_list_string(ps)
-            if is_list:
-                src_tensor_slice = paddle.transpose(src_tensor_slice, result)
-
         dst_tensor_slice = paddle.slice(
             dst_shard.local_tensor,
             axes=axes,
@@ -314,6 +315,15 @@ def assign_sharded_slice(
             starts=dst_shard_starts,
             ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
         )
+
+    if postprocess_list is not None:
+        for ps in postprocess_list:
+            is_list, result = is_list_string(ps)
+            if is_list:
+                src_tensor_slice = paddle.transpose(src_tensor_slice, result)
+            else:
+                if isinstance(ps, str):
+                    src_tensor_slice = paddle.cast(src_tensor_slice, ps)
 
     paddle.assign(src_tensor_slice, dst_tensor_slice)
 
@@ -443,3 +453,131 @@ def recover_shard_tensor_from_shards(sharded_weights: list, sw):
             _assign_slice(sw.local_tensor, sw_starts, sw_ends, src)
 
     return sw
+
+
+def create_hf_ckpt_metadata(
+    ckpt_path: str,
+    process_group=None,
+):
+    dtype_mapping = {
+        'U16': 'bfloat16',
+        'U8': 'uint8',
+        'I8': 'int8',
+        'I16': 'int16',
+        'BOOL': 'bool',
+        'F16': 'float16',
+        'F32': 'float32',
+        'F64': 'float64',
+        'BF16': 'bfloat16',
+    }
+
+    use_dist = paddle.distributed.get_world_size() > 1
+    cur_rank = paddle.distributed.get_rank() if use_dist else 0
+
+    accessible_files = os.listdir(ckpt_path)
+    safetensors_files = [
+        file for file in accessible_files if file.endswith(".safetensors")
+    ]
+    if use_dist:
+        rank_visible_files = []
+        local_files = {cur_rank: safetensors_files}
+        paddle.distributed.all_gather_object(
+            rank_visible_files, local_files, process_group
+        )
+        rank_visible_files = {
+            rank: files for d in rank_visible_files for rank, files in d.items()
+        }
+    else:
+        rank_visible_files = {0: safetensors_files}
+
+    def assign_files(
+        rank_visible_files: dict[int, list[str]],
+    ) -> dict[int, list[str]]:
+        all_files = set()
+        for files in rank_visible_files.values():
+            all_files.update(files)
+        all_files = list(all_files)
+
+        file2ranks = defaultdict(list)
+        for rank, files in rank_visible_files.items():
+            for f in files:
+                file2ranks[f].append(rank)
+
+        result = defaultdict(list)
+
+        all_files.sort(key=lambda f: (len(file2ranks[f]), f))
+
+        rank_load = dict.fromkeys(rank_visible_files, 0)
+
+        for f in all_files:
+            candidates = file2ranks[f]
+            min_rank = min(candidates, key=lambda r: (rank_load[r], r))
+            result[min_rank].append(f)
+            rank_load[min_rank] += 1
+
+        return {rank: result.get(rank, []) for rank in rank_visible_files}
+
+    rank2file = assign_files(rank_visible_files)
+    need_handle_files = rank2file[cur_rank]
+
+    local_state_dict_metadata = defaultdict(set)
+    local_storage_metadata = {}
+    for file_name in need_handle_files:
+        file_path = os.path.join(ckpt_path, file_name)
+        with safe_open(file_path, framework="np") as f:
+            for key in f.keys():
+                t_s = f.get_slice(key)
+                shape = tuple(t_s.get_shape())
+                dtype = t_s.get_dtype()
+                assert dtype in dtype_mapping, f"{dtype} is not supported yet."
+                dtype = dtype_mapping[dtype]
+                ltm = LocalTensorMetadata(
+                    global_offset=(0,) * len(shape),
+                    local_shape=shape,
+                    dtype=dtype,
+                    global_shape=shape,
+                    is_flattened=False,
+                )
+                lti = LocalTensorIndex(
+                    tensor_key=key,
+                    global_offset=(0,) * len(shape),
+                    is_flattened=False,
+                )
+                local_state_dict_metadata[key].add(ltm)
+                local_storage_metadata[lti] = file_name
+
+    if use_dist:
+        global_state_dict_metadata = []
+        global_storage_metadata = []
+        paddle.distributed.all_gather_object(
+            global_state_dict_metadata,
+            dict(local_state_dict_metadata),
+            process_group,
+        )
+        paddle.distributed.all_gather_object(
+            global_storage_metadata, local_storage_metadata, process_group
+        )
+    else:
+        global_state_dict_metadata = [dict(local_state_dict_metadata)]
+        global_storage_metadata = [local_storage_metadata]
+
+    state_dict_metadata = defaultdict(set)
+    for md in global_state_dict_metadata:
+        for k, v in md.items():
+            state_dict_metadata[k].update(v)
+    state_dict_metadata = {k: list(v) for k, v in state_dict_metadata.items()}
+
+    storage_metadata = {}
+    for md in global_storage_metadata:
+        storage_metadata.update(md)
+
+    metadata = Metadata(
+        state_dict_metadata=state_dict_metadata,
+        storage_metadata=storage_metadata,
+    )
+
+    METADATA_FILE_NAME = "flex-ckpt.auto_generated.metadata"
+    write_to_file_if_empty(
+        metadata, os.path.join(ckpt_path, METADATA_FILE_NAME)
+    )
+    paddle.distributed.barrier(process_group)

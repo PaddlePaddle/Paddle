@@ -175,8 +175,11 @@ class CinnJitInstruction::FnPtrImpl {
     // Define an array of Pointers to hold the output tensor shape
     std::vector<int64_t*> output_tensor_shapes(output_tensor_size);
     for (int i = 0; i < output_tensor_size; ++i) {
+      // For 0-size tensors, if the shape buffer is not explicitly initialized,
+      // it may contain garbage values from memory, resulting in incorrect
+      // shapes.
       output_tensor_shapes[i] = reinterpret_cast<int64_t*>(
-          malloc(kernel_tensor_args[input_tensor_size + i]->dims().size() *
+          calloc(kernel_tensor_args[input_tensor_size + i]->dims().size(),
                  sizeof(int64_t*)));
     }
 

@@ -225,7 +225,7 @@ __global__ void ReduceAbsMaxKernel(const T* x,
                                    const int32_t cols,
                                    float* row_ranges,
                                    int32_t* outlier_idx) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   using InVec = phi::AlignedVector<T, VecSize>;
   using ComputeVec = phi::AlignedVector<ComputeType, VecSize>;
 
@@ -420,7 +420,7 @@ __global__ void DequantMergeKernel(const int32_t* x,
                                    T* y,
                                    int m,
                                    int n) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   using FpVec = phi::AlignedVector<T, VecSize>;
   using IntVec = phi::AlignedVector<int32_t, VecSize>;
 
