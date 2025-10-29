@@ -3645,7 +3645,7 @@ class Operator:
                 and name == "compilation_key"
             ):
                 key = self.desc.attr(name)
-                v = core.get_serialize_comile_key(key)
+                v = core.get_serialize_compile_key(key)
                 prog = Program()
                 prog = prog.parse_from_string(v)
                 s = prog._to_readable_code()
