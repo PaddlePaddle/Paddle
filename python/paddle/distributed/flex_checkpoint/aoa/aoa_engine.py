@@ -303,7 +303,10 @@ class AOAEngine:
             model_state_key, opt_state_name = split_optimizer_state_key(key)
             if opt_state_name is None:
                 dtype = shards[0].dtype
-            if model_state_key in input_vars.keys():
+            if model_state_key in input_vars.keys() or opt_state_name in [
+                ".beta1_pow_acc_0",
+                ".beta2_pow_acc_0",
+            ]:
                 continue
             input_vars[model_state_key] = self.make_input_tensor(
                 model_state_key, global_shape, dtype
