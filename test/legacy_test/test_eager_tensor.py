@@ -1529,6 +1529,10 @@ class TestEagerTensor(unittest.TestCase):
         paddle_scalar = paddle.uniform([], min=-100, max=100)
         self.assertRaises(ValueError, paddle_scalar.__format__, "3d")
 
+    def test_tensor_eq_none(self):
+        a = paddle.empty([2])
+        self.assertFalse(a is None)
+
 
 class TestEagerTensorSetitem(unittest.TestCase):
     def func_setUp(self):
