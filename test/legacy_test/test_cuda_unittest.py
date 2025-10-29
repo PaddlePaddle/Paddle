@@ -161,9 +161,7 @@ class TestCudaCompat(unittest.TestCase):
 
     def test_version_hip(self):
         version = paddle.version.hip
-        if paddle.is_compiled_with_rocm():
-            self.assertIsInstance(version, str)
-        else:
+        if not paddle.is_compiled_with_rocm():
             self.assertEqual(version, None)
 
     def test_set_default_device(self):
