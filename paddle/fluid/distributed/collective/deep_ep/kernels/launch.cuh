@@ -40,15 +40,6 @@
   CUDA_CHECK(cudaLaunchKernelEx(config, kernel, ##__VA_ARGS__))
 #endif
 
-#ifndef SET_SHARED_MEMORY_FOR_TMA
-#define SET_SHARED_MEMORY_FOR_TMA(kernel)                               \
-  EP_HOST_ASSERT(                                                       \
-      cudaFuncSetAttribute(kernel,                                      \
-                           cudaFuncAttributeMaxDynamicSharedMemorySize, \
-                           smem_size) == cudaSuccess);                  \
-  cfg.dynamicSmemBytes = smem_size;
-#endif
-
 #define SWITCH_RANKS(case_macro)                     \
   switch (num_ranks) {                               \
     case 2:                                          \
