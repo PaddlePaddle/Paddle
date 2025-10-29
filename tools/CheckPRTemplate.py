@@ -22,7 +22,7 @@ import requests
 PR_checkTemplate = ['Paddle']
 
 REPO_TEMPLATE = {
-    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
+    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?devPR:https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
 }
 
 
@@ -99,7 +99,7 @@ def parameter_accuracy(body):
     if len(des_pr_id) == 0 or not check_link_accessible(
         "https://github.com/PaddlePaddle/Paddle/pull/" + str(des_pr_id[0])
     ):
-        message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
+        message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description.Use this format devPR:https://github.com/PaddlePaddle/Paddle/pull/xxxx'
     return message
 
 
@@ -115,7 +115,7 @@ def checkComments(url):
 
 def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     """
-    Check if  PR's description meet the standard of template
+    Check if PR's description meet the standard of template
     Args:
         body: PR's Body.
         CHECK_TEMPLATE: check template str.
@@ -138,7 +138,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res = False
         message = parameter_accuracy(body)
         if len(message) == 0:
-            message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
+            message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description.Use this format devPR:https://github.com/PaddlePaddle/Paddle/pull/xxxx'
     return res, message
 
 
