@@ -983,7 +983,17 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == phi::AllocationType::GPUPINNED) {
+           dst_place.GetType() == phi::AllocationType::GPU) {
+    phi::GPUPlace place_dst(dst_place.GetDeviceId());
+    phi::CPUPlace place_src;
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
+  } else if (src_place.GetType() == phi::AllocationType::GPU &&
+             dst_place.GetType() == phi::AllocationType::CPU) {
+    phi::GPUPlace place_src(src_place.GetDeviceId());
+    phi::CPUPlace place_dst;
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
+  } else if (src_place.GetType() == phi::AllocationType::CPU &&
+             dst_place.GetType() == phi::AllocationType::GPUPINNED) {
     std::memcpy(dst, src, num);
   } else if (src_place.GetType() == phi::AllocationType::GPUPINNED &&
              dst_place.GetType() == phi::AllocationType::CPU) {
@@ -995,11 +1005,7 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
 #endif
 #ifdef PADDLE_WITH_XPU
   else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == phi::AllocationType::CPU) {
-    phi::CPUPlace place_dst, place_src;
-    return Copy(place_dst, dst, place_src, src, num);
-  } else if (src_place.GetType() == phi::AllocationType::CPU &&
-             dst_place.GetType() == phi::AllocationType::XPU) {
+           dst_place.GetType() == phi::AllocationType::XPU) {
     phi::XPUPlace place_dst(dst_place.GetDeviceId());
     phi::CPUPlace place_src;
     return Copy(place_dst, dst, place_src, src, num);
