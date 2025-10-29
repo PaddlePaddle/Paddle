@@ -52,7 +52,20 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
                                DenseTensor* out) {
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
-  int axis_dim = x.dims()[axis];
+  int64_t axis_dim = x.dims()[axis];
+
+  // TODO(large-tensor): Softmax functor implementation still uses int for
+  // dimensions. Need to update Softmax functor to support dimensions >
+  // INT32_MAX.
+  PADDLE_ENFORCE_LE(
+      axis_dim,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "The axis dimension (%ld) exceeds the maximum value that int can "
+          "represent (%d). GumbelSoftmax operation does not support such "
+          "large tensors yet.",
+          axis_dim,
+          std::numeric_limits<int>::max()));
 
   PADDLE_ENFORCE_GT(temperature,
                     0,
