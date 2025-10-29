@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING
 from paddle._C_ops import (  # noqa: F401
     ceil,
     cos,
+    exp,
+    expm1,
     floor,
     rsqrt,
     sigmoid,
@@ -483,106 +485,6 @@ def cosh(x: Tensor, name: str | None = None) -> Tensor:
         helper = LayerHelper('cosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='cosh', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def exp(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Computes exp of x element-wise with a natural number `e` as the base.
-
-    .. math::
-        out = e^x
-
-    Args:
-        x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Exp operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.exp(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.67032003, 0.81873077, 1.10517097, 1.34985888])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.exp(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'exp',
-        )
-        helper = LayerHelper('exp', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='exp', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def expm1(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
-
-    .. math::
-        out = e^x - 1
-
-    Args:
-        x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Expm1 operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.expm1(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.expm1(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'expm1',
-        )
-        helper = LayerHelper('expm1', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='expm1', inputs={"X": x}, outputs={"Out": out})
         return out
 
 
