@@ -14,8 +14,8 @@
 
 #include <string>
 #include <vector>
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
