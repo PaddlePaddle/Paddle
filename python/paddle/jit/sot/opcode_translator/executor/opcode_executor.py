@@ -1886,7 +1886,8 @@ class OpcodeExecutorBase:
             )
         else:
             raise FallbackError(
-                f"Do not support format {type(value)} or {type(spec)} in {instr.opname} now"
+                f"Currently only support ConstantVariable for both value and format spec in {instr.opname}. "
+                f"Got {type(value)=} and {type(raw_spec)=}."
             )
 
     def FORMAT_SIMPLE(self, instr: Instruction):
