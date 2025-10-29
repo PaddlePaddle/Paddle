@@ -2212,7 +2212,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
             restore_names: the names used in resume functions.
             end_idx: instruction index where simulation get break.
             stack: current stack
-            extra_store_vars: for iterator, we need store the holder if it is a Tensor
         """
         store_vars = list(OrderedSet(stack))
         store_var_info = {var.id: [] for var in stack}
