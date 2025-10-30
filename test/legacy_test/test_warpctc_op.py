@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import sys
 import unittest
 
@@ -768,7 +767,7 @@ class TestCTCLossAPICase(unittest.TestCase):
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        
+
         with paddle.static.program_guard(main_program, startup_program):
             logits = paddle.static.data(
                 name="logits_il",
