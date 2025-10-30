@@ -71,6 +71,13 @@ def get_cuda_version() -> str:
     else:
         return 'False'
 
+def get_hip_version() -> str | None:
+    with_hip = '@WITH_ROCM@'
+    if with_hip == 'ON':
+        return str('@HIP_VERSION@')
+    else:
+        return None
+
 def get_cudnn_version() -> str:
     if '@WITH_GPU@' == 'ON':
         temp_cudnn_version = ''
@@ -172,6 +179,8 @@ def get_tensorrt_version() -> str:
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
+import inspect
+
 full_version     = '%(major)d.%(minor)d.%(patch)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
@@ -180,6 +189,7 @@ nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
+hip_version      = %(hip)s
 xpu_xre_version  = '%(xpu_xre)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
@@ -192,7 +202,7 @@ with_pip_cuda_libraries = '%(with_pip_cuda_libraries)s'
 with_pip_tensorrt       ='%(with_pip_tensorrt)s'
 compiled_cuda_archs     = %(compiled_cuda_archs)s
 
-__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc', 'tensorrt', 'cuda_archs']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc', 'tensorrt', 'cuda_archs', 'hip']
 
 def show() -> None:
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -267,6 +277,7 @@ def show() -> None:
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('hip:', hip_version)
     print('nccl:', nccl_version)
     print('xpu_xre:', xpu_xre_version)
     print('xpu_xccl:', xpu_xccl_version)
@@ -459,6 +470,8 @@ def tensorrt() -> str:
     """
     return tensorrt_version
 
+hip = hip_version
+
 def cuda_archs():
     """Get compiled cuda archs of paddle package.
 
@@ -497,6 +510,7 @@ def cuda_archs():
             'version': '${PADDLE_VERSION}',
             'cuda': get_cuda_version(),
             'cudnn': get_cudnn_version(),
+            'hip': get_hip_version(),
             'xpu_xre': get_xpu_xre_version(),
             'xpu_xccl': get_xpu_xccl_version(),
             'xpu_xhpc': get_xpu_xhpc_version(),
