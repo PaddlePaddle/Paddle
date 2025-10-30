@@ -1803,18 +1803,17 @@ class ReflectionPad2D(Layer):
             >>> # from reflection_padding_layers import ReflectionPad2D
 
             >>> input_shape = (1, 1, 2, 3)
-            >>> pad = [1, 0, 1, 2] # L=1, R=0, T=1, B=2
+            >>> pad = [1, 0, 1, 1] # L=1, R=0, T=1, B=1
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data = [[[[1., 2., 3.], [4., 5., 6.]]]]
             >>> my_pad = nn.ReflectionPad2D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
-            Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[5., 4., 5., 6.],
-               [2., 1., 2., 3.],
-               [5., 4., 5., 6.],
-               [2., 1., 2., 3.],
-               [5., 4., 5., 6.]]]])
+                Tensor(shape=[1, 1, 4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[[[5., 4., 5., 6.],
+                        [2., 1., 2., 3.],
+                        [5., 4., 5., 6.],
+                        [2., 1., 2., 3.]]]])
     """
 
     def __init__(
@@ -2182,16 +2181,14 @@ class ReflectionPad3D(Layer):
             >>> # from reflection_padding_layers import ReflectionPad3D
 
             >>> input_shape = (1, 1, 1, 2, 3)
-            >>> pad = [1, 0, 1, 2, 0, 0] # L=1, R=0, T=1, B=2, F=0, B=0
+            >>> pad = [1, 0, 1, 0, 0, 0]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data = [[[[[1., 2., 3.], [4., 5., 6.]]]]]
             >>> my_pad = nn.ReflectionPad3D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
-            Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[1, 1, 1, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[[5., 4., 5., 6.],
-                [2., 1., 2., 3.],
-                [5., 4., 5., 6.],
                 [2., 1., 2., 3.],
                 [5., 4., 5., 6.]]]]])
     """
