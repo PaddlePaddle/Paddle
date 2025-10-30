@@ -17,6 +17,11 @@
 #include <ctime>
 #include <iomanip>
 #include <ostream>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -37,6 +42,13 @@
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_int32(tensor_md5_checksum_precision);
+
+#ifdef _WIN32
+#define getprocessid GetCurrentProcessId
+typedef int pid_t;
+#else
+#define getprocessid getpid
+#endif
 namespace egr {
 using paddle::inference::analysis::Dot;
 
@@ -1641,10 +1653,11 @@ const std::string FormatTensor(const paddle::Tensor& t) {
 
   return formatter.Format(dense_tensor, t.name());
 }
+
 void SaveStringToFileWithPID(const std::string& filename,
                              const std::string& content,
                              const std::string& mode = "trunc") {
-  pid_t pid = getpid();
+  pid_t pid = getprocessid();
   // Create the new filename with PID suffix
   std::string newFilename = filename + "." + std::to_string(pid);
   SaveStringToFile(newFilename, content, mode);
