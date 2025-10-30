@@ -2201,28 +2201,6 @@ class ShardingStage2(_ShardingStageBase):
     def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
         # Note(luchang): Due to reshard optimizations in Paddle where all-reduce + slicing is fused into reduce_scatter,
         # in auto_dp, the current behavior of ShardingStage2 is effectively the same as ShardingStage1.
-        if key == "grad" and in_auto_dp_mode():
-            if not param.is_dist():
-                return accumulator
-
-            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if not self.enable_tensor_fusion and 'beta' not in key:
-                placements = get_placement_with_sharding(
-                    param, self._sharding_axis
-                )
-            else:
-                placements = [
-                    dist.Replicate()
-                    for _ in range(len(param.process_mesh.shape))
-                ]
-
-            if key == "grad" and in_auto_dp_mode():
-                tensor = self._reshard_fake_replicate_grad_to_partial(
-                    accumulator
-                )
-
-            return self._apply_placement(tensor, param, placements)
-
         if param.is_dist():
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
