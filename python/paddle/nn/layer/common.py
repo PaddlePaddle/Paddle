@@ -398,7 +398,7 @@ class Upsample(Layer):
                                corner pixels.
                                Default: False
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
-                            it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
         data_format (str|None, optional): Specify the data format of the input, and the data format of
              the output will be consistent with that of the input. An optional string from:`"NCW"`,

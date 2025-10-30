@@ -93,12 +93,12 @@ class TestDumpDebugInfo(unittest.TestCase):
             for entry in entries
             if os.path.isfile(os.path.join(directory, entry))
         ]
-        expect_keywards_in_file_name = [
+        expect_keywords_in_file_name = [
             "backward_graph.dot",
             "ref_forward_graph.dot",
             "call_stack.log",
         ]
-        for keywords in expect_keywards_in_file_name:
+        for keywords in expect_keywords_in_file_name:
             if not any(keywords in f for f in files):
                 raise AssertionError(
                     f"Error: File '{keywords}' not found in directory '{directory}'! "
