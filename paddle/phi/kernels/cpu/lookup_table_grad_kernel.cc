@@ -14,17 +14,16 @@
 
 #include <string>
 #include <vector>
-
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 namespace phi {
+
+constexpr int64_t kNoPadding = -1;
 
 template <typename T, typename Context>
 void LookupTableGradKernel(const Context &dev_ctx,
