@@ -767,7 +767,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         label_len_np = np.array([3], dtype=np.int64)
 
         @contextlib.contextmanager
-        def static_graph(self):
+        def static_graph():
             paddle.seed(self.seed)
             if paddle.framework.use_pir_api():
                 with paddle.pir_utils.OldIrGuard():
@@ -777,7 +777,7 @@ class TestCTCLossAPICase(unittest.TestCase):
                 paddle.framework.random._manual_program_seed(self.seed)
             yield
 
-        with self.static_graph():
+        with static_graph():
             logits = paddle.static.data(
                 name="logits_il",
                 shape=[max_time, batch, n_class],
