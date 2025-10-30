@@ -18,6 +18,8 @@ import sys
 import unittest
 
 import numpy as np
+import setuptools
+from packaging import version
 
 import paddle
 from paddle import static
@@ -114,9 +116,16 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         custom_egg_path = [
             x for x in os.listdir(site_dir) if 'mix_relu_extension' in x
         ]
-        assert len(custom_egg_path) == 2, (
+
+        egg_counts = (
+            1
+            if version.parse(setuptools.__version__) < version.parse("80.0.0")
+            else 2
+        )
+        assert len(custom_egg_path) == egg_counts, (
             f"Matched egg number is {len(custom_egg_path)}."
         )
+
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
         #################################
 

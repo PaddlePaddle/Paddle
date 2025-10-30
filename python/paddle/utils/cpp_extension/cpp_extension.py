@@ -267,14 +267,6 @@ def setup(**attr: Any) -> None:
     # See http://peak.telecommunity.com/DevCenter/setuptools#setting-the-zip-safe-flag
     attr['zip_safe'] = False
 
-    # Ensure modern metadata format for pip compatibility.
-    # Setting metadata_version >= 2.1 encourages setuptools to use modern
-    # packaging standards and helps ensure pip can properly detect and list
-    # installed packages via `pip list`. This is particularly important for
-    # custom extensions that need to be discoverable by pip.
-    if 'metadata_version' not in attr:
-        attr['metadata_version'] = '2.1'
-
     # switch `write_stub` to inject paddle api in .egg
     with bootstrap_context():
         setuptools.setup(**attr)
