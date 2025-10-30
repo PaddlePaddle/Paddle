@@ -2190,8 +2190,16 @@ static PyObject* tensor__ne__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__ne__", 0);
+      paddle::experimental::Scalar value;
+
+      // return True if other_obj is unsupported type
+      try {
+        value = CastPyArg2Scalar(other_obj, "__ne__", 0);
+      } catch (const ::common::enforce::EnforceNotMet& e) {
+        Py_INCREF(Py_True);
+        return Py_True;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
