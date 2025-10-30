@@ -141,15 +141,15 @@ COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
 
 RUN python3.9  -m pip --no-cache-dir install -r  /root/requirements.txt && \
-    python3.9  -m pip --no-cache-dir install -r  /home/requirements.txt && \
+    python3.9  -m pip --no-cache-dir install --break-system-packages --ignore-installed -r  /home/requirements.txt && \
     python3.10 -m pip --no-cache-dir install -r /root/requirements.txt && \
-    python3.10 -m pip --no-cache-dir install -r /home/requirements.txt && \
+    python3.10 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.11 -m pip --no-cache-dir install -r /root/requirements.txt && \
-    python3.11 -m pip --no-cache-dir install -r /home/requirements.txt && \
+    python3.11 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.12 -m pip --no-cache-dir install --break-system-packages -r /root/requirements.txt && \
-    python3.12 -m pip --no-cache-dir install --break-system-packages -r /home/requirements.txt && \
+    python3.12 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /root/requirements.txt && \
-    python3.13 -m pip --no-cache-dir install -r /home/requirements.txt && \
+    python3.13 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.13t -m pip --no-cache-dir install -r /root/requirements.txt
     # python3.13t -m pip --no-cache-dir install -r /home/requirements.txt
 
