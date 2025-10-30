@@ -132,6 +132,43 @@ function make_ubuntu20_cu123_dockerfile(){
     cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
 }
 
+function make_ubuntu20_cu126_dockerfile(){
+  dockerfile_name="Dockerfile.cuda126_cudnn9_gcc122_ubuntu20"
+  sed "s#<baseimg>#nvidia/cuda:12.6.0-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
+  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.6/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
+  sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
+  sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
+  sed -i "27i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev libsndfile1" ${dockerfile_name}
+  dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
+     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt update \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd ninja-build \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
+    tar -xvf git-2.17.1.tar.gz \&\& \
+    cd git-2.17.1 \&\& \
+    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
+    make -j8 \&\& make install " ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro" ${dockerfile_name}
+  sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8616#g' ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn900 #g' ${dockerfile_name}
+  sed -i 's#CUDNN_VERSION=8.4.1#CUDNN_VERSION=9.0.0#g' ${dockerfile_name}
+  sed -i 's#gcc82#gcc121#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-12.1/bin/gcc#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-12.1/bin/gcc#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
+  sed -i 's#PATH=/usr/local/gcc-8.2/bin:$PATH#PATH=/usr/local/gcc-12.1/bin:$PATH#g' ${dockerfile_name}
+
+  sed -i "${dockerfile_line}i WORKDIR /home \n \
+    RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleFormers \&\& cd PaddleFormers \&\& \
+    pip3.10 install -r requirements.txt
+    pip3.10 install -r requirements-dev.txt
+    pip3.10 install -r tests/requirements.txt
+    pip3.10 install pytest-timeout \&\& \
+    cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
+}
+
 function main() {
   make_cpu_dockerfile
   make_ce_framework_dockerfile
