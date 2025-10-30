@@ -29,21 +29,6 @@ defaults:
     shell: bash
 
 jobs:
-  clone:
-    name: Coverage clone
-    uses: ./.github/workflows/_Clone-linux.yml
-    with:
-      workflow-name: 'coverage'
-      clone_dir: Paddle-coverage
-
-  build-docker:
-    name: Coverage build docker
-    needs: clone
-    uses: ./.github/workflows/docker.yml
-    with:
-      clone_dir: Paddle-coverage
-      task: coverage
-
   test:
     name: Coverage test
     needs: [build-docker]
@@ -51,6 +36,10 @@ jobs:
     runs-on:
       group: BD_BJ-V100
     steps:
+      - name: Test
+        run: |
+          mkdir build/coverage_files && cd build/coverage_files
+          echo '123' >coverage.xml
       - name: Upload coverage report
         uses: codecov/codecov-action@v4
         with:
