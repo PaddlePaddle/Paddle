@@ -4193,15 +4193,17 @@ def logcumsumexp(
 def cumprod(
     x: Tensor,
     dim: int | None = None,
+    *,
     dtype: DTypeLike | None = None,
-    out: Tensor | None = None,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
-    Note:
+    .. note::
         The first element of the result is the same as the first element of the input.
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
@@ -4295,13 +4297,11 @@ def cumprod(
         return out
 
 
-@param_one_alias(["x", "input"])
 @inplace_apis_in_dygraph_only
 def cumprod_(
     x: Tensor,
     dim: int | None = None,
     dtype: DTypeLike | None = None,
-    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -4318,7 +4318,7 @@ def cumprod_(
             x = cast_(x, dtype)
 
     if in_dynamic_mode():
-        return _C_ops.cumprod_(x, dim, False, False, out=out)
+        return _C_ops.cumprod_(x, dim, False, False)
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
