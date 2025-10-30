@@ -205,4 +205,5 @@ readability-container-size-empty,
 '
 HeaderFilterRegex: '^(paddle/(?!cinn)).*$'
 AnalyzeTemporaryDtors: false
+WarningsAsErrors: '*'
 ...
