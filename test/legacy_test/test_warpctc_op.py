@@ -765,6 +765,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         input_len_np = np.array([1], dtype=np.int64)
         label_len_np = np.array([3], dtype=np.int64)
 
+        paddle.enable_static()
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
 
@@ -808,6 +809,7 @@ class TestCTCLossAPICase(unittest.TestCase):
 
             # illegal sample -> 0
             self.assertTrue(np.allclose(loss_val[0], 0.0, atol=1e-6))
+            paddle.disable_static()
 
     def test_ctc_loss_zero_infinity_dygraph(self):
         max_time = 1
