@@ -140,8 +140,24 @@ class TransformOptions:
 
     TRANSFORM_OPTIONS_ATTR_NAME = "___jit_transform_options___"
 
-    def __init__(self, skip_transform_mode: ToStaticMode = ToStaticMode.Nil()):
+    def __init__(
+        self,
+        skip_transform_mode: ToStaticMode = ToStaticMode.Nil(),
+        need_capture_control_flow: bool = False,
+    ):
         self.skip_transform_mode = skip_transform_mode
+        self._need_capture_control_flow = need_capture_control_flow
+
+    # Builder pattern methods
+    def with_skip_transform_mode(self, skip_transform_mode: ToStaticMode):
+        self.skip_transform_mode |= skip_transform_mode
+        return self
+
+    def with_need_capture_control_flow(
+        self, need_capture_control_flow: bool = True
+    ):
+        self._need_capture_control_flow = need_capture_control_flow
+        return self
 
     def attach(self, fn):
         if inspect.ismethod(fn):
@@ -157,6 +173,9 @@ class TransformOptions:
     def need_transform(self, mode: ToStaticMode):
         return not (self.skip_transform_mode & mode)
 
+    def need_capture_control_flow(self):
+        return self._need_capture_control_flow
+
     @staticmethod
     def check_fn_need_transform(fn, mode: ToStaticMode):
         if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
@@ -164,6 +183,14 @@ class TransformOptions:
         return getattr(
             fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
         ).need_transform(mode)
+
+    @staticmethod
+    def check_fn_need_capture_control_flow(fn):
+        if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
+            return False
+        return getattr(
+            fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
+        ).need_capture_control_flow()
 
 
 class TimeCounter:

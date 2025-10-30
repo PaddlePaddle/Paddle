@@ -724,7 +724,7 @@ class BuildExtension(build_ext):
                     # if user set build_directory, output objects there.
                     if build_directory is not None:
                         objects = [
-                            os.path.join(build_directory, os.path.basename(obj))
+                            os.path.join(build_directory, obj)
                             for obj in objects
                         ]
                     # ensure to use abspath
@@ -1167,8 +1167,8 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
             )
     else:
         _arch_list = _arch_list.replace(' ', ';')
-        for named_arch, archval in named_arches.items():
-            _arch_list = _arch_list.replace(named_arch, archval)
+        for named_arch, archival in named_arches.items():
+            _arch_list = _arch_list.replace(named_arch, archival)
         arch_list = _arch_list.split(';')
 
     flags = []

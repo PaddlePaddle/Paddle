@@ -127,7 +127,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_fused_matmul_bias$|\
 ^test_tensordot$|\
 ^test_cuda_graph$|\
-^test_cuda_graph_partial_graph_static_run$|\
 ^test_cuda_graph_static_mode$|\
 ^test_matrix_rank_op$|\
 ^test_sparse_pca_lowrank$|\
@@ -151,7 +150,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_onednn_conv_mish_fuse_pass$|\
 ^test_onednn_conv_transpose_bias_fuse_pass$|\
 ^test_onednn_depthwise_conv_pass$|\
-^test_mkldnn_matmul_elementwise_add_fuse_pass$|\
+^test_onednn_matmul_elementwise_add_fuse_pass$|\
 ^test_onednn_matmul_v2_elementwise_add_fuse_pass$|\
 ^test_onednn_matmul_v2_transpose_reshape_fuse_pass$|\
 ^test_onednn_mish_op$|\
@@ -352,7 +351,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_variable$|\
 ^test_onednn_conv_hard_sigmoid_fuse_pass$|\
 ^test_onednn_conv_hard_swish_fuse_pass$|\
-^test_conv_act_mkldnn_fuse_pass$|\
+^test_conv_act_onednn_fuse_pass$|\
 ^test_matmul_scale_fuse_pass$|\
 ^test_addmm_op$|\
 ^test_inverse_op$|\
@@ -418,7 +417,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
-^test_cuda_graph_partial_graph_static_run$|\
 ^test_imperative_triple_grad$|\
 ^test_mul_op$|\
 ^test_quant_linear_op$|\

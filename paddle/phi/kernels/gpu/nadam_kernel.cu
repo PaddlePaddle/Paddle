@@ -36,7 +36,7 @@ __global__ void NAdamGPUKernel(const T* param,
                                MT beta2,
                                MT epsilon,
                                MT momentum_decay,
-                               int num,
+                               int64_t num,
                                T* param_out,
                                MT* momentum_decay_pow_out,
                                MT* beta2_pow_out,
@@ -48,7 +48,7 @@ __global__ void NAdamGPUKernel(const T* param,
 
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-  for (int index = idx; index < num; index += gridDim.x * blockDim.x) {
+  for (int64_t index = idx; index < num; index += gridDim.x * blockDim.x) {
     // load and cast input to MT
     MT d_param =
         master_param ? master_param[index] : static_cast<MT>(param[index]);
@@ -148,9 +148,10 @@ void NAdamKernel(const Context& dev_ctx,
   MPDType epsilon_ = static_cast<MPDType>(epsilon);
   MPDType momentum_decay_ = static_cast<MPDType>(momentum_decay);
 
-  int numel = param.numel();
+  int64_t numel = param.numel();
   int block = 512;
-  int grid = (param.numel() + block - 1) / block;
+  int64_t max_grid = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((param.numel() + block - 1) / block, max_grid);
   auto stream = dev_ctx.stream();
 
   NAdamGPUKernel<T, MPDType>

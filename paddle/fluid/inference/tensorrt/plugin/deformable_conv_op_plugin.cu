@@ -246,13 +246,8 @@ size_t DeformableConvPlugin::getWorkspaceSize(int max_batch_size) const
 
 int DeformableConvPlugin::enqueue(int batch_size,
                                   const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-                                  void** outputs,
-                                  void* workspace,
-#else
                                   void* const* outputs,
                                   void* workspace,
-#endif
                                   cudaStream_t stream) TRT_NOEXCEPT {
   if (data_type_ == nvinfer1::DataType::kFLOAT) {
     enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
@@ -965,8 +960,6 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-
-#if IS_TRT_VERSION_GE(6000)
 
 DeformableConvPluginDynamic::DeformableConvPluginDynamic(
     const nvinfer1::DataType data_type,
@@ -1870,7 +1863,6 @@ PIRDeformableConvPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

@@ -169,24 +169,48 @@ class TorchProxyMetaFinder:
 TORCH_PROXY_FINDER = TorchProxyMetaFinder()
 
 
+def _try_import_tvm_ffi():
+    try:
+        import tvm_ffi  # noqa: F401
+    except ModuleNotFoundError:
+        pass
+
+
+def _clear_torch_modules():
+    for name in list(sys.modules):
+        if _is_torch_module(name):
+            del sys.modules[name]
+
+
 def enable_torch_proxy():
+    # Import tvm_ffi without torch proxy to finalize all imported torch to None in tvm_ffi
+    _try_import_tvm_ffi()
+    _clear_torch_modules()
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
 
 def disable_torch_proxy():
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
-        for name in list(sys.modules):
-            if _is_torch_module(name):
-                del sys.modules[name]
+        _clear_torch_modules()
         return
     warnings.warn("torch proxy is not installed.")
 
 
 @contextmanager
-def use_torch_proxy_guard():
-    enable_torch_proxy()
-    try:
-        yield
-    finally:
+def use_torch_proxy_guard(enable: bool = True):
+    already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
+    if enable == already_has_torch_proxy:
+        return
+    if enable:
+        enable_torch_proxy()
+        try:
+            yield
+        finally:
+            disable_torch_proxy()
+    else:
         disable_torch_proxy()
+        try:
+            yield
+        finally:
+            enable_torch_proxy()

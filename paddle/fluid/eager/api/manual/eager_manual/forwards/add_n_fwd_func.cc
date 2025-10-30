@@ -22,6 +22,8 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+
 #define SEPARATOR "=========================="
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
                              paddle::optional<paddle::Tensor*> predefined_out) {
@@ -63,13 +65,17 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*>* x_autograd_meta = &x_autograd_meta_vec;
   // Forward API Call
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("add_n", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "add_n" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto api_result = paddle::experimental::add_n(x);
   VLOG(3) << "\n"
-          << SEPARATOR << "Finish_C++_API: "
-          << "add_n" << SEPARATOR;
+          << SEPARATOR << "Finish_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("add_n", api_result);
@@ -77,7 +83,9 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
 
   // Get Outputs
   auto& out = api_result;
-
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+  }
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
   bool trace_backward = egr::Controller::Instance().HasGrad();
@@ -96,10 +104,22 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
     // Node Construction
     auto grad_node = std::shared_ptr<AddNGradNodeFinal>(  // NOLINT
         new AddNGradNodeFinal(1, 1));
-
+    if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+      // Set GradNodeName
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
     }
 
     // SetAttributes if needed

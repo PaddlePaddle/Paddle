@@ -65,15 +65,9 @@ class ElementWisePlugin : public PluginTensorRT {
 
   int initialize() TRT_NOEXCEPT override;
 
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batch_size,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT;
 
@@ -122,7 +116,6 @@ class ElementWisePluginCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(ElementWisePluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class ElementwisePluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit ElementwisePluginDynamic(const std::string& type, int axis)
@@ -146,10 +139,11 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -230,7 +224,6 @@ class ElementwisePluginDynamicCreator : public nvinfer1::IPluginCreator {
 };
 
 REGISTER_TRT_PLUGIN_V2(ElementwisePluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

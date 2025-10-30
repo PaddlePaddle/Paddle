@@ -1762,9 +1762,7 @@ void FlashMaskV2BaseKernel(
   const int params_arch =
       phi::dynload::flashmaskv2_fwd_params_get_arch(params_handle);
   bool const scheduler_needs_semaphore =
-      params_arch >= 90 ? (((params_is_causal || params_is_local) &&
-                            (params_num_splits == 1)) ||
-                           is_varlen)
+      params_arch >= 90 ? true
                         : ((params_is_causal && !is_varlen) ||
                            (is_varlen && params_num_splits > 1));
   if (scheduler_needs_semaphore || use_dynamic_split) {
@@ -2089,8 +2087,32 @@ void FlashMaskV2BaseKernel(
     // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
     // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
     // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin_shape[2] =
-        ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+
+    int device_id = dev_ctx.GetPlace().GetDeviceId();
+    auto dprops = paddle::platform::GetDeviceProperties(device_id);
+    const bool is_sm90 = dprops.major == 9 && dprops.minor == 0;
+
+    if (is_sm90) {
+      // seqlen_k to nblock_seqlen, here we use kBlockN = 64
+      // as a conservative estimation (reduce allocation size)
+      flashmask_maxmin_shape[2] =
+          ((flashmask_maxmin_shape[2] + 63) / 64 + 3) / 4 * 4;
+      // make sure this is the same with FlashMaskV3 fwd main loop
+      static constexpr int flashmask_buffer_length = 16 * 1024;
+      // estimate the upper bound of the possible chunk size
+      static constexpr int chunk_padded_length =
+          ((flashmask_buffer_length + 63) / 64 + 31) & 0xffffffe0;
+      static constexpr int chunk_valid_length =
+          ((flashmask_buffer_length + 63) / 64 + 3) & 0xfffffffc;
+      const int num_chunk =
+          (flashmask_maxmin_shape[2] + chunk_valid_length - 1) /
+          chunk_valid_length;
+      flashmask_maxmin_shape[2] = num_chunk * chunk_padded_length;
+    } else {
+      // seqlen_k to nblock_seqlen
+      flashmask_maxmin_shape[2] =
+          ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+    }
     flashmask_maxmin_shape[3] = 8;
 
     flashmask_maxmin.set_type(phi::DataType::INT32);

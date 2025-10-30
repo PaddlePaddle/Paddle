@@ -265,7 +265,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
       framework::TransToProtoVarType(dtype));
 }
 
-phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
+phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
   phi::Place place;
   if (dl_device.device_type == kDLCPU) {
     place = phi::CPUPlace();
@@ -279,7 +279,7 @@ phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
   return place;
 }
 
-DLDevice PlaceToDLDevice(const phi::Place &place) {
+::DLDevice PlaceToDLDevice(const phi::Place &place) {
   return phi::VisitPlace(place, internal::DLDeviceVisitor());
 }
 
@@ -356,6 +356,22 @@ DLManagedTensor *ToDLPack(const phi::DenseTensor &src, uint64_t flags) {
 DLManagedTensorVersioned *ToDLPackVersioned(const phi::DenseTensor &src,
                                             uint64_t flags) {
   return ToDLPackImpl<DLManagedTensorVersioned>(src, flags);
+}
+
+void ToDLPackNonOwningImpl(const phi::DenseTensor &tensor,
+                           ::DLTensor &out) {  // NOLINT
+  // Fill in the pre-allocated DLTensor struct with direct pointers
+  // This is a non-owning conversion - the caller owns the tensor
+  // and must keep it alive for the duration of DLTensor usage
+  out.data = const_cast<void *>(tensor.data());
+  out.device = PlaceToDLDevice(tensor.place());
+  out.ndim = static_cast<int32_t>(tensor.dims().size());
+  out.dtype = PhiDataTypeToDLDataType(tensor.dtype());
+  // sizes() and strides() return pointers to TensorImpl's stable storage
+  // which remains valid as long as the tensor is alive
+  out.shape = const_cast<int64_t *>(tensor.dims().Get());
+  out.strides = const_cast<int64_t *>(tensor.strides().Get());
+  out.byte_offset = 0;
 }
 
 template <typename T>

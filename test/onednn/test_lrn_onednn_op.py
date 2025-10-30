@@ -15,7 +15,7 @@
 import sys
 import unittest
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_lrn_op import TestLRNOp
 
 

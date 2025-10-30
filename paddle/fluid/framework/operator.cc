@@ -3514,6 +3514,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(float, attr_iter->second));
             break;
           case phi::AttributeType::FLOAT64:
+            if (AttrTypeID(attr_iter->second) ==
+                framework::proto::AttrType::FLOAT) {
+              const auto val = PADDLE_GET_CONST(float, attr_iter->second);
+              phi_kernel_context->EmplaceBackAttr(static_cast<double>(val));
+              break;
+            }
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(double, attr_iter->second));
             break;

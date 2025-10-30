@@ -100,9 +100,10 @@ int32_t PsLocalClient::Initialize() {
   table_context.value_type = Dense;
   table_context.pull_context.values = region_buffer.data();
   table_context.num = region_buffer.size();
-  table_ptr->Pull(table_context);
+  auto status = table_ptr->Pull(table_context);
+  PADDLE_ENFORCE_EQ(
+      status, 0, common::errors::Unavailable("Pull dense failed."));
   //  table_ptr->PullDense(region_buffer.data(), region_buffer.size());
-
   size_t region_idx = 0;
   size_t region_data_idx = 0;
   size_t shard_data_size = num_per_shard;

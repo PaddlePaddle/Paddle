@@ -52,10 +52,10 @@ def get_pir_program_and_param_map():
             tmp9 = paddle.concat(tmp8)
 
             test = paddle.rand([5, 1, 10])
-            tmp_test_1 = paddle.squeeze(test, axis=1)
+            _ = paddle.squeeze(test, axis=1)
             out = paddle.mean(tmp9)
             # construct backward graph
-            gradients = paddle.static.gradients(out, [x, y, z])
+            _ = paddle.static.gradients(out, [x, y, z])
 
         pir_program, param_mapping = pir.translate_to_pir_with_param_map(
             mp.desc

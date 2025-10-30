@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-sys.path.append("../deprecated/legacy_test")
+sys.path.append("../legacy_test")
 from test_pool2d_op import (
     TestCase1,
     TestCase2,

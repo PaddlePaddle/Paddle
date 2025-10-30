@@ -33,15 +33,14 @@ struct GeluWithApproximateGradFunctor {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType one = static_cast<MPType>(1);
     MPType half = static_cast<MPType>(0.5);
-    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
-    MPType kBeta =
-        kAlpha * static_cast<MPType>(GELU_CONSTANT) * static_cast<MPType>(3);
+    MPType kAlpha = M_SQRT2 * M_2_SQRTPI * static_cast<MPType>(0.5);
+    MPType kBeta = static_cast<MPType>(GELU_CONSTANT);
+    auto x_seq = x * x;
     auto cube_x = x * x * x;
-    auto tanh_out =
-        tanh(kAlpha * ((static_cast<MPType>(GELU_CONSTANT) * cube_x) + x));
-    auto ans =
-        half * (one + tanh_out +
-                (one - tanh_out * tanh_out) * (x * kAlpha + kBeta * cube_x));
+    auto tanh_out = tanh(kAlpha * ((kBeta * cube_x) + x));
+    auto ans = half * (one + tanh_out) +
+               half * x * (one - tanh_out * tanh_out) *
+                   (kAlpha * (one + static_cast<MPType>(3) * kBeta * x_seq));
     return static_cast<T>(ans * dout);
   }
 };
@@ -52,8 +51,9 @@ struct GeluWithoutApproximateGradFunctor {
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
     MPType x = static_cast<MPType>(arg_x);
     MPType dout = static_cast<MPType>(arg_dout);
-    constexpr MPType kBeta = M_2_SQRTPI * M_SQRT1_2 * static_cast<MPType>(0.5);
-    const MPType cdf = normcdf(x);
+    constexpr MPType kBeta = M_2_SQRTPI * M_SQRT1_2 * MPType(0.5);
+    constexpr MPType kAlpha = M_SQRT1_2;
+    const MPType cdf = MPType(0.5) * (MPType(1) + std::erf(x * kAlpha));
     const MPType pdf = exp(static_cast<MPType>(-0.5) * x * x) * kBeta;
     return static_cast<T>(dout * (cdf + x * pdf));
   }

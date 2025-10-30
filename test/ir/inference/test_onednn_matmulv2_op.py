@@ -22,7 +22,7 @@ from hypothesis import given
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMkldnnMatmulv2Op(OnednnAutoScanTest):
+class TestOnednnMatmulv2Op(OnednnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         if len(program_config.inputs["input_data2"].shape) == 4:
             if (

@@ -1795,5 +1795,36 @@ class TestSetValueWithScalarInDygraph(unittest.TestCase):
         np.testing.assert_array_equal(x.grad, expected_x_grad)
 
 
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestSetValueWithStrideError(unittest.TestCase):
+    def test_same_place(self):
+        x = paddle.rand([5, 10], device=paddle.CUDAPlace(0))
+        y = paddle.rand([10, 5], device=paddle.CUDAPlace(0))
+        y.transpose_([1, 0])
+        x.set_value(y)
+        assert x.is_contiguous()
+
+    def test_different_place1(self):
+        # src place != dst place && src is not contiguous
+        x = paddle.rand([5, 10], device=paddle.CUDAPlace(0))
+        y = paddle.rand([10, 5], device=paddle.CPUPlace())
+        y.transpose_([1, 0])
+        x.set_value(y)
+        assert not x.is_contiguous()
+
+    def test_different_place2(self):
+        # src place != dst place && dst is not contiguous
+        with self.assertRaises(SystemError):
+            x = paddle.ones([5, 4], device=paddle.CUDAPlace(0))
+            x.transpose_([1, 0])
+            y = paddle.rand([4, 2], device=paddle.CPUPlace())
+            assert not x.is_contiguous()
+
+            x[:, 1:3].set_value(y)
+
+
 if __name__ == '__main__':
     unittest.main()
