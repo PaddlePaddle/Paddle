@@ -704,8 +704,14 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       phi_kernel_contexts_[data_type]->EmplaceBackAttr(
           attrs_map_[t].dyn_cast<::pir::FloatAttribute>().data());
     } else if (attr_type_name == "pir::DoubleAttribute") {
-      phi_kernel_contexts_[data_type]->EmplaceBackAttr(
-          attrs_map_[t].dyn_cast<::pir::DoubleAttribute>().data());
+      if (attrs_map_[t].type_id() == ::pir::FloatAttribute::type_id()) {
+        const auto val = attrs_map_[t].dyn_cast<::pir::FloatAttribute>().data();
+        phi_kernel_contexts_[data_type]->EmplaceBackAttr(
+            static_cast<double>(val));
+      } else {
+        phi_kernel_contexts_[data_type]->EmplaceBackAttr(
+            attrs_map_[t].dyn_cast<::pir::DoubleAttribute>().data());
+      }
     } else if (attr_type_name == "pir::BoolAttribute") {
       phi_kernel_contexts_[data_type]->EmplaceBackAttr(
           attrs_map_[t].dyn_cast<::pir::BoolAttribute>().data());

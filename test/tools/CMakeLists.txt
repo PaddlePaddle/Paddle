@@ -6,8 +6,9 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 if((NOT WITH_COVERAGE) AND (LINUX))
   foreach(TEST_OP ${TEST_OPS})
-    py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS
-                    PYTHONPATH=${PADDLE_SOURCE_DIR}/tools)
+    py_test_modules(
+      ${TEST_OP} MODULES ${TEST_OP} ENVS
+      PYTHONPATH=${PADDLE_SOURCE_DIR}/tools:${PADDLE_BINARY_DIR}/python)
   endforeach()
 
   set_tests_properties(test_sampcd_processor PROPERTIES TIMEOUT 300)

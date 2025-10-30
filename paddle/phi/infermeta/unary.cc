@@ -3428,7 +3428,7 @@ void PadInferMeta(const MetaTensor& input,
 void Pad3dInferMeta(const MetaTensor& x,
                     const IntArray& paddings_int_array,
                     const std::string& mode,
-                    float value,
+                    double value,
                     const std::string& data_format,
                     MetaTensor* out,
                     MetaConfig config) {
