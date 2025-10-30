@@ -768,13 +768,14 @@ class TestCTCLossAPICase(unittest.TestCase):
 
         @contextlib.contextmanager
         def static_graph():
-            paddle.seed(self.seed)
+            seed = 42
+            paddle.seed(seed)
             if paddle.framework.use_pir_api():
                 with paddle.pir_utils.OldIrGuard():
-                    paddle.framework.random._manual_program_seed(self.seed)
-                paddle.framework.random._manual_program_seed(self.seed)
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
             else:
-                paddle.framework.random._manual_program_seed(self.seed)
+                paddle.framework.random._manual_program_seed(seed)
             yield
 
         with static_graph():
