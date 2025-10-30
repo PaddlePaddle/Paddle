@@ -1490,6 +1490,7 @@ def run_cmd(command, verbose=False):
         raise RuntimeError(f"Failed to run command: {compile}, errors: {error}")
 
 
+# The "verbose" parameter is not used and is usually set using environment variable.
 def check_abi_compatibility(compiler, verbose=False):
     """
     Check whether GCC version on user local machine is compatible with Paddle in
