@@ -68,8 +68,10 @@ void UniformKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   // Handle complex types separately
-  if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
-                std::is_same_v<T, phi::dtype::complex<double>>) {
+  const bool is_complex = std::is_same_v<T, phi::dtype::complex<float>> ||
+                          std::is_same_v<T, phi::dtype::complex<double>>;
+
+  if (is_complex) {
     using RealType = phi::dtype::Real<T>;  // float or double
     RealType min_val = min.to<RealType>();
     RealType max_val = max.to<RealType>();
@@ -95,6 +97,7 @@ void UniformKernel(const Context& dev_ctx,
       ComplexKernel<RealType, Context>(dev_ctx, real_part, imag_part, out);
     } else {
       // Use OP seed
+      // Define the device lambda outside constexpr if to avoid MSVC restriction
       auto func = [=] __device__(int64_t idx) {
         thrust::minstd_rand engine;
         engine.seed(seed);
@@ -104,6 +107,7 @@ void UniformKernel(const Context& dev_ctx,
         RealType imag_val = dist(engine);
         return T(real_val, imag_val);
       };  // NOLINT(readability/braces)
+
       IndexKernel<T, decltype(func)>(dev_ctx, out, func);
     }
   } else {
