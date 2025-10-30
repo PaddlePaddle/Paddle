@@ -46,7 +46,7 @@ jobs:
 
   test:
     name: Coverage test
-    needs: [build, build-docker]
+    needs: [build-docker]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
