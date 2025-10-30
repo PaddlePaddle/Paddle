@@ -56,32 +56,24 @@ struct UniformGenerator {
   }
 };
 
+template <typename T, typename Context, bool IsComplex>
+struct UniformKernelImpl;
+
 template <typename T, typename Context>
-void UniformKernel(const Context& dev_ctx,
-                   const IntArray& shape,
-                   DataType dtype,
-                   const Scalar& min,
-                   const Scalar& max,
-                   int seed,
-                   DenseTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
-  dev_ctx.template Alloc<T>(out);
-
-  // Handle complex types separately
-  const bool is_complex = std::is_same_v<T, phi::dtype::complex<float>> ||
-                          std::is_same_v<T, phi::dtype::complex<double>>;
-
-  if (is_complex) {
-    using RealType = phi::dtype::Real<T>;  // float or double
+struct UniformKernelImpl<T, Context, true> {
+  static void Apply(const Context& dev_ctx,
+                    const Scalar& min,
+                    const Scalar& max,
+                    int seed,
+                    DenseTensor* out) {
+    using RealType = phi::dtype::Real<T>;
     RealType min_val = min.to<RealType>();
     RealType max_val = max.to<RealType>();
 
     if (seed == 0) {
-      // Use global Generator seed
       funcs::uniform_distribution<RealType> dist;
       funcs::uniform_real_transform<RealType> trans(min_val, max_val);
 
-      // Generate random values for real and imaginary parts separately
       DenseTensor real_part, imag_part;
       real_part.Resize(out->dims());
       imag_part.Resize(out->dims());
@@ -93,11 +85,8 @@ void UniformKernel(const Context& dev_ctx,
       funcs::distribution_and_transform<RealType>(
           dev_ctx, &imag_part, dist, trans);
 
-      // Combine real and imaginary parts using ComplexKernel
       ComplexKernel<RealType, Context>(dev_ctx, real_part, imag_part, out);
     } else {
-      // Use OP seed
-      // Define the device lambda outside constexpr if to avoid MSVC restriction
       auto func = [=] __device__(int64_t idx) {
         thrust::minstd_rand engine;
         engine.seed(seed);
@@ -110,25 +99,52 @@ void UniformKernel(const Context& dev_ctx,
 
       IndexKernel<T, decltype(func)>(dev_ctx, out, func);
     }
-  } else {
-    // Original implementation for non-complex types
+  }
+};
+
+template <typename T, typename Context>
+struct UniformKernelImpl<T, Context, false> {
+  static void Apply(const Context& dev_ctx,
+                    const Scalar& min,
+                    const Scalar& max,
+                    int seed,
+                    DenseTensor* out) {
     if (seed == 0) {
-      // Use global Generator seed
       using MT = typename phi::dtype::MPTypeTrait<T>::Type;
       funcs::uniform_distribution<MT> dist;
       funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
       funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
     } else {
-      // Use OP seed
-      auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
-                                      static_cast<T>(max.to<float>()),
-                                      seed,
-                                      0,
-                                      0,
-                                      static_cast<T>(0.0));
+      auto func = UniformGenerator<T>(
+          static_cast<T>(min.to<float>()),
+          static_cast<T>(max.to<float>()),
+          seed,
+          0,
+          0,
+          static_cast<T>(0.0));  // NOLINT(readability/braces)
       IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
     }
   }
+};
+
+// 主函数
+template <typename T, typename Context>
+void UniformKernel(const Context& dev_ctx,
+                   const IntArray& shape,
+                   DataType dtype,
+                   const Scalar& min,
+                   const Scalar& max,
+                   int seed,
+                   DenseTensor* out) {
+  out->Resize(common::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<T>(out);
+
+  constexpr bool is_complex =
+      std::is_same<T, phi::dtype::complex<float>>::value ||
+      std::is_same<T, phi::dtype::complex<double>>::value;
+
+  UniformKernelImpl<T, Context, is_complex>::Apply(
+      dev_ctx, min, max, seed, out);
 }
 
 }  // namespace phi
