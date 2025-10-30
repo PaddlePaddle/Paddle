@@ -19,7 +19,7 @@ env:
   CI_name: Doc-Preview
   CFS_DIR: /home/data/cfs
   work_dir: /paddle
-  no_proxy: "cdn.bcebos.com,bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
   run:
@@ -105,7 +105,7 @@ jobs:
           curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
           cd /
           source ${{ github.workspace }}/../../../proxy
-          echo "$no_proxy"
+          pip3 install --force-reinstall ${work_dir}/build/pr_whl/*.whl
           bash "/tmp/entrypoint.sh"
           '
 
