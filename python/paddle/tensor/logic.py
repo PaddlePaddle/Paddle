@@ -584,8 +584,6 @@ def equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if not isinstance(
         y, (int, bool, float, Variable, complex, paddle.pir.Value)
     ):
-        if y is None:
-            return False
         raise TypeError(
             f"Type of input args must be float, bool, complex, int or Tensor, but received type {type(y)}"
         )
@@ -1113,8 +1111,6 @@ def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , True ])
     """
-    if y is None:
-        return True
     if in_dynamic_or_pir_mode():
         return _C_ops.not_equal(x, y)
     else:
