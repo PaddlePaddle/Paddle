@@ -766,57 +766,46 @@ class TestCTCLossAPICase(unittest.TestCase):
         input_len_np = np.array([1], dtype=np.int64)
         label_len_np = np.array([3], dtype=np.int64)
 
-        @contextlib.contextmanager
-        def static_graph():
-            seed = 42
-            paddle.seed(seed)
-            if paddle.framework.use_pir_api():
-                with paddle.pir_utils.OldIrGuard():
-                    paddle.framework.random._manual_program_seed(seed)
-                paddle.framework.random._manual_program_seed(seed)
-            else:
-                paddle.framework.random._manual_program_seed(seed)
-            yield
+        paddle.enable_static()
+        logits = paddle.static.data(
+            name="logits_il",
+            shape=[max_time, batch, n_class],
+            dtype="float32",
+        )
+        labels = paddle.static.data(
+            name="labels_il", shape=[batch, 3], dtype="int32"
+        )
+        input_len = paddle.static.data(
+            name="input_len_il", shape=[batch], dtype="int64"
+        )
+        label_len = paddle.static.data(
+            name="label_len_il", shape=[batch], dtype="int64"
+        )
 
-        with static_graph():
-            logits = paddle.static.data(
-                name="logits_il",
-                shape=[max_time, batch, n_class],
-                dtype="float32",
-            )
-            labels = paddle.static.data(
-                name="labels_il", shape=[batch, 3], dtype="int32"
-            )
-            input_len = paddle.static.data(
-                name="input_len_il", shape=[batch], dtype="int64"
-            )
-            label_len = paddle.static.data(
-                name="label_len_il", shape=[batch], dtype="int64"
-            )
+        loss = paddle.nn.functional.ctc_loss(
+            log_probs=logits,
+            labels=labels,
+            input_lengths=input_len,
+            label_lengths=label_len,
+            reduction="none",
+            zero_infinity=True,
+            blank=n_class - 1,
+        )
 
-            loss = paddle.nn.functional.ctc_loss(
-                log_probs=logits,
-                labels=labels,
-                input_lengths=input_len,
-                label_lengths=label_len,
-                reduction="none",
-                zero_infinity=True,
-                blank=n_class - 1,
-            )
-
-            exe = paddle.static.Executor()
-            loss_val = exe.run(
-                feed={
-                    "logits_il": logits_np,
-                    "labels_il": labels_np,
-                    "input_len_il": input_len_np,
-                    "label_len_il": label_len_np,
-                },
-                fetch_list=[loss],
-            )[0]
+        exe = paddle.static.Executor()
+        loss_val = exe.run(
+            feed={
+                "logits_il": logits_np,
+                "labels_il": labels_np,
+                "input_len_il": input_len_np,
+                "label_len_il": label_len_np,
+            },
+            fetch_list=[loss],
+        )[0]
 
         # illegal sample -> 0
         self.assertAlmostEqual(loss_val[0], 0.0, places=6)
+        paddle.disable_static()
 
     def test_ctc_loss_zero_infinity_dygraph(self):
         max_time = 1
