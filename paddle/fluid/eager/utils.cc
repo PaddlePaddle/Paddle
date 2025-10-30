@@ -1641,5 +1641,20 @@ const std::string FormatTensor(const paddle::Tensor& t) {
 
   return formatter.Format(dense_tensor, t.name());
 }
+void SaveStringToFileWithPID(const std::string& filename,
+                             const std::string& content,
+                             const std::string& mode = "trunc") {
+  pid_t pid = getpid();
+  // Create the new filename with PID suffix
+  std::string newFilename = filename + "." + std::to_string(pid);
+  SaveStringToFile(newFilename, content, mode);
+}
+void SavePythonCallStackToFile(const std::string& file_name,
+                               const std::string& api_name) {
+  SaveStringToFileWithPID(
+      file_name,
+      api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
+      "append");
+}
 
 }  // namespace egr

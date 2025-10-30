@@ -25,6 +25,8 @@
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
 COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
+COMMON_DECLARE_string(dump_api_python_stack_path);
 
 paddle::Tensor conv2d_ad_func(
     const paddle::Tensor& input,
@@ -118,6 +120,12 @@ paddle::Tensor conv2d_ad_func(
     call_count++;
     unique_api_name = egr::GenerateUniqueApiName("conv2d", call_count);
   }
+  // Save forward call stack to file for debug
+  if (FLAGS_call_stack_level == 3 &&
+      !FLAGS_dump_api_python_stack_path.empty()) {
+    egr::SavePythonCallStackToFile(FLAGS_dump_api_python_stack_path,
+                                   unique_api_name);
+  }
   VLOG(3) << "\n"
           << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto api_result = paddle::experimental::conv2d(input,
@@ -139,6 +147,11 @@ paddle::Tensor conv2d_ad_func(
   auto& out = api_result;
   if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
     egr::SetTensorName(unique_api_name, "out", &out);
+  }
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     out);
   }
 
   // Get Output AutoGradMeta
