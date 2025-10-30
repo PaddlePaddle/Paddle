@@ -29,9 +29,31 @@ def parameterize(*params):
 
 class TestFeatures(unittest.TestCase):
     def setUp(self):
-        self.initParmas()
+        self.initParams()
 
-    def initParmas(self):
+    def initParams(self):
+        """
+        初始化音频特征提取测试参数。
+
+        初始化包括:
+        - 设置音频参数(fmin, top_db, duration等)
+        - 生成测试用的波形数据
+        - 将波形数据转换为numpy数组存储
+
+        Args:
+            无显式参数，通过self属性配置:
+            dtype: 音频数据类型，默认为"float32"
+            num_channels: 音频通道数，默认为1
+            sr: 采样率，默认为16000
+            duration: 音频时长(秒)，默认为0.5
+            fmin: 最小频率，默认为0.0
+            top_db: 最大分贝，默认为80.0
+
+        Returns:
+            无返回值，但会设置以下属性:
+            waveform: 生成的波形数据(numpy数组)
+        """
+
         def get_wav_data(dtype: str, num_channels: int, num_frames: int):
             dtype_ = getattr(paddle, dtype)
             base = paddle.linspace(-1.0, 1.0, num_frames, dtype=dtype_) * 0.1
