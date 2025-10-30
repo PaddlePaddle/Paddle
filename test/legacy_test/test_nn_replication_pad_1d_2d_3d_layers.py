@@ -31,6 +31,10 @@ class TestReplicationPad1d(unittest.TestCase):
 
         pad = [1, 2]  # pad_left, pad_right
         my_pad = ReplicationPad1d(padding=pad, data_format="NCL")
+        assert (
+            my_pad.__repr__()
+            == "ReplicationPad1D(padding=[1, 2], data_format=NCL)"
+        )
         result = my_pad(data)
 
         expected_np = np.array(
@@ -101,6 +105,10 @@ class TestReplicationPad2d(unittest.TestCase):
 
         pad = [1, 0, 1, 2]  # (pad_left, pad_right, pad_top, pad_bottom)
         my_pad = ReplicationPad2d(padding=pad, data_format="NCHW")
+        assert (
+            my_pad.__repr__()
+            == "ReplicationPad2D(padding=[1, 0, 1, 2], data_format=NCHW)"
+        )
         result = my_pad(data)
 
         expected_np = np.array(
@@ -187,6 +195,10 @@ class TestReplicationPad3d(unittest.TestCase):
         # (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)
         pad = [1, 0, 1, 2, 0, 0]  # Pad W, H. D is unchanged.
         my_pad = ReplicationPad3d(padding=pad, data_format="NCDHW")
+        assert (
+            my_pad.__repr__()
+            == "ReplicationPad3D(padding=[1, 0, 1, 2, 0, 0], data_format=NCDHW)"
+        )
         result = my_pad(data)
 
         expected_np = np.array(

@@ -31,6 +31,10 @@ class TestReflectionPad1d(unittest.TestCase):
 
         pad = [1, 2]  # pad_left=1, pad_right=2
         my_pad = ReflectionPad1d(padding=pad, data_format="NCL")
+        assert (
+            my_pad.__repr__()
+            == "ReflectionPad1D(padding=[1, 2], data_format=NCL)"
+        )
         result = my_pad(data)
 
         expected_np = np.array(
@@ -109,6 +113,10 @@ class TestReflectionPad2d(unittest.TestCase):
 
         pad = [1, 0, 1, 1]
         my_pad = ReflectionPad2d(padding=pad, data_format="NCHW")
+        assert (
+            my_pad.__repr__()
+            == "ReflectionPad2D(padding=[1, 0, 1, 1], data_format=NCHW)"
+        )
         result = my_pad(data)
 
         expected_np = np.array(
@@ -177,6 +185,10 @@ class TestReflectionPad3d(unittest.TestCase):
 
         pad = [1, 0, 1, 1, 0, 0]
         my_pad = ReflectionPad3d(padding=pad, data_format="NCDHW")
+        assert (
+            my_pad.__repr__()
+            == "ReflectionPad3D(padding=[1, 0, 1, 1, 0, 0], data_format=NCDHW)"
+        )
         result = my_pad(data)
 
         expected_np = np.array(

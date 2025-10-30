@@ -60,9 +60,9 @@ from .layer.activation import (
 from .layer.common import (
     AlphaDropout,
     Bilinear,
-    ConstantPad1d,
-    ConstantPad2d,
-    ConstantPad3d,
+    ConstantPad1D,
+    ConstantPad2D,
+    ConstantPad3D,
     CosineSimilarity,
     Dropout,
     Dropout2D,
@@ -76,12 +76,12 @@ from .layer.common import (
     Pad1D,
     Pad2D,
     Pad3D,
-    ReflectionPad1d,
-    ReflectionPad2d,
-    ReflectionPad3d,
-    ReplicationPad1d,
-    ReplicationPad2d,
-    ReplicationPad3d,
+    ReflectionPad1D,
+    ReflectionPad2D,
+    ReflectionPad3D,
+    ReplicationPad1D,
+    ReplicationPad2D,
+    ReplicationPad3D,
     Unflatten,
     Unfold,
     Upsample,
@@ -198,6 +198,16 @@ from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
 SiLU = Silu
+ReflectionPad1d = ReflectionPad1D
+ReflectionPad2d = ReflectionPad2D
+ReflectionPad3d = ReflectionPad3D
+ConstantPad1d = ConstantPad1D
+ConstantPad2d = ConstantPad2D
+ConstantPad3d = ConstantPad3D
+ReplicationPad1d = ReplicationPad1D
+ReplicationPad2d = ReplicationPad2D
+ReplicationPad3d = ReplicationPad3D
+
 
 __all__ = [
     'BatchNorm',
@@ -221,6 +231,15 @@ __all__ = [
     'Pad1D',
     'Pad2D',
     'Pad3D',
+    'ConstantPad1D',
+    'ConstantPad2D',
+    'ConstantPad3D',
+    'ReplicationPad1D',
+    'ReplicationPad2D',
+    'ReplicationPad3D',
+    'ReflectionPad1D',
+    'ReflectionPad2D',
+    'ReflectionPad3D',
     'ConstantPad1d',
     'ConstantPad2d',
     'ConstantPad3d',

@@ -1238,30 +1238,30 @@ class Pad1D(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 1)
+        self.padding = _npairs(padding, 1)
         self._mode = mode
-        self._value = value
+        self.value = value
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+        return f'padding={self.padding}, mode={self._mode}, value={self.value}, data_format={self._data_format}{name_str}'
 
 
-class ConstantPad1d(Layer):
+class ConstantPad1D(Layer):
     """
-    This interface is used to construct a callable object of the ``ConstantPad1d`` class.
+    This interface is used to construct a callable object of the ``ConstantPad1D`` class.
     Pads the input tensor boundaries with a constant value.
 
     Parameters:
@@ -1292,7 +1292,7 @@ class ConstantPad1d(Layer):
             >>> input_shape = (1, 2, 3)
             >>> pad = [1, 2]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.ConstantPad1d(padding=pad, value=0.5)
+            >>> my_pad = nn.ConstantPad1D(padding=pad, value=0.5)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1308,30 +1308,30 @@ class ConstantPad1d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 1)
+        self.padding = _npairs(padding, 1)
         self._mode = 'constant'
-        self._value = value
+        self.value = value
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, value={self._value}, data_format={self._data_format}{name_str}'
+        return f'padding={self.padding}, value={self.value}, data_format={self._data_format}{name_str}'
 
 
-class ReplicationPad1d(Layer):
+class ReplicationPad1D(Layer):
     """
-    This interface is used to construct a callable object of the ``ReplicationPad1d`` class.
+    This interface is used to construct a callable object of the ``ReplicationPad1D`` class.
     Pads the input tensor boundaries by replicating the edge values.
 
     Parameters:
@@ -1358,12 +1358,12 @@ class ReplicationPad1d(Layer):
 
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> # from replication_padding_layers import ReplicationPad1d
+            >>> # from replication_padding_layers import ReplicationPad1D
 
             >>> input_shape = (1, 2, 3)
             >>> pad = [1, 2]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.ReplicationPad1d(padding=pad)
+            >>> my_pad = nn.ReplicationPad1D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1378,30 +1378,32 @@ class ReplicationPad1d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 1)
+        self.padding = _npairs(padding, 1)
         self._mode = 'replicate'
-        self._value = 0.0  # value is ignored in replicate mode, but kept for F.pad signature
+        self.value = 0.0  # value is ignored in replicate mode, but kept for F.pad signature
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
-class ReflectionPad1d(Layer):
+class ReflectionPad1D(Layer):
     """
-    This interface is used to construct a callable object of the ``ReflectionPad1d`` class.
+    This interface is used to construct a callable object of the ``ReflectionPad1D`` class.
     Pads the input tensor boundaries using reflection of the input boundaries.
 
     Parameters:
@@ -1429,13 +1431,13 @@ class ReflectionPad1d(Layer):
 
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> # from reflection_padding_layers import ReflectionPad1d
+            >>> # from reflection_padding_layers import ReflectionPad1D
 
             >>> input_shape = (1, 2, 3)
             >>> pad = [1, 2]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data = [[[1., 2., 3.], [4., 5., 6.]]]
-            >>> my_pad = nn.ReflectionPad1d(padding=pad)
+            >>> my_pad = nn.ReflectionPad1D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1450,25 +1452,27 @@ class ReflectionPad1d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 1)
+        self.padding = _npairs(padding, 1)
         self._mode = 'reflect'
-        self._value = 0.0  # value is ignored in reflect mode
+        self.value = 0.0  # value is ignored in reflect mode
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
 class ZeroPad1D(Layer):
@@ -1519,25 +1523,27 @@ class ZeroPad1D(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 1)
+        self.padding = _npairs(padding, 1)
         self._mode = 'constant'
-        self._value = 0.0
+        self.value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
 class Pad2D(Layer):
@@ -1595,30 +1601,30 @@ class Pad2D(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 2)
+        self.padding = _npairs(padding, 2)
         self._mode = mode
-        self._value = value
+        self.value = value
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+        return f'padding={self.padding}, mode={self._mode}, value={self.value}, data_format={self._data_format}{name_str}'
 
 
-class ConstantPad2d(Layer):
+class ConstantPad2D(Layer):
     """
-    This interface is used to construct a callable object of the ``ConstantPad2d`` class.
+    This interface is used to construct a callable object of the ``ConstantPad2D`` class.
     Pads the input tensor boundaries with a constant value.
 
     Parameters:
@@ -1649,7 +1655,7 @@ class ConstantPad2d(Layer):
             >>> input_shape = (1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.ConstantPad2d(padding=pad, value=0.5)
+            >>> my_pad = nn.ConstantPad2D(padding=pad, value=0.5)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1668,30 +1674,30 @@ class ConstantPad2d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 2)
+        self.padding = _npairs(padding, 2)
         self._mode = 'constant'
-        self._value = value
+        self.value = value
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, value={self._value}, data_format={self._data_format}{name_str}'
+        return f'padding={self.padding}, value={self.value}, data_format={self._data_format}{name_str}'
 
 
-class ReplicationPad2d(Layer):
+class ReplicationPad2D(Layer):
     """
-    This interface is used to construct a callable object of the ``ReplicationPad2d`` class.
+    This interface is used to construct a callable object of the ``ReplicationPad2D`` class.
     Pads the input tensor boundaries by replicating the edge values.
 
     Parameters:
@@ -1718,12 +1724,12 @@ class ReplicationPad2d(Layer):
 
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> # from replication_padding_layers import ReplicationPad2d
+            >>> # from replication_padding_layers import ReplicationPad2D
 
             >>> input_shape = (1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.ReplicationPad2d(padding=pad)
+            >>> my_pad = nn.ReplicationPad2D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1741,30 +1747,32 @@ class ReplicationPad2d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 2)
+        self.padding = _npairs(padding, 2)
         self._mode = 'replicate'
-        self._value = 0.0
+        self.value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
-class ReflectionPad2d(Layer):
+class ReflectionPad2D(Layer):
     """
-    This interface is used to construct a callable object of the ``ReflectionPad2d`` class.
+    This interface is used to construct a callable object of the ``ReflectionPad2D`` class.
     Pads the input tensor boundaries using reflection of the input boundaries.
 
     Parameters:
@@ -1792,13 +1800,13 @@ class ReflectionPad2d(Layer):
 
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> # from reflection_padding_layers import ReflectionPad2d
+            >>> # from reflection_padding_layers import ReflectionPad2D
 
             >>> input_shape = (1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2] # L=1, R=0, T=1, B=2
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data = [[[[1., 2., 3.], [4., 5., 6.]]]]
-            >>> my_pad = nn.ReflectionPad2d(padding=pad)
+            >>> my_pad = nn.ReflectionPad2D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1816,25 +1824,27 @@ class ReflectionPad2d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 2)
+        self.padding = _npairs(padding, 2)
         self._mode = 'reflect'
-        self._value = 0.0
+        self.value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
 class ZeroPad2D(Layer):
@@ -1888,25 +1898,27 @@ class ZeroPad2D(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 2)
+        self.padding = _npairs(padding, 2)
         self._mode = 'constant'
-        self._value = 0.0
+        self.value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
 class Pad3D(Layer):
@@ -1965,30 +1977,30 @@ class Pad3D(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 3)
+        self.padding = _npairs(padding, 3)
         self._mode = mode
-        self._value = value
+        self.value = value
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+        return f'padding={self.padding}, mode={self._mode}, value={self.value}, data_format={self._data_format}{name_str}'
 
 
-class ConstantPad3d(Layer):
+class ConstantPad3D(Layer):
     """
-    This interface is used to construct a callable object of the ``ConstantPad3d`` class.
+    This interface is used to construct a callable object of the ``ConstantPad3D`` class.
     Pads the input tensor boundaries with a constant value.
 
     Parameters:
@@ -2020,7 +2032,7 @@ class ConstantPad3d(Layer):
             >>> input_shape = (1, 1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2, 0, 0]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.ConstantPad3d(padding=pad, value=0.5)
+            >>> my_pad = nn.ConstantPad3D(padding=pad, value=0.5)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -2039,30 +2051,30 @@ class ConstantPad3d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 3)
+        self.padding = _npairs(padding, 3)
         self._mode = 'constant'
-        self._value = value
+        self.value = value
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, value={self._value}, data_format={self._data_format}{name_str}'
+        return f'padding={self.padding}, value={self.value}, data_format={self._data_format}{name_str}'
 
 
-class ReplicationPad3d(Layer):
+class ReplicationPad3D(Layer):
     """
-    This interface is used to construct a callable object of the ``ReplicationPad3d`` class.
+    This interface is used to construct a callable object of the ``ReplicationPad3D`` class.
     Pads the input tensor boundaries by replicating the edge values.
 
     Parameters:
@@ -2090,12 +2102,12 @@ class ReplicationPad3d(Layer):
 
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> # from replication_padding_layers import ReplicationPad3d
+            >>> # from replication_padding_layers import ReplicationPad3D
 
             >>> input_shape = (1, 1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2, 0, 0]
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            >>> my_pad = nn.ReplicationPad3d(padding=pad)
+            >>> my_pad = nn.ReplicationPad3D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -2113,30 +2125,32 @@ class ReplicationPad3d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 3)
+        self.padding = _npairs(padding, 3)
         self._mode = 'replicate'
-        self._value = 0.0
+        self.value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
-class ReflectionPad3d(Layer):
+class ReflectionPad3D(Layer):
     """
-    This interface is used to construct a callable object of the ``ReflectionPad3d`` class.
+    This interface is used to construct a callable object of the ``ReflectionPad3D`` class.
     Pads the input tensor boundaries using reflection of the input boundaries.
 
     Parameters:
@@ -2165,13 +2179,13 @@ class ReflectionPad3d(Layer):
 
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> # from reflection_padding_layers import ReflectionPad3d
+            >>> # from reflection_padding_layers import ReflectionPad3D
 
             >>> input_shape = (1, 1, 1, 2, 3)
             >>> pad = [1, 0, 1, 2, 0, 0] # L=1, R=0, T=1, B=2, F=0, B=0
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data = [[[[[1., 2., 3.], [4., 5., 6.]]]]]
-            >>> my_pad = nn.ReflectionPad3d(padding=pad)
+            >>> my_pad = nn.ReflectionPad3D(padding=pad)
             >>> result = my_pad(data)
             >>> print(result)
             Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -2189,25 +2203,27 @@ class ReflectionPad3d(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 3)
+        self.padding = _npairs(padding, 3)
         self._mode = 'reflect'
-        self._value = 0.0
+        self.value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
 class ZeroPad3D(Layer):
@@ -2262,25 +2278,27 @@ class ZeroPad3D(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._pad = _npairs(padding, 3)
+        self.padding = _npairs(padding, 3)
         self._mode = 'constant'
-        self._value = 0.0
+        self.value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
-            pad=self._pad,
+            pad=self.padding,
             mode=self._mode,
-            value=self._value,
+            value=self.value,
             data_format=self._data_format,
             name=self._name,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        return (
+            f'padding={self.padding}, data_format={self._data_format}{name_str}'
+        )
 
 
 class CosineSimilarity(Layer):
@@ -2478,7 +2496,7 @@ class Embedding(Layer):
         self._is_distributed = False
         self._max_norm = max_norm
         self._norm_type = norm_type
-        self._padding_idx = padding_idx
+        self.paddingding_idx = padding_idx
         self._scale_grad_by_freq = scale_grad_by_freq
         self._device = device
 
@@ -2535,18 +2553,18 @@ class Embedding(Layer):
 
     @property
     def padding_idx(self):
-        return self._padding_idx
+        return self.paddingding_idx
 
     @padding_idx.setter
     def padding_idx(self, value):
-        self._padding_idx = value
+        self.paddingding_idx = value
 
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.embedding(
             x,
             weight=self.weight,
-            padding_idx=self._padding_idx,
+            padding_idx=self.paddingding_idx,
             max_norm=self._max_norm,
             norm_type=self._norm_type,
             sparse=self._sparse,
@@ -2556,7 +2574,7 @@ class Embedding(Layer):
 
     def extra_repr(self) -> str:
         main_str = '{_num_embeddings}, {_embedding_dim}'
-        if self._padding_idx is not None:
+        if self.paddingding_idx is not None:
             main_str += ', padding_idx={_padding_idx}'
         main_str += ', sparse={_sparse}'
         main_str += ', scale_grad_by_freq={_scale_grad_by_freq}'
