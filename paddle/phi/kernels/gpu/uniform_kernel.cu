@@ -127,7 +127,6 @@ struct UniformKernelImpl<T, Context, false> {
   }
 };
 
-// 主函数
 template <typename T, typename Context>
 void UniformKernel(const Context& dev_ctx,
                    const IntArray& shape,
