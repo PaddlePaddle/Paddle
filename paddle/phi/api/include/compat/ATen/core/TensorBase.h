@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <ATen/ATen.h>
 #include <c10/core/Device.h>
 #include <c10/core/MemoryFormat.h>
+#include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
@@ -66,6 +66,9 @@ class PADDLE_API TensorBase {
   }
 
   int64_t size(int64_t dim) const {
+    if (dim < 0) {
+      dim += tensor_.dims().size();
+    }
     return tensor_.dims()[static_cast<int>(dim)];
   }
 

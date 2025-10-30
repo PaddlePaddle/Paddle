@@ -33,9 +33,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
       multiple,
@@ -543,7 +540,6 @@ int QkvToContextPluginDynamic::enqueue(
   }
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

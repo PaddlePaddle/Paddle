@@ -11,27 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import re
 import unittest
 
 import numpy as np
-from op_test import is_custom_device
+from op_test import (
+    check_cudnn_version_and_compute_capability,
+    get_cuda_version,
+    is_custom_device,
+)
 
 import paddle
 from paddle import _C_ops
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def promote_dtype(x):
@@ -174,9 +164,12 @@ class TestMainClassBase(unittest.TestCase):
         ):
             return
 
-        prop = paddle.device.cuda.get_device_properties()
-        cap = prop.major * 10 + prop.minor
-        if self.dtype == paddle.bfloat16 and cap < 80:
+        if (
+            self.dtype == paddle.bfloat16
+            and not check_cudnn_version_and_compute_capability(
+                min_device_capability=8
+            )
+        ):
             return
 
         if get_cuda_version() < 11060:

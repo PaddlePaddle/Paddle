@@ -24,7 +24,6 @@ class HardSigmoidOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(5130)
     VLOG(3) << "convert a HardSigmoid op to tensorrt IActivationLayer "
                "layer without bias";
     framework::OpDesc op_desc(op, nullptr);
@@ -39,11 +38,6 @@ class HardSigmoidOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     ReplenishLayerAndOutput(layer, "hard_sigmoid", {output_name}, test_mode);
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "Hard sigmoid TRT converter is only supported on TRT 5 or higher. "
-        "Please confirm your TRT version is no less than 5.0."));
-#endif
   }
 };
 

@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../deprecated/legacy_test")
 from op_test import get_places
 from test_pool2d_op import (
     avg_pool2D_forward_naive,
@@ -770,6 +767,13 @@ class TestPool2D_API(unittest.TestCase):
             self.check_lp_static_results(place)
             self.check_lp_float64_static(place)
             self.check_lp_float16_static(place)
+        paddle.disable_static()
+
+    def test_torch_compatible(self):
+        paddle.set_flags({'FLAGS_torch_compatible_kernel': 1})
+        paddle.enable_static()
+        for place in self.places:
+            self.check_max_static_results(place)
         paddle.disable_static()
 
     def test_pool2d(self):

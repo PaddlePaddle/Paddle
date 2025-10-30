@@ -53,9 +53,6 @@ class Tensor : public TensorBase {
   }
 
   using TensorBase::size;
-  //   int64_t size(int64_t dim) const {
-  //     return tensor_.dims()[static_cast<int>(dim)];
-  //   }
 
   c10::IntArrayRef sizes() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
@@ -119,8 +116,12 @@ class Tensor : public TensorBase {
   }
 
   at::Tensor transpose(int64_t dim0, int64_t dim1) const {
-    return Tensor(paddle::experimental::transpose(
-        tensor_, {static_cast<int>(dim0), static_cast<int>(dim1)}));
+    std::vector<int> perm(tensor_.dims().size());
+    for (size_t i = 0; i < perm.size(); i++) {
+      perm[i] = static_cast<int>(i);
+    }
+    std::swap(perm[dim0], perm[dim1]);
+    return Tensor(paddle::experimental::transpose(tensor_, perm));
   }
 
   at::Tensor& copy_(const at::Tensor& src, bool non_blocking = false) const {

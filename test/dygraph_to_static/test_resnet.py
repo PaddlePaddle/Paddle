@@ -30,7 +30,7 @@ from predictor_utils import PredictorTools
 import paddle
 from paddle.base import core
 
-SEED = 2020
+SEED = 2025
 IMAGENET1000 = 1281167
 base_lr = 0.001
 momentum_rate = 0.9
@@ -474,10 +474,10 @@ class TestResnet(Dy2StTestBase):
         )
 
     @test_default_mode_only
-    def test_in_static_mode_mkldnn(self):
+    def test_in_static_mode_onednn(self):
         paddle.set_flags({'FLAGS_use_onednn': True})
         try:
-            if paddle.base.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_onednn():
                 self.train(to_static=True)
         finally:
             paddle.set_flags({'FLAGS_use_onednn': False})

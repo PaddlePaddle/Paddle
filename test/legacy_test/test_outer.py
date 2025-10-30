@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import (
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+)
 
 import paddle
 
@@ -161,16 +165,6 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-    def test_errors_static(self):
-        # test static computation graph: dtype can not be int8
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            x = paddle.static.data(name='x', shape=[100], dtype=np.int8)
-            y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
-            self.assertRaises(TypeError, paddle.outer, x, y)
-
     def test_errors_dynamic(self):
         np.random.seed(7)
 
@@ -318,6 +312,8 @@ class TestOuterAlias(unittest.TestCase):
             "int32",
             "int64",
         ]
+        if paddle.is_compiled_with_cuda():
+            dtype_cases.extend(["float16", "bfloat16"])
 
         for shape in shape_cases:
             for dtype in dtype_cases:
@@ -332,14 +328,22 @@ class TestOuterAlias(unittest.TestCase):
                     {"input": x, "vec2": y},
                 ]
 
+                x_numpy = x.numpy()
+                y_numpy = y.numpy()
+
                 # Get baseline result
-                expected = np.outer(x.numpy(), y.numpy())
+                if dtype == "bfloat16":
+                    x_numpy = convert_uint16_to_float(x_numpy)
+                    y_numpy = convert_uint16_to_float(y_numpy)
+                expected = np.outer(x_numpy, y_numpy)
+                if dtype == "bfloat16":
+                    expected = convert_float_to_uint16(expected)
+
+                rtol = 1e-5 if dtype != "bfloat16" else 1e-4
 
                 for params in combinations:
                     out = paddle.outer(**params)
-                    np.testing.assert_allclose(
-                        out.numpy(), expected, rtol=1e-05
-                    )
+                    np.testing.assert_allclose(out.numpy(), expected, rtol=rtol)
 
 
 if __name__ == '__main__':

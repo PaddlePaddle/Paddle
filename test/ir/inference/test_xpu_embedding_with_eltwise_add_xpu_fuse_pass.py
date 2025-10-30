@@ -153,7 +153,7 @@ class TestEmbeddingWithEltwiseAddXPUFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=3,
             min_success_num=3,

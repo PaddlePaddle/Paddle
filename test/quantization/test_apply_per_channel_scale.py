@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
 import struct
 import unittest
 
@@ -22,18 +20,6 @@ import numpy as np
 import paddle
 import paddle.nn.quant as Q
 from paddle.base import core
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def convert_uint16_to_float(in_list):
@@ -114,7 +100,6 @@ class ApplyPerChannelScaleTest(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",

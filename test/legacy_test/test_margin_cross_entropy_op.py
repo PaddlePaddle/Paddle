@@ -91,7 +91,8 @@ def python_api(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOp(OpTest):
     def initParams(self):
@@ -167,7 +168,8 @@ class TestMarginCrossEntropyOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
     def init_dtype(self):
@@ -185,7 +187,8 @@ class TestMarginCrossEntropyOpFP32(TestMarginCrossEntropyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
     def init_dtype(self):
@@ -208,7 +211,7 @@ class TestMarginCrossEntropyOpFP16(TestMarginCrossEntropyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
@@ -296,7 +299,8 @@ class TestMarginCrossEntropyBF16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpCosFace(TestMarginCrossEntropyOp):
     def init_loss_params(self):
@@ -307,7 +311,8 @@ class TestMarginCrossEntropyOpCosFace(TestMarginCrossEntropyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpSphereFace(TestMarginCrossEntropyOp):
     def init_loss_params(self):
@@ -491,7 +496,8 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpV3(TestMarginCrossEntropyOpV2):
     def init_reduction(self):
@@ -499,7 +505,8 @@ class TestMarginCrossEntropyOpV3(TestMarginCrossEntropyOpV2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpV4(TestMarginCrossEntropyOpV2):
     def init_reduction(self):

@@ -105,7 +105,6 @@ goto :eof
 :: Step 3: Python
 :python
 echo ">>>>>>>> step [3/9]: Python"
-where python 2>&1 | findstr /C:"Python38" > nul 2> nul || call :install_python3.8.3
 where python 2>&1 | findstr /C:"Python39" > nul 2> nul || call :install_python3.9.7
 where python 2>&1 | findstr /C:"Python310" > nul 2> nul || call :install_python3.10.0
 
@@ -116,23 +115,6 @@ if /i "%NEED_MORE_PY%"=="need_more_python" (
   where python 2>&1 | findstr /C:"Python313" > nul 2> nul || call :install_python3.13.2
 )
 goto vs
-
-:install_python3.8.3
-echo There is not Python in this PC, will install Python-3.8.3
-echo Download package from https://www.python.org/ftp/python/3.8.3/python-3.8.3-amd64.exe ...
-wget --no-check-certificate -O python-3.8.3-amd64.exe https://www.python.org/ftp/python/3.8.3/python-3.8.3-amd64.exe
-echo Install Python-3.8.3 ...
-:: /passive [silent install]
-:: InstallAllUsers [add path for all users]
-:: PrependPath [add script/install into PATH]
-:: TargetDir [install directory]
-start /wait python-3.8.3-amd64.exe /passive InstallAllUsers=1 PrependPath=1 TargetDir=C:\Python38
-if %errorlevel% == 0 (
-  echo Install python-3.8.3 success!
-) else (
-  echo Error***** Install python-3.8.3 failed, please re-install it manually.
-)
-goto :eof
 
 :install_python3.9.7
 echo There is not Python in this PC, will install Python-3.9.7

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -56,6 +57,13 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
   PADDLE_ENFORCE_NOT_NULL(impl_,
                           common::errors::InvalidArgument(
                               "TensorImpl with nullptr is not supported"));
+}
+Tensor::Tensor() {
+  if (VLOG_IS_ON(6)) {
+    std::ostringstream oss;
+    oss << "Tensor_" << std::hex << reinterpret_cast<uintptr_t>(this);
+    name_ = oss.str();
+  }
 }
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,

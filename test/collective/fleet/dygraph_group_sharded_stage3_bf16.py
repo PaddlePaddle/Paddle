@@ -83,7 +83,7 @@ def train_mlp(
             param.set_value(t)
 
     if sharding_stage == 3:
-        segment_size = 2 ^ 10  # threshold of each param
+        segment_size = 2**10  # threshold of each param
         model = GroupShardedStage3(
             model, optimizer, group=group, segment_size=segment_size
         )

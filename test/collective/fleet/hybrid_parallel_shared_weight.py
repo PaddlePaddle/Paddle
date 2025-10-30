@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
 import numpy as np
 
+os.environ['FLAGS_profile_optimizer_details_steps'] = "1"
 import paddle
 import paddle.distributed as dist
 from paddle import nn
