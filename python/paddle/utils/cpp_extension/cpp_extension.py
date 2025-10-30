@@ -26,6 +26,8 @@ import setuptools
 import sys
 import paddle
 import site
+import shutil
+from packaging import version
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
@@ -95,6 +97,16 @@ if core.is_compiled_with_rocm():
     CUDA_HOME = ROCM_HOME
 
 CCACHE_HOME = find_ccache_home()
+
+
+def _is_legacy_setuptools() -> bool:
+    """
+    Check if using legacy bdist_egg mechanism (setuptools < 80).
+
+    Returns:
+        bool: True if using setuptools < 80.0.0, False otherwise.
+    """
+    return version.parse(setuptools.__version__) < version.parse("80.0.0")
 
 
 def setup(**attr: Any) -> None:
@@ -240,8 +252,9 @@ def setup(**attr: Any) -> None:
     cmdclass['easy_install'] = EasyInstallCommand
 
     # Add install hook to rename shared library for setuptools >= 80
-    assert 'install' not in cmdclass
-    cmdclass['install'] = InstallCommand
+    if not _is_legacy_setuptools():
+        assert 'install' not in cmdclass
+        cmdclass['install'] = InstallCommand
 
     # Note(Aurelius84): Add rename build_base directory hook in build command.
     # To avoid using same build directory that will lead to remove the directory
@@ -255,10 +268,10 @@ def setup(**attr: Any) -> None:
     attr['zip_safe'] = False
 
     # Ensure modern metadata format for pip compatibility.
-    # Setting metadata_version >= 2.1 (introduced in PEP 566) forces setuptools
-    # to create .dist-info directories instead of .egg-info, which allows pip
-    # to properly detect and list installed packages via `pip list`.
-    # Version 2.1 is sufficient for this purpose and maintains compatibility.
+    # Setting metadata_version >= 2.1 encourages setuptools to use modern
+    # packaging standards and helps ensure pip can properly detect and list
+    # installed packages via `pip list`. This is particularly important for
+    # custom extensions that need to be discoverable by pip.
     if 'metadata_version' not in attr:
         attr['metadata_version'] = '2.1'
 
@@ -885,12 +898,18 @@ class BuildExtension(build_ext):
             # Write stub; it will reference the _pd_ renamed resource at import time
             custom_write_stub(so_name, pyfile)
         except Exception as e:
-            print(f"Warning: failed to generate python api file: {e}")
+            raise RuntimeError(
+                f"Failed to generate python api file: {e}"
+            ) from e
 
     def run(self):
         super().run()
-        # Generate python API stub into build_lib for setuptools >= 80 installs
-        self._generate_python_api_file()
+
+        # Skip if using legacy bdist_egg mechanism (setuptools < 80)
+        if not _is_legacy_setuptools():
+            # Generate python API stub into build_lib for setuptools >= 80 installs
+            self._generate_python_api_file()
+
         self._clean_intermediate_files()
 
 
@@ -977,53 +996,40 @@ class InstallCommand(install):
 
     def finalize_options(self) -> None:
         super().finalize_options()
-        try:
-            import sys
-
-            # Build candidate site dirs: global + user + entries already on sys.path
-            candidates = []
-            try:
-                candidates.extend(site.getsitepackages())
-            except Exception:
-                pass
-            try:
-                usp = site.getusersitepackages()
-                if usp:
-                    candidates.append(usp)
-            except Exception:
-                pass
-            for sp in sys.path:
-                if isinstance(sp, str) and sp.endswith(
-                    ('site-packages', 'dist-packages')
-                ):
-                    candidates.append(sp)
-            # De-dup while preserving order
-            seen = set()
-            ordered = []
-            for c in candidates:
-                if c and c not in seen:
-                    seen.add(c)
-                    ordered.append(c)
-            # Prefer a candidate that is actually on sys.path
-            target = None
+        # Build candidate site dirs: global + user + entries already on sys.path
+        candidates = []
+        candidates.extend(site.getsitepackages())
+        usp = site.getusersitepackages()
+        if usp:
+            candidates.append(usp)
+        for sp in sys.path:
+            if isinstance(sp, str) and sp.endswith(
+                ('site-packages', 'dist-packages')
+            ):
+                candidates.append(sp)
+        # De-dup while preserving order
+        seen = set()
+        ordered = []
+        for c in candidates:
+            if c and c not in seen:
+                seen.add(c)
+                ordered.append(c)
+        # Prefer a candidate that is actually on sys.path
+        target = None
+        for c in ordered:
+            if c in sys.path and os.path.isdir(c):
+                target = c
+                break
+        # Fallback: pick the first existing candidate
+        if target is None:
             for c in ordered:
-                if c in sys.path and os.path.isdir(c):
+                if os.path.isdir(c):
                     target = c
                     break
-            # Fallback: pick the first existing candidate
-            if target is None:
-                for c in ordered:
-                    if os.path.isdir(c):
-                        target = c
-                        break
-            if target:
-                self.install_lib = target
-                self.install_purelib = target
-                self.install_platlib = target
-        except Exception as e:
-            print(
-                f"Warning: failed to determine preferred site-packages dir: {e}"
-            )
+        if target:
+            self.install_lib = target
+            self.install_purelib = target
+            self.install_platlib = target
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         super().run(*args, **kwargs)
@@ -1048,13 +1054,10 @@ class InstallCommand(install):
         )
         old = os.path.join(install_dir, f"{pkg}{suffix}")
         new = os.path.join(install_dir, f"{pkg}_pd_{suffix}")
-        try:
-            if os.path.exists(old):
-                if os.path.exists(new):
-                    os.remove(new)
-                os.rename(old, new)
-        except Exception as e:
-            print(f"Warning: failed to rename shared library: {e}")
+        if os.path.exists(old):
+            if os.path.exists(new):
+                os.remove(new)
+            os.rename(old, new)
 
     def _single_entry_layout(self) -> None:
         """
@@ -1064,73 +1067,57 @@ class InstallCommand(install):
           - removing any {pkg}-*.egg-info left by setuptools install (only if dist-info exists)
         This keeps legacy tests that scan os.listdir(site_dir) happy.
         """
-        try:
-            install_dir = (
-                getattr(self, 'install_lib', None)
-                or getattr(self, 'install_purelib', None)
-                or getattr(self, 'install_platlib', None)
-            )
-            if not install_dir or not os.path.isdir(install_dir):
-                return
-            pkg = self.distribution.get_name()
-            # Check if dist-info exists
-            has_dist_info = any(
-                name.endswith('.dist-info') and name.startswith(pkg)
-                for name in os.listdir(install_dir)
-            )
-            # Prepare paths
-            pkg_dir = os.path.join(install_dir, pkg)
-            py_src = os.path.join(install_dir, f"{pkg}.py")
-            # Find compiled lib (renamed or not)
-            suf_so = (
-                '.pyd'
-                if IS_WINDOWS
-                else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
-            )
-            so_candidates = [
-                os.path.join(install_dir, f"{pkg}_pd_{suf_so}"),
-                os.path.join(install_dir, f"{pkg}{suf_so}"),
-            ]
-            so_src = next((p for p in so_candidates if os.path.exists(p)), None)
-            # Create package dir
-            if not os.path.isdir(pkg_dir):
-                os.makedirs(pkg_dir, exist_ok=True)
-            # Move python stub to package/__init__.py if exists
-            if os.path.exists(py_src):
-                py_dst = os.path.join(pkg_dir, "__init__.py")
-                try:
-                    if os.path.exists(py_dst):
-                        os.remove(py_dst)
-                    os.replace(py_src, py_dst)
-                except Exception:
-                    pass
-            # Move shared lib into the package dir if exists
-            if so_src and os.path.exists(so_src):
-                so_dst = os.path.join(pkg_dir, os.path.basename(so_src))
-                try:
-                    if os.path.exists(so_dst):
-                        os.remove(so_dst)
-                    os.replace(so_src, so_dst)
-                except Exception:
-                    pass
-            # Remove egg-info entries for this package only if dist-info exists
-            if has_dist_info:
-                for name in os.listdir(install_dir):
-                    if name.startswith(f"{pkg}-") and name.endswith(
-                        ".egg-info"
-                    ):
-                        p = os.path.join(install_dir, name)
-                        try:
-                            if os.path.isdir(p):
-                                import shutil
-
-                                shutil.rmtree(p, ignore_errors=True)
-                            else:
-                                os.remove(p)
-                        except Exception:
-                            pass
-        except Exception as e:
-            print(f"Warning: failed to canonicalize install layout: {e}")
+        install_dir = (
+            getattr(self, 'install_lib', None)
+            or getattr(self, 'install_purelib', None)
+            or getattr(self, 'install_platlib', None)
+        )
+        if not install_dir or not os.path.isdir(install_dir):
+            return
+        pkg = self.distribution.get_name()
+        # Check if dist-info exists
+        has_dist_info = any(
+            name.endswith('.dist-info') and name.startswith(pkg)
+            for name in os.listdir(install_dir)
+        )
+        # Prepare paths
+        pkg_dir = os.path.join(install_dir, pkg)
+        py_src = os.path.join(install_dir, f"{pkg}.py")
+        # Find compiled lib (renamed or not)
+        suf_so = (
+            '.pyd'
+            if IS_WINDOWS
+            else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
+        )
+        so_candidates = [
+            os.path.join(install_dir, f"{pkg}_pd_{suf_so}"),
+            os.path.join(install_dir, f"{pkg}{suf_so}"),
+        ]
+        so_src = next((p for p in so_candidates if os.path.exists(p)), None)
+        # Create package dir
+        if not os.path.isdir(pkg_dir):
+            os.makedirs(pkg_dir, exist_ok=True)
+        # Move python stub to package/__init__.py if exists
+        if os.path.exists(py_src):
+            py_dst = os.path.join(pkg_dir, "__init__.py")
+            if os.path.exists(py_dst):
+                os.remove(py_dst)
+            os.replace(py_src, py_dst)
+        # Move shared lib into the package dir if exists
+        if so_src and os.path.exists(so_src):
+            so_dst = os.path.join(pkg_dir, os.path.basename(so_src))
+            if os.path.exists(so_dst):
+                os.remove(so_dst)
+            os.replace(so_src, so_dst)
+        # Remove egg-info entries for this package only if dist-info exists
+        if has_dist_info:
+            for name in os.listdir(install_dir):
+                if name.startswith(f"{pkg}-") and name.endswith(".egg-info"):
+                    p = os.path.join(install_dir, name)
+                    if os.path.isdir(p):
+                        shutil.rmtree(p, ignore_errors=False)
+                    else:
+                        os.remove(p)
 
 
 def load(
