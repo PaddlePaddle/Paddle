@@ -27,7 +27,6 @@ import sys
 import paddle
 import site
 import shutil
-from packaging import version
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
@@ -106,7 +105,7 @@ def _is_legacy_setuptools() -> bool:
     Returns:
         bool: True if using setuptools < 80.0.0, False otherwise.
     """
-    return version.parse(setuptools.__version__) < version.parse("80.0.0")
+    return int(setuptools.__version__.split('.')[0]) < 80
 
 
 def setup(**attr: Any) -> None:
