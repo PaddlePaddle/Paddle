@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import sys
 import unittest
 
@@ -153,10 +154,7 @@ class CTCForward:
                     fv = self.log_add(
                         forward_vars[i - 1, j], forward_vars[i - 1, j - 1]
                     )
-                    if (
-                        j > 1
-                        and label_val != labels_a_sequence[label_idx - 1, 0]
-                    ):
+                    if j > 1 and label_val != labels_a_sequence[label_idx - 1, 0]:
                         fv = self.log_add(fv, forward_vars[i - 1, j - 2])
                     fv = self.log_mul(fv, log_acts[i, label_val])
                 else:
@@ -185,9 +183,7 @@ class CTCForward:
                 labels_start_i = labels_offset
                 labels_end_i = labels_offset + self.labels_lod[self.level][i]
 
-                softmax_a_sequence = self.softmax[
-                    softmax_start_i:softmax_end_i, :
-                ]
+                softmax_a_sequence = self.softmax[softmax_start_i:softmax_end_i, :]
                 labels_a_sequence = self.labels[labels_start_i:labels_end_i, :]
                 self.loss[i] = self.forward_a_sequence(
                     softmax_a_sequence, labels_a_sequence
@@ -255,9 +251,7 @@ class TestWarpCTCOp(OpTest):
 
         max_sequence_length = 0
         for i in range(self.batch_size):
-            max_sequence_length = max(
-                max_sequence_length, self.logits_lod[0][i]
-            )
+            max_sequence_length = max(max_sequence_length, self.logits_lod[0][i])
         self.gradient = np.zeros(
             [max_sequence_length, self.batch_size, self.num_classes],
             dtype=logits.dtype,
@@ -277,7 +271,7 @@ class TestWarpCTCOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.outputs['WarpCTCGrad'] = self.gradient
+        self.outputs["WarpCTCGrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
                 ["Logits"],
@@ -344,9 +338,7 @@ class TestWarpCTCOpWithPadding(OpTest):
 
         max_sequence_length = 0
         for i in range(self.batch_size):
-            max_sequence_length = max(
-                max_sequence_length, self.logits_length[i]
-            )
+            max_sequence_length = max(max_sequence_length, self.logits_length[i])
         # reshape logits to T*N*S
         new_logits = np.zeros(
             [max_sequence_length, self.batch_size, self.num_classes],
@@ -363,12 +355,8 @@ class TestWarpCTCOpWithPadding(OpTest):
         # reshape labels to N*S
         max_target_seq_length = 0
         for i in range(self.batch_size):
-            max_target_seq_length = max(
-                max_target_seq_length, self.labels_length[i]
-            )
-        new_labels = np.zeros(
-            [self.batch_size, max_target_seq_length], dtype="int32"
-        )
+            max_target_seq_length = max(max_target_seq_length, self.labels_length[i])
+        new_labels = np.zeros([self.batch_size, max_target_seq_length], dtype="int32")
 
         cur = 0
         for batch_id in range(self.batch_size):
@@ -397,7 +385,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.outputs['WarpCTCGrad'] = self.gradient
+        self.outputs["WarpCTCGrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
                 ["Logits"],
@@ -468,9 +456,7 @@ class TestWarpCTCOpFp64(OpTest):
 
         max_sequence_length = 0
         for i in range(self.batch_size):
-            max_sequence_length = max(
-                max_sequence_length, self.logits_length[i]
-            )
+            max_sequence_length = max(max_sequence_length, self.logits_length[i])
         # reshape logits to T*N*S
         new_logits = np.zeros(
             [max_sequence_length, self.batch_size, self.num_classes],
@@ -487,12 +473,8 @@ class TestWarpCTCOpFp64(OpTest):
         # reshape labels to N*S
         max_target_seq_length = 0
         for i in range(self.batch_size):
-            max_target_seq_length = max(
-                max_target_seq_length, self.labels_length[i]
-            )
-        new_labels = np.zeros(
-            [self.batch_size, max_target_seq_length], dtype="int32"
-        )
+            max_target_seq_length = max(max_target_seq_length, self.labels_length[i])
+        new_labels = np.zeros([self.batch_size, max_target_seq_length], dtype="int32")
 
         cur = 0
         for batch_id in range(self.batch_size):
@@ -521,7 +503,7 @@ class TestWarpCTCOpFp64(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.outputs['WarpCTCGrad'] = self.gradient
+        self.outputs["WarpCTCGrad"] = self.gradient
         self.check_grad(["Logits"], "Loss", check_pir=True)
 
 
@@ -534,16 +516,14 @@ class TestWarpCTCOpError(unittest.TestCase):
             main_program=main_program, startup_program=startup_program
         ):
             logits = paddle.static.data(
-                name='logits', shape=[5, 16, 6], dtype='float32'
+                name="logits", shape=[5, 16, 6], dtype="float32"
             )
             logits_length = paddle.static.data(
-                name='logits_length', shape=[None], dtype='int64'
+                name="logits_length", shape=[None], dtype="int64"
             )
-            label = paddle.static.data(
-                name='label', shape=[16, 3], dtype='int32'
-            )
+            label = paddle.static.data(name="label", shape=[16, 3], dtype="int32")
             label_length = paddle.static.data(
-                name='labels_length', shape=[None], dtype='int64'
+                name="labels_length", shape=[None], dtype="int64"
             )
 
             def test_logits_Variable():
@@ -553,7 +533,7 @@ class TestWarpCTCOpError(unittest.TestCase):
                     labels=label,
                     input_lengths=logits_length,
                     label_lengths=label_length,
-                    reduction='none',
+                    reduction="none",
                 )
 
             self.assertRaises(TypeError, test_logits_Variable)
@@ -565,7 +545,7 @@ class TestWarpCTCOpError(unittest.TestCase):
                     labels=label_data,
                     input_lengths=logits_length,
                     label_lengths=label_length,
-                    reduction='none',
+                    reduction="none",
                 )
 
             self.assertRaises(TypeError, test_label_Variable)
@@ -577,7 +557,7 @@ class TestWarpCTCOpError(unittest.TestCase):
                     labels=label,
                     input_lengths=logits_length_data,
                     label_lengths=label_length,
-                    reduction='none',
+                    reduction="none",
                 )
 
             self.assertRaises(TypeError, test_logits_len_Variable)
@@ -589,7 +569,7 @@ class TestWarpCTCOpError(unittest.TestCase):
                     labels=label,
                     input_lengths=logits_length,
                     label_length=label_length_data,
-                    reduction='none',
+                    reduction="none",
                 )
 
             self.assertRaises(TypeError, test_label_len_Variable)
@@ -607,7 +587,7 @@ class TestWarpCTCOpError(unittest.TestCase):
                 labels=labels,
                 input_lengths=None,
                 label_lengths=None,
-                reduction='none',
+                reduction="none",
             )
 
         def test_dygraph_zero_size():
@@ -622,7 +602,7 @@ class TestWarpCTCOpError(unittest.TestCase):
                 labels=labels,
                 input_lengths=None,
                 label_lengths=None,
-                reduction='none',
+                reduction="none",
             )
 
         paddle.disable_static()
@@ -672,7 +652,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         logits_length = paddle.to_tensor(self.logits_length)
         labels_length = paddle.to_tensor(self.labels_length)
 
-        loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
+        loss_pd = paddle.nn.CTCLoss(self.blank, "none")(
             softmax, labels, logits_length, labels_length
         )
         loss_pd = loss_pd.numpy()
@@ -727,7 +707,7 @@ class TestCTCLossAPICase(unittest.TestCase):
                 logits_length,
                 labels_length,
                 blank=self.blank,
-                reduction='mean',
+                reduction="mean",
             )
             loss_pd_mean = loss_pd_mean.numpy()
 
@@ -737,7 +717,7 @@ class TestCTCLossAPICase(unittest.TestCase):
                 logits_length,
                 labels_length,
                 blank=self.blank,
-                reduction='sum',
+                reduction="sum",
             )
             loss_pd_sum = loss_pd_sum.numpy()
             paddle.enable_static()
@@ -745,12 +725,8 @@ class TestCTCLossAPICase(unittest.TestCase):
             loss_np_mean = (loss_np / labels_length.numpy()).mean()
             loss_np_sum = loss_np.sum()
 
-            np.testing.assert_allclose(
-                loss_pd_mean, loss_np_mean, rtol=1e-05, atol=1
-            )
-            np.testing.assert_allclose(
-                loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1
-            )
+            np.testing.assert_allclose(loss_pd_mean, loss_np_mean, rtol=1e-05, atol=1)
+            np.testing.assert_allclose(loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1)
 
         test_functional_api()
 
@@ -759,11 +735,20 @@ class TestCTCLossAPICase(unittest.TestCase):
         batch = 1
         n_class = 8
         logits_np = np.random.randn(max_time, batch, n_class).astype("float32")
-        labels_np = np.random.randint(0, n_class - 1, (batch, 3)).astype(
-            "int32"
-        )
+        labels_np = np.random.randint(0, n_class - 1, (batch, 3)).astype("int32")
         input_len_np = np.array([1], dtype=np.int64)
         label_len_np = np.array([3], dtype=np.int64)
+
+        @contextlib.contextmanager
+        def static_graph(self):
+            paddle.seed(self.seed)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    paddle.framework.random._manual_program_seed(self.seed)
+                paddle.framework.random._manual_program_seed(self.seed)
+            else:
+                paddle.framework.random._manual_program_seed(self.seed)
+            yield
 
         with self.static_graph():
             logits = paddle.static.data(
