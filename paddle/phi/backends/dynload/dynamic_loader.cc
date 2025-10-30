@@ -1005,6 +1005,10 @@ void* GetNvtxDsoHandle() {
   PADDLE_THROW(
       common::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
+  if (CUDA_VERSION >= 12090) {
+    return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvtx3interop.so.1");
+  }
+#endif
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif
 }
