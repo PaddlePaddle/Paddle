@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <random>
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -54,19 +55,6 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
   axis = funcs::CanonicalAxis(axis, rank);
   int64_t axis_dim = x.dims()[axis];
 
-  // TODO(large-tensor): Softmax functor implementation still uses int for
-  // dimensions. Need to update Softmax functor to support dimensions >
-  // INT32_MAX.
-  PADDLE_ENFORCE_LE(
-      axis_dim,
-      std::numeric_limits<int>::max(),
-      common::errors::InvalidArgument(
-          "The axis dimension (%ld) exceeds the maximum value that int can "
-          "represent (%d). GumbelSoftmax operation does not support such "
-          "large tensors yet.",
-          axis_dim,
-          std::numeric_limits<int>::max()));
-
   PADDLE_ENFORCE_GT(temperature,
                     0,
                     common::errors::InvalidArgument(
@@ -85,6 +73,19 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
     return;
   }
+
+  // TODO(large-tensor): Softmax functor implementation still uses int for
+  // dimensions. Need to update Softmax functor to support dimensions >
+  // INT32_MAX.
+  PADDLE_ENFORCE_LE(
+      axis_dim,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "The axis dimension (%ld) exceeds the maximum value that int can "
+          "represent (%d). GumbelSoftmax operation does not support such "
+          "large tensors yet.",
+          axis_dim,
+          std::numeric_limits<int>::max()));
 
   const int size_to_axis = funcs::SizeToAxis(axis, x.dims());
   const int size_from_axis = funcs::SizeFromAxis(axis, x.dims());
