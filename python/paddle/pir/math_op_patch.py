@@ -533,7 +533,7 @@ def monkey_patch_value():
                             lhs_dtype,
                             other_var,
                         )
-                elif other_var is not None:
+                else:
                     # add fill_op to current_block
                     other_var = paddle.tensor.creation.fill_constant(
                         [],
