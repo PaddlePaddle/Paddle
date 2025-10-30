@@ -811,7 +811,9 @@ class TestCTCLossAPICase(unittest.TestCase):
         n_class = 8
 
         logits_np = np.random.randn(max_time, batch, n_class).astype("float32")
-        labels_np = np.random.randint(0, n_class - 1, (batch, 3)).astype("int32")
+        labels_np = np.random.randint(0, n_class - 1, (batch, 3)).astype(
+            "int32"
+        )
         input_len_np = np.array([1], dtype=np.int64)
         label_len_np = np.array([3], dtype=np.int64)
 
