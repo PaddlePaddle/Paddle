@@ -353,8 +353,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+  if (VLOG_IS_ON(6)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
@@ -406,7 +407,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                 egr::EagerUtils::TensorStr(reserve_space));
     output_str += output_reserve_space_str;
     VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sync_batch_norm__ad_func finish");

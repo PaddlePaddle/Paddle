@@ -255,8 +255,10 @@ paddle::Tensor multiply_ad_func(
   VLOG(4) << "\n" << SEPARATOR << "Finish_AD_API: multiply" << SEPARATOR;
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+  if (VLOG_IS_ON(6)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: [%s] : \n Input: [%s]  \n Output: "
+        "[%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
@@ -273,7 +275,7 @@ paddle::Tensor multiply_ad_func(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     output_str += output_out_str;
     VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply_ad_func finish");
@@ -468,8 +470,10 @@ paddle::Tensor& multiply__ad_func(
 
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+  if (VLOG_IS_ON(6)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: [%s] : \n Input: [%s]  \n Output: "
+        "[%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
@@ -486,7 +490,7 @@ paddle::Tensor& multiply__ad_func(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     output_str += output_out_str;
     VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
 
   if (FLAGS_check_cuda_error) [[unlikely]] {

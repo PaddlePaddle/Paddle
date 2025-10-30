@@ -212,6 +212,27 @@ paddle::Tensor conv2d_ad_func(
     grad_node->SetGradInMeta(out, 0);
     // Set TensorWrappers for Forward Outputs if needed
   }
+  if (VLOG_IS_ON(6)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_INPUT_TEMPLATE = " \n( input , %s), ";
+    std::string input_input_str = paddle::string::Sprintf(
+        TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_input_str;
+    const char* TENSOR_FILTER_TEMPLATE = " \n( filter , %s), ";
+    std::string input_filter_str = paddle::string::Sprintf(
+        TENSOR_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(filter));
+    input_str += input_filter_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , %s), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(6) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
+  }
 
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("conv2d_ad_func finish");

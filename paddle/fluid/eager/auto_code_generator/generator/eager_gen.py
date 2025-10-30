@@ -597,6 +597,14 @@ AFTER_LOG_PRINT_TEMPLATE = """
   }}
 """
 
+FORWARD_AFTER_LOG_PRINT_TEMPLATE = """
+  if (VLOG_IS_ON(6)) {{
+    const char* INPUT_PRINT_TEMPLATE = \"\\nForward Debug Info {{\\nAPI_Name: %s \\nInput: [%s]  \\nOutput: [%s] }} \";
+{}
+    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
+  }}
+"""
+
 BEFORE_LOG_PRINT_TEMPLATE = """
   if (VLOG_IS_ON(5)) {{
     const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s]}} \";
@@ -2514,7 +2522,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             var_str += f"\n{indent}  std::string output_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  output_str += output_{name}_str;"
 
-        log_str = AFTER_LOG_PRINT_TEMPLATE.format(var_str)
+        log_str = FORWARD_AFTER_LOG_PRINT_TEMPLATE.format(var_str)
 
         strided_flags_check = ""
         if is_inplaced and (
