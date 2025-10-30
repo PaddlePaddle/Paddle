@@ -57,6 +57,7 @@ GLOBAL_ATTRIBUTE_KEYWORDS = [
     'num_key_value_groups',
     'permute',
     'dtype',
+    'fused_qkv',
 ]
 
 EXTRA_SUFFIX = [
