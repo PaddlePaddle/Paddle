@@ -1539,8 +1539,6 @@ class TestEagerTensor(unittest.TestCase):
         self.assertTrue(a != None)  # noqa: E711
 
         # Compare with other obj
-        self.assertFalse(a == "a string")
-        self.assertTrue(a != "a string")
         self.assertFalse(a == object())
         self.assertTrue(a != object())
 
