@@ -162,9 +162,9 @@ function make_ubuntu24_cu126_dockerfile(){
 
   sed -i "${dockerfile_line}i WORKDIR /home \n \
     RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleFormers \&\& cd PaddleFormers \&\& \
-    pip3.10 install -r requirements.txt
-    pip3.10 install -r requirements-dev.txt
-    pip3.10 install -r tests/requirements.txt
+    pip3.10 install -r requirements.txt \&\& \
+    pip3.10 install -r requirements-dev.txt \&\& \
+    pip3.10 install -r tests/requirements.txt \&\& \
     pip3.10 install pytest-timeout \&\& \
     cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
 }
