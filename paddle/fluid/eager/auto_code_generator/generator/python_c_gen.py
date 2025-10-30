@@ -92,6 +92,7 @@ PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
     '    auto& {} = {}("{}", "{}", args, {}, {});\n'
 )
 PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto& {} = GetTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
+PARSE_PYTHON_C_TENSORS_LIST_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetTensorListFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
 PARSE_PYTHON_C_OPTIONAL_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetOptionalTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
 CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     '    {} = {}("{}", "{}", args, {}, {}, mesh);\n'
@@ -451,16 +452,27 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         )
                     )
                 else:
-                    get_eager_tensor_str += (
-                        PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                    if not need_parse_python_api_args:
+                        get_eager_tensor_str += (
+                            PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                                name,
+                                "GetTensorListFromArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                "false",
+                            )
+                        )
+                    else:
+                        keywords = _get_keywords(name, args_alias_map)
+                        get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_LIST_FROM_ARGS_OR_KWARGS_TEMPLATE.format(
                             name,
-                            "GetTensorListFromArgs",
                             forward_api_name,
                             name,
                             pos,
+                            keywords,
                             "false",
                         )
-                    )
             else:
                 if is_optional:
                     if need_parse_python_api_args:
