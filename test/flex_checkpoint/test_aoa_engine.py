@@ -365,6 +365,106 @@ class TestAOAEngine(unittest.TestCase):
             result = aoa_engine.find_shard_sources(query)
             self.assertEqual(result, answer)
 
+    def test_aoa_cast(self):
+        """Test AOA cast primitive for dtype conversion."""
+
+        s0 = ShardedWeightDesc(
+            key="s0",
+            local_shape=(2, 2),
+            global_shape=(2, 2),
+            global_offset=(0, 0),
+            dtype="int32",
+        )
+
+        d0 = ShardedWeightDesc(
+            key="d0",
+            local_shape=(2, 2),
+            global_shape=(2, 2),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        source_state_shard_info = {
+            "s0": [s0],
+        }
+        destination_state_shard_info = {
+            "d0": [d0],
+        }
+
+        aoa_statements = [
+            's0 -> d0, dtype="float32" \n',
+        ]
+
+        aoa_engine = AOAEngine(
+            aoa_config={"aoa_statements": aoa_statements},
+            source_state_shard_info=source_state_shard_info,
+            destination_state_shard_info=destination_state_shard_info,
+        )
+
+        query = ShardedWeightDesc(
+            key="d0",
+            local_shape=(2, 2),
+            global_shape=(2, 2),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+        src_sharded_weight_desc = ShardedWeightDesc(
+            key="s0",
+            local_shape=(2, 2),
+            global_shape=(2, 2),
+            global_offset=(0, 0),
+            dtype="int32",
+        )
+        shard_mapping_entry = ShardMappingEntry(
+            target_slice=query,
+            source_slice=src_sharded_weight_desc,
+            postprocess_list=['float32'],
+        )
+        answer = [shard_mapping_entry]
+
+        result = aoa_engine.find_shard_sources(query)
+        self.assertEqual(result, answer)
+
+    def test_aoa_add(self):
+        """Test AOA add primitive for adding new keys that don't exist in source."""
+
+        d0 = ShardedWeightDesc(
+            key="d0",
+            local_shape=(2, 2),
+            global_shape=(2, 2),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        source_state_shard_info = {}
+
+        destination_state_shard_info = {
+            "d0": [d0],
+        }
+
+        aoa_statements = [
+            "_ -> d0 \n",
+        ]
+
+        aoa_engine = AOAEngine(
+            aoa_config={"aoa_statements": aoa_statements},
+            source_state_shard_info=source_state_shard_info,
+            destination_state_shard_info=destination_state_shard_info,
+        )
+
+        query = ShardedWeightDesc(
+            key="d0",
+            local_shape=(2, 2),
+            global_shape=(2, 2),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        answer = []
+
+        result = aoa_engine.find_shard_sources(query)
+        self.assertEqual(result, answer)
+
 
 if __name__ == '__main__':
     unittest.main()

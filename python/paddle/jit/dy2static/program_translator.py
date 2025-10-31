@@ -432,8 +432,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
         self._program_trans = ProgramTranslator()
         self._kwargs = kwargs
         self._training = True
-        self._cuda_graph_capture_mode = ""
-        self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
         # Note: Record the patched method name for rollback.
         self._patched_name = None
@@ -710,7 +708,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 self._dygraph_function, self._input_spec, **self._kwargs
             )
             copied_static_fn._training = self._training
-            copied_static_fn._cuda_graph_pool_id = self._cuda_graph_pool_id
             copied_static_fn._program_cache = self._program_cache
             copied_static_fn._descriptor_cache = self._descriptor_cache
             copied_static_fn._patched_name = self._patched_name
@@ -847,11 +844,6 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
                 partial_program_layer.training = self.class_instance.training
             else:
                 partial_program_layer.training = self._training
-
-            partial_program_layer._cuda_graph_capture_mode = (
-                self._cuda_graph_capture_mode
-            )
-            partial_program_layer._cuda_graph_pool_id = self._cuda_graph_pool_id
 
             # 3. return outputs.
             try:

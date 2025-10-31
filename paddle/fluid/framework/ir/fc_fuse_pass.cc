@@ -255,7 +255,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     desc.SetAttr("support_int8", inscale_flag && outscale_flag);
 
     // if we can find out_threshold in elementwise_add, then set it as the
-    // out_thrshold of fc
+    // out_threshold of fc
     auto out_threshold_attr =
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
     if (out_threshold_attr.index()) {
