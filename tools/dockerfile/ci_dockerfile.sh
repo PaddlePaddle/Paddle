@@ -158,7 +158,7 @@ function make_ubuntu24_cu126_dockerfile(){
     pip3.10 install -r requirements-dev.txt \&\& \
     pip3.10 install -r tests/requirements.txt \&\& \
     pip3.10 install pytest-timeout \&\& \
-    cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
+    cd /home \&\& rm -rf PaddleFormers" ${dockerfile_name}
 }
 
 function main() {
