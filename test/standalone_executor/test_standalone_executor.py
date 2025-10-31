@@ -26,6 +26,7 @@ import paddle
 from paddle.base import core
 from paddle.profiler import profiler
 
+os.environ['FLAGS_enable_pir_api'] = '1'
 paddle.enable_static()
 
 

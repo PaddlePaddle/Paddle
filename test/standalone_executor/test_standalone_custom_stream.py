@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -22,6 +23,7 @@ from utils import compare_legacy_with_pt
 import paddle
 from paddle.base import core
 
+os.environ['FLAGS_enable_pir_api'] = '1'
 paddle.enable_static()
 
 
