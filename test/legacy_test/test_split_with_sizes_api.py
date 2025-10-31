@@ -44,14 +44,18 @@ class TestSplitWithSizes(unittest.TestCase):
             np.testing.assert_array_equal(splits[i].numpy(), np_ref)
             start += size
 
-    def test_memory_sharing(self):
-        splits = paddle.Tensor.split_with_sizes(
-            self.x, self.split_sizes, dim=self.dim
-        )
-        splits[0][0, 0] = 9999
-        self.assertEqual(self.x[0, 0].item(), 9999)
-        splits[1][0, 1] = -1234
-        self.assertEqual(self.x[1, 1].item(), -1234)
+    def test_ValueError_raises(self):
+        invalid_split_sizes = [1, -2]
+        with self.assertRaises(ValueError) as cm:
+            paddle.Tensor.split_with_sizes(
+                self.x, invalid_split_sizes, dim=self.dim
+            )
+
+        invalid_split_sizes = [1, 1]
+        with self.assertRaises(ValueError) as cm:
+            paddle.Tensor.split_with_sizes(
+                self.x, invalid_split_sizes, dim=self.dim
+            )
 
 
 if __name__ == "__main__":

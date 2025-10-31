@@ -363,6 +363,16 @@ class TestMeshgridOpIndexing(unittest.TestCase):
             np.testing.assert_array_equal(res_3.numpy(), np_res_3)
             np.testing.assert_array_equal(res_4.numpy(), np_res_4)
 
+    def test_indexing_invalid_value(self):
+        with base.dygraph.guard():
+            tensor_3 = paddle.to_tensor(self.input_3)
+            tensor_4 = paddle.to_tensor(self.input_4)
+            invalid_indexing = "ab"
+            with self.assertRaises(ValueError) as cm:
+                res_3, res_4 = paddle.tensor.meshgrid(
+                    tensor_3, tensor_4, indexing=invalid_indexing
+                )
+
 
 class TestMeshgridOp7(unittest.TestCase):
     def test_api_with_dygraph_list_input(self):
