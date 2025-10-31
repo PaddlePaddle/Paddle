@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -34,12 +34,11 @@ DTYPE_ALL = [
 
 DTYPE_COLUMN_STACK = DTYPE_ALL
 
-# PLACES = [('cpu', paddle.CPUPlace())] + (
-#     [(get_device(), get_device_place())]
-#     if (core.is_compiled_with_cuda() or is_custom_device())
-#     else []
-# )
-PLACES = [('gpu', get_device_place())]
+PLACES = [('cpu', paddle.CPUPlace())] + (
+    [(get_device(), get_device_place())]
+    if (core.is_compiled_with_cuda() or is_custom_device())
+    else []
+)
 
 
 def rearrange_data(*inputs):
