@@ -134,7 +134,7 @@ function make_ubuntu20_cu123_dockerfile(){
 
 function make_ubuntu24_cu126_dockerfile(){
   dockerfile_name="Dockerfile.cuda126_cudnn9_gcc122_ubuntu24"
-  sed "s#<baseimg>#nvidia/cuda:12.6.0-devel-ubuntu24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
+  sed "s#<baseimg>#nvidia/cuda:12.6.0-cudnn-devel-ubuntu24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.6/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
@@ -151,14 +151,6 @@ function make_ubuntu24_cu126_dockerfile(){
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro" ${dockerfile_name}
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8616#g' ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn900 #g' ${dockerfile_name}
-  sed -i 's#CUDNN_VERSION=8.4.1#CUDNN_VERSION=9.0.0#g' ${dockerfile_name}
-  sed -i 's#gcc82#gcc121#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-12.1/bin/gcc#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-12.1/bin/gcc#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
-  sed -i 's#PATH=/usr/local/gcc-8.2/bin:$PATH#PATH=/usr/local/gcc-12.1/bin:$PATH#g' ${dockerfile_name}
 
   sed -i "${dockerfile_line}i WORKDIR /home \n \
     RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleFormers \&\& cd PaddleFormers \&\& \
