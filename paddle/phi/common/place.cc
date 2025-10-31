@@ -182,6 +182,11 @@ TEST_API bool is_cpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CPU;
 }
 
+PADDLE_API bool is_pinned_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::GPUPINNED ||
+         p.GetType() == phi::AllocationType::XPUPINNED;
+}
+
 bool is_cuda_pinned_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPUPINNED;
 }
