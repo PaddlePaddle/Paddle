@@ -1358,19 +1358,7 @@ class CTCLoss(Layer):
         input_lengths: Tensor,
         label_lengths: Tensor,
         norm_by_times: bool = False,
-        zero_infinity: bool | None = None,
     ) -> Tensor:
-        if zero_infinity is None:
-            return paddle.nn.functional.ctc_loss(
-                log_probs,
-                labels,
-                input_lengths,
-                label_lengths,
-                self.blank,
-                self.reduction,
-                norm_by_times=norm_by_times,
-                zero_infinity=self.zero_infinity,
-            )
         return paddle.nn.functional.ctc_loss(
             log_probs,
             labels,
@@ -1379,7 +1367,7 @@ class CTCLoss(Layer):
             self.blank,
             self.reduction,
             norm_by_times=norm_by_times,
-            zero_infinity=zero_infinity,
+            zero_infinity=self.zero_infinity,
         )
 
 
