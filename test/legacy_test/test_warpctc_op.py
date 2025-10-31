@@ -808,8 +808,9 @@ class TestCTCLossAPICase(unittest.TestCase):
             )[0]
 
             # illegal sample -> 0
-            self.assertTrue(np.allclose(loss_val[0], 0.0, atol=1e-6))
-            paddle.disable_static()
+            np.testing.assert_allclose(loss_val[0], 0.0, atol=1e-6)
+
+        paddle.disable_static()
 
     def test_ctc_loss_zero_infinity_dygraph(self):
         max_time = 1
