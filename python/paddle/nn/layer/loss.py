@@ -1344,7 +1344,7 @@ class CTCLoss(Layer):
         self,
         blank: int = 0,
         reduction: _ReduceMode = 'mean',
-        zero_infinity: bool | None = None,
+        zero_infinity: bool = False,
     ) -> None:
         super().__init__()
         self.blank = blank
@@ -1358,7 +1358,7 @@ class CTCLoss(Layer):
         input_lengths: Tensor,
         label_lengths: Tensor,
         norm_by_times: bool = False,
-        zero_infinity: Optional[bool] = None,
+        zero_infinity: bool | None = None,
     ) -> Tensor:
         if zero_infinity is None:
             return paddle.nn.functional.ctc_loss(
