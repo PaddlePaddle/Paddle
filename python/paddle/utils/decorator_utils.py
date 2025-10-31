@@ -30,7 +30,7 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 
-def _is_in_or_scalar_tensor(x):
+def _is_int_or_scalar_tensor(x):
     if isinstance(x, int):
         return True
     if isinstance(x, (paddle.Tensor, paddle.pir.Value)):
@@ -420,8 +420,8 @@ def view_decorator() -> Callable[
                 kwargs["shape_or_dtype"] = kwargs.pop("dtype")
             elif ("size" in kwargs) and ("shape_or_dtype" not in kwargs):
                 kwargs["shape_or_dtype"] = kwargs.pop("size")
-            elif len(args) >= 2 and _is_in_or_scalar_tensor(args[1]):
-                if all(_is_in_or_scalar_tensor(arg) for arg in args[1:]):
+            elif len(args) >= 2 and _is_int_or_scalar_tensor(args[1]):
+                if all(_is_int_or_scalar_tensor(arg) for arg in args[1:]):
                     kwargs["x"] = args[0]
                     kwargs['shape_or_dtype'] = list(args[1:])
                     args = ()
@@ -552,8 +552,8 @@ def reshape_decorator() -> Callable[
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if ("input" in kwargs) and ("x" not in kwargs):
                 kwargs["x"] = kwargs.pop("input")
-            elif len(args) >= 2 and _is_in_or_scalar_tensor(args[1]):
-                if all(_is_in_or_scalar_tensor(arg) for arg in args[1:]):
+            elif len(args) >= 2 and _is_int_or_scalar_tensor(args[1]):
+                if all(_is_int_or_scalar_tensor(arg) for arg in args[1:]):
                     kwargs["x"] = args[0]
                     kwargs['shape'] = list(args[1:])
                     args = ()
@@ -624,8 +624,8 @@ def expand_decorator() -> Callable[
                 kwargs["x"] = kwargs.pop("input")
             if ("size" in kwargs) and ("shape" not in kwargs):
                 kwargs["shape"] = kwargs.pop("size")
-            elif len(args) >= 2 and _is_in_or_scalar_tensor(args[1]):
-                if all(_is_in_or_scalar_tensor(arg) for arg in args[1:]):
+            elif len(args) >= 2 and _is_int_or_scalar_tensor(args[1]):
+                if all(_is_int_or_scalar_tensor(arg) for arg in args[1:]):
                     kwargs["x"] = args[0]
                     kwargs['shape'] = list(args[1:])
                     args = ()
