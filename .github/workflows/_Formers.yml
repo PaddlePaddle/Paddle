@@ -61,6 +61,7 @@ jobs:
           GENERATOR: "Ninja"
           WITH_SHARED_PHI: "ON"
           CUDA_ARCH_NAME: Ampere
+          CUDA_ARCH_BIN: "80 89"
           WITH_CUDNN_FRONTEND: "ON"
           FLAGS_enable_cudnn_frontend: 1
           CACHE_DIR: /root/.cache/build
@@ -113,6 +114,7 @@ jobs:
             -e GPUBOX_DEMO_INSTALL_DIR \
             -e INFERENCE_DEMO_INSTALL_DIR \
             -e CUDA_ARCH_NAME \
+            -e CUDA_ARCH_BIN \
             -e WITH_CUDNN_FRONTEND \
             -e FLAGS_enable_cudnn_frontend \
             -e no_proxy \
