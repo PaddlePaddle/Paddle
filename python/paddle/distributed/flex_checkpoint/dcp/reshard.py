@@ -161,14 +161,23 @@ def check_src_dst_state_dict_validity(
     src_state_dict_shard_info, dst_state_dict_shard_info
 ):
     src_tensor_keys = set(src_state_dict_shard_info.keys())
-    dst_tensor_keys = set(dst_state_dict_shard_info.keys())
+    keys = list(dst_state_dict_shard_info)
+    if any(isinstance(k, tuple) for k in keys):
+        if not all(isinstance(k, tuple) for k in keys):
+            raise ValueError("All keys must be tuples if any key is a tuple.")
+        dst_tensor_keys = {k[0] for k in keys}
+    else:
+        dst_tensor_keys = set(keys)
     missing_keys = dst_tensor_keys - src_tensor_keys
     if len(missing_keys) > 0:
         raise ValueError(
             f"Missing tensors in destination state dict: {missing_keys} !"
         )
+    dst_tensor_keys = set(dst_state_dict_shard_info.keys())
     for key in dst_tensor_keys:
-        src_shards = src_state_dict_shard_info[key]
+        src_shards = src_state_dict_shard_info[
+            key[0] if isinstance(key, tuple) else key
+        ]
         dst_shards = dst_state_dict_shard_info[key]
         src_global_shape = src_shards[0][3]
         dst_global_shape = dst_shards[0][3]
@@ -196,10 +205,10 @@ def reshard_sharded_state_dict(
 ) -> None:
     local_src_state_dict_shard_info = {
         key: (
-            value.global_offset,
-            value.local_shape,
+            tuple(value.global_offset),
+            tuple(value.local_shape),
             str(value.local_tensor.dtype).split(".")[-1],
-            value.global_shape,
+            tuple(value.global_shape),
             value.is_flattened,
         )
         for key, value in src_sharded_state_dict.items()

@@ -335,6 +335,7 @@ jobs:
           '
 
       - name: Generate coverage information
+        if: always()
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -351,7 +352,7 @@ jobs:
           '
 
       - name: Upload coverage product
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: always()
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py

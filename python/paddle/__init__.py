@@ -176,6 +176,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    compat as compat,
     cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
@@ -207,7 +208,6 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
-    compat as compat,
     fft as fft,
     functional as functional,
     hub as hub,
@@ -234,7 +234,8 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
-    PaddleStream as Stream,
+    Event,
+    Stream,
     device_guard,
     get_cudnn_version,
     get_default_device,
@@ -247,6 +248,7 @@ from .device import (  # noqa: F401
     is_compiled_with_ipu,
     is_compiled_with_rocm,
     is_compiled_with_xpu,
+    set_default_device,
     set_device,
 )
 from .distributed import DataParallel
@@ -932,6 +934,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                         err.strerror += f' Error loading "{dll}" or one of its dependencies.'
                         raise err
             kernel32.SetErrorMode(prev_error_mode)
+
 
 disable_static()
 

@@ -55,6 +55,10 @@ from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     build_sharded_state_dict,
 )
+
+if TYPE_CHECKING:
+    from paddle.distributed.communication.group import Group
+
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -2311,6 +2315,35 @@ class Layer:
 
         return sharded_state_dict
 
+    def full(
+        self,
+        aoa_config: dict[str : list[str]] | None = None,
+        process_group: Group | None = None,
+    ):
+        """
+        Returns an iterator over the full, unsharded model parameters.
+        The output parameters can be customized using the `aoa_config` argument.
+
+        Args:
+            aoa_config (dict[str, list[str]], optional):
+                Optional. Specifies the Area of Application (AOA) customization configuration.
+                The dictionary keys are strings and the values are lists of strings.
+                If None, all parameters are returned.
+            process_group (Group, optional):
+                Optional. Specifies the process group for collective communication.
+                If None, the default process group is used.
+
+        Returns:
+            Iterator:
+                An iterator over the full, unsharded model parameters, optionally filtered and customized according to `aoa_config`.
+        """
+
+        from paddle.distributed.flex_checkpoint.dcp.full_param import (
+            full_param,
+        )
+
+        return full_param(self, aoa_config, process_group)
+
     @framework.deprecate_stat_dict
     def set_state_dict(
         self,
@@ -2665,18 +2698,12 @@ class Layer:
                 device = paddle.device._convert_to_place(device)
             elif isinstance(
                 device,
-                (
-                    core.CPUPlace,
-                    core.CUDAPlace,
-                    core.CUDAPinnedPlace,
-                    core.XPUPlace,
-                ),
+                core.Place,
             ):
                 pass
             else:
                 raise ValueError(
-                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
-                    + type(device).__name__
+                    f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, paddle.CUDAPinnedPlace, paddle.XPUPlace, or paddle.base.libpaddle.Place, but got {type(device).__name__}"
                 )
 
         if blocking is None:

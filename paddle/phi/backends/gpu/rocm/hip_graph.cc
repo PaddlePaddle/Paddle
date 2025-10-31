@@ -93,7 +93,6 @@ int64_t CUDAGraph::UniqueMemoryPoolID() {
 
 void CUDAGraph::Reset() {
   if (is_reset_) return;
-#if defined(PADDLE_WITH_HIP)
   for (auto graph : graphs_) {
     PADDLE_ENFORCE_GPU_SUCCESS(hipGraphDestroy(graph));
   }
@@ -102,7 +101,6 @@ void CUDAGraph::Reset() {
     PADDLE_ENFORCE_GPU_SUCCESS(hipGraphExecDestroy(exec_graph));
   }
   exec_graphs_.clear();
-#endif
   // callback should be called in reverse order because the latter added
   // callback may rely on the former added callback.
   for (auto iter = cudagraph_post_reset_callbacks_.rbegin();
@@ -115,7 +113,6 @@ void CUDAGraph::Reset() {
 }
 
 void CUDAGraph::Replay() {
-#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(is_reset_,
                     false,
                     common::errors::PermissionDenied(
@@ -130,12 +127,10 @@ void CUDAGraph::Replay() {
     PADDLE_ENFORCE_GPU_SUCCESS(hipGraphLaunch(exec_graphs_[i], stream_));
   }
   is_first_run_ = false;
-#endif
 }
 
 void CUDAGraph::BeginSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
-#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     true,
                     common::errors::PermissionDenied(
@@ -158,14 +153,12 @@ void CUDAGraph::BeginSegmentCapture() {
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
-#endif
 }
 
 void CUDAGraph::BeginCapture(phi::GPUPlace place,
                              gpuStream_t stream,
                              hipStreamCaptureMode mode) {
   ThrowErrorIfNotSupportCUDAGraph();
-#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
                     common::errors::PermissionDenied(
@@ -184,12 +177,10 @@ void CUDAGraph::BeginCapture(phi::GPUPlace place,
              << capturing_thread_id_;
   }
   BeginSegmentCapture();
-#endif
 }
 
 void CUDAGraph::EndSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
-#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       IsCapturing(),
       true,
@@ -221,27 +212,18 @@ void CUDAGraph::EndSegmentCapture() {
   hipGraphExec_t exec_graph;
   if (FLAGS_use_cuda_malloc_async_allocator &&
       FLAGS_auto_free_cudagraph_allocations_on_launch) {
-#if defined(PADDLE_WITH_HIP)
     VLOG(1) << "hipGraphInstantiateFlagAutoFreeOnLaunch is enabled!";
     PADDLE_ENFORCE_GPU_SUCCESS(hipGraphInstantiateWithFlags(
         &exec_graph, graph, hipGraphInstantiateFlagAutoFreeOnLaunch));
-#else
-    PADDLE_THROW(common::errors::Unimplemented(
-        "The cudaGraphInstantiateFlagAutoFreeOnLaunch is only supported when "
-        "CUDA version >= 11.4.0"));
-#endif
   } else {
-#if defined(PADDLE_WITH_HIP)
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
-#endif
   }
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
-#endif
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
@@ -251,16 +233,12 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
 }
 
 bool CUDAGraph::IsValidCapturing() {
-#if defined(PADDLE_WITH_HIP)
   if (!IsCapturing()) return false;
   hipStreamCaptureStatus status;
   CUDAGraphID id;
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipStreamGetCaptureInfo(capturing_graph_->stream_, &status, &id));
   return status == hipStreamCaptureStatusActive;
-#else
-  return false;
-#endif
 }
 
 static std::string ConcatPath(const std::string &dirname,
@@ -284,7 +262,6 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
       "The print_to_dot_files() method is not supported on ROCm/HIP"));
 }
 
-#if defined(PADDLE_WITH_HIP)
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
     parameterSetter_t parameterSetter, gpuKernelCallback_t cudakernelCallback) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
@@ -347,20 +324,6 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(hipGraph_t graph) {
 
   return hooks;
 }
-#else
-void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    hipFunction_t cudaFunc,
-    parameterSetter_t parameterSetter,
-    gpuKernelCallback_t cudakernelCallback) {
-  cudakernelCallback(0);
-}
-
-std::vector<cudaGraphExecuterSetter_t>
-CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(hipGraph_t graph) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "CUDAGraphNodeLauncher is only supported when CUDA version >= 11.0"));
-}
-#endif
 
 }  // namespace gpu
 }  // namespace backends

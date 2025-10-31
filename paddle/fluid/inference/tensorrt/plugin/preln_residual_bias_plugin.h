@@ -26,7 +26,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 using half = phi::dtype::float16;
-#if IS_TRT_VERSION_GE(6000)
+
 class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit PrelnResidualBiasPluginDynamic(const float* bias,
@@ -336,7 +336,6 @@ class PIRPrelnResidualBiasPluginDynamicCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(PrelnResidualBiasPluginDynamicCreator);
 REGISTER_TRT_PLUGIN_V2(PIRPrelnResidualBiasPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

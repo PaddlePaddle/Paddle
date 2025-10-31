@@ -1182,7 +1182,7 @@ class TestSliceOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not (core.is_compiled_with_cuda() or is_custom_device()),
+    not (core.is_compiled_with_cuda()),
     "core is not compiled with CUDA",
 )
 class TestImperativeCUDAPinnedInput(unittest.TestCase):

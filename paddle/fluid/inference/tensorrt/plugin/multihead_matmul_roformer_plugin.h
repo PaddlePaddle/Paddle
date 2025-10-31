@@ -26,7 +26,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
 class MultiheadMatmulRoformerPlugin : public DynamicPluginTensorRT {
  public:
   explicit MultiheadMatmulRoformerPlugin(
@@ -155,7 +154,6 @@ class MultiheadMatmulRoformerPluginCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 REGISTER_TRT_PLUGIN_V2(MultiheadMatmulRoformerPluginCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

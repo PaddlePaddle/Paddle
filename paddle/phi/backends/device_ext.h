@@ -609,6 +609,13 @@ struct C_DeviceInterface {
   C_Status (*is_bfloat16_supported)(const C_Device device, bool* supported);
 
   /**
+   * @brief Is dnn supported
+   *
+   * @param[C_Device, bool*]     device, supported
+   */
+  C_Status (*is_dnn_supported)(const C_Device device, bool* supported);
+
+  /**
    * @brief init eigen device
    *
    * @param[C_Place, C_EigenDevice*, C_Stream, C_Allocator]    eigen_device

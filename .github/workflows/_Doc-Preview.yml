@@ -55,7 +55,7 @@ jobs:
           AGILE_COMPILE_BRANCH: ${{ github.event.pull_request.base.ref }}
           BOS_CREDENTIAL_AK: "paddle"
           BOS_CREDENTIAL_SK: "paddle"
-          PADDLE_WHL: https://paddle-github-action.cdn.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          PADDLE_WHL: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}

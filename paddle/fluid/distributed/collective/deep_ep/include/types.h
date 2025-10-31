@@ -73,8 +73,6 @@ struct Tensor {
   }
 
   int64_t element_size() const { return phi::SizeOf(raw_tensor_.dtype()); }
-
-  int64_t stride(int64_t d) const { return raw_tensor_.strides().at(d); }
 };
 
 }  // namespace deep_ep::detail

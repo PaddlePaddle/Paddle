@@ -34,7 +34,7 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
                           DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto x = &input;
-  int numel = x->numel();
+  int64_t numel = x->numel();
   ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
   int root_id = root;

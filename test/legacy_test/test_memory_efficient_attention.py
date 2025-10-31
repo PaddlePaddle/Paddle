@@ -14,14 +14,12 @@
 from __future__ import annotations
 
 import logging
-import os
 import random
-import re
 import unittest
 from typing import TYPE_CHECKING
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.incubate.nn.attn_bias as ab
@@ -35,23 +33,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 paddle.seed(2023)
-
-
-def get_cuda_version():
-    if paddle.is_compiled_with_cuda():
-        result = os.popen("nvcc --version").read()
-        regex = r'release (\S+),'
-        match = re.search(regex, result)
-        if match:
-            num = str(match.group(1))
-            integer, decimal = num.split('.')
-            return int(integer) * 1000 + int(float(decimal) * 10)
-        else:
-            return -1
-    elif is_custom_device():
-        return 13000
-    else:
-        return -1
 
 
 def create_attn_bias(

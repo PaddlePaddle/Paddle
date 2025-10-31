@@ -298,3 +298,17 @@ TEST(TestDevice, DeviceAPIsOnCPU) {
   auto options = cpu_tensor.options();
   ASSERT_EQ(options.device().type(), at::DeviceType::CPU);
 }
+
+TEST(TestTranspose, TransposeAPI) {
+  at::Tensor a = at::ones({4, 5, 6, 7, 8}, at::kFloat);
+  at::Tensor b = a.transpose(2, 3);
+  ASSERT_EQ(b.sizes(), c10::IntArrayRef({4, 5, 7, 6, 8}));
+}
+
+TEST(TestSize, SizeNegativeIndex) {
+  at::Tensor tensor = at::ones({2, 3, 4, 5}, at::kFloat);
+  ASSERT_EQ(tensor.size(-1), 5);
+  ASSERT_EQ(tensor.size(-2), 4);
+  ASSERT_EQ(tensor.size(-3), 3);
+  ASSERT_EQ(tensor.size(-4), 2);
+}

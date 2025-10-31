@@ -74,6 +74,19 @@ void ActivationGPUImpl(const Context& dev_ctx,
         dev_ctx, x, out, functor);                                      \
   }
 
+#define DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(name, functor_class, attr) \
+  template <typename T, typename Context>                                      \
+  void name##Kernel(const Context& dev_ctx,                                    \
+                    const DenseTensor& x,                                      \
+                    double attr,                                               \
+                    DenseTensor* out) {                                        \
+    funcs::functor_class<T> functor;                                           \
+    auto attrs = functor.GetAttrs();                                           \
+    *(attrs[0].second) = attr;                                                 \
+    ActivationGPUImpl<T, Context, funcs::functor_class<T>>(                    \
+        dev_ctx, x, out, functor);                                             \
+  }
+
 #define DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(               \
     name, functor_class, attr1, attr2)                      \
   template <typename T, typename Context>                   \
@@ -81,6 +94,22 @@ void ActivationGPUImpl(const Context& dev_ctx,
                     const DenseTensor& x,                   \
                     float attr1,                            \
                     float attr2,                            \
+                    DenseTensor* out) {                     \
+    funcs::functor_class<T> functor;                        \
+    auto attrs = functor.GetAttrs();                        \
+    *(attrs[0].second) = attr1;                             \
+    *(attrs[1].second) = attr2;                             \
+    ActivationGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, x, out, functor);                          \
+  }
+
+#define DEFINE_GPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(        \
+    name, functor_class, attr1, attr2)                      \
+  template <typename T, typename Context>                   \
+  void name##Kernel(const Context& dev_ctx,                 \
+                    const DenseTensor& x,                   \
+                    double attr1,                           \
+                    double attr2,                           \
                     DenseTensor* out) {                     \
     funcs::functor_class<T> functor;                        \
     auto attrs = functor.GetAttrs();                        \
@@ -123,8 +152,10 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, CudaLog1pFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, CudaExpFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
+                                            CudaLeakyReluFunctor,
+                                            alpha)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
@@ -138,10 +169,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
                                      t_min,
                                      t_max)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
-DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
-                                     CudaSoftplusFunctor,
-                                     beta,
-                                     threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(Softplus,
+                                            CudaSoftplusFunctor,
+                                            beta,
+                                            threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      CudaHardSigmoidFunctor,
                                      slope,

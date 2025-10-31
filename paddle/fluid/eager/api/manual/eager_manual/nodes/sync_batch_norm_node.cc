@@ -30,6 +30,8 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
 #define SEPARATOR "=========================="
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 SyncBatchNormGradNode::operator()(
@@ -151,9 +153,15 @@ SyncBatchNormGradNode::operator()(
   }
 
   // Call grad_api function
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name =
+        egr::GenerateUniqueApiName("sync_batch_norm_grad", call_count);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "sync_batch_norm_grad" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   paddle::experimental::sync_batch_norm_grad(x,
                                              scale,
                                              bias,
@@ -171,8 +179,7 @@ SyncBatchNormGradNode::operator()(
                                              api_output_1,
                                              api_output_2);
   VLOG(3) << "\n"
-          << SEPARATOR << "Finish_C++_API: "
-          << "sync_batch_norm_grad" << SEPARATOR;
+          << SEPARATOR << "Finish_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf id needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("sync_batch_norm_grad", returns);
@@ -200,6 +207,22 @@ SyncBatchNormGradNode::operator()(
           ? egr::EagerUtils::autograd_meta(&bias_grad)
           : nullptr;
   if (bias_grad_autograd_meta) bias_grad_autograd_meta->SetStopGradient(false);
+
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetGradTensorName(&x_grad, 0, out_metas);
+    egr::SetGradTensorName(&scale_grad, 3, out_metas);
+    egr::SetGradTensorName(&bias_grad, 4, out_metas);
+  }
+
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_dir.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+                                     x_grad);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+                                     scale_grad);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+                                     bias_grad);
+  }
 
   // Create Grad Node
   if (trace_backward) {
