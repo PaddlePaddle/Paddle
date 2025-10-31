@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Optional
 
 import paddle
 from paddle import base, in_dynamic_mode
@@ -1340,10 +1340,15 @@ class CTCLoss(Layer):
     blank: int
     reduction: _ReduceMode
 
-    def __init__(self, blank: int = 0, reduction: _ReduceMode = 'mean') -> None:
+    def __init__(self,
+        blank: int = 0,
+        reduction: _ReduceMode = 'mean',
+        zero_infinity: bool = True,
+    ) -> None:
         super().__init__()
         self.blank = blank
         self.reduction = reduction
+        self.zero_infinity = zero_infinity
 
     def forward(
         self,
@@ -1352,8 +1357,19 @@ class CTCLoss(Layer):
         input_lengths: Tensor,
         label_lengths: Tensor,
         norm_by_times: bool = False,
-        zero_infinity: bool = False,
+        zero_infinity: Optional[bool] = None,
     ) -> Tensor:
+        if zero_infinity is None:
+            return paddle.nn.functional.ctc_loss(
+                log_probs,
+                labels,
+                input_lengths,
+                label_lengths,
+                self.blank,
+                self.reduction,
+                norm_by_times=norm_by_times,
+                zero_infinity=self.zero_infinity,
+            )
         return paddle.nn.functional.ctc_loss(
             log_probs,
             labels,
