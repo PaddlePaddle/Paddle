@@ -106,8 +106,8 @@ if(WITH_GPU)
 
   find_package(CUDA REQUIRED)
 
-  if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.8)
-    message(FATAL_ERROR "Paddle needs CUDA >= 11.8 to compile")
+  if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.7)
+    message(FATAL_ERROR "Paddle needs CUDA >= 11.7 to compile")
   endif()
 
   if(NOT CUDNN_FOUND)
