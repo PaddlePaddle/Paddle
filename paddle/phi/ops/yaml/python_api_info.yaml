@@ -213,8 +213,3 @@
     x : [input]
     axis1 : [dim1]
     axis2 : [dim2]
-
-- op : round
-  name : [paddle.round, paddle.Tensor.round]
-  args_alias:
-    use_default_mapping : True

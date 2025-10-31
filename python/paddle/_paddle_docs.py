@@ -2408,48 +2408,6 @@ def diagonal(
 ) -> Tensor
 """,
 )
-
-add_doc_and_signature(
-    "round",
-    """
-
-    Round the values in the input to the nearest integer value.
-
-    .. code-block:: text
-
-        input:
-          x.shape = [4]
-          x.data = [1.2, -0.9, 3.4, 0.9]
-
-        output:
-          out.shape = [4]
-          out.data = [1., -1., 3., 1.]
-
-    Args:
-        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128.
-        decimals(int): Rounded decimal place (default: 0).
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Round operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
-            >>> out = paddle.round(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0., -0.,  1.,  2.])
-""",
-    """
-def round(
-    x: Tensor, *, decimals = 0, name: str | None = None, out: Tensor | None = None
-) -> Tensor
-""",
-)
 # lubingxin
 
 # chenhuangrun
