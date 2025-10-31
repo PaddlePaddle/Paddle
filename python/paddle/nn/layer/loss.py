@@ -1340,7 +1340,8 @@ class CTCLoss(Layer):
     blank: int
     reduction: _ReduceMode
 
-    def __init__(self,
+    def __init__(
+        self,
         blank: int = 0,
         reduction: _ReduceMode = 'mean',
         zero_infinity: bool = True,
