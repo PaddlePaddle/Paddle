@@ -19,13 +19,10 @@ import types
 import warnings
 from contextlib import contextmanager
 
-from paddle.tensor import softmax
-
 from . import nn  # noqa: F401
 
 __all__ = [
     'slogdet',
-    'softmax',
     'sort',
     'split',
     'min',
@@ -43,15 +40,14 @@ from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
+from .utils import _check_out_status
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
-
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
-
-from .utils import _check_out_status
 
 
 class MedianRetType(NamedTuple):
