@@ -127,7 +127,7 @@ class TestDispatchPermute(unittest.TestCase):
         return stage_input_list
 
     def test_moe_permute_ops(self):
-        paddle.seed(2025)
+        paddle.seed(2026)
 
         test_cases = [
             (8, 4, 2),

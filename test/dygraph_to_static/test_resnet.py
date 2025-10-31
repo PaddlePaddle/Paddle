@@ -30,7 +30,7 @@ from predictor_utils import PredictorTools
 import paddle
 from paddle.base import core
 
-SEED = 2020
+SEED = 2025
 IMAGENET1000 = 1281167
 base_lr = 0.001
 momentum_rate = 0.9

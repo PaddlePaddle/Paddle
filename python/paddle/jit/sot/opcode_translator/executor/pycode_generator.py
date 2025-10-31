@@ -998,11 +998,8 @@ class ResumeFunctionType(Enum):
     IF_RESUME = 0
     # Call breakgraph
     CALL_RESUME = 1
-    # Loop breakgraph
-    LOOP_BODY_RESUME = 2
-    AFTER_LOOP_RESUME = 3
     # Loop inline call
-    LOOP_BODY_INLINE_CALL = 4
+    LOOP_BODY_INLINE_CALL = 2
 
 
 class ResumeFunctionCreator:

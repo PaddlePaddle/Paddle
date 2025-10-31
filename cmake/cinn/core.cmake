@@ -138,7 +138,7 @@ function(cinn_nv_binary TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cinn_nv_binary "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${cinn_nv_binary_SRCS})
+    add_executable(${TARGET_NAME} ${cinn_nv_binary_SRCS})
     if(cinn_nv_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${cinn_nv_binary_DEPS})
       add_dependencies(${TARGET_NAME} ${cinn_nv_binary_DEPS})
@@ -155,7 +155,7 @@ function(cinn_nv_test TARGET_NAME)
     cmake_parse_arguments(cinn_nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     # Attention:
-    # 1. cuda_add_executable is deprecated after cmake v3.10, use cuda_add_executable for CUDA please.
+    # 1. cuda_add_executable is deprecated after cmake v3.10, use add_executable for CUDA please.
     # 2. cuda_add_executable does not support ccache.
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS})

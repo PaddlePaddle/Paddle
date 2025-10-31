@@ -45,7 +45,6 @@ from ...utils import (
     UnsupportedIteratorBreak,
     UnsupportedOperationBreak,
     get_static_function,
-    is_comprehensive_name,
     log,
     log_do,
 )
@@ -62,7 +61,6 @@ from ..instruction_utils.opcode_info import (
     RETURN,
     ExceptionHandler,
     JumpDirection,
-    PopJumpCond,
 )
 from .dispatch_functions import (
     operator_BAD,
@@ -139,10 +137,7 @@ COMPARE_OP_NAME_TO_FN = {
 
 # In Python 3.13, the method layout is changed, and a NULL will be pushed after the value.
 CALL_METHOD_LAYOUT_NULL_AFTER_VALUE = sys.version_info >= (3, 13)
-ALREADY_SUPPORTED_EXCEPTION = sys.version_info < (
-    3,
-    11,
-)
+ALREADY_SUPPORTED_EXCEPTION = sys.version_info < (3, 11)
 
 
 @dataclass
@@ -1000,6 +995,11 @@ class OpcodeExecutorBase:
 
     def LOAD_FAST_CHECK(self, instr: Instruction):
         self.LOAD_FAST(instr)
+
+    # 3.14 opcodes
+    LOAD_FAST_BORROW = LOAD_FAST
+    NOT_TAKEN = NOP
+    POP_ITER = POP_TOP
 
     def DELETE_FAST(self, instr: Instruction):
         varname = self.vframe.code.co_varnames[instr.arg]
@@ -1886,7 +1886,8 @@ class OpcodeExecutorBase:
             )
         else:
             raise FallbackError(
-                f"Do not support format {type(value)} or {type(spec)} in {instr.opname} now"
+                f"Currently only support ConstantVariable for both value and format spec in {instr.opname}. "
+                f"Got {type(value)=} and {type(raw_spec)=}."
             )
 
     def FORMAT_SIMPLE(self, instr: Instruction):
@@ -2161,6 +2162,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                     )
                 )
 
+            # TODO(SigureMo): Remove inline call logic
             self._inline_call_for_loop(iterator, instr)
             self.vframe.lasti = self.indexof(instr.jump_to)
             if sys.version_info >= (3, 12):
@@ -2173,16 +2175,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 self.vframe.lasti += skip_n_instrs
         except BreakGraphError as e:
             log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
-            self._graph.remove_global_guarded_variable(iterator)
-            self.stack.push(iterator)
-            if is_comprehensive_name(self.vframe.code.co_name):
-                # NOTE(SigureMo): The loop body of comprehensive will access the
-                # value out of the loop, so we simply fallback it now.
-                raise FallbackError(
-                    "Comprehensive for loop break graph is not supported."
-                )
-            self._break_graph_when_for_loop(iterator, instr)
-            return Stop(state="BreakGraph")
+            raise FallbackError(
+                "Encountered BreakGraphError during FOR_ITER simulation, falling back."
+            )
 
     def RETURN_VALUE(self, instr: Instruction):
         assert len(self.stack) == 1, (
@@ -2208,7 +2203,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return Stop(state="Return")
 
     def get_compute_fn_and_update_changed_vars(
-        self, restore_names, stack, end_idx, extra_store_vars
+        self, restore_names, stack, end_idx
     ):
         """
         this function will:
@@ -2223,9 +2218,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             restore_names: the names used in resume functions.
             end_idx: instruction index where simulation get break.
             stack: current stack
-            extra_store_vars: for iterator, we need store the holder if it is a Tensor
         """
-        store_vars = list(OrderedSet(list(stack) + extra_store_vars))
+        store_vars = list(OrderedSet(stack))
         store_var_info = {var.id: [] for var in stack}
 
         for name in restore_names:
@@ -2358,7 +2352,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # 4. compile codes before if
         update_var_names = list(true_fn_read_names | false_fn_read_names)
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            update_var_names, self.stack, cur_index, []
+            update_var_names, self.stack, cur_index
         )
 
         # 5. create if structure and call true_fn and false_fn
@@ -2486,7 +2480,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 3. compile sub graph before call
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            read_names, self.stack, cur_index, []
+            read_names, self.stack, cur_index
         )
 
         # 4. recover stack
@@ -2524,256 +2518,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
             )
         # gen RETURN_VALUE
         self._graph.pycode_gen.gen_return()
-        self.new_code = self._graph.pycode_gen.gen_pycode()
-        self.guard_fn = self._graph.guard_fn
-        self.guard_chain = self._graph.guard_chain
-
-    @fallback_when_occur_error
-    def _break_graph_when_for_loop(
-        self, iterator: VariableBase, for_iter: Instruction
-    ):
-        self.fallback_when_block_stack_is_not_empty()
-        # 1. find the range of loop body
-        assert for_iter.jump_to is not None
-        for_iter_idx = self.indexof(for_iter)
-        loop_body_start_idx = for_iter_idx + 1
-        loop_body_end_idx = self.indexof(for_iter.jump_to)
-        current_stack = 1
-
-        while True:
-            if loop_body_start_idx >= len(self._instructions):
-                raise InnerError("Can not balance stack in loop body.")
-            cur_instr = self._instructions[loop_body_start_idx]
-            # do not consider jump instr
-            stack_effect = calc_stack_effect(cur_instr, jump=False)
-            current_stack += stack_effect
-            loop_body_start_idx += 1
-            if current_stack == 0:
-                break
-
-        # 2. create loop body function
-        loop_body_read_names, loop_body_write_names = analysis_used_names(
-            self._instructions, loop_body_start_idx, loop_body_end_idx
-        )
-        loop_body_inputs = [
-            *self._find_names_in_space(
-                loop_body_read_names | loop_body_write_names,
-                (Space.locals, Space.cells),
-            ),
-            "_break_flag",
-        ]
-        loop_body_outputs = [*list(loop_body_write_names), "_break_flag"]
-
-        def create_loop_body():
-            cache_key = (
-                ResumeFunctionType.LOOP_BODY_RESUME,
-                self.vframe.code,
-                loop_body_start_idx,
-                loop_body_end_idx,
-            )
-            resume_fn_creator = ResumeFunctionCreator(
-                self._graph.pycode_gen._origin_code,
-                self._graph.pycode_gen._real_globals,
-            )
-            if (
-                maybe_resume_fn := resume_fn_creator.lookup(cache_key)
-            ) is not None:
-                return maybe_resume_fn
-            pycode_gen = resume_fn_creator.codegen
-
-            resume_fn_creator.set_inputs(loop_body_inputs, stack_size=0)
-
-            origin_instrs = get_instructions(pycode_gen._origin_code)
-            for_iter = origin_instrs[for_iter_idx]
-
-            # for balance the stack (the loop body will pop iter first before break or return)
-            # this None is used for replace the iterator obj in stack top
-            pycode_gen.gen_load_const(None)
-
-            # extend loop body main logic
-            pycode_gen.extend_instrs(
-                origin_instrs[loop_body_start_idx:loop_body_end_idx]
-            )
-
-            # break should jump to this nop
-            nop_for_break = pycode_gen.add_instr("NOP")
-
-            # need do additional operates when break
-            pycode_gen.gen_load_const(False)
-            pycode_gen.gen_store_fast(loop_body_inputs[-1])
-            pycode_gen.gen_load_const(None)  # keep stack balance
-
-            # continue should jump to this nop
-            nop_for_continue = pycode_gen.add_instr("NOP")
-            pycode_gen.gen_pop_top()
-
-            # relocate jump
-            out_loop = for_iter.jump_to
-            for instr in pycode_gen._instructions:
-                if instr.jump_to == for_iter:
-                    instr.jump_to = nop_for_continue
-                if instr.jump_to == out_loop:
-                    instr.jump_to = nop_for_break
-
-            # outputs is the same as inputs
-            resume_fn_creator.set_outputs(loop_body_outputs)
-            loop_body_fn = resume_fn_creator.generate(cache_key=cache_key)
-
-            log(
-                3,
-                "[Resumed Function] break graph in loop create loop body as\n",
-            )
-            log_do(3, lambda: dis.dis(loop_body_fn))
-
-            return loop_body_fn
-
-        loop_body_fn = create_loop_body()
-
-        # 3. create after loop part function, stack size minus 1 for iterator
-        after_loop_read_names, _ = analysis_used_names(
-            self._instructions, loop_body_end_idx, len(self._instructions)
-        )
-        after_loop_fn_inputs = self._find_names_in_space(
-            after_loop_read_names, (Space.locals, Space.cells)
-        )
-
-        def create_after_loop_fn():
-            if self._instructions[loop_body_end_idx].opname == "RETURN_VALUE":
-                return None
-            cache_key = (
-                ResumeFunctionType.AFTER_LOOP_RESUME,
-                self.vframe.code,
-                loop_body_end_idx,
-            )
-            resume_fn_creator = ResumeFunctionCreator(
-                self._graph.pycode_gen._origin_code,
-                self._graph.pycode_gen._real_globals,
-            )
-            if (
-                maybe_resume_fn := resume_fn_creator.lookup(cache_key)
-            ) is not None:
-                return maybe_resume_fn
-            pycode_gen = resume_fn_creator.codegen
-            origin_instrs = get_instructions(pycode_gen._origin_code)
-            resume_fn_end_idx = loop_body_end_idx
-
-            # skip resume END_FOR in python3.12
-            if sys.version_info >= (3, 12):
-                assert origin_instrs[loop_body_end_idx].opname == "END_FOR"
-                skip_n_instrs = 2 if sys.version_info >= (3, 13) else 1
-                resume_fn_end_idx += skip_n_instrs
-
-            resume_fn_creator.set_inputs(
-                after_loop_fn_inputs, stack_size=len(self.stack) - 1
-            )
-            pycode_gen.extend_instrs(origin_instrs[resume_fn_end_idx:])
-            # the resume_fn contains return code, so we don't need set output here
-            # global vars are updated correctly, and need local vars will return
-            after_loop_fn = resume_fn_creator.generate(cache_key=cache_key)
-            return after_loop_fn
-
-        after_loop_fn = create_after_loop_fn()
-
-        # 4. setup vars which is created in loop as Undefined
-        for name in loop_body_inputs[:-1]:
-            if not self.has_var(name):
-                self._graph.pycode_gen.gen_load_const(SotUndefinedVar())
-                self._graph.pycode_gen.gen_store(name, self.vframe.code)
-        for name in after_loop_fn_inputs:
-            if not self.has_var(name):
-                self._graph.pycode_gen.gen_load_const(SotUndefinedVar())
-                self._graph.pycode_gen.gen_store(name, self.vframe.code)
-
-        # 5. compile sub graph before for-loop
-        update_names = list(
-            OrderedSet(loop_body_inputs[:-1]) | after_loop_read_names
-        )
-        extra_store_vars = (
-            [
-                item
-                for item in iterator.flatten_inner_vars()
-                if isinstance(item, (TensorVariable, SymbolicVariable))
-            ]
-            if isinstance(iterator, IterVariable)
-            else []
-        )
-        var_loader = self.get_compute_fn_and_update_changed_vars(
-            update_names,
-            self.stack,
-            self.indexof(for_iter),
-            extra_store_vars,
-        )
-
-        # 6. prepare a new loop and call loop body
-        # 6.1. load iterator, it is in stack, so we can load it with var_loader
-        var_loader.load(iterator)
-        self.stack.pop()
-
-        # 6.2. copy FOR_ITER and unpack logic
-        self._graph.pycode_gen.extend_instrs(
-            self._instructions[for_iter_idx:loop_body_start_idx]
-        )
-
-        # 6.3 load loop body, prepare inputs and call
-        self._graph.pycode_gen.gen_load_object(
-            loop_body_fn, loop_body_fn.__code__.co_name
-        )
-
-        for name in loop_body_inputs[:-1]:
-            self._graph.pycode_gen.gen_load(name)
-
-        # this is the _break_flag
-        self._graph.pycode_gen.gen_load_const(True)
-
-        self._graph.pycode_gen.gen_call_function(
-            argc=loop_body_fn.__code__.co_argcount
-        )
-
-        # 7. unpack and update changed vars, keep break_flag in stack
-        self._graph.pycode_gen.gen_unpack_sequence(len(loop_body_outputs))
-
-        for name in loop_body_outputs[:-1]:
-            self._graph.pycode_gen.gen_store(name, self.vframe.code)
-
-        # 8. create the tail of a for loop, jump back to FOR_ITER
-        #    and process case if break
-        jump_if_break = self._graph.pycode_gen.gen_pop_jump(
-            direction=JumpDirection.FORWARD, suffix=PopJumpCond.FALSE
-        )
-
-        self._graph.pycode_gen.gen_jump(
-            for_iter, direction=JumpDirection.BACKWARD
-        )
-
-        if sys.version_info >= (3, 12):
-            end_for = self._graph.pycode_gen.add_instr("END_FOR")
-            if sys.version_info >= (3, 13):
-                self._graph.pycode_gen.gen_pop_top()
-
-        nop = self._graph.pycode_gen.add_instr("NOP")
-
-        for_iter.jump_to = end_for if sys.version_info >= (3, 12) else nop
-        jump_if_break.jump_to = nop
-
-        # 9. prepare inputs and call after_loop_fn
-        if after_loop_fn is not None:
-            self._graph.pycode_gen.gen_load_object(
-                after_loop_fn, after_loop_fn.__code__.co_name
-            )
-
-            for stack_arg in self.stack:
-                var_loader.load(stack_arg)
-
-            for name in after_loop_fn_inputs:
-                self._graph.pycode_gen.gen_load(name)
-
-            self._graph.pycode_gen.gen_call_function(
-                argc=after_loop_fn.__code__.co_argcount
-            )
-
-        # return what after_loop_fn return
-        self._graph.pycode_gen.gen_return()
-
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
         self.guard_chain = self._graph.guard_chain

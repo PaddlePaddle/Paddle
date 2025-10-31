@@ -37,6 +37,11 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
     case phi::DataType::FLOAT16:
       nv_type = nvinfer1::DataType::kHALF;
       break;
+#if IS_TRT_VERSION_GE(10000)
+    case phi::DataType::INT64:
+      nv_type = nvinfer1::DataType::kINT64;
+      break;
+#endif
     case phi::DataType::INT32:
       nv_type = nvinfer1::DataType::kINT32;
       break;
@@ -196,11 +201,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-#if IS_TRT_VERSION_GE(8500)
-    ret = context->enqueueV3(stream);
-#else
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
-#endif
   }
 #endif
   return ret;

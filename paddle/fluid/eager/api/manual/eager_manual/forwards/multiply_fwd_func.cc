@@ -191,6 +191,15 @@ paddle::Tensor multiply_ad_func(
     if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
+    }
     // SetAttributes if needed
     grad_node->SetAttribute_axis(-1);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -359,6 +368,15 @@ paddle::Tensor& multiply__ad_func(
     // Set for forward trace
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
     }
     // SetAttributes if needed
     grad_node->SetAttribute_axis(-1);
