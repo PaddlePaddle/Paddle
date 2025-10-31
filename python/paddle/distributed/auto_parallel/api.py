@@ -2198,9 +2198,7 @@ class ShardingStage2(_ShardingStageBase):
     ) -> None:
         super().__init__(mesh, sharding_mesh_dim)
 
-    def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
-        # Note(luchang): Due to reshard optimizations in Paddle where all-reduce + slicing is fused into reduce_scatter,
-        # in auto_dp, the current behavior of ShardingStage2 is effectively the same as ShardingStage1.
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
         if param.is_dist():
             # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
             if 'beta' not in key:
@@ -2212,37 +2210,12 @@ class ShardingStage2(_ShardingStageBase):
                     dist.Replicate()
                     for _ in range(len(param.process_mesh.shape))
                 ]
-            if accumulator.is_dist():
-                if accumulator.get_defining_op().name() == "pd_op.data":
-                    dim_map, partial_status = (
-                        dist.auto_parallel.placement_type.to_dim_map(
-                            placements, len(accumulator.shape)
-                        )
-                    )
-                    dist_attr = (
-                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                            param.process_mesh, dim_map, partial_status
-                        )
-                    )
-                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
-                        accumulator.type(), dist_attr
-                    )
-                    accumulator.set_type(dist_type)
-                    op_dist_attr = (
-                        paddle.base.libpaddle.pir.create_op_dist_attribute(
-                            param.process_mesh, [], [dist_attr]
-                        )
-                    )
-                    accumulator.get_defining_op().dist_attr = op_dist_attr
-                    return accumulator
-                return dist.reshard(accumulator, param.process_mesh, placements)
-            else:
-                return shard_tensor(
-                    accumulator,
-                    mesh=param.process_mesh,
-                    placements=placements,
-                )
-        return accumulator
+            return shard_tensor(
+                tensor,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return tensor
 
     @staticmethod
     def _grad_hook(grad):
