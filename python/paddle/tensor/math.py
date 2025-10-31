@@ -3775,9 +3775,9 @@ def cumsum(
     x: Tensor,
     axis: int | None = None,
     dtype: DTypeLike | None = None,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
     The cumulative sum of the elements along a given axis.
@@ -4195,8 +4195,8 @@ def cumprod(
     dim: int | None = None,
     *,
     dtype: DTypeLike | None = None,
-    name: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
