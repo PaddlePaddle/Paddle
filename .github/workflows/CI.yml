@@ -86,5 +86,5 @@ jobs:
     uses: ./.github/workflows/_Formers.yml
     needs: [clone, build-docker]
     with:
-      docker_distribute_image: ${{ needs.build-docker.outputs.docker_formers_image }}
+      docker_formers_image: ${{ needs.build-docker.outputs.docker_formers_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
