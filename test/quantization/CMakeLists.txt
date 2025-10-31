@@ -248,8 +248,10 @@ if(NOT WITH_GPU)
 endif()
 
 #
-if(${CUDA_ARCH_NAME} STREQUAL "Hopper")
-  list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
+if(NOT WITH_XPU)
+  if(${CUDA_ARCH_NAME} STREQUAL "Hopper")
+    list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
+  endif()
 endif()
 
 if(LINUX AND WITH_ONEDNN)
