@@ -25,6 +25,7 @@
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
@@ -160,7 +161,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   }
 
   std::string unique_api_name;
-  if (VLOG_IS_ON(3)) {
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
     static int64_t call_count = 0;
     call_count++;
     unique_api_name =
@@ -195,7 +196,7 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   auto& saved_mean = std::get<3>(api_result);
   auto& saved_variance = std::get<4>(api_result);
   auto& reserve_space = std::get<5>(api_result);
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
     egr::SetTensorName(unique_api_name, "out", &out);
     egr::SetTensorName(unique_api_name, "mean_out", &mean_out);
     egr::SetTensorName(unique_api_name, "variance_out", &variance_out);
@@ -245,12 +246,21 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     auto grad_node = std::shared_ptr<SyncBatchNormGradNode>(  // NOLINT
         new SyncBatchNormGradNode(6, 5));
     // Set GradNodeName
-    if (VLOG_IS_ON(6)) {
+    if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
       grad_node->SetNameFromAPI(unique_api_name);
     }
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
     }
 
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());

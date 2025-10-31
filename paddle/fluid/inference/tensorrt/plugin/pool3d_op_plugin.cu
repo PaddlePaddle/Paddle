@@ -102,15 +102,9 @@ nvinfer1::Dims Pool3DPlugin::getOutputDimensions(
 
 int Pool3DPlugin::enqueue(int batchSize,
                           const void *const *inputs,
-#if IS_TRT_VERSION_LT(8000)
-                          void **outputs,
-                          void *workspace,
-                          cudaStream_t stream) TRT_NOEXCEPT {
-#else
                           void *const *outputs,
                           void *workspace,
                           cudaStream_t stream) TRT_NOEXCEPT {
-#endif
   int input_size = 0;
   float const *idata = reinterpret_cast<float const *>(inputs[0]);
   float *const *odatas = reinterpret_cast<float *const *>(outputs);

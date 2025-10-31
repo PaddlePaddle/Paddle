@@ -769,6 +769,13 @@ class TestPool2D_API(unittest.TestCase):
             self.check_lp_float16_static(place)
         paddle.disable_static()
 
+    def test_torch_compatible(self):
+        paddle.set_flags({'FLAGS_torch_compatible_kernel': 1})
+        paddle.enable_static()
+        for place in self.places:
+            self.check_max_static_results(place)
+        paddle.disable_static()
+
     def test_pool2d(self):
         for place in self.places:
             self.check_max_dygraph_results(place)

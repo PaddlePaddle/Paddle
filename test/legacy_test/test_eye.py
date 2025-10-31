@@ -35,16 +35,16 @@ class TestTensorCreation(unittest.TestCase):
 
         self.requires_grads = [True, False]
         self.dtypes = [None, paddle.float32]
-        self.pin_memorys = [False]
+        self.pin_memories = [False]
         if (
             paddle.device.is_compiled_with_cuda()
             and not paddle.device.is_compiled_with_rocm()
         ):
-            self.pin_memorys.append(True)
+            self.pin_memories.append(True)
 
     def test_eye(self):
         for device, requires_grad, dtype, pin_memory in product(
-            self.devices, self.requires_grads, self.dtypes, self.pin_memorys
+            self.devices, self.requires_grads, self.dtypes, self.pin_memories
         ):
             if (
                 device

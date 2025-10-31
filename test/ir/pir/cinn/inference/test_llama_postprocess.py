@@ -15,6 +15,8 @@ import sys
 import unittest
 from os.path import dirname
 
+import numpy as np
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
@@ -93,8 +95,8 @@ class TestLlamaPostProcess(unittest.TestCase):
         self.input_ids = paddle.randint(0, 512, [1, 32], dtype="int64")
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 5)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 5})
+        utils.check_jit_kernel_number(static_fn, 4)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 4})
 
     def eval(self, use_cinn):
         paddle.seed(2024)
@@ -114,11 +116,10 @@ class TestLlamaPostProcess(unittest.TestCase):
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
         cinn_out = self.eval(use_cinn=True)
-        # TODO(Aurelius84): fix the precision with inf
-        # for i in range(len(dy_out)):
-        #     np.testing.assert_allclose(
-        #         cinn_out[i].numpy(), dy_out[i].numpy(), atol=1e-6, rtol=1e-6
-        #     )
+        for i in range(len(dy_out)):
+            np.testing.assert_allclose(
+                cinn_out[i].numpy(), dy_out[i].numpy(), atol=1e-6, rtol=1e-6
+            )
 
 
 if __name__ == '__main__':

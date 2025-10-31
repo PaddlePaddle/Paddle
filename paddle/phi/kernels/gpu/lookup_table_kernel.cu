@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/lookup_table_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -52,7 +53,7 @@ __global__ void LookupTable(T *output,
         id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int64_t i = idx; i < D; i += BlockDimX) {
       if (PaddingFlag) {
         if (id == padding_idx)
           out[i] = static_cast<T>(0);

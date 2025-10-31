@@ -256,14 +256,10 @@ class TensorRTEngine {
         infer_engine_,
         common::errors::InvalidArgument(
             "The TensorRT engine must be built first before serialization"));
-#if IS_TRT_VERSION_LT(8000)
-    ihost_memory_.reset(infer_engine_->serialize());
-#else
     PADDLE_ENFORCE_NOT_NULL(
         ihost_memory_,
         common::errors::InvalidArgument(
             "TensorRT >= 8.0 requires that buildSerializedNetwork is called"));
-#endif
     return ihost_memory_.get();
   }
 
@@ -706,19 +702,19 @@ class PADDLE_API TRTEngineManager {
                          const phi::Stream& stream) {
     std::lock_guard<std::mutex> lock(mutex_);
     static auto alignment = GetAlignmentSize(place);
-    if (context_memorys_.count(predictor_id) == 0) {
+    if (context_memories_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
-      context_memorys_[predictor_id] = std::move(context_memory);
+      context_memories_[predictor_id] = std::move(context_memory);
     }
-    return GetAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+    return GetAlignedMemory(context_memories_[predictor_id]->ptr(), alignment);
   }
 
   void ReleaseContextMemory(PredictorID predictor_id) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (context_memorys_.count(predictor_id)) {
-      context_memorys_[predictor_id].reset(nullptr);
-      context_memorys_.erase(predictor_id);
+    if (context_memories_.count(predictor_id)) {
+      context_memories_[predictor_id].reset(nullptr);
+      context_memories_.erase(predictor_id);
     }
   }
 
@@ -734,7 +730,7 @@ class PADDLE_API TRTEngineManager {
 
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
-  std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
+  std::unordered_map<PredictorID, AllocationPtr> context_memories_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
   infer_ptr<nvinfer1::IBuilder> holder_;
 };
