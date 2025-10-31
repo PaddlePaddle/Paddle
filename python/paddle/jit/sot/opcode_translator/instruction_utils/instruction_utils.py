@@ -121,6 +121,10 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
 
     FUSED_INSTS: dict[str, tuple[str, str]] = {
         "LOAD_FAST_LOAD_FAST": ("LOAD_FAST", "LOAD_FAST"),
+        "LOAD_FAST_BORROW_LOAD_FAST_BORROW": (
+            "LOAD_FAST_BORROW",
+            "LOAD_FAST_BORROW",
+        ),
         "STORE_FAST_STORE_FAST": ("STORE_FAST", "STORE_FAST"),
         "STORE_FAST_LOAD_FAST": ("STORE_FAST", "LOAD_FAST"),
     }

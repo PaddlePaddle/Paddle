@@ -87,7 +87,7 @@ class TestOpStatsPir(unittest.TestCase):
         conv_num = 0
         for i in range(4):
             add_num += int(add_called[i])
-            conv_num += int(add_called[i])
+            conv_num += int(conv2d_called[i])
 
         self.assertTrue(conv_num == 1)
         self.assertTrue(add_num == 1)

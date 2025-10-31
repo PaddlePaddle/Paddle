@@ -84,10 +84,41 @@ class ConvertMEA2FAPattern : public pir::OpRewritePattern<
       return false;
     }
 
-    auto max_seqlen_q =
-        op->attribute("max_seqlen_q").dyn_cast<pir::FloatAttribute>().data();
-    auto max_seqlen_k =
-        op->attribute("max_seqlen_k").dyn_cast<pir::FloatAttribute>().data();
+    int64_t max_seqlen_q = 0;
+    int64_t max_seqlen_k = 0;
+
+    if (op->attribute("max_seqlen_q")) {
+      max_seqlen_q = op->attribute("max_seqlen_q")
+                         .template dyn_cast<paddle::dialect::ScalarAttribute>()
+                         .data()
+                         .to<int64_t>();
+    }
+
+    if (op->attribute("max_seqlen_k")) {
+      max_seqlen_k = op->attribute("max_seqlen_k")
+                         .template dyn_cast<paddle::dialect::ScalarAttribute>()
+                         .data()
+                         .to<int64_t>();
+    }
+
+    if (auto full_op = op->operand_source(8)
+                           .defining_op()
+                           ->dyn_cast<paddle::dialect::FullOp>()) {
+      max_seqlen_q = full_op->attribute("value")
+                         .dyn_cast<paddle::dialect::ScalarAttribute>()
+                         .data()
+                         .to<int64_t>();
+    }
+
+    if (auto full_op = op->operand_source(9)
+                           .defining_op()
+                           ->dyn_cast<paddle::dialect::FullOp>()) {
+      max_seqlen_k = full_op->attribute("value")
+                         .dyn_cast<paddle::dialect::ScalarAttribute>()
+                         .data()
+                         .to<int64_t>();
+    }
+
     if (max_seqlen_q > 0 || max_seqlen_k > 0) {
       return false;
     }
