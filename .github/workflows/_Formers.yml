@@ -50,6 +50,7 @@ jobs:
           WITH_DISTRIBUTE: "ON"
           WITH_TESTING: "ON"
           WITH_INFERENCE_API_TEST: "OFF"
+          WITH_FA_BUILD_WITH_CACHE: "ON"
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
@@ -96,6 +97,7 @@ jobs:
             -e WITH_DISTRIBUTE \
             -e PY_VERSION \
             -e WITH_TENSORRT \
+            -e WITH_FA_BUILD_WITH_CACHE \
             -e GENERATOR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
