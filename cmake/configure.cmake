@@ -114,8 +114,8 @@ if(WITH_GPU)
     message(FATAL_ERROR "Paddle needs cudnn to compile")
   endif()
 
-  if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
-    message(FATAL_ERROR "Paddle needs CUDNN >= 7.0 to compile")
+  if(${CUDNN_MAJOR_VERSION} VERSION_LESS 8)
+    message(FATAL_ERROR "Paddle needs CUDNN >= 8.0 to compile")
   endif()
 
   if(CUPTI_FOUND)
