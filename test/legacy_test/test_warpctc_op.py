@@ -808,7 +808,7 @@ class TestCTCLossAPICase(unittest.TestCase):
             )[0]
 
             # illegal sample -> 0
-            np.testing.assert_allclose(loss_val[0], 0.0, atol=1e-6)
+            np.testing.assert_allclose(loss_val, [0.0], atol=1e-6)
 
         paddle.disable_static()
 
