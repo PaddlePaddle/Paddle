@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 
 import paddle
 from paddle import base, in_dynamic_mode
@@ -1344,7 +1344,7 @@ class CTCLoss(Layer):
         self,
         blank: int = 0,
         reduction: _ReduceMode = 'mean',
-        zero_infinity: bool = True,
+        zero_infinity: bool | None = None,
     ) -> None:
         super().__init__()
         self.blank = blank
