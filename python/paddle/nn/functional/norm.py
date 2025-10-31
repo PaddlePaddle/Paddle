@@ -681,12 +681,13 @@ def local_response_norm(
     return res
 
 
+@param_two_alias(["x", "input"], ["epsilon", "eps"])
 def group_norm(
     x: Tensor,
     num_groups: int,
-    epsilon: float = 1e-05,
     weight: Tensor | None = None,
     bias: Tensor | None = None,
+    epsilon: float = 1e-05,
     data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
     name: str | None = None,
 ) -> Tensor:
@@ -694,15 +695,20 @@ def group_norm(
     nn.GroupNorm is recommended.
     For more information, please refer to :ref:`api_paddle_nn_GroupNorm` .
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``group_norm(input=tensor_x, ...)`` is equivalent to ``group_norm(x=tensor_x, ...)``.
+
     Parameters:
         x(Tensor): Input Tensor with shape: attr:`(batch, num_features, *)`.
+            alias: ``input``.
         num_groups(int): The number of groups that divided from channels.
-        epsilon(float, optional): The small value added to the variance to prevent
-            division by zero. Default: 1e-05.
         weight(Tensor, optional): The weight Tensor of group_norm, with shape: attr:`[num_channels]`.
             Default: None.
         bias(Tensor, optional): The bias Tensor of group_norm, with shape: attr:`[num_channels]`.
             Default: None.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
         data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
         name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 

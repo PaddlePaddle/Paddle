@@ -618,5 +618,56 @@ class TestGroupNormWithOptionalgradX(unittest.TestCase):
             np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
 
 
+class TestGroupNormParam(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(42)
+        self.x_np = np.random.randn(2, 6, 4, 4).astype('float32')
+        self.weight_np = np.random.randn(6).astype('float32')
+        self.bias_np = np.random.randn(6).astype('float32')
+
+    def test_alias_input_for_x(self):
+        """test parameter alias input/x"""
+        x_tensor = paddle.to_tensor(self.x_np)
+        weight_tensor = paddle.to_tensor(self.weight_np)
+        bias_tensor = paddle.to_tensor(self.bias_np)
+
+        out_with_input = paddle.nn.functional.group_norm(
+            input=x_tensor,
+            num_groups=3,
+            weight=weight_tensor,
+            bias=bias_tensor,
+            eps=1e-5,
+        )
+        out_with_x = paddle.nn.functional.group_norm(
+            x=x_tensor,
+            num_groups=3,
+            weight=weight_tensor,
+            bias=bias_tensor,
+            eps=1e-5,
+        )
+
+        np.testing.assert_array_equal(
+            out_with_input.numpy(), out_with_x.numpy()
+        )
+
+    def test_param_order(self):
+        """test order of parameters"""
+        x_tensor = paddle.to_tensor(self.x_np)
+        weight_tensor = paddle.to_tensor(self.weight_np)
+        bias_tensor = paddle.to_tensor(self.bias_np)
+
+        try:
+            out = paddle.nn.functional.group_norm(
+                x_tensor,  # x
+                3,  # num_groups
+                weight_tensor,  # weight
+                bias_tensor,  # bias
+                1e-5,  # epsilon
+            )
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+
 if __name__ == '__main__':
     unittest.main()
