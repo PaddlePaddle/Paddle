@@ -562,9 +562,9 @@ class GroupNorm(Layer):
         return group_norm(
             input,
             self._num_groups,
+            self._epsilon,
             self.weight,
             self.bias,
-            self._epsilon,
             self._data_format,
         )
 
