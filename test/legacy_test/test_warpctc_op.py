@@ -839,7 +839,7 @@ class TestCTCLossAPICase(unittest.TestCase):
             blank=n_class - 1,
         )
 
-        np.testing.assert_allclose(loss.numpy()[0], 0.0, rtol=1e-6)
+        np.testing.assert_allclose(loss.numpy(), [0.0], rtol=1e-6)
 
 
 if __name__ == "__main__":
