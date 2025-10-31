@@ -329,7 +329,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected + 1.0
         actual = H + 1.0
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_sub(self):
         def func(x):
@@ -340,7 +342,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected - 1.0
         actual = H - 1.0
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_mul(self):
         def func(x):
@@ -351,7 +355,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected * 2.0
         actual = H * 2.0
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_div(self):
         def func(x):
@@ -362,7 +368,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected / 2.0
         actual = H / 2.0
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_truediv(self):
         def func(x):
@@ -373,7 +381,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected / 2.0
         actual = H / 2.0
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_pow(self):
         def func(x):
@@ -384,7 +394,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected**3.0
         actual = H**3.0
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_mod(self):
         def func(x):
@@ -395,7 +407,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected % 1.2
         actual = H % 1.2
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_matmul(self):
         def func(x):
@@ -406,7 +420,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected @ expected
         actual = H @ H
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_eq(self):
         def func(x):
@@ -417,7 +433,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected == expected
         actual = H == H
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_ne(self):
         def func(x):
@@ -428,7 +446,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected != expected
         actual = H != H
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_lt(self):
         def func(x):
@@ -439,7 +459,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected < expected
         actual = H < H
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_le(self):
         def func(x):
@@ -450,7 +472,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected <= expected
         actual = H <= H
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_gt(self):
         def func(x):
@@ -461,7 +485,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected > expected
         actual = H > H
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_ge(self):
         def func(x):
@@ -472,7 +498,9 @@ class TestHessianNoBatch(unittest.TestCase):
 
         expected = expected >= expected
         actual = H >= H
-        np.testing.assert_allclose(actual, expected, self.rtol, self.atol)
+        np.testing.assert_allclose(
+            actual, expected, rtol=self.rtol, atol=self.atol
+        )
 
     def func_0Dtensor_index(self):
         x_0d = self.x[0].reshape([])

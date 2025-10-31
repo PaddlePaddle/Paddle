@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import struct
 import unittest
 
@@ -396,7 +395,7 @@ class AmpTestBase(unittest.TestCase):
         debug_info=None,
     ):
         def _extract_op_call(op_calls_str, pos):
-            return int(copy.copy(op_calls_str).split(",")[pos])
+            return int(op_calls_str.split(",")[pos])
 
         for op_type, expected_value in expected_bf16_calls.items():
             # print(f"[BF16] op_type={op_type}, value={value}")

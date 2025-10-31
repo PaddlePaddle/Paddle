@@ -1952,7 +1952,7 @@ class Unfold(Layer):
     @ForbidKeywordsDecorator(
         illegal_keys={"kernel_size", "dilation", "padding", "stride"},
         func_name="paddle.nn.Unfold",
-        correct_name="paddle.compat.Unfold",
+        correct_name="paddle.compat.nn.Unfold",
         url_suffix="nn/torch.nn.Unfold",
     )
     def __init__(
