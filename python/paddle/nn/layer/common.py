@@ -2493,7 +2493,7 @@ class Embedding(Layer):
         self._is_distributed = False
         self._max_norm = max_norm
         self._norm_type = norm_type
-        self.paddingding_idx = padding_idx
+        self._padding_idx = padding_idx
         self._scale_grad_by_freq = scale_grad_by_freq
         self._device = device
 
@@ -2550,18 +2550,18 @@ class Embedding(Layer):
 
     @property
     def padding_idx(self):
-        return self.paddingding_idx
+        return self._padding_idx
 
     @padding_idx.setter
     def padding_idx(self, value):
-        self.paddingding_idx = value
+        self._padding_idx = value
 
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.embedding(
             x,
             weight=self.weight,
-            padding_idx=self.paddingding_idx,
+            padding_idx=self._padding_idx,
             max_norm=self._max_norm,
             norm_type=self._norm_type,
             sparse=self._sparse,
@@ -2571,7 +2571,7 @@ class Embedding(Layer):
 
     def extra_repr(self) -> str:
         main_str = '{_num_embeddings}, {_embedding_dim}'
-        if self.paddingding_idx is not None:
+        if self._padding_idx is not None:
             main_str += ', padding_idx={_padding_idx}'
         main_str += ', sparse={_sparse}'
         main_str += ', scale_grad_by_freq={_scale_grad_by_freq}'
