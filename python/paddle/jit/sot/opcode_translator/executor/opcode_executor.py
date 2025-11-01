@@ -996,6 +996,11 @@ class OpcodeExecutorBase:
     def LOAD_FAST_CHECK(self, instr: Instruction):
         self.LOAD_FAST(instr)
 
+    # 3.14 opcodes
+    LOAD_FAST_BORROW = LOAD_FAST
+    NOT_TAKEN = NOP
+    POP_ITER = POP_TOP
+
     def DELETE_FAST(self, instr: Instruction):
         varname = self.vframe.code.co_varnames[instr.arg]
         del self.vframe.locals[varname]

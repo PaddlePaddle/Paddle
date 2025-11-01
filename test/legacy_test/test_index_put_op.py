@@ -1249,5 +1249,113 @@ class TestElementwiseMaximumOp_Stride(unittest.TestCase):
         np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
+class TestIndexPutAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 10, self.shape).astype(self.dtype)
+        self.idx0 = np.array([0, 2], dtype='int64')
+        self.idx1 = np.array([1, 3], dtype='int64')
+        self.value = np.array([9.0, 10.0], dtype=self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        x = paddle.to_tensor(self.np_input, dtype=self.dtype)
+        idx0_t = paddle.to_tensor(self.idx0, dtype='int64')
+        idx1_t = paddle.to_tensor(self.idx1, dtype='int64')
+        indices_t = (idx0_t, idx1_t)
+        values_t = paddle.to_tensor(self.value, dtype=self.dtype)
+
+        paddle_dygraph_out = []
+
+        # 1) position args
+        out1 = paddle.index_put(x, indices_t, value=values_t, accumulate=False)
+        paddle_dygraph_out.append(out1)
+
+        # 2) paddle-style kwargs
+        out2 = paddle.index_put(
+            x, indices=indices_t, value=values_t, accumulate=False
+        )
+        paddle_dygraph_out.append(out2)
+
+        # 3) torch-style kwarg name 'input'
+        out3 = paddle.index_put(
+            input=x, indices=indices_t, value=values_t, accumulate=False
+        )
+        paddle_dygraph_out.append(out3)
+
+        # 4) accumulate=False (position args)
+        out4 = paddle.index_put(x, indices_t, values_t, accumulate=False)
+        paddle_dygraph_out.append(out4)
+
+        ref_out = compute_index_put_ref(
+            self.np_input, indices_t, self.value, accumulate=False
+        )
+
+        # test paddle.index_put_
+        x.index_put_(indices_t, values_t, accumulate=False)
+
+        # Check results
+        np.testing.assert_allclose(ref_out, paddle_dygraph_out[0].numpy())
+        np.testing.assert_allclose(ref_out, paddle_dygraph_out[1].numpy())
+        np.testing.assert_allclose(ref_out, paddle_dygraph_out[2].numpy())
+        np.testing.assert_allclose(ref_out, paddle_dygraph_out[3].numpy())
+        np.testing.assert_allclose(ref_out, x.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            idx0_t = paddle.static.data(name="idx0", shape=[2], dtype='int64')
+            idx1_t = paddle.static.data(name="idx1", shape=[2], dtype='int64')
+            value = paddle.static.data(
+                name="value", shape=[2], dtype=self.dtype
+            )
+
+            indices_t = (idx0_t, idx1_t)
+
+            # position args (accumulate=False)
+            out1 = paddle.index_put(x, indices_t, value, accumulate=False)
+            # paddle kwargs
+            out2 = paddle.index_put(
+                x=x, indices=indices_t, value=value, accumulate=False
+            )
+            # torch-style kwarg name 'input'
+            out3 = paddle.index_put(
+                input=x, indices=indices_t, value=value, accumulate=False
+            )
+            # accumulate=False
+            out4 = paddle.index_put(x, indices_t, value, accumulate=False)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                feed={
+                    "x": self.np_input,
+                    "idx0": self.idx0,
+                    "idx1": self.idx1,
+                    "value": self.value,
+                },
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = compute_index_put_ref(
+                self.np_input,
+                (self.idx0, self.idx1),
+                self.value,
+                accumulate=False,
+            )
+
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == '__main__':
     unittest.main()

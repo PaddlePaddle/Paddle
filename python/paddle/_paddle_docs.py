@@ -1116,6 +1116,75 @@ def sum(
 """,
 )
 
+add_doc_and_signature(
+    "index_put",
+    """
+    Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
+    The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
+    If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
+
+    Args:
+        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
+        indices (list[Tensor]|tuple[Tensor]): The tuple of Tensor containing the indices to index.
+            The data type of ``tensor in indices`` must be int32, int64 or bool.
+        value (Tensor): The tensor used to be assigned to x.
+        accumulate (bool, optional): Whether the elements in values are added to x. Default: False.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimension and dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros([3, 3])
+            >>> value = paddle.ones([3])
+            >>> ix1 = paddle.to_tensor([0,1,2])
+            >>> ix2 = paddle.to_tensor([1,2,1])
+            >>> indices=(ix1,ix2)
+
+            >>> out = paddle.index_put(x,indices,value)
+            >>> print(x)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 0.],
+             [0., 0., 0.],
+             [0., 0., 0.]])
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 1., 0.],
+             [0., 0., 1.],
+             [0., 1., 0.]])
+    """,
+    """
+def index_put(
+    x: Tensor,
+    indices: Sequence[Tensor],
+    value: Tensor,
+    accumulate: bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "index_put_",
+    """
+    Inplace version of ``index_put`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_put`.
+    """,
+    """
+def index_put_(
+    x: Tensor,
+    indices: Sequence[Tensor],
+    value: Tensor,
+    accumulate: bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
 # liuyi
 add_doc_and_signature(
     "any",

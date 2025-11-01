@@ -141,8 +141,8 @@ class TestConverterResNet50(unittest.TestCase):
         predictor = paddle_infer.create_predictor(config)
 
         paddle.disable_static()
-        for i, input_instrance in enumerate(trt_config.inputs):
-            min_data, _, max_data = input_instrance.generate_input_data()
+        for i, input_instance in enumerate(trt_config.inputs):
+            min_data, _, max_data = input_instance.generate_input_data()
             model_inputs = paddle.to_tensor(min_data)
             output_converted = predictor.run([model_inputs])
 
