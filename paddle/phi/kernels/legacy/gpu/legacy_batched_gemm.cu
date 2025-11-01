@@ -16,7 +16,6 @@
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_fp16.h>
-#include <cuda_fp8.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <stdlib.h>

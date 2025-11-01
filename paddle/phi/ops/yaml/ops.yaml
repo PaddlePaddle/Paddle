@@ -6012,6 +6012,15 @@
     func: int_bincount
     data_type: x
 
+- op: legacy_batched_gemm
+  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes)
+  output: Tensor(output)
+  infer_meta:
+    func: LegacyBatchedGemmInferMeta
+  kernel:
+   func: legacy_batched_gemm
+   data_type: lhs
+
 - op: number_count
   args: (Tensor numbers, int upper_range)
   output: Tensor(out)
@@ -6022,12 +6031,3 @@
      data_type: numbers
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
-
-- op: legacy_batched_gemm
-  args: (Tensor lhs, Tensor rhs, int64_t[] batch_sizes)
-  output: Tensor(output)
-  infer_meta:
-    func: LegacyBatchedGemmInferMeta
-  kernel:
-   func: legacy_batched_gemm
-   data_type: lhs
