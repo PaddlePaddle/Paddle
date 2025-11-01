@@ -881,7 +881,7 @@ static PyObject* tensor_retain_grads(TensorObject* self,
     auto meta = egr::EagerUtils::autograd_meta(&(self->tensor));
     if (!meta->GetMutableGradNode()) {
       VLOG(6) << "Make grad node of tensor: " << self->tensor.name()
-              << "become accumulation node";
+              << " become accumulation node";
       meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(self->tensor));
     }

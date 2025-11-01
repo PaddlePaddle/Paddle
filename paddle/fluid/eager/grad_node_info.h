@@ -76,10 +76,7 @@ class Edge {
     return grad_node_;
   }
 
-  void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
-    VLOG(7) << "Resetting Edge's Grad Node";
-    grad_node_ = node;
-  }
+  void SetGradNode(const std::shared_ptr<GradNodeBase>& node);
 
   std::pair<size_t, size_t> GetEdgeRankInfo() const {
     return std::make_pair(in_slot_id_, in_rank_);
@@ -97,17 +94,7 @@ class Edge {
   }
 
   // Currently we use grad_node_ to identify if a edge is initialized.
-  bool IsInitialized() const {
-    if (!grad_node_) {
-      return false;
-    } else {
-      if (!(grad_node_.get())) {
-        return false;
-      } else {
-        return true;
-      }
-    }
-  }
+  bool IsInitialized() const { return grad_node_ != nullptr; }
 
   void Clear() {
     grad_node_.reset();

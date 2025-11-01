@@ -29,7 +29,7 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(const paddle::Tensor& fwd_tensor)
       : GradNodeBase(1, 1) {
-    VLOG(5) << "Construct GradNodeAccumulation";
+    VLOG(5) << "Construct GradNodeAccumulation(" << this << ")";
     auto* meta = egr::EagerUtils::nullable_autograd_meta(fwd_tensor);
     if (meta) {
       weak_grad_ = meta->WeakGrad();
@@ -43,8 +43,13 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
 
   GradNodeAccumulation(const GradNodeAccumulation& other) = default;
 
+  void UpdateGradInMeta(const paddle::Tensor& fwd_tensor) {
+    VLOG(7) << "Updating GradInMeta for GradNodeAccumulation(" << this << ")";
+    SetGradInMeta(fwd_tensor, 0);
+  }
+
   ~GradNodeAccumulation() override {
-    VLOG(5) << "Destruct GradNodeAccumulation";
+    VLOG(5) << "Destruct GradNodeAccumulation(" << this << ")";
   }
 
   // Functor: perform backward computations

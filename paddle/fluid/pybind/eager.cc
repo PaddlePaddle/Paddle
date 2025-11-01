@@ -121,14 +121,6 @@ void EmptyTensorInitializer(TensorObject* self,
       self->tensor.set_impl(tensor);
     }
   }
-
-  if (!autograd_meta->GetMutableGradNode()) {
-    autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(self->tensor));
-    VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation"
-            << autograd_meta->GradNode() << " for it.";
-  }
 }
 
 void EmptyStringTensorInitializer(TensorObject* self,
