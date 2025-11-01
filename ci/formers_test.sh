@@ -15,8 +15,6 @@
 
 function formers_api() {
   cd /paddle/PaddleFormers && git config --global --add safe.directory $PWD
-  source $work_dir/../../../proxy
-  source $work_dir/../../../AISTUDIO_ACCESS_TOKEN
   echo "Check whether the local model file exists:"
   ls -l ./models
   timeout 30m bash scripts/unit_test/ci_unittest.sh ${paddle_whl} false ${PYTEST_EXECUTE_FLAG_FILE} ${BRANCH}
@@ -54,8 +52,9 @@ ln -sf $(which python3.10) /usr/local/bin/python
 ln -sf $(which pip3.10) /usr/local/bin/pip
 
 echo "Downloading PaddleFormers.tar.gz..."
-wget -q https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleFormers.tar
-tar xf PaddleFormers.tar
+#wget -q https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleFormers.tar
+#tar xf PaddleFormers.tar
+git clone --depth=1000 https://github.com/PaddlePaddle/PaddleFormers.git
 echo "Extracting PaddleFormers.tar.gz..."
 cd PaddleFormers
 cp -r ${CFS_DIR}/models ./models
