@@ -27,6 +27,9 @@ import sys
 import paddle
 import site
 import shutil
+import zipfile
+import tempfile
+
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
@@ -1020,9 +1023,6 @@ class BdistWheelCommand(bdist_wheel):
           - Move {pkg}.py to {pkg}/__init__.py
           - Move {pkg}_pd_.so to {pkg}/{pkg}_pd_.so
         """
-        import zipfile
-        import tempfile
-
         if not self.dist_dir or not os.path.isdir(self.dist_dir):
             return
 
