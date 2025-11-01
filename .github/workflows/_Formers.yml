@@ -232,6 +232,7 @@ jobs:
         if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
+          sleep 3d
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
 
