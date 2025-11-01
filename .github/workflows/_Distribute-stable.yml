@@ -59,8 +59,10 @@ jobs:
           WITH_TENSORRT: "OFF"
           GENERATOR: "Ninja"
           WITH_SHARED_PHI: "ON"
-          CUDA_ARCH_NAME: Ampere
+          CUDA_ARCH_NAME: Manual
+          CUDA_ARCH_BIN: "80 90"
           WITH_CUDNN_FRONTEND: "ON"
+          WITH_FA_BUILD_WITH_CACHE: "ON"
           FLAGS_enable_cudnn_frontend: 1
           CACHE_DIR: /root/.cache/build
           CCACHE_DIR: /root/.ccache/gpubox
@@ -114,6 +116,8 @@ jobs:
             -e CUDA_ARCH_NAME \
             -e WITH_CUDNN_FRONTEND \
             -e FLAGS_enable_cudnn_frontend \
+            -e CUDA_ARCH_BIN \
+            -e WITH_FA_BUILD_WITH_CACHE \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
