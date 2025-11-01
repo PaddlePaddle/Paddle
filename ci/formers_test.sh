@@ -14,7 +14,7 @@
 
 
 function formers_api() {
-  cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
+  cd /paddle/PaddleFormers && git config --global --add safe.directory $PWD
   source $work_dir/../../../proxy
   source $work_dir/../../../AISTUDIO_ACCESS_TOKEN
   echo "Check whether the local model file exists:"
@@ -24,7 +24,7 @@ function formers_api() {
 
 function formers_models() {
   rm -rf /root/.cache/aistudio/
-  cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
+  cd /paddle/PaddleFormers && git config --global --add safe.directory $PWD
   echo "Check whether the local model file exists:"
   ls -l ./models
   timeout 30m bash scripts/regression/ci_model_unittest.sh ${paddle_whl} ${BRANCH}
