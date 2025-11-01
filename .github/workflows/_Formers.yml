@@ -61,7 +61,7 @@ jobs:
           WITH_TENSORRT: "OFF"
           GENERATOR: "Ninja"
           WITH_SHARED_PHI: "ON"
-          CUDA_ARCH_NAME: Ampere
+          CUDA_ARCH_NAME: Manual
           CUDA_ARCH_BIN: "80 89"
           WITH_CUDNN_FRONTEND: "ON"
           FLAGS_enable_cudnn_frontend: 1
