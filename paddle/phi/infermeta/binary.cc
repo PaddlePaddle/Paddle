@@ -4749,10 +4749,10 @@ void FusedRMSNormInferMeta(const MetaTensor& x,
   invvar->set_dtype(DataType::FLOAT32);
 }
 
-void LagacyBatchedGemmInferMeta(const MetaTensor& lhs,
-                           const MetaTensor& rhs,
-                           const std::vector<int64_t> & batch_sizes,
-                           MetaTensor* output){
+void LegacyBatchedGemmInferMeta(const MetaTensor& lhs,
+                                const MetaTensor& rhs,
+                                const std::vector<int64_t>& batch_sizes,
+                                MetaTensor* output) {
   const auto lhs_shape = lhs.dims();
   const auto rhs_shape = rhs.dims();
   PADDLE_ENFORCE_EQ(
@@ -4765,26 +4765,28 @@ void LagacyBatchedGemmInferMeta(const MetaTensor& lhs,
       3,
       common::errors::InvalidArgument(
           "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
- 
-  // We expect shape below: 
-  // [M_total, input_hidden_size] x [num_experts, input_hidden_size, output_hidden_size]
+
+  // We expect shape below:
+  // [M_total, input_hidden_size] x [num_experts, input_hidden_size,
+  // output_hidden_size]
   const int64_t num_experts = rhs_shape[0];
   const int64_t total_tokens = lhs_shape[0];
   const int64_t input_hidden_size = lhs_shape[1];
   const int64_t output_hidden_size = rhs_shape[2];
+  PADDLE_ENFORCE_EQ(input_hidden_size,
+                    rhs_shape[1],
+                    common::errors::InvalidArgument(
+                        "The lhs's last dim must be equal to the rhs's "
+                        "dim[-2], but got[%d] instead of [%d]",
+                        input_hidden_size,
+                        rhs_shape[1]));
   PADDLE_ENFORCE_EQ(
-      input_hidden_size,
-      rhs_shape[1],
+      lhs.dtype() == DataType::BFLOAT16 && rhs.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The lhs's last dim must be equal to the rhs's dim[-2], but got[%d] instead of [%d]", input_hidden_size, rhs_shape[1]));
-  PADDLE_ENFORCE_EQ(
-    lhs.dtype() == DataType::BFLOAT16 && rhs.dtype() == DataType::BFLOAT16,
-    true,
-    common::errors::InvalidArgument(
-        "The dtype of lhs and rhs must be BFLOAT16, but got [%s] and [%s]",
-        lhs.dtype(),
-        rhs.dtype())
-  );
+          "The dtype of lhs and rhs must be BFLOAT16, but got [%s] and [%s]",
+          lhs.dtype(),
+          rhs.dtype()));
   output->set_dims(common::make_ddim({total_tokens, output_hidden_size}));
   output->set_dtype(DataType::BFLOAT16);
 }

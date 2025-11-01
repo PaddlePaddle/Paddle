@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn.functional as F
 from paddle.incubate.nn.functional import legacy_batched_gemm as grouped_gemm
 
 os.environ["FLAGS_flash_attn_version"] = "v1"
@@ -48,27 +47,27 @@ def randn(bs, x, y):
 
 
 def pyref_gmm(a, b, batch_sizes, trans_b=False):
-    
     out = []
     start = 0
     for i, size in enumerate(batch_sizes):
         rhs = b[i, :, :].t() if trans_b else b[i, :, :]
-        out.append(a[start:start + size, :] @ rhs)
+        out.append(a[start : start + size, :] @ rhs)
         start += size
     return paddle.concat(out, axis=0)
 
 
 class TestGroupedGemm(unittest.TestCase):
-    
     def setUp(self):
         paddle.seed(0)
-        
+
     def test_grouped_gemm_fixed_sizes(self):
         """Test grouped GEMM with fixed sizes"""
         for z, m, k, n in _TEST_PROBLEMS:
-            with self.subTest(z=z, m=m, k=k, n=n, trans_b=False):
-                a = randn(z, m, k).reshape([-1, k])
-                b = randn(z, k, n)
+            with self.subTest(
+                z=z, m=m, k=k, n=n, trans_b=False
+            ) and paddle.amp.auto_cast(False):
+                a = randn(z, m, k).reshape([-1, k]).astype(paddle.bfloat16)
+                b = randn(z, k, n).astype(paddle.bfloat16)
                 batch_sizes = [m] * z
                 a.stop_gradient = False
                 b.stop_gradient = False
@@ -76,22 +75,21 @@ class TestGroupedGemm(unittest.TestCase):
                 b_ref = b.clone().detach()
                 a_ref.stop_gradient = False
                 b_ref.stop_gradient = False
-                
+
                 out = grouped_gemm(a, b, batch_sizes)
                 expected_out = pyref_gmm(a_ref, b_ref, batch_sizes, False)
-                print(f"#### out : {out}")
-                print(f"#### expected: {expected_out}")
                 allclose(out, expected_out)
-                
-    
+
     def test_grouped_gemm_variable_sizes(self):
         """Test grouped GEMM with variable sizes"""
         for z, m, k, n in _TEST_PROBLEMS:
-            with self.subTest(z=z, m=m, k=k, n=n, trans_b=False):
+            with self.subTest(
+                z=z, m=m, k=k, n=n, trans_b=False
+            ) and paddle.amp.auto_cast(False):
                 trans_b = False
-                a = randn(z, m, k).reshape([-1, k])
-                b = randn(z, k, n)
-                
+                a = randn(z, m, k).reshape([-1, k]).astype(paddle.bfloat16)
+                b = randn(z, k, n).astype(paddle.bfloat16)
+
                 dist = paddle.rand([z])
                 dist /= dist.sum()
                 batch_sizes = (dist * m).astype(paddle.int64)
@@ -100,20 +98,17 @@ class TestGroupedGemm(unittest.TestCase):
                 if batch_sizes.sum() != m * z:
                     raise ValueError("Sum of batch sizes is not equal to m * z")
                 batch_sizes = list(batch_sizes)
-                
+
                 a.stop_gradient = False
                 b.stop_gradient = False
                 a_ref = a.clone().detach()
                 b_ref = b.clone().detach()
                 a_ref.stop_gradient = False
                 b_ref.stop_gradient = False
-                
+
                 out = grouped_gemm(a, b, batch_sizes)
                 expected_out = pyref_gmm(a_ref, b_ref, batch_sizes, trans_b)
                 allclose(out, expected_out)
-                print(f"#### out : {out}")
-                print(f"#### expected: {expected_out}")
-                
 
 
 if __name__ == '__main__':

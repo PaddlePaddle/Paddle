@@ -63,6 +63,7 @@ from .fused_transformer import (
     fused_multi_transformer,
 )
 from .int_bincount import int_bincount
+from .legacy_batched_gemm import legacy_batched_gemm
 from .masked_multihead_attention import masked_multihead_attention
 from .moe_combine import moe_combine
 from .moe_combine_no_weight import moe_combine_no_weight
