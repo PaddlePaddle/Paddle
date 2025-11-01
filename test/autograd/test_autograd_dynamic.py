@@ -666,7 +666,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             H = paddle.autograd.hessian(func(x), x, batch_axis=0)[..., 1]
 
     def test_all_cases(self):
-        self.setUpClass()
+        self.__class__.setUpClass()
         self.func_allow_unused()
         self.func_stop_gradient()
         self.func_out_not_single()
