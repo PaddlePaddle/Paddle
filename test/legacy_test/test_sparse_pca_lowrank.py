@@ -76,7 +76,8 @@ class TestSparsePcaLowrankAPI(unittest.TestCase):
         np.testing.assert_allclose(A1.numpy(), A2.numpy(), atol=1e-5)
 
     @unittest.skipIf(
-        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
+        or paddle.is_compiled_with_rocm(),
         "only support cuda",
     )
     def test_sparse(self):
