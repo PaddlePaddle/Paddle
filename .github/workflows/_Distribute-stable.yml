@@ -461,7 +461,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
-          bash ${ci_scripts}/formers_test.sh
+          bash /workspace/ci/formers_test.sh
           '
       - name: Upload and display logs
         if: always()
