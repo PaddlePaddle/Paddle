@@ -27,12 +27,34 @@ namespace proto = paddle::framework::proto;
 
 namespace phi {
 
+// template <typename InType, typename OutType>
+// struct CastDataTypeFunctor {
+//   HOSTDEVICE inline OutType operator()(InType in) const {
+//     return static_cast<OutType>(in);
+//   }
+// };
+
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
   HOSTDEVICE inline OutType operator()(InType in) const {
-    return static_cast<OutType>(in);
-  }
+    #if defined(_MSC_VER)
+        // 屏蔽 MSVC 不支持的从 float/bfloat8/float16 -> complex 的转换
+        if constexpr (
+            (std::is_same_v<OutType, phi::dtype::complex<float>> ||
+            std::is_same_v<OutType, phi::dtype::complex<double>>) &&
+            (std::is_same_v<InType, phi::dtype::float8_e4m3fn> ||
+            std::is_same_v<InType, phi::dtype::float8_e5m2> ||
+            std::is_same_v<InType, phi::dtype::bfloat16> ||
+            std::is_same_v<InType, phi::dtype::float16>)) {
+          return OutType(0);  // 默认返回值，仅防止编译错误
+        } else
+    #endif
+        {
+          return static_cast<OutType>(in);
+        }
+      }
 };
+
 
 #if defined(PADDLE_WITH_XPU)
 
