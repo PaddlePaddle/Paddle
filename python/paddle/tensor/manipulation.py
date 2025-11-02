@@ -30,6 +30,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
+    index_add_decorator,
     param_one_alias,
     param_two_alias,
     reshape_decorator,
@@ -7599,18 +7600,38 @@ def scatter_add_(
     )
 
 
+@index_add_decorator()
 def index_add(
-    x: Tensor, index: Tensor, axis: int, value: Tensor, name: str | None = None
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: int = 1,
+    out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
     Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
 
+    .. note::
+    Alias and Order Support:
+    1. The parameter name ``input`` can be used as an alias for ``x``.
+    2. The parameter name ``dim`` can be used as an alias for ``axis``.
+    3. The parameter name ``source`` can be used as an alias for ``value``.
+    4. This API also supports the PyTorch argument order ``(input, dim, index, source)`` for positional arguments, which will be converted to the Paddle order ``(x, index, axis, value)``.
+    For example, ``paddle.index_add(input=x, dim=1, index=idx, source=val)`` is equivalent to ``paddle.index_add(x=x, axis=1, index=idx, value=val)``, and ``paddle.index_add(x, 1, idx, val)`` is equivalent to ``paddle.index_add(x, idx, 1, val)``.
+
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+            alias: ``input``.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
         axis (int): The dimension in which we index.
+            alias: ``dim``.
         value (Tensor): The tensor used to add the elements along the target axis.
+            alias: ``source``.
+        alpha (Number, optional): Scaling factor for value. Default: 1.
+        out (Tensor, optional): The output tensor. Default: None.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -7634,7 +7655,8 @@ def index_add(
              [2., 2., 2.]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.index_add(x, index, value, axis)
+        scaled_value = value * alpha if alpha != 1 else value
+        return _C_ops.index_add(x, index, scaled_value, axis, out=out)
 
     helper = LayerHelper("index_add", **locals())
     check_variable_and_dtype(
@@ -7655,15 +7677,36 @@ def index_add(
         ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
+    scaled_value = (
+        helper.create_variable_for_type_inference(value.dtype)
+        if alpha != 1
+        else value
+    )
 
-    out = helper.create_variable_for_type_inference(x.dtype)
+    if alpha != 1:
+        helper.append_op(
+            type='scale',
+            inputs={'X': [value]},
+            outputs={'Out': [scaled_value]},
+            attrs={'scale': alpha, 'bias': 0.0},
+        )
+
+    if out is not None:
+        check_variable_and_dtype(
+            out,
+            'out',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'paddle.tensor.manipulation.index_add',
+        )
+    else:
+        out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
         type='index_add',
         inputs={
             'X': x,
             'Index': index,
-            'AddValue': value,
+            'AddValue': scaled_value,
         },
         outputs={'Out': out},
         attrs={'axis': axis},
@@ -7671,15 +7714,22 @@ def index_add(
     return out
 
 
+@index_add_decorator()
 @inplace_apis_in_dygraph_only
 def index_add_(
-    x: Tensor, index: Tensor, axis: int, value: Tensor, name: str | None = None
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: int = 1,
+    name: str | None = None,
 ) -> Tensor:
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_index_add`.
     """
-    return _C_ops.index_add_(x, index, value, axis)
+    scaled_value = value * alpha if alpha != 1 else value
+    return _C_ops.index_add_(x, index, scaled_value, axis)
 
 
 @inplace_apis_in_dygraph_only

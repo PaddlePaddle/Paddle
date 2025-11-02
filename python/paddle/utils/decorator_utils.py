@@ -734,3 +734,64 @@ def floor_divide_decorator():
         return wrapper
 
     return decorator
+
+
+def index_add_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: index_add(input, dim, index, source, *, alpha=1)
+        torch.index_add(input_tensor, 1, indices, source_tensor)
+
+    Paddle: index_add(x, index, axis, value, alpha=1)
+        paddle.index_add(x=input_tensor, index=indices, axis=1, value=source_tensor)
+        paddle.index_add(input_tensor, indices, 1, source_tensor)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs and "axis" not in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+            if "source" in kwargs and "value" not in kwargs:
+                kwargs["value"] = kwargs.pop("source")
+
+            if len(args) >= 2 and isinstance(args[1], int):
+                if len(args) < 3 and "index" not in kwargs:
+                    raise TypeError(
+                        "index_add() missing 1 required positional argument: 'index'"
+                    )
+                if (
+                    len(args) < 4
+                    and "source" not in kwargs
+                    and "value" not in kwargs
+                ):
+                    raise TypeError(
+                        "index_add() missing 1 required positional argument: 'source'"
+                    )
+                if "x" not in kwargs:
+                    kwargs["x"] = args[0]
+                if "axis" not in kwargs:
+                    kwargs["axis"] = args[1]
+                if len(args) == 3:
+                    if "index" not in kwargs:
+                        kwargs["index"] = args[2]
+                    args = args[3:]
+                elif len(args) >= 4:
+                    if "index" not in kwargs:
+                        kwargs["index"] = args[2]
+                    if "value" not in kwargs:
+                        kwargs["value"] = args[3]
+                    args = args[4:]
+                else:
+                    args = args[2:]
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
