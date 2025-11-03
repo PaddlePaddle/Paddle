@@ -28,7 +28,7 @@ sys.path.append(dirname(dirname(__file__)))
 sys.path.append("../")
 
 import llama_test_model
-import utils
+
 
 class TestLlamaModel(unittest.TestCase):
     def setUp(self):
@@ -75,10 +75,9 @@ class TestLlamaModel(unittest.TestCase):
         if mode == "cinn":
             net = paddle.jit.to_static(net)
 
-        out = net(self.input_ids,  self.position_ids, self.attention_mask)
+        out = net(self.input_ids, self.position_ids, self.attention_mask)
 
         loss = out.sum()
-
         return out.numpy(), np.abs(loss.numpy()).mean()
 
     def test_static(self):
