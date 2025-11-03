@@ -22,10 +22,14 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 from typing import Callable
+import numpy as np
+import random
 
 import paddle
 from paddle import framework
-
+from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+    get_rng_state_tracker,
+)
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
@@ -38,6 +42,10 @@ from ..utils.hybrid_parallel_util import (
 from ..utils.log_util import get_sync_logger, logger
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
+from ..recompute.recompute import (
+    switch_rng_state_tracker,
+    detach_variable
+)
 
 _use_four_directions = os.environ.get(
     'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
@@ -495,6 +503,16 @@ class PipelineParallel(MetaParallelBase):
         # only support user hooks during training
         self.user_hooks_enabled = True
 
+        #next layer's recompute's backward overlap with this layer's recompute's forward
+        self.recompute_overlap = True
+        #preserve = kwargs.pop('preserve_rng_state', True)
+        self.preserve_rng_state = True
+        #offload_indices = kwargs.pop('offload_indices', [])
+        self.offload_indices =[]
+        self.custom_get_state_func = lambda x=None: None
+        self.custom_set_state_func = lambda x=None: None
+
+
     def register_hook(
         self, location: PipelineParallelMicroStepLocations, hook: Callable
     ):
@@ -749,6 +767,90 @@ class PipelineParallel(MetaParallelBase):
             ) as f:
                 f.writelines(record + '\n' for record in self._records)
             self._records = []
+    
+    def save_state(self, state_buffers):
+        state = {}
+        if self.preserve_rng_state:
+            state["fw_rng_state"] = paddle.get_rng_state()
+            state["fwd_rng_state_tracker"] = (
+                get_rng_state_tracker().get_states_tracker()
+            )
+            state[s"fwd_numpy_state"] = np.random.get_state()
+            state["fwd_random_state"] = random.getstate()
+            state["fwd_custom_state"] = self.custom_get_state_func()
+            state["custom_get_state_func"] = self.custom_get_state_func
+            state["custom_set_state_func"] = self.custom_set_state_func
+        tracer = framework._dygraph_tracer()
+        state["is_fw_autocast"] = (
+            False if tracer._amp_level == framework.core.AmpLevel.O0 else True
+        )
+        if tracer._amp_level == framework.core.AmpLevel.O2:
+            state["amp_level"] = 'O2'
+        elif tracer._amp_level in (framework.core.AmpLevel.O1, framework.core.AmpLevel.O0):
+            state["amp_level"] = 'O1'
+        else:
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
+
+        if tracer._amp_dtype == 'float16':
+            state["amp_dtype"] = 'float16'
+        elif tracer._amp_dtype in ('bfloat16', 'float32'):
+            state["amp_dtype"] = 'bfloat16'
+        else:
+            raise ValueError(f"unsupported amp dtype: {tracer._amp_dtype}")
+        state["amp_white_list"], state["amp_black_list"] = tracer._get_amp_op_list()
+        state_buffers.append(state)
+    
+    def load_state_and_forward(self, state, input_tensor):
+        inputs = list(input_tensor)
+        tensor_indices = state["tensor_indices"]
+        tensors = self.container
+        for i, idx in enumerate(tensor_indices):
+            inputs[idx] = (
+                tensors[i].to(
+                    paddle.base.framework._current_expected_place()
+                )
+                if i in state["offload_indices"]
+                else tensors[i]
+            )
+            if i in state["offload_indices"]:
+                inputs[idx].stop_gradient = tensors[i].stop_gradient
+        tracer = framework._dygraph_tracer()
+        tracer._has_grad = True
+
+        if state["preserve_rng_state"]:
+            with (
+                switch_rng_state_tracker(
+                    state["fw_rng_state"],
+                    state["fwd_rng_state_tracker"],
+                    state["fwd_numpy_state"],
+                    state["fwd_random_state"],
+                    state["fwd_custom_state"],
+                    state["custom_get_state_func"],
+                    state["custom_set_state_func"],
+                ),
+                paddle.amp.auto_cast(
+                    enable=state["is_fw_autocast"],
+                    custom_white_list=state["amp_white_list"],
+                    custom_black_list=state["amp_black_list"],
+                    level=state["amp_level"],
+                    dtype=state["amp_dtype"],
+                ),
+            ):
+                detached_inputs = detach_variable(tuple(inputs))
+                outputs = self._layers.forward(*detached_inputs)
+        else:
+            with paddle.amp.auto_cast(
+                enable=state["is_fw_autocast"],
+                custom_white_list=state["amp_white_list"],
+                custom_black_list=state["amp_black_list"],
+                level=state["amp_level"],
+                dtype=state["amp_dtype"],
+            ):
+                detached_inputs = detach_variable(tuple(inputs))
+                outputs = self._layers.forward(*detached_inputs)
+        return outputs
+        
+
 
     def forward_backward_pipeline(
         self,
@@ -796,6 +898,8 @@ class PipelineParallel(MetaParallelBase):
 
         input_buffers = []
         output_buffers = []
+        if self.recompute_overlap:
+            state_buffers = []
 
         micro_dataset = self._wrap_data(data)
 
@@ -813,6 +917,8 @@ class PipelineParallel(MetaParallelBase):
             input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
 
             self._record_stamp("F", step_id, '"B"', self._forward_color)
+            if self.recompute_overlap:
+                self.save_state(state_buffers)
             output_tensor, _, _ = self._forward_step(
                 input_tensor=input_tensor_dict if use_dict else input_tensor,
                 micro_dataset=micro_dataset,
@@ -856,6 +962,8 @@ class PipelineParallel(MetaParallelBase):
             self._record_stamp(
                 "F", startup_steps + i, '"B"', self._forward_color
             )
+            if self.recompute_overlap:
+                self.save_state(state_buffers)
             output_tensor, _, _ = self._forward_step(
                 input_tensor=input_tensor_dict if use_dict else input_tensor,
                 micro_dataset=micro_dataset,
@@ -891,9 +999,16 @@ class PipelineParallel(MetaParallelBase):
             )
 
             self._record_stamp("B", i, '"B"', self._backward_color)
-            input_tensor_grad = self._backward_step(
-                input_tensor, output_tensor, output_tensor_grad, step_id=i
-            )
+            if self.recompute_overlap:
+                state = state_buffers.pop(0)
+                output_tensor_recompute = self.load_state_and_forward(state, input_tensor)
+                input_tensor_grad = self._backward_step(
+                    input_tensor, output_tensor_recompute, output_tensor_grad, step_id=i
+                )
+            else:
+                input_tensor_grad = self._backward_step(
+                    input_tensor, output_tensor, output_tensor_grad, step_id=i
+                )
             self._record_stamp("B", i, '"E"', self._backward_color)
 
             if last_iter:
@@ -933,12 +1048,22 @@ class PipelineParallel(MetaParallelBase):
             self._record_stamp(
                 "B", steady_steps + i, '"B"', self._backward_color
             )
-            input_tensor_grad = self._backward_step(
-                input_tensor,
-                output_tensor,
-                output_tensor_grad,
-                step_id=steady_steps + i,
-            )
+            if self.recompute_overlap:
+                state = state_buffers.pop(0)
+                output_tensor_recompute = self.load_state_and_forward(state, input_tensor)
+                input_tensor_grad = self._backward_step(
+                    input_tensor,
+                    output_tensor_recompute,
+                    output_tensor_grad,
+                    step_id=steady_steps + i,
+                )
+            else:
+                input_tensor_grad = self._backward_step(
+                    input_tensor,
+                    output_tensor,
+                    output_tensor_grad,
+                    step_id=steady_steps + i,
+                )
             self._record_stamp(
                 "B", steady_steps + i, '"E"', self._backward_color
             )
@@ -1254,11 +1379,21 @@ class PipelineParallel(MetaParallelBase):
         schedule_chunk = None
         if overlap_schedule_mode:
             schedule_chunk = self._layers.get_schedule_chunk(chunk_id=chunk_id)
-            output_tensor = schedule_chunk.forward(input_tensor)
+            if self.recompute_overlap:
+                with paddle.no_grad():
+                    output_tensor = schedule_chunk.forward(input_tensor) 
+            else:
+                output_tensor = schedule_chunk.forward(input_tensor)
         else:
-            output_tensor = self._layers.forward(
-                input_tensor, chunk_id=chunk_id
-            )
+            if self.recompute_overlap:
+                with paddle.no_grad():
+                    output_tensor = self._layers.forward(
+                        input_tensor, chunk_id=chunk_id
+                    ) 
+            else:
+                output_tensor = self._layers.forward(
+                    input_tensor, chunk_id=chunk_id
+                )
 
         self.callbacks.on_location(
             PipelineParallelMicroStepLocations.FORWARD_END,
