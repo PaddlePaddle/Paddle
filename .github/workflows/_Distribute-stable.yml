@@ -143,6 +143,7 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
+        if: false
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
