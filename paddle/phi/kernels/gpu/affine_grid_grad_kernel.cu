@@ -25,6 +25,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/affine_grid_utils.h"
 
+#include "paddle/phi/kernels/bmm_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/linspace_kernel.h"
+#include "paddle/phi/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
+
 namespace phi {
 
 template <typename T>
@@ -133,57 +140,183 @@ __global__ void affine_grid_grad_kernel_5d(const int64_t count,
   }
 }
 
+template <typename T>
+__global__ void CombineBaseGridKernel(const T* w_data,
+                                      const T* h_data,
+                                      const T* ones_data,
+                                      T* base_grid_data,
+                                      int total_elements) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < total_elements) {
+    base_grid_data[idx * 3 + 0] = w_data[idx];
+    base_grid_data[idx * 3 + 1] = h_data[idx];
+    base_grid_data[idx * 3 + 2] = ones_data[idx];
+  }
+}
+
 template <typename T, typename Context>
 void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
                                 const DenseTensor& output_grad,
                                 const IntArray& outputShape,
                                 bool align_corners,
                                 DenseTensor* input_grad) {
-  auto& theta_grad = input_grad;
-  int n = output_grad.dims()[0];
-  auto& size_attr = outputShape.GetData();
-  int h = 0;
-  int w = 0;
-  h = size_attr[2];
-  w = size_attr[3];
-  theta_grad->Resize(common::make_ddim({n, 2, 3}));
-  T* theta_grad_data = dev_ctx.template Alloc<T>(theta_grad);
-  phi::funcs::SetConstant<phi::GPUContext, T>()(
-      dev_ctx, theta_grad, static_cast<T>(0));
+  // output_grad 的形状是 [N, H, W, 2]
+  auto grad_grid_dims = output_grad.dims();
+  int n = grad_grid_dims[0];
+  int h = grad_grid_dims[1];
+  int w = grad_grid_dims[2];
 
-  T h_step;
-  T w_step;
-  T h_start = -1;
-  T w_start = -1;
-  if (align_corners) {
-    h_step = static_cast<T>(2) / static_cast<T>(h - 1);
-    w_step = static_cast<T>(2) / static_cast<T>(w - 1);
-  } else {
-    h_step = static_cast<T>(2) / static_cast<T>(h);
-    w_step = static_cast<T>(2) / static_cast<T>(w);
+  // input_grad (theta的梯度) 的形状应该是 [N, 2, 3]
+  input_grad->Resize(common::make_ddim({n, 2, 3}));
+  T* grad_theta_data = dev_ctx.template Alloc<T>(input_grad);
 
-    h_start *= static_cast<T>(h - 1) / static_cast<T>(h);
-    w_start *= static_cast<T>(w - 1) / static_cast<T>(w);
+  if (output_grad.numel() == 0) {
+    phi::Full<T, Context>(dev_ctx,
+                          phi::IntArray(common::vectorize(input_grad->dims())),
+                          0,
+                          input_grad);
+    return;
   }
-  const int64_t count = n * h * w;
-  VLOG(3) << "count: " << count << "; h_step: " << h_step
-          << "; w_step: " << w_step << "; h_start: " << h_start
-          << "; w_start: " << w_start;
-  int block = 512;
-  int64_t max_grid = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid = std::min((count + block - 1) / block, max_grid);
-  auto cu_stream = dev_ctx.stream();
-  affine_grid_grad_kernel_4d<<<grid, block, 0, cu_stream>>>(
-      count,
-      n,
-      h,
-      w,
-      h_start,
-      w_start,
-      h_step,
-      w_step,
-      output_grad.data<T>(),
-      theta_grad_data);
+
+  // 1. 创建基础网格 base_grid，形状为 [N, H, W, 3]
+  // 这部分和前向实现完全相同
+  DenseTensor base_grid;
+  base_grid.Resize(common::make_ddim({n, h, w, 3}));
+  dev_ctx.template Alloc<T>(&base_grid);
+
+  // 2. 生成 W 方向的坐标
+  DenseTensor w_range;
+  if (w <= 1) {
+    w_range.Resize(common::make_ddim({1}));
+    dev_ctx.template Alloc<T>(&w_range);
+    phi::Full<T, Context>(dev_ctx, phi::IntArray({1}), 0, &w_range);
+  } else {
+    DenseTensor start_w, stop_w, num_w;
+    start_w.Resize(common::make_ddim({1}));
+    stop_w.Resize(common::make_ddim({1}));
+    num_w.Resize(common::make_ddim({1}));
+    dev_ctx.template Alloc<T>(&start_w);
+    dev_ctx.template Alloc<T>(&stop_w);
+    dev_ctx.template Alloc<int32_t>(&num_w);
+
+    phi::Full<T, Context>(dev_ctx, phi::IntArray({1}), -1, &start_w);
+    phi::Full<T, Context>(dev_ctx, phi::IntArray({1}), 1, &stop_w);
+    phi::Full<int32_t, Context>(dev_ctx, phi::IntArray({1}), w, &num_w);
+
+    phi::LinspaceKernel<T, Context>(
+        dev_ctx, start_w, stop_w, num_w, output_grad.dtype(), &w_range);
+
+    if (!align_corners) {
+      phi::ScaleKernel<T, Context>(
+          dev_ctx, w_range, static_cast<T>(w - 1), 0.0, false, &w_range);
+      phi::ScaleKernel<T, Context>(dev_ctx,
+                                   w_range,
+                                   static_cast<T>(1) / static_cast<T>(w),
+                                   0.0,
+                                   false,
+                                   &w_range);
+    }
+  }
+
+  // 3. 生成 H 方向的坐标
+  DenseTensor h_range;
+  if (h <= 1) {
+    h_range.Resize(common::make_ddim({1}));
+    dev_ctx.template Alloc<T>(&h_range);
+    phi::Full<T, Context>(dev_ctx, phi::IntArray({1}), 0, &h_range);
+  } else {
+    DenseTensor start_h, stop_h, num_h;
+    start_h.Resize(common::make_ddim({1}));
+    stop_h.Resize(common::make_ddim({1}));
+    num_h.Resize(common::make_ddim({1}));
+    dev_ctx.template Alloc<T>(&start_h);
+    dev_ctx.template Alloc<T>(&stop_h);
+    dev_ctx.template Alloc<int32_t>(&num_h);
+
+    phi::Full<T, Context>(dev_ctx, phi::IntArray({1}), -1, &start_h);
+    phi::Full<T, Context>(dev_ctx, phi::IntArray({1}), 1, &stop_h);
+    phi::Full<int32_t, Context>(dev_ctx, phi::IntArray({1}), h, &num_h);
+
+    phi::LinspaceKernel<T, Context>(
+        dev_ctx, start_h, stop_h, num_h, output_grad.dtype(), &h_range);
+
+    if (!align_corners) {
+      phi::ScaleKernel<T, Context>(
+          dev_ctx, h_range, static_cast<T>(h - 1), 0.0, false, &h_range);
+      phi::ScaleKernel<T, Context>(dev_ctx,
+                                   h_range,
+                                   static_cast<T>(1) / static_cast<T>(h),
+                                   0.0,
+                                   false,
+                                   &h_range);
+    }
+  }
+
+  // 4. 扩展 w_range 到 [N, H, W]
+  DenseTensor w_range_reshaped;
+  w_range_reshaped.ShareDataWith(w_range);
+  w_range_reshaped.Resize(common::make_ddim({1, 1, w}));
+
+  DenseTensor w_range_expanded;
+  phi::ExpandKernel<T, Context>(
+      dev_ctx, w_range_reshaped, phi::IntArray({n, h, w}), &w_range_expanded);
+
+  // 5. 扩展 h_range 到 [N, H, W]
+  DenseTensor h_range_reshaped;
+  h_range_reshaped.ShareDataWith(h_range);
+  h_range_reshaped.Resize(common::make_ddim({1, h, 1}));
+
+  DenseTensor h_range_expanded;
+  phi::ExpandKernel<T, Context>(
+      dev_ctx, h_range_reshaped, phi::IntArray({n, h, w}), &h_range_expanded);
+
+  // 6. 创建全1的张量
+  DenseTensor ones;
+  ones.Resize(common::make_ddim({n, h, w}));
+  dev_ctx.template Alloc<T>(&ones);
+  phi::Full<T, Context>(dev_ctx, phi::IntArray({n, h, w}), 1, &ones);
+
+  // 7. 将三个分量组合成 base_grid
+  const T* w_data = w_range_expanded.data<T>();
+  const T* h_data = h_range_expanded.data<T>();
+  const T* ones_data = ones.data<T>();
+  T* base_grid_data = base_grid.data<T>();
+
+  int total_elements = n * h * w;
+  auto stream = dev_ctx.stream();
+
+  int block_size = 512;
+  int grid_size = (total_elements + block_size - 1) / block_size;
+
+  CombineBaseGridKernel<T><<<grid_size, block_size, 0, stream>>>(
+      w_data, h_data, ones_data, base_grid_data, total_elements);
+
+  // 8. 重塑 base_grid 为 [N, H*W, 3]
+  DenseTensor base_grid_reshaped;
+  base_grid_reshaped.ShareDataWith(base_grid);
+  base_grid_reshaped.Resize(common::make_ddim({n, h * w, 3}));
+
+  // 9. 转置 base_grid: [N, H*W, 3] -> [N, 3, H*W]
+  DenseTensor base_grid_transposed;
+  base_grid_transposed.Resize(common::make_ddim({n, 3, h * w}));
+  phi::TransposeKernel<T, Context>(
+      dev_ctx, base_grid_reshaped, {0, 2, 1}, &base_grid_transposed);
+
+  // 10. 重塑 output_grad 为 [N, H*W, 2]
+  DenseTensor grad_grid_reshaped;
+  grad_grid_reshaped.ShareDataWith(output_grad);
+  grad_grid_reshaped.Resize(common::make_ddim({n, h * w, 2}));
+
+  // 11. 批量矩阵乘法: [N, 3, H*W] x [N, H*W, 2] = [N, 3, 2]
+  DenseTensor grad_theta_temp;
+  grad_theta_temp.Resize(common::make_ddim({n, 3, 2}));
+
+  phi::BmmKernel<T, Context>(
+      dev_ctx, base_grid_transposed, grad_grid_reshaped, &grad_theta_temp);
+
+  // 12. 转置得到最终结果: [N, 3, 2] -> [N, 2, 3]
+  phi::TransposeKernel<T, Context>(
+      dev_ctx, grad_theta_temp, {0, 2, 1}, input_grad);
 }
 
 template <typename T, typename Context>
