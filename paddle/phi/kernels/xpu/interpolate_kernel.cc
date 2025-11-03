@@ -177,7 +177,14 @@ void BilinearInterpKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* output) {
+  PADDLE_ENFORCE_EQ(
+      antialias,
+      false,
+      errors::Unimplemented("Antialias is not supported on XPU device. "
+                            "Please use GPU device or set antialias=False."));
+
   InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,

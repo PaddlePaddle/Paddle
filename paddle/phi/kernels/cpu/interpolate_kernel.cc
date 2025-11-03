@@ -754,26 +754,10 @@ static void Interpolate2DCPUFwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0)
-                      ? static_cast<float>(1. / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h);
-    ratio_h = (align_corners)
-                  ? static_cast<float>(in_h - 1) / static_cast<float>(out_h - 1)
-                  : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
-  }
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   if ("bilinear" == interp_method) {
     BilinearInterpolation<T>(x,
@@ -953,36 +937,12 @@ static void Interpolate3DCPUFwd(
     return;
   }
 
-  float ratio_d = 0.f;
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_d > 1) {
-    float new_scale_d = 0.f;
-    new_scale_d = (scale_d > 0)
-                      ? static_cast<float>(1. / scale_d)
-                      : static_cast<float>(in_d) / static_cast<float>(out_d);
-    ratio_d = (align_corners)
-                  ? static_cast<float>(in_d - 1) / static_cast<float>(out_d - 1)
-                  : static_cast<float>(new_scale_d);
-  }
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0)
-                      ? static_cast<float>(1. / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h);
-    ratio_h = (align_corners)
-                  ? static_cast<float>(in_h - 1) / static_cast<float>(out_h - 1)
-                  : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0)
-                      ? static_cast<float>(1. / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w);
-    ratio_w = (align_corners)
-                  ? static_cast<float>(in_w - 1) / static_cast<float>(out_w - 1)
-                  : static_cast<float>(new_scale_w);
-  }
+  float ratio_d =
+      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolation<T>(x,
@@ -1100,7 +1060,14 @@ void BilinearInterpKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* output) {
+  PADDLE_ENFORCE_EQ(
+      antialias,
+      false,
+      errors::Unimplemented("Antialias is not supported on CPU device. "
+                            "Please use GPU device or set antialias=False."));
+
   InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
@@ -1306,7 +1273,14 @@ void BicubicInterpKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* output) {
+  PADDLE_ENFORCE_EQ(
+      antialias,
+      false,
+      errors::Unimplemented("Antialias is not supported on CPU device. "
+                            "Please use GPU device or set antialias=False."));
+
   InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,

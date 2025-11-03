@@ -249,11 +249,13 @@ def interpolate(
     scale_factor: ShapeLike | float | None = None,
     mode: _InterpolateMode = 'nearest',
     align_corners: bool = False,
+    recompute_scale_factor: bool | None = None,
+    antialias: bool = False,
+    *,
     align_mode: int = 0,
     data_format: (
         DataLayout1DVariant | DataLayout2D | DataLayout3D | None
     ) = None,
-    recompute_scale_factor: bool | None = None,
     name: str | None = None,
 ) -> Tensor: ...
 
@@ -426,9 +428,15 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
-        antialias(bool) : flag to apply anti-aliasing. Default: False. Using anti-alias option together with align_corners=False,
-                          interpolation result would match Pillow result for downsampling operation.
-                          Supported modes: 'bilinear', 'bicubic'.
+        recompute_scale_factor (bool, optional):  Whether to recompute the scaling factor for interpolation calculation.
+             When set to `True`, the `scale_factor` parameter must be provided, and the function will use it along with
+             the input tensor shape to calculate the output tensor shape, then recalculate the scaling factor based on
+             the output and input tensor shapes. This parameter is particularly useful when `scale_factor` is a floating-point
+             value. When set to `False`, either `size` or `scale_factor` will be used directly for interpolation without
+             recalculation. Default: None.
+        antialias (bool, optional): Flag to apply anti-aliasing. Default: False. Using anti-alias
+             option together with ``align_corners=False``, interpolation result would match PIL
+             result for downsampling operation. Supported modes: ``'bilinear'``, ``'bicubic'``.
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
@@ -442,12 +450,6 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
              When it is `"NCHW"`, the data should be stored in the order of:
              `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
              data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        recompute_scale_factor (bool, optional):  Whether to recompute the scaling factor for interpolation calculation.
-             When set to `True`, the `scale_factor` parameter must be provided, and the function will use it along with
-             the input tensor shape to calculate the output tensor shape, then recalculate the scaling factor based on
-             the output and input tensor shapes. This parameter is particularly useful when `scale_factor` is a floating-point
-             value. When set to `False`, either `size` or `scale_factor` will be used directly for interpolation without
-             recalculation. Default: None.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
@@ -573,11 +575,19 @@ def _interpolate_wrapper(
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
 
+    if not isinstance(antialias, bool):
+        raise TypeError("Attr antialias should be a bool value")
+
     if align_mode != 0 and align_mode != 1:
         raise ValueError("align_mode can only be 0 or 1")
     if align_corners != 0 and resample == 'NEAREST':
         raise ValueError(
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
+        )
+
+    if antialias and resample not in ['BILINEAR', 'BICUBIC']:
+        raise ValueError(
+            "Anti-alias option is only supported for bilinear and bicubic modes"
         )
 
     if resample == 'AREA':
@@ -632,6 +642,7 @@ def _interpolate_wrapper(
         "align_corners": align_corners,
         "align_mode": align_mode,
         "data_layout": data_layout,
+        "antialias": antialias,
     }
 
     out_shape = size
@@ -882,6 +893,7 @@ def _interpolate_wrapper(
                 attrs['interp_method'],
                 attrs['align_corners'],
                 attrs['align_mode'],
+                attrs['antialias'],
             )
         elif resample_type == "trilinear":
             out = _C_ops.trilinear_interp(
@@ -927,6 +939,7 @@ def _interpolate_wrapper(
                 attrs['interp_method'],
                 attrs['align_corners'],
                 attrs['align_mode'],
+                attrs['antialias'],
             )
         return out
 

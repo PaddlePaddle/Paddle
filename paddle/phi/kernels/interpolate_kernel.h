@@ -33,6 +33,7 @@ void BilinearInterpKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* output);
 
 template <typename T, typename Context>
@@ -101,6 +102,7 @@ void BicubicInterpKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* output);
 
 template <typename T, typename Context>
