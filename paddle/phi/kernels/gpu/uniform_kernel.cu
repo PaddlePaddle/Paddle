@@ -57,7 +57,7 @@ struct UniformGenerator {
 };
 
 template <typename T, typename Context, bool IsComplex>
-struct UniformKernelImpl;
+struct UniformKernelImpl {};
 
 template <typename T, typename Context>
 struct UniformKernelImpl<T, Context, true> {
@@ -73,32 +73,85 @@ struct UniformKernelImpl<T, Context, true> {
     if (seed == 0) {
       funcs::uniform_distribution<RealType> dist;
       funcs::uniform_real_transform<RealType> trans(min_val, max_val);
-
-      DenseTensor real_part, imag_part;
-      real_part.Resize(out->dims());
-      imag_part.Resize(out->dims());
-      dev_ctx.template Alloc<RealType>(&real_part);
-      dev_ctx.template Alloc<RealType>(&imag_part);
-
-      funcs::distribution_and_transform<RealType>(
-          dev_ctx, &real_part, dist, trans);
-      funcs::distribution_and_transform<RealType>(
-          dev_ctx, &imag_part, dist, trans);
-
-      ComplexKernel<RealType, Context>(dev_ctx, real_part, imag_part, out);
+      funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
     } else {
       auto func = [=] __device__(int64_t idx) {
         thrust::minstd_rand engine;
         engine.seed(seed);
-        engine.discard(idx * 2);
+        engine.discard(idx);
         thrust::uniform_real_distribution<RealType> dist(min_val, max_val);
-        RealType real_val = dist(engine);
-        RealType imag_val = dist(engine);
-        return T(real_val, imag_val);
+        return dist(engine);
       };  // NOLINT(readability/braces)
-
       IndexKernel<T, decltype(func)>(dev_ctx, out, func);
     }
+  }
+};
+
+template <typename Context>
+struct UniformKernelImpl<phi::dtype::complex<float>, Context, true> {
+  static void Apply(const Context& dev_ctx,
+                    const Scalar& min,
+                    const Scalar& max,
+                    int seed,
+                    DenseTensor* out) {
+    using T = phi::dtype::complex<float>;
+    using RealType = float;
+    RealType min_val = min.to<RealType>();
+    RealType max_val = max.to<RealType>();
+
+    auto gen_cuda = dev_ctx.GetGenerator();
+
+    size_t size = out->numel();
+    size_t increment = size * 2;
+
+    auto seed_offset = gen_cuda->IncrementOffset(increment);
+    uint64_t actual_seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+
+    auto func = [=] __device__(int64_t idx) {
+      thrust::minstd_rand engine;
+      engine.seed(actual_seed);
+      engine.discard(offset + idx * 2);
+      thrust::uniform_real_distribution<RealType> dist(min_val, max_val);
+      RealType real_val = dist(engine);
+      RealType imag_val = dist(engine);
+      return T(real_val, imag_val);
+    };  // NOLINT(readability/braces)
+    IndexKernel<T, decltype(func)>(dev_ctx, out, func);
+  }
+};
+
+template <typename Context>
+struct UniformKernelImpl<phi::dtype::complex<double>, Context, true> {
+  static void Apply(const Context& dev_ctx,
+                    const Scalar& min,
+                    const Scalar& max,
+                    int seed,
+                    DenseTensor* out) {
+    using T = phi::dtype::complex<double>;
+    using RealType = double;
+    RealType min_val = min.to<RealType>();
+    RealType max_val = max.to<RealType>();
+
+    auto gen_cuda = dev_ctx.GetGenerator();
+
+    size_t size = out->numel();
+    size_t increment = size * 2;
+
+    auto seed_offset = gen_cuda->IncrementOffset(increment);
+    uint64_t actual_seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+
+    auto func = [=] __device__(int64_t idx) {
+      thrust::minstd_rand engine;
+      engine.seed(actual_seed);
+      engine.discard(offset + idx * 2);
+      thrust::uniform_real_distribution<RealType> dist(min_val, max_val);
+      RealType real_val = dist(engine);
+      RealType imag_val = dist(engine);
+      return T(real_val, imag_val);
+    };  // NOLINT(readability/braces)
+    IndexKernel<T, decltype(func)>(dev_ctx, out, func);
   }
 };
 
