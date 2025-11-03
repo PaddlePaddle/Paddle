@@ -152,7 +152,6 @@ if(NOT WITH_NCCL)
 endif()
 
 if(WIN32)
-  list(REMOVE_ITEM TEST_OPS test_legacy_batched_gemm)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
