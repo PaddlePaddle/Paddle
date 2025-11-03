@@ -30,7 +30,6 @@ defaults:
 jobs:
   build:
     name: Build
-    if: false
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
@@ -118,6 +117,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -162,7 +162,7 @@ jobs:
           '
 
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -171,7 +171,7 @@ jobs:
           '
 
       - name: Packaging of products
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
@@ -187,7 +187,7 @@ jobs:
           '
 
       - name: Upload product to bos
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -231,7 +231,6 @@ jobs:
   test:
     name: Test
     needs: build
-    if: false
     runs-on:
       group: Distribute
     steps:
