@@ -164,6 +164,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
   list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
   list(REMOVE_ITEM TEST_OPS test_nvprof)
+  list(REMOVE_ITEM TEST_OPS test_legacy_batched_gemm)
 
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_debugger)

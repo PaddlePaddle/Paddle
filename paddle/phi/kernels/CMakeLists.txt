@@ -74,6 +74,7 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
+    "legacy/gpu/legacy_batched_gemm.cu"
     "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_quant_blockwise_kernel.cu"
@@ -88,8 +89,7 @@ endif()
 if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
    OR APPLE
    OR WITH_ROCM)
-  list(REMOVE_ITEM kernel_cu "legacy/gpu/layer_norm_cuda_kernel.cu"
-       "legacy/gpu/legacy_batched_gemm.cu")
+  list(REMOVE_ITEM kernel_cu "legacy/gpu/layer_norm_cuda_kernel.cu")
 endif()
 
 # Get flag for CUDA arch >= 80
