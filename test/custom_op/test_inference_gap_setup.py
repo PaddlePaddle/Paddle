@@ -18,7 +18,6 @@ import sys
 import unittest
 
 import numpy as np
-import setuptools
 from utils import check_output_allclose
 
 import paddle
@@ -59,10 +58,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 x for x in os.listdir(site_dir) if 'gap_op_setup' in x
             ]
 
-            egg_counts = (
-                1 if int(setuptools.__version__.split('.')[0]) < 80 else 2
-            )
-            assert len(custom_egg_path) == egg_counts, (
+            assert len(custom_egg_path) == 2, (
                 f"Matched egg number is {len(custom_egg_path)}."
             )
 

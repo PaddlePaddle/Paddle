@@ -26,22 +26,11 @@ import setuptools
 import sys
 import paddle
 import site
-import shutil
-import zipfile
-import tempfile
 
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 from setuptools.command.install import install
-
-
-try:
-    from wheel.bdist_wheel import bdist_wheel
-
-    HAS_WHEEL = True
-except ImportError:
-    HAS_WHEEL = False
 
 
 from .extension_utils import (
@@ -107,16 +96,6 @@ if core.is_compiled_with_rocm():
     CUDA_HOME = ROCM_HOME
 
 CCACHE_HOME = find_ccache_home()
-
-
-def _is_legacy_setuptools() -> bool:
-    """
-    Check if using legacy bdist_egg mechanism (setuptools < 80).
-
-    Returns:
-        bool: True if using setuptools < 80.0.0, False otherwise.
-    """
-    return int(setuptools.__version__.split('.')[0]) < 80
 
 
 def setup(**attr: Any) -> None:
@@ -261,27 +240,10 @@ def setup(**attr: Any) -> None:
     assert 'easy_install' not in cmdclass
     cmdclass['easy_install'] = EasyInstallCommand
 
-    # Add bdist_wheel hook to reorganize wheel contents (setuptools >= 80)
-    # This is the primary mechanism for modern pip install
-    if not _is_legacy_setuptools():
-        if HAS_WHEEL:
-            # Override the default bdist_wheel command to reorganize wheel contents
-            # for proper inclusion of C++ extensions in the wheel archive
-            assert 'bdist_wheel' not in cmdclass
-            cmdclass['bdist_wheel'] = BdistWheelCommand
-
-            # Setting metadata_version >= 2.1 ensures compatibility with modern metadata
-            # features and encourages setuptools to create .dist-info directories instead
-            # of .egg-info, which allows pip to properly detect and list installed packages
-            # via `pip list`. Version 2.1 is sufficient for this purpose and maintains
-            # compatibility.
-            if 'metadata_version' not in attr:
-                attr['metadata_version'] = '2.1'
-
-        # Add install hook for legacy 'python setup.py install' (setuptools >= 80)
-        # Note: This is rarely used with modern pip, which uses bdist_wheel instead
-        assert 'install' not in cmdclass
-        cmdclass['install'] = InstallCommand
+    # Compatible with wheel installation via `pip install .`
+    # Note: This is rarely used with modern pip, which uses bdist_wheel instead
+    assert 'install' not in cmdclass
+    cmdclass['install'] = InstallCommand
 
     # Note(Aurelius84): Add rename build_base directory hook in build command.
     # To avoid using same build directory that will lead to remove the directory
@@ -924,10 +886,8 @@ class BuildExtension(build_ext):
     def run(self):
         super().run()
 
-        # Skip if using legacy bdist_egg mechanism (setuptools < 80)
-        if not _is_legacy_setuptools():
-            # Generate python API stub into build_lib for setuptools >= 80 installs
-            self._generate_python_api_file()
+        # Compatible with wheel installation via `pip install .`
+        self._generate_python_api_file()
 
         self._clean_intermediate_files()
 
@@ -1002,100 +962,6 @@ class BuildCommand(build):
         super().initialize_options()
         if self._specified_build_base is not None:
             self.build_base = self._specified_build_base
-
-
-class BdistWheelCommand(bdist_wheel):
-    """
-    Extend bdist_wheel Command to reorganize the wheel contents after building.
-    This ensures the correct file layout is in the wheel before installation,
-    avoiding the need to move files during installation.
-    """
-
-    def run(self) -> None:
-        super().run()
-        # After wheel is built, reorganize its contents
-        self._reorganize_wheel_contents()
-
-    def _reorganize_wheel_contents(self) -> None:
-        """
-        Reorganize the wheel contents to ensure proper file layout:
-          - Rename {pkg}.so to {pkg}_pd_.so
-          - Move {pkg}.py to {pkg}/__init__.py
-          - Move {pkg}_pd_.so to {pkg}/{pkg}_pd_.so
-        """
-        if not self.dist_dir or not os.path.isdir(self.dist_dir):
-            return
-
-        pkg = self.distribution.get_name()
-
-        # Find the wheel file
-        wheel_files = [
-            f
-            for f in os.listdir(self.dist_dir)
-            if f.startswith(pkg) and f.endswith('.whl')
-        ]
-
-        if not wheel_files:
-            return
-
-        wheel_path = os.path.join(self.dist_dir, wheel_files[0])
-
-        # Create a temporary directory to extract and reorganize
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Extract wheel
-            with zipfile.ZipFile(wheel_path, 'r') as zf:
-                zf.extractall(tmpdir)
-
-            # Reorganize files in the extracted wheel
-            self._reorganize_extracted_wheel(tmpdir, pkg)
-
-            # Repack the wheel
-            os.remove(wheel_path)
-            with zipfile.ZipFile(wheel_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-                for root, dirs, files in os.walk(tmpdir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, tmpdir)
-                        zf.write(file_path, arcname)
-
-    def _reorganize_extracted_wheel(self, wheel_dir: str, pkg: str) -> None:
-        """Reorganize files in the extracted wheel directory."""
-        suffix = (
-            '.pyd'
-            if IS_WINDOWS
-            else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
-        )
-
-        # Find files in wheel root
-        py_src = os.path.join(wheel_dir, f"{pkg}.py")
-        so_old = os.path.join(wheel_dir, f"{pkg}{suffix}")
-        so_new_name = f"{pkg}_pd_{suffix}"
-        so_renamed = os.path.join(wheel_dir, so_new_name)
-
-        # Rename .so file first if it exists
-        if os.path.exists(so_old):
-            if os.path.exists(so_renamed):
-                os.remove(so_renamed)
-            os.rename(so_old, so_renamed)
-
-        # Create package directory
-        pkg_dir = os.path.join(wheel_dir, pkg)
-        if not os.path.isdir(pkg_dir):
-            os.makedirs(pkg_dir, exist_ok=True)
-
-        # Move .py to package/__init__.py
-        if os.path.exists(py_src):
-            py_dst = os.path.join(pkg_dir, "__init__.py")
-            if os.path.exists(py_dst):
-                os.remove(py_dst)
-            shutil.move(py_src, py_dst)
-
-        # Move .so to package directory
-        if os.path.exists(so_renamed):
-            so_dst = os.path.join(pkg_dir, so_new_name)
-            if os.path.exists(so_dst):
-                os.remove(so_dst)
-            shutil.move(so_renamed, so_dst)
 
 
 class InstallCommand(install):
