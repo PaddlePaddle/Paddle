@@ -470,7 +470,7 @@ jobs:
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          sleep 30m
+          sleep 3d
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
