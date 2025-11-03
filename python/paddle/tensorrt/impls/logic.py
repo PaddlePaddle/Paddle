@@ -35,15 +35,15 @@ logic_type_map = {
 }
 
 
-@converter_registry.register("pd_op.greater_than", trt_version="8.x")
-@converter_registry.register("pd_op.less_than", trt_version="8.x")
-@converter_registry.register("pd_op.equal", trt_version="8.x")
-@converter_registry.register("pd_op.bitwise_and", trt_version="8.x")
-@converter_registry.register("pd_op.bitwise_or", trt_version="8.x")
-@converter_registry.register("pd_op.logical_xor", trt_version="8.x")
-@converter_registry.register("pd_op.logical_or", trt_version="8.x")
-@converter_registry.register("pd_op.logical_or_", trt_version="8.x")
-@converter_registry.register("pd_op.logical_and", trt_version="8.x")
+@converter_registry.register("pd_op.greater_than")
+@converter_registry.register("pd_op.less_than")
+@converter_registry.register("pd_op.equal")
+@converter_registry.register("pd_op.bitwise_and")
+@converter_registry.register("pd_op.bitwise_or")
+@converter_registry.register("pd_op.logical_xor")
+@converter_registry.register("pd_op.logical_or")
+@converter_registry.register("pd_op.logical_or_")
+@converter_registry.register("pd_op.logical_and")
 def logic_converter(network, paddle_op, inputs):
     layer_output = add_elementwise_layer(
         network, paddle_op, inputs, logic_type_map[paddle_op.name()]
@@ -51,7 +51,7 @@ def logic_converter(network, paddle_op, inputs):
     return layer_output
 
 
-@converter_registry.register("pd_op.not_equal", trt_version="8.x")
+@converter_registry.register("pd_op.not_equal")
 def not_equal_converter(network, paddle_op, inputs):
     layer_output = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.EQUAL
@@ -62,7 +62,7 @@ def not_equal_converter(network, paddle_op, inputs):
     return layer_output
 
 
-@converter_registry.register("pd_op.bitwise_not", trt_version="8.x")
+@converter_registry.register("pd_op.bitwise_not")
 def bitwise_not_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     if input_tensor.dtype == trt.bool:
@@ -93,8 +93,8 @@ def bitwise_not_converter(network, paddle_op, inputs):
     return layer_output
 
 
-@converter_registry.register("pd_op.logical_not", trt_version="8.x")
-@converter_registry.register("pd_op.logical_not_", trt_version="8.x")
+@converter_registry.register("pd_op.logical_not")
+@converter_registry.register("pd_op.logical_not_")
 def logic_not_converter(network, paddle_op, inputs):
     layer_output = unary_op_converter(network, paddle_op, inputs)
     return layer_output

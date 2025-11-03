@@ -83,7 +83,10 @@ class QuantTensorFunctor {
 template <typename Context, typename T>
 class FindAbsMaxFunctor {
  public:
-  void operator()(const Context &dev_ctx, const T *in, const int num, T *out);
+  void operator()(const Context &dev_ctx,
+                  const T *in,
+                  const int64_t num,
+                  T *out);
 };
 
 template <typename Context, typename T>

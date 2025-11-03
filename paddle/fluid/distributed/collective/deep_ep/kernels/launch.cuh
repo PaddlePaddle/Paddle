@@ -40,15 +40,6 @@
   CUDA_CHECK(cudaLaunchKernelEx(config, kernel, ##__VA_ARGS__))
 #endif
 
-#ifndef SET_SHARED_MEMORY_FOR_TMA
-#define SET_SHARED_MEMORY_FOR_TMA(kernel)                               \
-  EP_HOST_ASSERT(                                                       \
-      cudaFuncSetAttribute(kernel,                                      \
-                           cudaFuncAttributeMaxDynamicSharedMemorySize, \
-                           smem_size) == cudaSuccess);                  \
-  cfg.dynamicSmemBytes = smem_size;
-#endif
-
 #define SWITCH_RANKS(case_macro)                     \
   switch (num_ranks) {                               \
     case 2:                                          \
@@ -208,6 +199,9 @@
     __VA_ARGS__                                                        \
   } else if (num_warp_groups == 4) {                                   \
     constexpr int kNumWarpGroups = 4;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 8) {                                   \
+    constexpr int kNumWarpGroups = 8;                                  \
     __VA_ARGS__                                                        \
   } else {                                                             \
     EP_HOST_ASSERT(false && "Unsupported num_warp_groups");            \

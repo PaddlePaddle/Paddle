@@ -486,11 +486,9 @@ def _get_lib_core_path():
 
 def _get_dll_core_path():
     """
-    Return real path of libcore_(no)avx.dylib on Windows.
+    Return real path of libpaddle on Windows.
     """
-    raw_core_name = _get_core_name()
-    dll_core_name = "libpaddle.dll"
-    return os.path.join(_get_base_path(), dll_core_name)
+    return os.path.join(_get_base_path(), "libpaddle.dll")
 
 
 def _reset_so_rpath(so_path):
@@ -555,6 +553,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     # append necessary include dir path of paddle
     include_dirs = list(kwargs.get('include_dirs', []))
+    include_dirs = [os.fsdecode(include_dir) for include_dir in include_dirs]
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
     include_dirs.extend(find_python_includes())
@@ -727,7 +726,7 @@ def find_cuda_home():
     # step 1. find in $CUDA_HOME or $CUDA_PATH
     cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
 
-    # step 2.  find path by `which nvcc`
+    # step 2. find path by `which nvcc`
     if cuda_home is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
@@ -769,7 +768,7 @@ def find_rocm_home():
     # step 1. find in $ROCM_HOME or $ROCM_PATH
     rocm_home = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH')
 
-    # step 2.  find path by `which nvcc`
+    # step 2. find path by `which nvcc`
     if rocm_home is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
@@ -821,7 +820,9 @@ def find_rocm_includes():
     return [os.path.join(rocm_home, 'include')]
 
 
-def _get_all_paddle_includes_from_include_root(include_root: str) -> list[str]:
+def _get_all_paddle_includes_from_include_root(
+    include_root: os.PathLike[str] | str,
+) -> list[str]:
     """
     Get all paddle include directories from include root (packaged in wheel)
     """
@@ -1099,7 +1100,7 @@ def _generate_python_module(
 
     # NOTE: Use unique id as suffix to avoid write same file at same time in
     # both multi-thread and multi-process.
-    thread_id = str(threading.currentThread().ident)
+    thread_id = str(threading.current_thread().ident)
     api_file = os.path.join(
         build_directory, module_name + '_' + thread_id + '.py'
     )
@@ -1108,7 +1109,7 @@ def _generate_python_module(
     # delete the temp file before exit python process
     atexit.register(lambda: remove_if_exit(api_file))
 
-    # write into .py file with RWLockc
+    # write into .py file with RWLock
     api_content = [_custom_api_content(op_name) for op_name in op_names]
     with open(api_file, 'w') as f:
         f.write('\n\n'.join(api_content))

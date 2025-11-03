@@ -24,7 +24,7 @@ from paddle.base import core
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestMatmulBf16MklDNNOp(OpTest):
+class TestMatmulBf16OneDNNOp(OpTest):
     def generate_data(self):
         self.x_fp32 = np.random.random((25, 2, 2)).astype(np.float32)
         self.y_fp32 = np.random.random((25, 2, 2)).astype(np.float32)
@@ -123,7 +123,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
         self.dout = dout
 
 
-class TestDnnlMatMulOpAlpha(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOpAlpha(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((17, 2, 3)).astype(np.float32)
         self.y_fp32 = np.random.random((17, 3, 2)).astype(np.float32)
@@ -131,14 +131,14 @@ class TestDnnlMatMulOpAlpha(TestMatmulBf16MklDNNOp):
         self.out = self.alpha * np.matmul(self.x_fp32, self.y_fp32)
 
 
-class TestDnnlMatMulOp2D(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOp2D(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((9, 12)).astype(np.float32)
         self.out = np.matmul(self.x_fp32, self.y_fp32)
 
 
-class TestDnnlMatMulOpTransposeX(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOpTransposeX(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((12, 9)).astype(np.float32)
@@ -153,7 +153,7 @@ class TestDnnlMatMulOpTransposeX(TestMatmulBf16MklDNNOp):
         }
 
 
-class TestDnnlMatMulOpTransposeY(TestMatmulBf16MklDNNOp):
+class TestDnnlMatMulOpTransposeY(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((12, 9)).astype(np.float32)
@@ -168,7 +168,7 @@ class TestDnnlMatMulOpTransposeY(TestMatmulBf16MklDNNOp):
         }
 
 
-class TestMatmulBf16MklDNNForceFp32Output(TestMatmulBf16MklDNNOp):
+class TestMatmulBf16OneDNNForceFp32Output(TestMatmulBf16OneDNNOp):
     def generate_data(self):
         self.x_fp32 = np.random.random((12, 9)).astype(np.float32)
         self.y_fp32 = np.random.random((9, 12)).astype(np.float32)

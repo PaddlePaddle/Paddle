@@ -31,6 +31,7 @@ class ShardedWeightDesc:
     local_shape: tuple[int, ...]
     global_shape: tuple[int, ...]
     global_offset: tuple[int, ...]
+    dtype: str | None = None
 
 
 class ShardedWeight:

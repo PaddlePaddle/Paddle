@@ -31,7 +31,7 @@ def get_paddle_includes():
     paddle_includes = []
     paddle_includes.append(f"{env_dict.get('PADDLE_SOURCE_DIR')}")
 
-    # mkldnn
+    # onednn
     if env_dict.get("WITH_ONEDNN") == 'ON':
         paddle_includes.append(f"{env_dict.get('ONEDNN_INSTALL_DIR')}/include")
     if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':

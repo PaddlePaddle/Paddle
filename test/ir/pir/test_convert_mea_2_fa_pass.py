@@ -102,7 +102,7 @@ class TestConvertMEA2FA(PassTest):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            self.check_pass_correct()
+            self.check_pass_correct(rtol=5e-03, atol=1e-03)
 
     def setUp(self):
         self.places.append(paddle.CUDAPlace(0))

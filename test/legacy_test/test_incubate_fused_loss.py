@@ -138,7 +138,7 @@ class TestFusedCalculateAuxLoss(unittest.TestCase):
         self.run_single_case(seq_len=3005, expert_num=96)
         self.run_single_case(seq_len=4096, expert_num=48)
         self.run_single_case(seq_len=4096, expert_num=15)
-        self.run_single_case(seq_len=4096, expert_num=92)
+        self.run_single_case(seq_len=4096, expert_num=96)
         self.run_single_case(seq_len=6000, expert_num=92)
         self.run_single_case(seq_len=8192, expert_num=48)
         self.run_single_case(seq_len=8192, expert_num=96)

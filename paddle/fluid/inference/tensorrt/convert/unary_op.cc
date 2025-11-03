@@ -101,9 +101,7 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
          {nvinfer1::UnaryOperation::kSQRT, nvinfer1::UnaryOperation::kRECIP}},
         {"logical_not", {nvinfer1::UnaryOperation::kNOT}},
         {"reciprocal", {nvinfer1::UnaryOperation::kRECIP}},
-#if IS_TRT_VERSION_GE(7000)
         {"erf", {nvinfer1::UnaryOperation::kERF}},
-#endif
 #if IS_TRT_VERSION_GE(8200)
         {"sign", {nvinfer1::UnaryOperation::kSIGN}},
         {"round", {nvinfer1::UnaryOperation::kROUND}},
@@ -203,7 +201,6 @@ class SignOpConverter : public UnaryOpConverter {
 };
 #endif
 
-#if IS_TRT_VERSION_GE(7000)
 class ErfOpConverter : public UnaryOpConverter {
  public:
   ErfOpConverter() { op_type_ = "erf"; }
@@ -212,7 +209,6 @@ class RoundOpConverter : public UnaryOpConverter {
  public:
   RoundOpConverter() { op_type_ = "round"; }
 };
-#endif
 
 }  // namespace paddle::inference::tensorrt
 
@@ -236,9 +232,7 @@ REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
 REGISTER_TRT_OP_CONVERTER(rsqrt, RsqrtOpConverter);
 REGISTER_TRT_OP_CONVERTER(logical_not, LogicalNotOpConverter);
 REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
-#if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
-#endif
 #if IS_TRT_VERSION_GE(8200)
 REGISTER_TRT_OP_CONVERTER(sign, SignOpConverter);
 REGISTER_TRT_OP_CONVERTER(round, RoundOpConverter);

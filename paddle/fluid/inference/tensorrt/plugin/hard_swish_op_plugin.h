@@ -54,15 +54,9 @@ class HardSwishPlugin : public PluginTensorRT {
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batchSize,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batchSize,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 
@@ -103,7 +97,6 @@ class HardSwishPluginCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(HardSwishPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class HardSwishPluginDynamic : public DynamicPluginTensorRT {
  public:
   HardSwishPluginDynamic(const float threshold,
@@ -127,10 +120,11 @@ class HardSwishPluginDynamic : public DynamicPluginTensorRT {
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   int initialize() TRT_NOEXCEPT override { return 0; }
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
@@ -214,8 +208,6 @@ class HardSwishPluginDynamicCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 REGISTER_TRT_PLUGIN_V2(HardSwishPluginDynamicCreator);
-
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

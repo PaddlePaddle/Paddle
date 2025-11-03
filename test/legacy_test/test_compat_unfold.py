@@ -23,7 +23,7 @@ class TestCompatUnfold(unittest.TestCase):
     def _compare_with_origin(
         self, input_tensor, kernel_size, dilation, padding, stride
     ):
-        unfold_compat = paddle.compat.Unfold(
+        unfold_compat = paddle.compat.nn.Unfold(
             kernel_size=kernel_size,
             dilation=dilation,
             padding=padding,
@@ -46,7 +46,7 @@ class TestCompatUnfold(unittest.TestCase):
         dilation = to_tensor(dilation)
         padding = to_tensor(padding)
         stride = to_tensor(stride)
-        unfold_compat = paddle.compat.Unfold(
+        unfold_compat = paddle.compat.nn.Unfold(
             kernel_size=kernel_size,
             dilation=dilation,
             padding=padding,
@@ -75,21 +75,21 @@ class TestCompatUnfold(unittest.TestCase):
         """Test whether there will be correct exception when users pass paddle.split kwargs in paddle.compat.split, vice versa."""
         x = paddle.randn([3, 9, 5])
 
-        msg_gt_1 = "paddle.nn.Unfold() received unexpected keyword arguments 'dilation', 'stride'. \nDid you mean to use paddle.compat.Unfold() instead?"
-        msg_gt_2 = "paddle.compat.Unfold() received unexpected keyword argument 'paddings'. \nDid you mean to use paddle.nn.Unfold() instead?"
-        msg_gt_3 = "The `padding` field of paddle.compat.Unfold can only have size 1 or 2, now len=4. \nDid you mean to use paddle.nn.Unfold() instead?"
-        msg_gt_4 = "paddle.compat.Unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
+        msg_gt_1 = "paddle.nn.Unfold() received unexpected keyword arguments 'dilation', 'stride'. \nDid you mean to use paddle.compat.nn.Unfold() instead?"
+        msg_gt_2 = "paddle.compat.nn.Unfold() received unexpected keyword argument 'paddings'. \nDid you mean to use paddle.nn.Unfold() instead?"
+        msg_gt_3 = "The `padding` field of paddle.compat.nn.Unfold can only have size 1 or 2, now len=4. \nDid you mean to use paddle.nn.Unfold() instead?"
+        msg_gt_4 = "paddle.compat.nn.Unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
 
         with self.assertRaises(TypeError) as cm:
             unfold = paddle.nn.Unfold([3, 3], dilation=[2, 2], stride=[1, 1])
         self.assertEqual(str(cm.exception), msg_gt_1)
 
         with self.assertRaises(TypeError) as cm:
-            unfold = paddle.compat.Unfold([3, 3], paddings=[2, 1])
+            unfold = paddle.compat.nn.Unfold([3, 3], paddings=[2, 1])
         self.assertEqual(str(cm.exception), msg_gt_2)
 
         with self.assertRaises(ValueError) as cm:
-            unfold = paddle.compat.Unfold([3, 3], padding=[2, 1, 2, 2])
+            unfold = paddle.compat.nn.Unfold([3, 3], padding=[2, 1, 2, 2])
             res = unfold(paddle.ones([2, 2, 5, 5]))
         self.assertEqual(str(cm.exception), msg_gt_3)
 
@@ -105,7 +105,7 @@ class TestCompatUnfold(unittest.TestCase):
                     if (paddle.is_compiled_with_cuda() or is_custom_device())
                     else paddle.CPUPlace()
                 )
-                unfold_pass = paddle.compat.Unfold(
+                unfold_pass = paddle.compat.nn.Unfold(
                     kernel_size=paddle.to_tensor([3, 3]),
                     padding=paddle.to_tensor([1, 2]),
                 )

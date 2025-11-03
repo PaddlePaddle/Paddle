@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import (
     OpTest,
+    check_cudnn_version_and_compute_capability,
     convert_float_to_uint16,
     get_device_place,
     get_places,
@@ -540,10 +541,8 @@ class TestSoftmaxBF16Op(OpTest):
 
 
 @unittest.skipIf(
-    not (core.is_compiled_with_cuda() or is_custom_device())
-    or core.cudnn_version() < 8100
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
+    not check_cudnn_version_and_compute_capability(8100, 8),
+    "only support compiled with CUDA or custom device, and for CUDA cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
 )
 class TestSoftmaxBF16CUDNNOp(TestSoftmaxBF16Op):
     def init_cudnn(self):
@@ -805,7 +804,7 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
     def test_static_check(self):
         with static_guard():
             for x_np, out_ref in zip(self.x_np_list, self.out_ref_list):
-                func = compat.softmax
+                func = compat.nn.functional.softmax
                 with paddle.static.program_guard(paddle.static.Program()):
                     x = paddle.static.data('X', x_np.shape, 'float32')
                     out1 = func(input=x, dim=None, _stacklevel=3)
@@ -855,7 +854,7 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
     def test_dygraph_check(self):
         paddle.disable_static(self.place)
         for x_np, out_ref in zip(self.x_np_list, self.out_ref_list):
-            func = compat.softmax
+            func = compat.nn.functional.softmax
             x = paddle.to_tensor(x_np)
             out1 = func(input=x, dim=None, _stacklevel=3)
             x = paddle.to_tensor(x_np)
@@ -965,12 +964,18 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
             paddle.static.program_guard(paddle.static.Program()),
         ):
             x = paddle.static.data('X', [2, 3], 'float32')
-            self.assertRaises(TypeError, compat.softmax, x=x, axis=-1)
-            self.assertRaises(TypeError, compat.softmax, x=x, dim=-1)
-            self.assertRaises(TypeError, compat.softmax, input=x, axis=-1)
+            self.assertRaises(
+                TypeError, compat.nn.functional.softmax, x=x, axis=-1
+            )
+            self.assertRaises(
+                TypeError, compat.nn.functional.softmax, x=x, dim=-1
+            )
+            self.assertRaises(
+                TypeError, compat.nn.functional.softmax, input=x, axis=-1
+            )
 
             if core.is_compiled_with_cuda() or is_custom_device():
-                compat.softmax(input=x, dim=-1)
+                compat.nn.functional.softmax(input=x, dim=-1)
 
 
 if __name__ == "__main__":

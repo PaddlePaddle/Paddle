@@ -1592,6 +1592,17 @@ class TestEagerTensor(unittest.TestCase):
         paddle_scalar = paddle.uniform([], min=-100, max=100)
         self.assertRaises(ValueError, paddle_scalar.__format__, "3d")
 
+    def test_tensor_eq_unsupported_type(self):
+        a = paddle.empty([2])
+
+        # Compare with None
+        self.assertFalse(a == None)  # noqa: E711
+        self.assertTrue(a != None)  # noqa: E711
+
+        # Compare with other obj
+        self.assertFalse(a == object())
+        self.assertTrue(a != object())
+
 
 class TestEagerTensorSetitem(unittest.TestCase):
     def func_setUp(self):
@@ -2177,6 +2188,40 @@ class TestSetDynamicAttributeToEagerTensorInstance(unittest.TestCase):
         tensor_instance._custom_flag = True
         self.assertEqual(tensor_instance._custom_flag, True)
         self.assertEqual(tensor_instance.__dict__["_custom_flag"], True)
+
+
+class TestListToTensor(unittest.TestCase):
+    def test_list_to_tensor_bfloat16(self):
+        a = [paddle.to_tensor(2, dtype=paddle.bfloat16)]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.bfloat16)
+        self.assertEqual(b[0], 2.0)
+
+    def test_list_to_tensor_float16(self):
+        a = [paddle.to_tensor(2, dtype=paddle.float16)]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float16)
+        self.assertEqual(b[0], 2.0)
+
+    def test_list_to_tensor_bfloat16_float32(self):
+        a = [
+            paddle.to_tensor(2, dtype=paddle.bfloat16),
+            paddle.to_tensor(2, dtype=paddle.float32),
+        ]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float32)
+        self.assertEqual(b[0], 2.0)
+        self.assertEqual(b[1], 2.0)
+
+    def test_list_to_tensor_float16_float32(self):
+        a = [
+            paddle.to_tensor(2, dtype=paddle.float16),
+            paddle.to_tensor(2, dtype=paddle.float32),
+        ]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float32)
+        self.assertEqual(b[0], 2.0)
+        self.assertEqual(b[1], 2.0)
 
 
 if __name__ == "__main__":

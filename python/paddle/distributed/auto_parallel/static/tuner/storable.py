@@ -28,9 +28,12 @@ class Storable:
     def save(self, path):
         state = self.get_state()
         state_json = json.dumps(state)
-        with open(path, "w") as f:
-            f.write(state_json)
-        return str(path)
+        try:
+            with open(path, "w") as f:
+                f.write(state_json)
+            return str(path)
+        except OSError as e:
+            raise OSError(f"Failed to save file at {path}: {e}") from e
 
     def load(self, path):
         with open(path, "r") as f:
