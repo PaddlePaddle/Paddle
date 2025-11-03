@@ -46,6 +46,7 @@ function formers_test() {
   echo "::endgroup::"
 }
 
+set -e
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/:/usr/local/lib/
 PATH=/usr/local/bin:${PATH}
 ln -sf $(which python3.10) /usr/local/bin/python
