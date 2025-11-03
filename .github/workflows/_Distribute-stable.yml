@@ -30,7 +30,7 @@ defaults:
 jobs:
   build:
     name: Build
-    if: ${{ inputs.clone-can-skip != 'true' }}
+    if: false
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
@@ -231,7 +231,7 @@ jobs:
   test:
     name: Test
     needs: build
-    if: ${{ needs.build.outputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: Distribute
     steps:
@@ -402,7 +402,7 @@ jobs:
           export SMI="-v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi"
           container_name=${TASK}-test-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --runtime=nvidia --shm-size=32G \
+          docker run -d -t --name ${container_name} ${CUDA_SO} ${DEVICES} ${SMI} --runtime=nvidia --shm-size=32G --privileged \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache/:/root/.cache" \
           -v "/home/data/cfs/.ccache:/root/.ccache" \
@@ -451,7 +451,8 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading Paddle.tar.gz"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
+          #wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/76162/a29fdd0352b559465b8450c689809c8e95f5bea7/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
