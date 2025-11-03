@@ -1,8 +1,7 @@
 name: Remove Skip-CI Labels
 
-#
 on:
-  pull_request:
+  pull_request_target:
     types: [synchronize]
 
 permissions:
