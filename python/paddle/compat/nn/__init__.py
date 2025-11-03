@@ -250,20 +250,11 @@ class Linear(nn.Layer):
         Resets parameters based on their initialization used in ``__init__``.
         """
 
-        # KaimingUniform initializer should be more flexible: user should be able to specify place
-        expected_place = paddle.base.framework._current_expected_place()
-        original_place = self.weight.place
         nn.init.kaiming_uniform_(self.weight, a=sqrt(5))
-
-        place_mismatch = expected_place != original_place
-        if place_mismatch and in_dynamic_mode():
-            self.weight = self.weight.to(original_place)
         if self.bias is not None:
             # nn.init._calculate_fan_in_and_fan_out(self.weight) for 2D array
             # is equivalent to returning (weight.shape[1], weight.shape[0])
+            # TODO(heqianyue): use _calculate_fan_in_and_fan_out when available
             fan_in = self.weight.shape[1]
             bound = 1 / sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.bias, -bound, bound)
-
-            if place_mismatch and in_dynamic_mode():
-                self.bias = self.bias.to(original_place)
