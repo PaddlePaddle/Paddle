@@ -656,7 +656,6 @@ class Net(nn.Layer):
 
 
 class TestBuiltinParameter(Dy2StTestBase):
-    @test_ast_only
     def test_move_builtin_parameter2top(self):
         x = paddle.randn([8, 8])
         static_fn = paddle.jit.to_static(Net())
