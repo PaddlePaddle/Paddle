@@ -117,9 +117,16 @@ class TestCudaAutoCast(unittest.TestCase):
 
     def test_amp_autocast(self):
         self._run_autocast_test(paddle.amp.autocast())
-    
-    def test_amp_autocast(self):
-        self._run_autocast_test(paddle.amp.autocast(device_type = 'cuda', enabled=True, dtype=paddle.float16, cache_enabled=True))
+
+    def test_amp_autocast2(self):
+        self._run_autocast_test(
+            paddle.amp.autocast(
+                device_type='cuda',
+                enabled=True,
+                dtype=paddle.float16,
+                cache_enabled=True,
+            )
+        )
 
     def test_cuda_amp_autocast(self):
         self._run_autocast_test(paddle.cuda.amp.autocast())
@@ -439,4 +446,3 @@ class TestDy2STWithSetValue(AmpTestBase):
 
 if __name__ == '__main__':
     unittest.main()
-    

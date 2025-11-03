@@ -53,8 +53,8 @@ from . import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
-    from types import TracebackType
     from contextlib import AbstractContextManager
+    from types import TracebackType
 
     from paddle import IPUPlace as _IPUPlace, XPUPlace as _XPUPlace
     from paddle._typing.device_like import PlaceLike
@@ -1835,9 +1835,7 @@ class _AutocastMode:
                 >>> # doctest: -SKIP
 
         """
-        return _autocast(device_type = 'cuda', enabled=enabled, dtype=dtype)
-
-        
+        return _autocast(device_type='cuda', enabled=enabled, dtype=dtype)
 
 
 class amp:
