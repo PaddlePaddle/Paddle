@@ -452,7 +452,7 @@ jobs:
           rm -rf * .[^.]*
           echo "Downloading Paddle.tar.gz"
           #wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/76162/a29fdd0352b559465b8450c689809c8e95f5bea7/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
@@ -460,11 +460,11 @@ jobs:
           git checkout test
           '
       - name: Test
-        shell: bash -euo pipefail {0}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
+          set -ex
           bash /workspace/ci/formers_test.sh
           '
       - name: Upload and display logs
@@ -472,7 +472,6 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
-        shell: bash -euo pipefail {0}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           sleep 3d
