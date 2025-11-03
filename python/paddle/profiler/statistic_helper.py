@@ -25,18 +25,20 @@ def merge_self_ranges(src_ranges, is_sorted=False):
     if len(src_ranges) > 0:
         if not is_sorted:
             src_ranges.sort(key=lambda x: x[0])
-        cur_indx = 0
-        merged_ranges.append((src_ranges[cur_indx][0], src_ranges[cur_indx][1]))
-        for cur_indx in range(1, len(src_ranges)):
-            if src_ranges[cur_indx][1] > merged_ranges[-1][1]:
-                if src_ranges[cur_indx][0] <= merged_ranges[-1][1]:
+        cur_index = 0
+        merged_ranges.append(
+            (src_ranges[cur_index][0], src_ranges[cur_index][1])
+        )
+        for cur_index in range(1, len(src_ranges)):
+            if src_ranges[cur_index][1] > merged_ranges[-1][1]:
+                if src_ranges[cur_index][0] <= merged_ranges[-1][1]:
                     merged_ranges[-1] = (
                         merged_ranges[-1][0],
-                        src_ranges[cur_indx][1],
+                        src_ranges[cur_index][1],
                     )
                 else:
                     merged_ranges.append(
-                        (src_ranges[cur_indx][0], src_ranges[cur_indx][1])
+                        (src_ranges[cur_index][0], src_ranges[cur_index][1])
                     )
     return merged_ranges
 
@@ -55,58 +57,58 @@ def merge_ranges(range_list1, range_list2, is_sorted=False):
     elif len2 == 0:
         return range_list1
     else:
-        indx1 = 0
-        indx2 = 0
-        range1 = range_list1[indx1]
-        range2 = range_list2[indx2]
+        index1 = 0
+        index2 = 0
+        range1 = range_list1[index1]
+        range2 = range_list2[index2]
         if range1[0] < range2[0]:
             merged_ranges.append(range1)
-            indx1 += 1
+            index1 += 1
         else:
             merged_ranges.append(range2)
-            indx2 += 1
-        while indx1 < len1 and indx2 < len2:
-            range1 = range_list1[indx1]
-            range2 = range_list2[indx2]
+            index2 += 1
+        while index1 < len1 and index2 < len2:
+            range1 = range_list1[index1]
+            range2 = range_list2[index2]
             if range1[0] < range2[0]:
                 if range1[1] > merged_ranges[-1][1]:
                     if range1[0] <= merged_ranges[-1][1]:
                         merged_ranges[-1] = (merged_ranges[-1][0], range1[1])
                     else:
                         merged_ranges.append((range1[0], range1[1]))
-                    indx1 += 1
+                    index1 += 1
                 else:
-                    indx1 += 1
+                    index1 += 1
             else:
                 if range2[1] > merged_ranges[-1][1]:
                     if range2[0] <= merged_ranges[-1][1]:
                         merged_ranges[-1] = (merged_ranges[-1][0], range2[1])
                     else:
                         merged_ranges.append((range2[0], range2[1]))
-                    indx2 += 1
+                    index2 += 1
                 else:
-                    indx2 += 1
+                    index2 += 1
 
-        while indx1 < len1:
-            range1 = range_list1[indx1]
+        while index1 < len1:
+            range1 = range_list1[index1]
             if range1[1] > merged_ranges[-1][1]:
                 if range1[0] <= merged_ranges[-1][1]:
                     merged_ranges[-1] = (merged_ranges[-1][0], range1[1])
                 else:
                     merged_ranges.append((range1[0], range1[1]))
-                indx1 += 1
+                index1 += 1
             else:
-                indx1 += 1
-        while indx2 < len2:
-            range2 = range_list2[indx2]
+                index1 += 1
+        while index2 < len2:
+            range2 = range_list2[index2]
             if range2[1] > merged_ranges[-1][1]:
                 if range2[0] <= merged_ranges[-1][1]:
                     merged_ranges[-1] = (merged_ranges[-1][0], range2[1])
                 else:
                     merged_ranges.append((range2[0], range2[1]))
-                indx2 += 1
+                index2 += 1
             else:
-                indx2 += 1
+                index2 += 1
     return merged_ranges
 
 
@@ -120,59 +122,59 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
 
     len1 = len(range_list1)
     len2 = len(range_list2)
-    indx1 = 0
-    indx2 = 0
-    range1 = range_list1[indx1]
-    range2 = range_list2[indx2]
-    while indx1 < len1 and indx2 < len2:
+    index1 = 0
+    index2 = 0
+    range1 = range_list1[index1]
+    range2 = range_list2[index2]
+    while index1 < len1 and index2 < len2:
         if range2[1] <= range1[0]:
-            indx2 += 1
-            if indx2 == len2:
+            index2 += 1
+            if index2 == len2:
                 break
-            range2 = range_list2[indx2]
+            range2 = range_list2[index2]
 
         elif range2[0] <= range1[0] and range2[1] < range1[1]:
             assert range2[1] > range1[0]
             result_range.append((range1[0], range2[1]))
             range1 = (range2[1], range1[1])
-            indx2 += 1
-            if indx2 == len2:
+            index2 += 1
+            if index2 == len2:
                 break
-            range2 = range_list2[indx2]
+            range2 = range_list2[index2]
 
         elif range2[0] <= range1[0]:
             assert range2[1] >= range1[1]
             result_range.append(range1)
             range2 = (range1[1], range2[1])
-            indx1 += 1
-            if indx1 == len1:
+            index1 += 1
+            if index1 == len1:
                 break
-            range1 = range_list1[indx1]
+            range1 = range_list1[index1]
 
         elif range2[1] < range1[1]:
             assert range2[0] > range1[0]
             result_range.append(range2)
             range1 = (range2[1], range1[1])
-            indx2 += 1
-            if indx2 == len2:
+            index2 += 1
+            if index2 == len2:
                 break
-            range2 = range_list2[indx2]
+            range2 = range_list2[index2]
 
         elif range2[0] < range1[1]:
             assert range2[1] >= range1[1]
             result_range.append((range2[0], range1[1]))
             range2 = (range1[1], range2[1])
-            indx1 += 1
-            if indx1 == len1:
+            index1 += 1
+            if index1 == len1:
                 break
-            range1 = range_list1[indx1]
+            range1 = range_list1[index1]
 
         else:
             assert range2[0] >= range1[1]
-            indx1 += 1
-            if indx1 == len1:
+            index1 += 1
+            if index1 == len1:
                 break
-            range1 = range_list1[indx1]
+            range1 = range_list1[index1]
     return result_range
 
 
@@ -188,33 +190,33 @@ def subtract_ranges(range_list1, range_list2, is_sorted=False):
 
     len1 = len(range_list1)
     len2 = len(range_list2)
-    indx1 = 0
-    indx2 = 0
-    range1 = range_list1[indx1]
-    range2 = range_list2[indx2]
+    index1 = 0
+    index2 = 0
+    range1 = range_list1[index1]
+    range2 = range_list2[index2]
 
-    while indx1 < len(range_list1):
-        if indx2 == len(range_list2):
+    while index1 < len(range_list1):
+        if index2 == len(range_list2):
             result_range.append(range1)
-            indx1 += 1
-            if indx1 == len1:
+            index1 += 1
+            if index1 == len1:
                 break
-            range1 = range_list1[indx1]
+            range1 = range_list1[index1]
         elif range2[1] <= range1[0]:
-            indx2 += 1
-            if indx2 != len2:
-                range2 = range_list2[indx2]
+            index2 += 1
+            if index2 != len2:
+                range2 = range_list2[index2]
         elif range2[0] <= range1[0] and range2[1] < range1[1]:
             range1 = (range2[1], range1[1])
-            indx2 += 1
-            if indx2 != len2:
-                range2 = range_list2[indx2]
+            index2 += 1
+            if index2 != len2:
+                range2 = range_list2[index2]
         elif range2[0] <= range1[0]:
             assert range2[1] >= range1[1]
             range2 = (range1[1], range2[1])
-            indx1 += 1
-            if indx1 != len1:
-                range1 = range_list1[indx1]
+            index1 += 1
+            if index1 != len1:
+                range1 = range_list1[index1]
         elif range2[0] < range1[1]:
             assert range2[0] > range1[0]
             result_range.append((range1[0], range2[0]))
@@ -222,7 +224,7 @@ def subtract_ranges(range_list1, range_list2, is_sorted=False):
         else:
             assert range2[0] >= range1[1]
             result_range.append(range1)
-            indx1 += 1
-            if indx1 != len1:
-                range1 = range_list1[indx1]
+            index1 += 1
+            if index1 != len1:
+                range1 = range_list1[index1]
     return result_range

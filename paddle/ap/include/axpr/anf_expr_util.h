@@ -458,7 +458,7 @@ struct ParseJsonToAnfExprHelperInt64 {
     if (!j_obj.is_number_integer()) {
       return JsonParseMismatch(j_obj,
                                "ParseJsonToAnfExpr<int64_t>: json object "
-                               "should be a intergral number.");
+                               "should be a integral number.");
     }
     auto c = j_obj.get<Json::number_integer_t>();
     return AnfExpr{AnfExprBuilder().Int64(c)};

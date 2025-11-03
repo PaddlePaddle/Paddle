@@ -417,7 +417,7 @@ class AmpTestBase(unittest.TestCase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
+                f"[{debug_info}] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
 
     def run_program(

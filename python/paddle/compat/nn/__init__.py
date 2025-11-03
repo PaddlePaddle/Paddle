@@ -17,9 +17,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle import nn
 from paddle.framework import (
     in_dynamic_mode,
 )
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import functional  # noqa: F401
 
@@ -29,9 +31,6 @@ if TYPE_CHECKING:
         Size2,
     )
 
-
-from paddle import nn
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = [
     'Unfold',
