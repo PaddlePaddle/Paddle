@@ -4210,75 +4210,6 @@ class TestLog2(TestActivation):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
-class TestLog2API_Compatibility(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
-        paddle_dygraph_out = []
-        # Position args (args)
-        out1 = paddle.log2(x)
-        paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
-        out2 = paddle.log2(x=x)
-        paddle_dygraph_out.append(out2)
-        # Key words args for torch
-        out3 = paddle.log2(input=x)
-        paddle_dygraph_out.append(out3)
-
-        # Tensor method args
-        out4 = paddle.empty([])
-        out5 = x.log2(x, out=out4)
-        paddle_dygraph_out.append(out4)
-        paddle_dygraph_out.append(out5)
-        # Tensor method kwargs
-        out6 = x.log2()
-        paddle_dygraph_out.append(out6)
-        # Test out
-        out7 = paddle.empty([])
-        paddle.log2(x, out=out7)
-        paddle_dygraph_out.append(out7)
-        # Numpy reference  out
-        ref_out = np.log2(self.np_input)
-        # Check
-        for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
-        paddle.enable_static()
-
-    def test_static_Compatibility(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            # Position args (args)
-            out1 = paddle.log2(x)
-            # Key words args (kwargs) for paddle
-            out2 = paddle.log2(x=x)
-            # Key words args for torch
-            out3 = paddle.log2(input=x)
-            # Tensor method args
-            out4 = x.log2()
-
-            exe = base.Executor(paddle.CPUPlace())
-            fetches = exe.run(
-                main,
-                feed={"x": self.np_input},
-                fetch_list=[out1, out2, out3, out4],
-            )
-            ref_out = np.log2(self.np_input)
-            for out in fetches:
-                np.testing.assert_allclose(out, ref_out)
-
-
 class TestLog2_Complex64(TestLog2):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -6227,6 +6158,108 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=False, check_pir=True, check_prim_pir=True
 )
+
+
+class TestActivationAPI_Compatibility(unittest.TestCase):
+    ACTIVATION_CONFIGS = [
+        ("paddle.abs", np.abs, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.log2", np.log2, {'min_val': 0.0, 'max_val': 8.0}),
+    ]
+
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = devices
+        self.shape = [5, 6]
+        self.dtype = "float32"
+
+    def init_data(self, min_val=-1.0, max_val=1.0):
+        self.np_x = (
+            np.random.rand(*self.shape).astype(self.dtype) * (max_val - min_val)
+            + min_val
+        )
+
+
+def generate_test_case_for_func(act_name, ref_func, data_range):
+    paddle_func = eval(act_name)
+    act_name = act_name.split('.')[-1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # (1) Position args
+        out1 = paddle_func(x)
+        paddle_dygraph_out.append(out1)
+        # (2) Key words args for paddle
+        out2 = paddle_func(x=x)
+        paddle_dygraph_out.append(out2)
+        # (3) Key words args for torch compatibility
+        out3 = paddle_func(input=x)
+        paddle_dygraph_out.append(out3)
+        # (4) Tensor method args: x.func()
+        out4 = getattr(x, act_name)()
+        paddle_dygraph_out.append(out4)
+        # (5) Test 'out' parameter for torch compatibility
+        out5 = paddle.empty_like(x)
+        paddle_func(x, out=out5)
+        paddle_dygraph_out.append(out5)
+        ref_out = ref_func(self.np_x)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # (1) Position args
+            out1 = paddle_func(x)
+            # (2) Key words args for paddle
+            out2 = paddle_func(x=x)
+            # (3) Key words args for torch compatibility
+            out3 = paddle_func(input=x)
+            # (4) Tensor method args (x.func())
+            out4 = getattr(x, act_name)()
+            ref_out = ref_func(self.np_x)
+            fetch_list = [out1, out2, out3, out4]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+    test_dygraph_Compatibility.__name__ = (
+        f'test_dygraph_Compatibility_{act_name}'
+    )
+    test_static_Compatibility.__name__ = f'test_static_Compatibility_{act_name}'
+    return test_dygraph_Compatibility, test_static_Compatibility
+
+
+for (
+    paddle_api,
+    np_ref_func,
+    data_range,
+) in TestActivationAPI_Compatibility.ACTIVATION_CONFIGS:
+    dygraph_test, static_test = generate_test_case_for_func(
+        paddle_api, np_ref_func, data_range
+    )
+    setattr(
+        TestActivationAPI_Compatibility, dygraph_test.__name__, dygraph_test
+    )
+    setattr(TestActivationAPI_Compatibility, static_test.__name__, static_test)
 
 if __name__ == "__main__":
     unittest.main()

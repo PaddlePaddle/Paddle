@@ -198,6 +198,12 @@ class Linear(Layer):
     bias: Tensor
     name: str | None
 
+    @ForbidKeywordsDecorator(
+        illegal_keys={"bias", "device", "dtype"},
+        func_name="paddle.nn.Linear",
+        correct_name="paddle.compat.nn.Linear",
+        url_suffix="nn/torch.nn.Linear",
+    )
     def __init__(
         self,
         in_features: int,
