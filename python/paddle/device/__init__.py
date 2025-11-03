@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Union
 from typing_extensions import TypeAlias
 
 import paddle
+from paddle.amp import autocast as _autocast
 from paddle.base import core, framework
 from paddle.base.framework import (
     is_compiled_with_cinn,
@@ -1784,6 +1785,17 @@ def manual_seed_all(seed: int) -> None:
 
     """
     paddle.seed(seed)
+
+
+class _AutocastMode:
+    autocast = staticmethod(_autocast)
+
+
+class amp:
+    """Namespace for amp marker operations."""
+
+    autocast = staticmethod(_autocast)
+    autocast_mode = _AutocastMode()
 
 
 class nvtx:

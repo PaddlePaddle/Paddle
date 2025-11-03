@@ -74,6 +74,11 @@ class TestFusedWeightOnlyLinearPass_WithBias(PassTest):
                     and paddle.device.cuda.get_device_capability()[1] == 0
                 )
                 is False
+                and (
+                    paddle.device.cuda.get_device_capability()[0] == 9
+                    and paddle.device.cuda.get_device_capability()[1] == 0
+                )
+                is False
             )
         ):
             self.valid_op_map = {
@@ -174,6 +179,11 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
                 is False
                 and (
                     paddle.device.cuda.get_device_capability()[0] == 7
+                    and paddle.device.cuda.get_device_capability()[1] == 0
+                )
+                is False
+                and (
+                    paddle.device.cuda.get_device_capability()[0] == 9
                     and paddle.device.cuda.get_device_capability()[1] == 0
                 )
                 is False

@@ -394,7 +394,6 @@ struct GPUContext::Impl {
         }
       }
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
@@ -404,8 +403,6 @@ struct GPUContext::Impl {
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
-#endif
-#if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
@@ -416,7 +413,6 @@ struct GPUContext::Impl {
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
-#endif
 #endif
     });
     PADDLE_ENFORCE_NOT_NULL(
@@ -611,7 +607,6 @@ struct GPUContext::Impl {
         }
       }
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
@@ -621,8 +616,6 @@ struct GPUContext::Impl {
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
-#endif
-#if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
@@ -633,7 +626,6 @@ struct GPUContext::Impl {
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
-#endif
 #endif
     });
     if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
@@ -656,7 +648,6 @@ struct GPUContext::Impl {
         }
       }
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
@@ -666,8 +657,6 @@ struct GPUContext::Impl {
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
-#endif
-#if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
@@ -678,7 +667,6 @@ struct GPUContext::Impl {
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
-#endif
 #endif
     });
     if (blas_tensor_core_handle_ != nullptr) {

@@ -26,7 +26,7 @@ class TestLoadStateDictTranspose(test_base.CommunicationTestDistBase):
             "aoa_statements": "linear.weight^T -> linear.weight",
         }
         self.run_test_case(
-            "load_static_dict_transpose_logic.py",
+            "load_state_dict_transpose_logic.py",
             user_defined_envs=envs,
         )
 
