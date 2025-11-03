@@ -365,6 +365,8 @@ jobs:
     if: ${{ needs.build.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
+    run:
+      shell: bash -euo pipefail {0}
     steps:
       - name: Check docker image and run container
         env:
@@ -464,7 +466,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
-          set -e
           bash /workspace/ci/formers_test.sh
           '
       - name: Upload and display logs
@@ -474,6 +475,7 @@ jobs:
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          sleep 3d
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
@@ -487,15 +489,15 @@ jobs:
             bos_prefix="schedule/$(date +%Y%m%d)"
           fi
           # api test logs
-          cd ${work_dir}/PaddleFormers/unittest_logs
-          for FILE in ${work_dir}/PaddleFormers/unittest_logs/*; do
+          cd /workspace/PaddleFormers/unittest_logs
+          for FILE in /workspace/PaddleFormers/unittest_logs/*; do
             file=$(basename "$FILE")
             python ${{ env.bos_file }} $file paddle-github-action/PR/PaddleFormers/unittest-gpu/${bos_prefix}/logs
             echo "$file: https://paddle-github-action.bj.bcebos.com/PR/PaddleFormers/unittest-gpu/${bos_prefix}/logs/$file"
           done
           # models test logs
-          cd ${work_dir}/PaddleFormers/model_unittest_logs
-          for FILE in ${work_dir}/PaddleFormers/model_unittest_logs/*; do
+          cd /workspace/PaddleFormers/model_unittest_logs
+          for FILE in /workspace/PaddleFormers/model_unittest_logs/*; do
             file=$(basename "$FILE")
             python ${{ env.bos_file }} $file paddle-github-action/PR/PaddleFormers/model-unittest-gpu/${bos_prefix}/logs
             echo "$file: https://paddle-github-action.bj.bcebos.com/PR/PaddleFormers/model-unittest-gpu/${bos_prefix}/logs/$file"

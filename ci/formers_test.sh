@@ -52,9 +52,9 @@ ln -sf $(which python3.10) /usr/local/bin/python
 ln -sf $(which pip3.10) /usr/local/bin/pip
 
 echo "Downloading PaddleFormers.tar.gz..."
-#wget -q https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleFormers.tar
-#tar xf PaddleFormers.tar
-git clone --depth=1000 https://github.com/PaddlePaddle/PaddleFormers.git
+wget -q https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleFormers.tar
+tar xf PaddleFormers.tar
+#git clone --depth=1000 https://github.com/PaddlePaddle/PaddleFormers.git
 echo "Extracting PaddleFormers.tar.gz..."
 cd PaddleFormers
 cp -r ${CFS_DIR}/models ./models
