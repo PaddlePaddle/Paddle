@@ -439,6 +439,4 @@ class TestDy2STWithSetValue(AmpTestBase):
 
 if __name__ == '__main__':
     unittest.main()
-
-import torch
-torch.amp.autocast
+    
