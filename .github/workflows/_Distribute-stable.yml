@@ -455,6 +455,7 @@ jobs:
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
+          git config --global --add safe.directory /workspace
           git checkout test
           '
       - name: Test
