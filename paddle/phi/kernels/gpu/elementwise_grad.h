@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/common/place.h"
@@ -23,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+
 namespace phi {
 
 template <typename T>
@@ -111,6 +115,171 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
     Add Grad
 ******************************
 */
+
+template <typename T_dy>
+struct VecTypeHelper;
+template <>
+struct VecTypeHelper<phi::float16> {
+  using type = __half2;
+};
+template <>
+struct VecTypeHelper<phi::bfloat16> {
+  using type = __nv_bfloat162;
+};
+
+template <typename T_dy>
+__device__ inline typename VecTypeHelper<T_dy>::type CvtFromFloat2(float2 val);
+
+template <>
+__device__ inline __half2 CvtFromFloat2<phi::float16>(float2 val) {
+  return __float22half2_rn(val);  // float -> fp16
+}
+
+template <>
+__device__ inline __nv_bfloat162 CvtFromFloat2<phi::bfloat16>(float2 val) {
+  return __float22bfloat162_rn(val);  // float -> bf16
+}
+
+template <typename T_dy>
+static __global__ void MixedPrecisionElemwiseAddGradCUDAKernel(
+    const float *__restrict__ dout, int64_t size, float *dx, T_dy *dy) {
+  using T_dy_vec = typename VecTypeHelper<T_dy>::type;
+
+  const int vec_size = 4;
+  int tid = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
+  int stride = static_cast<int>(gridDim.x * blockDim.x);
+
+  int64_t loop = size / vec_size;
+  int64_t remainder_start = loop * vec_size;
+
+  const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
+  float4 *dx_vec = reinterpret_cast<float4 *>(dx);
+
+  T_dy_vec *dy_vec = reinterpret_cast<T_dy_vec *>(dy);
+
+  for (int64_t i = tid; i < loop; i += stride) {
+    const float4 dout_val = dout_vec[i];
+
+    dx_vec[i] = dout_val;
+
+    const float2 dout_lo = make_float2(dout_val.x, dout_val.y);
+    const float2 dout_hi = make_float2(dout_val.z, dout_val.w);
+
+    dy_vec[i * 2] = CvtFromFloat2<T_dy>(dout_lo);
+    dy_vec[i * 2 + 1] = CvtFromFloat2<T_dy>(dout_hi);
+  }
+
+  for (int64_t i = remainder_start + tid; i < size; i += stride) {
+    const float tmp_rem = dout[i];
+    dx[i] = tmp_rem;
+    dy[i] = static_cast<T_dy>(tmp_rem);
+  }
+}
+
+template <typename T_dy>
+void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
+                                      const DenseTensor &dout,
+                                      DenseTensor *dx,
+                                      DenseTensor *dy) {
+  using T_dout = float;
+  using T_dx = float;
+
+  auto *dx_data = dev_ctx.template Alloc<T_dx>(dx);
+  T_dy *dy_data = dev_ctx.template Alloc<T_dy>(dy);
+  auto *dout_data = dout.data<T_dout>();
+
+  if (dx_data == dout_data) {
+    phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
+    return;
+  }
+
+  auto size = dout.numel();
+  if (size == 0) return;
+
+  const int block_size = PREDEFINED_BLOCK_SIZE;
+  int grid_size = (size + block_size - 1) / block_size;
+  if (size / block_size < grid_size) {
+    grid_size = (size + block_size - 1) / block_size;
+  } else {
+    grid_size = dev_ctx.GetMaxPhysicalThreadCount();
+  }
+
+  if (std::is_same_v<T_dy, phi::float16>) {
+    MixedPrecisionElemwiseAddGradCUDAKernel<phi::float16>
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+            dout_data,
+            size,
+            dx_data,
+            reinterpret_cast<phi::float16 *>(dy_data));
+  } else if (std::is_same_v<T_dy, phi::bfloat16>) {
+    MixedPrecisionElemwiseAddGradCUDAKernel<phi::bfloat16>
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+            dout_data,
+            size,
+            dx_data,
+            reinterpret_cast<phi::bfloat16 *>(dy_data));
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Unsupported T_dy type for MixedPrecisionElemwiseAddGradCUDAKernel"));
+  }
+}
+
+template <typename T_dy>
+void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
+                                  const DenseTensor &x,
+                                  const DenseTensor &y,
+                                  const DenseTensor &dout,
+                                  DenseTensor *dx,
+                                  DenseTensor *dy,
+                                  int axis = -1) {
+  using T_dout = float;
+  using T_dx = float;
+
+  auto *dout_data = dout.data<T_dout>();
+
+  // dx
+  if (dx != nullptr) {
+    auto *dx_data = dev_ctx.template Alloc<T_dx>(dx);
+    if (dx->dims() == dout.dims()) {
+      if (dx_data != dout_data) {
+        phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+      }
+    } else {
+      if (dx->IsSharedBufferWith(dout)) {
+        dx->clear();
+        dx->Resize(x.dims());
+        dev_ctx.template Alloc<T_dx>(dx);
+      }
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(x.dims(), dout.dims(), axis);
+      phi::SumKernel<T_dout, GPUContext>(
+          dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
+    }
+  }
+
+  // dy
+  if (dy != nullptr) {
+    auto *dy_data = dev_ctx.template Alloc<T_dy>(dy);
+    if (dy->dims() == dout.dims()) {
+      if (std::is_same_v<T_dy, T_dout>) {
+        phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+      } else {
+        phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
+      }
+    } else {
+      DenseTensor dy_src;
+      if (std::is_same_v<T_dy, T_dout>) {
+        dy_src = dout;
+      } else {
+        dy_src = phi::Cast<T_dout>(dev_ctx, dout, y.dtype());
+      }
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(y.dims(), dout.dims(), axis);
+      phi::SumKernel<T_dy, GPUContext>(
+          dev_ctx, dy_src, reduce_dims, dy_src.dtype(), false, dy);
+    }
+  }
+}
 
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
