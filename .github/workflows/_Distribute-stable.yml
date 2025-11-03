@@ -406,6 +406,7 @@ jobs:
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache/:/root/.cache" \
           -v "/home/data/cfs/.ccache:/root/.ccache" \
+          -v "/ssd1/models:/home/models" \
           -v "/ssd1/root:/root" \
           -v "/dev/shm:/dev/shm"  \
           -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
@@ -417,6 +418,7 @@ jobs:
           -e PADDLE_ROOT \
           -e ci_scripts \
           -e CI_name \
+          -e PF_HOME=/home/models \
           -e FLAGS_fraction_of_gpu_memory_to_use \
           -e CTEST_OUTPUT_ON_FAILURE \
           -e CTEST_PARALLEL_LEVEL \
