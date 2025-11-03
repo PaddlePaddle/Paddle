@@ -59,7 +59,6 @@ tar xf PaddleFormers.tar
 echo "Extracting PaddleFormers.tar.gz..."
 cd PaddleFormers
 cp -r ${CFS_DIR}/models ./models
-cd /paddle
 
 echo "::group::Install paddle dependencies"
 pip config set global.cache-dir "/root/.cache/pip"
