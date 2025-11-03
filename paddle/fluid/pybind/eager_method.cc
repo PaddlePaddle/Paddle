@@ -2883,6 +2883,7 @@ Note:
 Convert input Tensor to SparseCsrTensor.
 
 When input is SparseCooTensor, will convert `COO` to `CSR` . When input is DenseTensor, will convert `Dense` to `CSR` .
+When input is SparseCsrTensor, the function will directly return the input itself without performing any conversion.
 
 Returns:
     SparseCsrTensor
@@ -2909,6 +2910,10 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
+  if (self->tensor.is_sparse_csr_tensor()) {
+    Py_INCREF(self);
+    return reinterpret_cast<PyObject*>(self);
+  }
   auto csr_tensor = self->tensor.to_sparse_csr();
   egr::EagerUtils::autograd_meta(&csr_tensor)
       ->SetStopGradient(

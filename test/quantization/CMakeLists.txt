@@ -248,7 +248,7 @@ if(NOT WITH_GPU)
 endif()
 
 #
-if(NOT WITH_XPU)
+if(WITH_GPU)
   if(${CUDA_ARCH_NAME} STREQUAL "Hopper")
     list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
   endif()
