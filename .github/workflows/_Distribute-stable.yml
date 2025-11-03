@@ -365,8 +365,6 @@ jobs:
     if: ${{ needs.build.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
-    run:
-      shell: bash -euo pipefail {0}
     steps:
       - name: Check docker image and run container
         env:
@@ -462,6 +460,7 @@ jobs:
           git checkout test
           '
       - name: Test
+        shell: bash -euo pipefail {0}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -473,6 +472,7 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
+        shell: bash -euo pipefail {0}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           sleep 3d
