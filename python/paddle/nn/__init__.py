@@ -60,6 +60,9 @@ from .layer.activation import (
 from .layer.common import (
     AlphaDropout,
     Bilinear,
+    CircularPad1D,
+    CircularPad2D,
+    CircularPad3D,
     ConstantPad1D,
     ConstantPad2D,
     ConstantPad3D,
@@ -204,6 +207,9 @@ ConstantPad3d = ConstantPad3D
 ReplicationPad1d = ReplicationPad1D
 ReplicationPad2d = ReplicationPad2D
 ReplicationPad3d = ReplicationPad3D
+CircularPad1d = CircularPad1D
+CircularPad2d = CircularPad2D
+CircularPad3d = CircularPad3D
 Conv1d = Conv1D
 Conv2d = Conv2D
 Conv3d = Conv3D
@@ -234,6 +240,9 @@ __all__ = [
     'ConstantPad1D',
     'ConstantPad2D',
     'ConstantPad3D',
+    'CircularPad1d',
+    'CircularPad2d',
+    'CircularPad3d',
     'ReplicationPad1D',
     'ReplicationPad2D',
     'ReplicationPad3D',
