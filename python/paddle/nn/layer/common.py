@@ -1480,6 +1480,57 @@ class ZeroPad1D(Pad1D):
         super().__init__(padding, "constant", 0.0, data_format, name)
 
 
+class CircularPad1D(Pad1D):
+    """
+    This interface is used to construct a callable object of the ``CircularPad1D`` class.
+    Pads the input tensor boundaries by circular padding.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to both the left and right side.
+            If `padding` is a list or tuple of two ints, it is interpreted as `(pad_left, pad_right)`.
+        data_format (str|None): An string from: "NCL", "NLC". Specify the data format of the input data.
+            Default: ``"NCL"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of circularpad1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of circularpad1d operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 2, 3)
+            >>> pad = [1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data is [[[1., 2., 3.], [4., 5., 6.]]]
+            >>> my_pad = nn.CircularPad1D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[3., 1., 2., 3., 1., 2.],
+              [6., 4., 5., 6., 4., 5.]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "circular", 0.0, data_format, name)
+
+
 class Pad2D(_PadnD):
     """
     This interface is used to construct a callable object of the ``Pad2D`` class.
@@ -1753,6 +1804,62 @@ class ZeroPad2D(Pad2D):
         name: str | None = None,
     ) -> None:
         super().__init__(padding, "constant", 0.0, data_format, name)
+
+
+class CircularPad2D(Pad2D):
+    """
+    This interface is used to construct a callable object of the ``CircularPad2D`` class.
+    Pads the input tensor boundaries by circular padding.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all four sides (left, right, top, bottom).
+            If `padding` is a list or tuple of four ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom)`.
+        data_format (str|None): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+            Default: ``"NCHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of circularpad2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of circularpad2d operator, which is a 4-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2] # (L, R, T, B)
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data is [[[[1., 2., 3.],
+            >>> #           [4., 5., 6.]]]]
+            >>> my_pad = nn.CircularPad2D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[6., 4., 5., 6.],
+               [3., 1., 2., 3.],
+               [6., 4., 5., 6.],
+               [3., 1., 2., 3.],
+               [6., 4., 5., 6.]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "circular", 0.0, data_format, name)
 
 
 class Pad3D(_PadnD):
@@ -2032,6 +2139,62 @@ class ZeroPad3D(Pad3D):
         name: str | None = None,
     ) -> None:
         super().__init__(padding, "constant", 0.0, data_format, name)
+
+
+class CircularPad3D(Pad3D):
+    """
+    This interface is used to construct a callable object of the ``CircularPad3D`` class.
+    Pads the input tensor boundaries by circular padding.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all six sides (left, right, top, bottom, front, back).
+            If `padding` is a list or tuple of six ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)`.
+        data_format (str|None): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+            Default: ``"NCDHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of circularpad3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of circularpad3d operator, which is a 5-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 1, 1, 2, 3) # NCDHW
+            >>> pad = [1, 0, 1, 2, 0, 0] # (L, R, T, B, F, K)
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data is [[[[[1., 2., 3.],
+            >>> #            [4., 5., 6.]]]]]
+            >>> my_pad = nn.CircularPad3D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[6., 4., 5., 6.],
+                [3., 1., 2., 3.],
+                [6., 4., 5., 6.],
+                [3., 1., 2., 3.],
+                [6., 4., 5., 6.]]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout3D = "NCDHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "circular", 0.0, data_format, name)
 
 
 class CosineSimilarity(Layer):
