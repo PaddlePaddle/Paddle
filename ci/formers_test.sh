@@ -58,6 +58,7 @@ git clone --depth=1000 https://github.com/PaddlePaddle/PaddleFormers.git
 echo "Extracting PaddleFormers.tar.gz..."
 cd PaddleFormers
 cp -r ${CFS_DIR}/models ./models
+cd /paddle
 
 echo "::group::Install paddle dependencies"
 pip config set global.cache-dir "/root/.cache/pip"

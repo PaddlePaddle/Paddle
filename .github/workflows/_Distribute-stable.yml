@@ -464,6 +464,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
+          set -e
           bash /workspace/ci/formers_test.sh
           '
       - name: Upload and display logs
@@ -473,7 +474,6 @@ jobs:
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          sleep 3d
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
