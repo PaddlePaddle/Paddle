@@ -281,6 +281,9 @@ from .hapi import (
     summary,
 )
 from .nn.functional import (
+    adaptive_avg_pool1d,
+    adaptive_avg_pool2d,
+    adaptive_avg_pool3d,
     conv1d,
     conv2d,
     conv3d,
@@ -1481,6 +1484,9 @@ __all__ = [
     'conv3d',
     'manual_seed',
     'softmax',
+    'adaptive_avg_pool1d',
+    'adaptive_avg_pool2d',
+    'adaptive_avg_pool3d',
 ]
 import os
 

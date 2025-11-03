@@ -24,6 +24,9 @@ from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
 )
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -1435,6 +1438,7 @@ def max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool1d(
     x: Tensor, output_size: int, name: str | None = None
 ) -> Tensor:
@@ -1522,6 +1526,7 @@ def adaptive_avg_pool1d(
         return squeeze(pool_out, [2])
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool2d(
     x: Tensor,
     output_size: Size2,
@@ -1658,6 +1663,7 @@ def adaptive_avg_pool2d(
         return pool_out
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool3d(
     x: Tensor,
     output_size: Size3,

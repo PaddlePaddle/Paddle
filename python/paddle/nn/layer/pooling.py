@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     )
 
     from ..functional.common import _PaddingSizeMode
+from paddle.utils.decorator_utils import param_one_alias
 
 __all__ = []
 
@@ -1070,6 +1071,7 @@ class AdaptiveAvgPool2D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool2d(
             x,
@@ -1168,6 +1170,7 @@ class AdaptiveAvgPool3D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool3d(
             x,

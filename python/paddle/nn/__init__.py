@@ -189,6 +189,10 @@ from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
 SiLU = Silu
+AdaptiveAvgPool1d = AdaptiveAvgPool1D
+AdaptiveAvgPool2d = AdaptiveAvgPool2D
+AdaptiveAvgPool3d = AdaptiveAvgPool3D
+HuberLoss = SmoothL1Loss
 
 __all__ = [
     'BatchNorm',
