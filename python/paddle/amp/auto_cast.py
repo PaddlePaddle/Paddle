@@ -1064,7 +1064,10 @@ def amp_decorate(
 
 
 def autocast(
-    device_type, dtype=paddle.float16, enabled=True, cache_enabled=True
+    device_type: str | None,
+    dtype: _DTypeLiteral = 'float16',
+    enabled: bool = True,
+    cache_enabled: bool = True,
 ) -> AbstractContextManager:
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.

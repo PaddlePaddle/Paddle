@@ -116,7 +116,7 @@ class TestCudaAutoCast(unittest.TestCase):
         self.assertEqual(out3.dtype, paddle.float32)
 
     def test_amp_autocast(self):
-        self._run_autocast_test(paddle.amp.autocast())
+        self._run_autocast_test(paddle.amp.autocast(device_type='cuda'))
 
     def test_amp_autocast2(self):
         self._run_autocast_test(
