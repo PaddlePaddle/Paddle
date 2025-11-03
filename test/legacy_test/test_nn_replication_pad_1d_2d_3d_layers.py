@@ -33,7 +33,7 @@ class TestReplicationPad1d(unittest.TestCase):
         my_pad = ReplicationPad1d(padding=pad, data_format="NCL")
         assert (
             my_pad.__repr__()
-            == "ReplicationPad1D(padding=[1, 2], data_format=NCL)"
+            == "ReplicationPad1D(padding=[1, 2], mode=replicate, value=0.0, data_format=NCL)"
         )
         result = my_pad(data)
 
@@ -107,7 +107,7 @@ class TestReplicationPad2d(unittest.TestCase):
         my_pad = ReplicationPad2d(padding=pad, data_format="NCHW")
         assert (
             my_pad.__repr__()
-            == "ReplicationPad2D(padding=[1, 0, 1, 2], data_format=NCHW)"
+            == "ReplicationPad2D(padding=[1, 0, 1, 2], mode=replicate, value=0.0, data_format=NCHW)"
         )
         result = my_pad(data)
 
@@ -197,7 +197,7 @@ class TestReplicationPad3d(unittest.TestCase):
         my_pad = ReplicationPad3d(padding=pad, data_format="NCDHW")
         assert (
             my_pad.__repr__()
-            == "ReplicationPad3D(padding=[1, 0, 1, 2, 0, 0], data_format=NCDHW)"
+            == "ReplicationPad3D(padding=[1, 0, 1, 2, 0, 0], mode=replicate, value=0.0, data_format=NCDHW)"
         )
         result = my_pad(data)
 

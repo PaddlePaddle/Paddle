@@ -103,13 +103,10 @@ from .layer.container import (
 )
 from .layer.conv import (
     Conv1D,
-    Conv1d,
     Conv1DTranspose,
     Conv2D,
-    Conv2d,
     Conv2DTranspose,
     Conv3D,
-    Conv3d,
     Conv3DTranspose,
 )
 from .layer.distance import PairwiseDistance
@@ -207,6 +204,9 @@ ConstantPad3d = ConstantPad3D
 ReplicationPad1d = ReplicationPad1D
 ReplicationPad2d = ReplicationPad2D
 ReplicationPad3d = ReplicationPad3D
+Conv1d = Conv1D
+Conv2d = Conv2D
+Conv3d = Conv3D
 
 
 __all__ = [

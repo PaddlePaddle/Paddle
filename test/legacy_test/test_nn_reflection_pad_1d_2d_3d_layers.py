@@ -33,7 +33,7 @@ class TestReflectionPad1d(unittest.TestCase):
         my_pad = ReflectionPad1d(padding=pad, data_format="NCL")
         assert (
             my_pad.__repr__()
-            == "ReflectionPad1D(padding=[1, 2], data_format=NCL)"
+            == "ReflectionPad1D(padding=[1, 2], mode=reflect, value=0.0, data_format=NCL)"
         )
         result = my_pad(data)
 
@@ -115,7 +115,7 @@ class TestReflectionPad2d(unittest.TestCase):
         my_pad = ReflectionPad2d(padding=pad, data_format="NCHW")
         assert (
             my_pad.__repr__()
-            == "ReflectionPad2D(padding=[1, 0, 1, 1], data_format=NCHW)"
+            == "ReflectionPad2D(padding=[1, 0, 1, 1], mode=reflect, value=0.0, data_format=NCHW)"
         )
         result = my_pad(data)
 
@@ -187,7 +187,7 @@ class TestReflectionPad3d(unittest.TestCase):
         my_pad = ReflectionPad3d(padding=pad, data_format="NCDHW")
         assert (
             my_pad.__repr__()
-            == "ReflectionPad3D(padding=[1, 0, 1, 1, 0, 0], data_format=NCDHW)"
+            == "ReflectionPad3D(padding=[1, 0, 1, 1, 0, 0], mode=reflect, value=0.0, data_format=NCDHW)"
         )
         result = my_pad(data)
 

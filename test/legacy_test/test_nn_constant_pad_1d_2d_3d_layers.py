@@ -35,7 +35,7 @@ class TestConstantPad1d(unittest.TestCase):
         result = my_pad(data)
         assert (
             my_pad.__repr__()
-            == "ConstantPad1D(padding=[1, 2], value=0.5, data_format=NCL)"
+            == "ConstantPad1D(padding=[1, 2], mode=constant, value=0.5, data_format=NCL)"
         )
         expected_np = np.array(
             [[[0.5, 1.0, 2.0, 3.0, 0.5, 0.5], [0.5, 4.0, 5.0, 6.0, 0.5, 0.5]]],
@@ -111,7 +111,7 @@ class TestConstantPad2d(unittest.TestCase):
         result = my_pad(data)
         assert (
             my_pad.__repr__()
-            == "ConstantPad2D(padding=[1, 0, 1, 2], value=0.5, data_format=NCHW)"
+            == "ConstantPad2D(padding=[1, 0, 1, 2], mode=constant, value=0.5, data_format=NCHW)"
         )
 
         expected_np = np.array(
@@ -203,7 +203,7 @@ class TestConstantPad3d(unittest.TestCase):
         my_pad = ConstantPad3d(padding=pad, value=val, data_format="NCDHW")
         assert (
             my_pad.__repr__()
-            == "ConstantPad3D(padding=[1, 0, 1, 2, 0, 0], value=-1.0, data_format=NCDHW)"
+            == "ConstantPad3D(padding=[1, 0, 1, 2, 0, 0], mode=constant, value=-1.0, data_format=NCDHW)"
         )
         result = my_pad(data)
 
