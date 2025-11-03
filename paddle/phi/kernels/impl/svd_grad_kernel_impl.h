@@ -31,7 +31,7 @@ namespace phi {
 
 template <class T, class Context>
 static DenseTensor Fill(const Context& dev_ctx,
-                        std::vector<int> shape,
+                        std::vector<int64_t> shape,
                         T fill_value) {
   DenseTensor ret;
   ret.Resize(common::make_ddim(shape));
@@ -41,14 +41,15 @@ static DenseTensor Fill(const Context& dev_ctx,
 }
 
 template <class T, class Context>
-static DenseTensor Eye(const Context& dev_ctx, int n) {
+static DenseTensor Eye(const Context& dev_ctx, int64_t n) {
   auto output = Fill<T, Context>(dev_ctx, {n}, T(1));
   auto ret = Diag<T, Context>(dev_ctx, output, 0, 0);
   return ret;
 }
 
 template <class T, class Context>
-static DenseTensor Infinits(const Context& dev_ctx, std::vector<int> shape) {
+static DenseTensor Infinits(const Context& dev_ctx,
+                            std::vector<int64_t> shape) {
   auto value = static_cast<T>(std::numeric_limits<double>::infinity());
   return Fill<T, Context>(dev_ctx, shape, value);
 }
@@ -57,7 +58,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out;
   out.ShareDataWith(x);
-  std::vector<int> out_shape = common::vectorize<int>(x.dims());
+  std::vector<int64_t> out_shape = common::vectorize<int64_t>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);
@@ -86,9 +87,9 @@ struct SvdGradFunctor {
                   bool full_matrices,
                   DenseTensor* x_grad) {
     const auto& dX = *x_grad;
-    int m = dX.dims()[dX.dims().size() - 2];
-    int n = dX.dims()[dX.dims().size() - 1];
-    int k = s.dims()[s.dims().size() - 1];
+    int64_t m = dX.dims()[dX.dims().size() - 2];
+    int64_t n = dX.dims()[dX.dims().size() - 1];
+    int64_t k = s.dims()[s.dims().size() - 1];
     DenseTensor U, VH, dU, dV, dVH;
     if (full_matrices) {
       // if full_matrices is set, slice the U and VT to k columns
@@ -200,9 +201,9 @@ struct SvdGradFunctor<phi::dtype::complex<T>, Context> {
                   DenseTensor* x_grad) {
     using C = phi::dtype::complex<T>;
     const auto& dX = *x_grad;
-    int m = dX.dims()[dX.dims().size() - 2];
-    int n = dX.dims()[dX.dims().size() - 1];
-    int k = s.dims()[s.dims().size() - 1];
+    int64_t m = dX.dims()[dX.dims().size() - 2];
+    int64_t n = dX.dims()[dX.dims().size() - 1];
+    int64_t k = s.dims()[s.dims().size() - 1];
     DenseTensor S = Cast<T, Context>(dev_ctx, s, u.dtype());
     DenseTensor U, VH, dU, dV, dVH;
 

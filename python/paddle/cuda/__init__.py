@@ -24,6 +24,7 @@ from paddle.device import (
     Event,
     Stream,
     _device_to_paddle as _device_to_paddle,
+    amp,  # noqa: F401
     device,
     is_available as _device_is_available,
     is_bf16_supported,

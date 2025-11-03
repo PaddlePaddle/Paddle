@@ -26,6 +26,7 @@ extern "C" {
 #define PY_3_12_0_HEX 0x030C0000
 #define PY_3_13_0_HEX 0x030D0000
 #define PY_3_14_0_HEX 0x030E0000
+#define PY_3_15_0_HEX 0x030F0000
 
 #define PY_3_9_PLUS (PY_VERSION_HEX >= PY_3_9_0_HEX)
 #define PY_3_10_PLUS (PY_VERSION_HEX >= PY_3_10_0_HEX)
@@ -33,11 +34,18 @@ extern "C" {
 #define PY_3_12_PLUS (PY_VERSION_HEX >= PY_3_12_0_HEX)
 #define PY_3_13_PLUS (PY_VERSION_HEX >= PY_3_13_0_HEX)
 #define PY_3_14_PLUS (PY_VERSION_HEX >= PY_3_14_0_HEX)
+#define PY_3_15_PLUS (PY_VERSION_HEX >= PY_3_15_0_HEX)
 
-#define SOT_NOT_SUPPORTED_VERSION PY_3_14_0_HEX
+#define SOT_NOT_SUPPORTED_VERSION PY_3_15_0_HEX
 #define SOT_IS_SUPPORTED (PY_VERSION_HEX < SOT_NOT_SUPPORTED_VERSION)
 
-#if PY_3_13_PLUS
+#if PY_3_14_PLUS && !defined(_WIN32)
+#define PyFrame_GET_CODE(frame) \
+  ((PyCodeObject*)PyStackRef_AsPyObjectBorrow((frame)->f_executable))  // NOLINT
+#elif PY_3_14_PLUS && defined(_WIN32)
+#define PyFrame_GET_CODE(frame) \
+  ((PyCodeObject*)((frame)->f_executable.bits))  // NOLINT
+#elif PY_3_13_PLUS
 #define PyFrame_GET_CODE(frame) _PyFrame_GetCode(frame)
 #else
 #define PyFrame_GET_CODE(frame) (frame->f_code)

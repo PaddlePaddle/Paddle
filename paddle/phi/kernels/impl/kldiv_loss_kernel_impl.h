@@ -58,7 +58,7 @@ void KLDivLossKernel(const Context& dev_ctx,
   auto* target = &label;
   auto* loss = out;
 
-  const int n = input->dims()[0];
+  const int64_t n = input->dims()[0];
   dev_ctx.template Alloc<T>(loss);
 
   auto input_t = phi::EigenVector<T>::Flatten(*input);

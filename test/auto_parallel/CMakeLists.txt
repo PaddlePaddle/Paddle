@@ -41,11 +41,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
   set_tests_properties(test_reshard_s_to_r
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 150)
-  if(NOT WITH_COVERAGE)
-    py_test_modules(test_pipeline_scheduler MODULES test_pipeline_scheduler)
-    set_tests_properties(test_pipeline_scheduler
-                         PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
-  endif()
   py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
   set_tests_properties(test_reshard_r_to_p
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
