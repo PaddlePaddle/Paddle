@@ -1,5 +1,6 @@
 name: Remove Skip-CI Labels
 
+#
 on:
   pull_request:
     types: [synchronize]
