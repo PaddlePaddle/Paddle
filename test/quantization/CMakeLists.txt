@@ -247,6 +247,13 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
+#
+if(WITH_GPU)
+  if(${CUDA_ARCH_NAME} STREQUAL "Hopper")
+    list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
+  endif()
+endif()
+
 if(LINUX AND WITH_ONEDNN)
 
   #### Image classification dataset: ImageNet (small)

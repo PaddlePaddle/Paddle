@@ -81,6 +81,53 @@ class TestAutoCast(AmpTestBase):
             self.assertEqual(out3.dtype, core.DataType.FLOAT32)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
+)
+class TestCudaAutoCast(unittest.TestCase):
+    def setUp(self):
+        self._conv = paddle.nn.Conv2D(1, 1, 3, bias_attr=False)
+        self._linear = paddle.nn.Linear(4, 4)
+
+    def _run_autocast_test(self, ctx):
+        with ctx:
+            out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
+            out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
+            out3 = self._linear(out2)
+
+        self.assertEqual(out1.dtype, paddle.float16)
+        self.assertEqual(out2.dtype, paddle.float16)
+        self.assertEqual(out3.dtype, paddle.float32)
+
+    def test_amp_autocast(self):
+        self._run_autocast_test(paddle.amp.autocast())
+
+    def test_cuda_amp_autocast(self):
+        self._run_autocast_test(paddle.cuda.amp.autocast())
+
+    def test_device_amp_autocast(self):
+        self._run_autocast_test(paddle.device.amp.autocast())
+
+    def test_cuda_amp_autocast_mode_autocast(self):
+        self._run_autocast_test(paddle.cuda.amp.autocast_mode.autocast())
+
+
 class SimpleConvNet(nn.Layer):
     def __init__(self):
         super().__init__()

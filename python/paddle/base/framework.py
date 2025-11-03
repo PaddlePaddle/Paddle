@@ -37,6 +37,7 @@ from typing_extensions import ParamSpec
 import paddle
 
 from .. import pir
+from ..utils.download import check_and_create_dir
 from . import core, unique_name
 from .libpaddle import DataType
 from .proto import (
@@ -3645,7 +3646,7 @@ class Operator:
                 and name == "compilation_key"
             ):
                 key = self.desc.attr(name)
-                v = core.get_serialize_comile_key(key)
+                v = core.get_serialize_compile_key(key)
                 prog = Program()
                 prog = prog.parse_from_string(v)
                 s = prog._to_readable_code()
@@ -8252,39 +8253,6 @@ def device_guard(device: str | None = None) -> Generator[None, None, None]:
         switch_device(pre_device)
 
 
-def _switch_cuda_graph_mode(cuda_graph_attr):
-    global _current_cuda_graph_mode
-    pre_mode = _current_cuda_graph_mode
-    _current_cuda_graph_mode = cuda_graph_attr
-    return pre_mode
-
-
-@signature_safe_contextmanager
-def _cuda_graph_guard(cuda_graph_attr=None):
-    """
-
-    Note:
-        The API only supports static graph mode.
-
-    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static graph mode.
-
-    Args:
-        cuda_graph_attr(str|None): The cuda graph attr with the format of:
-                                   cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
-    """
-    assert not in_dygraph_mode(), (
-        "cuda_graph_guard only works under static graph mode"
-    )
-    assert core.is_compiled_with_cuda(), (
-        "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
-    )
-    pre_mode = _switch_cuda_graph_mode(cuda_graph_attr)
-    try:
-        yield
-    finally:
-        _switch_cuda_graph_mode(pre_mode)
-
-
 def _get_paddle_place(place):
     """
     Convert given place to standard paddle Place object
@@ -8606,6 +8574,22 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
+
+
+@signature_safe_contextmanager
+def capture_backward_subgraph_guard(
+    dump_dir_path: str, need_dump_grad_tensors: bool = False
+) -> Generator[None, None, None]:
+    assert dump_dir_path is not None, "The dump_dir_path should not be None"
+    check_and_create_dir(dump_dir_path)
+    paddle.base.core.eager._init_backward_subgraph_recorder(
+        dump_dir_path, need_dump_grad_tensors
+    )
+    paddle.base.core.eager._start_capture_debug_backward_subgraph()
+    try:
+        yield
+    finally:
+        paddle.base.core.eager._end_capture_debug_backward_subgraph()
 
 
 @signature_safe_contextmanager

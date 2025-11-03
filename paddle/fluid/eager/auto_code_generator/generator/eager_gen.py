@@ -669,6 +669,11 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {{
     grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
   }}
+   // Set for Record Subgraph
+   if(egr::EagerBackwardSubGraphNodeRecorder::Instance().NeedCaptureSubGraph()){{
+       VLOG(3)<<"Capture the grad node"<<grad_node->name()<<"("<<grad_node.get()<<")"<<"for subgraph.";
+       egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(grad_node.get());
+   }}
     // SetAttributes if needed
 {}
     // Set TensorWrappers for Forward Inputs if needed
