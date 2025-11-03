@@ -147,6 +147,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   } else {
     VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
+    return;
   }
   PADDLE_ENFORCE_NE(
       dense_tensor->meta().dtype,
