@@ -94,7 +94,7 @@ class CudaLikeVectorizedIrCodeGenCtx:
     def load_vector(self, scalar_var, ptr_var_name, offset_var_name, size_var_name):
         scalar_type_name = self.dtype2type_name[scalar_var.get_dtype()]
         vector_var_name = f"{scalar_var.var_name}_vec"
-        self.load_vector_stmts.append(f"InVectorType<{scalar_type_name}> {vector_var_name} = load_vector<{scalar_type_name}, VecSize>({ptr_var_name}, {offset_var_name}, coord.is_valid, {size_var_name});")
+        self.load_vector_stmts.append(f"InVectorType<{scalar_type_name}, VecSize> {vector_var_name} = load_vector<{scalar_type_name}, VecSize>({ptr_var_name}, {offset_var_name}, coord.is_valid, {size_var_name});")
         
         self.let(scalar_var, f"extract_scalar({vector_var_name}, i)")
 

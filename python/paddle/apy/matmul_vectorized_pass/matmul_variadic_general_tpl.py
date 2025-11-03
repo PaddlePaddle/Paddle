@@ -280,11 +280,12 @@ class MatmulVariadicTemplate:
 
 namespace ap {
 
-template <typename T, int VecSize>
+template <typename T>
 struct VariadicEpilogueFunctor {
+  template <int VecSize>
   using OutVectorType = VectorType<T, VecSize>;
   
-  template <typename T1>
+  template <typename T1, int VecSize>
   using InVectorType = VectorType<T1, VecSize>;
 
   struct Arguments {
@@ -292,9 +293,10 @@ struct VariadicEpilogueFunctor {
   };
 
   // Note: need to support vectorized operation
+  template <int VecSize>
   __forceinline__ __host__ __device__
-  OutVectorType operator()(OutVectorType& x_vec, const Arguments& args, const MatrixCoord& coord) const {
-    OutVectorType out_vec;
+  OutVectorType<VecSize> Compute(OutVectorType<VecSize>& x_vec, const Arguments& args, const MatrixCoord& coord) const {
+    OutVectorType<VecSize> out_vec;
     ${AP_EPILOGUE_LOAD_VECTOR_STATEMENTS}
     unroll<VecSize>{}([&](auto i){
       ${AP_EPILOGUE_UNROLL_SCALAR_STATEMENTS}
@@ -308,18 +310,15 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
   using ElementT = ${input0_dtype};
   using ElementComputeT = float;
   
-  constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
-  constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
-
-  using Functor = MatmulAddVariadicFunctor<ElementT, ElementComputeT, VariadicEpilogueFunctor, 
-                                           AlignA, AlignB, TuningConfigId>;
-  using EpilogueFunctorArgument = typename Functor::VariadicFunctorArguments;
-
-  EpilogueFunctorArgument epilogue_args;
+  typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
 
   ${AP_EPILOGUE_ARGUMENTS_INIT}
 
-  Functor()(params, epilogue_args);
+  constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
+  constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
+
+  MatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+                           AlignA, AlignB, TuningConfigId>(params, epilogue_args);
 }
 
 } // namespace ap
