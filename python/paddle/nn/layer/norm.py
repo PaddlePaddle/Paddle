@@ -22,6 +22,7 @@ import numpy as np
 
 from paddle import _C_ops, in_dynamic_mode, pir_utils
 from paddle.device import get_all_custom_device_type
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base import dygraph_utils
 from ...base.data_feeder import check_variable_and_dtype
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
         DataLayoutND,
         DTypeLike,
         ParamAttrLike,
+        PlaceLike,
         ShapeLike,
     )
 
@@ -432,12 +434,26 @@ class GroupNorm(Layer):
         num_channels(int): The number of channels of input.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
-        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
-            scale :math:`g`. If it is set to False, no scale will be added to the output units.
-            If it is set to None, the scale is initialized one. Default: None.
-        bias_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable
-            bias :math:`b`. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            alias: ``eps``.
+        affine(bool, optional): Whether this module has learnable affine parameters (weight and bias).
+            If set to ``False``, no learnable parameters will be created, regardless of the settings of
+            `weight_attr` and `bias_attr`. Defaults to True.
+        device(PlaceLike, optional): Device where the computation takes place. Default: None
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
+        weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable scale :math:`g`.
+            This setting only takes effect when `affine` is ``True``.
+            - If set to ``False``, no scale parameter will be created.
+            - If set to ``True`` or a `ParamAttr` object, a learnable scale parameter will be created.
+              When set to ``True``, it is equivalent to ``ParamAttr()`` with default initialization.
+            - If set to ``None``, a learnable scale parameter will be created and initialized to one.
+            Default: None.
+        bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the learnable bias :math:`b`.
+            This setting only takes effect when `affine` is ``True``.
+            - If set to ``False``, no bias parameter will be created.
+            - If set to ``True`` or a `ParamAttr` object, a learnable bias parameter will be created.
+              When set to ``True``, it is equivalent to ``ParamAttr()`` with default initialization.
+            - If set to ``None``, a learnable bias parameter will be created and initialized to zero.
+            Default: None.
         data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
         name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -488,11 +504,16 @@ class GroupNorm(Layer):
     weight: Tensor
     bias: Tensor
 
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         num_groups: int,
         num_channels: int,
         epsilon: float = 1e-5,
+        affine: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+        *,
         weight_attr: bool | ParamAttr | None = None,
         bias_attr: bool | ParamAttr | None = None,
         data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
@@ -504,6 +525,11 @@ class GroupNorm(Layer):
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
+        self._device = device
+        self._dtype = (
+            self._helper.get_default_dtype() if dtype is None else dtype
+        )
+
         if data_format not in ['NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']:
             raise ValueError("unsupported data layout:" + data_format)
 
@@ -512,16 +538,19 @@ class GroupNorm(Layer):
 
         param_shape = [self._num_channels]
 
+        if not affine:
+            weight_attr = False
+            bias_attr = False
+
         if weight_attr is False:
-            self.weight = self.create_parameter(
-                attr=None, shape=param_shape, default_initializer=Constant(1.0)
-            )
-            self.weight.stop_gradient = True
+            self.weight = None
         else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
+                dtype=self._dtype,
                 default_initializer=Constant(1.0),
+                device=self._device,
             )
             self.weight.stop_gradient = self._weight_attr is not None and (
                 hasattr(self._weight_attr, "learning_rate")
@@ -529,16 +558,14 @@ class GroupNorm(Layer):
             )
 
         if bias_attr is False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                default_initializer=Constant(0.0),
-                is_bias=True,
-            )
-            self.bias.stop_gradient = True
+            self.bias = None
         else:
             self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True,
+                device=self._device,
             )
             self.bias.stop_gradient = self._bias_attr is not None and (
                 hasattr(self._bias_attr, "learning_rate")
