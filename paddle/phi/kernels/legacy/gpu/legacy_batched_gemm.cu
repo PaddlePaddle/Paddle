@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cublasLt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_fp16.h>
@@ -22,7 +21,7 @@
 #include <cassert>
 #include <cstdint>
 
-#include "paddle/phi/backends/dynload/cublasLt.h"
+#include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
 
@@ -97,25 +96,25 @@ void CublasGemm(cublasHandle_t cublas_handle,
   cublasOperation_t transpose_b = trans_b ? CUBLAS_OP_T : CUBLAS_OP_N;
 
   float alpha = 1.0, beta = 0.0;
-  CUBLAS_CALL(cublasGemmEx(cublas_handle,
-                           transpose_b,
-                           transpose_a,
-                           m,
-                           n,
-                           k,
-                           &alpha,
-                           b,
-                           CUDA_R_16BF,
-                           ldb,
-                           a,
-                           CUDA_R_16BF,
-                           lda,
-                           &beta,
-                           c,
-                           CUDA_R_16BF,
-                           c_cols,
-                           CUDA_R_32F,
-                           CUBLAS_GEMM_DEFAULT));
+  CUBLAS_CALL(phi::dynload::cublasGemmEx(cublas_handle,
+                                         transpose_b,
+                                         transpose_a,
+                                         m,
+                                         n,
+                                         k,
+                                         &alpha,
+                                         b,
+                                         CUDA_R_16BF,
+                                         ldb,
+                                         a,
+                                         CUDA_R_16BF,
+                                         lda,
+                                         &beta,
+                                         c,
+                                         CUDA_R_16BF,
+                                         c_cols,
+                                         CUDA_R_32F,
+                                         CUBLAS_GEMM_DEFAULT));
 }
 
 // Grouped GEMM forward kernel
