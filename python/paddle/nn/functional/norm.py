@@ -726,6 +726,7 @@ def group_norm(*args: Any, **kwargs: Any) -> Tensor:
         num_groups(int): The number of groups that divided from channels.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
+            alias: ``eps``.
         weight(Tensor, optional): The weight Tensor of group_norm, with shape: attr:`[num_channels]`.
             Default: None.
         bias(Tensor, optional): The bias Tensor of group_norm, with shape: attr:`[num_channels]`.
@@ -781,24 +782,25 @@ def group_norm(*args: Any, **kwargs: Any) -> Tensor:
             "DataLayout1D | DataLayout2D | DataLayout3D data_format = 'NCHW', str | None name = None)"
         )
 
-    is_origin_format = False
-    if len_args >= 3:
-        is_origin_format |= isinstance(args[2], float)
+    def safe_set_param(key: str, value: Any):
+        if key in kwargs:
+            raise TypeError(f"got multiple values for argument '{key}'")
+        kwargs[key] = value
 
-    if is_origin_format:
-        return _group_norm_wrapper(*args, **kwargs)
-    else:
-        # transform params from (input,num_groups,weight,bias,eps) to (x,num_groups,epsilon,weight,bias)
-        param_keys = ['input', 'num_groups', 'weight', 'bias', 'eps']
-        for idx, arg in enumerate(args):
-            key = param_keys[idx]
-            if key in kwargs:
-                raise TypeError(f"got multiple values for argument '{key}'")
-            kwargs[key] = arg
-        return _group_norm_wrapper(**kwargs)
+    if 'input' in kwargs:
+        safe_set_param('x', kwargs.pop('input'))
+
+    if 'eps' in kwargs:
+        safe_set_param('epsilon', kwargs.pop('eps'))
+
+    if len_args >= 3 and not isinstance(args[2], float):
+        param_keys = ["weight", "bias", "epsilon"]
+        for idx in range(min(len_args - 2, len(param_keys))):
+            safe_set_param(param_keys[idx], args[idx + 2])
+        args = args[:2]
+    return _group_norm_wrapper(*args, **kwargs)
 
 
-@param_two_alias(["x", "input"], ["epsilon", "eps"])
 def _group_norm_wrapper(
     x: Tensor,
     num_groups: int,
