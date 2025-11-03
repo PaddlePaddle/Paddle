@@ -395,6 +395,7 @@ jobs:
           CCACHE_DIR: /root/.ccache/formers
           CFS_DIR: /home/data/cfs
           paddle_whl: /workspace/dist/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          formers_docker: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda126-dev-latest
         run: |
           export CUDA_SO="$(\ls -d /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls -d /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
           export DEVICES="$(\ls -d /dev/nvidia* | xargs -I{} echo "-v {}:{}") $(\ls /dev/nvidia-caps/* | xargs -I{} echo "-v {}:{}")"
@@ -444,7 +445,7 @@ jobs:
           -e CFS_DIR \
           -e paddle_whl \
           -e no_proxy \
-          -w /workspace --network host ${docker_image}
+          -w /workspace --network host ${formers_docker}
       - name: Download paddle.tar.gz and merge target branch
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
