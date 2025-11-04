@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Callable
 import paddle
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
+from paddle.nn.layer.utils import check_deprecated_params
 from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from .. import functional as F
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+@check_deprecated_params
 class BCEWithLogitsLoss(Layer):
     r"""
 
@@ -151,6 +153,7 @@ class BCEWithLogitsLoss(Layer):
         return out
 
 
+@check_deprecated_params
 class CrossEntropyLoss(Layer):
     r"""
 
@@ -603,6 +606,7 @@ class HSigmoidLoss(Layer):
         return out
 
 
+@check_deprecated_params
 class MSELoss(Layer):
     r"""
     **Mean Square Error Loss**
@@ -688,6 +692,7 @@ class MSELoss(Layer):
         return paddle.mean(square_out)
 
 
+@check_deprecated_params
 class L1Loss(Layer):
     r"""
 
@@ -776,6 +781,7 @@ class L1Loss(Layer):
         )
 
 
+@check_deprecated_params
 class BCELoss(Layer):
     """
 
@@ -872,6 +878,7 @@ class BCELoss(Layer):
         return out
 
 
+@check_deprecated_params
 class NLLLoss(Layer):
     r"""
 
@@ -989,6 +996,7 @@ class NLLLoss(Layer):
         )
 
 
+@check_deprecated_params
 class PoissonNLLLoss(Layer):
     r"""Generate a callable object of 'PoissonNLLLoss' to calculate the
     Poisson negative log likelihood loss between Input(input) and
@@ -1084,6 +1092,7 @@ class PoissonNLLLoss(Layer):
         )
 
 
+@check_deprecated_params
 class KLDivLoss(Layer):
     r"""
 
@@ -1191,6 +1200,7 @@ class KLDivLoss(Layer):
         return out
 
 
+@check_deprecated_params
 class MarginRankingLoss(Layer):
     r"""
 
@@ -1460,6 +1470,7 @@ class RNNTLoss(Layer):
         )
 
 
+@check_deprecated_params
 class SmoothL1Loss(Layer):
     r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
@@ -1548,6 +1559,7 @@ class SmoothL1Loss(Layer):
         )
 
 
+@check_deprecated_params
 class MultiLabelSoftMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class multi-classification
     hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
@@ -1638,6 +1650,7 @@ class MultiLabelSoftMarginLoss(Layer):
         )
 
 
+@check_deprecated_params
 class HingeEmbeddingLoss(Layer):
     r"""
     Create a callable object of `HingeEmbeddingLoss` to calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
@@ -1745,6 +1758,7 @@ class HingeEmbeddingLoss(Layer):
         )
 
 
+@check_deprecated_params
 class CosineEmbeddingLoss(Layer):
     r"""
     This interface is used to construct a callable object of the ``CosineEmbeddingLoss`` class.
@@ -1975,6 +1989,7 @@ class TripletMarginWithDistanceLoss(Layer):
         )
 
 
+@check_deprecated_params
 class TripletMarginLoss(Layer):
     r"""
     Creates a criterion that measures the triplet loss given an input
@@ -2097,6 +2112,7 @@ class TripletMarginLoss(Layer):
         )
 
 
+@check_deprecated_params
 class MultiMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between
     input :math:`input` and label :math:`label`:
@@ -2207,6 +2223,7 @@ class MultiMarginLoss(Layer):
         )
 
 
+@check_deprecated_params
 class MultiLabelMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class multi-classification hinge loss (margin-based loss)
     between input :math:`input` and label :math:`label`:
@@ -2293,6 +2310,7 @@ class MultiLabelMarginLoss(Layer):
         )
 
 
+@check_deprecated_params
 class SoftMarginLoss(Layer):
     r"""
 
