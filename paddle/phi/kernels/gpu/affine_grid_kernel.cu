@@ -41,9 +41,8 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   int64_t h = size_attr[2];
   int64_t w = size_attr[3];
 
-  output->Resize(common::make_ddim({n, h, w, 2}));
-  T* out_data = dev_ctx.template Alloc<T>(output);
   if (input.numel() == 0) {
+    output->Resize(common::make_ddim({n, h, w, 2}));
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
@@ -73,7 +72,14 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   phi::TransposeKernel<T, Context>(
       dev_ctx, input, {0, 2, 1}, &theta_transposed);
 
-  phi::BmmKernel<T, Context>(dev_ctx, base_grid_new, theta_transposed, output);
+  DenseTensor grid_flat;
+  grid_flat.Resize(common::make_ddim({n, h * w, 2}));
+  phi::BmmKernel<T, Context>(
+      dev_ctx, base_grid_new, theta_transposed, &grid_flat);
+
+  // Reshaping Output
+  output->ShareDataWith(grid_flat);
+  output->Resize(common::make_ddim({n, h, w, 2}));
 }
 
 template <typename T, typename Context>
@@ -89,9 +95,8 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
   int64_t h = size_attr[3];  // height
   int64_t w = size_attr[4];  // width
 
-  output->Resize(common::make_ddim({n, d, h, w, 3}));
-  T* out_data = dev_ctx.template Alloc<T>(output);
   if (input.numel() == 0) {
+    output->Resize(common::make_ddim({n, d, h, w, 3}));
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
@@ -122,7 +127,14 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
       dev_ctx, input, {0, 2, 1}, &theta_transposed);
 
   // Perform batch matrix multiplication
-  phi::BmmKernel<T, Context>(dev_ctx, base_grid_new, theta_transposed, output);
+  DenseTensor grid_flat;
+  grid_flat.Resize(common::make_ddim({n, d * h * w, 3}));
+  phi::BmmKernel<T, Context>(
+      dev_ctx, base_grid_new, theta_transposed, &grid_flat);
+
+  // Reshaping Output
+  output->ShareDataWith(grid_flat);
+  output->Resize(common::make_ddim({n, d, h, w, 3}));
 }
 
 template <typename T, typename Context>

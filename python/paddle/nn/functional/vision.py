@@ -88,7 +88,22 @@ def affine_grid(
     if not isinstance(theta, (Variable, paddle.pir.Value)):
         raise TypeError("The theta should be a Tensor.")
 
-    use_cudnn = False
+    cudnn_version = get_cudnn_version()
+    if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
+        use_cudnn = True
+    else:
+        use_cudnn = False
+    if theta.shape[1] == 3:
+        use_cudnn = False
+    if is_compiled_with_rocm():
+        use_cudnn = (
+            False  # ROCM platform do not have MIOPEN kernel for affine_grid
+        )
+
+    if paddle.get_flags(["FLAGS_torch_compatible_kernel"]).get(
+        "FLAGS_torch_compatible_kernel", False
+    ):
+        use_cudnn = False
 
     if in_dynamic_mode():
         _out_shape = (
