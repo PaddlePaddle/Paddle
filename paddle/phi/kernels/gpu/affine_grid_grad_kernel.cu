@@ -140,7 +140,7 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   base_grid_reshaped.ShareDataWith(base_grid);
   base_grid_reshaped.Resize(common::make_ddim({n, d * h * w, 4}));
 
-  // 3. 转置 base_grid:[N，D*H*W，4]->[N，4，D*H*W]
+  // 3. Transpose base_grid:[N，D*H*W，4]->[N，4，D*H*W]
   DenseTensor base_grid_transposed;
   base_grid_transposed.Resize(common::make_ddim({n, 4, d * h * w}));
   phi::TransposeKernel<T, Context>(
