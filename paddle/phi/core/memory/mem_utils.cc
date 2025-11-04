@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/mem_utils.h"
+#include <algorithm>
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -22,12 +23,28 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+bool is_contiguous_and_ascending(const std::list<Block>& blocks) {
+  return std::adjacent_find(
+             blocks.begin(), blocks.end(), [](const Block& a, const Block& b) {
+               return b.ptr_ < a.ptr_ ||
+                      static_cast<uint8_t*>(a.ptr_) + a.size_ != b.ptr_;
+             }) == blocks.end();
+}
+
+bool has_overlap(size_t block_size, size_t remain_size) {
+  return block_size > remain_size;
+}
+
 bool TotalMemoryCompactor::compact(std::list<Block>& blocks,
                                    void* start_ptr,
                                    void* end_ptr /*not used*/) {
 #ifndef PADDLE_WITH_CUDA
   return false;
 #else
+  if (!is_contiguous_and_ascending(blocks)) {
+    std::cout << "blocks is not ascending order!!!" << std::endl;
+    return false;
+  }
   void* new_ptr = start_ptr;
   size_t remaining_size = 0;
   std::list<Block> new_blocks;
@@ -35,16 +52,35 @@ bool TotalMemoryCompactor::compact(std::list<Block>& blocks,
   for (auto& block : blocks) {
     if (!block.is_free_) {
       if (block.ptr_ != new_ptr && block.ptr_ >= start_ptr) {
-        cudaError_t err = cudaMemcpyAsync(
-            new_ptr, block.ptr_, block.size_, cudaMemcpyDeviceToDevice);
-        if (err != cudaSuccess) {
-          std::cerr << "cudaMemcpy failed in TotalMemoryCompactor::compact."
-                    << std::endl;
-          return false;
+        auto src = static_cast<uint8_t*>(block.ptr_);
+        auto dst = static_cast<uint8_t*>(new_ptr);
+        auto sz = block.size_;
+
+        if (has_overlap(sz, remaining_size)) {
+          VLOG(4) << "compact exist overlap";
+          for (size_t offset = 0; offset < sz; offset += remaining_size) {
+            size_t current_chunk = std::min(remaining_size, sz - offset);
+            cudaError_t err = cudaMemcpy(dst + offset,
+                                         src + offset,
+                                         current_chunk,
+                                         cudaMemcpyDeviceToDevice);
+            if (err != cudaSuccess) {
+              std::cerr << "cudaMemcpyAsync failed: " << cudaGetErrorString(err)
+                        << std::endl;
+              return false;
+            }
+          }
+        } else {
+          cudaError_t err =
+              cudaMemcpyAsync(dst, src, sz, cudaMemcpyDeviceToDevice);
+          if (err != cudaSuccess) {
+            std::cerr << "cudaMemcpy failed in TotalMemoryCompactor::compact."
+                      << std::endl;
+            return false;
+          }
         }
       }
       block.allocation_->set_ptr(new_ptr);
-
       block.allocation_->block_it_ = new_blocks.insert(
           new_blocks.end(), {new_ptr, block.size_, false, block.allocation_});
       new_ptr = static_cast<uint8_t*>(new_ptr) + block.size_;
