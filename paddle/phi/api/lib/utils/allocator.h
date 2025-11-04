@@ -28,6 +28,7 @@ class DefaultAllocator : public phi::Allocator {
   AllocationPtr Allocate(size_t bytes_size) override {
     return phi::memory_utils::Alloc(place_, bytes_size);
   }
+  void Free(phi::Allocation* allocation) {}
 
  private:
   phi::Place place_;

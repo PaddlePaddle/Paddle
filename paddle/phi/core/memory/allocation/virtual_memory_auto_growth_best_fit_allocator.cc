@@ -18,6 +18,39 @@
 
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_small_pool_size_in_mb,
+    0,
+    "Threshold (MiB) separating the small and large pools. "
+    "0 disables the small pool and enables single-pool mode "
+    "(all requests go to the large pool). When > 0, requests "
+    "<= threshold use the small pool; larger requests use the "
+    "large pool. Default: 0.");
+PHI_DEFINE_EXPORTED_uint64(vmm_small_pool_min_growth_size_in_mb,
+                           0,
+                           "The minimal chunk size for the small pool in MiB. "
+                           "If small_pool_size_in_mb > 0, this overrides "
+                           "the constructor-provided global growth size "
+                           "(FLAGS_auto_growth_chunk_size_in_mb).");
+PHI_DEFINE_EXPORTED_uint64(vmm_large_pool_min_growth_size_in_mb,
+                           0,
+                           "The minimal chunk size for the large pool in MiB. "
+                           "If small_pool_size_in_mb > 0, this overrides "
+                           "the constructor-provided global growth size "
+                           "(FLAGS_auto_growth_chunk_size_in_mb).");
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_large_pool_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the large pool. 0 disables pre-allocation.");
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_small_pool_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the small pool. 0 disables pre-allocation.");
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the small pool. 0 disables pre-allocation.");
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -250,6 +283,58 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
   }
 
   return nullptr;
+}
+
+void VirtualMemoryAutoGrowthBestFitAllocator::PreAlloc() {
+  auto pre_alloc_size = FLAGS_vmm_pre_alloc_in_mb << 20;
+  VLOG(4) << "Begin PreAllocate in VirtualMemoryAutoGrowthBestFitAllocator size"
+          << pre_alloc_size;
+  PreAllocate(pre_alloc_size);
+  VLOG(4)
+      << "Finish PreAllocate in VirtualMemoryAutoGrowthBestFitAllocator size"
+      << pre_alloc_size;
+}
+
+void VirtualMemoryAutoGrowthBestFitAllocator::PreAllocate(size_t size) {
+  if (size <= 0) return;
+  ExtendAndMerge(size);
+}
+
+bool VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::IsSmallRequest(
+    size_t size) {
+  auto small_pool_size = FLAGS_vmm_small_pool_size_in_mb << 20;
+  return size <= small_pool_size;
+}
+
+void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
+  auto small_allocator =
+      std::dynamic_pointer_cast<VirtualMemoryAutoGrowthBestFitAllocator>(
+          GetSmallAllocator());
+  auto large_allocator =
+      std::dynamic_pointer_cast<VirtualMemoryAutoGrowthBestFitAllocator>(
+          GetLargeAllocator());
+
+  auto vmm_small_pool_pre_alloc = FLAGS_vmm_small_pool_pre_alloc_in_mb << 20;
+  auto vmm_large_pool_pre_alloc = FLAGS_vmm_large_pool_pre_alloc_in_mb << 20;
+
+  if (vmm_small_pool_pre_alloc > 0) {
+    VLOG(4) << "Begin Small Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size"
+            << vmm_small_pool_pre_alloc;
+    small_allocator->PreAllocate(vmm_small_pool_pre_alloc);
+    VLOG(4) << "Finish Small Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size"
+            << vmm_small_pool_pre_alloc;
+  }
+  if (vmm_large_pool_pre_alloc > 0) {
+    VLOG(4) << "Begin Large Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size"
+            << vmm_large_pool_pre_alloc;
+    large_allocator->PreAllocate(vmm_large_pool_pre_alloc);
+    VLOG(4) << "Finish Large Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size"
+            << vmm_large_pool_pre_alloc;
+  }
 }
 
 }  // namespace allocation
