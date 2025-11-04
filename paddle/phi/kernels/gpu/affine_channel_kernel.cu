@@ -32,12 +32,12 @@ __global__ static inline void KeAffineChannelCUDA(const T* x,
                                                   const T* scale,
                                                   const T* bias,
                                                   const int C,
-                                                  const int HxW,
-                                                  const int num,
+                                                  const int64_t HxW,
+                                                  const int64_t num,
                                                   T* y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  for (int i = gid; i < num; i += stride) {
+  for (int64_t i = gid; i < num; i += stride) {
     const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
     if (HasBias) {
       y[i] = scale[c] * x[i] + bias[c];
@@ -64,10 +64,10 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
   const phi::DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = x->dims();
-  const int num = x->numel();
+  const int64_t num = x->numel();
   int N = dims[0];
   int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int HxW = num / N / C;
+  int64_t HxW = num / N / C;
 
   const T* x_d = x->data<T>();
   const T* scale_d = scale->data<T>();

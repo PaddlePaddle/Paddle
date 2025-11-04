@@ -1733,6 +1733,7 @@
   kernel :
     func : index_elementwise_get_grad
   backward: index_elementwise_get_double_grad
+  no_need_buffer: x
 
 - backward_op : index_elementwise_put_grad
   forward : index_elementwise_put (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
@@ -1745,6 +1746,7 @@
     data_type : out_grad
   data_transform :
     skip_transform : index
+  no_need_buffer: x
 
 - backward_op : index_elementwise_put_with_tensor_grad
   forward : index_elementwise_put_with_tensor (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
@@ -1757,6 +1759,7 @@
     data_type : out_grad
   data_transform :
     skip_transform : index
+  no_need_buffer: x, value
 
 - backward_op : index_put_double_grad
   forward : index_put_grad (Tensor x, Tensor[] indices, Tensor value, Tensor grad_out, bool accumulate=false) -> Tensor(grad_x), Tensor(grad_value)
@@ -1939,8 +1942,8 @@
   optional : scale, bias
 
 - backward_op : leaky_relu_double_grad
-  forward : leaky_relu_grad (Tensor x, Tensor grad_out, float negative_slope) -> Tensor(grad_x)
-  args : (Tensor x, Tensor grad_x_grad, float negative_slope)
+  forward : leaky_relu_grad (Tensor x, Tensor grad_out, double negative_slope) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_x_grad, double negative_slope)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1950,8 +1953,8 @@
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : leaky_relu_grad
-  forward : leaky_relu (Tensor x, float negative_slope) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float negative_slope)
+  forward : leaky_relu (Tensor x, double negative_slope) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, double negative_slope)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2093,8 +2096,8 @@
     func : logcumsumexp_grad
 
 - backward_op : logit_grad
-  forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float eps)
+  forward : logit (Tensor x, double eps = 1e-6) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, double eps)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -3401,8 +3404,8 @@
     data_type : out_grad
 
 - backward_op : softplus_double_grad
-  forward : softplus_grad (Tensor x, Tensor grad_out, float beta, float threshold) -> Tensor(grad_x)
-  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float beta, float threshold)
+  forward : softplus_grad (Tensor x, Tensor grad_out, double beta, double threshold) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, double beta, double threshold)
   output : Tensor(x_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -3412,8 +3415,8 @@
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : softplus_grad
-  forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float beta, float threshold)
+  forward : softplus (Tensor x, double beta, double threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, double beta, double threshold)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
