@@ -31,3 +31,8 @@ op_patches:
       - action : modify_attr
         object : eps
         type : pir::DoubleAttribute
+  - op_name : pd_op.pad3d
+    actions:
+      - action : modify_attr
+        object : pad_value
+        type : pir::DoubleAttribute

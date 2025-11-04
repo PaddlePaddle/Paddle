@@ -37,6 +37,11 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
     case phi::DataType::FLOAT16:
       nv_type = nvinfer1::DataType::kHALF;
       break;
+#if IS_TRT_VERSION_GE(10000)
+    case phi::DataType::INT64:
+      nv_type = nvinfer1::DataType::kINT64;
+      break;
+#endif
     case phi::DataType::INT32:
       nv_type = nvinfer1::DataType::kINT32;
       break;

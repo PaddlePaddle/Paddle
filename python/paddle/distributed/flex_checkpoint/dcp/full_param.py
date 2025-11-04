@@ -41,6 +41,33 @@ if TYPE_CHECKING:
     from paddle.nn import Layer
 
 
+SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
+
+
+def infer_real_dtype(desc) -> str:
+    found_dtypes = []
+    for slice_ref in desc.slices:
+        key, sl_src, sl_dst, pp_list = slice_ref
+        if pp_list is None or len(pp_list) == 0:
+            continue
+        last_supported = None
+        for item in reversed(pp_list):
+            if item in SUPPORTED_DTYPES:
+                last_supported = item
+                break
+        if last_supported:
+            found_dtypes.append(last_supported)
+    if not found_dtypes:
+        return desc.dtype
+
+    dtype_set = set(found_dtypes)
+    if len(dtype_set) > 1:
+        raise ValueError(
+            f"Found multiple different dtypes from slices: {dtype_set}"
+        )
+    return found_dtypes[0]
+
+
 @dataclass(frozen=True)
 class ExtendReadItem(ReadItem):
     target_tensor_names: tuple[str] | None = None
@@ -131,28 +158,13 @@ def sort_groups_for_early_release(groups, source_to_target_names):
     return dict(sorted_items)
 
 
-def retain_target_in_last_readitem(groups: dict[str, list[ExtendReadItem]]):
-    last_pos = {}
-    for source_tensor_name, items in groups.items():
-        for idx, item in enumerate(items):
+def build_reference_map(groups: dict[str, list[ExtendReadItem]]):
+    ref_map = defaultdict(set)
+    for _, items in groups.items():
+        for item in items:
             for tgt in item.target_tensor_names:
-                last_pos[tgt] = (source_tensor_name, idx)
-
-    new_groups = {}
-    for source_tensor_name, items in groups.items():
-        new_items = []
-        for idx, item in enumerate(items):
-            new_targets = [
-                tgt
-                for tgt in item.target_tensor_names
-                if last_pos[tgt] == (source_tensor_name, idx)
-            ]
-            new_item = item.__class__(
-                **{**item.__dict__, 'target_tensor_names': tuple(new_targets)}
-            )
-            new_items.append(new_item)
-        new_groups[source_tensor_name] = new_items
-    return new_groups
+                ref_map[tgt].add(item)
+    return ref_map
 
 
 class TensorBuffer:
@@ -215,7 +227,7 @@ class TensorBuffer:
 
 def full_param(
     model: Layer,
-    aoa_config: dict[str : list[str]] | None = None,
+    aoa_config: dict[str, list[str]] | None = None,
     process_group: Group | None = None,
 ):
     cur_rank = paddle.distributed.get_rank()
@@ -236,12 +248,13 @@ def full_param(
 
     destination_sharded_weight_desc = {}
     for k, v in aoa_engine.output_vars.items():
+        dtype = infer_real_dtype(v)
         destination_sharded_weight_desc[k] = ShardedWeightDesc(
             key=k,
             local_shape=v.shape,
             global_shape=v.shape,
             global_offset=(0,) * len(v.shape),
-            dtype=v.dtype,
+            dtype=dtype,
         )
 
     destination_sharded_mappings = {}
@@ -265,7 +278,7 @@ def full_param(
     grouped_read_items = sort_groups_for_early_release(
         grouped_read_items, source_to_target_names
     )
-    grouped_read_items = retain_target_in_last_readitem(grouped_read_items)
+    ref_map = build_reference_map(grouped_read_items)
     read_items = []
     for _, items in grouped_read_items.items():
         read_items.extend(items)
@@ -374,7 +387,13 @@ def full_param(
         )
         ready_tensor_names = []
         for item in cur_batch_read_items:
-            ready_tensor_names.extend(list(item.target_tensor_names))
+            for name in item.target_tensor_names:
+                ref_map[name].remove(item)
+                if len(ref_map[name]) == 0:
+                    ready_tensor_names.append(name)
+
+        for name in ready_tensor_names:
+            del ref_map[name]
 
         for item in cur_batch_read_items:
             read_items.remove(item)

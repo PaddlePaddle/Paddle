@@ -1192,8 +1192,8 @@
     data_type : q
 
 - backward_op : flash_attn_v3_varlen_grad
-  forward : flash_attn_v3_varlen(Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, int max_seqlen_q, int max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin) -> Tensor(out), Tensor(softmax_lse)
-  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor out_grad, float softmax_scale, int max_seqlen_q, int max_seqlen_k, bool causal, int window_size_left, int window_size_right, float softcap, int sm_margin)
+  forward : flash_attn_v3_varlen(Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, Scalar max_seqlen_q, Scalar max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin) -> Tensor(out), Tensor(softmax_lse)
+  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor out_grad, float softmax_scale, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, int window_size_left, int window_size_right, float softcap, int sm_margin)
   optional : seqused_q, seqused_k
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
@@ -2584,8 +2584,8 @@
   composite: p_norm_grad(x, out, out_grad, porder, axis, epsilon, keepdim, asvector, x_grad)
 
 - backward_op : pad3d_double_grad
-  forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode="constant", float pad_value=0.0, str data_format="NCDHW") -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray paddings, str mode, float pad_value, str data_format)
+  forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode="constant", double pad_value=0.0, str data_format="NCDHW") -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray paddings, str mode, double pad_value, str data_format)
   output : Tensor(grad_out_grad)
   infer_meta :
     func : Pad3dInferMeta
@@ -2593,8 +2593,8 @@
     func : pad3d
 
 - backward_op : pad3d_grad
-  forward : pad3d(Tensor x, IntArray paddings, str mode="constant", float pad_value=0.0, str data_format="NCDHW") -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, IntArray paddings, str mode, float pad_value, str data_format)
+  forward : pad3d(Tensor x, IntArray paddings, str mode="constant", double pad_value=0.0, str data_format="NCDHW") -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray paddings, str mode, double pad_value, str data_format)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
