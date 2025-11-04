@@ -193,6 +193,12 @@ AdaptiveAvgPool1d = AdaptiveAvgPool1D
 AdaptiveAvgPool2d = AdaptiveAvgPool2D
 AdaptiveAvgPool3d = AdaptiveAvgPool3D
 HuberLoss = SmoothL1Loss
+MaxUnpool1d = MaxUnPool1D
+MaxUnpool2d = MaxUnPool2D
+MaxUnpool3d = MaxUnPool3D
+UpsamplingBilinear2d = UpsamplingBilinear2D
+UpsamplingNearest2d = UpsamplingNearest2D
+ZeroPad2d = ZeroPad2D
 
 __all__ = [
     'BatchNorm',

@@ -582,6 +582,7 @@ class UpsamplingNearest2D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         out = F.interpolate(
             x,
@@ -678,6 +679,7 @@ class UpsamplingBilinear2D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         out = F.interpolate(
             x,
@@ -1462,6 +1464,7 @@ class ZeroPad2D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,

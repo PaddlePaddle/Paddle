@@ -153,6 +153,14 @@ class TestZeroPad2DLayer(unittest.TestCase):
             rtol=1e-05,
         )
 
+    def test_layer_compatibility(self):
+        # test @param_one_alias(["x", "input"])
+        np.testing.assert_allclose(
+            zeropad2d(to_tensor(self.x), self.pad).numpy(),
+            self.padLayer(input=to_tensor(self.x)),
+            rtol=1e-05,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -36,6 +36,8 @@ if TYPE_CHECKING:
     )
 
     from ..functional.common import _PaddingSizeMode
+import logging
+
 from paddle.utils.decorator_utils import param_one_alias
 
 __all__ = []
@@ -1548,7 +1550,21 @@ class MaxUnPool1D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            logging.warning(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority."
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
         return F.max_unpool1d(
             x,
             indices,
@@ -1556,7 +1572,7 @@ class MaxUnPool1D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
@@ -1650,7 +1666,22 @@ class MaxUnPool2D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            logging.warning(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority."
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
+
         return F.max_unpool2d(
             x,
             indices,
@@ -1658,7 +1689,7 @@ class MaxUnPool2D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
@@ -1752,7 +1783,21 @@ class MaxUnPool3D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            logging.warning(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority."
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
         return F.max_unpool3d(
             x,
             indices,
@@ -1760,7 +1805,7 @@ class MaxUnPool3D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
