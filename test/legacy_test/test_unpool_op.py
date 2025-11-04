@@ -620,8 +620,8 @@ class TestUnpool2DOpAPI_Compatibility(unittest.TestCase):
         ).astype("float64")
 
     def test_MaxPool2D_API(self):
-        # test class alias paddle.nn.MaxUnPool2d
-        max_unpool_2d = paddle.nn.MaxUnPool2d(
+        # test class alias paddle.nn.MaxUnpool2d
+        max_unpool_2d = paddle.nn.MaxUnpool2d(
             kernel_size=2, stride=2, output_size=(1, 1, 4, 4)
         )
         output_unpool = max_unpool_2d(x=self.output, indices=self.indices)
@@ -636,7 +636,7 @@ class TestUnpool2DOpAPI_Compatibility(unittest.TestCase):
         )
 
         # test output_size argument
-        max_unpool_2d = paddle.nn.MaxUnPool2d(kernel_size=2, stride=2)
+        max_unpool_2d = paddle.nn.MaxUnpool2d(kernel_size=2, stride=2)
         output_unpool = max_unpool_2d(
             input=self.output, indices=self.indices, output_size=(1, 1, 4, 4)
         )

@@ -426,8 +426,8 @@ class TestUnpool3DOpAPI_Compatibility(unittest.TestCase):
         )
 
     def test_MaxPool3D_API(self):
-        # test class alias paddle.nn.MaxUnPool3d
-        max_unpool_3d = paddle.nn.MaxUnPool3d(
+        # test class alias paddle.nn.MaxUnpool3d
+        max_unpool_3d = paddle.nn.MaxUnpool3d(
             kernel_size=2, stride=2, output_size=(1, 3, 4, 4, 6)
         )
         output_unpool = max_unpool_3d(x=self.output, indices=self.indices)
@@ -442,7 +442,7 @@ class TestUnpool3DOpAPI_Compatibility(unittest.TestCase):
         )
 
         # test output_size argument
-        max_unpool_3d = paddle.nn.MaxUnPool3d(kernel_size=2, stride=2)
+        max_unpool_3d = paddle.nn.MaxUnpool3d(kernel_size=2, stride=2)
         output_unpool = max_unpool_3d(
             input=self.output, indices=self.indices, output_size=(1, 3, 4, 4, 6)
         )
