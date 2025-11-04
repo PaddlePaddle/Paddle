@@ -28,7 +28,7 @@ if BRANCH == 'develop':
     }
 elif BRANCH == 'fleety_':
     REPO_TEMPLATE = {
-        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
+        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?devPR:https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
     }
 
 
