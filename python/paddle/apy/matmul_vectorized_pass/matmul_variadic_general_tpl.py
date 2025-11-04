@@ -71,7 +71,7 @@ class MatmulVariadicTemplate:
             + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
         )
         compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0 -DCUTLASS_EPILOGUE_ENABLE_VECTORIZE=1"
         )
         compile_cmd = (
             compile_cmd

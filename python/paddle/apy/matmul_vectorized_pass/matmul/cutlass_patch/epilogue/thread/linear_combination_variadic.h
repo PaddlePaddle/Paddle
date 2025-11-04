@@ -163,7 +163,8 @@ class LinearCombinationVariadic {
   FragmentOutput operator()(FragmentAccumulator const &accumulator,
                             FragmentSource const &source,
                             int row_offset,
-                            int column_offset) const {
+                            int column_offset,
+                            bool valid) const {
     CUTLASS_TRACE_DEVICE(
         "kElementsPerAccess: %d, row_offset: %d, column_offset: %d",
         kElementsPerAccess,
@@ -214,14 +215,14 @@ class LinearCombinationVariadic {
         intermediate = variadic_op.Compute<kElementsPerAccess>(
             intermediate,
             params_.variadic_args,
-            BatchedMatrixCoord(blockIdx.z, row_offset, column_offset));
+            BatchedMatrixCoord(blockIdx.z, row_offset, column_offset, valid));
 #else
         CUTLASS_PRAGMA_UNROLL
         for (int i = 0; i < kElementsPerAccess; ++i) {
           intermediate[i] = variadic_op(
               intermediate[i],
               params_.variadic_args,
-              BatchedMatrixCoord(blockIdx.z, row_offset, column_offset + i));
+              BatchedMatrixCoord(blockIdx.z, row_offset, column_offset + i, valid));
         }
 #endif
       }
@@ -252,7 +253,8 @@ class LinearCombinationVariadic {
   CUTLASS_HOST_DEVICE
   FragmentOutput operator()(FragmentAccumulator const &accumulator,
                             int row_offset,
-                            int column_offset) const {
+                            int column_offset,
+                            bool valid) const {
     CUTLASS_TRACE_DEVICE(
         "kElementsPerAccess: %d, row_offset: %d, column_offset: %d",
         kElementsPerAccess,
@@ -288,14 +290,14 @@ class LinearCombinationVariadic {
         intermediate = variadic_op.Compute<kElementsPerAccess>(
             intermediate,
             params_.variadic_args,
-            BatchedMatrixCoord(blockIdx.z, row_offset, column_offset));
+            BatchedMatrixCoord(blockIdx.z, row_offset, column_offset, valid));
 #else
         CUTLASS_PRAGMA_UNROLL
         for (int i = 0; i < kElementsPerAccess; ++i) {
           intermediate[i] = variadic_op(
               intermediate[i],
               params_.variadic_args,
-              BatchedMatrixCoord(blockIdx.z, row_offset, column_offset + i));
+              BatchedMatrixCoord(blockIdx.z, row_offset, column_offset + i, valid));
         }
 #endif
       }
