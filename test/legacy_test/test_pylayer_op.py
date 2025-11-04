@@ -717,6 +717,7 @@ class TestPyLayer(unittest.TestCase):
 
         paddle.seed(2025)
         data = paddle.randn([2, 3], dtype="float32")
+        paddle.framework.set_flags({"FLAGS_call_stack_level": 3})
         data.stop_gradient = False
         z = cus_pylayer_1.apply(data)
         z.mean().backward()
