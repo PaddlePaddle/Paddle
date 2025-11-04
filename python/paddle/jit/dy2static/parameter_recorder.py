@@ -40,7 +40,7 @@ class ParametersRecorder:
             non_used_initializer = paddle.nn.initializer.Constant(0.0)
             dtype = tensor.dtype
             if isinstance(dtype, core.VarDesc.VarType):
-                vartype_to_datatype[dtype]
+                dtype = vartype_to_datatype[dtype]
             value = create_parameter(
                 dtype=dtype,
                 shape=tensor.shape,
