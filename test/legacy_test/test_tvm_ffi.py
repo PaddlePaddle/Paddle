@@ -197,7 +197,7 @@ class TestDLPackDataType(unittest.TestCase):
             paddle.float16,
             paddle.bfloat16,
         ]:
-            x = paddle.zeros((10,), dtype=dtype)
+            x = paddle.zeros((10,), dtype=dtype).cpu()
             mod.check_dtype(x, dtype)
 
 
