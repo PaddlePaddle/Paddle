@@ -20,6 +20,10 @@ import paddle
 from paddle.nn import CircularPad1d, CircularPad2d, CircularPad3d
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_xpu(),
+    "XPU does not support circular padding mode.",
+)
 class TestCircularPad1d(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -104,6 +108,10 @@ class TestCircularPad1d(unittest.TestCase):
         np.testing.assert_allclose(result.numpy(), expected_np)
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_xpu(),
+    "XPU does not support circular padding mode.",
+)
 class TestCircularPad2d(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -231,7 +239,7 @@ class TestCircularPad2d(unittest.TestCase):
 
 @unittest.skipIf(
     paddle.is_compiled_with_xpu(),
-    "XPU does not support circular padding mode in pad3d.",
+    "XPU does not support circular padding mode.",
 )
 class TestCircularPad3d(unittest.TestCase):
     def setUp(self):
