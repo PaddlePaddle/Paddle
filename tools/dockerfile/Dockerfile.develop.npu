@@ -1,6 +1,6 @@
 # Docker Image for PaddlePaddle Ascend NPU
 
-FROM registry.baidubce.com/device/paddle-cpu:ubuntu20-npu-base-x86_64-gcc84
+FROM registry.baidubce.com/device/paddle-npu:cann80T113-ubuntu24-npu-910b-base-x86_64-gcc84
 LABEL maintainer="PaddlePaddle Authors <paddle-dev@baidu.com>"
 
 ARG CANN_VERSION=8.0.T113
