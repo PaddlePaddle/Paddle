@@ -181,8 +181,10 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
 
 void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
   void *ptr = nullptr;
-  if (FLAGS_dump_vmm_allocation_info)
+  if (FLAGS_dump_vmm_allocation_info) {
     DumpInfo("===== Before ExtendAndMerge =====");
+  }
+
   auto allocateptr = AllocateOrCompact(size).value_or(nullptr);
   if (!allocateptr) {
     // Allocate failed and Compact success branch.
