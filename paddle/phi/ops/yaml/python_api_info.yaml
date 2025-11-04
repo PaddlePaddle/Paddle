@@ -194,6 +194,11 @@
   args_mapper :
     func : ArgSumMapper
 
+- op : abs
+  name : [paddle.abs, paddle.Tensor.abs]
+  args_alias:
+    use_default_mapping : True
+
 - op : index_put
   name : [paddle.index_put,paddle.Tensor.index_put]
   args_alias :
