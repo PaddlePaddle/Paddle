@@ -72,11 +72,11 @@ class Allocation {
   //    The raw pointer might not aligned, so an offset might be added to raw
   //    the pointer. The size of this allocation will be
   //    `size + kAlignment - offset`.
-  size_t size() const noexcept { return size_; }
+  virtual size_t size() const noexcept { return size_; }
 
   void* operator->() const noexcept { return ptr_; }
   operator bool() const noexcept { return ptr_; }
-  const Place& place() const noexcept { return place_; }
+  virtual const Place& place() const noexcept { return place_; }
   DeleterFnPtr deleter() const noexcept { return deleter_; }
 
  protected:
