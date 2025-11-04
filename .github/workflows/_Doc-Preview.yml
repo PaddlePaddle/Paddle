@@ -105,6 +105,7 @@ jobs:
           curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
           cd /
           source ${{ github.workspace }}/../../../proxy
+          pip3 install --progress-bar off -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --force-reinstall ${work_dir}/build/pr_whl/*.whl
           bash "/tmp/entrypoint.sh"
           '
 

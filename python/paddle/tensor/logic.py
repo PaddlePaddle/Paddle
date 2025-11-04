@@ -515,6 +515,7 @@ def gt(
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor, optional): The output tensor. If provided, the result will be stored in this tensor.
+
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 

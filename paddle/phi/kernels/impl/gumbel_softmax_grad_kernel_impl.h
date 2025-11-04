@@ -30,7 +30,8 @@ void GumbelSoftmaxGradKernel(const Context& dev_ctx,
                              DenseTensor* dx) {
   const int rank = dx->dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
-  int axis_dim = dx->dims()[axis];
+  int64_t axis_dim = dx->dims()[axis];
+
   // allocate memory on device.
 
   dev_ctx.template Alloc<T>(dx);
@@ -43,6 +44,19 @@ void GumbelSoftmaxGradKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, dx, static_cast<T>(0.0));
     return;
   }
+
+  // TODO(large-tensor): Softmax functor implementation still uses int for
+  // dimensions. Need to update Softmax functor to support dimensions >
+  // INT32_MAX.
+  PADDLE_ENFORCE_LE(
+      axis_dim,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "The axis dimension (%ld) exceeds the maximum value that int can "
+          "represent (%d). GumbelSoftmax gradient operation does not support "
+          "such large tensors yet.",
+          axis_dim,
+          std::numeric_limits<int>::max()));
 
   const int size_to_axis = funcs::SizeToAxis(axis, dx->dims());
   const int size_from_axis = funcs::SizeFromAxis(axis, dx->dims());

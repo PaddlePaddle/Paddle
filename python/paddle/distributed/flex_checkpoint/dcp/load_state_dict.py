@@ -888,27 +888,17 @@ def load_state_dict(
                 f"{key} is not replicated!"
             )
             load_dict[key] = val
-
-        load_state_dict_impl(
-            state_dict=load_dict,
-            path=path,
-            process_group=process_group,
-            coordinator_rank=coordinator_rank,
-            unique_id=unique_id,
-            offload=offload,
-            mw_name_compatibility=mw_name_compatibility,
-            safetensors=safetensors,
-            worker_groups=worker_groups,
+        destination_state_shard_info = defaultdict(list)
+        for key, val in load_dict.items():
+            desc = build_shard_desc(val)
+            destination_state_shard_info[key].append(desc)
+    else:
+        flat_shards, nonflat_shards = _split_flat_shards(state_dict)
+        load_dict, padding_info = _unflatten_shards(flat_shards)
+        load_dict.update(nonflat_shards)
+        destination_state_shard_info = build_global_state_shard_info(
+            state_dict, process_group
         )
-        return
-
-    destination_state_shard_info = build_global_state_shard_info(
-        state_dict, process_group
-    )
-
-    flat_shards, nonflat_shards = _split_flat_shards(state_dict)
-    load_dict, padding_info = _unflatten_shards(flat_shards)
-    load_dict.update(nonflat_shards)
 
     if aoa_config is not None:
         _handle_aoa(
@@ -935,7 +925,8 @@ def load_state_dict(
             safetensors=safetensors,
             worker_groups=worker_groups,
         )
-    _finish_unflatten(flat_shards, padding_info)
+    if use_dist:
+        _finish_unflatten(flat_shards, padding_info)
 
     global _metadata_manager
     _metadata_manager.clear()

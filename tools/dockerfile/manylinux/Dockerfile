@@ -88,15 +88,13 @@ ENV DESIRED_CUDA=12.6
 FROM python as paddle
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
-RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install setuptools pyyaml wheel -U && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.9.0/bin/pip3 install setuptools pyyaml wheel -U && \
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.9.0/bin/pip3 install setuptools pyyaml wheel -U && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.10.0/bin/pip3 install setuptools pyyaml wheel -U && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.11.0/bin/pip3 install setuptools pyyaml wheel -U && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install setuptools pyyaml wheel -U && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.13.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.13.0/bin/pip3 install setuptools pyyaml wheel -U
 
-RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install -r /root/requirements.txt && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.9.0/bin/pip3 install -r /root/requirements.txt && \
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.9.0/bin/pip3 install -r /root/requirements.txt && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.10.0/bin/pip3 install -r /root/requirements.txt && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.11.0/bin/pip3 install -r /root/requirements.txt && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install -r /root/requirements.txt && \

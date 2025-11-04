@@ -263,16 +263,16 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 }
 
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    parameterSetter_t parameterSetter, gpuKernelCallback_t cudakernelCallback) {
+    parameterSetter_t parameterSetter, gpuKernelCallback_t cudaKernelCallback) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     unsigned int id = GenerateIdentifier();
-    auto cudaFunc = cudakernelCallback(id);
+    auto cudaFunc = cudaKernelCallback(id);
 
     parameterSetters[cudaFunc][id] = parameterSetter;
     VLOG(10) << "[KernelNodeLaunch] Launch kernel with cudaFunc = " << cudaFunc
              << " id = " << id;
   } else {
-    cudakernelCallback(0);
+    cudaKernelCallback(0);
   }
 }
 
