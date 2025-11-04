@@ -22,6 +22,7 @@ from paddle._C_ops import (  # noqa: F401
     exp,
     expm1,
     floor,
+    round,
     rsqrt,
     sigmoid,
     sin,
@@ -510,60 +511,6 @@ def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='reciprocal', inputs={"X": x}, outputs={"Out": out}
-        )
-        return out
-
-
-def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
-    """
-    Round the values in the input to the nearest integer value.
-    .. code-block:: text
-        input:
-          x.shape = [4]
-          x.data = [1.2, -0.9, 3.4, 0.9]
-        output:
-          out.shape = [4]
-          out.data = [1., -1., 3., 1.]
-    Args:
-        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128.
-        decimals(int): Rounded decimal place (default: 0).
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        Tensor. Output of Round operator, a Tensor with shape same as input.
-    Examples:
-        .. code-block:: python
-            >>> import paddle
-            >>> x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
-            >>> out = paddle.round(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0., -0.,  1.,  2.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.round(x, decimals)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'int32',
-                'int64',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'round',
-        )
-        helper = LayerHelper('round', **locals())
-        attrs = {
-            'decimals': int(decimals),
-        }
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs
         )
         return out
 
