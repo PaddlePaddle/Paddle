@@ -559,7 +559,7 @@ PADDLE_API void PadInferMeta(const MetaTensor& input,
 PADDLE_API void Pad3dInferMeta(const MetaTensor& x,
                                const IntArray& paddings,
                                const std::string& mode,
-                               float value,
+                               double value,
                                const std::string& data_format,
                                MetaTensor* out,
                                MetaConfig config = MetaConfig());
