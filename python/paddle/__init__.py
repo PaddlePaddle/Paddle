@@ -226,6 +226,13 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .audio.functional.window import (  # noqa: F401
+    bartlett_window,
+    blackman_window,
+    hamming_window,
+    hann_window,
+    kaiser_window,
+)
 from .autograd import (
     enable_grad,
     grad,

@@ -445,3 +445,88 @@ def get_window(
     params = (win_length, *args)
     kwargs = {'sym': sym}
     return winfunc(*params, dtype=dtype, **kwargs)
+
+
+def hamming_window(
+    window_length: int,
+    periodic: bool = True,
+    alpha: float = 0.54,
+    beta: float = 0.46,
+    *,
+    dtype: str = 'float64',
+    layout: None | object = None,
+    device: None | object = None,
+    pin_memory: None | bool = None,
+    requires_grad: None | bool = None,
+):
+    w = get_window('hamming', window_length, fftbins=periodic, dtype=dtype)
+    if requires_grad is not None:
+        w.stop_gradient = not requires_grad
+    return w
+
+
+def hann_window(
+    window_length: int,
+    periodic: bool = True,
+    *,
+    dtype: str = 'float64',
+    layout: None | object = None,
+    device: None | object = None,
+    pin_memory: None | bool = None,
+    requires_grad: None | bool = None,
+):
+    w = get_window('hann', window_length, fftbins=periodic, dtype=dtype)
+    if requires_grad is not None:
+        w.stop_gradient = not requires_grad
+    return w
+
+
+def kaiser_window(
+    window_length: int,
+    periodic: bool = True,
+    beta: float = 12.0,
+    *,
+    dtype: str = 'float64',
+    layout: None | object = None,
+    device: None | object = None,
+    pin_memory: None | bool = None,
+    requires_grad: None | bool = None,
+):
+    w = get_window(
+        ('kaiser', beta), window_length, fftbins=periodic, dtype=dtype
+    )
+    if requires_grad is not None:
+        w.stop_gradient = not requires_grad
+    return w
+
+
+def blackman_window(
+    window_length: int,
+    periodic: bool = True,
+    *,
+    dtype: str = 'float64',
+    layout: None | object = None,
+    device: None | object = None,
+    pin_memory: None | bool = None,
+    requires_grad: None | bool = None,
+):
+    w = get_window('blackman', window_length, fftbins=periodic, dtype=dtype)
+    if requires_grad is not None:
+        w.stop_gradient = not requires_grad
+    return w
+
+
+def bartlett_window(
+    window_length: int,
+    periodic: bool = True,
+    *,
+    dtype: str = 'float64',
+    layout: None | object = None,
+    device: None | object = None,
+    pin_memory: None | bool = None,
+    requires_grad: None | bool = None,
+):
+    w = get_window('bartlett', window_length, fftbins=periodic, dtype=dtype)
+    if requires_grad is not None:
+        w.stop_gradient = not requires_grad
+    return w
