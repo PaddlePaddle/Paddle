@@ -566,7 +566,16 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
       out_index_temp_storage, out_index_temp_storage_bytes,
       out_index_ptr, out_index_ptr, out_index->numel()
   );
-  cudaMalloc(&out_index_temp_storage, out_index_temp_storage_bytes);
+
+  phi::GPUPlace place(phi::backends::gpu::GetCurrentDeviceId());
+  phi::DenseTensorMeta tmp_meta(phi::DataType::INT32,
+                                    phi::make_ddim({static_cast<int>(out_index_temp_storage_bytes)}));
+  std::shared_ptr<phi::Allocation> tmp_alloc(
+        new phi::Allocation(reinterpret_cast<void*>(&out_index_temp_storage),
+                                out_index_temp_storage_bytes,
+                               place));
+  phi::DenseTensor tmp_storage(tmp_alloc, tmp_meta);
+  
   cub::DeviceRadixSort::SortKeysDescending(
       out_index_temp_storage, out_index_temp_storage_bytes,
       out_index_ptr, out_index_ptr, out_index->numel()
