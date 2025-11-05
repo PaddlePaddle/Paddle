@@ -150,6 +150,11 @@ def set_flags(flags: dict[str, bool | str | float]) -> None:
     for key, value in flags.items():
         if _global_flags().is_public(key):
             _global_flags()[key] = value
+            prefix = "FLAGS_"
+            if key.startswith(prefix):
+                _global_flags().update_linked_vars(
+                    key[len(prefix) :], str(value)
+                )
         else:
             raise ValueError(
                 f"Flag {key} cannot set its value through this function."

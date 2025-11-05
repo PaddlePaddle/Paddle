@@ -464,9 +464,9 @@ class ForbidKeywordsDecorator(DecoratorBase):
         if url_suffix:
             self.warn_msg = (
                 f"The API '{func_name}' may behave differently from its PyTorch counterpart. "
-                f"Refer to the compatibility guide for details:\n"
-                f"https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/"
-                f"convert_from_pytorch/api_difference/{url_suffix}.html"
+                "Refer to the compatibility guide for details:\n"
+                "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/guides/model_convert/"
+                "convert_from_pytorch/pytorch_api_mapping_cn.html#api"
             )
 
     def process(

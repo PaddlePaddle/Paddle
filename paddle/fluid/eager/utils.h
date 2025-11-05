@@ -483,4 +483,13 @@ void AddEdgeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
                                  bool need_dump_backward_subgraph);
 
 const std::string FormatTensor(const paddle::Tensor& t);
+static inline std::string GetGradNodeHexAddress(GradNodeBase* ptr) {
+  std::ostringstream oss;
+  // Use std::hex to output in hexadecimal format
+  // std::showbase to include the 0x prefix
+  oss << std::showbase << std::hex << reinterpret_cast<std::uintptr_t>(ptr);
+  return oss.str();
+}
+void SavePythonCallStackToFile(const std::string& file_name,
+                               const std::string& api_name);
 }  // namespace egr

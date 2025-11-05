@@ -31,7 +31,7 @@ void UnfoldKernel(const Context& dev_ctx,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
                   DenseTensor* out) {
-  const int batch_size = static_cast<int>(x.dims()[0]);
+  const int64_t batch_size = x.dims()[0];
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;
@@ -57,7 +57,7 @@ void UnfoldKernel(const Context& dev_ctx,
   DDim out_matrix_shape = common::make_ddim(
       {x_dims[1], kernel_sizes[0], kernel_sizes[1], out_height, out_width});
 
-  for (int i = 0; i < batch_size; i++) {
+  for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor in_batch = x.Slice(i, i + 1).Resize(x_shape);
     DenseTensor out_batch = out->Slice(i, i + 1).Resize(out_matrix_shape);
     im2col(dev_ctx, in_batch, dilations, strides, paddings, &out_batch);

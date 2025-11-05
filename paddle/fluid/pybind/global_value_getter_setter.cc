@@ -191,6 +191,22 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     VLOG(7) << "set " << name << " to " << value;
     SetterMethod(name)(value);
   }
+  /**
+   * Update the value of linked variables
+   *
+   * @param name Name of the variable currently being modified
+   * @param value New value of the variable being modified
+   *
+   * This function updates the values of variables linked to the current
+   * modified variable by calling paddle::flags::UpdateLinkedFlags method.
+   */
+  void UpdateLinkedVars(const std::string &name, const std::string &value) {
+    bool is_updated = paddle::flags::UpdateLinkedFlags(name, value);
+    if (!is_updated) {
+      LOG(WARNING) << "Failed to update linked flags for variable name: "
+                   << name << " value " << value;
+    }
+  }
 
   bool HasGetterMethod(const std::string &name) const {
     return var_infos_.count(name) > 0;
@@ -240,7 +256,11 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
       .def("get",
            &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,
            py::arg("key"),
-           py::arg("default") = py::cast<py::none>(Py_None));
+           py::arg("default") = py::cast<py::none>(Py_None))
+      .def("update_linked_vars",
+           &GlobalVarGetterSetterRegistry::UpdateLinkedVars,
+           py::arg("key"),
+           py::arg("value"));
 
   module->def("globals",
               &GlobalVarGetterSetterRegistry::Instance,

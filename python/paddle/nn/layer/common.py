@@ -198,6 +198,12 @@ class Linear(Layer):
     bias: Tensor
     name: str | None
 
+    @ForbidKeywordsDecorator(
+        illegal_keys={"bias", "device", "dtype"},
+        func_name="paddle.nn.Linear",
+        correct_name="paddle.compat.nn.Linear",
+        url_suffix="nn/torch.nn.Linear",
+    )
     def __init__(
         self,
         in_features: int,
@@ -1862,7 +1868,11 @@ class Embedding(Layer):
             if self._weight_attr is None:
                 self.weight.stop_gradient = _freeze
 
-        if in_dynamic_mode() and padding_idx != -1:
+        if (
+            in_dynamic_mode()
+            and padding_idx != -1
+            and self.weight._is_initialized()
+        ):
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 

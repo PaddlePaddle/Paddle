@@ -2314,6 +2314,43 @@ def dot(
 """,
 )
 
+add_doc_and_signature(
+    "abs",
+    """
+    Perform elementwise abs for input `x`.
+
+    .. math::
+
+        out = |x|
+
+    Args:
+        x (Tensor): The input Tensor with data type int32, int64, float16, float32, float64, complex64 and complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor.
+
+    Returns:
+        Tensor.A Tensor with the same data type and shape as :math:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.abs(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40000001, 0.20000000, 0.10000000, 0.30000001])
+""",
+    """
+def abs(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+""",
+)
+
 # lubingxin
 
 # chenhuangrun
