@@ -80,9 +80,6 @@ void GPUGatherNd(const phi::GPUContext& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
-  const auto gplace = dev_ctx.GetPlace();
-  auto cplace = phi::CPUPlace();
-
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
   auto input_dims = input.dims();
