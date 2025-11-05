@@ -25,7 +25,6 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/eig_utils.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
@@ -38,7 +37,6 @@
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-
 #define EPSILON 1e-6
 
 namespace phi {
@@ -220,16 +218,18 @@ void MagmaEig(const Context& dev_ctx,
               DenseTensor* values,
               DenseTensor* vectors) {
   auto num_dims = input.dims().size();
-  DenseTensor input_cpu;
-  input_cpu.Resize(input.dims());
-  phi::Copy(dev_ctx, input, phi::CPUPlace(), false, &input_cpu);
+  // magma will modify original input, so copy to cpu at any case
+  DenseTensor input_copy_cpu;
+  input_copy_cpu.Resize(input.dims());
+  phi::Copy(dev_ctx, input, phi::CPUPlace(), false, &input_copy_cpu);
 
   using RealT = typename phi::dtype::Real<T>;
   magma_vec_t jobvr = MagmaVec;
   magma_vec_t jobvl = MagmaNoVec;
-  magma_int_t order = static_cast<magma_int_t>(input_cpu.dims()[num_dims - 1]);
+  magma_int_t order =
+      static_cast<magma_int_t>(input_copy_cpu.dims()[num_dims - 1]);
 
-  auto* input_data = input_cpu.data<T>();
+  auto* input_data = input_copy_cpu.data<T>();
   magma_int_t lda = std::max<magma_int_t>(1, order);
 
   T* values_data = values->data<T>();
@@ -239,20 +239,23 @@ void MagmaEig(const Context& dev_ctx,
   magma_int_t ldvr = lda;
   magma_int_t lwork = -1;
 
-  int batch_count = BatchCount(input_cpu);
-  int matrix_stride = MatrixStride(input_cpu);
+  int batch_count = BatchCount(input_copy_cpu);
+  int matrix_stride = MatrixStride(input_copy_cpu);
   int values_stride = values->dims()[values->dims().size() - 1];
 
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
 
   rwork.Resize(common::make_ddim({lda * 2}));
-  rwork_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&rwork);
+  auto cpu_place = phi::CPUPlace();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  rwork_data = (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&rwork);
 
   T computed_work_size;
 
   magma_int_t info = 0;
-  magmaEnsureInit();
+  phi::funcs::magmaEnsureInit();
 
   phi::funcs::magmaEig<T, RealT>(jobvl,
                                  jobvr,
@@ -274,9 +277,6 @@ void MagmaEig(const Context& dev_ctx,
       1, static_cast<magma_int_t>(phi::dtype::Real<T>(computed_work_size)));
   DenseTensor work;
   work.Resize(common::make_ddim({lwork}));
-  auto cpu_place = phi::CPUPlace();
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
   T* work_data = (*cpu_ctx).template Alloc<T>(&work);
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -331,30 +331,29 @@ void ApplyEigKernel(const DenseTensor& input,
 }
 
 template <typename T, typename Context>
-void ApplyEigKernelMAGAMA(const DenseTensor& input,
-                          DenseTensor* real_w_cpu,
-                          DenseTensor* real_v_cpu,
-                          const Context& dev_ctx) {
-  DenseTensor input_column_major_gpu;
-  DenseTensor vectors_row_major_cpu;
-  int num_dims = input.dims().size();
-
+void ApplyEigKernelMagma(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         DenseTensor* real_w_cpu,
+                         DenseTensor* real_v_cpu) {
   // transfer to column-major memory layout i.e. common::make_ddim from
-  // transposed_input: [batch,row,col]->[batch,col,row]
+  // transposed_input: [*,row,col]->[*,col,row]
+  DenseTensor input_column_major_gpu =
+      phi::TransposeLast2Dim<T>(dev_ctx, input);
+  int num_dims = input.dims().size();
   TransposeTwoAxis<T, Context>(
       input, &input_column_major_gpu, num_dims - 1, num_dims - 2, dev_ctx);
+
+  DenseTensor vectors_row_major_cpu;
   vectors_row_major_cpu.Resize(input.dims());
   auto cpu_place = phi::CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
-  (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&vectors_row_major_cpu);
+  (*cpu_ctx).template Alloc<T>(&vectors_row_major_cpu);
 
   MagmaEig<T, Context>(
       dev_ctx, input_column_major_gpu, real_w_cpu, &vectors_row_major_cpu);
 
   // transfer column-major layout back
-  // vectors_row_major: column-major layout
-  // vector: original layout
   TransposeTwoAxis<T, phi::CPUContext>(
       vectors_row_major_cpu, real_v_cpu, num_dims - 1, num_dims - 2, *cpu_ctx);
 }
