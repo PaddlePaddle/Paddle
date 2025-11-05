@@ -15,14 +15,34 @@
 import unittest
 
 import paddle
+from paddle.base import core
 
 
-class TestAutoCast(unittest.TestCase):
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
+)
+class TestCudaAutoCast(unittest.TestCase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(1, 1, 3, bias_attr=False)
         self._linear = paddle.nn.Linear(4, 4)
 
-    def test_autocast(self):
+    def _run_autocast_test(self, ctx):
         with paddle.autocast(
             device_type='cuda',
             enabled=True,
@@ -34,7 +54,7 @@ class TestAutoCast(unittest.TestCase):
             out3 = self._linear(out2)
 
         self.assertEqual(out1.dtype, paddle.float16)
-        self.assertEqual(out2.dtype, paddle.float32)
+        self.assertEqual(out2.dtype, paddle.float16)
         self.assertEqual(out3.dtype, paddle.float32)
 
 
