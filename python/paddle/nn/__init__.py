@@ -201,6 +201,9 @@ UpsamplingNearest2d = UpsamplingNearest2D
 ZeroPad1d = ZeroPad1D
 ZeroPad2d = ZeroPad2D
 ZeroPad3d = ZeroPad3D
+AvgPool1d = AvgPool1D
+AvgPool2d = AvgPool2D
+AvgPool3d = AvgPool3D
 
 __all__ = [
     'BatchNorm',

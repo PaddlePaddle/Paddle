@@ -203,6 +203,30 @@ def param_one_alias(
     return decorator
 
 
+def normalize_exclusive_param():
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if not kwargs:
+                return func(*args, **kwargs)
+            if ("exclusive" not in kwargs) and ("count_include_pad" in kwargs):
+                kwargs["exclusive"] = not kwargs.pop("count_include_pad")
+            elif ("exclusive" not in kwargs) and (
+                "count_include_pad" not in kwargs
+            ):
+                kwargs["exclusive"] = True
+                warnings.warn(
+                    "Set default value of exclusive to True which is default behavior in Paddle",
+                    category=Warning,
+                )
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def param_two_alias(
     alias_list1: list[str], alias_list2: list[str]
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
