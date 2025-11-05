@@ -2,7 +2,7 @@ PyGithub
 coverage==5.5
 mock
 gymnasium>=1.0.0a1
-hypothesis
+hypothesis<6.145.0
 opencv-python>= 4.10.0.84
 visualdl==2.5.3
 paddle2onnx>=0.9.6; python_version < "3.12"

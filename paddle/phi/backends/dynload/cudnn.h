@@ -121,16 +121,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnDestroyActivationDescriptor);
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
-#if CUDNN_VERSION >= 7000 && CUDNN_VERSION < 8000
-#define CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(__macro) \
-  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);   \
-  __macro(cudnnGetConvolutionForwardAlgorithm);          \
-  __macro(cudnnGetConvolutionBackwardDataAlgorithm);     \
-  __macro(cudnnSetRNNDescriptor);
-CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
-
-#if CUDNN_VERSION >= 7001
 #define CUDNN_DNN_ROUTINE_EACH_R7(__macro)                \
   __macro(cudnnSetConvolutionGroupCount);                 \
   __macro(cudnnSetConvolutionMathType);                   \
@@ -146,17 +136,13 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetConvolutionForwardAlgorithm_v7);        \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
 
-#if CUDNN_VERSION >= 7201
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(__macro) \
   __macro(cudnnCreateRNNDataDescriptor);             \
   __macro(cudnnDestroyRNNDataDescriptor);            \
   __macro(cudnnSetRNNDataDescriptor);
 CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
 
-#if CUDNN_VERSION >= 7401
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_R7(__macro)                     \
   __macro(cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize); \
   __macro(cudnnBatchNormalizationForwardTrainingEx);                 \
@@ -164,9 +150,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnBatchNormalizationBackwardEx);                        \
   __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
 
-#if CUDNN_VERSION >= 8000
 #define CUDNN_DNN_ROUTINE_EACH_R8(__macro)            \
   __macro(cudnnSetRNNDescriptor_v8);                  \
   __macro(cudnnCreateFusedOpsPlan);                   \
@@ -180,7 +164,6 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnSetFusedOpsVariantParamPackAttribute); \
   __macro(cudnnMakeFusedOpsPlan);
 CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 #define CUDNN_DNN_ROUTINE_EACH_FRONTEND(__macro) \
@@ -208,7 +191,7 @@ CUDNN_DNN_ROUTINE_EACH_FRONTEND(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 CUDNN_DNN_ROUTINE_EACH_REMOVED_IN_E9(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
-#if CUDNN_VERSION < 90000 && CUDNN_VERSION >= 7201
+#if CUDNN_VERSION < 90000
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7_REMOVED_IN_E9(__macro) \
   __macro(cudnnSetRNNPaddingMode);                                 \
   __macro(cudnnRNNForwardInferenceEx);                             \
