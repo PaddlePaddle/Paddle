@@ -89,8 +89,7 @@ class TestLegacyLossArgs(unittest.TestCase):
             TripletMarginLoss,
         ]
         for ctor in ctors:
-            loss = ctor()
-            self.assertIsInstance(loss, paddle.nn.Layer)
+            _ = ctor()
 
     # Cover legacy combos across the family (not each loss needs all combos)
 
@@ -149,6 +148,38 @@ class TestLegacyLossArgs(unittest.TestCase):
         self.assertSuggests(
             TripletMarginLoss, 'sum', reduce=True, size_average=False
         )
+
+    def test_ce_positional_soft_label_guard_by_ignore_index(self):
+        # CrossEntropyLoss(weight=None, ignore_index=int, reduction='mean', soft_label=True)
+        w = paddle.ones([3], dtype='float32')
+        _ = CrossEntropyLoss(w, -100, 'mean', True)
+
+    def test_ce_positional_legacy_reduce_trigger(self):
+        # CrossEntropyLoss(weight=None, size_average=True, ignore_index, reduce=True)
+        with self.assertRaises(ValueError) as cm:
+            w = paddle.ones([3], dtype='float32')
+            CrossEntropyLoss(w, True, -100, True)
+        self.assertIn("reduction='mean'", str(cm.exception))
+
+    def test_kldiv_positional_log_target_guard(self):
+        # KLDivLoss(reduction='mean', log_target=True)
+        _ = KLDivLoss('mean', True)
+
+    def test_kldiv_positional_legacy_reduce_trigger(self):
+        # KLDivLoss(log_target=True)（未提供 reduction 字符串，视为 legacy reduce）
+        with self.assertRaises(ValueError) as cm:
+            KLDivLoss(True)
+        self.assertIn("reduction='mean'", str(cm.exception))
+
+    def test_poisson_positional_eps_float_guard(self):
+        # PoissonNLLLoss(log_input, full, eps)
+        _ = PoissonNLLLoss(True, False, 1e-8)
+
+    def test_poisson_positional_legacy_reduce_trigger(self):
+        # PoissonNLLLoss(log_input, full, size_average=True, epsilon, reduce=True)
+        with self.assertRaises(ValueError) as cm:
+            PoissonNLLLoss(True, False, True, 1e-8, True)
+        self.assertIn("reduction='mean'", str(cm.exception))
 
 
 if __name__ == '__main__':

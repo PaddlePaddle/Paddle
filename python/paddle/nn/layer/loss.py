@@ -19,8 +19,10 @@ from typing import TYPE_CHECKING, Callable
 import paddle
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
-from paddle.nn.layer.utils import check_deprecated_params
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    check_deprecated_params_on_init,
+)
 
 from .. import functional as F
 from .layers import Layer
@@ -37,7 +39,6 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-@check_deprecated_params
 class BCEWithLogitsLoss(Layer):
     r"""
 
@@ -122,6 +123,7 @@ class BCEWithLogitsLoss(Layer):
     pos_weight: Tensor | None
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -153,7 +155,6 @@ class BCEWithLogitsLoss(Layer):
         return out
 
 
-@check_deprecated_params
 class CrossEntropyLoss(Layer):
     r"""
 
@@ -420,6 +421,7 @@ class CrossEntropyLoss(Layer):
     label_smoothing: float
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -606,7 +608,6 @@ class HSigmoidLoss(Layer):
         return out
 
 
-@check_deprecated_params
 class MSELoss(Layer):
     r"""
     **Mean Square Error Loss**
@@ -659,6 +660,7 @@ class MSELoss(Layer):
 
     reduction: _ReduceMode
 
+    @check_deprecated_params_on_init
     def __init__(self, reduction: _ReduceMode = 'mean'):
         super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
@@ -692,7 +694,6 @@ class MSELoss(Layer):
         return paddle.mean(square_out)
 
 
-@check_deprecated_params
 class L1Loss(Layer):
     r"""
 
@@ -763,6 +764,7 @@ class L1Loss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
@@ -781,7 +783,6 @@ class L1Loss(Layer):
         )
 
 
-@check_deprecated_params
 class BCELoss(Layer):
     """
 
@@ -854,6 +855,7 @@ class BCELoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -878,7 +880,6 @@ class BCELoss(Layer):
         return out
 
 
-@check_deprecated_params
 class NLLLoss(Layer):
     r"""
 
@@ -967,6 +968,7 @@ class NLLLoss(Layer):
 
     """
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -996,7 +998,6 @@ class NLLLoss(Layer):
         )
 
 
-@check_deprecated_params
 class PoissonNLLLoss(Layer):
     r"""Generate a callable object of 'PoissonNLLLoss' to calculate the
     Poisson negative log likelihood loss between Input(input) and
@@ -1056,6 +1057,7 @@ class PoissonNLLLoss(Layer):
 
     """
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         log_input: bool = True,
@@ -1092,7 +1094,6 @@ class PoissonNLLLoss(Layer):
         )
 
 
-@check_deprecated_params
 class KLDivLoss(Layer):
     r"""
 
@@ -1188,6 +1189,7 @@ class KLDivLoss(Layer):
     reduction: _ReduceMode
     log_target: bool
 
+    @check_deprecated_params_on_init
     def __init__(
         self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:
@@ -1200,7 +1202,6 @@ class KLDivLoss(Layer):
         return out
 
 
-@check_deprecated_params
 class MarginRankingLoss(Layer):
     r"""
 
@@ -1261,6 +1262,7 @@ class MarginRankingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         margin: float = 0.0,
@@ -1470,7 +1472,6 @@ class RNNTLoss(Layer):
         )
 
 
-@check_deprecated_params
 class SmoothL1Loss(Layer):
     r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
@@ -1535,6 +1536,7 @@ class SmoothL1Loss(Layer):
     delta: float
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -1559,7 +1561,6 @@ class SmoothL1Loss(Layer):
         )
 
 
-@check_deprecated_params
 class MultiLabelSoftMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class multi-classification
     hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
@@ -1624,6 +1625,7 @@ class MultiLabelSoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1650,7 +1652,6 @@ class MultiLabelSoftMarginLoss(Layer):
         )
 
 
-@check_deprecated_params
 class HingeEmbeddingLoss(Layer):
     r"""
     Create a callable object of `HingeEmbeddingLoss` to calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
@@ -1737,6 +1738,7 @@ class HingeEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         margin: float = 1.0,
@@ -1758,7 +1760,6 @@ class HingeEmbeddingLoss(Layer):
         )
 
 
-@check_deprecated_params
 class CosineEmbeddingLoss(Layer):
     r"""
     This interface is used to construct a callable object of the ``CosineEmbeddingLoss`` class.
@@ -1836,6 +1837,7 @@ class CosineEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         margin: float = 0,
@@ -1989,7 +1991,6 @@ class TripletMarginWithDistanceLoss(Layer):
         )
 
 
-@check_deprecated_params
 class TripletMarginLoss(Layer):
     r"""
     Creates a criterion that measures the triplet loss given an input
@@ -2074,6 +2075,7 @@ class TripletMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         margin: float = 1.0,
@@ -2112,7 +2114,6 @@ class TripletMarginLoss(Layer):
         )
 
 
-@check_deprecated_params
 class MultiMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between
     input :math:`input` and label :math:`label`:
@@ -2191,6 +2192,7 @@ class MultiMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         p: int = 1,
@@ -2223,7 +2225,6 @@ class MultiMarginLoss(Layer):
         )
 
 
-@check_deprecated_params
 class MultiLabelMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class multi-classification hinge loss (margin-based loss)
     between input :math:`input` and label :math:`label`:
@@ -2287,6 +2288,7 @@ class MultiLabelMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -2310,7 +2312,6 @@ class MultiLabelMarginLoss(Layer):
         )
 
 
-@check_deprecated_params
 class SoftMarginLoss(Layer):
     r"""
 
@@ -2376,6 +2377,7 @@ class SoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @check_deprecated_params_on_init
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:

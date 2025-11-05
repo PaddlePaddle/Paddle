@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
+_SENTINEL = object()
 
 
 def _is_int_or_scalar_tensor(x):
@@ -734,3 +735,115 @@ def floor_divide_decorator():
         return wrapper
 
     return decorator
+
+
+def compute_legacy_reduction(reduce_val, size_average_val):
+    if reduce_val is False:
+        return 'none'
+    if reduce_val is True:
+        return 'sum' if size_average_val is False else 'mean'
+    return 'sum' if size_average_val is False else 'mean'
+
+
+_SA0_RD1 = {'size_average': 0, 'reduce': 1}
+_SA1_RD2 = {'size_average': 1, 'reduce': 2}
+_SA1_RD3 = {'size_average': 1, 'reduce': 3}
+_SA3_RD4 = {'size_average': 3, 'reduce': 4}
+_SA4_RD5 = {'size_average': 4, 'reduce': 5}
+_SA2_RD4 = {'size_average': 2, 'reduce': 4}
+
+LEGACY_POS: dict[str, dict[str, int]] = {
+    **dict.fromkeys(
+        (
+            'L1Loss',
+            'MSELoss',
+            'KLDivLoss',
+            'SmoothL1Loss',
+            'SoftMarginLoss',
+            'MultiLabelMarginLoss',
+        ),
+        _SA0_RD1,
+    ),
+    **dict.fromkeys(
+        (
+            'BCELoss',
+            'BCEWithLogitsLoss',
+            'MultiLabelSoftMarginLoss',
+            'HingeEmbeddingLoss',
+            'CosineEmbeddingLoss',
+            'MarginRankingLoss',
+        ),
+        _SA1_RD2,
+    ),
+    'CrossEntropyLoss': _SA1_RD3,
+    'NLLLoss': _SA1_RD3,
+    'PoissonNLLLoss': _SA2_RD4,
+    'MultiMarginLoss': _SA3_RD4,
+    'TripletMarginLoss': _SA4_RD5,
+}
+
+
+def check_deprecated_params_on_init(init_func):
+    """
+    Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
+    """
+
+    @functools.wraps(init_func)
+    def wrapper(self, *args, **kwargs):
+        reduce_raw = kwargs.pop('reduce', _SENTINEL)
+        size_avg_raw = kwargs.pop('size_average', _SENTINEL)
+
+        has_reduce = reduce_raw is not _SENTINEL
+        has_size_avg = size_avg_raw is not _SENTINEL
+
+        # If not provided via kwargs, try positional indices per class mapping
+        if not (has_reduce and has_size_avg):
+            cls_name = self.__class__.__name__
+            pos = LEGACY_POS.get(cls_name)
+            if pos:
+                if not has_size_avg:
+                    idx = pos.get('size_average')
+                    if idx is not None and len(args) > idx:
+                        v = args[idx]
+                        if type(v) is bool:
+                            size_avg_raw = v
+                            has_size_avg = True
+                if not has_reduce:
+                    idx = pos.get('reduce')
+                    if idx is not None and len(args) > idx:
+                        v = args[idx]
+                        if type(v) is bool:
+                            # Special guard: CrossEntropyLoss idx=3 is soft_label (bool) in Paddle;
+                            # treat it as legacy 'reduce' ONLY if arg at idx=2 is NOT a valid reduction string
+                            if cls_name == 'CrossEntropyLoss' and args[2] in {
+                                'mean',
+                                'sum',
+                                'none',
+                            }:
+                                # 视为 soft_label,跳过
+                                pass
+                            elif cls_name == 'KLDivLoss' and args[0] in {
+                                'mean',
+                                'sum',
+                                'none',
+                                'batchmean',
+                            }:
+                                # 视为 log_target,跳过
+                                pass
+                            else:
+                                reduce_raw = v
+                                has_reduce = True
+
+        if has_reduce or has_size_avg:
+            reduce_val = None if reduce_raw is _SENTINEL else reduce_raw
+            size_avg_val = None if size_avg_raw is _SENTINEL else size_avg_raw
+            suggested = compute_legacy_reduction(reduce_val, size_avg_val)
+            raise ValueError(
+                f"[Deprecated] '{self.__class__.__name__}' no longer supports 'reduce' or 'size_average'."
+                f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
+                f"\nPlease use: reduction='{suggested}' instead."
+            )
+
+        return init_func(self, *args, **kwargs)
+
+    return wrapper
