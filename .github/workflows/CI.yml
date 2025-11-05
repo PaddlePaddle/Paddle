@@ -84,7 +84,7 @@ jobs:
   distribute-test:
     name: Distribute-stable-test
     uses: ./.github/workflows/_Distribute-stable-Test.yml
-    needs: [Distribute-stable]
+    needs: [distribute]
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
@@ -92,7 +92,7 @@ jobs:
   distribute-formers:
     name: Distribute-stable
     uses: ./.github/workflows/_Distribute-stable-Formers.yml
-    needs: [Distribute-stable]
+    needs: [distribute]
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
