@@ -2317,23 +2317,31 @@ def dot(
 add_doc_and_signature(
     "tanh",
     r"""
+
     Tanh Activation Operator.
+
     .. math::
         out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+
     .. note::
         Alias Support:
         1. The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64,
             float16, uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
     Returns:
         Output of Tanh operator, a Tensor with same data type and shape as input
             (integer types are autocasted into float32).
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
+
             >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             >>> out = paddle.tanh(x)
             >>> out
@@ -2342,7 +2350,7 @@ add_doc_and_signature(
 """,
     """
 def tanh(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None,
 ) -> Tensor
 """,
 )
@@ -2364,7 +2372,7 @@ add_doc_and_signature(
         x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
             Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Exp operator, a Tensor with shape same as input.
@@ -2404,7 +2412,7 @@ add_doc_and_signature(
         x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
             Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Expm1 operator, a Tensor with shape same as input.
@@ -2527,10 +2535,16 @@ add_doc_and_signature(
           out.shape = [4]
           out.data = [1., -1., 3., 1.]
 
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128.
+            Alias: ``input``.
         decimals(int): Rounded decimal place (default: 0).
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Round operator, a Tensor with shape same as input.
@@ -2562,12 +2576,15 @@ add_doc_and_signature(
 
         out = |x|
 
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input Tensor with data type int32, int64, float16, float32, float64, complex64 and complex128.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Keyword args:
-        out (Tensor|None, optional): The output tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor.A Tensor with the same data type and shape as :math:`x`.
