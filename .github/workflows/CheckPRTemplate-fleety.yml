@@ -30,6 +30,7 @@ jobs:
         env:
           AGILE_PULL_ID: ${{ github.event.pull_request.number }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.base_ref }}
         run: |
           python tools/CheckPRTemplate.py; EXCODE=$?
           echo "EXCODE: $EXCODE"

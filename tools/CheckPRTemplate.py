@@ -21,9 +21,15 @@ import requests
 
 PR_checkTemplate = ['Paddle']
 
-REPO_TEMPLATE = {
-    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?devPR:https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
-}
+BRANCH = os.environ['BRANCH']
+if BRANCH.startswith("develop"):
+    REPO_TEMPLATE = {
+        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
+    }
+elif BRANCH.startswith("fleety_"):
+    REPO_TEMPLATE = {
+        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?devPR:https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
+    }
 
 
 def re_rule(body, CHECK_TEMPLATE):
@@ -94,12 +100,13 @@ def parameter_accuracy(body):
                     single_mess += f'{i}.'
             if len(single_mess) != 0:
                 message += f'{key} should be in {test_list}. but now is [{single_mess}].     '
-    PR_dic['Description'] = body[changes_end + len('### Description') :]
-    des_pr_id = extract_pr_links(PR_dic['Description'])
-    if len(des_pr_id) == 0 or not check_link_accessible(
-        "https://github.com/PaddlePaddle/Paddle/pull/" + str(des_pr_id[0])
-    ):
-        message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description.Use this format devPR:https://github.com/PaddlePaddle/Paddle/pull/xxxx'
+    if BRANCH.startswith("fleety_"):
+        PR_dic['Description'] = body[changes_end + len('### Description') :]
+        des_pr_id = extract_pr_links(PR_dic['Description'])
+        if len(des_pr_id) == 0 or not check_link_accessible(
+            "https://github.com/PaddlePaddle/Paddle/pull/" + str(des_pr_id[0])
+        ):
+            message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description.Use this format devPR:https://github.com/PaddlePaddle/Paddle/pull/xxxx'
     return message
 
 
@@ -137,7 +144,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     elif result is None:
         res = False
         message = parameter_accuracy(body)
-        if len(message) == 0:
+        if BRANCH.startswith("fleety_") and len(message) == 0:
             message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description.Use this format devPR:https://github.com/PaddlePaddle/Paddle/pull/xxxx'
     return res, message
 
