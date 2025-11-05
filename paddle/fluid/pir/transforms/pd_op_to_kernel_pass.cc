@@ -282,6 +282,9 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     }
   } else if ((op->isa<AffineGridOp>() || op->isa<AffineGridGradOp>()) &&
              kernel_key.backend() == phi::Backend::GPUDNN) {
+    if (FLAGS_torch_compatible_kernel) {
+      return true;
+    }
     bool use_cudnn = true;
     int version = -1;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
