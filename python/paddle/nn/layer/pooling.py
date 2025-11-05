@@ -15,7 +15,12 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
+
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 
 from .. import functional as F
 from .layers import Layer
@@ -36,12 +41,6 @@ if TYPE_CHECKING:
     )
 
     from ..functional.common import _PaddingSizeMode
-import logging
-
-from paddle.utils.decorator_utils import (
-    normalize_exclusive_param,
-    param_one_alias,
-)
 
 __all__ = []
 
@@ -111,15 +110,13 @@ class AvgPool1D(Layer):
     ceil_mode: bool
     name: str | None
 
-    @normalize_exclusive_param()
     def __init__(
         self,
         kernel_size: Size1,
         stride: Size1 | None = None,
         padding: _PaddingSizeMode | Size1 | Size2 = 0,
-        *,
-        ceil_mode: bool = False,
         exclusive: bool = True,
+        ceil_mode: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -130,7 +127,6 @@ class AvgPool1D(Layer):
         self.exclusive = exclusive
         self.name = name
 
-    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         out = F.avg_pool1d(
             x,
@@ -144,15 +140,9 @@ class AvgPool1D(Layer):
         return out
 
     def extra_repr(self) -> str:
-        return f'kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}'
-
-    @property
-    def count_include_pad(self):
-        return not self.exclusive
-
-    @count_include_pad.setter
-    def count_include_pad(self, value):
-        self.exclusive = not value
+        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+            **self.__dict__
+        )
 
 
 class AvgPool2D(Layer):
@@ -236,14 +226,12 @@ class AvgPool2D(Layer):
     data_format: DataLayout2D
     name: str | None
 
-    @normalize_exclusive_param()
     def __init__(
         self,
         kernel_size: Size2,
         stride: Size2 | None = None,
         padding: _PaddingSizeMode | Size2 | Size4 = 0,
         ceil_mode: bool = False,
-        *,
         exclusive: bool = True,
         divisor_override: float | None = None,
         data_format: DataLayout2D = 'NCHW',
@@ -259,7 +247,6 @@ class AvgPool2D(Layer):
         self.data_format = data_format
         self.name = name
 
-    @param_one_alias(["x", "input"])
     def forward(self, x):
         return F.avg_pool2d(
             x,
@@ -274,31 +261,9 @@ class AvgPool2D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return f'kernel_size={self.ksize}, stride={self.stride}, padding={self.padding}'
-
-    @property
-    def count_include_pad(self):
-        return not self.exclusive
-
-    @count_include_pad.setter
-    def count_include_pad(self, value):
-        self.exclusive = not value
-
-    @property
-    def kernel_size(self):
-        return self.ksize
-
-    @kernel_size.setter
-    def kernel_size(self, value):
-        self.ksize = value
-
-    @property
-    def divisor_override(self):
-        return self.divisor
-
-    @divisor_override.setter
-    def divisor_override(self, value):
-        self.divisor = value
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+            **self.__dict__
+        )
 
 
 class AvgPool3D(Layer):
@@ -371,14 +336,12 @@ class AvgPool3D(Layer):
     data_format: DataLayout3D
     name: str | None
 
-    @normalize_exclusive_param()
     def __init__(
         self,
         kernel_size: Size3,
         stride: Size3 | None = None,
         padding: _PaddingSizeMode | Size3 | Size6 = 0,
         ceil_mode: bool = False,
-        *,
         exclusive: bool = True,
         divisor_override: float | None = None,
         data_format: DataLayout3D = 'NCDHW',
@@ -394,7 +357,6 @@ class AvgPool3D(Layer):
         self.data_format = data_format
         self.name = name
 
-    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.avg_pool3d(
             x,
@@ -409,15 +371,9 @@ class AvgPool3D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return f'kernel_size={self.ksize}, stride={self.stride}, padding={self.padding}'
-
-    @property
-    def divisor_override(self):
-        return self.divisor
-
-    @divisor_override.setter
-    def divisor_override(self, value):
-        self.divisor = value
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+            **self.__dict__
+        )
 
 
 class LPPool1D(Layer):
@@ -1620,9 +1576,10 @@ class MaxUnPool1D(Layer):
         output_size: Sequence[int] | None = None,
     ) -> Tensor:
         if output_size:
-            logging.warning(
+            warnings.warn(
                 "output_size in forward overrides output_size in __init__. "
-                "The output_size parameter in forward has higher priority."
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
             )
             valid_output_size = output_size
         else:
@@ -1736,9 +1693,10 @@ class MaxUnPool2D(Layer):
         output_size: Sequence[int] | None = None,
     ) -> Tensor:
         if output_size:
-            logging.warning(
+            warnings.warn(
                 "output_size in forward overrides output_size in __init__. "
-                "The output_size parameter in forward has higher priority."
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
             )
             valid_output_size = output_size
         else:
@@ -1853,9 +1811,10 @@ class MaxUnPool3D(Layer):
         output_size: Sequence[int] | None = None,
     ) -> Tensor:
         if output_size:
-            logging.warning(
+            warnings.warn(
                 "output_size in forward overrides output_size in __init__. "
-                "The output_size parameter in forward has higher priority."
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
             )
             valid_output_size = output_size
         else:
