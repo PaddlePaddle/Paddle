@@ -74,6 +74,7 @@ COMMON_DECLARE_bool(use_onednn);
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(enable_collect_shape);
+COMMON_DECLARE_bool(torch_compatible_kernel);
 REGISTER_FILE_SYMBOLS(pd_op_to_kernel_pass);
 namespace paddle::dialect {
 
