@@ -55,27 +55,25 @@ INSTANTIATE_CAST_KERNEL(phi::bfloat16, GPUContext)
 #endif
 }  // namespace phi
 
-#define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)        \
-  PD_REGISTER_KERNEL(cast,                                     \
-                     GPU,                                      \
-                     ALL_LAYOUT,                               \
-                     phi::CastKernel,                          \
-                     float,                                    \
-                     double,                                   \
-                     int,                                      \
-                     int64_t,                                  \
-                     int16_t,                                  \
-                     bool,                                     \
-                     int8_t,                                   \
-                     uint8_t,                                  \
-                     phi::float16,                             \
-                     phi::complex64,                           \
-                     phi::complex128,                          \
-                     ##__VA_ARGS__) {                          \
-    kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED); \
-  }
-
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast,
-                                  phi::bfloat16,
-                                  phi::float8_e4m3fn,
-                                  phi::float8_e5m2)
+PD_REGISTER_KERNEL(cast,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CastKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   int16_t,
+                   bool,
+                   int8_t,
+                   uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
