@@ -2556,13 +2556,15 @@ def triu_(
 
 @overload
 def meshgrid(
-    args: Sequence[paddle.Tensor], name: str | None = None, indexing: str = 'ij'
+    args: Sequence[paddle.Tensor],
+    name: str | None = None,
+    indexing: str | None = None,
 ) -> list[paddle.Tensor]: ...
 
 
 @overload
 def meshgrid(
-    *args: paddle.Tensor, name: str | None = None, indexing: str = 'ij'
+    *args: paddle.Tensor, name: str | None = None, indexing: str | None = None
 ) -> list[paddle.Tensor]: ...
 
 
@@ -2600,7 +2602,9 @@ def meshgrid(*args, **kwargs):
 
     """
     name = kwargs.get("name", None)
-    indexing = kwargs.pop("indexing", "ij")
+    indexing = kwargs.pop("indexing", None)
+    if indexing is None:
+        indexing = "ij"
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
