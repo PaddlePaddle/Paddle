@@ -26,7 +26,7 @@ class TestAutoCast(unittest.TestCase):
 
     def test_autocast(self):
         self.init_net()
-        with paddle.autocast():
+        with paddle.autocast("gpu"):
             out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
             out3 = self._linear(out2)
