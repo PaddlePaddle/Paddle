@@ -1383,12 +1383,15 @@ void FlashMaskV2GradBaseKernel(
       params_handle,
       head_size);  // We don't support hdim_v being
                    // different from hdim_qk for now
+  if (arch >= 90) {
+    DenseTensor tile_count_semaphore =
+        phi::Full<int32_t, Context>(dev_ctx, {1}, 0);
+    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
+        tile_count_semaphore.data<int>());
+  } else {
+    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(nullptr);
+  }
 
-  // auto tile_count_semaphore = (params.is_causal || params.is_local) ?
-  // paddle::zeros({1}, opts.dtype(torch::kInt32)) : torch::empty({1},
-  // opts.dtype(torch::kInt32)); params.tile_count_semaphore =
-  // tile_count_semaphore.data_ptr<int>(); Will be zero'ed out in the backward
-  // preprocess kernel
   DenseTensor dq_semaphore = phi::Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
