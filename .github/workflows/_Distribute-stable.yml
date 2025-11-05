@@ -1,4 +1,4 @@
-name: Distribute-stable
+name: Distribute-stable-Build
 
 on:
   workflow_call:
