@@ -142,7 +142,7 @@ enum ProtoDataType {
   PSTRING = 29,
   FP8_E4M3FN = 32,
   FP8_E5M2 = 33,
-  UINT16 = 37,
+  UINT16 = 36,
   UINT32 = 37,
   UINT64 = 38,
 };
