@@ -27,29 +27,79 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
+HOSTDEVICE inline T AreaPixelComputeScale(int64_t input_size,
+                                          int64_t output_size,
+                                          bool align_corners,
+                                          const T scale) {
+  if (align_corners) {
+    if (output_size > 1) {
+      return static_cast<T>(input_size - 1) / (output_size - 1);
+    } else {
+      return static_cast<T>(0);
+    }
+  } else {
+    return (scale > 0.) ? static_cast<T>(1.0) / scale
+                        : (static_cast<T>(input_size) / output_size);
+  }
+}
+
+template <typename T>
+HOSTDEVICE inline T AreaPixelComputeSourceIndex(T scale,
+                                                int64_t dst_index,
+                                                bool align_corners) {
+  if (align_corners) {
+    return scale * dst_index;
+  } else {
+    return scale * (dst_index + static_cast<T>(0.5)) - static_cast<T>(0.5);
+  }
+}
+
+template <typename T>
 HOSTDEVICE inline T CubicConvolution1(T x, T A) {
-  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x +
-         static_cast<T>(1);
+  return ((A + 2) * x - (A + 3)) * x * x + 1;
 }
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution2(T x, T A) {
-  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x -
-         static_cast<T>(4) * A;
+  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
 }
 
 template <typename T>
-HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
+HOSTDEVICE inline void GetCubicUpsampleCoefficients(T coeffs[4], T t) {
   T A = static_cast<T>(-0.75);
 
   T x1 = t;
-  coeffs[0] = CubicConvolution2<T>(x1 + static_cast<T>(1.0), A);
+  coeffs[0] = CubicConvolution2<T>(x1 + 1.0, A);
   coeffs[1] = CubicConvolution1<T>(x1, A);
 
   // opposite coefficients
-  T x2 = static_cast<T>(1.0) - t;
+  T x2 = 1.0 - t;
   coeffs[2] = CubicConvolution1<T>(x2, A);
-  coeffs[3] = CubicConvolution2<T>(x2 + static_cast<T>(1.0), A);
+  coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
+}
+
+// Anti-aliasing filter for bilinear interpolation (triangle filter)
+template <typename T>
+HOSTDEVICE inline T BilinearAAFilter(T x) {
+  x = x < static_cast<T>(0) ? -x : x;  // abs(x)
+  if (x < static_cast<T>(1.0)) {
+    return static_cast<T>(1.0) - x;
+  }
+  return static_cast<T>(0.0);
+}
+
+// Anti-aliasing filter for bicubic interpolation (Keys cubic with a=-0.5)
+template <typename T>
+HOSTDEVICE inline T BicubicAAFilter(T x) {
+  constexpr T a = static_cast<T>(-0.5);
+  x = x < static_cast<T>(0) ? -x : x;  // abs(x)
+  if (x < static_cast<T>(1.0)) {
+    return CubicConvolution1<T>(x, a);
+  }
+  if (x < static_cast<T>(2.0)) {
+    return CubicConvolution2<T>(x, a);
+  }
+  return static_cast<T>(0.0);
 }
 
 inline void ExtractNCDWH(const DDim& dims,

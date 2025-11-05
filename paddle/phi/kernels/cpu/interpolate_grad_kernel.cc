@@ -206,8 +206,8 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
       std::array<MT, 4> x_coeffs;
       std::array<MT, 4> y_coeffs;
 
-      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs.data(), x_t);
-      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs.data(), y_t);
+      funcs::GetCubicUpsampleCoefficients<MT>(x_coeffs.data(), x_t);
+      funcs::GetCubicUpsampleCoefficients<MT>(y_coeffs.data(), y_t);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels

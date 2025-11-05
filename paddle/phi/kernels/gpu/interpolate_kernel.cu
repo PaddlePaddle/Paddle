@@ -34,11 +34,11 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T* lambda2,
     T src_x,
     const size_t in_img_x) {
-  src_x = max(src_x, T(0));
-  *in_img_idx = min(static_cast<size_t>(src_x), in_img_x - 1);
+  *in_img_idx = min(static_cast<size_t>(floorf(src_x)), in_img_x - 1);
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  *lambda1 = static_cast<T>(static_cast<MT>(src_x) - *in_img_idx);
+  MT raw_lambda = static_cast<MT>(src_x) - static_cast<MT>(*in_img_idx);
+  *lambda1 = static_cast<T>(std::min(std::max(raw_lambda, MT(0)), MT(1)));
   *lambda2 = static_cast<T>(1.0) - *lambda1;
 }
 
@@ -209,9 +209,9 @@ __global__ void KeBilinearInterpFw(const T* in,
                                    const size_t output_h,
                                    const size_t output_w,
                                    const size_t num_channels,
-                                   const float ratio_h,
-                                   const float ratio_w,
-                                   const float align_type_value,
+                                   const double ratio_h,
+                                   const double ratio_w,
+                                   const double align_type_value,
                                    funcs::FastDivModForInterpolate divmods) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   size_t nthreads = output_h * output_w;
@@ -231,10 +231,10 @@ __global__ void KeBilinearInterpFw(const T* in,
 
     size_t in_img_idx, in_img_idy, h_id, w_id;
     MT h1lambda, w1lambda, h2lambda, w2lambda;
-    MT src_w = static_cast<MT>(ratio_w * (out_img_idx + align_type_value) -
-                               align_type_value);
-    MT src_h = static_cast<MT>(ratio_h * (out_img_idy + align_type_value) -
-                               align_type_value);
+    MT src_w = static_cast<MT>(ratio_w) * (out_img_idx + align_type_value) -
+               align_type_value;
+    MT src_h = static_cast<MT>(ratio_h) * (out_img_idy + align_type_value) -
+               align_type_value;
 
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
@@ -264,9 +264,9 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
                                        const size_t out_img_h,
                                        const size_t out_img_w,
                                        const size_t nc,
-                                       const float ratio_h,
-                                       const float ratio_w,
-                                       const float align_type_value) {
+                                       const double ratio_h,
+                                       const double ratio_w,
+                                       const double align_type_value) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   size_t out_img_idx =
       threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
@@ -277,10 +277,10 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
 
   size_t in_img_idx, in_img_idy, h_id, w_id;
   MT h1lambda, w1lambda, h2lambda, w2lambda;
-  MT src_w = static_cast<MT>(ratio_w * (out_img_idx + align_type_value) -
-                             align_type_value);
-  MT src_h = static_cast<MT>(ratio_h * (out_img_idy + align_type_value) -
-                             align_type_value);
+  MT src_w = static_cast<MT>(ratio_w) * (out_img_idx + align_type_value) -
+             align_type_value;
+  MT src_h = static_cast<MT>(ratio_h) * (out_img_idy + align_type_value) -
+             align_type_value;
 
   PreCalculatorForLinearInterpInputIndex(
       &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
@@ -312,18 +312,11 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __device__ __forceinline__ static T Kecubic_interp(
-    const T x0, const T x1, const T x2, const T x3, T t) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const T x0, const T x1, const T x2, const T x3, MT t) {
   MT coeffs[4];
-  MT a = static_cast<MT>(-0.75);
-  MT x_1 = static_cast<MT>(t);
-  MT x_2 = static_cast<MT>(1.0) - static_cast<MT>(t);
-  coeffs[0] = funcs::CubicConvolution2<MT>(x_1 + static_cast<MT>(1.0), a);
-  coeffs[1] = funcs::CubicConvolution1<MT>(x_1, a);
-  coeffs[2] = funcs::CubicConvolution1<MT>(x_2, a);
-  coeffs[3] = funcs::CubicConvolution2<MT>(x_2 + static_cast<MT>(1.0), a);
+  funcs::GetCubicUpsampleCoefficients<MT>(coeffs, t);
   return static_cast<T>(
       static_cast<MT>(x0) * coeffs[0] + static_cast<MT>(x1) * coeffs[1] +
       static_cast<MT>(x2) * coeffs[2] + static_cast<MT>(x3) * coeffs[3]);
@@ -341,8 +334,8 @@ __global__ void KeBicubicInterpFw(const T* in,
                                   const size_t output_h,
                                   const size_t output_w,
                                   const size_t num_channels,
-                                  const float ratio_h,
-                                  const float ratio_w,
+                                  const double ratio_h,
+                                  const double ratio_w,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;
@@ -368,15 +361,15 @@ __global__ void KeBicubicInterpFw(const T* in,
       channel_id = tid % num_channels;
     }
 
-    MT in_img_idy = align_corners ? ratio_h * out_img_idy
-                                  : ratio_h * (out_img_idy + 0.5) - 0.5;
-    int64_t input_y = floorf(static_cast<float>(in_img_idy));
-    const T y_t = static_cast<T>(in_img_idy - input_y);
+    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_h, out_img_idy, align_corners);
+    int64_t input_y = floorf(in_img_idy);
+    const auto y_t = static_cast<MT>(in_img_idy - input_y);
 
-    MT in_img_idx = align_corners ? ratio_w * out_img_idx
-                                  : ratio_w * (out_img_idx + 0.5) - 0.5;
-    int64_t input_x = floorf(static_cast<float>(in_img_idx));
-    const T x_t = static_cast<T>(in_img_idx - input_x);
+    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_w, out_img_idx, align_corners);
+    int64_t input_x = floorf(in_img_idx);
+    const auto x_t = static_cast<MT>(in_img_idx - input_x);
 
     T coefficients[4];
     const int64_t in_img_h_max = in_img_h - 1;
@@ -398,16 +391,16 @@ __global__ void KeBicubicInterpFw(const T* in,
         const T* in_pos_3 = &in[out_id_h * input_w + channel_id * in_img_size +
                                 access_y * in_img_w + access_x_3];
 
-        coefficients[k] = Kecubic_interp<T>(
+        coefficients[k] = Kecubic_interp<T, MT>(
             in_pos_0[0], in_pos_1[0], in_pos_2[0], in_pos_3[0], x_t);
       }
 
-      out[out_id_h * output_w + out_id_w] = Kecubic_interp<T>(coefficients[0],
-                                                              coefficients[1],
-                                                              coefficients[2],
-                                                              coefficients[3],
-                                                              y_t);
-
+      out[out_id_h * output_w + out_id_w] =
+          Kecubic_interp<T, MT>(coefficients[0],
+                                coefficients[1],
+                                coefficients[2],
+                                coefficients[3],
+                                y_t);
     } else {
       for (int k = 0; k < 4; k++) {
         size_t access_y = max(min(input_y - 1 + k, in_img_h_max), int64_t(0));
@@ -429,15 +422,16 @@ __global__ void KeBicubicInterpFw(const T* in,
             &in[out_id_h * input_w + access_y * in_img_w * num_channels +
                 access_x_3 * num_channels + channel_id];
 
-        coefficients[k] = Kecubic_interp<T>(
+        coefficients[k] = Kecubic_interp<T, MT>(
             in_pos_0[0], in_pos_1[0], in_pos_2[0], in_pos_3[0], x_t);
       }
 
-      out[out_id_h * output_w + out_id_w] = Kecubic_interp<T>(coefficients[0],
-                                                              coefficients[1],
-                                                              coefficients[2],
-                                                              coefficients[3],
-                                                              y_t);
+      out[out_id_h * output_w + out_id_w] =
+          Kecubic_interp<T, MT>(coefficients[0],
+                                coefficients[1],
+                                coefficients[2],
+                                coefficients[3],
+                                y_t);
     }
   }
 }
@@ -456,9 +450,9 @@ __global__ void KeTrilinearInterpFw(const T* in,
                                     const size_t output_h,
                                     const size_t output_w,
                                     const size_t num_channels,
-                                    const float ratio_d,
-                                    const float ratio_h,
-                                    const float ratio_w,
+                                    const double ratio_d,
+                                    const double ratio_h,
+                                    const double ratio_w,
                                     const bool align_corners,
                                     const int align_mode,
                                     const DataLayout data_layout) {
@@ -587,9 +581,9 @@ __global__ void KeNearestNeighbor3DInterpFw(const T* in,
                                             const size_t output_h,
                                             const size_t output_w,
                                             const size_t num_channels,
-                                            const float ratio_d,
-                                            const float ratio_h,
-                                            const float ratio_w,
+                                            const double ratio_d,
+                                            const double ratio_h,
+                                            const double ratio_w,
                                             const bool align_corners,
                                             const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;  // ncdhw
@@ -773,8 +767,8 @@ static void Interpolate2DCUDAFwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_w = -1;
-  float scale_h = -1;
+  double scale_w = -1;
+  double scale_h = -1;
   if (size_tensor && size_tensor->size() > 0) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
@@ -783,7 +777,7 @@ static void Interpolate2DCUDAFwd(
   } else {
     if (scale_tensor) {
       auto scale_data =
-          funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
+          funcs::get_new_data_from_tensor<double>(scale_tensor.get_ptr());
       if (scale_data.size() > 1) {
         scale_h = scale_data[0];
         scale_w = scale_data[1];
@@ -865,22 +859,11 @@ static void Interpolate2DCUDAFwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
-                                : static_cast<float>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
-  }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  double ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = static_cast<int64_t>(in_h) * in_w;
   int64_t out_hw = static_cast<int64_t>(out_h) * out_w;
@@ -940,7 +923,7 @@ static void Interpolate2DCUDAFwd(
       thread_num = 512;
     }
 #endif
-    const float align_type_value =
+    const double align_type_value =
         (align_mode == 0 && !align_corners) ? 0.5f : 0.f;
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
@@ -1142,30 +1125,12 @@ static void Interpolate3DCUDAFwd(
     return;
   }
 
-  float ratio_d = 0.f;
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_d > 1) {
-    float new_scale_d = 0.f;
-    new_scale_d = (scale_d > 0) ? static_cast<float>(1. / scale_d)
-                                : static_cast<float>(in_d) / out_d;
-    ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                              : static_cast<float>(new_scale_d);
-  }
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
-                                : static_cast<float>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
-  }
+  double ratio_d =
+      funcs::AreaPixelComputeScale<double>(in_d, out_d, align_corners, scale_d);
+  double ratio_h =
+      funcs::AreaPixelComputeScale<double>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_dhw = in_d * in_h * in_w;
   int64_t out_dhw = out_d * out_h * out_w;
@@ -1306,6 +1271,7 @@ void BilinearInterpKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* output) {
   InterpolateKernel<T, Context>(dev_ctx,
                                 x,
@@ -1512,6 +1478,7 @@ void BicubicInterpKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* output) {
   InterpolateKernel<T, Context>(dev_ctx,
                                 x,

@@ -597,8 +597,8 @@ __global__ void KeBicubicInterpBw(T* in,
     MT x_coeffs[4];
     MT y_coeffs[4];
 
-    funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
-    funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
+    funcs::GetCubicUpsampleCoefficients<MT>(x_coeffs, x_t);
+    funcs::GetCubicUpsampleCoefficients<MT>(y_coeffs, y_t);
 
     const T* out_pos = &out[out_id_h * output_w + out_id_w];
     T* in_pos;
@@ -1082,22 +1082,10 @@ static void Interpolate2DCUDABwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
-                                : static_cast<float>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
-  }
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = in_h * in_w;
   int64_t out_hw = out_h * out_w;
@@ -1380,32 +1368,12 @@ static void Interpolate3DCUDABwd(
     return;
   }
 
-  double ratio_d = 0.f;
-  double ratio_h = 0.f;
-  double ratio_w = 0.f;
-  if (out_d > 1) {
-    double new_scale_d = 0.0;
-    new_scale_d = (scale_d > 0) ? static_cast<double>(1.0 / scale_d)
-                                : static_cast<double>(in_d) / out_d;
-    ratio_d = (align_corners) ? static_cast<double>(in_d - 1) / (out_d - 1)
-                              : new_scale_d;
-  }
-
-  if (out_h > 1) {
-    double new_scale_h = 0.0;
-    new_scale_h = (scale_h > 0) ? static_cast<double>(1.0 / scale_h)
-                                : static_cast<double>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<double>(in_h - 1) / (out_h - 1)
-                              : new_scale_h;
-  }
-
-  if (out_w > 1) {
-    double new_scale_w = 0.0;
-    new_scale_w = (scale_w > 0) ? static_cast<double>(1.0 / scale_w)
-                                : static_cast<double>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<double>(in_w - 1) / (out_w - 1)
-                              : new_scale_w;
-  }
+  double ratio_d =
+      funcs::AreaPixelComputeScale<double>(in_d, out_d, align_corners, scale_d);
+  double ratio_h =
+      funcs::AreaPixelComputeScale<double>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_dhw = in_d * in_h * in_w;
   int64_t out_dhw = out_d * out_h * out_w;
@@ -1552,7 +1520,9 @@ void BilinearInterpGradKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* x_grad) {
+  // TODO(zrr1999): Implement antialias backward
   InterpolateGradKernel<T, Context>(dev_ctx,
                                     x,
                                     out_size,
@@ -1770,7 +1740,9 @@ void BicubicInterpGradKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
+    bool antialias,
     DenseTensor* x_grad) {
+  // TODO(zrr1999): Implement antialias backward
   InterpolateGradKernel<T, Context>(dev_ctx,
                                     x,
                                     out_size,
