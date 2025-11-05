@@ -60,6 +60,12 @@ from .layer.activation import (
 from .layer.common import (
     AlphaDropout,
     Bilinear,
+    CircularPad1D,
+    CircularPad2D,
+    CircularPad3D,
+    ConstantPad1D,
+    ConstantPad2D,
+    ConstantPad3D,
     CosineSimilarity,
     Dropout,
     Dropout2D,
@@ -73,6 +79,12 @@ from .layer.common import (
     Pad1D,
     Pad2D,
     Pad3D,
+    ReflectionPad1D,
+    ReflectionPad2D,
+    ReflectionPad3D,
+    ReplicationPad1D,
+    ReplicationPad2D,
+    ReplicationPad3D,
     Unflatten,
     Unfold,
     Upsample,
@@ -94,13 +106,10 @@ from .layer.container import (
 )
 from .layer.conv import (
     Conv1D,
-    Conv1d,
     Conv1DTranspose,
     Conv2D,
-    Conv2d,
     Conv2DTranspose,
     Conv3D,
-    Conv3d,
     Conv3DTranspose,
 )
 from .layer.distance import PairwiseDistance
@@ -189,6 +198,22 @@ from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
 SiLU = Silu
+ReflectionPad1d = ReflectionPad1D
+ReflectionPad2d = ReflectionPad2D
+ReflectionPad3d = ReflectionPad3D
+ConstantPad1d = ConstantPad1D
+ConstantPad2d = ConstantPad2D
+ConstantPad3d = ConstantPad3D
+ReplicationPad1d = ReplicationPad1D
+ReplicationPad2d = ReplicationPad2D
+ReplicationPad3d = ReplicationPad3D
+CircularPad1d = CircularPad1D
+CircularPad2d = CircularPad2D
+CircularPad3d = CircularPad3D
+Conv1d = Conv1D
+Conv2d = Conv2D
+Conv3d = Conv3D
+
 
 __all__ = [
     'BatchNorm',
@@ -212,6 +237,27 @@ __all__ = [
     'Pad1D',
     'Pad2D',
     'Pad3D',
+    'ConstantPad1D',
+    'ConstantPad2D',
+    'ConstantPad3D',
+    'CircularPad1d',
+    'CircularPad2d',
+    'CircularPad3d',
+    'ReplicationPad1D',
+    'ReplicationPad2D',
+    'ReplicationPad3D',
+    'ReflectionPad1D',
+    'ReflectionPad2D',
+    'ReflectionPad3D',
+    'ConstantPad1d',
+    'ConstantPad2d',
+    'ConstantPad3d',
+    'ReplicationPad1d',
+    'ReplicationPad2d',
+    'ReplicationPad3d',
+    'ReflectionPad1d',
+    'ReflectionPad2d',
+    'ReflectionPad3d',
     'CosineSimilarity',
     'Dropout',
     'Dropout2D',
