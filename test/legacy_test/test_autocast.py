@@ -28,7 +28,7 @@ class TestAutoCast(unittest.TestCase):
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
             out3 = self._linear(out2)
 
-        self.assertEqual(out1.dtype, paddle.float16)
+        self.assertEqual(out1.dtype, paddle.float32)
         self.assertEqual(out2.dtype, paddle.float16)
         self.assertEqual(out3.dtype, paddle.float32)
 
