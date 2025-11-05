@@ -1085,6 +1085,14 @@ class AdaptiveAvgPool2D(Layer):
     def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
 
+    @property
+    def output_size(self) -> Size2:
+        return self._output_size
+
+    @output_size.setter
+    def output_size(self, value: Size2) -> None:
+        self._output_size = value
+
 
 class AdaptiveAvgPool3D(Layer):
     r"""
@@ -1183,6 +1191,14 @@ class AdaptiveAvgPool3D(Layer):
 
     def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
+
+    @property
+    def output_size(self) -> Size3:
+        return self._output_size
+
+    @output_size.setter
+    def output_size(self, value: Size3) -> None:
+        self._output_size = value
 
 
 class AdaptiveMaxPool1D(Layer):

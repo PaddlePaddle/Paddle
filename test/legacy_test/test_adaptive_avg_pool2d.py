@@ -335,12 +335,17 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
                     output_size=[3, 3]
                 )
                 out_6 = adaptive_avg_pool(input=x)
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
+                    output_size=[1, 3]
+                )
+                adaptive_avg_pool.output_size = [3, 3]
+                out_7 = adaptive_avg_pool(input=x)
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5, res_6] = exe.run(
+            [res_1, res_2, res_3, res_4, res_5, res_6, res_7] = exe.run(
                 main_program,
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
             )
 
             np.testing.assert_allclose(
@@ -360,6 +365,9 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 res_6, self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_7, self.res_1_np, rtol=1e-5, atol=1e-8
             )
 
     def test_dynamic_graph(self):
@@ -394,6 +402,10 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=[3, 3])
             out_6 = adaptive_avg_pool(input=x)
 
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=[1, 3])
+            adaptive_avg_pool.output_size = [3, 3]
+            out_7 = adaptive_avg_pool(input=x)
+
             np.testing.assert_allclose(
                 out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
             )
@@ -411,6 +423,9 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 out_6.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_7.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
             )
 
 

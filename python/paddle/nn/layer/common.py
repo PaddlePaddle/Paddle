@@ -1319,6 +1319,7 @@ class ZeroPad1D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
@@ -1332,6 +1333,14 @@ class ZeroPad1D(Layer):
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+
+    @property
+    def padding(self) -> Tensor | Sequence[int]:
+        return self._pad
+
+    @padding.setter
+    def padding(self, value: Tensor | Sequence[int]) -> None:
+        self._pad = value
 
 
 class Pad2D(Layer):
@@ -1479,6 +1488,14 @@ class ZeroPad2D(Layer):
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
+    @property
+    def padding(self) -> Tensor | Sequence[int]:
+        return self._pad
+
+    @padding.setter
+    def padding(self, value: Tensor | Sequence[int]) -> None:
+        self._pad = value
+
 
 class Pad3D(Layer):
     """
@@ -1610,6 +1627,7 @@ class ZeroPad3D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
@@ -1623,6 +1641,14 @@ class ZeroPad3D(Layer):
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+
+    @property
+    def padding(self) -> Tensor | Sequence[int]:
+        return self._pad
+
+    @padding.setter
+    def padding(self, value: Tensor | Sequence[int]) -> None:
+        self._pad = value
 
 
 class CosineSimilarity(Layer):

@@ -161,6 +161,14 @@ class TestZeroPad2DLayer(unittest.TestCase):
             rtol=1e-05,
         )
 
+        new_layer = ZeroPad2D(padding=[1, 2, 4, 1])
+        new_layer.padding = self.pad
+        np.testing.assert_allclose(
+            zeropad2d(to_tensor(self.x), self.pad).numpy(),
+            new_layer(to_tensor(self.x)),
+            rtol=1e-05,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

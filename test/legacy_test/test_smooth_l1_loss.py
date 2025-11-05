@@ -470,7 +470,6 @@ class SmoothL1LossDivDelta(unittest.TestCase):
 
 class TestSmoothL1Loss_Compatibility(unittest.TestCase):
     def setUp(self):
-        paddle.seed(2025)
         self.input_np = np.random.random([100, 200]).astype(np.float32)
         self.label_np = np.random.random([100, 200]).astype(np.float32)
         self.delta = np.random.rand()

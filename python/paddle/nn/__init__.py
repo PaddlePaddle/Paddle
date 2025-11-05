@@ -198,7 +198,9 @@ MaxUnpool2d = MaxUnPool2D
 MaxUnpool3d = MaxUnPool3D
 UpsamplingBilinear2d = UpsamplingBilinear2D
 UpsamplingNearest2d = UpsamplingNearest2D
+ZeroPad1d = ZeroPad1D
 ZeroPad2d = ZeroPad2D
+ZeroPad3d = ZeroPad3D
 
 __all__ = [
     'BatchNorm',
