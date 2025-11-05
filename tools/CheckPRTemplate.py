@@ -22,11 +22,11 @@ import requests
 PR_checkTemplate = ['Paddle']
 
 BRANCH = os.environ['BRANCH']
-if BRANCH == 'develop':
+if BRANCH.startswith("develop"):
     REPO_TEMPLATE = {
         "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
     }
-elif BRANCH == 'fleety_':
+elif BRANCH.startswith("fleety_"):
     REPO_TEMPLATE = {
         "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?devPR:https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
     }
