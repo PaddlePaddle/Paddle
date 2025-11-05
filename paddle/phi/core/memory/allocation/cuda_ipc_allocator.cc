@@ -65,6 +65,28 @@ std::shared_ptr<void> GetIpcBasePtr(std::string handle) {
   return sp;
 }
 
+void IpcCollect() {
+  std::lock_guard<std::mutex> lock(ipc_mutex_);
+
+  size_t collected_count = 0;
+  size_t total_count = ipc_handle_to_baseptr_.size();
+
+  auto iter = ipc_handle_to_baseptr_.begin();
+  while (iter != ipc_handle_to_baseptr_.end()) {
+    if (iter->second.expired()) {
+      VLOG(6) << "IpcCollect: removing expired IPC handle: " << iter->first;
+      iter = ipc_handle_to_baseptr_.erase(iter);
+      collected_count++;
+    } else {
+      ++iter;
+    }
+  }
+
+  VLOG(3) << "IpcCollect: collected " << collected_count
+          << " expired IPC handles "
+          << "out of " << total_count << " total handles";
+}
+
 CudaIpcAllocation::~CudaIpcAllocation() {
   shared_ptr_.reset();
   VLOG(6) << "tensor deleted cudaIpcCloseMemHandle for ptr:"

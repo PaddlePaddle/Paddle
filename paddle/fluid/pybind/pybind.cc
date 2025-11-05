@@ -1694,6 +1694,17 @@ PYBIND11_MODULE(libpaddle, m) {
           }
         });
 
+  m.def("_ipc_collect", []() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
+    paddle::memory::allocation::IpcCollect();
+#else
+            PADDLE_THROW(common::errors::Unavailable(
+                "Paddle is not compiled with CUDA/HIP/XPU, "
+                "so `ipc_collect` cannot be used."));
+#endif
+  });
+
   class NodePostHookRemoveHelper {
    public:
     NodePostHookRemoveHelper(std::shared_ptr<egr::GradNodeBase> node,

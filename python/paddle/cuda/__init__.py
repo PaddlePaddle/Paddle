@@ -25,7 +25,9 @@ from paddle.device import (
     StreamContext,
     _device_to_paddle as _device_to_paddle,
     amp,  # noqa: F401
+    current_device,
     device,
+    ipc_collect,
     is_available as _device_is_available,
     is_bf16_supported,
     is_current_stream_capturing as _is_current_stream_capturing,
@@ -523,35 +525,6 @@ def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
     return cudart().cudaMemGetInfo(device_id)
 
 
-def current_device() -> int:
-    """
-    Return the index of a currently selected device.
-
-    Returns:
-        int: The index of the currently selected device.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> device_id = paddle.cuda.current_device()
-            >>> print(f"Current device index: {device_id}")
-    """
-    # Use paddle.device.get_device() to get the current device string
-    device_str = paddle_device.get_device()
-
-    # Parse the device string to extract the device index
-    # Format examples: 'gpu:0', 'xpu:0', 'custom_device:0'
-    if ':' in device_str:
-        device_id = int(device_str.split(':')[1])
-    else:
-        # If no device index is specified, default to 0
-        device_id = 0
-
-    return device_id
-
-
 def device_count() -> int:
     """
     Return the number of devices available.
@@ -937,4 +910,5 @@ __all__ = [
     "reset_peak_memory_stats",
     "Event",
     "StreamContext",
+    "ipc_collect",
 ]
