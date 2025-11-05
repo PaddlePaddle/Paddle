@@ -55,10 +55,6 @@ ln -sf $(which pip3.10) /usr/local/bin/pip
 echo "Downloading PaddleFormers.tar.gz..."
 wget -q https://paddleformers.bj.bcebos.com/wheels/PaddleFormers.tar.gz
 tar xf PaddleFormers.tar.gz
-mkdir dist
-cd dist
-wget -q https://paddle-github-action.bj.bcebos.com/PR/gpups/76162/17afc398d44b3f015ca5a9d4edf65cc19ae7b3dc/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
-cd ..
 echo "Extracting PaddleFormers.tar.gz..."
 cd PaddleFormers
 cp -r ${CFS_DIR}/models ./models

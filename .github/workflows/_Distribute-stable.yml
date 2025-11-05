@@ -30,6 +30,7 @@ defaults:
 jobs:
   build:
     name: Build
+    if: ${{ inputs.clone-can-skip != 'true' }}
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
@@ -117,7 +118,6 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
-        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -143,7 +143,6 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
-        if: false
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -163,7 +162,7 @@ jobs:
           '
 
       - name: Build
-        if: false
+        if: ${{ inputs.clone-can-skip != 'true' }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -172,7 +171,7 @@ jobs:
           '
 
       - name: Packaging of products
-        if: false
+        if: ${{ inputs.clone-can-skip != 'true' }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
@@ -188,7 +187,7 @@ jobs:
           '
 
       - name: Upload product to bos
-        if: false
+        if: ${{ inputs.clone-can-skip != 'true' }}
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -453,8 +452,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading Paddle.tar.gz"
-          #wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
@@ -476,7 +474,6 @@ jobs:
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          sleep 3d
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
