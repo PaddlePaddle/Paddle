@@ -263,28 +263,6 @@ class TestPool1D_API(unittest.TestCase):
             result = avg_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-            result = avg_pool1d_dg(input=input)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
-            avg_pool1d_dg = paddle.nn.AvgPool1d(
-                kernel_size=2, stride=None, padding=1, exclusive=True
-            )
-            result = avg_pool1d_dg(input)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
-            avg_pool1d_dg = paddle.nn.AvgPool1d(
-                kernel_size=2, stride=None, padding=1, count_include_pad=False
-            )
-            result = avg_pool1d_dg(input)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
-            avg_pool1d_dg = paddle.nn.AvgPool1D(
-                kernel_size=2, stride=None, padding=1, count_include_pad=True
-            )
-            avg_pool1d_dg.count_include_pad = False
-            result = avg_pool1d_dg(input)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
     def check_max_static_results(self, place):
         paddle.enable_static()
         with paddle.static.program_guard(

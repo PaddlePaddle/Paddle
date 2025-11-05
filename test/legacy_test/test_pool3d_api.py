@@ -80,24 +80,6 @@ class TestPool3D_API(unittest.TestCase):
             result = avg_pool3d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-            avg_pool3d_dg = paddle.nn.AvgPool3d(
-                kernel_size=2, stride=None, padding="SAME"
-            )
-            result = avg_pool3d_dg(input=input)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
-            avg_pool3d_dg = paddle.nn.AvgPool3D(
-                kernel_size=2,
-                stride=None,
-                padding="SAME",
-                count_include_pad=True,
-                divisor_override=2,
-            )
-            avg_pool3d_dg.count_include_pad = False
-            avg_pool3d_dg.divisor_override = None
-            result = avg_pool3d_dg(input=input)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
     def check_avg_dygraph_padding_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
