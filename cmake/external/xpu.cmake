@@ -36,7 +36,11 @@ add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
   set(XPU_XHPC_BASE_DATE "dev/20251031")
 endif()
-set(XPU_XCCL_BASE_VERSION "3.0.3.4") # For XRE5
+if(WITH_ARM)
+  set(XPU_XCCL_BASE_VERSION "20251104") # For XRE5
+else()
+  set(XPU_XCCL_BASE_VERSION "3.0.3.4") # For XRE5
+endif()
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20250507/xpu3")
 endif()
@@ -56,7 +60,11 @@ else()
 endif()
 
 if(NOT DEFINED XPU_FFT_BASE_DATE)
-  set(XPU_FFT_BASE_DATE "20250704")
+  if(WITH_ARM)
+    set(XPU_FFT_BASE_DATE "20251017")
+  else()
+    set(XPU_FFT_BASE_DATE "20250704")
+  endif()
 endif()
 
 set(XPU_XRE_BASE_URL
@@ -97,7 +105,7 @@ if(WITH_ARM)
   if(WITH_XPU_XRE5)
     set(XPU_XRE_DIR_NAME "xre-kylin_v10_server-aarch64-${XPU_XRE_BASE_VERSION}")
     # TODO: xccl has no kylin output now. set default value here.
-    set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
+    set(XPU_XCCL_DIR_NAME "xccl_Linux_aarch64")
     set(XPU_XHPC_DIR_NAME "xhpc-kylinv4_aarch64")
     set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
   else()
@@ -106,7 +114,8 @@ if(WITH_ARM)
     set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
   endif()
   if(WITH_XPU_FFT)
-    set(XPU_FFT_DIR_NAME "kylin_v10_aarch64/xpufft_kylinv10_aarch64_v2")
+    set(XPU_FFT_DIR_NAME
+        "kylin_v10_aarch64/${XPU_FFT_BASE_DATE}/xpufft_kylinv10_aarch64")
   endif()
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
