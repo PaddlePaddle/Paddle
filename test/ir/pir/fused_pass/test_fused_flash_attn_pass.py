@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
 import unittest
 
 import numpy as np
+from op_test import get_cuda_version
 from pass_test import PassTest
 
 import paddle
@@ -24,18 +23,6 @@ from paddle.base import core
 
 np.random.seed(42)
 paddle.enable_static()
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 is_sm_supported = (

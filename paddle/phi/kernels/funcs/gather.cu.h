@@ -16,10 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/common/memory_utils.h"
-// TODO(paddle-dev): move gpu_primitives.h to phi
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -81,9 +80,6 @@ void GPUGatherNd(const phi::GPUContext& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
-  const auto gplace = dev_ctx.GetPlace();
-  auto cplace = phi::CPUPlace();
-
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
   auto input_dims = input.dims();

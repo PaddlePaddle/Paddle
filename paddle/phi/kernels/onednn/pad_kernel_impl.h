@@ -107,7 +107,7 @@ template <typename T, typename Context>
 void PadOpKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const std::vector<int64_t>& paddings,
-                 float pad_value,
+                 double pad_value,
                  DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto& astream = OneDNNContext::tls().get_stream();

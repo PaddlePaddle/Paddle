@@ -368,31 +368,36 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
 }
 
+/**
+ * @brief Get the string representation of the current Python stack
+ *
+ * Use Python’s traceback module to obtain the current stack information and
+ * convert it into a string representation for return.
+ *
+ * @return String representation of the current Python stack
+ */
+std::string GetPythonStack() {
+  pybind11::gil_scoped_acquire gil;
+  PyObject* mod = PyImport_ImportModule("traceback");
+  PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
+  std::string str = "";
+  for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
+    PyObject* line = PyList_GetItem(traceback_list, i);
+    str += py::str(PyUnicode_AsUTF8(line));
+  }
+  return str;
+}
 void SetPythonStack() {
   if (FLAGS_check_nan_inf && FLAGS_check_nan_inf_level == 0) {
     VLOG(4) << "this is SetPythonStack";
-    pybind11::gil_scoped_acquire gil;
-    PyObject* mod = PyImport_ImportModule("traceback");
-    PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
-    std::string str = "";
-    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
-      PyObject* line = PyList_GetItem(traceback_list, i);
-      str += py::str(PyUnicode_AsUTF8(line));
-    }
+    std::string str = GetPythonStack();
     std::string last = str + egr::Controller::Instance().GetPythonStack();
     egr::Controller::Instance().SetPythonStack(last);
   }
 
   if (FLAGS_call_stack_level == 3) {
     VLOG(6) << "this is SetPythonStack";
-    pybind11::gil_scoped_acquire gil;
-    PyObject* mod = PyImport_ImportModule("traceback");
-    PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
-    std::string str = "";
-    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
-      PyObject* line = PyList_GetItem(traceback_list, i);
-      str += py::str(PyUnicode_AsUTF8(line));
-    }
+    std::string str = GetPythonStack();
     egr::Controller::Instance().SetPythonStack(str);
   }
 }
@@ -1200,9 +1205,14 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
 }
 
 PyObject* ToPyObject(const phi::DataType& dtype) {
-  auto obj = ::pybind11::cast(dtype);
-  obj.inc_ref();
-  return obj.ptr();
+  static const std::vector<std::string> dtype_names = {
+      "UNDEFINED", "BOOL",     "UINT8",         "INT8",        "UINT16",
+      "INT16",     "UINT32",   "INT32",         "UINT64",      "INT64",
+      "FLOAT32",   "FLOAT64",  "COMPLEX64",     "COMPLEX128",  "PSTRING",
+      "FLOAT16",   "BFLOAT16", "FLOAT8_E4M3FN", "FLOAT8_E5M2",
+  };
+  return PyObject_GetAttrString(reinterpret_cast<PyObject*>(g_data_type_pytype),
+                                dtype_names[static_cast<int>(dtype)].c_str());
 }
 
 PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {
@@ -1516,41 +1526,13 @@ static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
   }
 }
 
-// For Intermediate State Dygraph,
-// we use an uninitialized Tensor to represent dispensable Tensor
-paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
-                                  const std::string& arg_name,
-                                  PyObject* args,
-                                  ssize_t arg_idx,
-                                  bool dispensable) {
-  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
-  return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
-}
-
-paddle::Tensor& GetTensorFromArgsOrKWArgs(
+std::vector<paddle::Tensor> GetTensorListFromPyObject_(
     const std::string& op_type,
     const std::string& arg_name,
-    PyObject* args,
-    ssize_t arg_idx,
-    PyObject* kwargs,
-    const std::vector<std::string>& keywords,
-    const int nargs,
-    int* remaining_kwargs,
-    bool dispensable) {
-  PyObject* obj = GetItemFromArgsOrKWArgs(
-      args, arg_idx, kwargs, keywords, nargs, remaining_kwargs);
-  return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
-}
-
-std::vector<paddle::Tensor> GetTensorListFromArgs(
-    const std::string& op_type,
-    const std::string& arg_name,
-    PyObject* args,
+    PyObject* list,
     ssize_t arg_idx,
     bool dispensable,
     const phi::distributed::ProcessMesh* mesh) {
-  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
-
   if (list == nullptr) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -1664,6 +1646,61 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(
   }
 
   return result;
+}
+
+// For Intermediate State Dygraph,
+// we use an uninitialized Tensor to represent dispensable Tensor
+paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
+                                  const std::string& arg_name,
+                                  PyObject* args,
+                                  ssize_t arg_idx,
+                                  bool dispensable) {
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
+}
+
+paddle::Tensor& GetTensorFromArgsOrKWArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    PyObject* kwargs,
+    const std::vector<std::string>& keywords,
+    const int nargs,
+    int* remaining_kwargs,
+    bool dispensable) {
+  PyObject* obj = GetItemFromArgsOrKWArgs(
+      args, arg_idx, kwargs, keywords, nargs, remaining_kwargs);
+  return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
+}
+
+std::vector<paddle::Tensor> GetTensorListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  return GetTensorListFromPyObject_(
+      op_type, arg_name, list, arg_idx, dispensable, mesh);
+}
+
+std::vector<paddle::Tensor> GetTensorListFromArgsOrKWArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    PyObject* kwargs,
+    const std::vector<std::string>& keywords,
+    const int nargs,
+    int* remaining_kwargs,
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
+  PyObject* list = GetItemFromArgsOrKWArgs(
+      args, arg_idx, kwargs, keywords, nargs, remaining_kwargs);
+  return GetTensorListFromPyObject_(
+      op_type, arg_name, list, arg_idx, dispensable, mesh);
 }
 
 paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(

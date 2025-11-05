@@ -740,7 +740,7 @@ PHI_DEFINE_EXPORTED_int32(
 /**
  * Debug related FLAG
  * Name: dump_grad_node_forward_stack_path
- * Since Version: 3.2.1
+ * Since Version: 3.3
  * Value Range: string, default=""
  * Example:
  * Note: Dump grad node forward call stack to the dir path.
@@ -748,25 +748,37 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
                            "",
                            "Dump grad node forward call stack to the dir path");
+/**
+ * Debug related FLAG
+ * Name: dump_api_python_stack_path
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump api forward python call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(
+    dump_api_python_stack_path,
+    "",
+    "Dump api forward python call stack to the dir path");
 
 /**
  * Debug related FLAG
- * Name: tensor_md5_checksum_output_dir
- * Since Version: 3.2.1
+ * Name: tensor_md5_checksum_output_path
+ * Since Version: 3.3
  * Value Range: string, default=""
  * Example:
- * Note: Export all API output tensors to the specified directory.
- * If tensor_md5_checksum_output_dir is "", this flag will not take effect.
+ * Note: Export all API output tensors to the specified file.
+ * If tensor_md5_checksum_output_path is "", this flag will not take effect.
  */
 PHI_DEFINE_EXPORTED_string(
-    tensor_md5_checksum_output_dir,
+    tensor_md5_checksum_output_path,
     "",
-    "Export all API output tensors to the specified directory.");
+    "Export all API output tensors to the specified file.");
 
 /**
  * Debug related FLAG
  * Name: enable_unique_name
- * Since Version: 3.2.1
+ * Since Version: 3.3
  * Value Range: bool, default=false
  * Example:
  * Note: If True,the Tensor, C++ API and GradNode will has unique name,such as

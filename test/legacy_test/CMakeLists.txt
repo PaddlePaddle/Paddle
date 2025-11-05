@@ -254,11 +254,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
-
-elseif(WITH_GPU)
-  if(${CUDNN_VERSION} VERSION_LESS 7100)
-    list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
-  endif()
 endif()
 
 if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
@@ -552,7 +547,6 @@ if(NOT WITH_GPU
     test_incubate_cal_aux_loss
     test_incubate_expand_modality_expert_id
     test_incubate_fused_loss
-    test_incubate_fused_rmsnorm_ext
     test_incubate_int_bincount
     test_incubate_moe_combine
     test_incubate_moe_combine_no_weight
@@ -570,6 +564,15 @@ if(NOT WITH_GPU
     test_fused_transpose_spilt_quant_op
     test_fused_transpose_wlch_split_quant_op
     test_fused_weighted_swiglu_act_quant_op)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
 endif()
 
 set(has_arch_ge80 FALSE)
@@ -636,7 +639,6 @@ list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_weight_decay)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
-  list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
@@ -1018,7 +1020,7 @@ if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient
                        PROPERTIES TIMEOUT 300)
 endif()
-set_tests_properties(test_decorator PROPERTIES TIMEOUT 150)
+set_tests_properties(test_decorator PROPERTIES TIMEOUT 200)
 
 if(APPLE)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)

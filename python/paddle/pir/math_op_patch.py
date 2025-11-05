@@ -528,6 +528,13 @@ def monkey_patch_value():
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
+            elif other_var is None:
+                if method_name == "__eq__":
+                    return False
+                elif method_name == "__ne__":
+                    return True
+                else:
+                    pass
             else:
                 # do nothing
                 pass
