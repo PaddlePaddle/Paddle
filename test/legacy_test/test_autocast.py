@@ -18,14 +18,11 @@ import paddle
 
 
 class TestAutoCast(unittest.TestCase):
-    def init_net(self):
-        self._conv = paddle.nn.Conv2D(
-            in_channels=1, out_channels=6, kernel_size=3, bias_attr=False
-        )
-        self._linear = paddle.nn.Linear(in_features=4, out_features=4)
+    def setUp(self):
+        self._conv = paddle.nn.Conv2D(1, 1, 3, bias_attr=False)
+        self._linear = paddle.nn.Linear(4, 4)
 
     def test_autocast(self):
-        self.init_net()
         with paddle.autocast("gpu"):
             out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
