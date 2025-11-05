@@ -1373,11 +1373,6 @@ def normal(
             [(1.136009693145752-0.11074113845825195j),
              (2.529331684112549+2.1968750953674316j) ,
              (2.2910101413726807+1.8114780187606812j)])
-
-            >>> # Use size as alias for shape
-            >>> out6 = paddle.normal(size=[2, 3])
-            >>> print(out6.shape)
-            [2, 3]
     """
     if not in_dynamic_mode():
         check_type(

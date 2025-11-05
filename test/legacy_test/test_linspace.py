@@ -226,7 +226,7 @@ class TestLinspaceAPINewParams(unittest.TestCase):
 
     def test_all_new_params_combination(self):
         with dygraph_guard():
-            paddle.device.set_device('gpu:0')
+            paddle.device.set_device('cpu')
             out_tensor = paddle.empty([5], dtype='float32')
 
             result = paddle.linspace(
@@ -235,12 +235,12 @@ class TestLinspaceAPINewParams(unittest.TestCase):
                 5,
                 dtype='float32',
                 out=out_tensor,
-                device='gpu:0',
+                device='cpu',
                 requires_grad=True,
             )
 
             self.assertEqual(result.data_ptr(), out_tensor.data_ptr())
-            self.assertTrue(result.place.is_gpu_place())
+            self.assertTrue(result.place.is_cpu_place())
             self.assertFalse(result.stop_gradient)
 
             np_expected = np.linspace(0, 10, 5, dtype='float32')

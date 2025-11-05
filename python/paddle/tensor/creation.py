@@ -377,11 +377,6 @@ def linspace(
             >>> print(data.numpy())
             [0.]
 
-            >>> # Using alias 'end' for 'stop' and 'steps' for 'num'
-            >>> data = paddle.linspace(0, end=10, steps=5, dtype='float32')
-            >>> print(data.numpy())
-            [0. 2.5 5. 7.5 10.]
-
             >>> # Using device parameter
             >>> data = paddle.linspace(0, 10, 5, device='cpu')
             >>> print(data.numpy())

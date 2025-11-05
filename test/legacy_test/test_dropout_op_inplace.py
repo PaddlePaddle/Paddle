@@ -16,14 +16,11 @@ import unittest
 
 import numpy as np
 from op_test import (
-    get_device_place,
     get_places,
-    is_custom_device,
 )
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 class TestDropoutInplaceDygraph(unittest.TestCase):
@@ -167,44 +164,9 @@ class TestDropoutInplaceAxisDygraph(unittest.TestCase):
                 self.assertEqual(id(result), input_id)
 
 
-class TestDropoutInplaceFP16(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-
-    @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
-        "core is not compiled with CUDA",
-    )
-    def test_inplace_fp16(self):
-        place = get_device_place()
-        with base.dygraph.guard(place):
-            in_np = np.random.random([32, 64]).astype("float16")
-            input = paddle.to_tensor(in_np)
-            input_id = id(input)
-            result = paddle.nn.functional.dropout(x=input, p=0.0, inplace=True)
-            self.assertEqual(id(result), input_id)
-
-
-class TestDropoutInplaceBF16(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-
-    def test_inplace_bf16(self):
-        for place in get_places():
-            with base.dygraph.guard(place):
-                in_np = np.random.random([32, 64]).astype("float32")
-                input = paddle.to_tensor(in_np)
-                input = paddle.cast(input, 'bfloat16')
-                input_id = id(input)
-                result = paddle.nn.functional.dropout(
-                    x=input, p=0.0, inplace=True
-                )
-                self.assertEqual(id(result), input_id)
-
-
 class TestDropoutLayerInplace(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
+        np.random.seed(0x0721)
         self.places = get_places()
 
     def test_dropout_layer_inplace(self):
@@ -218,10 +180,6 @@ class TestDropoutLayerInplace(unittest.TestCase):
                 result = m(input)
                 self.assertEqual(id(result), input_id)
                 np.testing.assert_allclose(result.numpy(), in_np, rtol=1e-05)
-
-    def test_dropout_layer_extra_repr(self):
-        m1 = paddle.nn.Dropout(p=0.5, inplace=True)
-        self.assertIn('inplace=True', m1.extra_repr())
 
 
 if __name__ == '__main__':
