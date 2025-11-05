@@ -1868,7 +1868,11 @@ class Embedding(Layer):
             if self._weight_attr is None:
                 self.weight.stop_gradient = _freeze
 
-        if in_dynamic_mode() and padding_idx != -1:
+        if (
+            in_dynamic_mode()
+            and padding_idx != -1
+            and self.weight._is_initialized()
+        ):
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
