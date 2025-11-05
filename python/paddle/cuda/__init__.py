@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Union
 import paddle
 from paddle import base, core, device as paddle_device, framework
 from paddle.device import (
-    Event,
     Stream,
     _device_to_paddle as _device_to_paddle,
     amp,  # noqa: F401
@@ -317,6 +316,37 @@ class StreamContext(_PaddleStreamGuard):
         super().__init__(stream)
 
 
+def Event(
+    enable_timing: bool = False,
+    blocking: bool = False,
+    interprocess: bool = False,
+    external: bool = False,
+):
+    '''
+
+    A device event wrapper around StreamBase.
+
+    Args:
+        enable_timing (bool, optional): indicates if the event should measure time, default is False
+        blocking (bool, optional): if True, ``wait`` will be blocking, default is False
+        interprocess (bool): if True, the event can be shared between processes, default is False
+        external (bool): Indicates whether the event is created on the host side and managed by the user; this parameter has no practical effect at present.
+    Returns:
+        Event: The event.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('custom_cpu')
+            >>> e1 = paddle.cuda.Event()
+
+    '''
+    return paddle_device.Event(None, enable_timing, blocking, interprocess)
+
+
 def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
     """
     Return the random number generator state of the specified device.
@@ -369,7 +399,7 @@ def set_rng_state(
     paddle_device.set_rng_state(new_state, device)
 
 
-def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
+def stream(stream: paddle_device.Stream | None) -> StreamContext:
     '''
 
     Notes:
@@ -400,7 +430,7 @@ def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
             >>> print(data4)
 
     '''
-    return StreamContext(stream_obj)
+    return StreamContext(stream)
 
 
 class nvtx:

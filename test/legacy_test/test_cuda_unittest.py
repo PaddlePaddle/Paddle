@@ -361,7 +361,7 @@ class TestExternalStream(unittest.TestCase):
 
         # Test case 4: Verify original stream remains valid after external stream deletion
         del external_stream
-        with paddle.cuda.stream(original_stream):
+        with paddle.cuda.stream(stream=original_stream):
             current_stream = paddle.cuda.current_stream(device_none)
 
         self.assertEqual(
