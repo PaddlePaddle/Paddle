@@ -1278,15 +1278,18 @@ def rand_like(
     )
 
 
+@param_one_alias(["shape", "size"])
 def normal(
     mean: complex | Tensor = 0.0,
     std: float | Tensor = 1.0,
     shape: ShapeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a normal
-    distribution with ``mean`` and ``std`` (standard deviation) .
+    distribution with ``mean`` and ``std`` (standard deviation).
 
     If ``mean`` is a Tensor, the output Tensor has the same shape and data type as ``mean``.
     If ``mean`` is not a Tensor and ``std`` is a Tensor, the output Tensor has the same shape and data type as ``std``.
@@ -1294,28 +1297,34 @@ def normal(
 
     If ``mean`` and ``std`` are Tensor, the num of elements of ``mean`` and ``std`` should be the same.
 
-    If ``mean`` is a complex number, the output Tensor follows complex normal distribution, with data type complex 64.
+    If ``mean`` is a complex number, the output Tensor follows complex normal distribution, with data type complex64.
     If ``mean`` is a Tensor with complex data type, the output Tensor has same data type with ``mean``.
+
+    .. note::
+        Alias Support: The parameter name ``size`` can be used as an alias for ``shape``.
+        For example, ``normal(size=[2, 3], ...)`` is equivalent to ``normal(shape=[2, 3], ...)``.
 
     Args:
         mean (float|complex|Tensor, optional): The mean of the output Tensor's normal distribution.
             If ``mean`` is float, all elements of the output Tensor shared the same mean.
             If ``mean`` is a Tensor(data type supports float32, float64, complex64, complex128), it has per-element means.
             Default is 0.0
-        std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
+        std (float|Tensor, optional): The standard deviation of the output Tensor's normal distribution.
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
             Default is 1.0
-        shape (tuple|list|Tensor|None, optional): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+        shape (tuple|list|Tensor|None, optional): Shape of the Tensor to be created. The data type is ``int32`` or ``int64``.
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
-            is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
+            is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std``, attr ``shape`` is ignored.
             Default is None
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): Optional output tensor. If provided, the result will be stored in this tensor.
+            The ``out`` tensor must have the same shape and dtype as the expected output. Default is None.
 
     Returns:
-        Tensor, A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+        Tensor: A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std``.
 
     Examples:
         .. code-block:: python
@@ -1364,6 +1373,11 @@ def normal(
             [(1.136009693145752-0.11074113845825195j),
              (2.529331684112549+2.1968750953674316j) ,
              (2.2910101413726807+1.8114780187606812j)])
+
+            >>> # Use size as alias for shape
+            >>> out6 = paddle.normal(size=[2, 3])
+            >>> print(out6.shape)
+            [2, 3]
     """
     if not in_dynamic_mode():
         check_type(
@@ -1394,10 +1408,16 @@ def normal(
         if shape is not None:
             check_shape(shape, 'normal')
 
+    _out = out
     if isinstance(mean, complex):
         if isinstance(std, float):
             return gaussian(
-                shape=shape, mean=mean, std=std, dtype='complex64', name=name
+                shape=shape,
+                mean=mean,
+                std=std,
+                dtype='complex64',
+                name=name,
+                out=_out,
             )
         else:
             out = gaussian(
@@ -1439,11 +1459,14 @@ def normal(
         mean = float(mean)
         out = standard_normal(paddle.shape(std), std.dtype, name)
     else:
-        return gaussian(shape=shape, mean=mean, std=std, name=name)
+        return gaussian(shape=shape, mean=mean, std=std, name=name, out=_out)
 
     out = out * std + mean
     if not in_dynamic_or_pir_mode():
         out.stop_gradient = True
+    if _out is not None:
+        paddle.assign(out, _out)
+        out = _out
     return out
 
 

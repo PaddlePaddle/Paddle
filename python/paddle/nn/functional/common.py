@@ -1211,11 +1211,13 @@ def bilinear(
         return out
 
 
+@param_one_alias(["x", "input"])
 def dropout(
     x: Tensor,
     p: float = 0.5,
     axis: int | Sequence[int] | None = None,
     training: bool = True,
+    inplace: bool = False,
     mode: _DropoutMode = "upscale_in_train",
     name: str | None = None,
 ) -> Tensor:
@@ -1230,6 +1232,7 @@ def dropout(
         p (float|int, optional): Probability of setting units to zero. Default: 0.5.
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
+        inplace (bool, optional): If set to ``True``, will do this operation in-place. Default: ``False``
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
             1. upscale_in_train (default), upscale the output at training time
@@ -1398,6 +1401,9 @@ def dropout(
                 seed if seed is not None else 0,
                 seed is not None,
             )
+            if inplace:
+                paddle.assign(out, x)
+                return x
 
             return out
         else:
@@ -1417,7 +1423,7 @@ def dropout(
 
                 if isinstance(
                     dropout_prob, Variable
-                ) and not dropout_prob.shape != [1]:
+                ) and dropout_prob.shape != [1]:
                     raise TypeError(
                         f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
                     )
@@ -1448,9 +1454,19 @@ def dropout(
         keep_prob = 1 - p
         if training:
             if in_dynamic_mode() and p == 1.0:
-                return paddle.scale(x, scale=0.0)
+                out = paddle.scale(x, scale=0.0)
+                if inplace:
+                    paddle.assign(out, x)
+                    return x
+                else:
+                    return out
             elif in_pir_mode() and isinstance(p, (float, int)) and p == 1.0:
-                return paddle.scale(x, scale=0.0)
+                out = paddle.scale(x, scale=0.0)
+                if inplace:
+                    paddle.assign(out, x)
+                    return x
+                else:
+                    return out
 
             scale_input = (
                 paddle.scale(x, scale=1 / keep_prob)
@@ -1489,6 +1505,9 @@ def dropout(
             scale_input = paddle.cast(scale_input, dtype)
             keep_mask = paddle.cast(keep_mask, dtype)
             ret = paddle.multiply(scale_input, keep_mask, name=name)
+            if inplace:
+                paddle.assign(ret, x)
+                return x
             return ret
         else:  # test
             ret = (
@@ -1496,6 +1515,9 @@ def dropout(
                 if mode == 'downscale_in_infer'
                 else x
             )
+            if inplace and ret is not x:
+                paddle.assign(ret, x)
+                return x
             return ret
 
 
