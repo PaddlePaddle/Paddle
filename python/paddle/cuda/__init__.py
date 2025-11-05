@@ -22,6 +22,7 @@ import paddle
 from paddle import base, core, device as paddle_device, framework
 from paddle.device import (
     Stream,
+    StreamContext,
     _device_to_paddle as _device_to_paddle,
     amp,  # noqa: F401
     device,
@@ -32,7 +33,7 @@ from paddle.device import (
     manual_seed_all as device_manual_seed_all,
     reset_peak_memory_stats,
     set_stream,
-    stream_guard as _PaddleStreamGuard,
+    stream,
 )
 from paddle.tensor.creation import (
     BFloat16Tensor,
@@ -283,39 +284,6 @@ def manual_seed_all(seed: int) -> None:
     device_manual_seed_all(seed)
 
 
-class StreamContext(_PaddleStreamGuard):
-    """
-    Notes:
-        This API only supports dynamic graph mode currently.
-    A context manager that specifies the current stream context by the given stream.
-
-    Args:
-        stream(Stream, optional): the selected stream. If stream is None, just yield.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('cuda')
-            >>> s = paddle.cuda.Stream()
-            >>> data1 = paddle.ones(shape=[20])
-            >>> data2 = paddle.ones(shape=[20])
-            >>> data3 = data1 + data2
-            >>> with paddle.cuda.StreamContext(s):
-            ...     s.wait_stream(paddle.cuda.current_stream()) # type: ignore[attr-defined]
-            ...     data4 = data1 + data3
-
-    """
-
-    def __init__(self, stream: paddle_device.Stream):
-        super().__init__(stream)
-
-
 def Event(
     enable_timing: bool = False,
     blocking: bool = False,
@@ -397,40 +365,6 @@ def set_rng_state(
             >>> paddle.cuda.set_rng_state(state)
     """
     paddle_device.set_rng_state(new_state, device)
-
-
-def stream(stream: paddle_device.Stream | None) -> StreamContext:
-    '''
-
-    Notes:
-        This API only supports dynamic graph mode currently.
-    A context manager that specifies the current stream context by the given stream.
-
-    Args:
-        stream(Stream, optional): the selected stream. If stream is None, just yield.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('cuda')
-            >>> s = paddle.cuda.Stream()
-            >>> data1 = paddle.ones(shape=[20])
-            >>> data2 = paddle.ones(shape=[20])
-            >>> data3 = data1 + data2
-
-            >>> with paddle.cuda.stream(s):
-            ...     s.wait_stream(paddle.cuda.current_stream())
-            ...     data4 = data1 + data3
-            >>> print(data4)
-
-    '''
-    return StreamContext(stream)
 
 
 class nvtx:
@@ -1002,4 +936,5 @@ __all__ = [
     "max_memory_allocated",
     "reset_peak_memory_stats",
     "Event",
+    "StreamContext",
 ]

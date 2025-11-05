@@ -1571,7 +1571,7 @@ class stream_guard:
             >>> data1 = paddle.ones(shape=[20])
             >>> data2 = paddle.ones(shape=[20])
             >>> data3 = data1 + data2
-            >>> with paddle.device.stream_guard(s):
+            >>> with paddle.device.stream_guard(s):# this is equivalent to paddle.cuda.StreamContext(s) and paddle.device.StreamContext(s)
             ...     s.wait_stream(paddle.device.default_stream()) # type: ignore[attr-defined]
             ...     data4 = data1 + data3
 
@@ -1612,6 +1612,43 @@ class stream_guard:
             set_stream(self.src_prev_stream)
         else:
             set_stream(self.src_prev_stream)
+
+
+StreamContext = stream_guard
+
+
+def stream(stream: Stream | None) -> stream_guard:
+    '''
+
+    Notes:
+        This API only supports dynamic graph mode currently.
+    A context manager that specifies the current stream context by the given stream.
+
+    Args:
+        stream(Stream, optional): the selected stream. If stream is None, just yield.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('cuda')
+            >>> s = paddle.device.Stream()
+            >>> data1 = paddle.ones(shape=[20])
+            >>> data2 = paddle.ones(shape=[20])
+            >>> data3 = data1 + data2
+
+            >>> with paddle.device.stream(s): # this is equivalent to paddle.cuda.stream(s)
+            ...     s.wait_stream(paddle.cuda.current_stream())
+            ...     data4 = data1 + data3
+            >>> print(data4)
+
+    '''
+    return StreamContext(stream)
 
 
 class device_guard:
