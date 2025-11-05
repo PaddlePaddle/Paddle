@@ -213,7 +213,7 @@ size_t PyObject_ToSize_t(PyObject* obj) {
 }
 
 bool PyObject_CheckFloat(PyObject* obj) {
-  if (PyFloat_Check(obj) || PyLong_Check(obj) ||
+  if (PyFloat_Check(obj) || PyLong_CheckExact(obj) ||
       (PyObject_CheckTensor(obj) &&
        reinterpret_cast<TensorObject*>(obj)->tensor.numel() == 1)) {
     return true;

@@ -793,6 +793,102 @@ def logsumexp(
 ) -> Tensor
     """,
 )
+add_doc_and_signature(
+    "softplus",
+    """
+    softplus activation
+
+    .. math::
+        softplus(x)=\begin{cases}
+                \frac{1}{\beta} * \\log(1 + e^{\beta * x}),&x\\leqslant\frac{\varepsilon}{\beta};\\
+                x,&x>\frac{\varepsilon}{\beta}.
+            \\end{cases}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
+        beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
+        threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
+            >>> out = F.softplus(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
+    """,
+    """
+    def softplus(
+    x: Tensor, beta: float = 1, threshold: float = 20, name: str | None = None
+) -> Tensor
+""",
+)
+add_doc_and_signature(
+    "isclose",
+    """
+     Check if all :math:`x` and :math:`y` satisfy the condition:
+     .. math::
+         \\left| x - y \right| \\leq atol + rtol \times \\left| y \right|
+     elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
+     operator is analogous to :math:`numpy.isclose`, namely that it returns :math:`True` if
+     two tensors are elementwise equal within a tolerance.
+     Args:
+         x(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
+         y(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
+         rtol(float, optional): The relative tolerance. Default: :math:`1e-5` .
+         atol(float, optional): The absolute tolerance. Default: :math:`1e-8` .
+         equal_nan(bool, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
+         name (str|None, optional): Name for the operation. For more information, please
+             refer to :ref:`api_guide_Name`. Default: None.
+     Returns:
+         Tensor: The output tensor, it's data type is bool.
+     Examples:
+         .. code-block:: python
+             >>> import paddle
+             >>> x = paddle.to_tensor([10000., 1e-07])
+             >>> y = paddle.to_tensor([10000.1, 1e-08])
+             >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+             ...                          equal_nan=False, name="ignore_nan")
+             >>> print(result1)
+             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+             [True , False])
+             >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+             ...                          equal_nan=True, name="equal_nan")
+             >>> print(result2)
+             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+             [True , False])
+             >>> x = paddle.to_tensor([1.0, float('nan')])
+             >>> y = paddle.to_tensor([1.0, float('nan')])
+             >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+             ...                          equal_nan=False, name="ignore_nan")
+             >>> print(result1)
+             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+             [True , False])
+             >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+             ...                          equal_nan=True, name="equal_nan")
+             >>> print(result2)
+             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+             [True, True])
+     """,
+    """
+def isclose(
+     x: Tensor,
+     y: Tensor,
+     rtol: float = 1e-05,
+     atol: float = 1e-08,
+     equal_nan: bool = False,
+     name: str | None = None,
+ ) -> Tensor
+""",
+)
 
 
 # zhengsheng
