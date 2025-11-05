@@ -101,9 +101,7 @@ std::string Compiler::operator()(const std::string& code,
 
 Compiler::Compiler() {
   if (FLAGS_nvrtc_compile_to_cubin) {
-#if CUDA_VERSION >= 11010
     compile_to_cubin_ = true;
-#endif
   }
   VLOG(4) << "FLAGS_nvrtc_compile_to_cubin: " << FLAGS_nvrtc_compile_to_cubin
           << ", compile_to_cubin_: " << compile_to_cubin_;
