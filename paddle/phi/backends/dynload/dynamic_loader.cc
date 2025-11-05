@@ -40,6 +40,7 @@ COMMON_DECLARE_string(cupti_dir);
 COMMON_DECLARE_string(tensorrt_dir);
 COMMON_DECLARE_string(mklml_dir);
 COMMON_DECLARE_string(lapack_dir);
+COMMON_DECLARE_string(magma_dir);
 COMMON_DECLARE_string(mkl_dir);
 COMMON_DECLARE_string(op_dir);
 COMMON_DECLARE_string(cusparselt_dir);
@@ -1006,6 +1007,20 @@ void* GetLAPACKDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so.3");
+#endif
+}
+
+void* GetMAGMADsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+#if defined(__arm__) || defined(__aarch64__)
+  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.3.dylib");
+#endif
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.dll");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.so");
 #endif
 }
 

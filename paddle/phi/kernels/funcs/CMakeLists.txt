@@ -1,6 +1,7 @@
 add_subdirectory(eigen)
 add_subdirectory(blas)
 add_subdirectory(lapack)
+add_subdirectory(magma)
 add_subdirectory(detail)
 add_subdirectory(jit)
 add_subdirectory(math)

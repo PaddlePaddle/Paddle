@@ -1541,12 +1541,14 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
         os.path.basename(env_dict.get("LAPACK_LIB")),
+        os.path.basename(env_dict.get("MAGMA_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),
         os.path.basename(env_dict.get("GFORTRAN_LIB")),
         os.path.basename(env_dict.get("GNU_RT_LIB_1")),
     ]
     shutil.copy(env_dict.get("BLAS_LIB"), libs_path)
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
+    shutil.copy(env_dict.get("MAGMA_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
 

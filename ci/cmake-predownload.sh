@@ -151,6 +151,21 @@ fi
 mkdir -p ${TARGET_DIR}/lapack/Linux/
 cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/lapack/Linux/${filename}
 
+# magma.cmake
+filename=magma_lnx_v2.9.0.20251105.tar.gz
+filepath="${PREDOWNLOAD_DIR}/${filename}"
+URL=https://paddlepaddledeps.bj.bcebos.com/${filename}
+EXPECTED_MD5=71f8cc8237a8571692f3e07f9a4f25f6
+echo "check ${filename}"
+if check_file_with_md5 "${filepath}" "${EXPECTED_MD5}"; then
+    echo "use cfs cache"
+else
+    echo "NO valid ${filename} in cache, try to download"
+    download_and_verify ${URL} ${EXPECTED_MD5} ${filename} || exit 1
+fi
+mkdir -p ${TARGET_DIR}/magma/Linux/
+cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/magma/Linux/${filename}
+
 # mklml.cmake
 filename=csrmm_mklml_lnx_2019.0.5.tgz
 filepath="${PREDOWNLOAD_DIR}/${filename}"

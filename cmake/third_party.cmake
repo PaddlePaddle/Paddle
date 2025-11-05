@@ -399,6 +399,7 @@ list(
   extern_threadpool
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
+include(external/magma) # download, build, install magma
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
      extern_xxhash)
@@ -410,7 +411,8 @@ list(
   extern_warpctc
   extern_warprnnt
   extern_threadpool
-  extern_lapack)
+  extern_lapack
+  extern_magma)
 
 include(cblas) # find first, then download, build, install openblas
 
