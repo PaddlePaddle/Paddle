@@ -226,7 +226,7 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
-from .amp.auto_cast import autocast as _autocast
+from .amp.auto_cast import autocast
 from .autograd import (
     enable_grad,
     grad,
@@ -971,7 +971,6 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
-autocast = _autocast
 
 __all__ = [
     'block_diag',
