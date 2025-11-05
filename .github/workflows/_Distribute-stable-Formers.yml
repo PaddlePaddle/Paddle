@@ -30,7 +30,7 @@ defaults:
 jobs:
   formers-test:
     name: formers-Test
-    if: ${{ clone-can-skip != 'true' }}
+    if: ${{ inputs.clone-can-skip != 'true' }}
     runs-on:
       group: Distribute
     steps:

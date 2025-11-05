@@ -30,7 +30,7 @@ defaults:
 jobs:
   test:
     name: Test
-    if: ${{ clone-can-skip != 'true' }}
+    if: ${{ inputs.clone-can-skip != 'true' }}
     runs-on:
       group: Distribute
     steps:
