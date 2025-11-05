@@ -23,7 +23,12 @@ class TestAutoCast(unittest.TestCase):
         self._linear = paddle.nn.Linear(4, 4)
 
     def test_autocast(self):
-        with paddle.autocast("gpu"):
+        with paddle.autocast(
+            device_type='cuda',
+            enabled=True,
+            dtype=paddle.float16,
+            cache_enabled=True,
+        ):
             out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
             out3 = self._linear(out2)
