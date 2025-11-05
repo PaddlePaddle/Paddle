@@ -458,7 +458,7 @@ void* GetCublasDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 14, paddle "
         "temporarily no longer supports");
     return nullptr;
   }

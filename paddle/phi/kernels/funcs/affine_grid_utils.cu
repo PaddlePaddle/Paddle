@@ -24,6 +24,7 @@
 namespace phi {
 namespace funcs {
 
+#if !defined(_WIN32) || CUDA_VERSION < 13000
 template <typename T>
 __global__ void CreateBaseGridKernel_4D(
     T* base_grid_data, int64_t n, int64_t h, int64_t w, bool align_corners) {
@@ -154,6 +155,7 @@ __global__ void CreateBaseGridKernel_5D(T* base_grid_data,
     base_grid_data[grid_idx * 4 + 3] = static_cast<T>(1);
   }
 }
+#endif
 
 template __global__ void CreateBaseGridKernel_4D<float>(
     float*, int64_t, int64_t, int64_t, bool);

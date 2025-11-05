@@ -33,7 +33,7 @@ jobs:
     needs: check-bypass
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: win-infer
+      group: win-inference
     env:
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
