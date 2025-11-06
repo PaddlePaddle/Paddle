@@ -1692,9 +1692,9 @@ void CheckGradNodeAccumulation(const paddle::Tensor& tensor) {
     phi::DataType meta_dtype = tensor_meta.dtype;
 
     if (tensor_dtype != meta_dtype) {
-      VLOG(7) << "Updating GradNodeAccumulation meta dtype from "
-              << phi::DataTypeToString(meta_dtype) << " to "
-              << phi::DataTypeToString(tensor_dtype);
+      VLOG(7) << "Updating GradNodeAccumulation(" << accumulation_node.get()
+              << ") meta dtype from " << phi::DataTypeToString(meta_dtype)
+              << " to " << phi::DataTypeToString(tensor_dtype);
       accumulation_node->SetGradInMeta(tensor, 0);
     }
   }
