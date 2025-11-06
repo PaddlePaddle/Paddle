@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_CUDA
 #pragma once
 #include "paddle/phi/backends/dynload/magma.h"
 
@@ -39,3 +40,4 @@ void magmaEig(magma_vec_t jobvl,
 
 }  // namespace funcs
 }  // namespace phi
+#endif

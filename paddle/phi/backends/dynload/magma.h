@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_CUDA
 #pragma once
 
 #include <cuComplex.h>
@@ -135,3 +136,5 @@ MAGMA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MAGMA_WRAP);
 
 }  // namespace dynload
 }  // namespace phi
+
+#endif
