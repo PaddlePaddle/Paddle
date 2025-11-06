@@ -516,6 +516,7 @@ ge = greater_equal
 greater = gt
 sub = subtract
 sub_ = subtract_
+clamp_ = clip_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -948,7 +949,7 @@ tensor_method_func = [
     'gt',
     'greater',
     'clamp',
-    'split_with_sizes',
+    'clamp_',
 ]
 
 

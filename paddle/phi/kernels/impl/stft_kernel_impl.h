@@ -42,8 +42,8 @@ void StftKernel(const Context& dev_ctx,
   const size_t x_rank = x.dims().size();
   const size_t out_rank = out->dims().size();
 
-  const int n_frames = out->dims()[out_rank - 1];
-  const int seq_length = x.dims()[x_rank - 1];
+  const size_t n_frames = out->dims()[out_rank - 1];
+  const size_t seq_length = x.dims()[x_rank - 1];
 
   std::vector<int64_t> axes = {1};
 

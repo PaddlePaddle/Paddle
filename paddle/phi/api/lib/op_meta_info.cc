@@ -608,7 +608,8 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
        "std::vector<int>",
        "std::vector<float>",
        "std::vector<int64_t>",
-       "std::vector<std::string>"});
+       "std::vector<std::string>",
+       "std::vector<bool>"});
   for (const auto& attr : attrs) {
     auto attr_type_str = ParseAttrStr(attr)[1];
     if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
@@ -617,7 +618,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
           "Supported data types include `bool`, `int`, `float`, `double`,  "
           "`int64_t`, `std::string`, `std::vector<int>`, "
           "`std::vector<float>`, `std::vector<int64_t>`, "
-          "`std::vector<std::string>`, "
+          "`std::vector<std::string>`, `std::vector<bool>`, "
           "Please check whether the attribute data type and "
           "data type string are matched.",
           attr_type_str));

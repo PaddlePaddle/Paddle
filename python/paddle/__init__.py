@@ -176,6 +176,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    compat as compat,
     cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
@@ -207,7 +208,6 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
-    compat as compat,
     fft as fft,
     functional as functional,
     hub as hub,
@@ -226,6 +226,7 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .amp.auto_cast import autocast
 from .autograd import (
     enable_grad,
     grad,
@@ -971,7 +972,6 @@ manual_seed = seed
 sub = subtract
 sub_ = subtract_
 
-
 __all__ = [
     'block_diag',
     'gt',
@@ -1481,6 +1481,7 @@ __all__ = [
     'conv3d',
     'manual_seed',
     'softmax',
+    'autocast',
 ]
 import os
 

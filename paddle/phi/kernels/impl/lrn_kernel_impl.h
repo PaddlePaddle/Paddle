@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <string>
 
 #include "paddle/phi/core/enforce.h"
@@ -59,10 +60,25 @@ void LRNKernel(const Context& dev_ctx,
   const phi::DataLayout data_layout =
       common::StringToDataLayout(data_layout_str);
   // NCHW
-  int N = x_dims[0];
-  int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
-  int H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
-  int W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
+  int64_t N = x_dims[0];
+  int64_t C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
+  int64_t H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
+  int64_t W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
+
+  // TODO(large-tensor): LRN GPU kernel implementation still uses int for
+  // dimensions. Need to update GPU kernel to support dimensions > INT32_MAX.
+  PADDLE_ENFORCE_LE(
+      std::max({N, C, H, W}),
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "One or more tensor dimensions (N=%ld, C=%ld, H=%ld, W=%ld) exceeds "
+          "the maximum value that int can represent (%d). LRN operation does "
+          "not support such large tensors yet.",
+          N,
+          C,
+          H,
+          W,
+          std::numeric_limits<int>::max()));
 
   dev_ctx.template Alloc<T>(out);
 
@@ -101,10 +117,10 @@ struct LRNGradFunctor {
                   const phi::DenseTensor& mid,
                   phi::DenseTensor* x_g,
                   const phi::DenseTensor& out_g,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T alpha,
                   T beta,
@@ -152,10 +168,25 @@ void LRNGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_g);
 
   auto x_dims = x.dims();
-  int N = x_dims[0];
-  int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
-  int H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
-  int W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
+  int64_t N = x_dims[0];
+  int64_t C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
+  int64_t H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
+  int64_t W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
+
+  // TODO(large-tensor): LRN GPU kernel implementation still uses int for
+  // dimensions. Need to update GPU kernel to support dimensions > INT32_MAX.
+  PADDLE_ENFORCE_LE(
+      std::max({N, C, H, W}),
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "One or more tensor dimensions (N=%ld, C=%ld, H=%ld, W=%ld) exceeds "
+          "the maximum value that int can represent (%d). LRN operation does "
+          "not support such large tensors yet.",
+          N,
+          C,
+          H,
+          W,
+          std::numeric_limits<int>::max()));
 
   LRNGradFunctor<Context, T> f;
   f(dev_ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta, data_layout);

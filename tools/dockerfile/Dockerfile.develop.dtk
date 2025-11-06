@@ -30,13 +30,7 @@ RUN rm -rf /usr/bin/cmake /usr/bin/cmake3 && \
     ln -s /opt/cmake-3.27.7/bin/cmake /usr/bin/cmake3
 ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
 
-# Python 3.8\3.9\3.10
-RUN wget -q https://www.python.org/ftp/python/3.8.14/Python-3.8.14.tgz && \
-    tar xzf Python-3.8.14.tgz && cd Python-3.8.14 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
-    make -j16 > /dev/null && make altinstall > /dev/null && ldconfig && \
-    cd ../ && rm -rf Python-3.8.14 && rm -rf Python-3.8.14.tgz
-
+# Python 3.9\3.10
 RUN wget -q https://www.python.org/ftp/python/3.9.14/Python-3.9.14.tgz && \
     tar xzf Python-3.9.14.tgz && cd Python-3.9.14 && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
@@ -52,10 +46,9 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
 # create venv and activate
 RUN /usr/local/bin/python3.10 -m venv /opt/py310 && \
-    /usr/local/bin/python3.9 -m venv /opt/py39 && \
-    /usr/local/bin/python3.8 -m venv /opt/py38
+    /usr/local/bin/python3.9 -m venv /opt/py39
 # update env
-ENV PATH=/opt/py310/bin:/opt/py39/bin:/opt/py38/bin:$PATH
+ENV PATH=/opt/py310/bin:/opt/py39/bin:$PATH
 
 # upgrade pip
 RUN pip3.10 install --upgrade pip setuptools wheel && \

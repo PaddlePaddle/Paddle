@@ -1801,15 +1801,15 @@ class TestSetValueWithScalarInDygraph(unittest.TestCase):
 )
 class TestSetValueWithStrideError(unittest.TestCase):
     def test_same_place(self):
-        x = paddle.rand([5, 10], device=paddle.CUDAPlace(0))
-        y = paddle.rand([10, 5], device=paddle.CUDAPlace(0))
+        x = paddle.rand([5, 10], device=get_device_place())
+        y = paddle.rand([10, 5], device=get_device_place())
         y.transpose_([1, 0])
         x.set_value(y)
         assert x.is_contiguous()
 
     def test_different_place1(self):
         # src place != dst place && src is not contiguous
-        x = paddle.rand([5, 10], device=paddle.CUDAPlace(0))
+        x = paddle.rand([5, 10], device=get_device_place())
         y = paddle.rand([10, 5], device=paddle.CPUPlace())
         y.transpose_([1, 0])
         x.set_value(y)
@@ -1818,7 +1818,7 @@ class TestSetValueWithStrideError(unittest.TestCase):
     def test_different_place2(self):
         # src place != dst place && dst is not contiguous
         with self.assertRaises(SystemError):
-            x = paddle.ones([5, 4], device=paddle.CUDAPlace(0))
+            x = paddle.ones([5, 4], device=get_device_place())
             x.transpose_([1, 0])
             y = paddle.rand([4, 2], device=paddle.CPUPlace())
             assert not x.is_contiguous()
