@@ -558,8 +558,8 @@ __global__ void KeBicubicInterpBw(T* in,
                                   const size_t output_h,
                                   const size_t output_w,
                                   const size_t num_channels,
-                                  const float ratio_h,
-                                  const float ratio_w,
+                                  const double ratio_h,
+                                  const double ratio_w,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   int64_t nthreads = output_h * output_w;
@@ -584,14 +584,14 @@ __global__ void KeBicubicInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    MT in_img_idy = align_corners ? ratio_h * out_img_idy
-                                  : ratio_h * (out_img_idy + 0.5) - 0.5;
-    int64_t input_y = floorf(static_cast<float>(in_img_idy));
+    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_h, out_img_idy, align_corners);
+    int64_t input_y = floorf(in_img_idy);
 
     const MT y_t = in_img_idy - input_y;
-    MT in_img_idx = align_corners ? ratio_w * out_img_idx
-                                  : ratio_w * (out_img_idx + 0.5) - 0.5;
-    int64_t input_x = floorf(static_cast<float>(in_img_idx));
+    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_w, out_img_idx, align_corners);
+    int64_t input_x = floorf(in_img_idx);
     const MT x_t = in_img_idx - input_x;
 
     MT x_coeffs[4];
@@ -998,8 +998,8 @@ static void Interpolate2DCUDABwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -1082,10 +1082,11 @@ static void Interpolate2DCUDABwd(
     return;
   }
 
-  float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  double ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = in_h * in_w;
   int64_t out_hw = out_h * out_w;

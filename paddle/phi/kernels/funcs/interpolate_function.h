@@ -46,11 +46,12 @@ HOSTDEVICE inline T AreaPixelComputeScale(int64_t input_size,
 template <typename T>
 HOSTDEVICE inline T AreaPixelComputeSourceIndex(T scale,
                                                 int64_t dst_index,
-                                                bool align_corners) {
+                                                bool align_corners,
+                                                T align_type_value = 0.5) {
   if (align_corners) {
     return scale * dst_index;
   } else {
-    return scale * (dst_index + static_cast<T>(0.5)) - static_cast<T>(0.5);
+    return scale * (dst_index + align_type_value) - align_type_value;
   }
 }
 
@@ -76,30 +77,6 @@ HOSTDEVICE inline void GetCubicUpsampleCoefficients(T coeffs[4], T t) {
   T x2 = 1.0 - t;
   coeffs[2] = CubicConvolution1<T>(x2, A);
   coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
-}
-
-// Anti-aliasing filter for bilinear interpolation (triangle filter)
-template <typename T>
-HOSTDEVICE inline T BilinearAAFilter(T x) {
-  x = x < static_cast<T>(0) ? -x : x;  // abs(x)
-  if (x < static_cast<T>(1.0)) {
-    return static_cast<T>(1.0) - x;
-  }
-  return static_cast<T>(0.0);
-}
-
-// Anti-aliasing filter for bicubic interpolation (Keys cubic with a=-0.5)
-template <typename T>
-HOSTDEVICE inline T BicubicAAFilter(T x) {
-  constexpr T a = static_cast<T>(-0.5);
-  x = x < static_cast<T>(0) ? -x : x;  // abs(x)
-  if (x < static_cast<T>(1.0)) {
-    return CubicConvolution1<T>(x, a);
-  }
-  if (x < static_cast<T>(2.0)) {
-    return CubicConvolution2<T>(x, a);
-  }
-  return static_cast<T>(0.0);
 }
 
 inline void ExtractNCDWH(const DDim& dims,
@@ -246,6 +223,47 @@ struct FastDivModForInterpolate {
 };
 
 #endif
+
+namespace antialias {
+
+// taken from
+// https://github.com/pytorch/pytorch/blob/a527e816935957a164d74dd7c5069310b2857695/
+// aten/src/ATen/native/cuda/UpSample.cuh#L207-L305
+struct BilinearFilterFunctor {
+  template <typename T>
+  HOSTDEVICE T operator()(T x) const {
+    if (x < 0) {
+      x = -x;
+    }
+    if (x < 1) {
+      return 1 - x;
+    }
+    return 0;
+  }
+
+  static constexpr int size = 2;
+};
+struct BicubicFilterFunctor {
+  template <typename T>
+  HOSTDEVICE T operator()(T x) const {
+    // https://en.wikipedia.org/wiki/Bicubic_interpolation#Bicubic_convolution_algorithm
+    const T a = -0.5;
+    if (x < 0) {
+      x = -x;
+    }
+    if (x < 1) {
+      return ((a + 2) * x - (a + 3)) * x * x + 1;
+    }
+    if (x < 2) {
+      return (((x - 5) * x + 8) * x - 4) * a;
+    }
+    return 0;
+  }
+
+  static constexpr int size = 4;
+};
+
+}  // namespace antialias
 
 }  // namespace funcs
 }  // namespace phi
