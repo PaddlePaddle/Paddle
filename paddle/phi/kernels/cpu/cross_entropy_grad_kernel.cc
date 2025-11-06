@@ -46,9 +46,9 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
     phi::Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
   }
 
-  const int rank = logit_grad->dims().size();
+  const int64_t rank = logit_grad->dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = static_cast<int>(logit_grad->dims()[axis_v]);
+  int64_t axis_dim = logit_grad->dims()[axis_v];
   PADDLE_ENFORCE_GT(
       axis_dim,
       0,
@@ -57,7 +57,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
           "axis dimension is %d.",
           axis_dim));
 
-  const int n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
+  const int64_t n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
   PADDLE_ENFORCE_GT(
       n,
       0,
@@ -66,7 +66,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
           "SizeToAxis of logit_grad is %d.",
           n));
 
-  const int d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
+  const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
   DenseTensor logit_grad_2d(*logit_grad);
   logit_grad_2d.Resize({n, d});
   DenseTensor labels_2d(label);

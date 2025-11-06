@@ -184,7 +184,7 @@ void SpiltBatchSquareMatrix(const DenseTensor& input,
                             std::vector<DenseTensor>* output) {
   DDim input_dims = input.dims();
   int last_dim = input_dims.size() - 1;
-  int n_dim = static_cast<int>(input_dims[last_dim]);
+  int64_t n_dim = input_dims[last_dim];
 
   DDim flattened_input_dims, flattened_output_dims;
   if (input_dims.size() > 2) {

@@ -86,7 +86,7 @@ void ScanKernel(const Context& dev_ctx,
 
   int pre = 1;
   int post = 1;
-  int mid = static_cast<int>(out_dims[axis]);
+  int64_t mid = out_dims[axis];
   for (int i = 0; i < axis; ++i) {
     pre *= static_cast<int>(out_dims[i]);
   }

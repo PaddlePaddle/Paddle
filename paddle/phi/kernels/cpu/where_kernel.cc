@@ -34,7 +34,7 @@ void WhereKernel(const Context& dev_ctx,
     return;
   }
 
-  for (int i = 0; i < x_numel; i++) {
+  for (int64_t i = 0; i < x_numel; i++) {
     out_data[i] = cond_data[i] ? x_data[i] : y_data[i];
   }
 }

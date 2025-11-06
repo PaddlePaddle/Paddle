@@ -49,10 +49,10 @@ void AffineChannelKernel(const Context& dev_ctx,
   const phi::DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = x->dims();
-  int N = static_cast<int>(dims[0]);
-  int C = static_cast<int>(
-      layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1]);
-  int HxW = static_cast<int>(x->numel() / N / C);
+  int64_t N = dims[0];
+  int64_t C =
+      layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int64_t HxW = static_cast<int64_t>(x->numel() / N / C);
 
   auto* scale_d = scale->data<T>();
   auto* bias_d = bias->data<T>();

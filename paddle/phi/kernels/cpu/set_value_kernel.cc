@@ -62,7 +62,7 @@ void SetValueImpl(const Context& dev_ctx,
     std::vector<int64_t> slice_dims_with_none;
 
     size_t none_axes_cur = 0, decrease_axes_cur = 0;
-    for (int i = 0; i < slice_dims.size(); ++i) {
+    for (int64_t i = 0; i < slice_dims.size(); ++i) {
       while (none_axes_cur < none_axes.size() &&
              none_axes[none_axes_cur] <= i) {
         slice_dims_with_none.push_back(1);

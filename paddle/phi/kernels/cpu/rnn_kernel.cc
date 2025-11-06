@@ -332,7 +332,7 @@ struct Layer {
         is_reverse = true;
       }
     }
-    const int time_step = static_cast<int>(input->dims()[0]);
+    const int64_t time_step = input->dims()[0];
     this->preprocess(dev_ctx,
                      *input,
                      vec[0 + offset * 4],
@@ -532,7 +532,7 @@ struct Layer {
         is_reverse = true;
       }
     }
-    const int time_step = static_cast<int>(input->dims()[0]);
+    const int64_t time_step = input->dims()[0];
     this->preprocess(dev_ctx,
                      *input,
                      vec[0 + offset * 4],
@@ -749,9 +749,9 @@ struct BidirLayer : public Layer<T, CellType> {
     std::vector<DenseTensor> output_vec(2);
     DenseTensor forward_input_w, forward_cell_value, forward_cell_act_value;
     DenseTensor backward_input_w, backward_cell_value, backward_cell_act_value;
-    int time_step = static_cast<int>(input->dims()[0]);
-    int batch_size = static_cast<int>(input->dims()[1]);
-    int hidden_size = static_cast<int>(output->dims()[2]);
+    int64_t time_step = input->dims()[0];
+    int64_t batch_size = input->dims()[1];
+    int64_t hidden_size = output->dims()[2];
     for (int i = 0; i < 2; ++i) {
       output_vec[i].Resize({time_step, batch_size, hidden_size / 2});
       dev_ctx.Alloc<T>(&output_vec[i]);

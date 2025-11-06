@@ -47,13 +47,13 @@ void WhereGradKernel(const Context& dev_ctx,
 
   if (x_grad != nullptr) {
     auto* dx = dev_ctx.template Alloc<T>(x_grad);
-    for (int i = 0; i < numel; i++) {
+    for (int64_t i = 0; i < numel; i++) {
       dx[i] = cond_data[i] ? dout[i] : T{};
     }
   }
   if (y_grad != nullptr) {
     auto* dy = dev_ctx.template Alloc<T>(y_grad);
-    for (int i = 0; i < numel; i++) {
+    for (int64_t i = 0; i < numel; i++) {
       dy[i] = cond_data[i] ? T{} : dout[i];
     }
   }

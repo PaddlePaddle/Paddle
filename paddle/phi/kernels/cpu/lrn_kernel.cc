@@ -76,7 +76,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     squared.Resize({1, C + n - 1, H, W});
     T* sdata = dev_ctx.Alloc<T>(&squared);
     std::memset(sdata, 0, sizeof(T) * squared.numel());
-    for (int i = 0; i < mid->numel(); ++i) {
+    for (int64_t i = 0; i < mid->numel(); ++i) {
       mdata[i] = k;
     }
     int img_size = H * W;

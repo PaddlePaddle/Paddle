@@ -27,7 +27,7 @@ void DequantizeLogKernel(const Context& dev_ctx,
   const float* dict_data = dict.data<float>();
   const T* input_data = x.data<T>();
   float* output_data = dev_ctx.template Alloc<float>(out);
-  int ind = static_cast<int>(x.numel());
+  int64_t ind = static_cast<int64_t>(x.numel());
   for (size_t i = 0; i < (unsigned)ind; i++) {
     if (input_data[i] < 0) {
       output_data[i] = -dict_data[input_data[i] + 128];

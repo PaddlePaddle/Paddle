@@ -31,11 +31,11 @@ void PsroiPoolKernel(const Context& dev_ctx,
                      float spatial_scale,
                      DenseTensor* out) {
   auto in_dims = x.dims();
-  int batch_size = static_cast<int>(in_dims[0]);
-  int input_channels = static_cast<int>(in_dims[1]);
-  int height = static_cast<int>(in_dims[2]);
-  int width = static_cast<int>(in_dims[3]);
-  int rois_num_t = static_cast<int>(rois.dims()[0]);
+  int64_t batch_size = in_dims[0];
+  int64_t input_channels = in_dims[1];
+  int64_t height = in_dims[2];
+  int64_t width = in_dims[3];
+  int64_t rois_num_t = rois.dims()[0];
 
   PADDLE_ENFORCE_EQ(input_channels,
                     output_channels * pooled_height * pooled_width,
@@ -133,8 +133,8 @@ void PsroiPoolKernel(const Context& dev_ctx,
       int out_plane_offset =
           static_cast<int>(out_roi_offset + c * out_stride[1]);
       for (int ph = 0; ph < pooled_height; ++ph) {
-        int out_row_offset =
-            static_cast<int>(out_plane_offset + ph * out_stride[2]);
+        int64_t out_row_offset =
+            static_cast<int64_t>(out_plane_offset + ph * out_stride[2]);
         for (int pw = 0; pw < pooled_width; ++pw) {
           // calculate w and h at input feature map
           int hstart = floor(static_cast<T>(ph) * bin_size_h + roi_start_h);
@@ -147,7 +147,7 @@ void PsroiPoolKernel(const Context& dev_ctx,
           hend = std::min(std::max(hend, 0), height);
           wend = std::min(std::max(wend, 0), width);
 
-          int output_index = out_row_offset + pw;
+          int64_t output_index = out_row_offset + pw;
           int input_channel = (c * pooled_height + ph) * pooled_width + pw;
           int input_plane_offset = static_cast<int>(
               roi_batch_id * in_stride[0] + input_channel * in_stride[1]);

@@ -98,7 +98,7 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   int t = seg_num;
   const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
-  const int nt = static_cast<int>(output_grad->dims()[0]);
+  const int64_t nt = output_grad->dims()[0];
   const int c = static_cast<int>(data_layout == DataLayout::kNCHW
                                      ? output_grad->dims()[1]
                                      : output_grad->dims()[3]);

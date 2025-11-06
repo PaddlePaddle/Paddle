@@ -87,7 +87,7 @@ void GraphSendRecvGradOpKernelLaunchHelper(
   T* p_output = x_grad->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
-  for (int i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
+  for (int64_t i = 0; i < src_dims.size(); ++i) memset_size *= src_dims[i];
   const size_t& memset_bytes = memset_size * sizeof(T);
   memset(p_output, 0, memset_bytes);
 

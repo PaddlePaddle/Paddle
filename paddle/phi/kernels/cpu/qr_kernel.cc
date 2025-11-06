@@ -64,8 +64,8 @@ struct QrFunctor {
                   DenseTensor* r) {
     auto x_dims = x.dims();
     int x_rank = x_dims.size();
-    int m = static_cast<int>(x_dims[x_rank - 2]);
-    int n = static_cast<int>(x_dims[x_rank - 1]);
+    int64_t m = x_dims[x_rank - 2];
+    int64_t n = x_dims[x_rank - 1];
     int min_mn = std::min(m, n);
     int k = reduced_mode ? min_mn : m;
     int64_t batch_size = static_cast<int64_t>(x.numel() / (m * n));
@@ -130,11 +130,11 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
                   DenseTensor* r) {
     auto x_dims = x.dims();
     int x_rank = x_dims.size();
-    int m = static_cast<int>(x_dims[x_rank - 2]);
-    int n = static_cast<int>(x_dims[x_rank - 1]);
+    int64_t m = x_dims[x_rank - 2];
+    int64_t n = x_dims[x_rank - 1];
     int min_mn = std::min(m, n);
     int k = reduced_mode ? min_mn : m;
-    int batch_size = static_cast<int>(x.numel() / (m * n));
+    int64_t batch_size = static_cast<int64_t>(x.numel() / (m * n));
     int x_stride = m * n;
     int q_stride = m * k;
     int r_stride = k * n;

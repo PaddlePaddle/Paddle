@@ -159,7 +159,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
-  int64_t stride = x_dim[static_cast<int>(x_rank - 1)];
+  int64_t stride = x_dim[x_rank - 1];
 
   PADDLE_ENFORCE_NE(stride,
                     0,

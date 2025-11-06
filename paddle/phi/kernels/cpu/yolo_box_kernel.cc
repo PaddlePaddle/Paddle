@@ -49,10 +49,10 @@ void YoloBoxKernel(const Context& dev_ctx,
   float scale = scale_x_y;
   float bias = -0.5f * (scale - 1.f);
 
-  const int n = static_cast<int>(input->dims()[0]);
-  const int h = static_cast<int>(input->dims()[2]);
-  const int w = static_cast<int>(input->dims()[3]);
-  const int box_num = static_cast<int>(boxes->dims()[1]);
+  const int64_t n = input->dims()[0];
+  const int64_t h = input->dims()[2];
+  const int64_t w = input->dims()[3];
+  const int64_t box_num = boxes->dims()[1];
   const int an_num = static_cast<int>(anchors.size() / 2);
   int input_size_h = downsample_ratio * h;
   int input_size_w = downsample_ratio * w;

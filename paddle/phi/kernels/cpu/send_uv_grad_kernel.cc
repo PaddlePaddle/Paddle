@@ -186,11 +186,11 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& dev_ctx,
   const auto& y_grad_dims = y_grad->dims();
   int64_t memset_size_x = 1, memset_size_y = 1;
   int64_t slice_size_x = 1, slice_size_y = 1;
-  for (int i = 0; i < x_grad_dims.size(); i++) {
+  for (int64_t i = 0; i < x_grad_dims.size(); i++) {
     memset_size_x *= x_grad_dims[i];
     if (i > 0) slice_size_x *= x_grad_dims[i];
   }
-  for (int i = 0; i < y_grad_dims.size(); i++) {
+  for (int64_t i = 0; i < y_grad_dims.size(); i++) {
     memset_size_y *= y_grad_dims[i];
     if (i > 0) slice_size_y *= y_grad_dims[i];
   }

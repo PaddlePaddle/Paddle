@@ -129,8 +129,8 @@ void LapackEig(DenseTensor* input,
                const Context& dev_ctx) {
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
-  int num_dims = input->dims().size();
-  int order = input->dims()[num_dims - 1];
+  int64_t num_dims = input->dims().size();
+  int64_t order = input->dims()[num_dims - 1];
 
   T* input_data = input->data<T>();
   int lda = std::max<int>(1, order);
@@ -144,7 +144,7 @@ void LapackEig(DenseTensor* input,
 
   int batch_count = BatchCount(*input);
   int matrix_stride = MatrixStride(*input);
-  int values_stride = values->dims()[values->dims().size() - 1];
+  int64_t values_stride = values->dims()[values->dims().size() - 1];
 
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
@@ -321,12 +321,17 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = Vh.dims()[Vh.dims().size() - 1];
-  int k = rhs.dims()[rhs.dims().size() - 1];
+  int64_t m = Vh.dims()[Vh.dims().size() - 1];
+  int64_t k = rhs.dims()[rhs.dims().size() - 1];
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 
-  SolveLinearSystem<T>(matrix_data, rhs_data, x_grad_data, m, k, batch_count);
+  SolveLinearSystem<T>(matrix_data,
+                       rhs_data,
+                       x_grad_data,
+                       static_cast<int>(m),
+                       static_cast<int>(k),
+                       batch_count);
 }
 
 }  // namespace phi

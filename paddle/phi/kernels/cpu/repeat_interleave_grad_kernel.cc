@@ -94,7 +94,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
   DenseTensor index;
   int64_t index_size = x_grad->dims()[dim] * repeats;
   std::vector<int> index_vec(index_size);
-  for (int i = 0; i < x_grad->dims()[dim]; i++) {
+  for (int64_t i = 0; i < x_grad->dims()[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(common::make_ddim({index_size}));

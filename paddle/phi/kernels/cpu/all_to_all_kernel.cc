@@ -41,7 +41,7 @@ void AllToAllKernel(const phi::CustomContext& dev_ctx,
 
   int nranks = comm_ctx->GetSize();
   int rank = comm_ctx->GetRank();
-  int send_numel = x.numel() / nranks;
+  int64_t send_numel = x.numel() / nranks;
 
   std::vector<void*> sendbuf, recvbuf;
   std::vector<size_t> sendsize(send_numel, nranks);

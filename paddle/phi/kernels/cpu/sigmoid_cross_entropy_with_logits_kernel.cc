@@ -32,7 +32,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
     int ignore_index,
     DenseTensor* out) {
   auto out_data = dev_ctx.template Alloc<T>(out);
-  int limit = static_cast<int>(out->numel());
+  int64_t limit = static_cast<int64_t>(out->numel());
   auto x_data = x.data<T>();
   auto label_data = label.data<T>();
   auto pos_weight_data =

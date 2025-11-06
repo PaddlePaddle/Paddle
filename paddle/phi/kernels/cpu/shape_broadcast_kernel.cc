@@ -69,7 +69,7 @@ void ShapeBroadcastKernel(const Context& dev_ctx,
           : ComputeBroadcastShape(y_shape_data, x_shape_data);
   T* out_data = dev_ctx.template HostAlloc<T>(out);
   int64_t out_numel = out->numel();
-  for (int i = 0; i < out_numel; ++i) {
+  for (int64_t i = 0; i < out_numel; ++i) {
     out_data[i] = output_data[i];
   }
 }

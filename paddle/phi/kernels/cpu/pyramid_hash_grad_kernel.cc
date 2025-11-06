@@ -72,7 +72,7 @@ void CPUPyramidHashOPGradKernel(const Context& dev_ctx,
   auto* buff = &x_temp_out;
   auto* bottom_data = buff->data<T>();
 
-  int _slot_len = static_cast<int>(bottom->dims()[0]);
+  int64_t _slot_len = bottom->dims()[0];
   if (static_cast<size_t>(_slot_len) == bottom->lod()[0].size() - 1 &&
       std::count(bottom_data, bottom_data + _slot_len, -1) == _slot_len) {
     return;
@@ -89,8 +89,9 @@ void CPUPyramidHashOPGradKernel(const Context& dev_ctx,
   const int* iter = drop_pos_p->data<int>();
   int top_counter = 0;
   for (size_t i = 0; i < offset.size() - 1; ++i) {
-    int w = static_cast<int>(offset[i + 1] - offset[i]);
-    int w_drop = static_cast<int>(drop_pos_offset[i + 1] - drop_pos_offset[i]);
+    int64_t w = static_cast<int64_t>(offset[i + 1] - offset[i]);
+    int64_t w_drop =
+        static_cast<int64_t>(drop_pos_offset[i + 1] - drop_pos_offset[i]);
     if (w_drop == 0) {
       top_counter++;
     }

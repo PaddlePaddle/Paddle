@@ -188,11 +188,11 @@ void RoiAlignKernel(const Context& dev_ctx,
                     bool aligned,
                     DenseTensor* out) {
   auto in_dims = x.dims();
-  int batch_size = static_cast<int>(in_dims[0]);
-  int channels = static_cast<int>(in_dims[1]);
-  int height = static_cast<int>(in_dims[2]);
-  int width = static_cast<int>(in_dims[3]);
-  int rois_num = static_cast<int>(boxes.dims()[0]);
+  int64_t batch_size = in_dims[0];
+  int64_t channels = in_dims[1];
+  int64_t height = in_dims[2];
+  int64_t width = in_dims[3];
+  int64_t rois_num = boxes.dims()[0];
 
   if (x.numel() == 0 || boxes.numel() == 0) {
     phi::Full<T, Context>(

@@ -381,15 +381,15 @@ void Pad3dGradKernel(const Context& dev_ctx,
   const int pad_left = static_cast<int>(pads[0]);
   const int pad_top = static_cast<int>(pads[2]);
   const int pad_front = static_cast<int>(pads[4]);
-  const int num = static_cast<int>(d_in_dims[0]);
+  const int64_t num = d_in_dims[0];
   if (data_format == "NCDHW") {
-    const int channels = static_cast<int>(d_in_dims[1]);
-    const int in_depth = static_cast<int>(d_in_dims[2]);
-    const int in_height = static_cast<int>(d_in_dims[3]);
-    const int in_width = static_cast<int>(d_in_dims[4]);
-    const int out_depth = static_cast<int>(d_out_dims[2]);
-    const int out_height = static_cast<int>(d_out_dims[3]);
-    const int out_width = static_cast<int>(d_out_dims[4]);
+    const int64_t channels = d_in_dims[1];
+    const int64_t in_depth = d_in_dims[2];
+    const int64_t in_height = d_in_dims[3];
+    const int64_t in_width = d_in_dims[4];
+    const int64_t out_depth = d_out_dims[2];
+    const int64_t out_height = d_out_dims[3];
+    const int64_t out_width = d_out_dims[4];
 
     std::map<std::string,
              void (*)(T*,
@@ -428,13 +428,13 @@ void Pad3dGradKernel(const Context& dev_ctx,
                    d_out_data,
                    func_map[mode]);
   } else {
-    const int channels = static_cast<int>(d_in_dims[4]);
-    const int in_depth = static_cast<int>(d_in_dims[1]);
-    const int in_height = static_cast<int>(d_in_dims[2]);
-    const int in_width = static_cast<int>(d_in_dims[3]);
-    const int out_depth = static_cast<int>(d_out_dims[1]);
-    const int out_height = static_cast<int>(d_out_dims[2]);
-    const int out_width = static_cast<int>(d_out_dims[3]);
+    const int64_t channels = d_in_dims[4];
+    const int64_t in_depth = d_in_dims[1];
+    const int64_t in_height = d_in_dims[2];
+    const int64_t in_width = d_in_dims[3];
+    const int64_t out_depth = d_out_dims[1];
+    const int64_t out_height = d_out_dims[2];
+    const int64_t out_width = d_out_dims[3];
 
     std::map<std::string,
              void (*)(T*,

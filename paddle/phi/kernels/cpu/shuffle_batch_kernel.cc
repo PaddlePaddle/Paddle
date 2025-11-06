@@ -28,8 +28,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
                         DenseTensor* seed_out) {
   auto x_embed_size = x.dims()[x.dims().size() - 1];
   int elem_size = 1;
-  for (auto i = 0; i < x.dims().size() - 1; i++)
-    elem_size *= static_cast<int>(x.dims()[i]);
+  for (auto i = 0; i < x.dims().size() - 1; i++) elem_size *= x.dims()[i];
 
   std::vector<int64_t> idx_vec;  // record shuffled order
   idx_vec.reserve(elem_size);

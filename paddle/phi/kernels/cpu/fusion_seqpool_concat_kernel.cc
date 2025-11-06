@@ -40,7 +40,7 @@ void FusionSeqPoolConcatKernel(const Context& dev_ctx,
   out->set_lod(y_lod);
   T* y_data = dev_ctx.template Alloc<T>(out);
 
-  int w = static_cast<int>(ins[0]->numel() / x0_dims[0]);
+  int64_t w = static_cast<int64_t>(ins[0]->numel() / x0_dims[0]);
   PADDLE_ENFORCE_EQ(y_dims[1] % w,
                     0,
                     common::errors::InvalidArgument(

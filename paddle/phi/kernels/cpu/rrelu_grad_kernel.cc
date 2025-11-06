@@ -28,7 +28,7 @@ void RReluGradKernel(const Context& dev_ctx,
   const T* n_ptr = noise.data<T>();
   const T* x_ptr = x.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();
-  int numel = static_cast<int>(x.numel());
+  int64_t numel = static_cast<int64_t>(x.numel());
   if (!x_grad) return;
 
   int i = 0;

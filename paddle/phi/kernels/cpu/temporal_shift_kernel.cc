@@ -98,7 +98,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
   int t = seg_num;
   const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
-  const int nt = static_cast<int>(input->dims()[0]);
+  const int64_t nt = input->dims()[0];
   const int c = static_cast<int>(
       data_layout == DataLayout::kNCHW ? input->dims()[1] : input->dims()[3]);
   const int h = static_cast<int>(

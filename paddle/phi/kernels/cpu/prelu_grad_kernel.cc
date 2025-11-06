@@ -42,7 +42,7 @@ void PReluGradKernel(const Context& dev_ctx,
   const T* alpha_ptr = alpha.data<T>();
   const T* x_ptr = x.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();
-  int numel = static_cast<int>(x.numel());
+  int64_t numel = static_cast<int64_t>(x.numel());
   auto dim = x.dims();
   int index = 0;
   int i = 0;

@@ -34,10 +34,10 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
                          DenseTensor* dx) {
   if (dx) {
     const auto& in_dims = x.dims();
-    int input_channels = static_cast<int>(in_dims[1]);
-    int height = static_cast<int>(in_dims[2]);
-    int width = static_cast<int>(in_dims[3]);
-    int rois_num_t = static_cast<int>(rois.dims()[0]);
+    int64_t input_channels = in_dims[1];
+    int64_t height = in_dims[2];
+    int64_t width = in_dims[3];
+    int64_t rois_num_t = rois.dims()[0];
 
     // set roi batch id
     DenseTensor rois_batch_id_list;
@@ -73,7 +73,7 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, dx, static_cast<T>(0));
 
     // backpropagate gradient per output pixel
-    int dout_size = static_cast<int>(dout.numel());
+    int64_t dout_size = static_cast<int64_t>(dout.numel());
     for (int i = 0; i < dout_size; ++i) {
       // The output is in order (n, c, ph, pw)
       int pw = i % pooled_width;

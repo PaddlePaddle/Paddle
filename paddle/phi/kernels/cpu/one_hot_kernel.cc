@@ -40,7 +40,7 @@ struct OneHotV2OpFunctor {
     auto* p_out_data = dev_ctx_.template Alloc<OutT>(out_);
     funcs::set_constant(dev_ctx_, out_, static_cast<OutT>(0.0));
 
-    for (int i = 0; i < numel; ++i) {
+    for (int64_t i = 0; i < numel; ++i) {
       PADDLE_ENFORCE_GE(
           p_in_data[i],
           0,
@@ -79,7 +79,7 @@ void OneHotKernel(const Context& dev_ctx,
   auto* p_out_data = dev_ctx.template Alloc<float>(out);
   funcs::set_constant(dev_ctx, out, 0.0f);
 
-  for (int i = 0; i < numel; ++i) {
+  for (int64_t i = 0; i < numel; ++i) {
     PADDLE_ENFORCE_GE(
         p_in_data[i],
         0,

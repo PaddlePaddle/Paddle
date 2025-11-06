@@ -59,7 +59,7 @@ void GroupNormKernel(const Context& dev_ctx,
   const auto bias_ptr = bias.get_ptr();
 
   const auto x_dims = x.dims();
-  const int C = static_cast<int>(
+  const int64_t C = static_cast<int64_t>(
       data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int group_size = C / groups;
 
@@ -89,7 +89,7 @@ void GroupNormKernel(const Context& dev_ctx,
   }
   auto* iter_x_data = x_data;
   auto* iter_y_data = y_data;
-  for (int bid = 0; bid < x_dims[0]; bid++) {
+  for (int64_t bid = 0; bid < x_dims[0]; bid++) {
     for (int gid = 0; gid < groups; gid++) {
       const int64_t M = 8;
       std::array<T, M> x_mean_arr;

@@ -29,7 +29,7 @@ void ModeKernel(const Context& dev_ctx,
                 DenseTensor* out,
                 DenseTensor* indices) {
   const auto& in_dims = x.dims();
-  for (int i = 0; i < in_dims.size(); i++) {
+  for (int64_t i = 0; i < in_dims.size(); i++) {
     PADDLE_ENFORCE_LE(
         0,
         in_dims[i],

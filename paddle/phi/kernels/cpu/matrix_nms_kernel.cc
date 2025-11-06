@@ -234,7 +234,7 @@ size_t MultiClassMatrixNMS(const DenseTensor& scores,
     (*indices).push_back(start + idx);
     (*out).push_back(cls);
     (*out).push_back(score);
-    for (int j = 0; j < bboxes.dims()[1]; j++) {
+    for (int64_t j = 0; j < bboxes.dims()[1]; j++) {
       (*out).push_back(bbox[j]);
     }
   }
@@ -277,7 +277,7 @@ void MatrixNMSKernel(const Context& dev_ctx,
     scores_slice.Resize({score_dims[1], score_dims[2]});
     boxes_slice = bboxes.Slice(i, i + 1);
     boxes_slice.Resize({score_dims[2], box_dim});
-    int start = i * score_dims[2];
+    int64_t start = i * score_dims[2];
     num_out = MultiClassMatrixNMS(scores_slice,
                                   boxes_slice,
                                   &detections,

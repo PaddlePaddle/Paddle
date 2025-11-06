@@ -34,7 +34,7 @@ void ComputeDropoutInference(const Context& dev_ctx,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-    for (int i = 0; i < x.numel(); i++) {
+    for (int64_t i = 0; i < x.numel(); i++) {
       Y_data[i] = X_data[i];
     }
   } else {
@@ -178,7 +178,7 @@ void DropoutNdKernel(const Context& dev_ctx,
     T* broadcast_mask_data = dev_ctx.template Alloc<T>(&broadcast_mask);
 
     std::vector<int64_t> mask_bst_dims_vec;
-    for (int i = 0; i < x_dims.size(); i++) {
+    for (int64_t i = 0; i < x_dims.size(); i++) {
       mask_bst_dims_vec.emplace_back(x_dims[i]);
     }
     IntArray mask_bst_dims(mask_bst_dims_vec);

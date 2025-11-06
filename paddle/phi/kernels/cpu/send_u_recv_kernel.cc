@@ -93,7 +93,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& dev_ctx,
   int64_t memset_size = 1;
   if (out_size <= 0) {
     out->Resize(src_dims);
-    for (int i = 0; i < src_dims.size(); ++i) {
+    for (int64_t i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
   } else {

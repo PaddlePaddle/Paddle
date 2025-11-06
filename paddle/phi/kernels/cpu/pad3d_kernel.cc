@@ -412,13 +412,13 @@ void Pad3dKernel(const Context& dev_ctx,
     return;
   }
 
-  int channels = static_cast<int>(in_dims[1]);
-  int in_depth = static_cast<int>(in_dims[2]);
-  int in_height = static_cast<int>(in_dims[3]);
-  int in_width = static_cast<int>(in_dims[4]);
-  int out_depth = static_cast<int>(out_dims[2]);
-  int out_height = static_cast<int>(out_dims[3]);
-  int out_width = static_cast<int>(out_dims[4]);
+  int64_t channels = in_dims[1];
+  int64_t in_depth = in_dims[2];
+  int64_t in_height = in_dims[3];
+  int64_t in_width = in_dims[4];
+  int64_t out_depth = out_dims[2];
+  int64_t out_height = out_dims[3];
+  int64_t out_width = out_dims[4];
   if (data_format == "NDHWC") {
     channels = static_cast<int>(in_dims[4]);
     in_depth = static_cast<int>(in_dims[1]);
@@ -497,7 +497,7 @@ void Pad3dKernel(const Context& dev_ctx,
   const int pad_left = static_cast<int>(pads[0]);
   const int pad_top = static_cast<int>(pads[2]);
   const int pad_front = static_cast<int>(pads[4]);
-  const int num = static_cast<int>(in_dims[0]);
+  const int64_t num = in_dims[0];
   if (data_format == "NCDHW") {
     std::map<std::string,
              void (*)(const T*,

@@ -26,7 +26,7 @@ void StackGradKernel(const Context& dev_ctx,
                      int axis,
                      std::vector<DenseTensor*> x_grad) {
   if (axis < 0) axis += out.dims().size();
-  int n = static_cast<int>(out.dims()[axis]);
+  int64_t n = out.dims()[axis];
   std::vector<T*> dx_datas(n);  // NOLINT
 
   for (int i = 0; i < n; i++) {
@@ -47,10 +47,10 @@ void StackGradKernel(const Context& dev_ctx,
     return;
   }
 
-  int pre = 1;
-  for (int i = 0; i < axis; ++i) pre *= static_cast<int>(out.dims()[i]);
-  int total_num = static_cast<int>(out.numel());
-  int post = total_num / (n * pre);
+  int64_t pre = 1;
+  for (int64_t i = 0; i < axis; ++i) pre *= out.dims()[i];
+  int64_t total_num = static_cast<int64_t>(out.numel());
+  int64_t post = total_num / (n * pre);
   auto dx_data_arr = dx_datas.data();
   phi::funcs::StackGradFunctorForRange(
       dev_ctx, dx_data_arr, dy_data, total_num, n, post);

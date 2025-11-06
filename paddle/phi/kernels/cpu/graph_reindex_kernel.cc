@@ -35,8 +35,8 @@ void GraphReindexKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
-  const int bs = static_cast<int>(x.dims()[0]);
-  const int num_edges = static_cast<int>(neighbors.dims()[0]);
+  const int64_t bs = x.dims()[0];
+  const int64_t num_edges = neighbors.dims()[0];
 
   std::unordered_map<T, T> node_map;
   std::vector<T> unique_nodes;
@@ -63,9 +63,9 @@ void GraphReindexKernel(const Context& dev_ctx,
   }
   // Reindex Dst
   // Add support for multi-type edges reindex
-  int num_edge_types = static_cast<int>(count.dims()[0] / bs);
+  int64_t num_edge_types = static_cast<int64_t>(count.dims()[0] / bs);
   int cnt = 0;
-  for (int i = 0; i < num_edge_types; i++) {
+  for (int64_t i = 0; i < num_edge_types; i++) {
     for (int j = 0; j < bs; j++) {
       for (int k = 0; k < count_data[i * bs + j]; k++) {
         T node = x_data[j];

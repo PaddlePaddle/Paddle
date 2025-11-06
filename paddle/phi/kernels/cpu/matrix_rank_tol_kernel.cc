@@ -112,7 +112,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
     return;
   }
   int k = std::min(rows, cols);
-  int batches = static_cast<int>(x.numel() / (rows * cols));
+  int64_t batches = static_cast<int64_t>(x.numel() / (rows * cols));
 
   RealType rtol_T = 0;
 
@@ -221,7 +221,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     return;
   }
   int k = std::min(rows, cols);
-  int batches = static_cast<int>(x.numel() / (rows * cols));
+  int64_t batches = static_cast<int64_t>(x.numel() / (rows * cols));
 
   DenseTensor eigenvalue_tensor;
   eigenvalue_tensor.Resize(detail::GetEigenvalueDim(dim_x, k));

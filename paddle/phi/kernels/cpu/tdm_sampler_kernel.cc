@@ -43,7 +43,7 @@ void TDMSamplerInner(const Context &dev_ctx,
                      phi::DenseTensor *label,
                      phi::DenseTensor *mask) {
   // get dimension
-  int input_ids_num = input_tensor.numel();
+  int64_t input_ids_num = input_tensor.numel();
   VLOG(3) << "TDM: input ids nums: " << input_ids_num;
   auto layer_nums = neg_samples_num_list.size();
   VLOG(3) << "TDM: tree layer nums: " << layer_nums;
@@ -112,7 +112,7 @@ void TDMSamplerInner(const Context &dev_ctx,
       int sample_num = neg_samples_num_list[layer_idx];
       VLOG(3) << "TDM: Sample num: " << sample_num;
 
-      int node_nums = layer_offset[layer_idx + 1] - layer_offset[layer_idx];
+      int64_t node_nums = layer_offset[layer_idx + 1] - layer_offset[layer_idx];
       VLOG(3) << "TDM: layer - " << layer_idx + 1
               << " - has node_nums: " << node_nums;
 
@@ -127,8 +127,8 @@ void TDMSamplerInner(const Context &dev_ctx,
               node_nums,
               sample_num));
 
-      int node_id_min = layer_offset[layer_idx];
-      int node_id_max = layer_offset[layer_idx + 1];
+      int64_t node_id_min = layer_offset[layer_idx];
+      int64_t node_id_max = layer_offset[layer_idx + 1];
 
       OutT positive_node_id =
           static_cast<OutT>(travel_data[start_offset + layer_idx]);

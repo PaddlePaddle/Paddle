@@ -62,7 +62,7 @@ void DistributeFpnProposalsKernel(
     auto fpn_rois_slice = fpn_rois.Slice(static_cast<int>(fpn_rois_lod[i]),
                                          static_cast<int>(fpn_rois_lod[i + 1]));
     const T* rois_data = fpn_rois_slice.data<T>();
-    for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
+    for (int64_t j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
       // get the target level of current rois
       T roi_scale = std::sqrt(funcs::BBoxArea(rois_data, pixel_offset));
       int tgt_lvl = std::floor(std::log2(roi_scale / refer_scale + (T)1e-6) +
@@ -101,7 +101,7 @@ void DistributeFpnProposalsKernel(
     for (int j = 0; j < num_level; j++) {
       multi_fpn_rois_lod0[j].push_back(multi_fpn_rois_lod0[j][i]);
     }
-    for (int j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
+    for (int64_t j = 0; j < fpn_rois_slice.dims()[0]; ++j) {
       int lvl = target_level[cur_offset + j];
       memcpy(multi_fpn_rois_data[lvl - min_level],
              rois_data,

@@ -246,7 +246,7 @@ inline std::vector<size_t> GetNmsLodFromRoisNum(const DenseTensor* rois_num) {
   } else if (rois_num->dtype() == phi::DataType::INT32) {
     auto* rois_num_data = rois_num->data<int>();
     rois_lod.push_back(static_cast<size_t>(0));
-    for (int i = 0; i < rois_num->numel(); ++i) {
+    for (int64_t i = 0; i < rois_num->numel(); ++i) {
       rois_lod.push_back(rois_lod.back() +
                          static_cast<size_t>(rois_num_data[i]));
     }
@@ -262,9 +262,9 @@ void SliceOneClass(const Context& dev_ctx,
   T* item_data = dev_ctx.template Alloc<T>(one_class_item);
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];
-  const int class_num = static_cast<int>(items.dims()[1]);
+  const int64_t class_num = items.dims()[1];
   if (items.dims().size() == 3) {
-    int item_size = static_cast<int>(items.dims()[2]);
+    int64_t item_size = items.dims()[2];
     for (int i = 0; i < num_item; ++i) {
       std::memcpy(item_data + i * item_size,
                   items_data + i * class_num * item_size + class_id * item_size,

@@ -116,7 +116,7 @@ void quant_compute(const DeviceContext& dev_ctx,
       funcs::Transpose<DeviceContext, int8_t, 2> trans;
       trans(dev_ctx, x_int, out, axis);
     } else {
-      for (int i = 0; i < out->numel(); ++i) {
+      for (int64_t i = 0; i < out->numel(); ++i) {
         x_int_tmp_data[i] = x_int_data[i];
       }
       std::vector<int> axis = {1, 0};
@@ -130,7 +130,7 @@ void quant_compute(const DeviceContext& dev_ctx,
       add_bias_and_interleave_inplace<bits>(x_int_data, num);
       // phi::Copy break the shape of int4 output, use naive copy;
       // only left half of x_int data is valid in int4 mode
-      for (int i = 0; i < out->numel(); ++i) {
+      for (int64_t i = 0; i < out->numel(); ++i) {
         out_data[i] = x_int_data[i];
       }
     } else if ((arch == 90) || (arch == 89) || (arch == 86) || (arch == 80) ||

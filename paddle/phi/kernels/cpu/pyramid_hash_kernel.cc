@@ -101,7 +101,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   auto* buff = x_temp_out;
   buff->Resize(common::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
   float* bottom_data = dev_ctx.template Alloc<float>(buff);
-  for (int i = 0; i < bottom->dims()[0]; i++) {
+  for (int64_t i = 0; i < bottom->dims()[0]; i++) {
     bottom_data[i] = bottom_data_ori[i];  // NOLINT
   }
 
@@ -145,7 +145,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   int* iter_end = iter;
 
   for (size_t i = 0; i < top_offset.size() - 1; ++i) {
-    int w = static_cast<int>(offset[i + 1] - offset[i]);
+    int64_t w = static_cast<int64_t>(offset[i + 1] - offset[i]);
     int nsentense_with_pyramid = 0;
     if (w < 2) {
       nsentense_with_pyramid = 0;
@@ -177,7 +177,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
         (nsentense_with_pyramid == 0 ? 1 : nsentense_with_pyramid);
   }
 
-  int top_l = static_cast<int>(top_offset[top_offset.size() - 1]);
+  int64_t top_l = static_cast<int64_t>(top_offset[top_offset.size() - 1]);
 
   phi::LegacyLoD top_lod;
   top_lod.push_back(top_offset);
@@ -192,8 +192,9 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   iter = dev_ctx.template Alloc<int>(drop_pos);
   int top_counter = 0;
   for (size_t i = 0; i < offset.size() - 1; ++i) {
-    int w_drop = static_cast<int>(drop_pos_offset[i + 1] - drop_pos_offset[i]);
-    int w = static_cast<int>(offset[i + 1] - offset[i]);
+    int64_t w_drop =
+        static_cast<int64_t>(drop_pos_offset[i + 1] - drop_pos_offset[i]);
+    int64_t w = static_cast<int64_t>(offset[i + 1] - offset[i]);
     if (w_drop == 0) {
       if (w >= 2) {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {

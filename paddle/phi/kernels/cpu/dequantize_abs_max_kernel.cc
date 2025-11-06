@@ -28,7 +28,7 @@ void DequantizeAbsMaxKernel(const Context& dev_ctx,
   const float* scale_factor = scale.data<float>();
   const T* input_data = x.data<T>();
   float* output_data = dev_ctx.template Alloc<float>(out);
-  int ind = static_cast<int>(x.numel());
+  int64_t ind = static_cast<int64_t>(x.numel());
   for (size_t i = 0; i < (unsigned)ind; i++) {
     output_data[i] = scale_factor[0] * input_data[i] / max_range;
   }

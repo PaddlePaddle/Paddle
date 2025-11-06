@@ -77,7 +77,7 @@ void GRUCPUKernel(const Context &dev_ctx,
     add_bias(dev_ctx, *batch_gate, bias.get(), batch_gate);
   }
 
-  int frame_size = static_cast<int>(hidden_dims[1]);
+  int64_t frame_size = hidden_dims[1];
   phi::funcs::GRUMetaValue<T> gru_value;
   gru_value.gate_weight = const_cast<T *>(weight_data);
   gru_value.state_weight =

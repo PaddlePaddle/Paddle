@@ -83,9 +83,28 @@ void LstsqKernel(const Context& dev_ctx,
   // lapack is a column-major storage, transpose make the input to
   // have a continuous memory layout
   int info = 0;
-  int m = static_cast<int>(x_dims[dim_size - 2]);
-  int n = static_cast<int>(x_dims[dim_size - 1]);
-  int nrhs = static_cast<int>(y_dims[dim_size - 1]);
+  int64_t m_64 = x_dims[dim_size - 2];
+  int64_t n_64 = x_dims[dim_size - 1];
+  int64_t nrhs_64 = y_dims[dim_size - 1];
+
+  // LAPACK uses int parameters, check for overflow
+  PADDLE_ENFORCE_LE(m_64,
+                    std::numeric_limits<int>::max(),
+                    common::errors::InvalidArgument(
+                        "The matrix row dimension exceeds LAPACK int limit."));
+  PADDLE_ENFORCE_LE(
+      n_64,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "The matrix column dimension exceeds LAPACK int limit."));
+  PADDLE_ENFORCE_LE(nrhs_64,
+                    std::numeric_limits<int>::max(),
+                    common::errors::InvalidArgument(
+                        "The number of RHS exceeds LAPACK int limit."));
+
+  int m = static_cast<int>(m_64);
+  int n = static_cast<int>(n_64);
+  int nrhs = static_cast<int>(nrhs_64);
   int lda = std::max<int>(m, 1);
   int ldb = std::max<int>(1, std::max(m, n));
 

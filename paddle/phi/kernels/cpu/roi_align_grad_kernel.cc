@@ -83,10 +83,10 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         bool aligned,
                         DenseTensor* dx) {
   const auto& in_dims = common::vectorize<int>(x.dims());
-  int channels = in_dims[1];
-  int height = in_dims[2];
-  int width = in_dims[3];
-  int rois_num = static_cast<int>(boxes.dims()[0]);
+  int64_t channels = in_dims[1];
+  int64_t height = in_dims[2];
+  int64_t width = in_dims[3];
+  int64_t rois_num = boxes.dims()[0];
 
   if (!dx) {
     return;
@@ -135,7 +135,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, dx, static_cast<T>(0));
 
-  int output_grad_size = static_cast<int>(out_grad.numel());
+  int64_t output_grad_size = static_cast<int64_t>(out_grad.numel());
 
   if ((!out_grad.IsInitialized()) || (output_grad_size <= 0)) {
     return;

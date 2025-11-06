@@ -96,7 +96,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
       x_grad_tmp = &x_grad_expand;
     }
     auto* dx = x_grad_tmp->data<T>();
-    for (int i = 0; i < numel; i++) {
+    for (int64_t i = 0; i < numel; i++) {
       dx[i] = mask_data[i] ? T{} : dout[i];
     }
 
@@ -117,13 +117,13 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     auto* dv = value_grad_tmp->data<T>();
     if (v_grad->numel() == 1) {
       dv[0] = 0;
-      for (int i = 0; i < numel; i++) {
+      for (int64_t i = 0; i < numel; i++) {
         if (mask_data[i]) {
           dv[0] += dout[i];
         }
       }
     } else {
-      for (int i = 0; i < numel; i++) {
+      for (int64_t i = 0; i < numel; i++) {
         if (mask_data[i]) {
           dv[i] = dout[i];
         }

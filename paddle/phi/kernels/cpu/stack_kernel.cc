@@ -27,7 +27,7 @@ void StackKernel(const Context& dev_ctx,
   if (axis < 0) axis += (x[0]->dims().size() + 1);
 
   auto x_dims = x[0]->dims();
-  for (int i = 0; i < x_dims.size(); i++) {
+  for (int64_t i = 0; i < x_dims.size(); i++) {
     PADDLE_ENFORCE_GE(
         x_dims[i],
         0,

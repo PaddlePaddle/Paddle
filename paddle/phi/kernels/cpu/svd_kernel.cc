@@ -115,8 +115,22 @@ void SvdKernel(const Context& dev_ctx,
   DenseTensor trans_x =
       ::phi::TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, X));
   auto x_dims = X.dims();
-  int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
-  int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
+  int64_t rows_64 = x_dims[x_dims.size() - 2];
+  int64_t cols_64 = x_dims[x_dims.size() - 1];
+
+  // LAPACK uses int parameters, check for overflow
+  PADDLE_ENFORCE_LE(rows_64,
+                    std::numeric_limits<int>::max(),
+                    common::errors::InvalidArgument(
+                        "The matrix row dimension exceeds LAPACK int limit."));
+  PADDLE_ENFORCE_LE(
+      cols_64,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "The matrix column dimension exceeds LAPACK int limit."));
+
+  int rows = static_cast<int>(rows_64);
+  int cols = static_cast<int>(cols_64);
   // int k = std::min(rows, cols);
   // int col_u = full ? rows : k;
   // int col_v = full ? cols : k;

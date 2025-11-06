@@ -231,7 +231,7 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
   const T* src_data = row.data<T>();
   const T* dst_count_data = col_ptr.data<T>();
   const T* p_vertices = x.data<T>();
-  int bs = static_cast<int>(x.dims()[0]);
+  int64_t bs = x.dims()[0];
   // 2. Get unique input nodes(X).
   std::vector<T> inputs(bs);
   std::copy(p_vertices, p_vertices + bs, inputs.begin());

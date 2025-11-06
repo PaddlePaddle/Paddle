@@ -29,7 +29,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
   // set padding size == data_dims.size() * 2
   auto data_shape = common::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
-    for (int i = 0; i < data_dims.size(); ++i) {
+    for (int64_t i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
@@ -50,7 +50,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
 
   // when padding_algorithm is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
-    for (int i = 0; i < data_dims.size(); ++i) {
+    for (int64_t i = 0; i < data_dims.size(); ++i) {
       T out_size = (data_dims[i] + strides[i] - 1) / strides[i];
       T pad_sum =
           std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i],
@@ -245,7 +245,7 @@ inline std::vector<int64_t> ComputeOutputShape(
   if (!channel_last) {
     output_shape.push_back(filter_dims[0]);
   }
-  for (int i = 0; i < in_data_dims.size(); ++i) {
+  for (int64_t i = 0; i < in_data_dims.size(); ++i) {
     if (!config.is_runtime &&
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);

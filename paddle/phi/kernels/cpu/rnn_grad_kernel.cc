@@ -717,8 +717,8 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
     phi::funcs::SetConstant<CPUContext, T> zero;
     zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
-    int time_step = static_cast<int>(input->dims()[0]);
-    int batch_size = static_cast<int>(input->dims()[1]);
+    int64_t time_step = input->dims()[0];
+    int64_t batch_size = input->dims()[1];
     int direction_num = is_bidirec ? 2 : 1;
 
     // in this section, create the gate_state_grad for the postprocess calculate
@@ -827,8 +827,8 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
                   int hidden_size,
                   const std::string& mode,
                   int gate_num) {
-    int time_step = static_cast<int>(input->dims()[0]);
-    int batch_size = static_cast<int>(input->dims()[1]);
+    int64_t time_step = input->dims()[0];
+    int64_t batch_size = input->dims()[1];
     int direction_num = is_bidirec ? 2 : 1;
     // split the output two tensor to output_forward, output_backward
     phi::funcs::SetConstant<CPUContext, T> zero;
@@ -1011,8 +1011,8 @@ void RnnGradFunc(const CPUContext& dev_ctx,
   }
 
   // get the input_size, batch_size, time_step
-  const int time_step = static_cast<int>(x.dims()[0]);
-  const int batch_size = static_cast<int>(x.dims()[1]);
+  const int64_t time_step = x.dims()[0];
+  const int64_t batch_size = x.dims()[1];
   const int direction_num = is_bidirec ? 2 : 1;
 
   // allocate the memory and initization the x_grad

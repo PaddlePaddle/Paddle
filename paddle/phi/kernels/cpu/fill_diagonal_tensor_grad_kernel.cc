@@ -33,7 +33,7 @@ void FillDiagonalTensorGradKernel(const Context& dev_ctx,
     auto* data = dev_ctx.template Alloc<T>(x_grad);
 
     auto dx_dims = x_grad->dims();
-    for (int i = 0; i < dx_dims.size(); i++) {
+    for (int64_t i = 0; i < dx_dims.size(); i++) {
       if (i != dim1 && i != dim2) {
         matrows *= static_cast<int>(dx_dims[i]);
       }

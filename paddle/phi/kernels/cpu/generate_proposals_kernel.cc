@@ -79,7 +79,7 @@ void FilterBoxes(const phi::CPUContext& dev_ctx,
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
 
   int keep_len = 0;
-  for (int i = 0; i < boxes->dims()[0]; ++i) {
+  for (int64_t i = 0; i < boxes->dims()[0]; ++i) {
     T ws = boxes_data[4 * i + 2] - boxes_data[4 * i] + offset;
     T hs = boxes_data[4 * i + 3] - boxes_data[4 * i + 1] + offset;
     if (pixel_offset) {
@@ -191,7 +191,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor index_t;
   index_t.Resize(common::make_ddim({scores_slice.numel()}));
   int* index = dev_ctx.template Alloc<int>(&index_t);
-  for (int i = 0; i < scores_slice.numel(); ++i) {
+  for (int64_t i = 0; i < scores_slice.numel(); ++i) {
     index[i] = i;
   }
   auto compare = [scores_data](const int64_t& i, const int64_t& j) {

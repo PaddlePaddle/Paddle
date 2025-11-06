@@ -33,7 +33,7 @@ void PReluKernel(const Context& dev_ctx,
     return;
   }
 
-  int numel = static_cast<int>(x.numel());
+  int64_t numel = static_cast<int64_t>(x.numel());
   auto dim = x.dims();
   int index = 0;
   int i = 0;

@@ -92,12 +92,12 @@ void AttentionLSTMKernel(
   const int N = static_cast<int>(x_lod[0].size() - 1);  // batch size
   auto x_dims = x->dims();                              // T x M
   auto w_dims = lstm_w->dims();                         // (D+M) x 4D
-  const int total_T = static_cast<int>(x_dims[0]);
-  const int M = static_cast<int>(x_dims[1]);      // x frame size
-  const int D = static_cast<int>(w_dims[1] / 4);  // gate frame size
+  const int64_t total_T = x_dims[0];
+  const int64_t M = x_dims[1];                            // x frame size
+  const int64_t D = static_cast<int64_t>(w_dims[1] / 4);  // gate frame size
   const int D2 = static_cast<int>(D * 2);
   const int D3 = static_cast<int>(D * 3);
-  const int D4 = static_cast<int>(w_dims[1]);
+  const int64_t D4 = w_dims[1];
   int max_seq_len = static_cast<int>(x_lod[0][1]);
   for (int i = 1; i < N; ++i) {
     int len = static_cast<int>(x_lod[0][i + 1] - x_lod[0][i]);

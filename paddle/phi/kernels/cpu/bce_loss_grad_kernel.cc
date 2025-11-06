@@ -32,10 +32,10 @@ void BCELossGradKernel(const Context& dev_ctx,
   auto x_data = input.data<T>();
   auto label_data = label.data<T>();
 
-  int x_numel = static_cast<int>(input.numel());
+  int64_t x_numel = static_cast<int64_t>(input.numel());
 
   // dx = dout * ((x - label)/(x - x^2))
-  for (int i = 0; i < x_numel; ++i) {
+  for (int64_t i = 0; i < x_numel; ++i) {
     dx_data[i] =
         dout_data[i] * ((x_data[i] - label_data[i]) /
                         std::max((static_cast<T>(1) - x_data[i]) * x_data[i],

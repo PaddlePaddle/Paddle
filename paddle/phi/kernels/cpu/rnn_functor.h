@@ -47,7 +47,7 @@ void CreateMaskMatrix(const CPUContext& dev_ctx,
                       const bool& is_reverse,
                       int* min_seq_len) {
   const auto& seq_len_vec = phi::GetVectorFromTensor<int>(sequence_length);
-  const int table_width = mask_matrix->dims()[0];
+  const int64_t table_width = mask_matrix->dims()[0];
   DenseTensor temp =
       Empty<T>(dev_ctx, {mask_matrix->dims()[1], mask_matrix->dims()[0]});
   T* data_temp = temp.data<T>();
@@ -215,8 +215,8 @@ void AllocateReserveData(const Context& dev_ctx,
                          DenseTensor* hidden_data,
                          const DenseTensor* input) {
   int direction_num = is_bidirec ? 2 : 1;
-  int time_step = input->dims()[0];
-  int batch_size = input->dims()[1];
+  int64_t time_step = input->dims()[0];
+  int64_t batch_size = input->dims()[1];
   int block_size = direction_num * time_step * batch_size * hidden_size;
   int hidden_data_idx = (num_layers - 1);
   if (is_lstm(mode)) {

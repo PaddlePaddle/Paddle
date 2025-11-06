@@ -85,7 +85,7 @@ void OverlapAddKernel(const Context& dev_ctx,
     } else {
       std::vector<int> perm_out{1, 0};
       auto out_dims_vec = common::vectorize(out->dims());
-      for (int i = 0; i < out->dims().size(); ++i) {
+      for (int64_t i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
       trans_out.Resize(common::make_ddim(out_dims_vec));
@@ -128,7 +128,7 @@ void OverlapAddKernel(const Context& dev_ctx,
   if (out_rank > 2) {
     std::vector<int64_t> restored_out_shape;
     restored_out_shape.reserve(preserved_dims.size());
-    for (int i = 0; i < preserved_dims.size(); i++) {
+    for (int64_t i = 0; i < preserved_dims.size(); i++) {
       restored_out_shape.push_back(preserved_dims[i]);
     }
 

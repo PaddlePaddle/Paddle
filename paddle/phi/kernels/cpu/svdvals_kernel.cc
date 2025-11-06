@@ -78,11 +78,10 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
 }
 
 template <typename T>
-void BatchSvdvals(
-    const T* X, T* S, int64_t rows, int64_t cols, int64_t batches) {
-  int64_t stride = rows * cols;
-  int64_t stride_s = std::min(rows, cols);
-  for (int64_t i = 0; i < batches; i++) {
+void BatchSvdvals(const T* X, T* S, int rows, int cols, int batches) {
+  int stride = rows * cols;
+  int stride_s = std::min(rows, cols);
+  for (int i = 0; i < batches; i++) {
     LapackSvdvals<T>(X + i * stride, S + i * stride_s, rows, cols);
   }
 }
@@ -96,8 +95,8 @@ void SvdvalsKernel(const Context& dev_ctx,
     return;
   }
   auto x_dims = X.dims();
-  int64_t rows = static_cast<int64_t>(x_dims[x_dims.size() - 2]);
-  int64_t cols = static_cast<int64_t>(x_dims[x_dims.size() - 1]);
+  int64_t rows = x_dims[x_dims.size() - 2];
+  int64_t cols = x_dims[x_dims.size() - 1];
   PADDLE_ENFORCE_LT(rows * cols,
                     std::numeric_limits<int32_t>::max(),
                     common::errors::InvalidArgument(
@@ -113,6 +112,18 @@ void SvdvalsKernel(const Context& dev_ctx,
       cols,
       0,
       common::errors::InvalidArgument("The column of Input(X) must be > 0."));
+
+  // LAPACK uses int parameters, check for overflow
+  PADDLE_ENFORCE_LE(rows,
+                    std::numeric_limits<int>::max(),
+                    common::errors::InvalidArgument(
+                        "The matrix row dimension exceeds LAPACK int limit."));
+  PADDLE_ENFORCE_LE(
+      cols,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "The matrix column dimension exceeds LAPACK int limit."));
+
   int64_t k = std::min(rows, cols);
   int64_t batches = static_cast<int64_t>(X.numel() / (rows * cols));
   PADDLE_ENFORCE_GT(batches,
@@ -133,7 +144,10 @@ void SvdvalsKernel(const Context& dev_ctx,
   DenseTensor trans_x = ::phi::TransposeLast2Dim<T>(dev_ctx, X);
   auto* x_data = trans_x.data<T>();
   // Perform batch SVD computation for singular values
-  BatchSvdvals<T>(x_data, S_out, rows, cols, batches);
+  int rows_int = static_cast<int>(rows);
+  int cols_int = static_cast<int>(cols);
+  int batches_int = static_cast<int>(batches);
+  BatchSvdvals<T>(x_data, S_out, rows_int, cols_int, batches_int);
 }
 
 }  // namespace phi

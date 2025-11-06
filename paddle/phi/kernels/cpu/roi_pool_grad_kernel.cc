@@ -40,7 +40,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
   }
 
   if (dx) {
-    int rois_num = static_cast<int>(boxes.dims()[0]);
+    int64_t rois_num = boxes.dims()[0];
     DenseTensor box_batch_id_list = Empty<int>(dev_ctx, {rois_num});
     int* box_batch_id_data = box_batch_id_list.data<int>();
 
@@ -78,7 +78,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     auto roi_stride = common::stride(boxes.dims());
     auto out_stride = common::stride(out_grad.dims());
 
-    int channels = static_cast<int>(x.dims()[1]);
+    int64_t channels = x.dims()[1];
 
     for (int n = 0; n < rois_num; ++n) {
       int roi_batch_idx = box_batch_id_data[n];

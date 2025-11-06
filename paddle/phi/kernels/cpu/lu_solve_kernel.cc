@@ -40,8 +40,8 @@ void LuSolveKernel(const Context& dev_ctx,
 
   // Prepare LAPACK parameters
   char trans_char = (trans == "N") ? 'N' : ((trans == "T") ? 'T' : 'C');
-  int n_int = lu_dims[lu_dims.size() - 1];
-  int nrhs_int = x_dims[x_dims.size() - 1];
+  int64_t n_int = lu_dims[lu_dims.size() - 1];
+  int64_t nrhs_int = x_dims[x_dims.size() - 1];
   int lda = std::max(1, n_int);  // Leading dimension of A (LU matrix)
   int ldb = std::max(1, n_int);  // Leading dimension of B (RHS/solution matrix)
   int info = 0;

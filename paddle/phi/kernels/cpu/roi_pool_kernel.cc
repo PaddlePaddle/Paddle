@@ -32,11 +32,11 @@ void RoiPoolKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* arg_max) {
   auto x_dims = x.dims();
-  int batch_size = static_cast<int>(x_dims[0]);
-  int channels = static_cast<int>(x_dims[1]);
-  int height = static_cast<int>(x_dims[2]);
-  int width = static_cast<int>(x_dims[3]);
-  int rois_num = static_cast<int>(boxes.dims()[0]);
+  int64_t batch_size = x_dims[0];
+  int64_t channels = x_dims[1];
+  int64_t height = x_dims[2];
+  int64_t width = x_dims[3];
+  int64_t rois_num = boxes.dims()[0];
 
   if (x.numel() == 0 || boxes.numel() == 0) {
     phi::Full<T, Context>(

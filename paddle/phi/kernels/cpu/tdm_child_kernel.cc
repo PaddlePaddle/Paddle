@@ -33,10 +33,10 @@ void TDMChildInner(const Context &dev_ctx,
                    phi::DenseTensor *child,
                    phi::DenseTensor *mask) {
   auto info_dims = tree_info.dims();
-  int node_nums = info_dims[0];
-  int length = info_dims[1];
+  int64_t node_nums = info_dims[0];
+  int64_t length = info_dims[1];
 
-  int input_ids_num = input.numel();
+  int64_t input_ids_num = input.numel();
   VLOG(4) << "TDM child op: input numel ->  " << input_ids_num;
 
   std::vector<OutT> child_vec{};

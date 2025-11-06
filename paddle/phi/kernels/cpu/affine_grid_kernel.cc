@@ -49,7 +49,7 @@ void AffineGrid4DKernel(const Context& dev_ctx,
                         bool align_corners,
                         DenseTensor* output) {
   auto* theta = &input;
-  int n = static_cast<int>(theta->dims()[0]);
+  int64_t n = theta->dims()[0];
   auto& size_attr = outputShape.GetData();
   int h = 0;
   int w = 0;
@@ -81,7 +81,7 @@ void AffineGrid5DKernel(const Context& dev_ctx,
                         bool align_corners,
                         DenseTensor* output) {
   auto* theta = &input;
-  int n = static_cast<int>(theta->dims()[0]);
+  int64_t n = theta->dims()[0];
   auto& size_attr = outputShape.GetData();
   int d = 0;
   int h = 0;
