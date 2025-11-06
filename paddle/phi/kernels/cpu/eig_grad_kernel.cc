@@ -23,8 +23,8 @@ template <typename T, typename Context>
 void EigGradKernel(const Context& dev_ctx,
                    const DenseTensor& out_w,
                    const DenseTensor& out_v,
-                   const DenseTensor& dout_w,
-                   const DenseTensor& dout_v,
+                   const paddle::optional<DenseTensor>& dout_w,
+                   const paddle::optional<DenseTensor>& dout_v,
                    DenseTensor* dx) {
   auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
 
