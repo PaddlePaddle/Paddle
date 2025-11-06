@@ -81,6 +81,22 @@ __all__ = []
 async_save_queue = []
 
 
+def place_tag(place):
+    place_map = {
+        'is_cpu_place': "cpu",
+        'is_cuda_pinned_place': "gpu_pinned",
+        'is_xpu_pinned_place': "xpu_pinned",
+        'is_gpu_place': lambda p: f"gpu:{p.gpu_device_id()}",
+        'is_xpu_place': lambda p: f"xpu:{p.xpu_device_id()}",
+        'is_ipu_place': lambda p: f"ipu:{p.ipu_device_id()}",
+        'is_custom_place': lambda p: f"{p.custom_device_type()}:{p.custom_device_id()}",
+    }
+
+    for method, tag in place_map.items():
+        if getattr(place, method)():
+            return tag(place) if callable(tag) else tag
+
+
 def clear_async_save_task_queue() -> None:
     '''
     wait until all async save task to be done.
@@ -163,6 +179,7 @@ def async_save(
 def _build_saved_state_dict(state_dict):
     save_dict = {}
     name_table = {}
+    place_map = {}
     for key, value in state_dict.items():
         if isinstance(value, (Variable, core.eager.Tensor)):
             if value.type == core.VarDesc.VarType.VOCAB:
@@ -178,11 +195,16 @@ def _build_saved_state_dict(state_dict):
                     and core.is_compiled_with_custom_device('npu')
                 ):
                     value = paddle._C_ops.npu_identity(value, -1)
-                save_dict[key] = value.cpu()
+                place_map[key] = place_tag(value.place)
+                if not value.place.is_cpu_place():
+                    save_dict[key] = value.cpu()
+                else:
+                    save_dict[key] = value
             name_table[key] = value.name
         else:
             save_dict[key] = value
     save_dict["StructuredToParameterName@@"] = name_table
+    save_dict["StructuredToPlace@@"] = place_map
 
     return save_dict
 
@@ -600,9 +622,9 @@ def _tuple_to_tensor(obj, return_numpy):
 
 def _ndarray_to_tensor(obj, return_numpy):
     if return_numpy:
-        return obj
+        return np.array(obj)
     if in_dygraph_mode():
-        return paddle.to_tensor(obj)
+        return obj
     else:
         return _to_LodTensor(obj)
 
@@ -1278,10 +1300,10 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                                     load_result[key], config.return_numpy
                                 )
                                 # default name is "generatedxxx" which is set in Tensor init, if not set
-                                if not config.return_numpy and getattr(
-                                    load_result[key], "name", ""
-                                ):
-                                    load_result[key].name = name
+                            if not config.return_numpy and getattr(
+                                load_result[key], "name", ""
+                            ):
+                                load_result[key].name = name
 
                         if (
                             not config.keep_name_table
@@ -1293,6 +1315,13 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                         load_result = _parse_load_result(
                             load_result, config.return_numpy
                         )
+
+                    if "StructuredNameToPlace@@" in load_result:
+                        for key, place in load_result[
+                            "StructuredNameToPlace@@"
+                        ].items():
+                            load_result[key] = load_result[key].to(place)
+                        del load_result["StructuredNameToPlace@@"]
 
                 else:
                     load_result = _parse_load_result(
