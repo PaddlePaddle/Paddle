@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/funcs/magma/magma_function.h"
 
 #include "paddle/phi/backends/dynload/magma.h"
@@ -137,3 +138,4 @@ void magmaEig<phi::complex64, float>(magma_vec_t jobvl,
 }
 
 }  // namespace phi::funcs
+#endif
