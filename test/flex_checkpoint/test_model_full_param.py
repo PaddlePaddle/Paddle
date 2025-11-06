@@ -19,8 +19,6 @@ import collective.test_communication_api_base as test_base
 TEST_CONFIGS = {
     "2_card_tests": [
         {
-            "test_type": "layer",
-            "layer_type": "ColumnParallelLinear",
             "world_size": 2,
             "tp": 2,
             "dp": 1,
@@ -28,8 +26,6 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
         {
-            "test_type": "layer",
-            "layer_type": "RowParallelLinear",
             "world_size": 2,
             "tp": 2,
             "dp": 1,
@@ -37,8 +33,6 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
         {
-            "test_type": "layer",
-            "layer_type": "VocabParallelEmbedding",
             "world_size": 2,
             "tp": 2,
             "dp": 1,
@@ -46,8 +40,6 @@ TEST_CONFIGS = {
             "has_bias": "False",
         },
         {
-            "test_type": "layer",
-            "layer_type": "ColumnParallelLinear",
             "world_size": 2,
             "tp": 2,
             "dp": 1,
@@ -55,8 +47,6 @@ TEST_CONFIGS = {
             "has_bias": "False",
         },
         {
-            "test_type": "layer",
-            "layer_type": "RowParallelLinear",
             "world_size": 2,
             "tp": 2,
             "dp": 1,
@@ -73,8 +63,6 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
         {
-            "test_type": "layer",
-            "layer_type": "RowSequenceParallelLinear",
             "world_size": 2,
             "tp": 2,
             "dp": 1,
@@ -82,32 +70,24 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
         {
-            "test_type": "optimizer",
-            "layer_type": "AdamW",
             "world_size": 2,
             "tp": 2,
             "sharding_degree": 1,
             "has_bias": "False",
         },
         {
-            "test_type": "optimizer",
-            "layer_type": "DygraphShardingOptimizer",
             "world_size": 2,
             "tp": 1,
             "sharding_degree": 2,
             "has_bias": "False",
         },
         {
-            "test_type": "optimizer",
-            "layer_type": "DygraphShardingOptimizerV2",
             "world_size": 2,
             "tp": 1,
             "sharding_degree": 2,
             "has_bias": "False",
         },
         {
-            "test_type": "optimizer",
-            "layer_type": "AdamW",
             "world_size": 2,
             "tp": 2,
             "sharding_degree": 1,
@@ -115,8 +95,6 @@ TEST_CONFIGS = {
             "master_weight": "True",
         },
         {
-            "test_type": "optimizer",
-            "layer_type": "DygraphShardingOptimizer",
             "world_size": 2,
             "tp": 1,
             "sharding_degree": 2,
@@ -124,8 +102,6 @@ TEST_CONFIGS = {
             "master_weight": "True",
         },
         {
-            "test_type": "optimizer",
-            "layer_type": "DygraphShardingOptimizerV2",
             "world_size": 2,
             "tp": 1,
             "sharding_degree": 2,
@@ -135,8 +111,6 @@ TEST_CONFIGS = {
     ],
     "4_card_tests": [
         {
-            "test_type": "layer",
-            "layer_type": "ColumnParallelLinear",
             "world_size": 4,
             "tp": 4,
             "dp": 1,
@@ -144,8 +118,6 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
         {
-            "test_type": "layer",
-            "layer_type": "RowParallelLinear",
             "world_size": 4,
             "tp": 4,
             "dp": 1,
@@ -153,8 +125,6 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
         {
-            "test_type": "layer",
-            "layer_type": "ColumnParallelLinear",
             "world_size": 4,
             "tp": 2,
             "dp": 2,
@@ -162,8 +132,6 @@ TEST_CONFIGS = {
             "has_bias": "True",
         },
         {
-            "test_type": "layer",
-            "layer_type": "RowParallelLinear",
             "world_size": 4,
             "tp": 2,
             "dp": 2,
@@ -174,43 +142,30 @@ TEST_CONFIGS = {
 }
 
 
-class TestParallelLayersWith2Devices(test_base.CommunicationTestDistBase):
+class TestFullParamWith2Devices(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=240)
 
-    def test_metadata(self):
+    def test_full_param(self):
         for config in TEST_CONFIGS["2_card_tests"]:
             envs = {k: str(v) for k, v in config.items()}
             self.run_test_case(
-                "sharded_state_dict_logic.py",
+                "model_full_param_logic.py",
                 user_defined_envs=envs,
             )
 
 
-class TestParallelLayersWith4Devices(test_base.CommunicationTestDistBase):
+class TestFullParamWith4Devices(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=4, timeout=240)
 
-    def test_metadata(self):
+    def test_full_param(self):
         for config in TEST_CONFIGS["4_card_tests"]:
             envs = {k: str(v) for k, v in config.items()}
             self.run_test_case(
-                "sharded_state_dict_logic.py",
+                "model_full_param_logic.py",
                 user_defined_envs=envs,
             )
-
-
-class TestMergeShardedAOA(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120)
-
-    def test_merge_sharded(self):
-        config = TEST_CONFIGS["2_card_tests"][0]
-        envs = {k: str(v) for k, v in config.items()}
-        self.run_test_case(
-            "merge_sharded_state_dict.py",
-            user_defined_envs=envs,
-        )
 
 
 if __name__ == "__main__":
