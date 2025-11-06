@@ -347,6 +347,18 @@ class TestCompatLinearLayer(unittest.TestCase):
 
         np.testing.assert_allclose(y_pd.numpy(), expected, rtol=1e-5, atol=1e-8)
 
+    def test_reset_parameters(self):
+        if not paddle.base.is_compiled_with_cuda():
+            return
+        devices = ['cpu', None]  # None means the default device
+        for device_ in devices:
+            dummy_tensor = paddle.zeros(1, device=device_)
+            lin = paddle.compat.nn.Linear(4, 8, bias=True, device=device_)
+            expected_device = dummy_tensor.place
+            lin.reset_parameters()
+            self.assertEqual(lin.weight.place, expected_device)
+            self.assertEqual(lin.bias.place, expected_device)
+
     def test_error_handling(self):
         """Test error handling for invalid inputs"""
         # Shape mismatch between input and weight
