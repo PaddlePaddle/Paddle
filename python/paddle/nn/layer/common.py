@@ -58,7 +58,7 @@ def _npairs(x: _T_Padding, n: int) -> _T_Padding: ...
 
 
 @overload
-def _npairs(x: int, n: int) -> int: ...
+def _npairs(x: int, n: int) -> list[int]: ...
 
 
 def _npairs(x, n):
@@ -1194,18 +1194,52 @@ class FeatureAlphaDropout(Layer):
         return f'p={self.p}{name_str}'
 
 
-class Pad1D(Layer):
+class _PadnD(Layer):
+    _n_dim = 1
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        mode: _PaddingTensorMode = 'constant',
+        value: float = 0.0,
+        data_format: DataLayout1D | DataLayout2D | DataLayout3D = "NCL",
+        name: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.padding = _npairs(padding, self._n_dim)
+        self._mode: _PaddingTensorMode = mode
+        self.value = value
+        self._data_format: DataLayout1D | DataLayout2D | DataLayout3D = (
+            data_format
+        )
+        self._name = name
+
+    def forward(self, x: Tensor) -> Tensor:
+        return F.pad(
+            x,
+            pad=self.padding,
+            mode=self._mode,
+            value=self.value,
+            data_format=self._data_format,
+            name=self._name,
+        )
+
+    def extra_repr(self) -> str:
+        name_str = f', name={self._name}' if self._name else ''
+        return f'padding={self.padding}, mode={self._mode}, value={self.value}, data_format={self._data_format}{name_str}'
+
+
+class Pad1D(_PadnD):
     """
     This interface is used to construct a callable object of the ``Pad1D`` class.
     Pad tensor according to ``pad``, ``mode`` and ``value``.
     If mode is ``reflect``, pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
-            same padding in both dimensions. Else [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right).
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to both the left and right side.
+            If `padding` is a list or tuple of two ints, it is interpreted as `(pad_left, pad_right)`.
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
-
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
@@ -1214,10 +1248,10 @@ class Pad1D(Layer):
         value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
         data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``. Specify the data format of the input data.
            Default: ``'NCL'``.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``None``.
 
     Returns:
-        None
+        Tensor: The padded tensor.
 
     Examples:
         .. code-block:: python
@@ -1244,39 +1278,175 @@ class Pad1D(Layer):
         data_format: DataLayout1D = "NCL",
         name: str | None = None,
     ) -> None:
-        super().__init__()
-        self._pad = _npairs(padding, 1)
-        self._mode = mode
-        self._value = value
-        self._data_format = data_format
-        self._name = name
-
-    def forward(self, x: Tensor) -> Tensor:
-        return F.pad(
-            x,
-            pad=self._pad,
-            mode=self._mode,
-            value=self._value,
-            data_format=self._data_format,
-            name=self._name,
-        )
-
-    def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+        super().__init__(padding, mode, value, data_format, name)
 
 
-class ZeroPad1D(Layer):
+class ConstantPad1D(Pad1D):
+    """
+    This interface is used to construct a callable object of the ``ConstantPad1D`` class.
+    Pads the input tensor boundaries with a constant value.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to both the left and right side.
+            If `padding` is a list or tuple of two ints, it is interpreted as `(pad_left, pad_right)`.
+        value (float): The value to fill the padded areas.
+        data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``. Specify the data format of the input data.
+            Default: ``'NCL'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``None``.
+
+    Shape:
+        - x(Tensor): The input tensor of constantpad1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of constantpad1d operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 2, 3)
+            >>> pad = [1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ConstantPad1D(padding=pad, value=0.5)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.5, 1. , 2. , 3. , 0.5, 0.5],
+              [0.5, 4. , 5. , 6. , 0.5, 0.5]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        value: float,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "constant", value, data_format, name)
+
+
+class ReplicationPad1D(Pad1D):
+    """
+    This interface is used to construct a callable object of the ``ReplicationPad1D`` class.
+    Pads the input tensor boundaries by replicating the edge values.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to both the left and right side.
+            If `padding` is a list or tuple of two ints, it is interpreted as `(pad_left, pad_right)`.
+        data_format (str|None): An string from: "NCL", "NLC". Specify the data format of the input data.
+            Default: ``"NCL"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of replicationpad1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of replicationpad1d operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> # from replication_padding_layers import ReplicationPad1D
+
+            >>> input_shape = (1, 2, 3)
+            >>> pad = [1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ReplicationPad1D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 1., 2., 3., 3., 3.],
+              [4., 4., 5., 6., 6., 6.]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "replicate", 0.0, data_format, name)
+
+
+class ReflectionPad1D(Pad1D):
+    """
+    This interface is used to construct a callable object of the ``ReflectionPad1D`` class.
+    Pads the input tensor boundaries using reflection of the input boundaries.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to both the left and right side.
+            If `padding` is a list or tuple of two ints, it is interpreted as `(pad_left, pad_right)`.
+            Padding width must be less than the corresponding input dimension.
+        data_format (str|None): An string from: "NCL", "NLC". Specify the data format of the input data.
+            Default: ``"NCL"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of reflectionpad1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of reflectionpad1d operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> # from reflection_padding_layers import ReflectionPad1D
+
+            >>> input_shape = (1, 2, 3)
+            >>> pad = [1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data = [[[1., 2., 3.], [4., 5., 6.]]]
+            >>> my_pad = nn.ReflectionPad1D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[2., 1., 2., 3., 2., 1.],
+              [5., 4., 5., 6., 5., 4.]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "reflect", 0.0, data_format, name)
+
+
+class ZeroPad1D(Pad1D):
     """
     This interface is used to construct a callable object of the ``ZeroPad1D`` class.
     Pads the input tensor boundaries with zero.
 
     Parameters:
-        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type int. If is int, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
-            The pad has the form (pad_left, pad_right).
-        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
-           Default is  "NCL"
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to both the left and right side.
+            If `padding` is a list or tuple of two ints, it is interpreted as `(pad_left, pad_right)`.
+        data_format (str|None): An string from: "NCL", "NLC". Specify the data format of the input data.
+           Default: ``"NCL"``
         name (str|None, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1285,6 +1455,9 @@ class ZeroPad1D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of zeropad1d operator, which is a 3-D tensor.
           The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
 
     Examples:
 
@@ -1310,29 +1483,61 @@ class ZeroPad1D(Layer):
         data_format: DataLayout1D = "NCL",
         name: str | None = None,
     ) -> None:
-        super().__init__()
-        self._pad = _npairs(padding, 1)
-        self._mode = 'constant'
-        self._value = 0.0
-        self._data_format = data_format
-        self._name = name
-
-    def forward(self, x: Tensor) -> Tensor:
-        return F.pad(
-            x,
-            pad=self._pad,
-            mode=self._mode,
-            value=self._value,
-            data_format=self._data_format,
-            name=self._name,
-        )
-
-    def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        super().__init__(padding, "constant", 0.0, data_format, name)
 
 
-class Pad2D(Layer):
+class CircularPad1D(Pad1D):
+    """
+    This interface is used to construct a callable object of the ``CircularPad1D`` class.
+    Pads the input tensor boundaries by circular padding.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to both the left and right side.
+            If `padding` is a list or tuple of two ints, it is interpreted as `(pad_left, pad_right)`.
+        data_format (str|None): An string from: "NCL", "NLC". Specify the data format of the input data.
+            Default: ``"NCL"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of circularpad1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of circularpad1d operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 2, 3)
+            >>> pad = [1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data is [[[1., 2., 3.], [4., 5., 6.]]]
+            >>> my_pad = nn.CircularPad1D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[3., 1., 2., 3., 1., 2.],
+              [6., 4., 5., 6., 4., 5.]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "circular", 0.0, data_format, name)
+
+
+class Pad2D(_PadnD):
     """
     This interface is used to construct a callable object of the ``Pad2D`` class.
     Pad tensor according to ``pad``, ``mode`` and ``value``.
@@ -1340,9 +1545,9 @@ class Pad2D(Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
-            The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all four sides (left, right, top, bottom).
+            If `padding` is a list or tuple of four ints, it is interpreted as `(pad_left, pad_right, pad_top, pad_bottom)`.
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
@@ -1353,10 +1558,10 @@ class Pad2D(Layer):
         value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
         data_format (str, optional): An string from: ``'NCHW'``, ``'NHWC'``. Specify the data format of the input data.
            Default: ``'NCHW'``.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``None``.
 
     Returns:
-        None
+        Tensor: The padded tensor.
 
     Examples:
         .. code-block:: python
@@ -1378,6 +1583,8 @@ class Pad2D(Layer):
                [0., 0., 0., 0.]]]])
     """
 
+    _n_dim = 2
+
     def __init__(
         self,
         padding: Tensor | Sequence[int] | int,
@@ -1386,39 +1593,183 @@ class Pad2D(Layer):
         data_format: DataLayout2D = "NCHW",
         name: str | None = None,
     ) -> None:
-        super().__init__()
-        self._pad = _npairs(padding, 2)
-        self._mode = mode
-        self._value = value
-        self._data_format = data_format
-        self._name = name
-
-    def forward(self, x: Tensor) -> Tensor:
-        return F.pad(
-            x,
-            pad=self._pad,
-            mode=self._mode,
-            value=self._value,
-            data_format=self._data_format,
-            name=self._name,
-        )
-
-    def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+        super().__init__(padding, mode, value, data_format, name)
 
 
-class ZeroPad2D(Layer):
+class ConstantPad2D(Pad2D):
+    """
+    This interface is used to construct a callable object of the ``ConstantPad2D`` class.
+    Pads the input tensor boundaries with a constant value.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all four sides (left, right, top, bottom).
+            If `padding` is a list or tuple of four ints, it is interpreted as `(pad_left, pad_right, pad_top, pad_bottom)`.
+        value (float): The value to fill the padded areas.
+        data_format (str, optional): An string from: ``'NCHW'``, ``'NHWC'``. Specify the data format of the input data.
+            Default: ``'NCHW'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``None``.
+
+    Shape:
+        - x(Tensor): The input tensor of constantpad2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of constantpad2d operator, which is a 4-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ConstantPad2D(padding=pad, value=0.5)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.5, 0.5, 0.5, 0.5],
+               [0.5, 1. , 2. , 3. ],
+               [0.5, 4. , 5. , 6. ],
+               [0.5, 0.5, 0.5, 0.5],
+               [0.5, 0.5, 0.5, 0.5]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        value: float,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "constant", value, data_format, name)
+
+
+class ReplicationPad2D(Pad2D):
+    """
+    This interface is used to construct a callable object of the ``ReplicationPad2D`` class.
+    Pads the input tensor boundaries by replicating the edge values.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all four sides (left, right, top, bottom).
+            If `padding` is a list or tuple of four ints, it is interpreted as `(pad_left, pad_right, pad_top, pad_bottom)`.
+        data_format (str|None): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+            Default: ``"NCHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of replicationpad2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of replicationpad2d operator, which is a 4-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> # from replication_padding_layers import ReplicationPad2D
+
+            >>> input_shape = (1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ReplicationPad2D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[1., 1., 2., 3.],
+               [1., 1., 2., 3.],
+               [4., 4., 5., 6.],
+               [4., 4., 5., 6.],
+               [4., 4., 5., 6.]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "replicate", 0.0, data_format, name)
+
+
+class ReflectionPad2D(Pad2D):
+    """
+    This interface is used to construct a callable object of the ``ReflectionPad2D`` class.
+    Pads the input tensor boundaries using reflection of the input boundaries.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all four sides (left, right, top, bottom).
+            If `padding` is a list or tuple of four ints, it is interpreted as `(pad_left, pad_right, pad_top, pad_bottom)`.
+            Padding width must be less than the corresponding input dimension.
+        data_format (str|None): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+            Default: ``"NCHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of reflectionpad2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of reflectionpad2d operator, which is a 4-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> # from reflection_padding_layers import ReflectionPad2D
+
+            >>> input_shape = (1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 1] # L=1, R=0, T=1, B=1
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data = [[[[1., 2., 3.], [4., 5., 6.]]]]
+            >>> my_pad = nn.ReflectionPad2D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+                Tensor(shape=[1, 1, 4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[[[5., 4., 5., 6.],
+                        [2., 1., 2., 3.],
+                        [5., 4., 5., 6.],
+                        [2., 1., 2., 3.]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "reflect", 0.0, data_format, name)
+
+
+class ZeroPad2D(Pad2D):
     """
     This interface is used to construct a callable object of the ``ZeroPad2D`` class.
     Pads the input tensor boundaries with zero.
 
     Parameters:
-        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type int. If is int, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
-            The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
-        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
-           Default is  "NCHW"
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all four sides (left, right, top, bottom).
+            If `padding` is a list or tuple of four ints, it is interpreted as `(pad_left, pad_right, pad_top, pad_bottom)`.
+        data_format (str|None): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+           Default: ``"NCHW"``
         name (str|None, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1427,6 +1778,9 @@ class ZeroPad2D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of zeropad2d operator, which is a 4-D tensor.
           The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
 
     Examples:
 
@@ -1455,29 +1809,66 @@ class ZeroPad2D(Layer):
         data_format: DataLayout2D = "NCHW",
         name: str | None = None,
     ) -> None:
-        super().__init__()
-        self._pad = _npairs(padding, 2)
-        self._mode = 'constant'
-        self._value = 0.0
-        self._data_format = data_format
-        self._name = name
-
-    def forward(self, x: Tensor) -> Tensor:
-        return F.pad(
-            x,
-            pad=self._pad,
-            mode=self._mode,
-            value=self._value,
-            data_format=self._data_format,
-            name=self._name,
-        )
-
-    def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+        super().__init__(padding, "constant", 0.0, data_format, name)
 
 
-class Pad3D(Layer):
+class CircularPad2D(Pad2D):
+    """
+    This interface is used to construct a callable object of the ``CircularPad2D`` class.
+    Pads the input tensor boundaries by circular padding.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all four sides (left, right, top, bottom).
+            If `padding` is a list or tuple of four ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom)`.
+        data_format (str|None): An string from: "NCHW", "NHWC". Specify the data format of the input data.
+            Default: ``"NCHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of circularpad2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of circularpad2d operator, which is a 4-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2] # (L, R, T, B)
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data is [[[[1., 2., 3.],
+            >>> #           [4., 5., 6.]]]]
+            >>> my_pad = nn.CircularPad2D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[6., 4., 5., 6.],
+               [3., 1., 2., 3.],
+               [6., 4., 5., 6.],
+               [3., 1., 2., 3.],
+               [6., 4., 5., 6.]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "circular", 0.0, data_format, name)
+
+
+class Pad3D(_PadnD):
     """
     This interface is used to construct a callable object of the ``Pad3D`` class.
     Pad tensor according to ``'pad'``, ``'mode'`` and ``'value'``.
@@ -1485,9 +1876,10 @@ class Pad3D(Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all six sides (left, right, top, bottom, front, back).
+            If `padding` is a list or tuple of six ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)`.
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
@@ -1497,11 +1889,11 @@ class Pad3D(Layer):
 
         value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
         data_format (str, optional): An string from: ``'NCDHW'``, ``'NDHWC'``. Specify the data format of the input data.
-           Default:  ``'NCDHW'``。
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
+           Default:  ``'NCDHW'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``None``.
 
     Returns:
-        None
+        Tensor: The padded tensor.
 
     Examples:
         .. code-block:: python
@@ -1523,6 +1915,8 @@ class Pad3D(Layer):
                 [0., 0., 0., 0.]]]]])
     """
 
+    _n_dim = 3
+
     def __init__(
         self,
         padding: Tensor | Sequence[int] | int,
@@ -1531,39 +1925,186 @@ class Pad3D(Layer):
         data_format: DataLayout3D = "NCDHW",
         name: str | None = None,
     ) -> None:
-        super().__init__()
-        self._pad = _npairs(padding, 3)
-        self._mode = mode
-        self._value = value
-        self._data_format = data_format
-        self._name = name
-
-    def forward(self, x: Tensor) -> Tensor:
-        return F.pad(
-            x,
-            pad=self._pad,
-            mode=self._mode,
-            value=self._value,
-            data_format=self._data_format,
-            name=self._name,
-        )
-
-    def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+        super().__init__(padding, mode, value, data_format, name)
 
 
-class ZeroPad3D(Layer):
+class ConstantPad3D(Pad3D):
+    """
+    This interface is used to construct a callable object of the ``ConstantPad3D`` class.
+    Pads the input tensor boundaries with a constant value.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all six sides (left, right, top, bottom, front, back).
+            If `padding` is a list or tuple of six ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)`.
+        value (float): The value to fill the padded areas.
+        data_format (str, optional): An string from: ``'NCDHW'``, ``'NDHWC'``. Specify the data format of the input data.
+            Default: ``'NCDHW'``.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``None``.
+
+    Shape:
+        - x(Tensor): The input tensor of constantpad3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of constantpad3d operator, which is a 5-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2, 0, 0]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ConstantPad3D(padding=pad, value=0.5)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[0.5, 0.5, 0.5, 0.5],
+               [0.5, 1. , 2. , 3. ],
+               [0.5, 4. , 5. , 6. ],
+               [0.5, 0.5, 0.5, 0.5],
+               [0.5, 0.5, 0.5, 0.5]]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        value: float,
+        data_format: DataLayout3D = "NCDHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "constant", value, data_format, name)
+
+
+class ReplicationPad3D(Pad3D):
+    """
+    This interface is used to construct a callable object of the ``ReplicationPad3D`` class.
+    Pads the input tensor boundaries by replicating the edge values.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all six sides (left, right, top, bottom, front, back).
+            If `padding` is a list or tuple of six ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)`.
+        data_format (str|None): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+            Default: ``"NCDHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of replicationpad3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of replicationpad3d operator, which is a 5-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> # from replication_padding_layers import ReplicationPad3D
+
+            >>> input_shape = (1, 1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2, 0, 0]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ReplicationPad3D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[1., 1., 2., 3.],
+               [1., 1., 2., 3.],
+               [4., 4., 5., 6.],
+               [4., 4., 5., 6.],
+               [4., 4., 5., 6.]]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout3D = "NCDHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "replicate", 0.0, data_format, name)
+
+
+class ReflectionPad3D(Pad3D):
+    """
+    This interface is used to construct a callable object of the ``ReflectionPad3D`` class.
+    Pads the input tensor boundaries using reflection of the input boundaries.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all six sides (left, right, top, bottom, front, back).
+            If `padding` is a list or tuple of six ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)`.
+            Padding width must be less than the corresponding input dimension.
+        data_format (str|None): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+            Default: ``"NCDHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of reflectionpad3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of reflectionpad3d operator, which is a 5-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> # from reflection_padding_layers import ReflectionPad3D
+
+            >>> input_shape = (1, 1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 0, 0, 0]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data = [[[[[1., 2., 3.], [4., 5., 6.]]]]]
+            >>> my_pad = nn.ReflectionPad3D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 1, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[5., 4., 5., 6.],
+                [2., 1., 2., 3.],
+                [5., 4., 5., 6.]]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout3D = "NCDHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "reflect", 0.0, data_format, name)
+
+
+class ZeroPad3D(Pad3D):
     """
     This interface is used to construct a callable object of the ``ZeroPad3D`` class.
     Pads the input tensor boundaries with zero.
 
     Parameters:
-        padding (Tensor|list[int]|tuple[int]|int): The padding size with data type int. If is int, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
-            The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
-           Default is  "NCDHW"
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all six sides (left, right, top, bottom, front, back).
+            If `padding` is a list or tuple of six ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)`.
+        data_format (str|None): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+           Default: ``"NCDHW"``
         name (str|None, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1572,6 +2113,9 @@ class ZeroPad3D(Layer):
           The data type can be float32, float64.
         - output(Tensor): The output tensor of zeropad3d operator, which is a 5-D tensor.
           The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
 
     Examples:
 
@@ -1600,26 +2144,63 @@ class ZeroPad3D(Layer):
         data_format: DataLayout3D = "NCDHW",
         name: str | None = None,
     ) -> None:
-        super().__init__()
-        self._pad = _npairs(padding, 3)
-        self._mode = 'constant'
-        self._value = 0.0
-        self._data_format = data_format
-        self._name = name
+        super().__init__(padding, "constant", 0.0, data_format, name)
 
-    def forward(self, x: Tensor) -> Tensor:
-        return F.pad(
-            x,
-            pad=self._pad,
-            mode=self._mode,
-            value=self._value,
-            data_format=self._data_format,
-            name=self._name,
-        )
 
-    def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
+class CircularPad3D(Pad3D):
+    """
+    This interface is used to construct a callable object of the ``CircularPad3D`` class.
+    Pads the input tensor boundaries by circular padding.
+
+    Parameters:
+        padding (Tensor | Sequence[int] | int): The padding size. If `padding` is an `int`,
+            the same padding is applied to all six sides (left, right, top, bottom, front, back).
+            If `padding` is a list or tuple of six ints, it is interpreted as
+            `(pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back)`.
+        data_format (str|None): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+            Default: ``"NCDHW"``
+        name (str|None, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of circularpad3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of circularpad3d operator, which is a 5-D tensor.
+          The data type is same as input x.
+
+    Returns:
+        Tensor: The padded tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 1, 1, 2, 3) # NCDHW
+            >>> pad = [1, 0, 1, 2, 0, 0] # (L, R, T, B, F, K)
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> # data is [[[[[1., 2., 3.],
+            >>> #            [4., 5., 6.]]]]]
+            >>> my_pad = nn.CircularPad3D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[6., 4., 5., 6.],
+                [3., 1., 2., 3.],
+                [6., 4., 5., 6.],
+                [3., 1., 2., 3.],
+                [6., 4., 5., 6.]]]]])
+    """
+
+    def __init__(
+        self,
+        padding: Tensor | Sequence[int] | int,
+        data_format: DataLayout3D = "NCDHW",
+        name: str | None = None,
+    ) -> None:
+        super().__init__(padding, "circular", 0.0, data_format, name)
 
 
 class CosineSimilarity(Layer):
