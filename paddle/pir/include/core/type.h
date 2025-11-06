@@ -20,6 +20,9 @@
 #include "paddle/pir/include/core/storage_manager_support.h"
 #include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_id.h"
+#include "paddle/pir/include/core/utils.h"
+#include "glog/logging.h"  // 添加VLOG宏定义
+
 
 namespace pir {
 class TypeStorage;
@@ -125,7 +128,12 @@ class IR_API Type {
   bool IsIntOrIndex() const;
   bool IsIndex() const;
 
-  std::size_t hash() const { return std::hash<const void *>()(storage_); }
+  std::size_t hash() const {
+    std::size_t seed = std::hash<TypeId>()(storage_->abstract_type().type_id());
+    // VLOG(3) << "YUHAN!!! ValueInfo hash " << seed;
+    return seed;
+  }
+
 
  protected:
   const Storage *storage_{nullptr};

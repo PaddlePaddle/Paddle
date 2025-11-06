@@ -158,7 +158,7 @@ void CompilationContextMapper::Construct(
       [&unique_infos](const pir::FusionInfo& info) -> bool {
     const bool is_unique = unique_infos.find(info.hash()) == unique_infos.end();
     const bool is_new = !CompilationCache::Instance().Has(info);
-    return is_new && is_unique;
+    return is_new && is_unique; //
   };
 
   for (size_t i = 0; i < groups.size(); ++i) {
@@ -168,13 +168,13 @@ void CompilationContextMapper::Construct(
             << " for group: " << *groups[i];
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
-    if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
+    if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) { //
       mapper_index_.push_back(i);
       group_compilation_contexts_.emplace_back(target, groups[i]);
       compilation_results_.push_back(
           std::make_shared<pir::CompilationResult>(target));
     }
-    unique_infos.insert(fusion_infos_[i].hash());
+    unique_infos.insert(fusion_infos_[i].hash()); //
   }
 }
 

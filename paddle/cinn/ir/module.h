@@ -36,7 +36,7 @@ struct _Module_ : public IrNode {
   std::string name;
   Target target;
   std::vector<Expr> buffers;
-  std::vector<LoweredFunc> functions;
+  std::vector<LoweredFunc> functions; // 
   std::vector<Module> submodules;
   std::vector<Expr> predicates;
   std::vector<int> priorities;

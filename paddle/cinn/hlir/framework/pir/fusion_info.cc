@@ -16,6 +16,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/dialect.h"  // 添加Dialect类的完整定义
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 PD_DECLARE_bool(enable_cinn_compile_cache);
 
@@ -24,7 +25,23 @@ namespace cinn::hlir::framework::pir {
 constexpr static char* kOpCallStack = "op_callstack";
 constexpr static char* kSymShapeStr = "sym_shape_str";
 
-std::size_t AttributeInfo::hash() const { return attr_.hash(); }
+std::size_t AttributeInfo::hash() const { 
+  // 使用稳定的属性信息来计算hash，而不是基于指针地址
+  std::size_t seed = 0;
+  
+  // 使用属性名称和属性字符串表示作为稳定hash基础
+  hash_combine(seed, name_);
+  
+  // 使用属性字符串表示
+  std::ostringstream oss;
+  ::pir::IrPrinter(oss).PrintAttribute(attr_);
+  std::string attr_str = oss.str();
+  hash_combine(seed, attr_str);
+  
+  // VLOG(3) << "YUHAN!!! AttributeInfo hash based on name: " << name_ 
+  //         << ", attr: " << attr_str << " -> " << seed;
+  return seed;
+}
 
 std::ostream& operator<<(std::ostream& os, const AttributeInfo& attr_info) {
   os << "AttributeInfo - " << attr_info.name_ << ", " << attr_info.hash();
@@ -36,7 +53,20 @@ std::ostream& operator<<(std::ostream& os, const AttributeInfo& attr_info) {
   return os;
 }
 
-std::size_t ValueInfo::hash() const { return type_.hash(); }
+std::size_t ValueInfo::hash() const {
+  // 使用稳定的类型信息来计算hash
+  std::size_t seed = 0;
+  
+  // 使用类型字符串表示作为稳定hash基础
+  std::ostringstream oss;
+  ::pir::IrPrinter(oss).PrintType(type_);
+  std::string type_str = oss.str();
+  hash_combine(seed, type_str);
+  
+  // VLOG(3) << "YUHAN!!! ValueInfo hash based on type: " << type_str 
+  //         << " -> " << seed;
+  return seed;
+}
 
 std::ostream& operator<<(std::ostream& os, const ValueInfo& value_info) {
   os << "ValueInfo - " << value_info.hash();
@@ -75,9 +105,16 @@ OperationInfo::OperationInfo(const ::pir::Operation& op) {
 std::size_t OperationInfo::hash() const {
   std::size_t seed = 1789;
   hash_combine(seed, name_);
-  for (const auto& info : input_infos_) hash_combine(seed, info);
+  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated0: " << seed << ", related op name is " << name_;
+  for (const auto& info : input_infos_) {
+    // VLOG(3) << "YUHAN!!! OperationInfo InputInfo: " << info;
+    hash_combine(seed, info);
+  }
+  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated1: " << seed << ", related op name is " << name_;
   for (const auto& info : output_infos_) hash_combine(seed, info);
+  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated2: " << seed << ", related op name is " << name_;
   for (const auto& info : attr_infos_) hash_combine(seed, info);
+  // VLOG(3) << "YUHAN!!! OperationInfo Seed Generated3: " << seed << ", related op name is " << name_;
   return seed;
 }
 
@@ -107,11 +144,16 @@ std::size_t OpDepInfo::hash() const {
 }
 
 std::size_t FusionOpInfo::hash() const {
+  // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated Start: ";
   std::size_t seed = op_info_.hash();
+  // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated0: " << seed;
   for (const auto& [value_index, op_info_hash] : inner_deps_) {
     hash_combine(seed, value_index);
+    // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated1: " << seed;
     hash_combine(seed, op_info_hash);
+    // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated2: " << seed;
   }
+  // VLOG(3) << "YUHAN!!! FusionOpInfo Seed Generated3: " << seed << ;
   return seed;
 }
 
@@ -134,15 +176,18 @@ std::ostream& operator<<(std::ostream& os, const ProgramInfo& info) {
 }
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
+  // VLOG(3) << "YUHAN!!! FusionInfo:ParseOpInfos Start:";
   ParseOpInfos(group);
+  // VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs Start:";
   ParseInputDimExprs(group);
+  // VLOG(3) << "YUHAN!!! FusionInfo:ParseProgramInfo Start:";
   ParseProgramInfo(group);
 }
 
 void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
   std::unordered_map<const ::pir::Operation*, size_t> op_mapper;
   unique_fn_name_ = group.FuncName();
-
+  VLOG(3) << "YUHAN!!! FusionInfo:ParseOpInfos " << unique_fn_name_;
   const auto GetInnerUpstreamOps =
       [&](const ::pir::Operation* op) -> decltype(auto) {
     std::map<size_t, OpDepInfo> upstream_dep_infos;
@@ -173,6 +218,7 @@ void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
 }
 
 void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
+  VLOG(3) << "YUHAN!!! FusionInfo:ParseInputDimExprs " << unique_fn_name_;
   // NOTE(Aurelius84): [Why try get DimExpr from Group firstly? ]
   // In case of BroadcastTree, we will clone many Groups containing same ops.
   // But its input values is defining outside and will have same DimExprs in
@@ -201,11 +247,13 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
 }
 
 void FusionInfo::ParseProgramInfo(const OpLoweringGroup& group) {
+  VLOG(3) << "YUHAN!!! FusionInfo:ParseProgramInfo " << unique_fn_name_;
   program_info_ = std::make_shared<ProgramInfo>(*group.GetParentProgram());
 }
 
 std::size_t FusionInfo::hash() const {
   if (cached_hash_value_ != 0U) {
+    VLOG(3) << "YUHAN!!! FusionInfo::hash() find old CacheKey " << cached_hash_value_ << " for "  << unique_fn_name_;
     return cached_hash_value_;
   }
   std::size_t seed = 2153;
@@ -213,7 +261,7 @@ std::size_t FusionInfo::hash() const {
   for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
   hash_combine(seed, *program_info_);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
-
+  VLOG(3) << "YUHAN!!! FusionInfo::hash() generated new CacheKey " << seed << " for "  << unique_fn_name_;
   return seed;
 }
 

@@ -885,14 +885,120 @@ std::string Compiler::UpdateKernelInCache(const std::string& so_path,
   
   // 读取新的fatbin数据
   std::ifstream fatbin_file(temp_fatbin, std::ios::binary);
-  std::vector<char> fatbin_data((std::istreambuf_iterator<char>(fatbin_file)),
-                              std::istreambuf_iterator<char>());
+  std::vector<char> new_fatbin_data((std::istreambuf_iterator<char>(fatbin_file)),
+                                   std::istreambuf_iterator<char>());
   fatbin_file.close();
   std::remove(temp_fatbin.c_str());
   
-  // 更新缓存文件（这里简化实现，实际应该更复杂）
-  // 由于时间关系，这里先返回新生成的fatbin路径
-  return temp_fatbin;
+  // 读取现有缓存文件
+  std::ifstream old_so_file(so_path, std::ios::binary);
+  if (!old_so_file.is_open()) {
+    LOG(ERROR) << "Failed to open existing cache file: " << so_path;
+    return "";
+  }
+  
+  // 读取缓存文件头
+  struct CacheHeader {
+    char magic[4];
+    uint32_t version;
+    uint32_t num_kernels;
+    uint64_t timestamp;
+  };
+  
+  CacheHeader header;
+  old_so_file.read(reinterpret_cast<char*>(&header), sizeof(header));
+  
+  if (std::string(header.magic, 4) != "CINN") {
+    LOG(ERROR) << "Invalid cache file format: " << so_path;
+    old_so_file.close();
+    return "";
+  }
+  
+  // 读取所有kernel条目，跳过要更新的那个
+  struct KernelEntry {
+    char name[256];
+    char hash[64];
+    uint64_t fatbin_offset;
+    uint64_t fatbin_size;
+  };
+  
+  std::vector<KernelEntry> remaining_entries;
+  std::vector<std::vector<char>> remaining_fatbins;
+  
+  for (uint32_t i = 0; i < header.num_kernels; i++) {
+    KernelEntry entry;
+    old_so_file.read(reinterpret_cast<char*>(&entry), sizeof(entry));
+    
+    std::string entry_name(entry.name, strnlen(entry.name, sizeof(entry.name)));
+    
+    if (entry_name != kernel_name) {
+      // 保留其他kernel
+      remaining_entries.push_back(entry);
+      
+      // 读取对应的fatbin数据
+      old_so_file.seekg(entry.fatbin_offset);
+      std::vector<char> fatbin_data(entry.fatbin_size);
+      old_so_file.read(fatbin_data.data(), entry.fatbin_size);
+      remaining_fatbins.push_back(fatbin_data);
+    }
+  }
+  old_so_file.close();
+  
+  // 创建新的缓存文件
+  std::string new_so_path = so_path + ".new";
+  std::ofstream new_so_file(new_so_path, std::ios::binary);
+  if (!new_so_file.is_open()) {
+    LOG(ERROR) << "Failed to create new cache file: " << new_so_path;
+    return "";
+  }
+  
+  // 写入新的缓存文件头
+  CacheHeader new_header;
+  strncpy(new_header.magic, "CINN", 4);
+  new_header.version = header.version;
+  new_header.num_kernels = remaining_entries.size() + 1;  // 保留的kernel + 新kernel
+  new_header.timestamp = std::time(nullptr);
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_header), sizeof(new_header));
+  
+  // 写入kernel条目
+  uint64_t current_offset = sizeof(new_header) + (remaining_entries.size() + 1) * sizeof(KernelEntry);
+  
+  // 先写入保留的kernel条目
+  for (size_t i = 0; i < remaining_entries.size(); i++) {
+    KernelEntry entry = remaining_entries[i];
+    entry.fatbin_offset = current_offset;
+    entry.fatbin_size = remaining_fatbins[i].size();
+    new_so_file.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+    current_offset += entry.fatbin_size;
+  }
+  
+  // 写入新kernel的条目
+  KernelEntry new_entry;
+  strncpy(new_entry.name, kernel_name.c_str(), sizeof(new_entry.name) - 1);
+  new_entry.name[sizeof(new_entry.name) - 1] = '\0';
+  strncpy(new_entry.hash, source_hash.c_str(), sizeof(new_entry.hash) - 1);
+  new_entry.hash[sizeof(new_entry.hash) - 1] = '\0';
+  new_entry.fatbin_offset = current_offset;
+  new_entry.fatbin_size = new_fatbin_data.size();
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_entry), sizeof(new_entry));
+  
+  // 写入fatbin数据
+  for (size_t i = 0; i < remaining_fatbins.size(); i++) {
+    new_so_file.write(remaining_fatbins[i].data(), remaining_fatbins[i].size());
+  }
+  
+  // 写入新fatbin数据
+  new_so_file.write(new_fatbin_data.data(), new_fatbin_data.size());
+  new_so_file.close();
+  
+  // 替换旧文件
+  std::remove(so_path.c_str());
+  std::rename(new_so_path.c_str(), so_path.c_str());
+  
+  VLOG(3) << "Updated cache file: " << so_path << ", removed old kernel: " << kernel_name;
+  return so_path;
 }
 
 std::string Compiler::AddKernelToCache(const std::string& so_path,
@@ -905,8 +1011,116 @@ std::string Compiler::AddKernelToCache(const std::string& so_path,
     return "";
   }
   
-  // 这里简化实现，实际应该将fatbin添加到缓存文件中
-  return temp_fatbin;
+  // 读取新的fatbin数据
+  std::ifstream fatbin_file(temp_fatbin, std::ios::binary);
+  std::vector<char> new_fatbin_data((std::istreambuf_iterator<char>(fatbin_file)),
+                                   std::istreambuf_iterator<char>());
+  fatbin_file.close();
+  std::remove(temp_fatbin.c_str());
+  
+  // 读取现有缓存文件
+  std::ifstream old_so_file(so_path, std::ios::binary);
+  if (!old_so_file.is_open()) {
+    LOG(ERROR) << "Failed to open existing cache file: " << so_path;
+    return "";
+  }
+  
+  // 读取缓存文件头
+  struct CacheHeader {
+    char magic[4];
+    uint32_t version;
+    uint32_t num_kernels;
+    uint64_t timestamp;
+  };
+  
+  CacheHeader header;
+  old_so_file.read(reinterpret_cast<char*>(&header), sizeof(header));
+  
+  if (std::string(header.magic, 4) != "CINN") {
+    LOG(ERROR) << "Invalid cache file format: " << so_path;
+    old_so_file.close();
+    return "";
+  }
+  
+  // 读取所有现有的kernel条目和fatbin数据
+  struct KernelEntry {
+    char name[256];
+    char hash[64];
+    uint64_t fatbin_offset;
+    uint64_t fatbin_size;
+  };
+  
+  std::vector<KernelEntry> existing_entries;
+  std::vector<std::vector<char>> existing_fatbins;
+  
+  for (uint32_t i = 0; i < header.num_kernels; i++) {
+    KernelEntry entry;
+    old_so_file.read(reinterpret_cast<char*>(&entry), sizeof(entry));
+    existing_entries.push_back(entry);
+    
+    // 读取对应的fatbin数据
+    old_so_file.seekg(entry.fatbin_offset);
+    std::vector<char> fatbin_data(entry.fatbin_size);
+    old_so_file.read(fatbin_data.data(), entry.fatbin_size);
+    existing_fatbins.push_back(fatbin_data);
+  }
+  old_so_file.close();
+  
+  // 创建新的缓存文件
+  std::string new_so_path = so_path + ".new";
+  std::ofstream new_so_file(new_so_path, std::ios::binary);
+  if (!new_so_file.is_open()) {
+    LOG(ERROR) << "Failed to create new cache file: " << new_so_path;
+    return "";
+  }
+  
+  // 写入新的缓存文件头
+  CacheHeader new_header;
+  strncpy(new_header.magic, "CINN", 4);
+  new_header.version = header.version;
+  new_header.num_kernels = existing_entries.size() + 1;  // 现有kernel + 新kernel
+  new_header.timestamp = std::time(nullptr);
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_header), sizeof(new_header));
+  
+  // 写入kernel条目
+  uint64_t current_offset = sizeof(new_header) + (existing_entries.size() + 1) * sizeof(KernelEntry);
+  
+  // 写入现有的kernel条目
+  for (size_t i = 0; i < existing_entries.size(); i++) {
+    KernelEntry entry = existing_entries[i];
+    entry.fatbin_offset = current_offset;
+    entry.fatbin_size = existing_fatbins[i].size();
+    new_so_file.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+    current_offset += entry.fatbin_size;
+  }
+  
+  // 写入新kernel的条目
+  KernelEntry new_entry;
+  strncpy(new_entry.name, kernel_name.c_str(), sizeof(new_entry.name) - 1);
+  new_entry.name[sizeof(new_entry.name) - 1] = '\0';
+  strncpy(new_entry.hash, source_hash.c_str(), sizeof(new_entry.hash) - 1);
+  new_entry.hash[sizeof(new_entry.hash) - 1] = '\0';
+  new_entry.fatbin_offset = current_offset;
+  new_entry.fatbin_size = new_fatbin_data.size();
+  
+  new_so_file.write(reinterpret_cast<char*>(&new_entry), sizeof(new_entry));
+  
+  // 写入fatbin数据
+  for (size_t i = 0; i < existing_fatbins.size(); i++) {
+    new_so_file.write(existing_fatbins[i].data(), existing_fatbins[i].size());
+  }
+  
+  // 写入新fatbin数据
+  new_so_file.write(new_fatbin_data.data(), new_fatbin_data.size());
+  new_so_file.close();
+  
+  // 替换旧文件
+  std::remove(so_path.c_str());
+  std::rename(new_so_path.c_str(), so_path.c_str());
+  
+  VLOG(3) << "Added kernel to cache: " << so_path << ", new kernel: " << kernel_name;
+  return so_path;
 }
 
 std::string Compiler::CreateNewCache(const std::string& so_path,
