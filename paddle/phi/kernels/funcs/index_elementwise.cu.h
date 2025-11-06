@@ -227,6 +227,12 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
   return OffsetCalculator<N, uint32_t, signed_strides>(
       iter.ndim(), iter.shape().data(), strides.data());
 }
+constexpr bool IsInUint32Range(int64_t value) {
+  return value >= 0 && value <= std::numeric_limits<int32_t>::max();
+}
+constexpr bool IsInUint32Range(int64_t v1, int64_t v2) {
+  return IsInUint32Range(v1) && IsInUint32Range(v2);
+}
 
 }  // namespace funcs
 }  // namespace phi
