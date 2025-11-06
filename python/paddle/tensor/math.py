@@ -4189,17 +4189,21 @@ def logcumsumexp(
         return out
 
 
+@param_one_alias(["x", "input"])
 def cumprod(
     x: Tensor,
     dim: int | None = None,
+    *,
     dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
-    Note:
+    .. note::
         The first element of the result is the same as the first element of the input.
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
@@ -4208,6 +4212,7 @@ def cumprod(
         dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information,
                     please refer to :ref:`api_guide_Name`.
 
@@ -4262,7 +4267,7 @@ def cumprod(
             x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cumprod(x, dim, False, False)
+        return _C_ops.cumprod(x, dim, False, False, out=out)
     else:
         check_variable_and_dtype(
             x,
