@@ -21,7 +21,6 @@ namespace torch {
 // ClassRegistry
 ClassRegistry& ClassRegistry::instance() {
   static ClassRegistry registry;
-  LOG(INFO) << "Singleton ClassRegistry instance at: " << &registry;
   return registry;
 }
 
@@ -224,7 +223,6 @@ void ClassRegistry::print_all_classes() const {
 // OperatorRegistry
 OperatorRegistry& OperatorRegistry::instance() {
   static OperatorRegistry registry;
-  LOG(INFO) << "Singleton OperatorRegistry instance at: " << &registry;
   return registry;
 }
 
