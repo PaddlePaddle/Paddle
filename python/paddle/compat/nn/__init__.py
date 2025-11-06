@@ -22,6 +22,7 @@ from paddle import nn
 from paddle.framework import (
     in_dynamic_mode,
 )
+from paddle.nn.layer.common import _npairs
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import functional
@@ -31,11 +32,164 @@ if TYPE_CHECKING:
     from paddle._typing import (
         DTypeLike,
         PlaceLike,
+        Size1,
         Size2,
+        Size3,
     )
 
 
-__all__ = ['Unfold', 'Linear']
+__all__ = ['Unfold', 'Linear', 'AvgPool1D', 'AvgPool2D', 'AvgPool3D']
+
+
+class AvgPool1D(nn.Layer):
+    """
+    A compatible version of paddle.nn.AvgPool1D.
+    """
+
+    kernel_size: Size1
+    stride: Size1
+    padding: Size1
+    ceil_mode: bool
+    count_include_pad: bool
+
+    @ForbidKeywordsDecorator(
+        illegal_keys={"exclusive", "name"},
+        func_name="paddle.compat.nn.AvgPool1D",
+        correct_name="paddle.nn.AvgPool1D",
+    )
+    def __init__(
+        self,
+        kernel_size: Size1,
+        stride: Size1 | None = None,
+        padding: Size1 = 0,
+        ceil_mode: bool = False,
+        count_include_pad: bool = True,
+    ) -> None:
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.stride = tuple(
+            _npairs(stride if (stride is not None) else kernel_size)
+        )
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.count_include_pad = count_include_pad
+
+    def forward(self, input: Tensor) -> Tensor:
+        return nn.functional.avg_pool1d(
+            input,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            not self.count_include_pad,
+            self.ceil_mode,
+        )
+
+    def extra_repr(self) -> str:
+        return f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
+
+
+class AvgPool2D(nn.Layer):
+    """
+    A compatible version of paddle.nn.AvgPool2D.
+    """
+
+    kernel_size: Size2
+    stride: Size2
+    padding: Size2
+    ceil_mode: bool
+    count_include_pad: bool
+    divisor_override: int | None
+
+    @ForbidKeywordsDecorator(
+        illegal_keys={"exclusive", "data_format", "name"},
+        func_name="paddle.compat.nn.AvgPool2D",
+        correct_name="paddle.nn.AvgPool2D",
+    )
+    def __init__(
+        self,
+        kernel_size: Size2,
+        stride: Size2 | None = None,
+        padding: Size2 = 0,
+        ceil_mode: bool = False,
+        count_include_pad: bool = True,
+        divisor_override: int | None = None,
+    ):
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride if (stride is not None) else kernel_size
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.count_include_pad = count_include_pad
+        self.divisor_override = divisor_override
+
+    def forward(self, input: Tensor) -> Tensor:
+        return nn.functional.avg_pool2d(
+            input,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.ceil_mode,
+            not self.count_include_pad,
+            self.divisor_override,
+        )
+
+    def extra_repr(self) -> str:
+        return f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
+
+
+class AvgPool3D(nn.Layer):
+    """
+    A compatible version of paddle.nn.AvgPool3D.
+    """
+
+    kernel_size: Size3
+    stride: Size3
+    padding: Size3
+    ceil_mode: bool
+    count_include_pad: bool
+    divisor_override: int | None
+
+    @ForbidKeywordsDecorator(
+        illegal_keys={"exclusive", "data_format", "name"},
+        func_name="paddle.compat.nn.AvgPool3D",
+        correct_name="paddle.nn.AvgPool3D",
+    )
+    def __init__(
+        self,
+        kernel_size: Size3,
+        stride: Size3 | None = None,
+        padding: Size3 = 0,
+        ceil_mode: bool = False,
+        count_include_pad: bool = True,
+        divisor_override: int | None = None,
+    ) -> None:
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride if (stride is not None) else kernel_size
+        self.padding = padding
+        self.ceil_mode = ceil_mode
+        self.count_include_pad = count_include_pad
+        self.divisor_override = divisor_override
+
+    def forward(self, input: Tensor) -> Tensor:
+        return nn.functional.avg_pool3d(
+            input,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.ceil_mode,
+            not self.count_include_pad,
+            self.divisor_override,
+        )
+
+    def extra_repr(self) -> str:
+        return f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.__dict__.setdefault("padding", 0)
+        self.__dict__.setdefault("ceil_mode", False)
+        self.__dict__.setdefault("count_include_pad", True)
 
 
 class Unfold(nn.Unfold):
@@ -258,3 +412,8 @@ class Linear(nn.Layer):
             fan_in = self.weight.shape[1]
             bound = 1 / sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.bias, -bound, bound)
+
+
+AvgPool1d = AvgPool1D
+AvgPool2d = AvgPool2D
+AvgPool3d = AvgPool3D
