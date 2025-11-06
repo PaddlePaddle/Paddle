@@ -226,6 +226,7 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .amp.auto_cast import autocast
 from .autograd import (
     enable_grad,
     grad,
@@ -282,8 +283,6 @@ from .hapi import (
 )
 from .nn.functional import (
     adaptive_avg_pool1d,
-    adaptive_avg_pool2d,
-    adaptive_avg_pool3d,
     conv1d,
     conv2d,
     conv3d,
@@ -974,7 +973,6 @@ manual_seed = seed
 sub = subtract
 sub_ = subtract_
 
-
 __all__ = [
     'block_diag',
     'gt',
@@ -1485,8 +1483,7 @@ __all__ = [
     'manual_seed',
     'softmax',
     'adaptive_avg_pool1d',
-    'adaptive_avg_pool2d',
-    'adaptive_avg_pool3d',
+    'autocast',
 ]
 import os
 

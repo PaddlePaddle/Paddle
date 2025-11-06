@@ -30,7 +30,26 @@ namespace phi {
 template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
   HOSTDEVICE inline OutType operator()(InType in) const {
+#if defined(_MSC_VER)
+    // Avoid unsupported convert of float/bfloat8/float16 -> complex
+    if constexpr (
+        (std::is_same_v<OutType, phi::dtype::complex<float>> ||
+         std::is_same_v<
+             OutType,
+             phi::dtype::complex<
+                 double>>)&&(std::is_same_v<InType,
+                                            phi::dtype::float8_e4m3fn> ||
+                             std::is_same_v<InType, phi::dtype::float8_e5m2> ||
+                             std::is_same_v<InType, phi::dtype::bfloat16> ||
+                             std::is_same_v<InType, phi::dtype::float16>)) {
+      // default value，only to avoid compile error
+      return OutType(0);
+    } else {
+      return static_cast<OutType>(in);
+    }
+#else
     return static_cast<OutType>(in);
+#endif
   }
 };
 
