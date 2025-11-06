@@ -47,6 +47,7 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
@@ -632,6 +633,33 @@ class TestDynamicShapeWithConstantPromotion(Dy2StTestBase):
         )
         out = static_fn(x)
         self.assertEqual(out, 3)
+
+
+salt = paddle.rand([8])
+
+
+class Net(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.layer = nn.Linear(8, 8)
+
+    def fn(self, x):
+        global salt
+        if x.sum() > 0:
+            x = self.layer(x) + salt
+        else:
+            x += salt
+        return x
+
+    def forward(self, x):
+        return self.fn(x)
+
+
+class TestBuiltinParameter(Dy2StTestBase):
+    def test_move_builtin_parameter2top(self):
+        x = paddle.randn([8, 8])
+        static_fn = paddle.jit.to_static(Net())
+        out = static_fn(x)
 
 
 if __name__ == '__main__':

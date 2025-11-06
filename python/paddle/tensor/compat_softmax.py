@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 @ForbidKeywordsIgnoreOneParamDecorator(
     illegal_keys={"x", "axis", "name"},
     ignore_param=('_stacklevel', 2, int),
-    func_name="paddle.compat.softmax",
+    func_name="paddle.compat.nn.functional.softmax",
     correct_name="paddle.nn.functional.softmax",
 )
 def softmax(
@@ -41,7 +41,7 @@ def softmax(
     out: Tensor | None = None,
 ) -> Tensor:
     r"""
-    This operator implements the compat.softmax. The calculation process is as follows:
+    This operator implements PyTorch compatible softmax. The calculation process is as follows:
 
     1. The dimension :attr:`dim` of ``input`` will be permuted to the last.
 
@@ -139,8 +139,8 @@ def softmax(
             ...                       [[1.0, 2.0, 3.0, 4.0],
             ...                        [5.0, 6.0, 7.0, 8.0],
             ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
-            >>> out1 = paddle.compat.softmax(x, -1)
-            >>> out2 = paddle.compat.softmax(x, -1, dtype='float64')
+            >>> out1 = paddle.compat.nn.functional.softmax(x, -1)
+            >>> out2 = paddle.compat.nn.functional.softmax(x, -1, dtype='float64')
             >>> #out1's data type is float32; out2's data type is float64
             >>> #out1 and out2's value is as follows:
             >>> print(out1)
