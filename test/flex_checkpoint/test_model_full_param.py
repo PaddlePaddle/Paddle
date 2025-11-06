@@ -182,9 +182,7 @@ class TestFullParamWithSingleDevices(unittest.TestCase):
             self.linear2 = nn.Linear(
                 hidden_size, hidden_size, bias_attr=has_bias
             )
-            self.llm_head = nn.Linear(
-                hidden_size, 24, bias_attr=False
-            )  # 输出词表大小
+            self.llm_head = nn.Linear(hidden_size, 24, bias_attr=False)
 
         def forward(self, x):
             x = self.embedding(x)
