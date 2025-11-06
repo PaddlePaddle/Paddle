@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/magma.h"
 
 #include <mutex>
@@ -26,3 +27,5 @@ void* magma_dso_handle = nullptr;
 MAGMA_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace phi::dynload
+
+#endif
