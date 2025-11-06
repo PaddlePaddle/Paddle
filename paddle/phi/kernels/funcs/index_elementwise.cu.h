@@ -38,7 +38,7 @@ __global__ void index_elementwise_with_tensor_kernel(const int64_t N,
                                                      const func_t f) {
   const auto tid = threadIdx.x;
   const auto nv = nt * vt;
-  auto idx = nv * blockIdx.x + tid;
+  int64_t idx = static_cast<int64_t>(nv) * blockIdx.x + tid;
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
@@ -54,7 +54,7 @@ __global__ void index_elementwise_kernel(const int64_t N,
                                          const func_t f) {
   const auto tid = threadIdx.x;
   const auto nv = nt * vt;
-  auto idx = nv * blockIdx.x + tid;
+  int64_t idx = static_cast<int64_t>(nv) * blockIdx.x + tid;
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
@@ -70,7 +70,7 @@ __global__ void index_put_kernel(const int64_t N,
                                  const func_t f) {
   const auto tid = threadIdx.x;
   const auto nv = nt * vt;
-  auto idx = nv * blockIdx.x + tid;
+  int64_t idx = static_cast<int64_t>(nv) * blockIdx.x + tid;
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
