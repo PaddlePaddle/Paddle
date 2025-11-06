@@ -2875,11 +2875,11 @@ def outer(
     xshape = x.shape
     yshape = y.shape
     if math.prod(xshape) == 0:  # If the size is 0
-        nx = x.reshape((0, 0))
+        nx = x.reshape((0, 1))
     else:
         nx = x.reshape((-1, 1))
     if math.prod(yshape) == 0:  # If the size is 0
-        ny = y.reshape((0, 0))
+        ny = y.reshape((1, 0))
     else:
         ny = y.reshape((1, -1))
 
