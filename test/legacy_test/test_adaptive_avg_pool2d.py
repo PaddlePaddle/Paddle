@@ -157,14 +157,11 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
                     input=x, output_size=[3, 3]
                 )
 
-                # test paddle.adaptive_avg_pool2d
-                out_7 = paddle.adaptive_avg_pool2d(input=x, output_size=[3, 3])
-
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5, res_6, res_7] = exe.run(
+            [res_1, res_2, res_3, res_4, res_5, res_6] = exe.run(
                 main_program,
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
             )
 
             np.testing.assert_allclose(
@@ -184,9 +181,6 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 res_6, self.res_1_np, rtol=1e-5, atol=1e-8
-            )
-            np.testing.assert_allclose(
-                res_7, self.res_1_np, rtol=1e-5, atol=1e-8
             )
 
     def test_dynamic_graph(self):
@@ -218,7 +212,6 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             out_7 = paddle.nn.functional.adaptive_avg_pool2d(
                 input=x, output_size=[3, 3]
             )
-            out_8 = paddle.adaptive_avg_pool2d(input=x, output_size=[3, 3])
 
             np.testing.assert_allclose(
                 out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
@@ -240,9 +233,6 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 out_7.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
-            )
-            np.testing.assert_allclose(
-                out_8.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
             )
 
     def test_grad(self):

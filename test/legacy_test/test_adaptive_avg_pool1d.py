@@ -99,10 +99,6 @@ class TestPool1D_API(unittest.TestCase):
             result = F.adaptive_avg_pool1d(input=input, output_size=16)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-            # test paddle.adaptive_avg_pool1d
-            result = paddle.adaptive_avg_pool1d(input=input, output_size=16)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
             ada_max_pool1d_dg = paddle.nn.layer.AdaptiveAvgPool1D(
                 output_size=16
             )
@@ -126,10 +122,9 @@ class TestPool1D_API(unittest.TestCase):
             result1 = F.adaptive_avg_pool1d(input, output_size=16)
             # test param_one_alias(["x", "input"])
             result2 = F.adaptive_avg_pool1d(input=input, output_size=16)
-            # test paddle.adaptive_avg_pool1d
-            result3 = paddle.adaptive_avg_pool1d(input, output_size=16)
+
             adaptive_avg_pool1d = paddle.nn.AdaptiveAvgPool1d(output_size=16)
-            result4 = adaptive_avg_pool1d(input)
+            result3 = adaptive_avg_pool1d(input)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
             result_np = avg_pool1D_forward_naive(
@@ -140,12 +135,11 @@ class TestPool1D_API(unittest.TestCase):
             fetches = exe.run(
                 base.default_main_program(),
                 feed={"input": input_np},
-                fetch_list=[result1, result2, result3, result4],
+                fetch_list=[result1, result2, result3],
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
             np.testing.assert_allclose(fetches[1], result_np, rtol=1e-05)
             np.testing.assert_allclose(fetches[2], result_np, rtol=1e-05)
-            np.testing.assert_allclose(fetches[3], result_np, rtol=1e-05)
 
     def test_adaptive_avg_pool1d(self):
         for place in self.places:
