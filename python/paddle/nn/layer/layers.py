@@ -485,7 +485,7 @@ class Layer:
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
-    def train(self) -> Self:
+    def train(self, mode: bool = True) -> Self:
         """
 
         Sets this Layer and all its sublayers to training mode.
@@ -531,15 +531,21 @@ class Layer:
                  [-0.68077987]])
 
         """
+        if not isinstance(mode, bool):
+            raise ValueError("training mode is expected to be boolean")
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
         if in_dygraph_mode():
-            framework._dygraph_tracer().train_mode()
+            if mode:
+                framework._dygraph_tracer().train_mode()
+            else:
+                framework._dygraph_tracer().eval_mode()
+
         # Layer-level setting
-        self.training = True
+        self.training = mode
         for layer in self.sublayers():
-            layer.training = True
+            layer.training = mode
 
         return self
 
