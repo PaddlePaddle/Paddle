@@ -622,9 +622,9 @@ def _tuple_to_tensor(obj, return_numpy):
 
 def _ndarray_to_tensor(obj, return_numpy):
     if return_numpy:
-        return np.array(obj)
-    if in_dygraph_mode():
         return obj
+    if in_dygraph_mode():
+        return paddle.to_tensor(obj)
     else:
         return _to_LodTensor(obj)
 
