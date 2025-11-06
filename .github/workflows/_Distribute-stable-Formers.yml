@@ -28,9 +28,19 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ inputs.clone-can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'formers'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   formers-test:
     name: formers-Test
-    if: ${{ inputs.clone-can-skip != 'true' }}
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
     steps:
