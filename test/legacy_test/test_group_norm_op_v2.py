@@ -618,5 +618,130 @@ class TestGroupNormWithOptionalgradX(unittest.TestCase):
             np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
 
 
+class TestGroupNormParam(unittest.TestCase):
+    def setUp(self):
+        self.x_tensor = paddle.randn([2, 6, 4, 4], dtype='float32')
+        self.weight_tensor = paddle.randn([6], dtype='float32')
+        self.bias_tensor = paddle.randn([6], dtype='float32')
+
+    def test_alias_input_for_x(self):
+        """test parameter alias input/x"""
+        out_with_input = paddle.nn.functional.group_norm(
+            input=self.x_tensor,
+            num_groups=3,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+            eps=1e-5,
+        )
+        out_with_x = paddle.nn.functional.group_norm(
+            x=self.x_tensor,
+            num_groups=3,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+            eps=1e-5,
+        )
+
+        np.testing.assert_array_equal(
+            out_with_input.numpy(), out_with_x.numpy()
+        )
+
+    def test_params_consistency(self):
+        """test both paddle and torch formats works."""
+        out_old = paddle.nn.functional.group_norm(
+            self.x_tensor,
+            3,
+            1e-5,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+        )
+
+        out_new = paddle.nn.functional.group_norm(
+            x=self.x_tensor,
+            num_groups=3,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+            eps=1e-5,
+        )
+
+        np.testing.assert_array_equal(out_old.numpy(), out_new.numpy())
+
+    def test_params_1(self):
+        """test all args with torch format"""
+        try:
+            out = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                self.weight_tensor,
+                self.bias_tensor,
+                1e-5,
+            )
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_2(self):
+        """test all kwargs with torch format"""
+        try:
+            out = paddle.nn.functional.group_norm(
+                input=self.x_tensor,
+                num_groups=3,
+                weight=self.weight_tensor,
+                bias=self.bias_tensor,
+                epsilon=1e-5,
+            )
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_3(self):
+        """test of passing both args and kwargs parameters"""
+        try:
+            out1 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                weight=self.weight_tensor,
+                bias=self.bias_tensor,
+                epsilon=1e-5,
+            )
+            out2 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                1e-5,
+                weight=self.weight_tensor,
+                bias=self.bias_tensor,
+            )
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_4(self):
+        """test default parameters"""
+        try:
+            out1 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                self.weight_tensor,
+            )
+            out2 = paddle.nn.functional.group_norm(self.x_tensor, 3, 1e-5)
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_5(self):
+        """test duplicate parameters"""
+        with self.assertRaises(TypeError):
+            out_1 = paddle.nn.functional.group_norm(
+                x=self.x_tensor,
+                input=self.x_tensor,
+                num_groups=3,
+            )
+        with self.assertRaises(TypeError):
+            out_2 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                input=self.x_tensor,
+                num_groups=3,
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

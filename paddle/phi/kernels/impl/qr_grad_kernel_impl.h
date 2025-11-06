@@ -76,8 +76,8 @@ void QrGradKernel(const Context& dev_ctx,
 
   auto a_dims = A.dims();
   int a_rank = a_dims.size();
-  int m = a_dims[a_rank - 2];
-  int n = a_dims[a_rank - 1];
+  int64_t m = a_dims[a_rank - 2];
+  int64_t n = a_dims[a_rank - 1];
 
   if ((m > n) && (!reduced)) {
     PADDLE_THROW(errors::InvalidArgument(

@@ -32,21 +32,6 @@ MODULE_NAME = 'test_bert_prim_cinn'
 MD5SUM = '71e730ee8d7aa77a215b7e898aa089af'
 SAVE_NAME = 'bert_training_data.npz'
 
-
-DY2ST_CINN_GT = [
-    10.649632453918457,
-    10.333406448364258,
-    10.33541202545166,
-    10.260543823242188,
-    10.219606399536133,
-    10.176884651184082,
-    10.124699592590332,
-    10.072620391845703,
-    10.112163543701172,
-    9.969393730163574,
-]
-
-
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
@@ -133,7 +118,8 @@ class TestBert(unittest.TestCase):
     def test_cinn(self):
         paddle.set_flags({'FLAGS_deny_cinn_ops': "dropout"})
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
-        np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
+        dy2st_pir = train(to_static=True, enable_prim=False, enable_cinn=False)
+        np.testing.assert_allclose(dy2st_cinn, dy2st_pir, rtol=1e-5)
 
 
 if __name__ == '__main__':

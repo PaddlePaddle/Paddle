@@ -12,11 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from contextlib import contextmanager
+
 import paddle
 from paddle.autograd.backward_utils import ValueDict
 from paddle.framework import core
 
 from ..dy2static.program_translator import _program_hash, synchronized
+
+
+@contextmanager
+def append_op_in_top_block():
+    current_insertion_point = paddle.pir.get_current_insertion_point()
+    top_block = paddle.static.default_main_program().global_block()
+    paddle.pir.set_insertion_point_to_block_end(top_block)
+    try:
+        yield
+    finally:
+        paddle.pir.set_insertion_point(current_insertion_point)
 
 
 class ParametersRecorder:
@@ -40,17 +53,18 @@ class ParametersRecorder:
             non_used_initializer = paddle.nn.initializer.Constant(0.0)
             dtype = tensor.dtype
             if isinstance(dtype, core.VarDesc.VarType):
-                vartype_to_datatype[dtype]
-            value = create_parameter(
-                dtype=dtype,
-                shape=tensor.shape,
-                type=tensor.type,
-                name=tensor.name,
-                initializer=non_used_initializer,
-                trainable=(not tensor.stop_gradient),
-                placements=tensor.placements,
-                process_mesh=tensor.process_mesh,
-            )
+                dtype = vartype_to_datatype[dtype]
+            with append_op_in_top_block():
+                value = create_parameter(
+                    dtype=dtype,
+                    shape=tensor.shape,
+                    type=tensor.type,
+                    name=tensor.name,
+                    initializer=non_used_initializer,
+                    trainable=(not tensor.stop_gradient),
+                    placements=tensor.placements,
+                    process_mesh=tensor.process_mesh,
+                )
 
             if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)

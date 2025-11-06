@@ -22,106 +22,12 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/bmm_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/affine_grid_utils.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
-
-template <typename T>
-__global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
-  CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
-}
-
-template <typename T>
-struct Linspace<phi::GPUContext, T> {
-  void operator()(T start,
-                  T end,
-                  int count,
-                  bool align_corners,
-                  DenseTensor* numbers,
-                  const phi::GPUContext& dev_ctx) {
-    numbers->Resize(common::make_ddim({count}));
-    T* number_data = dev_ctx.template Alloc<T>(numbers);
-    T slice = (end - start) / (T)(count - 1);
-    if (!align_corners) {
-      slice = (end - start) / (T)count;
-      start *= (T)(count - 1) / (T)count;
-    }
-    auto stream = dev_ctx.stream();
-    int block = 512;
-    int grid = (count + block - 1) / block;
-    LinspaceKernel<T>
-        <<<grid, block, 0, stream>>>(start, slice, count, number_data);
-  }
-};
-
-template <typename T>
-__global__ void affine_grid_kernel_4d(const int count,
-                                      int n,
-                                      int out_h,
-                                      int out_w,
-                                      T h_start,
-                                      T w_start,
-                                      T h_step,
-                                      T w_step,
-                                      const T* theta,  // N, 2, 3
-                                      T* output) {
-  CUDA_KERNEL_LOOP(index, count) {
-    int w = index % out_w;
-    int h = (index / out_w) % out_h;
-    int n = index / (out_w * out_h);
-
-    T h_coor = h_step * static_cast<T>(h) + static_cast<T>(h_start);
-    T w_coor = w_step * static_cast<T>(w) + static_cast<T>(w_start);
-
-    int theta_offset = n * 6;  // 2 * 3;
-    // affine from (h_coor, w_coor) to (x, y)
-    output[index * 2] = theta[theta_offset] * w_coor +
-                        theta[theta_offset + 1] * h_coor +
-                        theta[theta_offset + 2];
-    output[index * 2 + 1] = theta[theta_offset + 3] * w_coor +
-                            theta[theta_offset + 4] * h_coor +
-                            theta[theta_offset + 5];
-  }
-}
-
-template <typename T>
-__global__ void affine_grid_kernel_5d(const int count,
-                                      int n,
-                                      int out_d,
-                                      int out_h,
-                                      int out_w,
-                                      T d_start,
-                                      T h_start,
-                                      T w_start,
-                                      T d_step,
-                                      T h_step,
-                                      T w_step,
-                                      const T* theta,  // N, 3, 4
-                                      T* output) {
-  CUDA_KERNEL_LOOP(index, count) {
-    int w = index % out_w;
-    int h = (index / out_w) % out_h;
-    int d = (index / (out_w * out_h)) % out_d;
-    int n = index / (out_w * out_h * out_d);
-
-    T d_coor = d_step * static_cast<T>(d) + static_cast<T>(d_start);
-    T h_coor = h_step * static_cast<T>(h) + static_cast<T>(h_start);
-    T w_coor = w_step * static_cast<T>(w) + static_cast<T>(w_start);
-
-    int theta_offset = n * 12;  // 3 * 4
-    // affine from (h_coor, w_coor) to (x, y)
-    output[index * 3] =
-        theta[theta_offset] * w_coor + theta[theta_offset + 1] * h_coor +
-        theta[theta_offset + 2] * d_coor + theta[theta_offset + 3];
-    output[index * 3 + 1] =
-        theta[theta_offset + 4] * w_coor + theta[theta_offset + 5] * h_coor +
-        theta[theta_offset + 6] * d_coor + theta[theta_offset + 7];
-    output[index * 3 + 2] =
-        theta[theta_offset + 8] * w_coor + theta[theta_offset + 9] * h_coor +
-        theta[theta_offset + 10] * d_coor + theta[theta_offset + 11];
-  }
-}
 
 template <typename T, typename Context>
 void AffineGrid4DCUDAKernel(const Context& dev_ctx,
@@ -129,52 +35,51 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
                             const IntArray& outputShape,
                             bool align_corners,
                             DenseTensor* output) {
-  // VLOG(0) << "in affine grid 4d forward";
   auto* theta = &input;
-  int n = theta->dims()[0];
+  int64_t n = theta->dims()[0];
   auto& size_attr = outputShape.GetData();
-  int h = 0;
-  int w = 0;
-  h = size_attr[2];
-  w = size_attr[3];
-  output->Resize(common::make_ddim({n, h, w, 2}));
-  T* out_data = dev_ctx.template Alloc<T>(output);
+  int64_t h = size_attr[2];
+  int64_t w = size_attr[3];
+
   if (input.numel() == 0) {
+    output->Resize(common::make_ddim({n, h, w, 2}));
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
   }
 
-  T h_step;
-  T w_step;
-  T h_start = -1;
-  T w_start = -1;
-  if (align_corners) {
-    h_step = static_cast<T>(2) / static_cast<T>(h - 1);
-    w_step = static_cast<T>(2) / static_cast<T>(w - 1);
-  } else {
-    h_step = static_cast<T>(2) / static_cast<T>(h);
-    w_step = static_cast<T>(2) / static_cast<T>(w);
+  // Directly create the base mesh
+  DenseTensor base_grid;
+  base_grid.Resize(common::make_ddim({n, h, w, 3}));
+  T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-    h_start *= static_cast<T>(h - 1) / static_cast<T>(h);
-    w_start *= static_cast<T>(w - 1) / static_cast<T>(w);
-  }
+  int64_t total_elements = n * h * w;
+  auto stream = dev_ctx.stream();
+  int64_t block_size = 512;
+  int64_t grid_size = (total_elements + block_size - 1) / block_size;
 
-  const int count = n * h * w;
-  int block = 512;
-  int grid = (count + block - 1) / block;
-  auto cu_stream = dev_ctx.stream();
-  affine_grid_kernel_4d<<<grid, block, 0, cu_stream>>>(
-      count,
-      n,
-      h,
-      w,
-      h_start,
-      w_start,
-      h_step,
-      w_step,
-      theta->data<T>(),  // N, 2, 3
-      out_data);
+  phi::funcs::CreateBaseGridKernel_4D<T><<<grid_size, block_size, 0, stream>>>(
+      base_grid_data, n, h, w, align_corners);
+
+  // Apply affine transformation
+  DenseTensor base_grid_new;
+  base_grid_new.ShareDataWith(base_grid);
+  base_grid_new.Resize(common::make_ddim({n, h * w, 3}));
+
+  // Transpose theta: [N, 2, 3] -> [N, 3, 2]
+  DenseTensor theta_transposed;
+  theta_transposed.Resize(common::make_ddim({n, 3, 2}));
+  phi::TransposeKernel<T, Context>(
+      dev_ctx, input, {0, 2, 1}, &theta_transposed);
+
+  DenseTensor grid_flat;
+  grid_flat.Resize(common::make_ddim({n, h * w, 2}));
+  phi::BmmKernel<T, Context>(
+      dev_ctx, base_grid_new, theta_transposed, &grid_flat);
+
+  // Reshaping Output
+  output->ShareDataWith(grid_flat);
+  output->Resize(common::make_ddim({n, h, w, 2}));
 }
 
 template <typename T, typename Context>
@@ -184,60 +89,52 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
                             bool align_corners,
                             DenseTensor* output) {
   auto* theta = &input;
-  int n = theta->dims()[0];
+  int64_t n = theta->dims()[0];
   auto& size_attr = outputShape.GetData();
-  int d = 0;
-  int h = 0;
-  int w = 0;
-  d = size_attr[2];
-  h = size_attr[3];
-  w = size_attr[4];
-  output->Resize(common::make_ddim({n, d, h, w, 3}));
-  T* out_data = dev_ctx.template Alloc<T>(output);
+  int64_t d = size_attr[2];  // depth
+  int64_t h = size_attr[3];  // height
+  int64_t w = size_attr[4];  // width
+
   if (input.numel() == 0) {
+    output->Resize(common::make_ddim({n, d, h, w, 3}));
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;
   }
 
-  T d_step;
-  T h_step;
-  T w_step;
-  T d_start = -1;
-  T h_start = -1;
-  T w_start = -1;
-  if (align_corners) {
-    d_step = static_cast<T>(2) / static_cast<T>(d - 1);
-    h_step = static_cast<T>(2) / static_cast<T>(h - 1);
-    w_step = static_cast<T>(2) / static_cast<T>(w - 1);
-  } else {
-    d_step = static_cast<T>(2) / static_cast<T>(d);
-    h_step = static_cast<T>(2) / static_cast<T>(h);
-    w_step = static_cast<T>(2) / static_cast<T>(w);
+  // Create a basic grid
+  DenseTensor base_grid;
+  base_grid.Resize(common::make_ddim({n, d, h, w, 4}));
+  T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-    d_start *= static_cast<T>(d - 1) / static_cast<T>(d);
-    h_start *= static_cast<T>(h - 1) / static_cast<T>(h);
-    w_start *= static_cast<T>(w - 1) / static_cast<T>(w);
-  }
+  int64_t total_elements = n * d * h * w;
+  auto stream = dev_ctx.stream();
+  int64_t block_size = 512;
+  int64_t grid_size = (total_elements + block_size - 1) / block_size;
 
-  const int count = n * d * h * w;
-  int block = 512;
-  int grid = (count + block - 1) / block;
-  auto cu_stream = dev_ctx.stream();
-  affine_grid_kernel_5d<<<grid, block, 0, cu_stream>>>(
-      count,
-      n,
-      d,
-      h,
-      w,
-      d_start,
-      h_start,
-      w_start,
-      d_step,
-      h_step,
-      w_step,
-      theta->data<T>(),  // N, 3, 4
-      out_data);
+  phi::funcs::CreateBaseGridKernel_5D<T><<<grid_size, block_size, 0, stream>>>(
+      base_grid_data, n, d, h, w, align_corners);
+
+  // Apply affine transformation
+  DenseTensor base_grid_new;
+  base_grid_new.ShareDataWith(base_grid);
+  base_grid_new.Resize(common::make_ddim({n, d * h * w, 4}));
+
+  // Transpose theta: [N, 3, 4] -> [N, 4, 3]
+  DenseTensor theta_transposed;
+  theta_transposed.Resize(common::make_ddim({n, 4, 3}));
+  phi::TransposeKernel<T, Context>(
+      dev_ctx, input, {0, 2, 1}, &theta_transposed);
+
+  // Perform batch matrix multiplication
+  DenseTensor grid_flat;
+  grid_flat.Resize(common::make_ddim({n, d * h * w, 3}));
+  phi::BmmKernel<T, Context>(
+      dev_ctx, base_grid_new, theta_transposed, &grid_flat);
+
+  // Reshaping Output
+  output->ShareDataWith(grid_flat);
+  output->Resize(common::make_ddim({n, d, h, w, 3}));
 }
 
 template <typename T, typename Context>
@@ -247,7 +144,7 @@ void AffineGridCUDAKernel(const Context& dev_ctx,
                           bool align_corners,
                           DenseTensor* output) {
   auto* theta = &input;
-  int theta_h = theta->dims()[1];
+  int64_t theta_h = theta->dims()[1];
   if (theta_h == 2) {
     AffineGrid4DCUDAKernel<T, Context>(
         dev_ctx, input, outputShape, align_corners, output);
