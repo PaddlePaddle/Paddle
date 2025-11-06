@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 import paddle
 
 from ..base.framework import in_dygraph_mode, in_pir_mode
@@ -25,6 +27,41 @@ from .initializer.normal import Normal, TruncatedNormal
 from .initializer.orthogonal import Orthogonal
 from .initializer.uniform import Uniform
 from .initializer.xavier import XavierNormal, XavierUniform
+
+
+def _calculate_fan_in_and_fan_out(var: paddle.Tensor) -> tuple[int, int]:
+    """Compute the fan_in and the fan_out for layers
+
+    This method computes the fan_in and the fan_out
+    for neural network layers, if not specified. It is
+    not possible to perfectly estimate fan_in and fan_out.
+    This method will estimate it correctly for matrix multiply and
+    convolutions.
+
+    Args:
+        var: variable for which fan_in and fan_out have to be computed.
+
+    Returns:
+        tuple of two integers (fan_in, fan_out).
+    """
+    shape = var.shape
+    if not shape or len(shape) == 0:
+        fan_in = fan_out = 1
+    elif len(shape) == 1:
+        fan_in = fan_out = shape[0]
+    elif len(shape) == 2:
+        # This is the case for simple matrix multiply
+        fan_in = shape[0]
+        fan_out = shape[1]
+    else:
+        # Assume this to be a convolutional kernel
+        # In PaddlePaddle, the shape of the kernel is like:
+        # [num_filters, num_filter_channels, ...] where the remaining
+        # dimensions are the filter_size
+        receptive_field_size = np.prod(shape[2:])
+        fan_in = int(shape[1] * receptive_field_size)
+        fan_out = int(shape[0] * receptive_field_size)
+    return (fan_in, fan_out)
 
 
 def kaiming_uniform_(
