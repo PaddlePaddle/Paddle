@@ -2651,7 +2651,7 @@ class Layer:
 
         # 5. Update grad in meta
         if t.is_leaf and t.grad_fn is not None:
-            t.grad_fn.update_grad_in_meta(t)
+            t.grad_fn._update_grad_in_meta(t)
 
         return t
 

@@ -483,4 +483,8 @@ void AddEdgeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
                                  bool need_dump_backward_subgraph);
 
 const std::string FormatTensor(const paddle::Tensor& t);
+void CheckGradNodeAccumulation(const paddle::Tensor& tensor);
+void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor);
+void CheckGradNodeAccumulation(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors);
 }  // namespace egr

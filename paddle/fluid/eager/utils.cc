@@ -1642,4 +1642,46 @@ const std::string FormatTensor(const paddle::Tensor& t) {
   return formatter.Format(dense_tensor, t.name());
 }
 
+void CheckGradNodeAccumulation(const paddle::Tensor& tensor) {
+  auto* autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+  if (!autograd_meta) return;
+
+  auto grad_node = autograd_meta->GetMutableGradNode();
+  if (!grad_node || !grad_node.get()) return;
+
+  auto accumulation_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+  if (!accumulation_node) return;
+
+  phi::DataType tensor_dtype = tensor.dtype();
+  const auto& input_metas = accumulation_node->InputMeta();
+  if (input_metas.empty() || input_metas[0].empty()) return;
+
+  const auto& slot_meta = input_metas[0][0];
+  if (slot_meta.HasTensorMeta()) {
+    const auto& tensor_meta = slot_meta.GetTensorMeta();
+    phi::DataType meta_dtype = tensor_meta.dtype;
+
+    if (tensor_dtype != meta_dtype) {
+      VLOG(7) << "Updating GradNodeAccumulation meta dtype from "
+              << phi::DataTypeToString(meta_dtype) << " to "
+              << phi::DataTypeToString(tensor_dtype);
+      accumulation_node->SetGradInMeta(tensor, 0);
+    }
+  }
+}
+
+void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor) {
+  if (!tensor) return;
+  CheckGradNodeAccumulation(*tensor);
+}
+
+void CheckGradNodeAccumulation(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  if (!tensors) return;
+  for (const auto& tensor : *tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
 }  // namespace egr
