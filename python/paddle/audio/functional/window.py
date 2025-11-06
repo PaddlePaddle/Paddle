@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -447,6 +448,40 @@ def get_window(
     return winfunc(*params, dtype=dtype, **kwargs)
 
 
+def _apply_window_postprocess(
+    w: Tensor,
+    *,
+    layout: str | None = None,
+    device: str | None = None,
+    pin_memory: None | bool,
+    requires_grad: None | bool,
+) -> Tensor:
+    if layout is not None:
+        warnings.warn("layout only supports 'strided' in Paddle; ignored")
+
+    # device: accept PlaceLike strings like 'cpu', 'gpu:0', 'cuda:0'
+    if device is not None:
+        dev = str(device).lower()
+        if dev.startswith('cuda') or dev.startswith('gpu'):
+            idx = 0
+            if ':' in dev:
+                try:
+                    idx = int(dev.split(':', 1)[1])
+                except ValueError:
+                    idx = 0
+            w = w.cuda(idx)
+        elif dev == 'cpu':
+            w = w.cpu()
+
+    if pin_memory:
+        if w.place.is_cpu_place():
+            w = w.pin_memory()
+
+    if requires_grad is not None:
+        w.stop_gradient = not requires_grad
+    return w
+
+
 def hamming_window(
     window_length: int,
     periodic: bool = True,
@@ -454,15 +489,23 @@ def hamming_window(
     beta: float = 0.46,
     *,
     dtype: str = 'float64',
-    layout: None | object = None,
-    device: None | object = None,
+    layout: str | None = None,
+    device: str | None = None,
     pin_memory: None | bool = None,
     requires_grad: None | bool = None,
 ):
-    w = get_window('hamming', window_length, fftbins=periodic, dtype=dtype)
-    if requires_grad is not None:
-        w.stop_gradient = not requires_grad
-    return w
+    w0 = get_window('hamming', window_length, fftbins=periodic, dtype=dtype)
+    alpha0, beta0 = 0.54, 0.46
+    B = beta / beta0
+    A = alpha - B * alpha0
+    w = A + B * w0
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
 
 
 def hann_window(
@@ -470,15 +513,19 @@ def hann_window(
     periodic: bool = True,
     *,
     dtype: str = 'float64',
-    layout: None | object = None,
-    device: None | object = None,
+    layout: str | None = None,
+    device: str | None = None,
     pin_memory: None | bool = None,
     requires_grad: None | bool = None,
 ):
     w = get_window('hann', window_length, fftbins=periodic, dtype=dtype)
-    if requires_grad is not None:
-        w.stop_gradient = not requires_grad
-    return w
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
 
 
 def kaiser_window(
@@ -487,17 +534,21 @@ def kaiser_window(
     beta: float = 12.0,
     *,
     dtype: str = 'float64',
-    layout: None | object = None,
-    device: None | object = None,
+    layout: str | None = None,
+    device: str | None = None,
     pin_memory: None | bool = None,
     requires_grad: None | bool = None,
 ):
     w = get_window(
         ('kaiser', beta), window_length, fftbins=periodic, dtype=dtype
     )
-    if requires_grad is not None:
-        w.stop_gradient = not requires_grad
-    return w
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
 
 
 def blackman_window(
@@ -505,15 +556,19 @@ def blackman_window(
     periodic: bool = True,
     *,
     dtype: str = 'float64',
-    layout: None | object = None,
-    device: None | object = None,
+    layout: str | None = None,
+    device: str | None = None,
     pin_memory: None | bool = None,
     requires_grad: None | bool = None,
 ):
     w = get_window('blackman', window_length, fftbins=periodic, dtype=dtype)
-    if requires_grad is not None:
-        w.stop_gradient = not requires_grad
-    return w
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
 
 
 def bartlett_window(
@@ -521,12 +576,16 @@ def bartlett_window(
     periodic: bool = True,
     *,
     dtype: str = 'float64',
-    layout: None | object = None,
-    device: None | object = None,
+    layout: str | None = None,
+    device: str | None = None,
     pin_memory: None | bool = None,
     requires_grad: None | bool = None,
 ):
     w = get_window('bartlett', window_length, fftbins=periodic, dtype=dtype)
-    if requires_grad is not None:
-        w.stop_gradient = not requires_grad
-    return w
+    return _apply_window_postprocess(
+        w,
+        layout=layout,
+        device=device,
+        pin_memory=pin_memory,
+        requires_grad=requires_grad,
+    )
