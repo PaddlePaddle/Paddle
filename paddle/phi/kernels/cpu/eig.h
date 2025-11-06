@@ -31,7 +31,11 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/funcs/magma/magma_function.h"
+#endif
+
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
@@ -220,6 +224,8 @@ void LapackEig(DenseTensor* input,
             "have converged."));
   }
 }
+
+#ifdef PADDLE_WITH_CUDA
 // -------------------------
 // GPU: Magma eig
 // -------------------------
@@ -316,32 +322,6 @@ void MagmaEig(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ApplyEigKernel(const DenseTensor& input,
-                    DenseTensor* values,
-                    DenseTensor* vectors,
-                    const Context& dev_ctx) {
-  DenseTensor input_column_major;
-  DenseTensor vectors_row_major;
-  int num_dims = input.dims().size();
-
-  // transfer to column-major memory layout i.e. common::make_ddim from
-  // transposed_input: [batch,row,col]->[batch,col,row]
-  TransposeTwoAxis<T, Context>(
-      input, &input_column_major, num_dims - 1, num_dims - 2, dev_ctx);
-  // make sure 'vectors_row_major' holds memory before passed to LapackEig()
-  vectors_row_major.Resize(input.dims());
-  int info = 0;
-  LapackEig<T, Context>(
-      &input_column_major, values, &vectors_row_major, info, dev_ctx);
-
-  // transfer column-major layout back
-  // vectors_row_major: column-major layout
-  // vector: original layout
-  TransposeTwoAxis<T, Context>(
-      vectors_row_major, vectors, num_dims - 1, num_dims - 2, dev_ctx);
-}
-
-template <typename T, typename Context>
 void ApplyEigKernelMagma(const Context& dev_ctx,
                          const DenseTensor& input,
                          DenseTensor* real_w_cpu,
@@ -367,6 +347,34 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
   // transfer column-major layout back
   TransposeTwoAxis<T, phi::CPUContext>(
       vectors_row_major_cpu, real_v_cpu, num_dims - 1, num_dims - 2, *cpu_ctx);
+}
+
+#endif  // PADDLE_WITH_CUDA
+
+template <typename T, typename Context>
+void ApplyEigKernel(const DenseTensor& input,
+                    DenseTensor* values,
+                    DenseTensor* vectors,
+                    const Context& dev_ctx) {
+  DenseTensor input_column_major;
+  DenseTensor vectors_row_major;
+  int num_dims = input.dims().size();
+
+  // transfer to column-major memory layout i.e. common::make_ddim from
+  // transposed_input: [batch,row,col]->[batch,col,row]
+  TransposeTwoAxis<T, Context>(
+      input, &input_column_major, num_dims - 1, num_dims - 2, dev_ctx);
+  // make sure 'vectors_row_major' holds memory before passed to LapackEig()
+  vectors_row_major.Resize(input.dims());
+  int info = 0;
+  LapackEig<T, Context>(
+      &input_column_major, values, &vectors_row_major, info, dev_ctx);
+
+  // transfer column-major layout back
+  // vectors_row_major: column-major layout
+  // vector: original layout
+  TransposeTwoAxis<T, Context>(
+      vectors_row_major, vectors, num_dims - 1, num_dims - 2, dev_ctx);
 }
 
 // template <typename T, typename Tout>
