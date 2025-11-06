@@ -14,11 +14,13 @@
 
 from __future__ import annotations
 
+import inspect
 import math
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, pir
@@ -228,6 +230,19 @@ def unfold(
     return out
 
 
+@overload
+def interpolate(
+    input: Tensor,
+    size: ShapeLike | None = None,
+    scale_factor: ShapeLike | float | None = None,
+    mode: _InterpolateMode = 'nearest',
+    align_corners: bool = False,
+    recompute_scale_factor: bool | None = None,
+    antialias: bool = False,
+) -> Tensor: ...
+
+
+@overload
 def interpolate(
     x: Tensor,
     size: ShapeLike | None = None,
@@ -240,8 +255,20 @@ def interpolate(
     ) = None,
     recompute_scale_factor: bool | None = None,
     name: str | None = None,
-) -> Tensor:
+) -> Tensor: ...
+
+
+def interpolate(*args: Any, **kwargs: Any) -> Tensor:
     """
+
+    This function has two functionalities, depending on the parameters passed:
+
+    1. ``interpolate(input, size, scale_factor, mode, align_corners, recompute_scale_factor, antialias)``:
+        PyTorch compatible interpolate.
+
+    2. ``interpolate(x, size, scale_factor, mode, align_corners, align_mode, data_format, recompute_scale_factor, name)``
+        The original PaddlePaddle implementation of interpolate, see the following docs.
+
 
     This API resizes a batch of images.
 
@@ -382,6 +409,7 @@ def interpolate(
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
              specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
              be presumed according to its dimension. See details in :attr:`data_format`.
+            alias: ``input``.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -398,6 +426,9 @@ def interpolate(
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
+        antialias(bool) : flag to apply anti-aliasing. Default: False. Using anti-alias option together with align_corners=False,
+                          interpolation result would match Pillow result for downsampling operation.
+                          Supported modes: 'bilinear', 'bicubic'.
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
@@ -443,6 +474,42 @@ def interpolate(
             >>> print(output_2.shape)
             [2, 3, 12, 10]
     """
+    len_args = len(args)
+
+    def safe_set_param(key: str, value: Any):
+        if key in kwargs:
+            raise TypeError(f"got multiple values for argument '{key}'")
+        kwargs[key] = value
+
+    if "input" in kwargs:
+        safe_set_param('x', kwargs.pop("input"))
+    if len(args) >= 6 and type(args[5]) is not int:  # torch api
+        param_keys = ["recompute_scale_factor", "antialias"]
+        for idx in range(min(len_args - 5, len(param_keys))):
+            safe_set_param(param_keys[idx], args[idx + 5])
+        args = args[:5]
+    if kwargs.get("antialias"):  # args[6] = antialias, and its value is True
+        raise ValueError(
+            "The argument 'antialias' cannot be set to true because this feature is not supported yet and will be added later."
+        )
+
+    return _interpolate_wrapper(*args, **kwargs)
+
+
+def _interpolate_wrapper(
+    x: Tensor,
+    size: ShapeLike | None = None,
+    scale_factor: ShapeLike | float | None = None,
+    mode: _InterpolateMode = 'nearest',
+    align_corners: bool = False,
+    align_mode: int = 0,
+    data_format: (
+        DataLayout1DVariant | DataLayout2D | DataLayout3D | None
+    ) = None,
+    recompute_scale_factor: bool | None = None,
+    antialias: bool = False,
+    name: str | None = None,
+) -> Tensor:
     if data_format is None:
         dim_size = len(x.shape)
         if dim_size == 3:
@@ -873,6 +940,9 @@ def interpolate(
         attrs=attrs,
     )
     return out
+
+
+interpolate.__signature__ = inspect.signature(_interpolate_wrapper)
 
 
 def upsample(
