@@ -90,6 +90,8 @@ class AOAShardInfoContext:
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
+        self.left_var_to_right_var_mapping = {}
+        self.right_var_from_left_var_mapping = {}
 
     def get_all_dst_state_keys(self):
         dst_state_keys = set()
@@ -108,7 +110,9 @@ class AOAShardInfoContext:
         return src_state_keys
 
     def get_num_hidden_layers(
-        self, name_with_layer_id: str, layer_id_macro_tag: str
+        self,
+        name_with_layer_id: str,
+        layer_id_macro_tag: str,
     ) -> int:
         if layer_id_macro_tag not in name_with_layer_id:
             raise ValueError(
@@ -133,11 +137,16 @@ class AOAShardInfoContext:
             "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
         )
 
+        # Only need to parse the model state key for optimizer state shard num, because the optimizer state slice info is completely consistent with the model state slice info.
+        resolved_model_state_key = self.resolve_mapping_chain(
+            model_state_key, reverse=True
+        )
+
         state_keys = [
-            model_state_key,
-            f"{model_state_key}.w_0",
-            f"{model_state_key}.moment1_0",
-            f"{model_state_key}.moment2_0",
+            resolved_model_state_key,
+            f"{resolved_model_state_key}.w_0",
+            f"{resolved_model_state_key}.moment1_0",
+            f"{resolved_model_state_key}.moment2_0",
         ]
 
         shard_nums = {
@@ -152,10 +161,10 @@ class AOAShardInfoContext:
         }
 
         if not shard_nums:
-            raise ValueError(
-                f"No shard information found for any of the keys: {state_keys}"
+            logger.warning(
+                f"No shard information found for any of the keys: {state_keys}, return 1."
             )
-
+            return 1
         if len(shard_nums) > 1:
             raise AssertionError(
                 f"Inconsistent shard numbers among keys in source_sharded_state_dict: {shard_nums}."
@@ -166,7 +175,6 @@ class AOAShardInfoContext:
         if self.destination_state_shard_info is None:
             # Default `dst_state_shard_num=1` if `destination_state_shard_info` is missing.
             return 1
-
         model_state_key, opt_state_name = split_optimizer_state_key(
             dst_state_key
         )
@@ -175,11 +183,16 @@ class AOAShardInfoContext:
             "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
         )
 
+        # Only need to parse the model state key for optimizer state shard num, because the optimizer state slice info is completely consistent with the model state slice info.
+        resolved_model_state_key = self.resolve_mapping_chain(
+            model_state_key, reverse=False
+        )
+
         state_keys = [
-            model_state_key,
-            f"{model_state_key}.w_0",
-            f"{model_state_key}.moment1_0",
-            f"{model_state_key}.moment2_0",
+            resolved_model_state_key,
+            f"{resolved_model_state_key}.w_0",
+            f"{resolved_model_state_key}.moment1_0",
+            f"{resolved_model_state_key}.moment2_0",
         ]
 
         shard_nums = {
@@ -194,15 +207,53 @@ class AOAShardInfoContext:
         }
 
         if not shard_nums:
-            raise ValueError(
-                f"No shard information found for any of the keys: {state_keys}"
+            logger.warning(
+                f"No shard information found for any of the keys: {state_keys}, return 1."
             )
-
+            return 1
         if len(shard_nums) > 1:
             raise AssertionError(
                 f"Inconsistent shard numbers among keys in destination_state_shard_info: {shard_nums}."
             )
         return shard_nums.pop()
+
+    def resolve_mapping_chain(self, key: str, reverse: bool = False) -> str:
+        """
+        Recursively resolve the mapping chain, find the final leaf node
+
+        Args:
+            key: The key to be resolved
+            reverse: False use left_var_to_right_var_mapping，True use right_var_from_left_var_mapping
+
+        For example:
+        - reverse=False: temp_var -> dst_key
+        - reverse=True: temp_var -> src_key
+        """
+        visited = set()  # avoid infinite loop
+        current_key = key
+
+        if reverse:
+            mapping_dict = self.right_var_from_left_var_mapping
+        else:
+            mapping_dict = self.left_var_to_right_var_mapping
+
+        while current_key in mapping_dict:
+            assert current_key not in visited, (
+                "Infinite loop detected in resolve_mapping_chain,which means the start key is not src_key or the end key is not dst_key, the aoa_config is error"
+            )
+            visited.add(current_key)
+            if reverse and current_key in self.get_all_src_state_keys():
+                break
+            elif not reverse and current_key in self.get_all_dst_state_keys():
+                break
+
+            mapped_vars = mapping_dict[current_key]
+            if mapped_vars and len(mapped_vars) > 0:
+                current_key = mapped_vars[0]
+            else:
+                break
+
+        return current_key
 
 
 class AOAEngine:
@@ -246,14 +297,20 @@ class AOAEngine:
 
     def build_input_vars(self):
         input_vars = {}
-        for key, shards in self.source_state_shard_info.items():
+        dtype = None
+        for key, shards in sorted(self.source_state_shard_info.items()):
             global_shape = shards[0].global_shape
-            dtype = shards[0].dtype
             model_state_key, opt_state_name = split_optimizer_state_key(key)
-            if opt_state_name in [".w_0", ".moment1_0", ".moment2_0", None]:
-                input_vars[model_state_key] = self.make_input_tensor(
-                    model_state_key, global_shape, dtype
-                )
+            if opt_state_name is None:
+                dtype = shards[0].dtype
+            if model_state_key in input_vars.keys() or opt_state_name in [
+                ".beta1_pow_acc_0",
+                ".beta2_pow_acc_0",
+            ]:
+                continue
+            input_vars[model_state_key] = self.make_input_tensor(
+                model_state_key, global_shape, dtype
+            )
         return input_vars
 
     def split(
@@ -487,7 +544,7 @@ class AOAEngine:
                         elif attr.key == "dtype":
                             result = self.cast(in_ref, attr.value)
                         elif attr.key == "axis":
-                            pass
+                            result = in_ref
                         else:
                             raise ValueError(f"Unsupported attribute: {attr}")
 
@@ -530,6 +587,8 @@ class AOAEngine:
     ) -> list[SliceRef]:
         assert key in self.output_vars
         tensor = self.output_vars[key]
+        if tensor is None:
+            return []
         results = []
         assert len(local_slice) == len(tensor.shape)
         ndim = len(tensor.shape)
@@ -648,10 +707,19 @@ class AOAEngine:
 
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
-            assert src_var.dtype == target.dtype, (
-                "Direct assignment of Tensors with different types is prohibited in AOA. "
-                "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+            target_model_state_key, target_opt_state_name = (
+                split_optimizer_state_key(target.key)
             )
+            if target_opt_state_name is None:
+                if src_var.dtype != target.dtype:
+                    assert pp_list is not None and target.dtype in str(
+                        pp_list
+                    ), (
+                        "Direct assignment of Tensors with different types is prohibited in AOA. "
+                        "If you want to achieve this functionality, please use the cast semantics provided by AOA."
+                    )
+            else:
+                src_var.dtype = target.dtype
 
             src_global_shape = src_var.shape
 
@@ -674,7 +742,7 @@ class AOAEngine:
                 src_local_shape,
                 tuple(src_global_shape),
                 src_global_offset,
-                target.dtype,
+                src_var.dtype,
             )
             target_sharded_weight = ShardedWeightDesc(
                 target_key,
