@@ -57,7 +57,7 @@ class CustomRegisteredDeviceMap {
 };
 
 PADDLE_API const char* AllocationTypeStr(AllocationType type);
-std::ostream& operator<<(std::ostream& os, AllocationType type);
+PADDLE_API std::ostream& operator<<(std::ostream& os, AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
 class PADDLE_API Place {
