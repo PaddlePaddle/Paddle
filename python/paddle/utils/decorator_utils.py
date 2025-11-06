@@ -790,56 +790,62 @@ def check_deprecated_params_on_init(init_func):
 
     @functools.wraps(init_func)
     def wrapper(self, *args, **kwargs):
+        # Step 1: Extract legacy params from positional args (convert to kwargs-like values)
+        reduce_from_pos = _SENTINEL
+        size_avg_from_pos = _SENTINEL
+
+        cls_name = self.__class__.__name__
+        pos = LEGACY_POS.get(cls_name)
+        if pos:
+            # Check size_average in positional args
+            idx = pos.get('size_average')
+            if idx is not None and len(args) > idx:
+                v = args[idx]
+                if type(v) is bool:
+                    size_avg_from_pos = v
+
+            # Check reduce in positional args
+            idx = pos.get('reduce')
+            if idx is not None and len(args) > idx:
+                v = args[idx]
+                if type(v) is bool:
+                    # Special guard: CrossEntropyLoss idx=3 is soft_label (bool) in Paddle;
+                    # treat it as legacy 'reduce' ONLY if arg at idx=2 is NOT a valid reduction string
+                    if cls_name == 'CrossEntropyLoss' and args[2] in {
+                        'mean',
+                        'sum',
+                        'none',
+                    }:
+                        # 视为 soft_label,跳过
+                        pass
+                    elif cls_name == 'KLDivLoss' and args[0] in {
+                        'mean',
+                        'sum',
+                        'none',
+                        'batchmean',
+                    }:
+                        # 视为 log_target,跳过
+                        pass
+                    else:
+                        reduce_from_pos = v
+
+        # Step 2: Extract legacy params from kwargs (kwargs take priority)
         reduce_raw = kwargs.pop('reduce', _SENTINEL)
         size_avg_raw = kwargs.pop('size_average', _SENTINEL)
 
-        has_reduce = reduce_raw is not _SENTINEL
-        has_size_avg = size_avg_raw is not _SENTINEL
+        # Step 3: Use kwargs if present, otherwise use positional args
+        if reduce_raw is _SENTINEL:
+            reduce_raw = reduce_from_pos
+        if size_avg_raw is _SENTINEL:
+            size_avg_raw = size_avg_from_pos
 
-        # If not provided via kwargs, try positional indices per class mapping
-        if not (has_reduce and has_size_avg):
-            cls_name = self.__class__.__name__
-            pos = LEGACY_POS.get(cls_name)
-            if pos:
-                if not has_size_avg:
-                    idx = pos.get('size_average')
-                    if idx is not None and len(args) > idx:
-                        v = args[idx]
-                        if type(v) is bool:
-                            size_avg_raw = v
-                            has_size_avg = True
-                if not has_reduce:
-                    idx = pos.get('reduce')
-                    if idx is not None and len(args) > idx:
-                        v = args[idx]
-                        if type(v) is bool:
-                            # Special guard: CrossEntropyLoss idx=3 is soft_label (bool) in Paddle;
-                            # treat it as legacy 'reduce' ONLY if arg at idx=2 is NOT a valid reduction string
-                            if cls_name == 'CrossEntropyLoss' and args[2] in {
-                                'mean',
-                                'sum',
-                                'none',
-                            }:
-                                # 视为 soft_label,跳过
-                                pass
-                            elif cls_name == 'KLDivLoss' and args[0] in {
-                                'mean',
-                                'sum',
-                                'none',
-                                'batchmean',
-                            }:
-                                # 视为 log_target,跳过
-                                pass
-                            else:
-                                reduce_raw = v
-                                has_reduce = True
-
-        if has_reduce or has_size_avg:
+        # Step 4: Check if any legacy params were found and raise error
+        if reduce_raw is not _SENTINEL or size_avg_raw is not _SENTINEL:
             reduce_val = None if reduce_raw is _SENTINEL else reduce_raw
             size_avg_val = None if size_avg_raw is _SENTINEL else size_avg_raw
             suggested = compute_legacy_reduction(reduce_val, size_avg_val)
             raise ValueError(
-                f"[Deprecated] '{self.__class__.__name__}' no longer supports 'reduce' or 'size_average'."
+                f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
                 f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
                 f"\nPlease use: reduction='{suggested}' instead."
             )
