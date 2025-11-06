@@ -318,7 +318,8 @@ void dispatch(void* packed_recv_x,
               bool use_fp8,
               void* workspace,
               cudaStream_t stream,
-              int phases);
+              int phases,
+              int num_per_channel);
 
 void combine(void* combined_x,
              void* rdma_recv_x,

@@ -279,7 +279,8 @@ struct Buffer {
       int num_experts,
       bool use_fp8,
       bool async,
-      bool return_recv_hook);
+      bool return_recv_hook,
+      int num_per_channel);
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<EventHandle>,
@@ -452,7 +453,8 @@ struct Buffer {
       int num_experts,
       bool use_fp8,
       bool async,
-      bool return_recv_hook);
+      bool return_recv_hook,
+      int num_per_channel);
 
   std::tuple<paddle::Tensor,
              std::optional<EventHandle>,

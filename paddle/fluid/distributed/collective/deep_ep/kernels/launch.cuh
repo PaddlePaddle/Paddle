@@ -136,6 +136,17 @@
     EP_HOST_ASSERT(false && "Unsupported hidden"); \
   }
 
+#define DISPATCH_NUM_PER_CHANNEL(num_per_channel, kNumPerChannels, ...) \
+  if (num_per_channel == -1) {                                          \
+    constexpr int kNumPerChannels = -1;                                 \
+    __VA_ARGS__                                                         \
+  } else if (num_per_channel == 128) {                                  \
+    constexpr int kNumPerChannels = 128;                                \
+    __VA_ARGS__                                                         \
+  } else {                                                              \
+    EP_HOST_ASSERT(false && "Unsupported num_per_channel");             \
+  }
+
 #define DISPATCH_NUM_TOPK(num_topk, kTopk, ...)      \
   if (num_topk == 8) {                               \
     constexpr int kTopk = 8;                         \
