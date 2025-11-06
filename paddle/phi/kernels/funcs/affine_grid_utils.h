@@ -183,7 +183,8 @@ inline void GetIdxMap5D(int n,
 }
 
 namespace funcs {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    defined(__CUDACC__)
 template <typename T>
 __global__ void CreateBaseGridKernel_4D(
     T* base_grid_data, int64_t n, int64_t h, int64_t w, bool align_corners) {
