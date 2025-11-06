@@ -163,6 +163,7 @@ class TestDLPackDataType(unittest.TestCase):
             paddle.uint8,
             paddle.uint16,
             paddle.uint32,
+            paddle.uint64,
             paddle.int16,
             paddle.int32,
             paddle.int64,

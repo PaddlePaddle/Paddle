@@ -208,6 +208,8 @@ inline int TransToProtoVarType(const DataType& dtype) {
       return ProtoDataType::UINT16;
     case DataType::UINT32:
       return ProtoDataType::UINT32;
+    case DataType::UINT64:
+      return ProtoDataType::UINT64;
     case DataType::INT16:
       return ProtoDataType::INT16;
     case DataType::COMPLEX64:

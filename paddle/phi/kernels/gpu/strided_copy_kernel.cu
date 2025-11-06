@@ -940,6 +940,7 @@ INSTANTIATE_STRIDEDCOPY_KERNEL(bool, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(uint16_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(uint32_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint64_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, GPUContext)
@@ -963,6 +964,7 @@ PD_REGISTER_KERNEL(strided_copy,
                    uint8_t,
                    uint16_t,
                    uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    int32_t,

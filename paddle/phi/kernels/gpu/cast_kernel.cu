@@ -48,6 +48,9 @@ INSTANTIATE_CAST_KERNEL(double, GPUContext)
 INSTANTIATE_CAST_KERNEL(int, GPUContext)
 INSTANTIATE_CAST_KERNEL(int64_t, GPUContext)
 INSTANTIATE_CAST_KERNEL(uint8_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(uint16_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(uint32_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(uint64_t, GPUContext)
 INSTANTIATE_CAST_KERNEL(bool, GPUContext)
 INSTANTIATE_CAST_KERNEL(int16_t, GPUContext)
 INSTANTIATE_CAST_KERNEL(phi::float16, GPUContext)
@@ -69,6 +72,7 @@ PD_REGISTER_KERNEL(cast,
                    uint8_t,
                    uint16_t,
                    uint32_t,
+                   uint64_t,
                    phi::float16,
                    phi::complex64,
                    phi::complex128,

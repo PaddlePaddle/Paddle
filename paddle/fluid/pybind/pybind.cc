@@ -502,6 +502,9 @@ struct iinfo {
       case phi::DataType::UINT32:
         CASE_IINFO_BODY(uint32, uint32_t);
         break;
+      case phi::DataType::UINT64:
+        CASE_IINFO_BODY(uint64, uint64_t);
+        break;
       case phi::DataType::INT8:
         CASE_IINFO_BODY(int8, int8_t);
         break;

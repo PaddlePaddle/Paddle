@@ -250,6 +250,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
           type.bits));
     case 64:
       if (type.code == kDLInt) return phi::DataType::INT64;
+      if (type.code == kDLUInt) return phi::DataType::UINT64;
       if (type.code == kDLFloat) return phi::DataType::FLOAT64;
       if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
       PADDLE_THROW(common::errors::Unimplemented(

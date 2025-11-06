@@ -471,6 +471,7 @@ class TestDtypesUnsignedInt(unittest.TestCase):
             paddle.uint8,
             paddle.uint16,
             paddle.uint32,
+            paddle.uint64,
         ]
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
