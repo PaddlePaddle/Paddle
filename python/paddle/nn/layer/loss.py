@@ -1292,6 +1292,7 @@ class CTCLoss(Layer):
         - input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         - label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         - norm_by_times (bool, optional): Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'. Default: False.
+        - zero_infinity (bool, optional): If True, set infinite loss to zero. Default: False.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``log_probs``.
@@ -1340,10 +1341,16 @@ class CTCLoss(Layer):
     blank: int
     reduction: _ReduceMode
 
-    def __init__(self, blank: int = 0, reduction: _ReduceMode = 'mean') -> None:
+    def __init__(
+        self,
+        blank: int = 0,
+        reduction: _ReduceMode = 'mean',
+        zero_infinity: bool = False,
+    ) -> None:
         super().__init__()
         self.blank = blank
         self.reduction = reduction
+        self.zero_infinity = zero_infinity
 
     def forward(
         self,
@@ -1352,7 +1359,6 @@ class CTCLoss(Layer):
         input_lengths: Tensor,
         label_lengths: Tensor,
         norm_by_times: bool = False,
-        zero_infinity: bool = False,
     ) -> Tensor:
         return paddle.nn.functional.ctc_loss(
             log_probs,
@@ -1362,7 +1368,7 @@ class CTCLoss(Layer):
             self.blank,
             self.reduction,
             norm_by_times=norm_by_times,
-            zero_infinity=zero_infinity,
+            zero_infinity=self.zero_infinity,
         )
 
 

@@ -1205,9 +1205,14 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
 }
 
 PyObject* ToPyObject(const phi::DataType& dtype) {
-  auto obj = ::pybind11::cast(dtype);
-  obj.inc_ref();
-  return obj.ptr();
+  static const std::vector<std::string> dtype_names = {
+      "UNDEFINED", "BOOL",     "UINT8",         "INT8",        "UINT16",
+      "INT16",     "UINT32",   "INT32",         "UINT64",      "INT64",
+      "FLOAT32",   "FLOAT64",  "COMPLEX64",     "COMPLEX128",  "PSTRING",
+      "FLOAT16",   "BFLOAT16", "FLOAT8_E4M3FN", "FLOAT8_E5M2",
+  };
+  return PyObject_GetAttrString(reinterpret_cast<PyObject*>(g_data_type_pytype),
+                                dtype_names[static_cast<int>(dtype)].c_str());
 }
 
 PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {

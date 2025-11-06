@@ -53,6 +53,7 @@ from . import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
     from types import TracebackType
 
     from paddle import IPUPlace as _IPUPlace, XPUPlace as _XPUPlace
@@ -1788,13 +1789,59 @@ def manual_seed_all(seed: int) -> None:
 
 
 class _AutocastMode:
-    autocast = staticmethod(_autocast)
+    @staticmethod
+    def autocast(
+        enabled=True, dtype=paddle.float16, cache_enabled=True
+    ) -> AbstractContextManager:
+        """
+        Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
+        If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided
+        by autocast algorithm for better performance.
+
+        Commonly, it is used together with `GradScaler` and `decorator` to achieve Auto-Mixed-Precision in
+        imperative mode.
+
+        Args:
+            device_type(str, optional): Device type. But because the paddle does not distinguish between devices, this parameter does not work.
+            enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
+            dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+            cache_enabled(bool, optional): whether to enable cache or not. Default is True. But this parameter is not used
+
+        Note:
+            paddle.cuda.amp.
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+
+                >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+                >>> data = paddle.rand([10, 3, 32, 32])
+
+                >>> with paddle.device.amp.auto_cast():
+                ...     conv = conv2d(data)
+                ...     print(conv.dtype)
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
+                paddle.float16
+                >>> # doctest: -SKIP
+
+                >>> with paddle.device.amp.auto_cast(enable=False):
+                ...     conv = conv2d(data)
+                ...     print(conv.dtype)
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
+                paddle.float32
+                >>> # doctest: -SKIP
+
+        """
+        return _autocast(device_type='cuda', enabled=enabled, dtype=dtype)
 
 
 class amp:
     """Namespace for amp marker operations."""
 
-    autocast = staticmethod(_autocast)
+    autocast = staticmethod(_AutocastMode.autocast)
     autocast_mode = _AutocastMode()
 
 
