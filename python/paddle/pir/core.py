@@ -501,7 +501,7 @@ def _convert_into_value(tensor):
     Convert Tensor into Value.
     """
     import paddle
-    from paddle.jit.pir_dy2static.parameter_recorder import (
+    from paddle.jit.dy2static.parameter_recorder import (
         _global_parameter_recorder,
     )
 

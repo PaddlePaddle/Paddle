@@ -1064,7 +1064,10 @@ def amp_decorate(
 
 
 def autocast(
-    enabled=True, dtype=paddle.float16, cache_enabled=True
+    device_type: str | None,
+    dtype: _DTypeLiteral = 'float16',
+    enabled: bool = True,
+    cache_enabled: bool = True,
 ) -> AbstractContextManager:
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
@@ -1075,6 +1078,7 @@ def autocast(
     imperative mode.
 
     Args:
+        device_type(str, optional): Device type.But because the paddle does not distinguish between devices, this parameter does not work
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
         cache_enabled(bool, optional): whether to enable cache or not. Default is True. But this parameter is not used

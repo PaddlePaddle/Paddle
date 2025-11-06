@@ -437,9 +437,6 @@ class Conv1D(_ConvNd):
         return out
 
 
-Conv1d = Conv1D
-
-
 class Conv1DTranspose(_ConvNd):
     r"""
     This interface is used to construct a callable object of the ``Conv1DTranspose`` class.
@@ -823,9 +820,6 @@ class Conv2D(_ConvNd):
         return out
 
 
-Conv2d = Conv2D
-
-
 class Conv2DTranspose(_ConvNd):
     r"""
     This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
@@ -1170,9 +1164,6 @@ class Conv3D(_ConvNd):
             use_cudnn=self._use_cudnn,
         )
         return out
-
-
-Conv3d = Conv3D
 
 
 class Conv3DTranspose(_ConvNd):
