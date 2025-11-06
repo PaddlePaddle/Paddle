@@ -113,6 +113,9 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int64_t, INT64);                          \
   _ForEachDataTypeHelper_(callback, bool, BOOL);                              \
   _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                          \
+  _ForEachDataTypeHelper_(callback, uint16_t, UINT16);                        \
+  _ForEachDataTypeHelper_(callback, uint32_t, UINT32);                        \
+  _ForEachDataTypeHelper_(callback, uint64_t, UINT64);                        \
   _ForEachDataTypeHelper_(callback, int16_t, INT16);                          \
   _ForEachDataTypeHelper_(callback, int8_t, INT8);                            \
   _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<float>, COMPLEX64); \
@@ -128,6 +131,9 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int64_t, INT64);               \
   _ForEachDataTypeHelper_(callback, bool, BOOL);                   \
   _ForEachDataTypeHelper_(callback, uint8_t, UINT8);               \
+  _ForEachDataTypeHelper_(callback, uint16_t, UINT16);             \
+  _ForEachDataTypeHelper_(callback, uint32_t, UINT32);             \
+  _ForEachDataTypeHelper_(callback, uint64_t, UINT64);             \
   _ForEachDataTypeHelper_(callback, int16_t, INT16);               \
   _ForEachDataTypeHelper_(callback, int8_t, INT8);
 
