@@ -743,14 +743,14 @@ class TestGroupNormParam(unittest.TestCase):
             )
 
 
-class TestGroupNormAffine(unittest.TestCase):
+class TestGroupNormAPIV2_Param(unittest.TestCase):
     def setUp(self):
         self.num_groups = 8
         self.num_channels = 16
         self.x_tensor = paddle.randn([2, self.num_channels, 4, 4])
 
     def test_affine_true(self):
-        """Test that when affine=True, weight and bias parameters are created."""
+        """test that when affine=True, weight and bias parameters are created."""
         layer = paddle.nn.GroupNorm(
             num_groups=self.num_groups,
             num_channels=self.num_channels,
@@ -770,8 +770,27 @@ class TestGroupNormAffine(unittest.TestCase):
             paddle.allclose(layer.bias, paddle.zeros([self.num_channels]))
         )
 
+        layer_old = paddle.nn.GroupNorm(
+            num_groups=self.num_groups,
+            num_channels=self.num_channels,
+            epsilon=1e-05,
+        )
+
+        self.assertIsNotNone(layer_old.weight)
+        self.assertIsNotNone(layer_old.bias)
+
+        self.assertEqual(layer_old.weight.shape, [self.num_channels])
+        self.assertEqual(layer_old.bias.shape, [self.num_channels])
+
+        self.assertTrue(
+            paddle.allclose(layer_old.weight, paddle.ones([self.num_channels]))
+        )
+        self.assertTrue(
+            paddle.allclose(layer_old.bias, paddle.zeros([self.num_channels]))
+        )
+
     def test_affine_false(self):
-        """Test that when affine=False, no learnable parameters are created."""
+        """test that when affine=False, no learnable parameters are created."""
         layer = paddle.nn.GroupNorm(
             num_groups=self.num_groups,
             num_channels=self.num_channels,
@@ -781,8 +800,19 @@ class TestGroupNormAffine(unittest.TestCase):
         self.assertIsNone(layer.weight)
         self.assertIsNone(layer.bias)
 
+        layer_old = paddle.nn.GroupNorm(
+            num_groups=self.num_groups,
+            num_channels=self.num_channels,
+            epsilon=1e-05,
+            weight_attr=False,
+            bias_attr=False,
+        )
+
+        self.assertIsNone(layer_old.weight)
+        self.assertIsNone(layer_old.bias)
+
     def test_overrides_with_affine(self):
-        """Test that weight_attr and bias_attr can override the default initialization when affine=True."""
+        """test that weight_attr and bias_attr can override the default initialization when affine=True."""
         weight_attr = paddle.nn.initializer.Constant(value=2.0)
         bias_attr = paddle.nn.initializer.Constant(value=3.0)
         layer = paddle.nn.GroupNorm(
@@ -799,7 +829,7 @@ class TestGroupNormAffine(unittest.TestCase):
         self.assertTrue(paddle.allclose(layer.bias, expected_bias))
 
     def test_shape_with_affine(self):
-        """Test the forward pass when affine."""
+        """test the forward pass when affine."""
         layer = paddle.nn.GroupNorm(
             num_groups=self.num_groups,
             num_channels=self.num_channels,
@@ -817,6 +847,20 @@ class TestGroupNormAffine(unittest.TestCase):
         out = layer(self.x_tensor)
 
         self.assertEqual(out.shape, self.x_tensor.shape)
+
+    def test_errors(self):
+        """test parameters with errors"""
+        with self.assertRaises(TypeError):
+            layer = paddle.nn.GroupNorm(
+                self.num_groups,
+                self.num_channels,
+                2,
+                2,
+                1e-05,
+                True,
+                "cpu",
+                paddle.float32,
+            )
 
 
 if __name__ == '__main__':

@@ -422,8 +422,7 @@ class InstanceNorm3D(_InstanceNormBase):
 
 
 class GroupNorm(Layer):
-    """
-
+    r"""
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -438,8 +437,11 @@ class GroupNorm(Layer):
         affine(bool, optional): Whether this module has learnable affine parameters (weight and bias).
             If set to ``False``, no learnable parameters will be created, regardless of the settings of
             `weight_attr` and `bias_attr`. Defaults to True.
-        device(PlaceLike, optional): Device where the computation takes place. Default: None
+            **Note: This argument must be passed as a keyword argument.**
+        device(PlaceLike, optional): Device where the computation takes place. Default: None.
+            **Note: This argument must be passed as a keyword argument.**
         dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
+            **Note: This argument must be passed as a keyword argument.**
         weight_attr(ParamAttr|bool|None, optional): The parameter attribute for the learnable scale :math:`g`.
             This setting only takes effect when `affine` is ``True``.
             - If set to ``False``, no scale parameter will be created.
@@ -447,6 +449,7 @@ class GroupNorm(Layer):
               When set to ``True``, it is equivalent to ``ParamAttr()`` with default initialization.
             - If set to ``None``, a learnable scale parameter will be created and initialized to one.
             Default: None.
+            **Note: This argument must be passed as a keyword argument.**
         bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the learnable bias :math:`b`.
             This setting only takes effect when `affine` is ``True``.
             - If set to ``False``, no bias parameter will be created.
@@ -454,8 +457,11 @@ class GroupNorm(Layer):
               When set to ``True``, it is equivalent to ``ParamAttr()`` with default initialization.
             - If set to ``None``, a learnable bias parameter will be created and initialized to zero.
             Default: None.
+            **Note: This argument must be passed as a keyword argument.**
         data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
-        name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+            **Note: This argument must be passed as a keyword argument.**
+        name(str|None, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`.
+            **Note: This argument must be passed as a keyword argument.**
 
     Shape:
         - x: Tensor with shape: attr:`(batch, num_features, *)`.
@@ -510,18 +516,16 @@ class GroupNorm(Layer):
         num_groups: int,
         num_channels: int,
         epsilon: float = 1e-5,
+        *,
         affine: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
-        *,
         weight_attr: bool | ParamAttr | None = None,
         bias_attr: bool | ParamAttr | None = None,
         data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
         name: str | None = None,
     ) -> None:
         super().__init__()
-        self._weight_attr = weight_attr
-        self._bias_attr = bias_attr
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
@@ -541,6 +545,9 @@ class GroupNorm(Layer):
         if not affine:
             weight_attr = False
             bias_attr = False
+
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
 
         if weight_attr is False:
             self.weight = None
@@ -564,6 +571,7 @@ class GroupNorm(Layer):
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
+                default_initializer=Constant(0.0),
                 is_bias=True,
                 device=self._device,
             )
