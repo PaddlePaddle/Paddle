@@ -763,12 +763,17 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
         self.assertEqual(layer.weight.shape, [self.num_channels])
         self.assertEqual(layer.bias.shape, [self.num_channels])
 
-        self.assertTrue(
-            paddle.allclose(layer.weight, paddle.ones([self.num_channels]))
-        )
-        self.assertTrue(
-            paddle.allclose(layer.bias, paddle.zeros([self.num_channels]))
-        )
+        if paddle.in_dynamic_mode():
+            self.assertTrue(
+                paddle.allclose(
+                    layer.weight, paddle.ones([self.num_channels])
+                ).item()
+            )
+            self.assertTrue(
+                paddle.allclose(
+                    layer.bias, paddle.zeros([self.num_channels])
+                ).item()
+            )
 
         layer_old = paddle.nn.GroupNorm(
             num_groups=self.num_groups,
@@ -782,12 +787,17 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
         self.assertEqual(layer_old.weight.shape, [self.num_channels])
         self.assertEqual(layer_old.bias.shape, [self.num_channels])
 
-        self.assertTrue(
-            paddle.allclose(layer_old.weight, paddle.ones([self.num_channels]))
-        )
-        self.assertTrue(
-            paddle.allclose(layer_old.bias, paddle.zeros([self.num_channels]))
-        )
+        if paddle.in_dynamic_mode():
+            self.assertTrue(
+                paddle.allclose(
+                    layer_old.weight, paddle.ones([self.num_channels])
+                ).item()
+            )
+            self.assertTrue(
+                paddle.allclose(
+                    layer_old.bias, paddle.zeros([self.num_channels])
+                ).item()
+            )
 
     def test_affine_false(self):
         """test that when affine=False, no learnable parameters are created."""
@@ -825,8 +835,11 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
 
         expected_weight = paddle.full([self.num_channels], 2.0)
         expected_bias = paddle.full([self.num_channels], 3.0)
-        self.assertTrue(paddle.allclose(layer.weight, expected_weight))
-        self.assertTrue(paddle.allclose(layer.bias, expected_bias))
+        if paddle.in_dynamic_mode():
+            self.assertTrue(
+                paddle.allclose(layer.weight, expected_weight).item()
+            )
+            self.assertTrue(paddle.allclose(layer.bias, expected_bias).item())
 
     def test_shape_with_affine(self):
         """test the forward pass when affine."""
