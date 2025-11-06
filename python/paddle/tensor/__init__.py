@@ -950,6 +950,7 @@ tensor_method_func = [
     'greater',
     'clamp',
     'clamp_',
+    'split_with_sizes',
 ]
 
 
