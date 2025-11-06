@@ -127,15 +127,6 @@ void CastKernel(const Context& dev_ctx,
     case DataType::UINT8:
       CastXPUKernelImpl<T, uint8_t, Context>(dev_ctx, x, out);
       break;
-    case DataType::UINT16:
-      CastXPUKernelImpl<T, uint16_t, Context>(dev_ctx, x, out);
-      break;
-    case DataType::UINT32:
-      CastXPUKernelImpl<T, uint32_t, Context>(dev_ctx, x, out);
-      break;
-    case DataType::UINT64:
-      CastXPUKernelImpl<T, uint64_t, Context>(dev_ctx, x, out);
-      break;
     case DataType::FLOAT64:
       CastXPUKernelImpl<T, double, Context>(dev_ctx, x, out);
       break;
@@ -202,9 +193,6 @@ PD_REGISTER_KERNEL(cast,
                    bool,
                    int8_t,
                    uint8_t,
-                   uint16_t,
-                   uint32_t,
-                   uint64_t,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
