@@ -164,6 +164,15 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
+    } else if (phi::is_xpu_pinned_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+      gc = std::make_unique<framework::XPUPinnedGarbageCollector>(place, 0);
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(common::errors::PermissionDenied(
+          "Paddle can't use XPUPinned device since it's not compiled with XPU,"
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
     } else if (phi::is_cpu_place(place)) {
       gc = std::make_unique<framework::CPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;

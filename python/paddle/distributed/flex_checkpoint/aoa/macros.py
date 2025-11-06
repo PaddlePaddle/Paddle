@@ -56,6 +56,8 @@ GLOBAL_ATTRIBUTE_KEYWORDS = [
     'num_heads',
     'num_key_value_groups',
     'permute',
+    'dtype',
+    'fused_qkv',
 ]
 
 EXTRA_SUFFIX = [
@@ -211,7 +213,7 @@ def array_macro(tokens, expression, context):
     return new_expression
 
 
-@macro(name='fused_qkv_old_macro', priority=4)
+@macro(name='fused_qkv_old_macro', priority=6)
 def fused_qkv_old_macro(tokens, expression, context):
     FUSED_QKV_OLD_TAG = "fused_qkv_old"
     if not any(tkn.value == FUSED_QKV_OLD_TAG for tkn in tokens):
@@ -381,7 +383,7 @@ def fused_qkv_old_macro(tokens, expression, context):
     return results
 
 
-@macro(name='fused_ffn_macro', priority=4)
+@macro(name='fused_ffn_macro', priority=6)
 def fused_ffn_macro(tokens, expression, context):
     FUSED_FFN_TAG = "fused_ffn"
     if not any(tkn.value == FUSED_FFN_TAG for tkn in tokens):
@@ -505,7 +507,7 @@ def fused_ffn_macro(tokens, expression, context):
     return results
 
 
-@macro(name='transpose_macro', priority=3)
+@macro(name='transpose_macro', priority=5)
 def transpose_macro(tokens, expression, context):
     TRANSPOSE_TAG = "^T"
 
@@ -551,7 +553,7 @@ def transpose_macro(tokens, expression, context):
     return results
 
 
-@macro(name='fused_qkv_macro', priority=4)
+@macro(name='fused_qkv_macro', priority=6)
 def fused_qkv_macro(tokens, expression, context):
     FUSED_QKV_TAG = "fused_qkv"
     if not any(tkn.value == FUSED_QKV_TAG for tkn in tokens):
@@ -711,6 +713,7 @@ class IDMatcher:
 _REGISTERED_PLACEHOLDERS = ['$EXPERT_ID', '$LAYER_ID']
 
 
+# TODO: need to adapt the scene of temp_layers.\$LAYER_ID.weight -> dst_layers.\$LAYER_ID.weight
 @macro(name='id_macro', priority=1)
 def id(tokens, expression, context):
     allowed_placeholders = _REGISTERED_PLACEHOLDERS
@@ -783,3 +786,43 @@ def id(tokens, expression, context):
         results.append(cur_statement)
 
     return results
+
+
+# This macro processes variable mappings between source and destination states,
+# but it requires that all expansion macros (layer_id_macro, expert_id_macro,
+# star_macro, array_macro, etc.) have already been executed to expand template
+# variables into concrete variable names.
+@macro(name='get_var_mapping_chain_macro', priority=4)
+def get_var_mapping_chain_macro(tokens, expression, context):
+    flag_left_var = True
+    left_var_list = []
+    right_var_list = []
+    for tkn in tokens:
+        if tkn.value in GLOBAL_ATTRIBUTE_KEYWORDS:
+            break
+        if tkn.type == TokenType.RARROW:
+            flag_left_var = False
+        if tkn.type == TokenType.IDENTIFIER:
+            extra_suffix_removed_value = tkn.value
+            for sfx in EXTRA_SUFFIX:
+                extra_suffix_removed_value = (
+                    extra_suffix_removed_value.removesuffix(sfx)
+                )
+            if flag_left_var:
+                left_var_list.append(extra_suffix_removed_value)
+            else:
+                right_var_list.append(extra_suffix_removed_value)
+    assert len(left_var_list) == 1 or len(right_var_list) == 1, (
+        "Left or right variable must have the only one element"
+    )
+    if len(left_var_list) == 1:
+        context.left_var_to_right_var_mapping[left_var_list[0]] = right_var_list
+        for right_var in right_var_list:
+            context.right_var_from_left_var_mapping[right_var] = left_var_list
+    else:
+        context.right_var_from_left_var_mapping[right_var_list[0]] = (
+            left_var_list
+        )
+        for left_var in left_var_list:
+            context.left_var_to_right_var_mapping[left_var] = right_var_list
+    return expression

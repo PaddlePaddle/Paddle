@@ -23,6 +23,7 @@ from paddle.framework import (
     in_dynamic_mode,
 )
 from paddle.tensor import softmax
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 if TYPE_CHECKING:
     from typing_extensions import TypeAlias
@@ -36,9 +37,8 @@ if TYPE_CHECKING:
         "zeros", "constant", "reflect", "replicate", "circular"
     ]
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-__all__ = ['pad', 'softmax']
+__all__ = ['pad', 'softmax', 'linear']
 
 
 def _check_valid_pad_len(pad_len, x_dim, is_constant):
@@ -190,4 +190,79 @@ def pad(
     )
     if ndim_to_unsqueeze:
         return out.squeeze(axis=ndim_to_unsqueeze)
+    return out
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "name"},
+    func_name="paddle.compat.nn.functional.linear",
+    correct_name="paddle.nn.functional.linear",
+)
+def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
+    r"""
+
+    Fully-connected linear transformation operator. For each input :math:`x` ,
+    the equation is:
+
+    .. math::
+
+        Out = xW^T + b
+
+    where :math: `W` is the weight and :math:`b` is the bias.
+
+    If the weight is a 2-D tensor of shape :math:`[out\_features, in\_features]` ,
+    input should be a multi-dimensional tensor of shape
+    :math:`[*, in\_features]` , where :math:`*` means any number of
+    additional dimensions. The linear operator multiplies input tensor with
+    weight and produces an output tensor of shape :math:`[*, out\_features]` ,
+    If :math:`bias` is not None, the bias should be a 1-D tensor of shape
+    :math:`[out\_features]` and will be added to the output.
+
+    This implementation is aligned with PyTorch's linear function which computes
+    :math:`y = xW^T + b`.
+
+    Parameters:
+        input (Tensor): Input tensor. The data type should be bfloat16, float16, float32 or float64.
+            The input tensor should be of shape :math:`[*, in\_features]`, where :math:`*` means any number of additional dimensions, including none
+        weight (Tensor): Weight tensor. The data type should be float16, float32 or float64.
+            Shape should be [out_features, in_features].
+        bias (Tensor, optional): Bias tensor. The data type should be float16, float32 or float64.
+            If it is set to None, no bias will be added to the output units.
+
+    Returns:
+        Tensor, the shape is :math:`[*, out\_features]` and the
+        data type is the same with input :math:`x` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.seed(2025)
+
+            >>> x = paddle.arange(6, dtype=paddle.float32).reshape([3, 2])
+            >>> x
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0., 1.],
+                    [2., 3.],
+                    [4., 5.]])
+            >>> weight = paddle.full(shape=[4, 2], fill_value=0.5, dtype="float32", name="weight")
+            >>> weight
+            Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0.50000000, 0.50000000],
+                    [0.50000000, 0.50000000],
+                    [0.50000000, 0.50000000],
+                    [0.50000000, 0.50000000]])
+            >>> bias = paddle.ones(shape=[4], dtype="float32", name="bias")
+            >>> y = paddle.compat.nn.functional.linear(x, weight, bias)
+            >>> print(y)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[1.50000000, 1.50000000, 1.50000000, 1.50000000],
+                    [3.50000000, 3.50000000, 3.50000000, 3.50000000],
+                    [5.50000000, 5.50000000, 5.50000000, 5.50000000]])
+    """
+    # transpose y is True, since _C_ops.linear(input, weight.T, bias) can introduce more overhead. With CINN, matmul and add can be fused.
+    out = _C_ops.matmul(input, weight, False, True)
+    if bias is not None:
+        out = _C_ops.add(out, bias)
     return out

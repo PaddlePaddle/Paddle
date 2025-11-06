@@ -24,7 +24,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import roll  # noqa: F401
+from paddle._C_ops import index_put, index_put_, roll  # noqa: F401
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -7680,99 +7680,6 @@ def index_add_(
     Please refer to :ref:`api_paddle_index_add`.
     """
     return _C_ops.index_add_(x, index, value, axis)
-
-
-@inplace_apis_in_dygraph_only
-def index_put_(
-    x: Tensor,
-    indices: Sequence[Tensor],
-    value: Tensor,
-    accumulate: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Inplace version of ``index_put`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_put`.
-    """
-    return _C_ops.index_put_(x, indices, value, accumulate)
-
-
-def index_put(
-    x: Tensor,
-    indices: Sequence[Tensor],
-    value: Tensor,
-    accumulate: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
-    The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
-    If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
-
-    Args:
-        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
-        indices (list[Tensor]|tuple[Tensor]): The tuple of Tensor containing the indices to index.
-            The data type of ``tensor in indices`` must be int32, int64 or bool.
-        value (Tensor): The tensor used to be assigned to x.
-        accumulate (bool, optional): Whether the elements in values are added to x. Default: False.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, same dimension and dtype with x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.zeros([3, 3])
-            >>> value = paddle.ones([3])
-            >>> ix1 = paddle.to_tensor([0,1,2])
-            >>> ix2 = paddle.to_tensor([1,2,1])
-            >>> indices=(ix1,ix2)
-
-            >>> out = paddle.index_put(x,indices,value)
-            >>> print(x)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 0., 0.],
-             [0., 0., 0.],
-             [0., 0., 0.]])
-            >>> print(out)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 0.],
-             [0., 0., 1.],
-             [0., 1., 0.]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.index_put(x, indices, value, accumulate)
-
-    helper = LayerHelper("index_put", **locals())
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-        'paddle.tensor.manipulation.index_put',
-    )
-    check_variable_and_dtype(
-        value,
-        'value',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-        'paddle.tensor.manipulation.index_put',
-    )
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-
-    helper.append_op(
-        type='index_put',
-        inputs={
-            'x': x,
-            'indices': indices,
-            'value': value,
-        },
-        outputs={'out': out},
-        attrs={'accumulate': accumulate},
-    )
-    return out
 
 
 def unflatten(

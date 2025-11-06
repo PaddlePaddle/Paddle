@@ -1082,8 +1082,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const paddle::optional<DenseTensor> &q_descale,
                              const paddle::optional<DenseTensor> &k_descale,
                              const paddle::optional<DenseTensor> &v_descale,
-                             const int max_seqlen_q,
-                             const int max_seqlen_k,
+                             const Scalar &max_seqlen_q,
+                             const Scalar &max_seqlen_k,
                              const float softmax_scale,
                              const bool causal,
                              const int window_size_left,
@@ -1150,6 +1150,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
 
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
+  const int64_t max_seqlen_q_ = max_seqlen_q.to<int64_t>();
+  const int64_t max_seqlen_k_ = max_seqlen_k.to<int64_t>();
   FlashAttnV3BaseKernel<T, Context>(dev_ctx,
                                     q,
                                     k,
@@ -1171,9 +1173,9 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                                     q_descale,
                                     k_descale,
                                     v_descale,
-                                    paddle::none,  // scheduler_metadata
-                                    max_seqlen_q,  // max_seqlen_q_
-                                    max_seqlen_k,  // max_seqlen_k_
+                                    paddle::none,   // scheduler_metadata
+                                    max_seqlen_q_,  // max_seqlen_q_
+                                    max_seqlen_k_,  // max_seqlen_k_
                                     softmax_scale,
                                     causal,
                                     window_size_left,

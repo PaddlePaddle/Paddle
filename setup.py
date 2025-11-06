@@ -2394,7 +2394,6 @@ def get_setup_parameters():
         'paddle.jit',
         'paddle.jit.dy2static',
         'paddle.jit.dy2static.transformers',
-        'paddle.jit.pir_dy2static',
         'paddle.jit.sot',
         'paddle.jit.sot.opcode_translator',
         'paddle.jit.sot.opcode_translator.executor',

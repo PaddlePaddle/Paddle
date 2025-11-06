@@ -29,9 +29,10 @@ void FrameGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dx);
   const size_t dout_rank = dout.dims().size();
   const size_t dx_rank = dx->dims().size();
-  const int n_frames =
+  const int64_t n_frames =
       (axis == 0) ? dout.dims()[0] : dout.dims()[dout_rank - 1];
-  const int seq_length = (axis == 0) ? dx->dims()[0] : dx->dims()[dx_rank - 1];
+  const int64_t seq_length =
+      (axis == 0) ? dx->dims()[0] : dx->dims()[dx_rank - 1];
   DenseTensor dout_tmp = dout;
 
   DDim preserved_dims;

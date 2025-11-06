@@ -227,6 +227,7 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .amp.auto_cast import autocast
 from .autograd import (
     enable_grad,
     grad,
@@ -972,7 +973,6 @@ manual_seed = seed
 sub = subtract
 sub_ = subtract_
 
-
 __all__ = [
     'block_diag',
     'gt',
@@ -1483,6 +1483,7 @@ __all__ = [
     'conv3d',
     'manual_seed',
     'softmax',
+    'autocast',
 ]
 import os
 
