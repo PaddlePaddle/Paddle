@@ -240,9 +240,3 @@
   name : [paddle.nn.functional.softplus]
   args_alias :
     use_default_mapping : True
-- op : isclose
-  name : [paddle.isclose, paddle.Tensor.isclose]
-  args_alias :
-    use_default_mapping : True
-  pre_process:
-    static_func: IsClosePreProcess(x, y, rtol,atol)
