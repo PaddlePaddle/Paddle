@@ -59,8 +59,12 @@ class ShardedWeight:
         flattened_range: slice | None = None,
     ) -> None:
         self.key = key
-        self.local_tensor = local_tensor
-        self.local_shape = local_shape
+        if local_tensor.is_dist():
+            self.local_tensor = local_tensor._local_value()
+            self.local_shape = local_tensor._local_shape
+        else:
+            self.local_tensor = local_tensor
+            self.local_shape = local_shape
         self.global_shape = global_shape
         self.global_offset = global_offset
         self.is_flattened = is_flattened
