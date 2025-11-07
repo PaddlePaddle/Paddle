@@ -385,9 +385,14 @@ def build_global_state_shard_info(sharded_state_dict, process_group):
         state_shard_info[key].append(desc)
 
     gathered_info = []
-    paddle.distributed.all_gather_object(
-        gathered_info, dict(state_shard_info), process_group
-    )
+
+    use_dist = True if paddle.distributed.get_world_size() > 1 else False
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            gathered_info, dict(state_shard_info), process_group
+        )
+    else:
+        gathered_info = [dict(state_shard_info)]
 
     return merge_shard_info_list(gathered_info)
 
@@ -580,4 +585,6 @@ def create_hf_ckpt_metadata(
     write_to_file_if_empty(
         metadata, os.path.join(ckpt_path, METADATA_FILE_NAME)
     )
-    paddle.distributed.barrier(process_group)
+
+    if use_dist:
+        paddle.distributed.barrier(process_group)
