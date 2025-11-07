@@ -38,7 +38,8 @@ class Tensor : public TensorBase {
     return *this;
   }
   Tensor& operator=(const TensorBase& x) & noexcept {
-    tensor_ = x._PD_GetInner();
+    const PaddleTensor& inner = x._PD_GetInner();
+    tensor_ = inner;
     return *this;
   }
   Tensor& operator=(PaddleTensor&& x) & noexcept {
