@@ -452,7 +452,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
                 will emit a warning upon the first call, warning the users about the API difference and points to Docs.
                 Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
 
-                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/invok_only_diff/**torch.nn.Unfold**.html
 
                 In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
         """
@@ -465,8 +465,8 @@ class ForbidKeywordsDecorator(DecoratorBase):
             self.warn_msg = (
                 f"The API '{func_name}' may behave differently from its PyTorch counterpart. "
                 "Refer to the compatibility guide for details:\n"
-                "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/guides/model_convert/"
-                "convert_from_pytorch/pytorch_api_mapping_cn.html#api"
+                "https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/"
+                f"convert_from_pytorch/api_difference/invok_only_diff/{url_suffix}.html"
             )
 
     def process(
@@ -479,17 +479,19 @@ class ForbidKeywordsDecorator(DecoratorBase):
             keys_str = ", ".join(f"'{key}'" for key in found_keys)
             plural = "s" if len(found_keys) > 1 else ""
 
+            if (
+                self.warn_msg is not None
+            ):  # warn the users only when the API is mis-used
+                warnings.warn(
+                    self.warn_msg,
+                    category=UserWarning,
+                    stacklevel=3,
+                )
+                self.warn_msg = None
             raise TypeError(
                 f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
                 f"\nDid you mean to use {self.correct_name}() instead?"
             )
-        if self.warn_msg is not None:
-            warnings.warn(
-                self.warn_msg,
-                category=UserWarning,
-                stacklevel=3,
-            )
-            self.warn_msg = None
         return args, kwargs
 
 
@@ -514,7 +516,7 @@ class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
                 will emit a warning upon the first call, warning the users about the API difference and points to Docs.
                 Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
 
-                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/invok_only_diff/**torch.nn.Unfold**.html
 
                 In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
         """

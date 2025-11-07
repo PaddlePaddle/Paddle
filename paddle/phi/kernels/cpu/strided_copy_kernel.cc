@@ -342,6 +342,9 @@ void StridedCopyKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_STRIDEDCOPY_KERNEL(bool, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint16_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint32_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint64_t, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, CPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, CPUContext)
@@ -363,6 +366,9 @@ PD_REGISTER_KERNEL(strided_copy,
                    phi::StridedCopyKernel,
                    bool,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    int32_t,

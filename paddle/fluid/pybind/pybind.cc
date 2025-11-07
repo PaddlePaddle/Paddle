@@ -496,6 +496,15 @@ struct iinfo {
       case phi::DataType::UINT8:
         CASE_IINFO_BODY(uint8, uint8_t);
         break;
+      case phi::DataType::UINT16:
+        CASE_IINFO_BODY(uint16, uint16_t);
+        break;
+      case phi::DataType::UINT32:
+        CASE_IINFO_BODY(uint32, uint32_t);
+        break;
+      case phi::DataType::UINT64:
+        CASE_IINFO_BODY(uint64, uint64_t);
+        break;
       case phi::DataType::INT8:
         CASE_IINFO_BODY(int8, int8_t);
         break;
@@ -771,7 +780,7 @@ int DLPackDLTensorFromPyObjectNoSync(void *py_obj, DLTensor *out) {
     paddle::Tensor tensor = handle.cast<paddle::Tensor>();
     std::shared_ptr<phi::DenseTensor> dense_tensor =
         std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
-    paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, *out);
+    paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, out);
     return 0;
   } catch (const std::exception &e) {
     PyErr_SetString(PyExc_RuntimeError, e.what());
