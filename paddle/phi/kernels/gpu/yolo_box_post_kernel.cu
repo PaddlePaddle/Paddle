@@ -139,9 +139,15 @@ __global__ void YoloBoxNum(const float* input,
                            const int class_num,
                            const int anchors_num,
                            float prob_thresh) {
-  int x_id = blockIdx.x * blockDim.x + threadIdx.x;
-  int y_id = blockIdx.y * blockDim.y + threadIdx.y;
-  int z_id = blockIdx.z * blockDim.z + threadIdx.z;
+  int64_t x_id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
+  int64_t y_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
+  int64_t z_id =
+      static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(blockDim.z) +
+      static_cast<int64_t>(threadIdx.z);
   if ((x_id >= grid_size) || (y_id >= grid_size) || (z_id >= anchors_num)) {
     return;
   }
@@ -168,9 +174,15 @@ __global__ void YoloTensorParseKernel(const float* input,
                                       const int neth,
                                       int* biases,
                                       float prob_thresh) {
-  int x_id = blockIdx.x * blockDim.x + threadIdx.x;
-  int y_id = blockIdx.y * blockDim.y + threadIdx.y;
-  int z_id = blockIdx.z * blockDim.z + threadIdx.z;
+  int64_t x_id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
+  int64_t y_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
+  int64_t z_id =
+      static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(blockDim.z) +
+      static_cast<int64_t>(threadIdx.z);
   if ((x_id >= grid_size) || (y_id >= grid_size) || (z_id >= anchors_num)) {
     return;
   }

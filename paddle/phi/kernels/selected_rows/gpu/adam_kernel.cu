@@ -62,7 +62,9 @@ __global__ void SparseAdamCUDAKernelREG(MT beta1,
                                         bool lazy_mode,
                                         int ndim,
                                         bool amsgrad) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr = *lr_;
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
