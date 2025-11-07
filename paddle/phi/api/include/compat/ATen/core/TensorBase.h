@@ -34,6 +34,15 @@ class PADDLE_API TensorBase {
  public:
   TensorBase() = default;
   TensorBase(const PaddleTensor& tensor) : tensor_(tensor){};  // NOLINT
+  TensorBase(const TensorBase&) = default;
+  TensorBase(TensorBase&&) noexcept = default;
+  ~TensorBase() noexcept = default;
+
+  TensorBase& operator=(const TensorBase& x) & = default;
+  TensorBase& operator=(TensorBase&& x) & noexcept = default;
+
+  TensorBase& operator=(const TensorBase&) && = delete;
+  TensorBase& operator=(TensorBase&&) && noexcept = delete;
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
