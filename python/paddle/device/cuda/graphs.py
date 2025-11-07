@@ -19,13 +19,14 @@ from paddle.base.core import (
     CustomPlace,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
-    is_compiled_with_custom_device
+    is_compiled_with_custom_device,
+    get_all_custom_device_type
 )
 
 
 def check_compiled_with_custom_device():
     custom_device_flag = False
-    custom_devices_types = paddle.device.get_all_custom_device_type()
+    custom_devices_types = get_all_custom_device_type()
     for device_type in custom_devices_types:
         if is_compiled_with_custom_device(device_type):
             custom_device_flag = True
@@ -47,7 +48,7 @@ else:
 
 
 def current_expected_place():
-    for device in core.get_all_custom_device_type():
+    for device in get_all_custom_device_type():
         selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
             ","
         )

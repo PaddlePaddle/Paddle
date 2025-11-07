@@ -127,7 +127,7 @@ COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
 namespace paddle::memory::allocation {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 class CUDAGraphAllocator
     : public Allocator,
       public std::enable_shared_from_this<CUDAGraphAllocator> {
@@ -318,6 +318,7 @@ class AllocatorFacadePrivate {
                phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
             InitAutoGrowthCustomDeviceAllocator(
                 phi::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
+            PreAllocCustomDeviceAllocator(phi::CustomPlace(dev_type, dev_id));
           }
         }
         if (FLAGS_use_stream_safe_cuda_allocator) {
@@ -366,7 +367,7 @@ class AllocatorFacadePrivate {
 
     CheckAllocThreadSafe();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
     // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
     if (!is_stream_safe_cuda_allocator_used_ &&
         UNLIKELY(IsCUDAGraphCapturing())) {
@@ -1221,15 +1222,6 @@ class AllocatorFacadePrivate {
     allocator = std::make_shared<StatAllocator>(allocator);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void WrapCUDAGraphAllocator() {
-    for (auto& item : allocators_) {
-      auto& allocator = item.second;
-      allocator = CUDAGraphAllocator::Create(allocator);
-    }
-  }
-#endif
-
   static void CheckCUDAAllocThreadSafe(const CUDAAllocatorMap& allocators) {
     for (auto& place_pair : allocators) {
       for (auto& stream_pair : place_pair.second) {
@@ -1238,6 +1230,42 @@ class AllocatorFacadePrivate {
                           common::errors::InvalidArgument(
                               "Public allocators must be thread safe"));
       }
+    }
+  }
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  void PreAllocCustomDeviceAllocator(phi::CustomPlace p) {
+    // fallback to single pool.
+    if (FLAGS_small_pool_size_in_mb <= 0) {
+      return;
+    }
+    if (FLAGS_use_auto_growth_v2 || FLAGS_use_cuda_malloc_async_allocator ||
+        FLAGS_use_virtual_memory_auto_growth) {
+      VLOG(6) << "PreAlloc is not implemented for "
+                 "AutoGrowthBestFitAllocatorV2, CUDAMallocAsyncAllocator or "
+                 "VirtualMemoryAutoGrowthBestFitAllocator.";
+      return;
+    }
+    const auto current_device_id = phi::DeviceManager::GetDevice(p.GetDeviceType());
+    auto it = allocators_.find(p);
+    PADDLE_ENFORCE_NE(it,
+                      allocators_.end(),
+                      common::errors::NotFound("No allocator for %s", p));
+    if (current_device_id == p.GetDeviceId()) {
+      auto allocator =
+          std::dynamic_pointer_cast<AutoGrowthBestFitAllocator>(it->second);
+      VLOG(8) << "PreAlloc for dev_id=" << p.GetDeviceId();
+      allocator->PreAlloc();
+    }
+  }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+  void WrapCUDAGraphAllocator() {
+    for (auto& item : allocators_) {
+      auto& allocator = item.second;
+      allocator = CUDAGraphAllocator::Create(allocator);
     }
   }
 #endif
@@ -1634,7 +1662,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 }
 
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   // if we use cuda_malloc_async_allocator, we don't need to open a private pool
   // for each graph
   if (UNLIKELY(IsCUDAGraphCapturing()) &&
