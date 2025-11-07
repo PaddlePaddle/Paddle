@@ -3781,38 +3781,6 @@ void InterpolateInferMeta(
   }
 }
 
-void AntialiasInterpolateInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& out_size,
-    const paddle::optional<std::vector<const MetaTensor*>>& size_tensor,
-    const MetaTensor& scale_tensor,
-    const std::string& data_layout_str,
-    int out_d,
-    int out_h,
-    int out_w,
-    const std::vector<float>& scale,
-    const std::string& interp_method,
-    bool align_corners,
-    int align_mode,
-    bool antialias,
-    MetaTensor* output,
-    MetaConfig config) {
-  InterpolateInferMeta(x,
-                       out_size,
-                       size_tensor,
-                       scale_tensor,
-                       data_layout_str,
-                       out_d,
-                       out_h,
-                       out_w,
-                       scale,
-                       interp_method,
-                       align_corners,
-                       align_mode,
-                       output,
-                       config);
-}
-
 void LegacyInterpolateInferMeta(
     const MetaTensor& x,
     const MetaTensor& out_size,

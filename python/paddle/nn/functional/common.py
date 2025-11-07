@@ -249,13 +249,11 @@ def interpolate(
     scale_factor: ShapeLike | float | None = None,
     mode: _InterpolateMode = 'nearest',
     align_corners: bool = False,
-    recompute_scale_factor: bool | None = None,
-    antialias: bool = False,
-    *,
     align_mode: int = 0,
     data_format: (
         DataLayout1DVariant | DataLayout2D | DataLayout3D | None
     ) = None,
+    recompute_scale_factor: bool | None = None,
     name: str | None = None,
 ) -> Tensor: ...
 
@@ -638,7 +636,6 @@ def _interpolate_wrapper(
         "align_corners": align_corners,
         "align_mode": align_mode,
         "data_layout": data_layout,
-        "antialias": antialias,
     }
 
     out_shape = size
@@ -860,7 +857,22 @@ def _interpolate_wrapper(
             attr_list.append(v)
         dy_attr = tuple(attr_list)
 
-        if resample_type == "linear":
+        if antialias:
+            out = _C_ops.interp_antialias(
+                x,
+                inputs['OutSize'] if 'OutSize' in inputs else None,
+                inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                inputs['Scale'] if 'Scale' in inputs else None,
+                attrs['data_layout'],
+                attrs['out_d'],
+                attrs['out_h'],
+                attrs['out_w'],
+                attrs['scale'] if 'scale' in attrs else [],
+                attrs['interp_method'],
+                attrs['align_corners'],
+                attrs['align_mode'],
+            )
+        elif resample_type == "linear":
             out = _C_ops.linear_interp(
                 x,
                 inputs['OutSize'] if 'OutSize' in inputs else None,
@@ -889,7 +901,6 @@ def _interpolate_wrapper(
                 attrs['interp_method'],
                 attrs['align_corners'],
                 attrs['align_mode'],
-                attrs['antialias'],
             )
         elif resample_type == "trilinear":
             out = _C_ops.trilinear_interp(
@@ -935,10 +946,13 @@ def _interpolate_wrapper(
                 attrs['interp_method'],
                 attrs['align_corners'],
                 attrs['align_mode'],
-                attrs['antialias'],
             )
         return out
 
+    if antialias:
+        raise ValueError(
+            "The argument 'antialias' cannot be set to true because old static graph is not supported."
+        )
     dtype = helper.input_dtype(input_param_name='x')
 
     out = helper.create_variable_for_type_inference(dtype)
