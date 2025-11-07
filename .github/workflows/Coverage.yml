@@ -110,7 +110,6 @@ jobs:
             -e WITH_GPU \
             -e CUDA_ARCH_NAME \
             -e WITH_AVX \
-            -e PY_VERSION \
             -e WITH_COVERAGE \
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
