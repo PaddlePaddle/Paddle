@@ -1750,19 +1750,6 @@ PYBIND11_MODULE(libpaddle, m) {
              int64_t hook_id = self->RegisterNodePostHook(
                  std::make_shared<NodePostHook>(hook));
              return std::make_shared<NodePostHookRemoveHelper>(self, hook_id);
-           })
-      .def("_update_grad_in_meta",
-           [](const std::shared_ptr<egr::GradNodeBase> &self,
-              const paddle::Tensor &fwd_tensor) {
-             auto accumulation_node =
-                 std::dynamic_pointer_cast<egr::GradNodeAccumulation>(self);
-             if (accumulation_node) {
-               accumulation_node->SetGradInMeta(fwd_tensor, 0);
-             } else {
-               PADDLE_THROW(common::errors::InvalidArgument(
-                   "_update_grad_in_meta can only be called on "
-                   "GradNodeAccumulation."));
-             }
            });
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

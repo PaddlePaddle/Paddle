@@ -94,7 +94,17 @@ class Edge {
   }
 
   // Currently we use grad_node_ to identify if a edge is initialized.
-  bool IsInitialized() const { return grad_node_ != nullptr; }
+  bool IsInitialized() const {
+    if (!grad_node_) {
+      return false;
+    } else {
+      if (!(grad_node_.get())) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  }
 
   void Clear() {
     grad_node_.reset();
