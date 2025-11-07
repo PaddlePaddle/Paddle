@@ -22,6 +22,7 @@ from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     check_deprecated_params_on_init,
+    check_deprecated_params_with_special_cases,
 )
 
 from .. import functional as F
@@ -421,7 +422,7 @@ class CrossEntropyLoss(Layer):
     label_smoothing: float
     name: str | None
 
-    @check_deprecated_params_on_init
+    @check_deprecated_params_with_special_cases
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1189,7 +1190,7 @@ class KLDivLoss(Layer):
     reduction: _ReduceMode
     log_target: bool
 
-    @check_deprecated_params_on_init
+    @check_deprecated_params_with_special_cases
     def __init__(
         self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:

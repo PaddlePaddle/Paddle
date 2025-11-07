@@ -790,59 +790,28 @@ def check_deprecated_params_on_init(init_func):
 
     @functools.wraps(init_func)
     def wrapper(self, *args, **kwargs):
-        # Step 1: Extract legacy params from positional args (convert to kwargs-like values)
-        reduce_from_pos = _SENTINEL
-        size_avg_from_pos = _SENTINEL
-
+        reduce_val = None
+        size_avg_val = None
         cls_name = self.__class__.__name__
         pos = LEGACY_POS.get(cls_name)
-        if pos:
-            # Check size_average in positional args
-            idx = pos.get('size_average')
-            if idx is not None and len(args) > idx:
-                v = args[idx]
-                if type(v) is bool:
-                    size_avg_from_pos = v
 
-            # Check reduce in positional args
-            idx = pos.get('reduce')
-            if idx is not None and len(args) > idx:
-                v = args[idx]
-                if type(v) is bool:
-                    # Special guard: CrossEntropyLoss idx=3 is soft_label (bool) in Paddle;
-                    # treat it as legacy 'reduce' ONLY if arg at idx=2 is NOT a valid reduction string
-                    if cls_name == 'CrossEntropyLoss' and args[2] in {
-                        'mean',
-                        'sum',
-                        'none',
-                    }:
-                        # 视为 soft_label,跳过
-                        pass
-                    elif cls_name == 'KLDivLoss' and args[0] in {
-                        'mean',
-                        'sum',
-                        'none',
-                        'batchmean',
-                    }:
-                        # 视为 log_target,跳过
-                        pass
-                    else:
-                        reduce_from_pos = v
+        idx = pos.get('size_average')
+        if 'size_average' in kwargs:
+            size_avg_val = kwargs.pop('size_average')
+        elif len(args) > idx:
+            v = args[idx]
+            if type(v) is bool:
+                size_avg_val = v
 
-        # Step 2: Extract legacy params from kwargs (kwargs take priority)
-        reduce_raw = kwargs.pop('reduce', _SENTINEL)
-        size_avg_raw = kwargs.pop('size_average', _SENTINEL)
+        idx = pos.get('reduce')
+        if 'reduce' in kwargs:
+            reduce_val = kwargs.pop('reduce')
+        elif len(args) > idx:
+            v = args[idx]
+            if type(v) is bool:
+                reduce_val = v
 
-        # Step 3: Use kwargs if present, otherwise use positional args
-        if reduce_raw is _SENTINEL:
-            reduce_raw = reduce_from_pos
-        if size_avg_raw is _SENTINEL:
-            size_avg_raw = size_avg_from_pos
-
-        # Step 4: Check if any legacy params were found and raise error
-        if reduce_raw is not _SENTINEL or size_avg_raw is not _SENTINEL:
-            reduce_val = None if reduce_raw is _SENTINEL else reduce_raw
-            size_avg_val = None if size_avg_raw is _SENTINEL else size_avg_raw
+        if reduce_val is not None or size_avg_val is not None:
             suggested = compute_legacy_reduction(reduce_val, size_avg_val)
             raise ValueError(
                 f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
@@ -851,5 +820,39 @@ def check_deprecated_params_on_init(init_func):
             )
 
         return init_func(self, *args, **kwargs)
+
+    return wrapper
+
+
+def check_deprecated_params_with_special_cases(init_func):
+    """
+    Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment based on general logic.
+    """
+
+    @functools.wraps(init_func)
+    def wrapper(self, *args, **kwargs):
+        cls_name = self.__class__.__name__
+        _base_wrapper = check_deprecated_params_on_init(init_func)
+        try:
+            return _base_wrapper(self, *args, **kwargs)
+        except ValueError as e:
+            msg = str(e)
+            if (
+                cls_name == 'CrossEntropyLoss'
+                and len(args) > 2
+                and args[2] in {'mean', 'sum', 'none'}
+            ):
+                # soft_label special case: skip error
+                return init_func(self, *args, **kwargs)
+            elif (
+                cls_name == 'KLDivLoss'
+                and len(args) > 0
+                and args[0] in {'mean', 'sum', 'none', 'batchmean'}
+            ):
+                # log_target special case: skip error
+                return init_func(self, *args, **kwargs)
+            else:
+                # not special case: re-throw error
+                raise e
 
     return wrapper
