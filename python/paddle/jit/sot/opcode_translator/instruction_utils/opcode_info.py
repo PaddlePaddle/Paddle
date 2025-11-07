@@ -141,3 +141,12 @@ PYOPCODE_CACHE_SIZE = _get_pyopcode_cache_size()
 class ExceptionHandler:
     opcode = 257
     opname = "EXCEPT_HANDLER"
+
+
+BINARY_OP_ARG_MAP: dict[str, int] = {}
+
+
+@lambda func: func()
+def _get_binary_op_arg_map():
+    for i, op in enumerate(opcode._nb_ops):
+        BINARY_OP_ARG_MAP[op[0]] = i
