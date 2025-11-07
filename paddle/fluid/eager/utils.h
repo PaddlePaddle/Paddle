@@ -492,6 +492,8 @@ static inline std::string GetGradNodeHexAddress(GradNodeBase* ptr) {
 }
 void SavePythonCallStackToFile(const std::string& file_name,
                                const std::string& api_name);
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg);
 void CheckGradNodeAccumulation(const paddle::Tensor& tensor);
 void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor);
 void CheckGradNodeAccumulation(
