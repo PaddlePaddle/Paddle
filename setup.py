@@ -521,6 +521,7 @@ xpu_xhpc_version = '%(xpu_xhpc)s'
 is_tagged        = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
+with_hml         = '%(with_hml)s'
 cinn_version     = '%(cinn)s'
 tensorrt_version = '%(tensorrt)s'
 with_pip_cuda_libraries = '%(with_pip_cuda_libraries)s'
@@ -612,6 +613,9 @@ def show() -> None:
 
 def mkl() -> str:
     return with_mkl
+
+def hml() -> str:
+    return with_hml
 
 def nccl() -> str:
     """Get nccl version of paddle package.
@@ -844,6 +848,7 @@ def cuda_archs():
                 'commit': commit,
                 'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
+                'with_hml': env_dict.get("WITH_HML"),
                 'cinn': get_cinn_version(),
                 'tensorrt': get_tensorrt_version(),
                 'with_pip_cuda_libraries': env_dict.get(
@@ -1567,6 +1572,9 @@ def get_package_data_and_package_dir():
             ('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_suffix,
             ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_suffix,
         ]
+    elif env_dict.get("WITH_HML") == 'ON':
+        shutil.copy(env_dict.get("HML_LIB"), libs_path)
+        package_data['paddle.libs'] += ['libhml_rt' + ext_suffix]
     else:
         if os.name == 'nt':
             # copy the openblas.dll

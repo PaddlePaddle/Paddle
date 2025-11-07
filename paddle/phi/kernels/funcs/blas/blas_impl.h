@@ -757,7 +757,7 @@ struct CBlas<phi::complex128> {
   }
 };
 
-#elif PADDLE_WITH_HML
+#elif defined(PADDLE_WITH_HML)
 template <>
 struct CBlas<float> {
   template <typename... ARGS>
@@ -2229,7 +2229,7 @@ void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
 #endif  // @} End Group Blas MKLML: BatchedGEMMWithHead
 
 #if defined(PADDLE_WITH_HML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)  // @{ Group Blas MKLML: BatchedGEMMWithHead
+    !defined(PADDLE_WITH_HIP)  // @{ Group Blas HML: BatchedGEMMWithHead
 template <>
 template <typename T>
 void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
@@ -2336,7 +2336,7 @@ void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
     }
   }
 }
-#endif  // @} End Group Blas MKLML: BatchedGEMMWithHead
+#endif  // @{ Group Blas HML: BatchedGEMMWithHead
 
 template <typename DeviceContext>
 template <typename T>
@@ -2639,7 +2639,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
 
 #if defined(PADDLE_WITH_HML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
-// @{ Group Blas MKLML: MatMulWithHead
+// @{ Group Blas HML: MatMulWithHead
 /*
  * Multiple two matrixes with multiple heads
  *
@@ -2772,7 +2772,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
          dim_b.batch_size_ == 0),
         true,
         common::errors::InvalidArgument(
-            "The first input batch size should be equal than second input,"
+            "The first input batch size should be equal to second input,"
             "either two input batch size is 0, but received first input batch "
             "size"
             " %d, second input batch size %d",
@@ -2798,13 +2798,12 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
         mat_b_split_vertical);
   }
 }
-#endif  // @} End Group Blas MKLML: MatMulWithHead
+#endif  // @} End Group Blas HML: MatMulWithHead
 
 template <typename DeviceContext>
 template <typename T>
 void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VINV(n, a, y);
   CBlas<T>::VINV(n, a, y);
 #else
   for (int i = 0; i < n; ++i) {

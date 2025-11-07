@@ -194,6 +194,9 @@ include_directories(${CBLAS_INC_DIR})
 if(${CBLAS_PROVIDER} STREQUAL REFERENCE_CBLAS)
   target_link_libraries(cblas gfortran ${CBLAS_LIBRARIES}
                         ${REFERENCE_BLAS_LIBRARY})
+elseif(${CBLAS_PROVIDER} STREQUAL HML)
+  target_link_libraries(cblas gfortran ${CBLAS_LIBRARIES}
+                        ${REFERENCE_BLAS_LIBRARY})
 elseif(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
   target_link_libraries(cblas ${CBLAS_LIBRARIES})
 endif()

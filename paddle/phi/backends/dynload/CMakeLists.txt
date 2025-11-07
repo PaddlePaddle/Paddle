@@ -122,11 +122,11 @@ if(WITH_MKLML)
 endif()
 
 if(WITH_HML)
-  # Only deps libhml.so, not link
+  # Only deps libhml_rt.so, not link
   add_library(dynload_hml STATIC hml.cc)
   add_dependencies(dynload_hml hml)
   if(WIN32)
-    message(STATUS "error")
+    message(FATAL_ERROR "HML is not supported on Windows")
   else()
     target_link_libraries(dynload_hml "-L${HML_LIB_DIR} -lgomp -Wl,--as-needed")
   endif()

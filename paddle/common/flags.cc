@@ -1959,7 +1959,7 @@ PHI_DEFINE_EXPORTED_string(
 
 PHI_DEFINE_EXPORTED_string(hml_dir,
                            "",
-                           "Specify path for loading libhml.so.");  // NOLINT
+                           "Specify path for loading libhml_rt.so.");  // NOLINT
 
 PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",

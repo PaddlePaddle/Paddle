@@ -109,8 +109,8 @@ function(copy_part_of_third_party TARGET DST)
         add_custom_command(
           TARGET ${TARGET}
           POST_BUILD
-          COMMAND strip -s ${dst_dir}/lib/libhml.so
-          COMMENT "striping libhml.so")
+          COMMAND strip -s ${dst_dir}/lib/libhml_rt.so
+          COMMENT "striping libhml_rt.so")
       endif()
     endif()
     message(STATUS "[HML] Finished copying HML third_party files to ${dst_dir}")

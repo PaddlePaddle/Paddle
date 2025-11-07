@@ -28,7 +28,6 @@
 #include <cblas.h>
 #elif defined(PADDLE_WITH_HML)
 #include "paddle/phi/backends/dynload/hml.h"
-// #include <hml.h>
 #define CBLAS_LAYOUT CBLAS_ORDER
 #elif defined(PADDLE_USE_ACCELERATE)
 #include <Accelerate/Accelerate.h>

@@ -988,7 +988,7 @@ void* GetHMLDsoHandle() {
 #elif defined(_WIN32)
   return nullptr;
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_hml_dir, "libhml.so");
+  return GetDsoHandleFromSearchPath(FLAGS_hml_dir, "libhml_rt.so");
 #endif
 }
 

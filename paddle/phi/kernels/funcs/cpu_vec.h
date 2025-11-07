@@ -20,9 +20,10 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML)
 #include "paddle/phi/backends/dynload/mklml.h"
-#elif defined(PADDLE_WITH_HML)
+#endif
+#if defined(PADDLE_WITH_HML)
 #include "paddle/phi/backends/dynload/hml.h"
 #endif
 
