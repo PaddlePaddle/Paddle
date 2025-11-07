@@ -211,14 +211,7 @@ void BilinearInterpKernel(
     const std::string& interp_method,
     bool align_corners UNUSED,
     int align_mode UNUSED,
-    bool antialias UNUSED,
     DenseTensor* output) {
-  PADDLE_ENFORCE_EQ(
-      antialias,
-      false,
-      errors::Unimplemented("Antialias is not supported on OneDNN device. "
-                            "Please use GPU device or set antialias=False."));
-
   InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,

@@ -34,7 +34,6 @@ void BilinearInterpGradKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
-    bool antialias,
     DenseTensor* x_grad);
 
 template <typename T, typename Context>
@@ -107,7 +106,6 @@ void BicubicInterpGradKernel(
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
-    bool antialias,
     DenseTensor* x_grad);
 
 template <typename T, typename Context>

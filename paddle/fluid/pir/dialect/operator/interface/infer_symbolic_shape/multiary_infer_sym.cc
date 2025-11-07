@@ -772,6 +772,11 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
+bool InterpAntialiasOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BicubicInterpOpInferSymbolicShape(op, infer_context);
+}
+
 bool BoxCoderOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &prior_box_shape_or_data =
