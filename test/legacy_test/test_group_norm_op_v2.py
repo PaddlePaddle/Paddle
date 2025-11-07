@@ -813,7 +813,6 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
         layer_old = paddle.nn.GroupNorm(
             num_groups=self.num_groups,
             num_channels=self.num_channels,
-            epsilon=1e-05,
             weight_attr=False,
             bias_attr=False,
         )
@@ -861,14 +860,30 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
 
         self.assertEqual(out.shape, self.x_tensor.shape)
 
+    def test_alias(self):
+        """test parameter alias epsilon/eps"""
+        layer_epsilon = paddle.nn.GroupNorm(
+            num_groups=self.num_groups,
+            num_channels=self.num_channels,
+            epsilon=1e-5,
+        )
+        layer_eps = paddle.nn.GroupNorm(
+            num_groups=self.num_groups,
+            num_channels=self.num_channels,
+            eps=1e-5,
+        )
+
+        out_epsilon = layer_epsilon(self.x_tensor)
+        out_eps = layer_eps(self.x_tensor)
+
+        np.testing.assert_array_equal(out_epsilon.numpy(), out_eps.numpy())
+
     def test_errors(self):
         """test parameters with errors"""
         with self.assertRaises(TypeError):
             layer = paddle.nn.GroupNorm(
                 self.num_groups,
                 self.num_channels,
-                2,
-                2,
                 1e-05,
                 True,
                 "cpu",
