@@ -50,7 +50,7 @@ class TestWindowFunctions(unittest.TestCase):
         A = alpha - B * alpha0
         self.assertTrue(paddle.allclose(w, A + B * w0, atol=1e-12))
 
-    def test_hamming_layout_warning_and_pin_memory_cpu(self):
+    def test_hamming_layout_warning(self):
         N = 8
         # Pass layout != None to trigger warning branch (ignored)
         w = paddle.hamming_window(
@@ -61,7 +61,6 @@ class TestWindowFunctions(unittest.TestCase):
             dtype='float32',
             layout='strided',
             device='cpu',
-            pin_memory=True,
             requires_grad=False,
         )
         self.assertEqual(w.dtype, paddle.float32)
@@ -69,22 +68,23 @@ class TestWindowFunctions(unittest.TestCase):
         self.assertEqual(list(w.shape), [N])
 
     @unittest.skipUnless(_has_cuda(), "GPU not available")
-    def test_hamming_device_gpu(self):
-        N = 12
-        # Explicitly set device to cuda:0 / gpu:0 should work (PlaceLike supports str)
-        w = paddle.hamming_window(
-            N,
-            periodic=True,
-            alpha=0.54,
-            beta=0.46,
-            dtype='float32',
-            layout=None,
-            device='gpu:0',
-            pin_memory=False,
-            requires_grad=None,
-        )
-        self.assertEqual(list(w.shape), [N])
-        self.assertIn('gpu', str(w.place))
+    def test_hamming_device_gpu_pin_memory(self):
+        if paddle.is_compiled_with_cuda():
+            N = 12
+            # Explicitly set device to cuda:0 / gpu:0 should work (PlaceLike supports str)
+            w = paddle.hamming_window(
+                N,
+                periodic=True,
+                alpha=0.54,
+                beta=0.46,
+                dtype='float32',
+                layout=None,
+                device='gpu:0',
+                pin_memory=True,
+                requires_grad=None,
+            )
+            self.assertEqual(list(w.shape), [N])
+            self.assertIn('gpu', str(w.place))
 
     def test_hann_basic_paths(self):
         N = 10
@@ -95,20 +95,18 @@ class TestWindowFunctions(unittest.TestCase):
             dtype='float64',
             layout=None,
             device='cpu',
-            pin_memory=None,
             requires_grad=True,
         )
         self.assertEqual(list(w.shape), [N])
         self.assertFalse(w.stop_gradient)
 
-        # Test layout != None and pin_memory=True branches
+        # Test layout != None
         w2 = paddle.hann_window(
             N,
             periodic=False,
             dtype='float32',
             layout='strided',
             device='cpu',
-            pin_memory=True,
             requires_grad=False,
         )
         self.assertEqual(w2.dtype, paddle.float32)
@@ -122,7 +120,6 @@ class TestWindowFunctions(unittest.TestCase):
             dtype='float64',
             layout=None,
             device=None,
-            pin_memory=None,
             requires_grad=None,
         )
         self.assertEqual(list(wb.shape), [N])
@@ -133,7 +130,6 @@ class TestWindowFunctions(unittest.TestCase):
             dtype='float32',
             layout='strided',
             device='cpu',
-            pin_memory=True,
             requires_grad=True,
         )
         self.assertEqual(list(wl.shape), [N])
@@ -149,12 +145,11 @@ class TestWindowFunctions(unittest.TestCase):
             dtype='float64',
             layout=None,
             device=None,
-            pin_memory=None,
             requires_grad=None,
         )
         self.assertEqual(list(w.shape), [N])
 
-        # Test layout != None + pin_memory + requires_grad
+        # Test layout != None + requires_grad
         w2 = paddle.kaiser_window(
             N,
             periodic=False,
@@ -162,7 +157,6 @@ class TestWindowFunctions(unittest.TestCase):
             dtype='float32',
             layout='strided',
             device='cpu',
-            pin_memory=True,
             requires_grad=False,
         )
         self.assertEqual(w2.dtype, paddle.float32)
