@@ -30,7 +30,6 @@ defaults:
 jobs:
   build:
     name: Build
-    if: ${{ inputs.clone-can-skip != 'true' }}
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:
