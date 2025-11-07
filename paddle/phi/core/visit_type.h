@@ -413,6 +413,12 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::BOOL, bool, __VA_ARGS__)     \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT8, int8_t, __VA_ARGS__)   \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::UINT8, uint8_t, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::UINT16, uint16_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::UINT32, uint32_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::UINT64, uint64_t, __VA_ARGS__)                \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT16, int16_t, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT32, int32_t, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT64, int64_t, __VA_ARGS__) \
@@ -447,6 +453,12 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::BOOL, bool, __VA_ARGS__)     \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT8, int8_t, __VA_ARGS__)   \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::UINT8, uint8_t, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::UINT16, uint16_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::UINT32, uint32_t, __VA_ARGS__)                \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::UINT64, uint64_t, __VA_ARGS__)                \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT16, int16_t, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT32, int32_t, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT64, int64_t, __VA_ARGS__) \

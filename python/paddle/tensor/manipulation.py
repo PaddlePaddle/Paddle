@@ -2744,7 +2744,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     illegal_keys={"tensor", "split_size_or_sections", "dim"},
     func_name="paddle.split",
     correct_name="paddle.compat.split",
-    url_suffix="torch/torch.split",
+    url_suffix="torch.split",
 )
 def split(
     x: Tensor,
