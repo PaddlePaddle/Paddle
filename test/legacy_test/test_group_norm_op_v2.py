@@ -749,6 +749,9 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
         self.num_channels = 16
         self.x_tensor = paddle.randn([2, self.num_channels, 4, 4])
 
+    @unittest.skipIf(
+        not paddle.in_dynamic_mode(), "Test is only for dynamic mode"
+    )
     def test_affine_true(self):
         """test that when affine=True, weight and bias parameters are created."""
         layer = paddle.nn.GroupNorm(
@@ -763,17 +766,12 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
         self.assertEqual(layer.weight.shape, [self.num_channels])
         self.assertEqual(layer.bias.shape, [self.num_channels])
 
-        if paddle.in_dynamic_mode():
-            self.assertTrue(
-                paddle.allclose(
-                    layer.weight, paddle.ones([self.num_channels])
-                ).item()
-            )
-            self.assertTrue(
-                paddle.allclose(
-                    layer.bias, paddle.zeros([self.num_channels])
-                ).item()
-            )
+        self.assertTrue(
+            paddle.allclose(layer.weight, paddle.ones([self.num_channels]))
+        )
+        self.assertTrue(
+            paddle.allclose(layer.bias, paddle.zeros([self.num_channels]))
+        )
 
         layer_old = paddle.nn.GroupNorm(
             num_groups=self.num_groups,
@@ -787,17 +785,12 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
         self.assertEqual(layer_old.weight.shape, [self.num_channels])
         self.assertEqual(layer_old.bias.shape, [self.num_channels])
 
-        if paddle.in_dynamic_mode():
-            self.assertTrue(
-                paddle.allclose(
-                    layer_old.weight, paddle.ones([self.num_channels])
-                ).item()
-            )
-            self.assertTrue(
-                paddle.allclose(
-                    layer_old.bias, paddle.zeros([self.num_channels])
-                ).item()
-            )
+        self.assertTrue(
+            paddle.allclose(layer_old.weight, paddle.ones([self.num_channels]))
+        )
+        self.assertTrue(
+            paddle.allclose(layer_old.bias, paddle.zeros([self.num_channels]))
+        )
 
     def test_affine_false(self):
         """test that when affine=False, no learnable parameters are created."""
@@ -820,6 +813,9 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
         self.assertIsNone(layer_old.weight)
         self.assertIsNone(layer_old.bias)
 
+    @unittest.skipIf(
+        not paddle.in_dynamic_mode(), "Test is only for dynamic mode"
+    )
     def test_overrides_with_affine(self):
         """test that weight_attr and bias_attr can override the default initialization when affine=True."""
         weight_attr = paddle.nn.initializer.Constant(value=2.0)
@@ -834,11 +830,8 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
 
         expected_weight = paddle.full([self.num_channels], 2.0)
         expected_bias = paddle.full([self.num_channels], 3.0)
-        if paddle.in_dynamic_mode():
-            self.assertTrue(
-                paddle.allclose(layer.weight, expected_weight).item()
-            )
-            self.assertTrue(paddle.allclose(layer.bias, expected_bias).item())
+        self.assertTrue(paddle.allclose(layer.weight, expected_weight))
+        self.assertTrue(paddle.allclose(layer.bias, expected_bias))
 
     def test_shape_with_affine(self):
         """test the forward pass when affine."""
@@ -860,6 +853,9 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
 
         self.assertEqual(out.shape, self.x_tensor.shape)
 
+    @unittest.skipIf(
+        not paddle.in_dynamic_mode(), "Test is only for dynamic mode"
+    )
     def test_alias(self):
         """test parameter alias epsilon/eps"""
         layer_epsilon = paddle.nn.GroupNorm(
