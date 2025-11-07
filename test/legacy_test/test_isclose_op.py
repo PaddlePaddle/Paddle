@@ -191,7 +191,7 @@ class TestIscloseError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                result = paddle.isclose(x, y, rtol=True)
+                result = paddle.isclose(x, y, rtol="True")
 
         self.assertRaises(TypeError, test_rtol)
 
@@ -199,7 +199,7 @@ class TestIscloseError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                result = paddle.isclose(x, y, atol=True)
+                result = paddle.isclose(x, y, atol="True")
 
         self.assertRaises(TypeError, test_atol)
 
