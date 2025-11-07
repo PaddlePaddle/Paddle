@@ -178,7 +178,7 @@ def _build_saved_state_dict(state_dict):
                     and core.is_compiled_with_custom_device('npu')
                 ):
                     value = paddle._C_ops.npu_identity(value, -1)
-                save_dict[key] = np.array(value.cpu())
+                save_dict[key] = value.numpy()
             name_table[key] = value.name
         else:
             save_dict[key] = value
