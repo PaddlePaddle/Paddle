@@ -353,6 +353,12 @@ void Compiler::RegisterDeviceModuleSymbol() {
 
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
+  // 获取CompilationResult的fusion hash
+  // if (compilation_result_) {
+  //   std::string fusion_hash = compilation_result_->GetFusionHash();
+  //   VLOG(3) << "RegisterCudaModuleSymbol with fusion hash: " << fusion_hash;
+  // }
+  
   VLOG(3) << "RegisterCudaModuleSymbol with kernel cache: " << cinn_kernel_cache_;
   std::string source_code = CodeGenCudaDev::GetSourceHeader() + device_fn_code_;
   

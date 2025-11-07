@@ -70,10 +70,12 @@ static size_t GetThreadNum(size_t task_size) {
 
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
-  CompilationContextMapper ctx_mapper(target_, groups);
+  CompilationContextMapper ctx_mapper(target_, groups); // construct
+  VLOG(5) << "YUHAN!!! CompilationContextMapper Constructed ";
   auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
-  auto& compilation_results = ctx_mapper.MutableCompilationResult();
-
+  auto& compilation_results = ctx_mapper.MutableCompilationResult(); //
+  VLOG(5) << "YUHAN!!! CompilationContextMapper compilation_results.size() =  " << compilation_results.size();
+  VLOG(5) << "YUHAN!!! CompilationContextMapper compilation_results[0]->GetFusionHash() =  " << compilation_results[0]->GetFusionHash();
   const size_t task_size = group_compilation_contexts.size();
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
@@ -91,8 +93,10 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       cinn::common::ShapeConstraintManager::Instance().Init(
           shape_analysis_manager.constraints_manager());
       runtime::SetArchDevice(target_, device_id);
-      compilation_results[index] = Compile(&group_compilation_contexts[index]);
+      compilation_results[index] = Compile(&group_compilation_contexts[index]); //
+      VLOG(5) << "YUHAN!!! Parallell compilation_results[" << index << "].fusion_hash = " << compilation_results[index]->GetFusionHash();
     };
+    // 并行编译
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),
                         /*thread_num=*/thread_size);
@@ -136,6 +140,7 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
                           /*thread_num=*/thread_size);
     };
 
+    VLOG(5) << "YUHAN!!! Before ParallelLowering() " << compile_result->GetFusionHash();
     ParallelLowering();
     std::unordered_map<int, ir::Var> symbolic_shape_var_index;
     UnifyBroadcastGroupFuncArgs(
@@ -171,8 +176,12 @@ void CompilationContextMapper::Construct(
     if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) { //
       mapper_index_.push_back(i);
       group_compilation_contexts_.emplace_back(target, groups[i]);
+      auto fusion_info_hash = fusion_infos_[i].hash();
+      VLOG(4) << "YUHAN!!! compilation_results_.size() is " << compilation_results_.size();
+      VLOG(4) << "YUHAN!!! compilation_results_.push_back hashKey is " << fusion_info_hash;
       compilation_results_.push_back(
-          std::make_shared<pir::CompilationResult>(target));
+          std::make_shared<pir::CompilationResult>(target, false, fusion_info_hash));
+      VLOG(4) << "YUHAN!!! compilation_results_[-1]->GetFusionHash() is " << compilation_results_[compilation_results_.size()-1]->GetFusionHash();
     }
     unique_infos.insert(fusion_infos_[i].hash()); //
   }
@@ -197,6 +206,8 @@ CompilationContextMapper::RecoverKernelInfos() {
         FLAGS_enable_cinn_compile_cache
             ? CompilationCache::Instance().Get(fusion_infos_[i])
             : compilation_results_[i];
+    compilation_result->SetFusionHash(fusion_infos_[i].hash());
+    VLOG(5) << "YUHAN!!! compilation_result->SetFusionHash(fusion_infos_[i].hash()); is " << compilation_result->GetFusionHash();
     kernel_infos[i] = compilation_result->GetKernelInfo();
   }
   return kernel_infos;
@@ -214,6 +225,7 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
+    compilation_results_[i]->SetFusionHash(fusion_info.hash());
     VLOG(4) << "============== Insert new compiled result into cache, "
                "fusion_info: ==============\n"
             << fusion_info << ", host func name: "
