@@ -188,12 +188,18 @@ class TestIscloseError(unittest.TestCase):
         y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')
 
         def test_rtol():
-            result = paddle.isclose(x, y, rtol=True)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                result = paddle.isclose(x, y, rtol=True)
 
         self.assertRaises(TypeError, test_rtol)
 
         def test_atol():
-            result = paddle.isclose(x, y, atol=True)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                result = paddle.isclose(x, y, atol=True)
 
         self.assertRaises(TypeError, test_atol)
 
