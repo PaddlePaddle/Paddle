@@ -278,7 +278,7 @@ using bfloat16 = phi::bfloat16;
 using complex64 = ::phi::complex64;
 using complex128 = ::phi::complex128;
 
-PD_REGISTER_KERNEL(add_grad,
+PD_REGISTER_KERNEL(add_grad_stride,
                    GPU,
                    STRIDED,
                    phi::AddGradStrideKernel,
@@ -291,7 +291,7 @@ PD_REGISTER_KERNEL(add_grad,
                    phi::complex64,
                    phi::complex128) {}
 
-PD_REGISTER_KERNEL(subtract_grad,
+PD_REGISTER_KERNEL(subtract_grad_stride,
                    GPU,
                    STRIDED,
                    phi::SubtractGradStrideKernel,
@@ -304,7 +304,7 @@ PD_REGISTER_KERNEL(subtract_grad,
                    phi::complex64,
                    phi::complex128) {}
 
-PD_REGISTER_KERNEL(multiply_grad,
+PD_REGISTER_KERNEL(multiply_grad_stride,
                    GPU,
                    STRIDED,
                    phi::MultiplyGradStrideKernel,

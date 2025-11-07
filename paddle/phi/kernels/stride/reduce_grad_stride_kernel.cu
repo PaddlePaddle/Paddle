@@ -171,7 +171,7 @@ using bfloat16 = phi::bfloat16;
 using complex64 = ::phi::complex64;
 using complex128 = ::phi::complex128;
 
-PD_REGISTER_KERNEL(sum_grad,
+PD_REGISTER_KERNEL(sum_grad_stride,
                    GPU,
                    STRIDED,
                    phi::ReduceSumGradStrideKernel,
