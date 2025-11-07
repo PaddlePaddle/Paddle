@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_MAGMA
 #pragma once
 #include "paddle/phi/backends/dynload/magma.h"
 
