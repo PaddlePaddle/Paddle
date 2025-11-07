@@ -21,10 +21,7 @@
 
 #include "Eigen/Core"
 #include "Eigen/LU"
-#include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
@@ -34,6 +31,9 @@
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 #if defined(PADDLE_WITH_MAGMA)
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/magma/magma_function.h"
 #endif
 
@@ -216,10 +216,10 @@ void LapackEig(DenseTensor* input,
   }
 }
 
-#if defined(PADDLE_WITH_MAGMA)
 // -------------------------
 // GPU: Magma eig
 // -------------------------
+#ifdef PADDLE_WITH_MAGMA
 template <typename T, typename Context>
 void MagmaEig(const Context& dev_ctx,
               const DenseTensor& input,
@@ -340,7 +340,7 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
       vectors_row_major_cpu, real_v_cpu, num_dims - 1, num_dims - 2, *cpu_ctx);
 }
 
-#endif  // PADDLE_WITH_CUDA
+#endif  // PADDLE_WITH_MAGMA
 
 template <typename T, typename Context>
 void ApplyEigKernel(const DenseTensor& input,
@@ -414,19 +414,19 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
                                     int batch_count,
                                     int order,
                                     const Context& dev_ctx) {
-  DenseTensor gL_safe;
+  DenseTensor gL_maybe_zero;
   if (gL.get_ptr()) {
-    gL_safe = gL.get();
+    gL_maybe_zero = gL.get();
   } else {
-    gL_safe =
+    gL_maybe_zero =
         Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(L.dims()), T(0));
   }
 
-  DenseTensor gV_safe;
+  DenseTensor gV_maybe_zero;
   if (gV.get_ptr()) {
-    gV_safe = gV.get();
+    gV_maybe_zero = gV.get();
   } else {
-    gV_safe =
+    gV_maybe_zero =
         Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
   }
 
@@ -436,7 +436,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   DenseTensor Econj = phi::Subtract<T>(dev_ctx,
                                        phi::funcs::Unsqueeze(Lconj, -2),
                                        phi::funcs::Unsqueeze(Lconj, -1));
-  DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV_safe);
+  DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV_maybe_zero);
   DenseTensor diag_real = phi::Real<T>(dev_ctx, VhgV);
   DenseTensor diag_res =
       phi::funcs::BatchDiag<T>(dev_ctx, diag_real, batch_count);
@@ -445,7 +445,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // turn diag_unsqueezed into complex
   auto numel = diag_unsqueezed.numel();
   DenseTensor diag_unsqueezed_complex;
-  auto* data_diag_un = diag_unsqueezed.data<dtype::Real<T>>();
+  auto* data_diag_un = diag_unsqueezed.data<phi::dtype::Real<T>>();
   diag_unsqueezed_complex.Resize(diag_unsqueezed.dims());
   auto* data_diag_un_com = dev_ctx.template Alloc<T>(
       &diag_unsqueezed_complex, static_cast<size_t>(numel * sizeof(T)));
@@ -463,7 +463,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   dev_ctx.template Alloc<T>(&result);
   result = phi::Divide<T>(dev_ctx, result, Econj);
   result = phi::funcs::DiagFill<T, T>(
-      dev_ctx, order, order, order, 0, gL_safe, result);
+      dev_ctx, order, order, order, 0, gL_maybe_zero, result);
   DenseTensor rhs = phi::Matmul<T>(dev_ctx, result, Vh);
 
   // solve linear system
