@@ -110,7 +110,10 @@ class TestZeroPad3DAPI(unittest.TestCase):
         pad = pad = [1, 2, 3, 4, 5, 6]
         zeropad3d = ZeroPad3D(padding=pad)
         name_str = zeropad3d.extra_repr()
-        assert name_str == 'padding=[1, 2, 3, 4, 5, 6], data_format=NCDHW'
+        assert (
+            name_str
+            == 'padding=[1, 2, 3, 4, 5, 6], mode=constant, value=0.0, data_format=NCDHW'
+        )
 
 
 if __name__ == '__main__':
