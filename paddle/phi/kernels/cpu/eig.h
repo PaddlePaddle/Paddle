@@ -30,7 +30,7 @@
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
-#if defined(PADDLE_WITH_MAGMA)
+#ifdef PADDLE_WITH_MAGMA
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"

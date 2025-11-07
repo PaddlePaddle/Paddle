@@ -83,3 +83,5 @@ ExternalProject_Add(
   BUILD_COMMAND ""
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${MAGMA_LIB})
+
+add_definitions(-DPADDLE_WITH_MAGMA)
