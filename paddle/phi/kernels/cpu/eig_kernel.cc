@@ -24,14 +24,12 @@ void EigKernel(const Context& dev_ctx,
                const DenseTensor& x,
                DenseTensor* out_w,
                DenseTensor* out_v) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      errors::InvalidArgument("EigKernel input tensor is empty."));
   if (!IsComplexType(x.dtype())) {
     dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
     dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
-
+    if (x.numel() == 0) {
+      return;
+    }
     int batch_count = BatchCount(x);
     int order = static_cast<int>(x.dims()[x.dims().size() - 1]);
 
@@ -94,7 +92,9 @@ void EigKernel(const Context& dev_ctx,
   } else {
     dev_ctx.template Alloc<T>(out_w);
     dev_ctx.template Alloc<T>(out_v);
-
+    if (x.numel() == 0) {
+      return;
+    }
     phi::ApplyEigKernel<T, Context>(x, out_w, out_v, dev_ctx);
   }
 }

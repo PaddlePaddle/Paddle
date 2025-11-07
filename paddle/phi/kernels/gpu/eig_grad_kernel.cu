@@ -494,7 +494,9 @@ void EigGradKernel(const Context& dev_ctx,
                    const paddle::optional<DenseTensor>& dout_v,
                    DenseTensor* dx) {
   auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
-
+  if (dx->numel() == 0) {
+    return;
+  }
   auto& dims = out_v.dims();
   phi::DDim dim_origin = dims;
   int num_dims = dim_origin.size();
