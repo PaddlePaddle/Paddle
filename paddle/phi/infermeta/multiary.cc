@@ -3352,9 +3352,10 @@ static void Interpolate1DInferShapeCheck(
               scale_w));
       if (scale_w > 0.) {
         // round down
-        out_w_tmp = data_layout == DataLayout::kNCHW
-                        ? static_cast<float>(dim_x[2]) * scale_w
-                        : static_cast<float>(dim_x[1]) * scale_w;
+        out_w_tmp =
+            static_cast<int64_t>(data_layout == DataLayout::kNCHW
+                                     ? static_cast<float>(dim_x[2]) * scale_w
+                                     : static_cast<float>(dim_x[1]) * scale_w);
         // protect when input shape is -1
         out_w_tmp = out_w_tmp > 0 ? out_w_tmp : -1;
       }
