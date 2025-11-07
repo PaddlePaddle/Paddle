@@ -168,11 +168,29 @@ struct KernelRegistrar {
  */
 #define PD_NARGS(...) _PD_NARGS((__VA_ARGS__, _PD_RESQ_N()))
 #define _PD_NARGS(...) _PD_ARG_N(__VA_ARGS__)
-#define _PD_ARG_N_EXPAND(                                                     \
-    _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, N, ...) \
+#define _PD_ARG_N_EXPAND(_1,  \
+                         _2,  \
+                         _3,  \
+                         _4,  \
+                         _5,  \
+                         _6,  \
+                         _7,  \
+                         _8,  \
+                         _9,  \
+                         _10, \
+                         _11, \
+                         _12, \
+                         _13, \
+                         _14, \
+                         _15, \
+                         _16, \
+                         _17, \
+                         N,   \
+                         ...) \
   N
 #define _PD_ARG_N(args) _PD_ARG_N_EXPAND args
-#define _PD_RESQ_N() 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+#define _PD_RESQ_N() \
+  17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
 // The macro for passing KernelArgsParseFunctor's function
 #define ARG_PARSE_FUNCTOR(meta_kernel_fn, cpp_dtype, context) \
@@ -611,6 +629,30 @@ struct KernelRegistrar {
                                     ...)                                \
   kernel_instantiation_macro(meta_kernel_fn, cpp_dtype, context)        \
       PD_EXPAND(_PD_KERNEL_INSTANTIATION_14(meta_kernel_fn,             \
+                                            backend,                    \
+                                            context,                    \
+                                            kernel_instantiation_macro, \
+                                            __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_16(meta_kernel_fn,                     \
+                                    backend,                            \
+                                    context,                            \
+                                    kernel_instantiation_macro,         \
+                                    cpp_dtype,                          \
+                                    ...)                                \
+  kernel_instantiation_macro(meta_kernel_fn, cpp_dtype, context)        \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_15(meta_kernel_fn,             \
+                                            backend,                    \
+                                            context,                    \
+                                            kernel_instantiation_macro, \
+                                            __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_17(meta_kernel_fn,                     \
+                                    backend,                            \
+                                    context,                            \
+                                    kernel_instantiation_macro,         \
+                                    cpp_dtype,                          \
+                                    ...)                                \
+  kernel_instantiation_macro(meta_kernel_fn, cpp_dtype, context)        \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_16(meta_kernel_fn,             \
                                             backend,                    \
                                             context,                    \
                                             kernel_instantiation_macro, \
@@ -1231,6 +1273,80 @@ struct KernelRegistrar {
                               variadic_kernel_unfold_marco,            \
                               cpp_dtype)                               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_14(reg_type,                     \
+                                         kernel_name,                  \
+                                         backend,                      \
+                                         context,                      \
+                                         layout,                       \
+                                         PD_ID,                        \
+                                         args_def_fn,                  \
+                                         meta_kernel_fn,               \
+                                         arg_parse_functor_macro,      \
+                                         kernel_unfold_macro,          \
+                                         variadic_kernel_unfold_marco, \
+                                         __VA_ARGS__))
+#define _PD_KERNEL_REGISTRAR_INIT_16(reg_type,                         \
+                                     kernel_name,                      \
+                                     backend,                          \
+                                     context,                          \
+                                     layout,                           \
+                                     registrar_id,                     \
+                                     args_def_fn,                      \
+                                     meta_kernel_fn,                   \
+                                     arg_parse_functor_macro,          \
+                                     kernel_unfold_macro,              \
+                                     variadic_kernel_unfold_marco,     \
+                                     cpp_dtype,                        \
+                                     ...)                              \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                \
+                              kernel_name,                             \
+                              backend,                                 \
+                              context,                                 \
+                              layout,                                  \
+                              registrar_id,                            \
+                              args_def_fn,                             \
+                              meta_kernel_fn,                          \
+                              arg_parse_functor_macro,                 \
+                              kernel_unfold_macro,                     \
+                              variadic_kernel_unfold_marco,            \
+                              cpp_dtype)                               \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_15(reg_type,                     \
+                                         kernel_name,                  \
+                                         backend,                      \
+                                         context,                      \
+                                         layout,                       \
+                                         PD_ID,                        \
+                                         args_def_fn,                  \
+                                         meta_kernel_fn,               \
+                                         arg_parse_functor_macro,      \
+                                         kernel_unfold_macro,          \
+                                         variadic_kernel_unfold_marco, \
+                                         __VA_ARGS__))
+#define _PD_KERNEL_REGISTRAR_INIT_17(reg_type,                         \
+                                     kernel_name,                      \
+                                     backend,                          \
+                                     context,                          \
+                                     layout,                           \
+                                     registrar_id,                     \
+                                     args_def_fn,                      \
+                                     meta_kernel_fn,                   \
+                                     arg_parse_functor_macro,          \
+                                     kernel_unfold_macro,              \
+                                     variadic_kernel_unfold_marco,     \
+                                     cpp_dtype,                        \
+                                     ...)                              \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                \
+                              kernel_name,                             \
+                              backend,                                 \
+                              context,                                 \
+                              layout,                                  \
+                              registrar_id,                            \
+                              args_def_fn,                             \
+                              meta_kernel_fn,                          \
+                              arg_parse_functor_macro,                 \
+                              kernel_unfold_macro,                     \
+                              variadic_kernel_unfold_marco,            \
+                              cpp_dtype)                               \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_16(reg_type,                     \
                                          kernel_name,                  \
                                          backend,                      \
                                          context,                      \

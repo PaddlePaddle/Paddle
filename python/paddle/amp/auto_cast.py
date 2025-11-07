@@ -1096,14 +1096,14 @@ def autocast(
             >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             >>> data = paddle.rand([10, 3, 32, 32])
 
-            >>> with paddle.device.amp.auto_cast():
+            >>> with paddle.amp.auto_cast():
             ...     conv = conv2d(data)
             ...     print(conv.dtype)
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             paddle.float16
             >>> # doctest: -SKIP
 
-            >>> with paddle.device.amp.auto_cast(enable=False):
+            >>> with paddle.amp.auto_cast(enable=False):
             ...     conv = conv2d(data)
             ...     print(conv.dtype)
             >>> # doctest: +SKIP("This has diff in xdoctest env")

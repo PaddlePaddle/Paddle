@@ -131,6 +131,11 @@ void GPUIndexElementwisePutGradKernel(
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
+    PADDLE_ENFORCE_EQ(true,
+                      funcs::IsInUint32Range(value_grad->numel()),
+                      common::errors::PreconditionNotMet(
+                          "the numel of input or output should be in [0, "
+                          "std::numeric_limits<int32_t>::max()]"));
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
           const auto offsets = offset_calc.get(idx);
@@ -153,6 +158,11 @@ void GPUIndexElementwisePutGradKernel(
   } else {
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
+    PADDLE_ENFORCE_EQ(true,
+                      funcs::IsInUint32Range(value_grad->numel()),
+                      common::errors::PreconditionNotMet(
+                          "the numel of input or output should be in [0, "
+                          "std::numeric_limits<int32_t>::max()]"));
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {

@@ -14,19 +14,18 @@
 
 import unittest
 
-import paddle.reader
+import paddle
 
 
 class TestForbidKeywordsDecorator(unittest.TestCase):
     def test(self):
-        x = paddle.randn([2, 2])
-        self.assertWarnsRegex(
-            UserWarning,
-            "may behave differently from its PyTorch counterpart",
-            paddle.split,
-            x,
-            2,
-        )
+        with self.assertRaises(TypeError) as cm:
+            self.assertWarnsRegex(
+                UserWarning,
+                "may behave differently from its PyTorch counterpart",
+                paddle.sort,
+            )
+            paddle.sort(input=paddle.to_tensor([2, 1, 3]), axis=0)
 
 
 if __name__ == '__main__':
