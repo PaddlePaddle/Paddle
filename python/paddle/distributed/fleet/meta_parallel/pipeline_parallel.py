@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import queue
+import random
 import sys
 import time
 import warnings
@@ -23,10 +24,17 @@ from enum import Enum
 from functools import partial
 from typing import Callable
 
+import numpy as np
+
 import paddle
 from paddle import framework
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
+from ..recompute.recompute import (
+    CustomStatesManager,
+    detach_variable,
+    switch_rng_state_tracker,
+)
 from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
@@ -49,6 +57,9 @@ else:
     from .pp_utils import p2p_communication as p2p
 
 from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+    get_rng_state_tracker,
+)
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
@@ -93,6 +104,9 @@ def _get_align_mode_scale():
     return max(data_parallel_world_size, 1) * max(
         sharding_parallel_world_size, 1
     )
+
+
+custom_state_manager = CustomStatesManager()
 
 
 # assume only the first stage and last stage need data, and data consumption is ordered
@@ -445,9 +459,30 @@ class PipelineParallel(MetaParallelBase):
             self._enable_timer,
         )
 
+        self.full_recompute_overlap = False
+        if self.full_recompute_overlap:
+            # preserve = kwargs.pop('preserve_rng_state', True)
+            self.preserve_rng_state = True
+            # offload_indices = kwargs.pop('offload_indices', [])
+            self.offload_indices = []
+            if custom_state_manager.custom_get_state_func is None:
+                assert custom_state_manager.custom_set_state_func is None
+                self.custom_get_state_func = lambda x=None: None
+                self.custom_set_state_func = lambda x=None: None
+            else:
+                self.custom_get_state_func = (
+                    custom_state_manager.custom_get_state_func
+                )
+                self.custom_set_state_func = (
+                    custom_state_manager.custom_set_state_func
+                )
+            self.state_buffers = []
+
         # construct pipeline meta info
         self._p2p_helper = p2p.P2pHelper(
-            self._using_cache, dynamic_shape=self._dynamic_shape
+            self._using_cache,
+            dynamic_shape=self._dynamic_shape,
+            full_recompute_overlap=self.full_recompute_overlap,
         )
 
         self.global_rank = self._hcg.get_global_rank()
@@ -750,6 +785,217 @@ class PipelineParallel(MetaParallelBase):
                 f.writelines(record + '\n' for record in self._records)
             self._records = []
 
+    def save_state(
+        self,
+        inputs,
+        micro_dataset,
+        chunk_id,
+        is_pipeline_first_stage,
+        is_pipeline_last_stage,
+        overlap_schedule_mode,
+    ):
+        state = {}
+        if isinstance(inputs, paddle.Tensor):
+            inputs = (inputs,)
+            state["inputs_type"] = "Tensor"
+        elif isinstance(inputs, dict):
+            # if inputs is dict, split its values as inputs
+            inputs = tuple(inputs.values())
+            state["inputs_keys"] = tuple(inputs.keys())
+            state["inputs_type"] = "dict"
+        elif isinstance(inputs, tuple):
+            state["inputs_type"] = "tuple"
+        else:
+            raise ValueError(
+                "Inputs of types other than Tensor, tuple, or dict are currently not supported in save_state now."
+            )
+
+        state["chunk_id"] = chunk_id
+        if self.preserve_rng_state:
+            state["fw_rng_state"] = paddle.get_rng_state()
+            state["fwd_rng_state_tracker"] = (
+                get_rng_state_tracker().get_states_tracker()
+            )
+            state["fwd_numpy_state"] = np.random.get_state()
+            state["fwd_random_state"] = random.getstate()
+            state["fwd_custom_state"] = self.custom_get_state_func()
+            state["custom_get_state_func"] = self.custom_get_state_func
+            state["custom_set_state_func"] = self.custom_set_state_func
+        tracer = framework._dygraph_tracer()
+        state["is_fw_autocast"] = (
+            False if tracer._amp_level == framework.core.AmpLevel.O0 else True
+        )
+        if tracer._amp_level == framework.core.AmpLevel.O2:
+            state["amp_level"] = 'O2'
+        elif tracer._amp_level in (
+            framework.core.AmpLevel.O1,
+            framework.core.AmpLevel.O0,
+        ):
+            state["amp_level"] = 'O1'
+        else:
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
+
+        if tracer._amp_dtype == 'float16':
+            state["amp_dtype"] = 'float16'
+        elif tracer._amp_dtype in ('bfloat16', 'float32'):
+            state["amp_dtype"] = 'bfloat16'
+        else:
+            raise ValueError(f"unsupported amp dtype: {tracer._amp_dtype}")
+        state["amp_white_list"], state["amp_black_list"] = (
+            tracer._get_amp_op_list()
+        )
+
+        # tensor's idx in inputs
+        state["tensor_indices"] = []
+        # tensor in inputs if its idx in offload_indices
+        state["tensor_inputs"] = []
+        # input which is not tensor in inputs, if it is tensor append None
+        state["inputs"] = []
+        for i, input_tensor in enumerate(inputs):
+            if paddle.is_tensor(input_tensor):
+                if i in self.offload_indices:
+                    cpu_tensor = (
+                        input_tensor.pin_memory()
+                        if framework.core.is_compiled_with_cuda()
+                        else input_tensor.cpu()
+                    )
+                    cpu_tensor._share_buffer_to(input_tensor)
+                if not is_pipeline_first_stage:
+                    '''
+                    The tensor prev_pp_rank was computed inside a with paddle.no_grad() is stop_gradient.
+                    To ensure that backward works properly, its stop_gradient should be set to False.
+                    '''
+                    input_tensor.stop_gradient = False
+                state["tensor_inputs"].append(input_tensor)
+                state["tensor_indices"].append(i)
+                state["inputs"].append(None)
+            elif type(input_tensor) is tuple:
+                assert i not in self.offload_indices, (
+                    f"offload_indices should not contain tensor tuple in position{i}"
+                )
+                is_tensors = [paddle.is_tensor(a) for a in input_tensor]
+                if all(is_tensors):
+                    # the tuple is a tuple of tensors
+                    tensors_stop_gradient = [
+                        a.stop_gradient for a in input_tensor
+                    ]
+                    if not all(tensors_stop_gradient) and any(
+                        tensors_stop_gradient
+                    ):
+                        # tensors in the tuple have different stop_gradient value, which pylayer doesn't support
+                        raise ValueError(
+                            "Recompute receive a tuple containing tensor holds different stop gradient."
+                        )
+                    state["tensor_inputs"].append(input_tensor)
+                    state["tensor_indices"].append(i)
+                    state["inputs"].append(None)
+                elif any(is_tensors):
+                    # the tuple contains tensors and non-tensor values
+                    raise ValueError(
+                        "Recompute receive a tuple containing tensor and non-tensor at same time."
+                    )
+                else:
+                    state["inputs"].append(input_tensor)
+            else:
+                state["inputs"].append(input_tensor)
+        self.state_buffers.append(state)
+
+    def load_state_and_forward(self):
+        state = self.state_buffers.pop(0)
+        chunk_id = state["chunk_id"]
+        with paddle.base.dygraph.guard():
+            inputs = list(state["inputs"])
+            tensor_indices = state["tensor_indices"]
+            tensors = state["tensor_inputs"]
+            for i, idx in enumerate(tensor_indices):
+                inputs[idx] = (
+                    tensors[i].to(
+                        paddle.base.framework._current_expected_place()
+                    )
+                    if i in self.offload_indices
+                    else tensors[i]
+                )
+                if i in self.offload_indices:
+                    # NOTE(zhiqiu): tensor.to(device) will set stop_gradient=True, which may break the gragh
+                    inputs[idx].stop_gradient = tensors[i].stop_gradient
+            tracer = framework._dygraph_tracer()
+            tracer._has_grad = True
+
+            # NOTE support AMP
+            # need restore auto_cast state as well as w/b list
+            if self.preserve_rng_state:
+                with (
+                    switch_rng_state_tracker(
+                        state["fw_rng_state"],
+                        state["fwd_rng_state_tracker"],
+                        state["fwd_numpy_state"],
+                        state["fwd_random_state"],
+                        state["fwd_custom_state"],
+                        state["custom_get_state_func"],
+                        state["custom_set_state_func"],
+                    ),
+                    paddle.amp.auto_cast(
+                        enable=state["is_fw_autocast"],
+                        custom_white_list=state["amp_white_list"],
+                        custom_black_list=state["amp_black_list"],
+                        level=state["amp_level"],
+                        dtype=state["amp_dtype"],
+                    ),
+                ):
+                    detached_inputs = detach_variable(tuple(inputs))
+                    if state["inputs_type"] == "dict":
+                        # form detached_inputs to dict, keys:state["inputs_keys"] values:detached_inputs
+                        final_input = dict(
+                            zip(state["inputs_keys"], detached_inputs)
+                        )
+                    elif state["inputs_type"] == "tuple":
+                        final_input = detached_inputs
+                    elif state["inputs_type"] == "Tensor":
+                        final_input = detached_inputs[0]
+                    else:
+                        raise ValueError(
+                            "Inputs of types other than Tensor, tuple, or dict are currently not supported in load_state_and_forward now."
+                        )
+                    outputs = self._layers.forward(
+                        final_input, chunk_id=chunk_id
+                    )
+            else:
+                with paddle.amp.auto_cast(
+                    enable=state["is_fw_autocast"],
+                    custom_white_list=state["amp_white_list"],
+                    custom_black_list=state["amp_black_list"],
+                    level=state["amp_level"],
+                    dtype=state["amp_dtype"],
+                ):
+                    detached_inputs = detach_variable(tuple(inputs))
+                    if state["inputs_type"] == "dict":
+                        # form detached_inputs to dict, keys:state["inputs_keys"] values:detached_inputs
+                        final_input = dict(
+                            zip(state["inputs_keys"], detached_inputs)
+                        )
+                    elif state["inputs_type"] == "tuple":
+                        final_input = detached_inputs
+                    elif state["inputs_type"] == "Tensor":
+                        final_input = detached_inputs[0]
+                    else:
+                        raise ValueError(
+                            "Inputs of types other than Tensor, tuple, or dict are currently not supported in load_state_and_forward now."
+                        )
+                    outputs = self._layers.forward(
+                        final_input, chunk_id=chunk_id
+                    )
+
+        return final_input, outputs
+
+    def reset_input(self, inputs):
+        # if enable full_recompute, every pp_rank's inputs is stop gradient except first stage.The last stage's inputs shouldn't be stop gradient, because it will be used directly.
+        if isinstance(inputs, paddle.Tensor):
+            inputs.stop_gradient = False
+        if isinstance(inputs, tuple):
+            for input_tensor in inputs:
+                if isinstance(input_tensor, paddle.Tensor):
+                    input_tensor.stop_gradient = False
+
     def forward_backward_pipeline(
         self,
         data,
@@ -866,6 +1112,23 @@ class PipelineParallel(MetaParallelBase):
             )
 
             output_tensor_tuple = dict_to_tuple_helper(output_tensor)
+
+            input_buffers.append(input_tensor)
+            output_buffers.append(output_tensor_tuple)
+
+            input_tensor, output_tensor = (
+                input_buffers.pop(0),
+                output_buffers.pop(0),
+            )
+
+            if self.full_recompute_overlap:
+                if not self.is_pipeline_last_stage():
+                    final_input, output_tensor_recompute = (
+                        self.load_state_and_forward()
+                    )
+                    input_tensor = final_input
+                    output_tensor = output_tensor_recompute
+
             # NOTE: `send_forward_recv_backward` is intentionally unused to
             # prevent hanging bugs in dynamic shape mode.
             self._p2p_helper.send_forward(
@@ -874,20 +1137,12 @@ class PipelineParallel(MetaParallelBase):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
-            output_tensor_grad = self._p2p_helper.recv_backward(
-                self.is_pipeline_last_stage(ignore_virtual=True),
-                batch_p2p_comm=self._use_batch_p2p_comm,
-            )
-
-            input_buffers.append(input_tensor)
-            output_buffers.append(output_tensor_tuple)
-
             if not self.is_pipeline_last_stage():
                 self._release_output(output_tensor_tuple)
 
-            input_tensor, output_tensor = (
-                input_buffers.pop(0),
-                output_buffers.pop(0),
+            output_tensor_grad = self._p2p_helper.recv_backward(
+                self.is_pipeline_last_stage(ignore_virtual=True),
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
             self._record_stamp("B", i, '"B"', self._backward_color)
@@ -924,6 +1179,14 @@ class PipelineParallel(MetaParallelBase):
                 continue
             input_tensor = input_buffers.pop(0)
             output_tensor = output_buffers.pop(0)
+
+            if self.full_recompute_overlap:
+                if not self.is_pipeline_last_stage():
+                    final_input, output_tensor_recompute = (
+                        self.load_state_and_forward()
+                    )
+                    input_tensor = final_input
+                    output_tensor = output_tensor_recompute
 
             output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(),
@@ -1182,6 +1445,7 @@ class PipelineParallel(MetaParallelBase):
                 assert self._layers._loss_fn[self.loss_fn_idx] is not None, (
                     "loss function should exist to compute loss"
                 )
+
                 labels = next(micro_dataset)[1]
                 self._check_micro_batch_data_valid(labels)
                 for idx, loss_fn in enumerate(self._layers._loss_fn):
@@ -1254,11 +1518,45 @@ class PipelineParallel(MetaParallelBase):
         schedule_chunk = None
         if overlap_schedule_mode:
             schedule_chunk = self._layers.get_schedule_chunk(chunk_id=chunk_id)
-            output_tensor = schedule_chunk.forward(input_tensor)
+            if (
+                self.full_recompute_overlap
+                and not self.is_pipeline_last_stage()
+            ):
+                self.save_state(
+                    input_tensor,
+                    micro_dataset,
+                    chunk_id,
+                    self.is_pipeline_first_stage(),
+                    self.is_pipeline_last_stage(),
+                    overlap_schedule_mode,
+                )
+                with paddle.no_grad():
+                    output_tensor = schedule_chunk.forward(input_tensor)
+            else:
+                self.reset_input(input_tensor)
+                output_tensor = schedule_chunk.forward(input_tensor)
         else:
-            output_tensor = self._layers.forward(
-                input_tensor, chunk_id=chunk_id
-            )
+            if (
+                self.full_recompute_overlap
+                and not self.is_pipeline_last_stage()
+            ):
+                self.save_state(
+                    input_tensor,
+                    micro_dataset,
+                    chunk_id,
+                    self.is_pipeline_first_stage(),
+                    self.is_pipeline_last_stage(),
+                    overlap_schedule_mode,
+                )
+                with paddle.no_grad():
+                    output_tensor = self._layers.forward(
+                        input_tensor, chunk_id=chunk_id
+                    )
+            else:
+                self.reset_input(input_tensor)
+                output_tensor = self._layers.forward(
+                    input_tensor, chunk_id=chunk_id
+                )
 
         self.callbacks.on_location(
             PipelineParallelMicroStepLocations.FORWARD_END,
@@ -1266,11 +1564,9 @@ class PipelineParallel(MetaParallelBase):
             output_tensor=output_tensor,
             step_id=step_id,
         )
-
         backward_loss_tensor, backward_loss_fn_node = self._maybe_loss_compute(
             output_tensor, micro_dataset, overlap_schedule_mode
         )
-
         if self.is_pipeline_first_stage() or self.is_pipeline_last_stage():
             # Only increase micro batch id at virtual first/last pp stage.
             # The micro batch id is used to load data, therefore, only increase it when load data.
@@ -1282,6 +1578,7 @@ class PipelineParallel(MetaParallelBase):
                 f"[Pipeline details] After_forward_step_chunk_{chunk_id}_step_{step_id}"
             )
         if self.is_pipeline_last_stage() and self._compute_loss:
+            # output_tensor.stop_gradient = False
             return backward_loss_tensor, schedule_chunk, backward_loss_fn_node
         return output_tensor, schedule_chunk, backward_loss_fn_node
 
@@ -1296,6 +1593,7 @@ class PipelineParallel(MetaParallelBase):
         schedule_chunk=None,
         loss_fn_node=None,
     ):
+        # 需要考虑下overlap_schedule_mode这个情况下梯度的传递是不是有问题
         if self.user_hooks_enabled:
             self.backward_hooks.run_hook()
         if self._enable_timer:
