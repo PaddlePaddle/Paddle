@@ -27,6 +27,48 @@ from paddle.utils.decorator_utils import (
 from .. import core
 from ..framework import convert_np_dtype_to_dtype_
 
+
+def _create_none_aware_eq_wrapper(original_eq_method):
+    """
+    Create a wrapper for __eq__ method that handles comparison with None.
+
+    When comparing a tensor with None, it should return False for == and True for !=
+    since a tensor is never None.
+
+    Args:
+        original_eq_method: The original __eq__ method to wrap
+
+    Returns:
+        A wrapped __eq__ method that handles None comparisons
+    """
+    def none_aware_eq(self, other):
+        if other is None:
+            return False
+        return original_eq_method(self, other)
+
+    return none_aware_eq
+
+
+def _create_none_aware_ne_wrapper(original_ne_method):
+    """
+    Create a wrapper for __ne__ method that handles comparison with None.
+
+    When comparing a tensor with None, it should return True for !=
+    since a tensor is never None.
+
+    Args:
+        original_ne_method: The original __ne__ method to wrap
+
+    Returns:
+        A wrapped __ne__ method that handles None comparisons
+    """
+    def none_aware_ne(self, other):
+        if other is None:
+            return True
+        return original_ne_method(self, other)
+
+    return none_aware_ne
+
 if TYPE_CHECKING:
     from typing import Any
 
@@ -671,7 +713,15 @@ def monkey_patch_math_tensor():
         for method_name in eager_cpp_level_patch:
             method_impl = getattr(local_tensor, method_name, None)
             if method_impl:
-                setattr(local_tensor, method_name, method_impl)
+                # Wrap __eq__ and __ne__ methods to handle None comparisons
+                if method_name == '__eq__':
+                    wrapped_method = _create_none_aware_eq_wrapper(method_impl)
+                    setattr(local_tensor, method_name, wrapped_method)
+                elif method_name == '__ne__':
+                    wrapped_method = _create_none_aware_ne_wrapper(method_impl)
+                    setattr(local_tensor, method_name, wrapped_method)
+                else:
+                    setattr(local_tensor, method_name, method_impl)
 
         for method in eager_methods:
             method_name = method[0]
@@ -691,4 +741,12 @@ def monkey_patch_math_tensor():
         for magic_method, origin_method in paddle.tensor.magic_method_func:
             impl = getattr(paddle.tensor, origin_method, None)
             if impl:
-                setattr(local_tensor, magic_method, impl)
+                # Wrap __eq__ and __ne__ methods to handle None comparisons
+                if magic_method == '__eq__':
+                    wrapped_method = _create_none_aware_eq_wrapper(impl)
+                    setattr(local_tensor, magic_method, wrapped_method)
+                elif magic_method == '__ne__':
+                    wrapped_method = _create_none_aware_ne_wrapper(impl)
+                    setattr(local_tensor, magic_method, wrapped_method)
+                else:
+                    setattr(local_tensor, magic_method, impl)
