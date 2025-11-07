@@ -143,12 +143,13 @@ class ExceptionHandler:
     opname = "EXCEPT_HANDLER"
 
 
-BINARY_OP_ARG_MAP: dict[str, int] = {}
-
-
-@lambda func: func()
-def _get_binary_op_arg_map():
+def _get_binary_op_arg_map() -> dict[str, int]:
     if sys.version_info < (3, 11):
-        return
+        return {}
+    res = {}
     for i, op in enumerate(opcode._nb_ops):
-        BINARY_OP_ARG_MAP[op[0]] = i
+        res[op[0]] = i
+    return res
+
+
+BINARY_OP_ARG_MAP: dict[str, int] = _get_binary_op_arg_map()
