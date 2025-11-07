@@ -47,6 +47,17 @@
 
 namespace phi {
 
+template <class T, class Context>
+static DenseTensor Fill(const Context& dev_ctx,
+                        std::vector<int64_t> shape,
+                        T fill_value) {
+  DenseTensor ret;
+  ret.Resize(common::make_ddim(shape));
+  dev_ctx.template Alloc<T>(&ret);
+  funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
+  return ret;
+}
+
 inline int BatchCount(const DenseTensor& matrix) {
   int count = 1;
   int num_dims = matrix.dims().size();
