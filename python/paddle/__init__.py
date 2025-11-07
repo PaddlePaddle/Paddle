@@ -101,6 +101,7 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint16,
     uint32,
     uint64,
 )
@@ -980,6 +981,7 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint16',
     'uint32',
     'uint64',
     'int8',
