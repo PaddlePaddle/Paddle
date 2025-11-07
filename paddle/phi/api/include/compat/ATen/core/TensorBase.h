@@ -42,7 +42,7 @@ class PADDLE_API TensorBase {
   TensorBase& operator=(const TensorBase& x) & {
     tensor_ = x.tensor_;
     return *this;
-  };
+  }
   TensorBase& operator=(TensorBase&& x) & noexcept {
     tensor_ = std::move(x.tensor_);
     return *this;
