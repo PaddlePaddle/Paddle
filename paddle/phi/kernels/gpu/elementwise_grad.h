@@ -14,9 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-
 #include "glog/logging.h"
 
 #include "paddle/phi/common/place.h"
@@ -116,63 +113,45 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
 ******************************
 */
 
-template <typename T_dy>
-struct VecTypeHelper;
-template <>
-struct VecTypeHelper<phi::float16> {
-  using type = __half2;
+template <typename T>
+struct alignas(sizeof(T) * 4) Pack4 {
+  T val[4];
 };
-template <>
-struct VecTypeHelper<phi::bfloat16> {
-  using type = __nv_bfloat162;
-};
-
-template <typename T_dy>
-__device__ inline typename VecTypeHelper<T_dy>::type CvtFromFloat2(float2 val);
-
-template <>
-__device__ inline __half2 CvtFromFloat2<phi::float16>(float2 val) {
-  return __float22half2_rn(val);  // float -> fp16
-}
-
-template <>
-__device__ inline __nv_bfloat162 CvtFromFloat2<phi::bfloat16>(float2 val) {
-  return __float22bfloat162_rn(val);  // float -> bf16
-}
 
 template <typename T_dy>
 static __global__ void MixedPrecisionElemwiseAddGradCUDAKernel(
-    const float *__restrict__ dout, int64_t size, float *dx, T_dy *dy) {
-  using T_dy_vec = typename VecTypeHelper<T_dy>::type;
+    const float *__restrict__ dout,
+    int64_t size,
+    float *__restrict__ dx,
+    T_dy *__restrict__ dy) {
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(gridDim.x) * blockDim.x;
 
-  const int vec_size = 4;
-  int tid = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
-  int stride = static_cast<int>(gridDim.x * blockDim.x);
-
-  int64_t loop = size / vec_size;
-  int64_t remainder_start = loop * vec_size;
+  constexpr int vec_size = 4;
+  int64_t loop_limit = size / vec_size;
 
   const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
   float4 *dx_vec = reinterpret_cast<float4 *>(dx);
+  Pack4<T_dy> *dy_vec = reinterpret_cast<Pack4<T_dy> *>(dy);
 
-  T_dy_vec *dy_vec = reinterpret_cast<T_dy_vec *>(dy);
+  for (int64_t i = tid; i < loop_limit; i += stride) {
+    const float4 val = dout_vec[i];
+    dx_vec[i] = val;
 
-  for (int64_t i = tid; i < loop; i += stride) {
-    const float4 dout_val = dout_vec[i];
+    Pack4<T_dy> dy_pack;
+    dy_pack.val[0] = static_cast<T_dy>(val.x);
+    dy_pack.val[1] = static_cast<T_dy>(val.y);
+    dy_pack.val[2] = static_cast<T_dy>(val.z);
+    dy_pack.val[3] = static_cast<T_dy>(val.w);
 
-    dx_vec[i] = dout_val;
-
-    const float2 dout_lo = make_float2(dout_val.x, dout_val.y);
-    const float2 dout_hi = make_float2(dout_val.z, dout_val.w);
-
-    dy_vec[i * 2] = CvtFromFloat2<T_dy>(dout_lo);
-    dy_vec[i * 2 + 1] = CvtFromFloat2<T_dy>(dout_hi);
+    dy_vec[i] = dy_pack;
   }
 
+  int64_t remainder_start = loop_limit * vec_size;
   for (int64_t i = remainder_start + tid; i < size; i += stride) {
-    const float tmp_rem = dout[i];
-    dx[i] = tmp_rem;
-    dy[i] = static_cast<T_dy>(tmp_rem);
+    float val = dout[i];
+    dx[i] = val;
+    dy[i] = static_cast<T_dy>(val);
   }
 }
 
@@ -189,6 +168,8 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   auto *dout_data = dout.data<T_dout>();
 
   if (dx_data == dout_data) {
+    VLOG(7) << "Special case when dx_data is the same as dout_data, "
+               "need cast dout to dy.";
     phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
     return;
   }
@@ -196,32 +177,17 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   auto size = dout.numel();
   if (size == 0) return;
 
-  const int block_size = PREDEFINED_BLOCK_SIZE;
-  int grid_size = (size + block_size - 1) / block_size;
-  if (size / block_size < grid_size) {
-    grid_size = (size + block_size - 1) / block_size;
-  } else {
-    grid_size = dev_ctx.GetMaxPhysicalThreadCount();
-  }
+  const int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T_dy)), 1);
+  dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+  dim3 grid_size =
+      dim3(std::min((size + vec_size * PREDEFINED_BLOCK_SIZE - 1) /
+                        (vec_size * PREDEFINED_BLOCK_SIZE),
+                    static_cast<int64_t>(dev_ctx.GetMaxPhysicalThreadCount())),
+           1);
 
-  if (std::is_same_v<T_dy, phi::float16>) {
-    MixedPrecisionElemwiseAddGradCUDAKernel<phi::float16>
-        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            dout_data,
-            size,
-            dx_data,
-            reinterpret_cast<phi::float16 *>(dy_data));
-  } else if (std::is_same_v<T_dy, phi::bfloat16>) {
-    MixedPrecisionElemwiseAddGradCUDAKernel<phi::bfloat16>
-        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            dout_data,
-            size,
-            dx_data,
-            reinterpret_cast<phi::bfloat16 *>(dy_data));
-  } else {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Unsupported T_dy type for MixedPrecisionElemwiseAddGradCUDAKernel"));
-  }
+  MixedPrecisionElemwiseAddGradCUDAKernel<T_dy>
+      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+          dout_data, size, dx_data, dy_data);
 }
 
 template <typename T_dy>
@@ -261,22 +227,16 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   if (dy != nullptr) {
     auto *dy_data = dev_ctx.template Alloc<T_dy>(dy);
     if (dy->dims() == dout.dims()) {
-      if (std::is_same_v<T_dy, T_dout>) {
-        phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
-      } else {
-        phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
-      }
+      phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
     } else {
-      DenseTensor dy_src;
-      if (std::is_same_v<T_dy, T_dout>) {
-        dy_src = dout;
-      } else {
-        dy_src = phi::Cast<T_dout>(dev_ctx, dout, y.dtype());
-      }
+      DenseTensor dy_fp32;
+      dy_fp32.Resize(dout.dims());
+      dev_ctx.template Alloc<float>(&dy_fp32);
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), dout.dims(), axis);
-      phi::SumKernel<T_dy, GPUContext>(
-          dev_ctx, dy_src, reduce_dims, dy_src.dtype(), false, dy);
+      phi::SumKernel<float, GPUContext>(
+          dev_ctx, dout, reduce_dims, dout.dtype(), false, &dy_fp32);
+      phi::CastKernel<float>(dev_ctx, dy_fp32, dy->dtype(), dy);
     }
   }
 }
