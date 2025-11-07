@@ -83,7 +83,10 @@ class TestZeroPad1dAPI(unittest.TestCase):
         pad = [1, 2]
         zeropad1d = ZeroPad1D(padding=pad)
         name_str = zeropad1d.extra_repr()
-        assert name_str == 'padding=[1, 2], data_format=NCL'
+        assert (
+            name_str
+            == 'padding=[1, 2], mode=constant, value=0.0, data_format=NCL'
+        )
 
 
 if __name__ == '__main__':

@@ -2315,6 +2315,212 @@ def dot(
 )
 
 add_doc_and_signature(
+    "exp",
+    """
+
+    Computes exp of x element-wise with a natural number `e` as the base.
+
+    .. math::
+        out = e^x
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+
+    Args:
+        x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
+            Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor.
+
+    Returns:
+        Tensor. Output of Exp operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.exp(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.67032003, 0.81873077, 1.10517097, 1.34985888])
+""",
+    """
+def exp(
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "expm1",
+    """
+
+    Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
+
+    .. math::
+        out = e^x - 1
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+
+    Args:
+        x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
+            Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor.
+
+    Returns:
+        Tensor. Output of Expm1 operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.expm1(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
+""",
+    """
+def expm1(
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "diagonal",
+    """
+
+    Computes the diagonals of the input tensor x.
+
+    If ``x`` is 2D, returns the diagonal.
+    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
+    By default, the 2D planes formed by the first and second axis of the input tensor x.
+
+    The argument ``offset`` determines where diagonals are taken from input tensor x:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``dim1`` can be used as an alias for ``axis1``.
+        3. The parameter name ``dim2`` can be used as an alias for ``axis2``.
+
+    Args:
+        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32,
+            int64, bfloat16, float16, float32, float64. Alias: ``input``.
+        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0. Alias: ``dim1``.
+        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1. Alias: ``dim2``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand([2, 2, 3],'float32')
+            >>> print(x)
+            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.86583614, 0.52014720, 0.25960937],
+              [0.90525323, 0.42400089, 0.40641287]],
+             [[0.97020894, 0.74437362, 0.51785129],
+              [0.73292869, 0.97786582, 0.04315904]]])
+
+            >>> out1 = paddle.diagonal(x)
+            >>> print(out1)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.86583614, 0.73292869],
+             [0.52014720, 0.97786582],
+             [0.25960937, 0.04315904]])
+
+            >>> out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
+            >>> print(out2)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.86583614, 0.42400089],
+             [0.97020894, 0.97786582]])
+
+            >>> out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
+            >>> print(out3)
+            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.90525323],
+             [0.42400089],
+             [0.40641287]])
+
+            >>> out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
+            >>> print(out4)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.86583614, 0.42400089],
+             [0.97020894, 0.97786582]])
+""",
+    """
+def diagonal(
+    x: Tensor,
+    offset: int = 0,
+    axis1: int = 0,
+    axis2: int = 1,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "round",
+    """
+
+    Round the values in the input to the nearest integer value.
+
+    .. code-block:: text
+
+        input:
+          x.shape = [4]
+          x.data = [1.2, -0.9, 3.4, 0.9]
+
+        output:
+          out.shape = [4]
+          out.data = [1., -1., 3., 1.]
+
+    Args:
+        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128.
+        decimals(int): Rounded decimal place (default: 0).
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Round operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
+            >>> out = paddle.round(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0., -0.,  1.,  2.])
+""",
+    """
+def round(
+    x: Tensor, decimals = 0, *, out: Tensor | None = None, name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "abs",
     """
     Perform elementwise abs for input `x`.
@@ -2350,7 +2556,6 @@ def abs(
 ) -> Tensor
 """,
 )
-
 # lubingxin
 
 # chenhuangrun

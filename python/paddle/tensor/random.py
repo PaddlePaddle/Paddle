@@ -1513,7 +1513,7 @@ def uniform(
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(str|paddle.dtype|np.dtype, optional): The data type of the output Tensor.
-            Supported data types: float32, float64.
+            Supported data types: float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         min(float|int, optional): The lower bound on the range of random values
@@ -1571,7 +1571,14 @@ def uniform(
              [-0.66421294, -0.95218551, -0.51022208]])
             >>> # doctest: -SKIP
     """
-    supported_dtypes = ['float32', 'float64', 'float16', 'uint16']
+    supported_dtypes = [
+        'float32',
+        'float64',
+        'float16',
+        'uint16',
+        'complex64',
+        'complex128',
+    ]
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
         if dtype not in supported_dtypes:

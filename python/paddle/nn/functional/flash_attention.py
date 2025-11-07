@@ -1453,6 +1453,7 @@ def scaled_dot_product_attention(
             dropout_p,
             is_causal,
         )
+        return out
 
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation
