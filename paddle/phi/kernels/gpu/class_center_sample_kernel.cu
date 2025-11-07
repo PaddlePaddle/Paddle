@@ -381,7 +381,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 #endif
 
   // step 2: Determine temporary device storage requirements
-  int num_buffer_ele = std::max(batch_size, num_classes);
+  int num_buffer_ele = std::max(static_cast<int>(batch_size), num_classes);
   size_t cub_sort_temp_store_size = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(
       (cub::DeviceRadixSort::SortPairs<T, T>(nullptr,

@@ -488,7 +488,9 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     }
 
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
-    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
+    dim3 threads(block_dim_x,
+                 block_dim_y,
+                 std::min(block_dim_z, static_cast<int>(im_channels)));
     dim3 grid(col_width, col_height);
     im2colOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(im.data<T>(),
                                                          im_channels,
@@ -642,7 +644,9 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     }
 
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
-    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
+    dim3 threads(block_dim_x,
+                 block_dim_y,
+                 std::min(block_dim_z, static_cast<int>(im_channels)));
     dim3 grid(col_width, col_height);
     col2imOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(col.data<T>(),
                                                          im_channels,
