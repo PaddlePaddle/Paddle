@@ -38,8 +38,19 @@ class PADDLE_API TensorBase {
   TensorBase(TensorBase&&) noexcept = default;
   ~TensorBase() noexcept = default;
 
+#if defined(_MSC_VER)
+  TensorBase& operator=(const TensorBase& x) & {
+    tensor_ = x.tensor_;
+    return *this;
+  };
+  TensorBase& operator=(TensorBase&& x) & noexcept {
+    tensor_ = std::move(x.tensor_);
+    return *this;
+  }
+#else
   TensorBase& operator=(const TensorBase& x) & = default;
   TensorBase& operator=(TensorBase&& x) & noexcept = default;
+#endif
 
   TensorBase& operator=(const TensorBase&) && = delete;
   TensorBase& operator=(TensorBase&&) && noexcept = delete;
@@ -220,8 +231,9 @@ class PADDLE_API TensorBase {
   template <typename T, size_t N>
   TensorAccessor<T, N> accessor() && = delete;
 
-  PaddleTensor _PD_GetInner() const { return tensor_; }
-  PaddleTensor& _PD_GetInner() { return tensor_; }
+  const PaddleTensor& _PD_GetInner() const& { return tensor_; }
+  PaddleTensor& _PD_GetInner() & { return tensor_; }
+  PaddleTensor&& _PD_GetInner() && { return std::move(tensor_); }
 
  protected:
   PaddleTensor tensor_;

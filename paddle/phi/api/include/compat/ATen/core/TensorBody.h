@@ -47,7 +47,7 @@ class Tensor : public TensorBase {
     return *this;
   }
   Tensor& operator=(TensorBase&& x) & noexcept {
-    tensor_ = std::move(x._PD_GetInner());
+    tensor_ = std::move(x)._PD_GetInner();
     return *this;
   }
 
