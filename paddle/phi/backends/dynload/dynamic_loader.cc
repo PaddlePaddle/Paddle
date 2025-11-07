@@ -1016,6 +1016,7 @@ void* GetMAGMADsoHandle() {
 #if defined(PADDLE_WITH_MAGMA)
   return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.so");
 #endif
+  return nullptr;
 }
 
 void* GetOpDsoHandle(const std::string& dso_name) {
