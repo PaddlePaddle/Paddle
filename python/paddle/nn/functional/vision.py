@@ -100,6 +100,11 @@ def affine_grid(
             False  # ROCM platform do not have MIOPEN kernel for affine_grid
         )
 
+    if paddle.get_flags(["FLAGS_torch_compatible_kernel"]).get(
+        "FLAGS_torch_compatible_kernel", False
+    ):
+        use_cudnn = False
+
     if in_dynamic_mode():
         _out_shape = (
             out_shape.tolist() if isinstance(out_shape, Variable) else out_shape

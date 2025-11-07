@@ -25,6 +25,25 @@ class Tensor : public TensorBase {
   Tensor() = default;
   Tensor(const PaddleTensor& tensor) : TensorBase(tensor){};  // NOLINT
 
+  // Implicitly move-constructible from TensorBase, but must be explicit to
+  // increase refcount
+  explicit Tensor(const TensorBase& base) : TensorBase(base) {}  // NOLINT
+  /*implicit*/ Tensor(TensorBase&& base)                         // NOLINT
+      : TensorBase(std::move(base)) {}
+
+  // TODO(dev): Implement assignment operators
+  // Tensor& operator=(const Tensor& x) & noexcept {
+  //   return operator=(static_cast<const TensorBase&>(x));
+  // }
+  // Tensor& operator=(Tensor&& x) & noexcept {
+  //   return operator=(static_cast<TensorBase&&>(x));
+  // }
+
+  Tensor& operator=(const Scalar& v) && { return fill_(v); }
+  // TODO(dev): Implement assignment operators
+  // Tensor& operator=(const Tensor& rhs) && { return copy_(rhs); }
+  // Tensor& operator=(Tensor&& rhs) && { return copy_(rhs); }
+
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
   T* data_ptr() const {
@@ -56,6 +75,23 @@ class Tensor : public TensorBase {
 
   c10::IntArrayRef sizes() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
+  }
+
+  at::Tensor to(
+      at::TensorOptions options = {},
+      bool non_blocking = false,
+      bool copy = false,
+      ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
+    return TensorBase::to(options, non_blocking, copy, memory_format);
+  }
+
+  at::Tensor to(
+      at::ScalarType dtype,
+      bool non_blocking = false,
+      bool copy = false,
+      ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
+    return to(
+        at::TensorOptions().dtype(dtype), non_blocking, copy, memory_format);
   }
 
   Tensor toType(ScalarType t) const {
@@ -97,14 +133,14 @@ class Tensor : public TensorBase {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
-  const Tensor& fill_(const at::Scalar& scalar) const {
-    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), scalar);
-    return *this;
+  Tensor& fill_(const at::Scalar& value) const {
+    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), value);
+    return const_cast<at::Tensor&>(*this);
   }
 
-  const Tensor& zero_() const {
+  Tensor& zero_() const {
     paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
-    return *this;
+    return const_cast<at::Tensor&>(*this);
   }
 
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
@@ -121,6 +157,14 @@ class Tensor : public TensorBase {
       perm[i] = static_cast<int>(i);
     }
     std::swap(perm[dim0], perm[dim1]);
+    return Tensor(paddle::experimental::transpose(tensor_, perm));
+  }
+
+  at::Tensor permute(at::IntArrayRef dims) const {
+    std::vector<int> perm(dims.size());
+    for (size_t i = 0; i < dims.size(); i++) {
+      perm[i] = static_cast<int>(dims[i]);
+    }
     return Tensor(paddle::experimental::transpose(tensor_, perm));
   }
 
@@ -164,6 +208,15 @@ class Tensor : public TensorBase {
   inline Tensor clone() const {
     PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
     return Tensor(cloned_tensor);
+  }
+
+  Tensor operator[](int64_t index) const {
+    return paddle::experimental::slice(tensor_,
+                                       /*axes=*/{0},
+                                       /*starts=*/{index},
+                                       /*ends=*/{index + 1},
+                                       /*infer_flags=*/{1},
+                                       /*decrease_axis=*/{0});
   }
 
   PaddleTensor _PD_GetInner() const { return tensor_; }

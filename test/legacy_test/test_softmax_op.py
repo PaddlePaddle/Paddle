@@ -804,7 +804,7 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
     def test_static_check(self):
         with static_guard():
             for x_np, out_ref in zip(self.x_np_list, self.out_ref_list):
-                func = compat.softmax
+                func = compat.nn.functional.softmax
                 with paddle.static.program_guard(paddle.static.Program()):
                     x = paddle.static.data('X', x_np.shape, 'float32')
                     out1 = func(input=x, dim=None, _stacklevel=3)
@@ -854,7 +854,7 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
     def test_dygraph_check(self):
         paddle.disable_static(self.place)
         for x_np, out_ref in zip(self.x_np_list, self.out_ref_list):
-            func = compat.softmax
+            func = compat.nn.functional.softmax
             x = paddle.to_tensor(x_np)
             out1 = func(input=x, dim=None, _stacklevel=3)
             x = paddle.to_tensor(x_np)
@@ -964,12 +964,18 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
             paddle.static.program_guard(paddle.static.Program()),
         ):
             x = paddle.static.data('X', [2, 3], 'float32')
-            self.assertRaises(TypeError, compat.softmax, x=x, axis=-1)
-            self.assertRaises(TypeError, compat.softmax, x=x, dim=-1)
-            self.assertRaises(TypeError, compat.softmax, input=x, axis=-1)
+            self.assertRaises(
+                TypeError, compat.nn.functional.softmax, x=x, axis=-1
+            )
+            self.assertRaises(
+                TypeError, compat.nn.functional.softmax, x=x, dim=-1
+            )
+            self.assertRaises(
+                TypeError, compat.nn.functional.softmax, input=x, axis=-1
+            )
 
             if core.is_compiled_with_cuda() or is_custom_device():
-                compat.softmax(input=x, dim=-1)
+                compat.nn.functional.softmax(input=x, dim=-1)
 
 
 if __name__ == "__main__":

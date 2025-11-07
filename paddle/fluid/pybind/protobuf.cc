@@ -289,6 +289,7 @@ void BindVarDesc(pybind11::module *m) {
   g_vartype_pytype = (PyTypeObject *)vartype.ptr();  // NOLINT
   vartype.value("BOOL", pd::proto::VarType::BOOL)
       .value("UINT8", pd::proto::VarType::UINT8)
+      .value("UINT16", pd::proto::VarType::UINT16)
       .value("UINT32", pd::proto::VarType::UINT32)
       .value("UINT64", pd::proto::VarType::UINT64)
       .value("INT8", pd::proto::VarType::INT8)

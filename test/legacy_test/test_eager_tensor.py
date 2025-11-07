@@ -1346,6 +1346,20 @@ class TestEagerTensor(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
 
+    def test_tensor_dtype_compare(self):
+        a = paddle.randn([2], dtype="float32")
+        b = paddle.randn([2], dtype="float32")
+        c = paddle.randn([2], dtype="float64")
+
+        self.assertTrue(a.dtype == paddle.float32)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.dtype != paddle.float64)
+        self.assertTrue(a.dtype != c.dtype)
+        self.assertTrue(a.dtype is paddle.float32)
+        self.assertTrue(a.dtype is b.dtype)
+        self.assertTrue(a.dtype is not paddle.float64)
+        self.assertTrue(a.dtype is not c.dtype)
+
     def test___cuda_array_interface__(self):
         """test Tensor.__cuda_array_interface__"""
         with dygraph_guard():
@@ -1591,6 +1605,17 @@ class TestEagerTensor(unittest.TestCase):
         # test for float scalar but format_spec is 'd', expected to raise ValueError
         paddle_scalar = paddle.uniform([], min=-100, max=100)
         self.assertRaises(ValueError, paddle_scalar.__format__, "3d")
+
+    def test_tensor_eq_unsupported_type(self):
+        a = paddle.empty([2])
+
+        # Compare with None
+        self.assertFalse(a == None)  # noqa: E711
+        self.assertTrue(a != None)  # noqa: E711
+
+        # Compare with other obj
+        self.assertFalse(a == object())
+        self.assertTrue(a != object())
 
 
 class TestEagerTensorSetitem(unittest.TestCase):

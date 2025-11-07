@@ -1167,8 +1167,8 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
             )
     else:
         _arch_list = _arch_list.replace(' ', ';')
-        for named_arch, archval in named_arches.items():
-            _arch_list = _arch_list.replace(named_arch, archval)
+        for named_arch, archival in named_arches.items():
+            _arch_list = _arch_list.replace(named_arch, archival)
         arch_list = _arch_list.split(';')
 
     flags = []

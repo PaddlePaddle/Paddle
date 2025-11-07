@@ -29,6 +29,8 @@ from paddle.base import core
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import in_pir_mode
 
+paddle.enable_static()
+
 
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     if isinstance(out_dtype, int):
@@ -216,7 +218,7 @@ class TestFullLikeOp3(TestFullLikeOp1):
 
 
 @unittest.skipIf(
-    not (core.is_compiled_with_cuda() or is_custom_device()),
+    not (core.is_compiled_with_cuda()),
     "core is not compiled with CUDA",
 )
 class TestFullLikeOp4(unittest.TestCase):
@@ -278,7 +280,7 @@ class TestFullKernelZeroSize(unittest.TestCase):
     )
     def test_full_kernel_gpu_zero_size(self):
         paddle.disable_static()
-        paddle.set_device("gpu:0")
+        paddle.set_device(get_device_place())
         value = 5.5
         dtype = "float32"
         shape = [0, 3]
