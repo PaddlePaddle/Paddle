@@ -19,6 +19,14 @@ from op_test import OpTest, get_device_place, skip_check_grad_ci
 
 import paddle
 from paddle import base
+from paddle.base import core
+
+
+def compiled_with_cuda():
+    return (
+        paddle.device.is_compiled_with_cuda()
+        and not paddle.device.is_compiled_with_rocm()
+    )
 
 
 # cast output to complex for numpy.linalg.eig
@@ -60,6 +68,8 @@ def eig_backward(w, v, grad_w, grad_v):
 class TestEigOp(OpTest):
     def setUp(self):
         paddle.enable_static()
+        if not compiled_with_cuda():
+            paddle.device.set_device("cpu")
         self.op_type = "eig"
         self.python_api = paddle.linalg.eig
         self.__class__.op_type = self.op_type
@@ -181,7 +191,11 @@ class TestEigOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            checker=self.checker, place=get_device_place(), check_pir=True
+            checker=self.checker,
+            place=get_device_place()
+            if compiled_with_cuda()
+            else core.CPUPlace(),
+            check_pir=True,
         )
 
     def test_check_grad(self):
@@ -239,7 +253,7 @@ class TestFloat(TestEigOp):
 class TestEigStatic(TestEigOp):
     def test_check_output_with_place(self):
         paddle.enable_static()
-        place = get_device_place()
+        place = get_device_place() if compiled_with_cuda() else core.CPUPlace()
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
         with base.program_guard(base.Program(), base.Program()):
@@ -284,6 +298,8 @@ class TestEigDyGraph(unittest.TestCase):
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
 
+        if not compiled_with_cuda():
+            paddle.set_device("cpu")
         paddle.disable_static()
 
         input_tensor = paddle.to_tensor(input_np)
@@ -315,7 +331,8 @@ class TestEigDyGraph(unittest.TestCase):
     def test_check_grad(self):
         test_shape = [3, 3]
         test_type = 'float64'
-
+        if not compiled_with_cuda():
+            paddle.set_device("cpu")
         np.random.seed(1024)
         input_np = np.random.random(test_shape).astype(test_type)
         real_w, real_v = np.linalg.eig(input_np)
@@ -345,6 +362,8 @@ class TestEigDyGraph(unittest.TestCase):
 
 class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
+        if not compiled_with_cuda():
+            paddle.device.set_device("cpu")
         paddle.disable_static()
         a = np.random.random(3).astype('float32')
         x = paddle.to_tensor(a)
@@ -353,6 +372,8 @@ class TestEigWrongDimsError(unittest.TestCase):
 
 class TestEigNotSquareError(unittest.TestCase):
     def test_error(self):
+        if not compiled_with_cuda():
+            paddle.device.set_device("cpu")
         paddle.disable_static()
         a = np.random.random((1, 2, 3)).astype('float32')
         x = paddle.to_tensor(a)
@@ -361,6 +382,8 @@ class TestEigNotSquareError(unittest.TestCase):
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
     def test_error(self):
+        if not compiled_with_cuda():
+            paddle.device.set_device("cpu")
         paddle.disable_static()
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
