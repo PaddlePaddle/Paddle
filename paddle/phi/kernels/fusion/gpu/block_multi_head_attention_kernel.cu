@@ -811,8 +811,16 @@ void DispatchWithDtype(
   // VLOGMatrix(
   //     fmha_buf.data<T>(), fmha_buf.numel(), "fmha_buf", fmha_buf.numel());
   if (out_scale > 0) {
-    int m = fmha_out->dims()[0];
-    int n = fmha_out->dims()[1];
+    int64_t m = fmha_out->dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    PADDLE_ENFORCE_LE_INT_MAX(m, "m");
+
+    int64_t n = fmha_out->dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+
 #ifdef PADDLE_WITH_HIP
     dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
     dim3 block(64, 8);

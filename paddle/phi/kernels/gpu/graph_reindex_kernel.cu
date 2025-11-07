@@ -391,7 +391,11 @@ void GraphReindexKernel(const Context& dev_ctx,
 
   // Get reindex dst edge.
   // Add support for multi-type edges reindex.
-  int num_ac_count = count.dims()[0];
+  int64_t num_ac_count = count.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(num_ac_count, "num_ac_count");
+
   int num_edge_types = num_ac_count / bs;
   thrust::device_vector<int> unique_dst_reindex(bs);
   thrust::sequence(unique_dst_reindex.begin(), unique_dst_reindex.end());

@@ -46,8 +46,16 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
                         const std::string &act_method,
                         DenseTensor *out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int rows = x.dims()[0];
-  int cols = x.dims()[1];
+  int64_t rows = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
+
+  int64_t cols = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(cols, "cols");
+
   int r = 0;
   if (bias) {
     r = baidu::xpu::api::broadcast_add<XPUType>(

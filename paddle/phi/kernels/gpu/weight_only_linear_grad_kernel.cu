@@ -49,8 +49,16 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "Currently weightonly linear grad only support per-channel mode. "));
 
-  int n = weight_scale.dims()[0];
-  int k = weight.dims()[1];
+  int64_t n = weight_scale.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+
+  int64_t k = weight.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(k, "k");
+
   dev_ctx.template Alloc<T>(x_grad);
   if (x_grad->numel() == 0 || out_grad.numel() == 0) {
     Full<T, Context>(

@@ -42,7 +42,11 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   auto handle = dev_ctx.cudnn_handle();
   auto* theta = &input;
   const T* theta_data = theta->data<T>();
-  int n = theta->dims()[0];
+  int64_t n = theta->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+
   auto& size_attr = outputShape.GetData();
   int h_size_data[4] = {0};
   h_size_data[0] = n;

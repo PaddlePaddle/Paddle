@@ -559,7 +559,11 @@ void FusedMultiTransformerOpKernel(
 
     if (time_step) {  // generation decoder stage
       if (FLAGS_fused_multi_transformer_op_use_mbfmha) {
-        int max_seq_len = cache_kv->dims()[3];
+        int64_t max_seq_len = cache_kv->dims()[3];
+        // TODO(large-tensor): downstream functors may still use int; guard
+        // until upgraded.
+        PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "max_seq_len");
+
         phi::fusion::mbfmha<T>(dev_ctx,
                                qkv_out,
                                *qkv_bias,
@@ -588,7 +592,10 @@ void FusedMultiTransformerOpKernel(
 
       } else {
         // [2, batch_size, num_head, max_seq_len, head_size]
-        int max_seq_len = cache_kv->dims()[3];
+        int64_t max_seq_len = cache_kv->dims()[3];
+        // TODO(large-tensor): downstream functors may still use int; guard
+        // until upgraded.
+        PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "max_seq_len");
 
         phi::fusion::fmha<T>(dev_ctx,
                              qkv_out,

@@ -332,7 +332,11 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   auto place = dev_ctx.GetPlace();
 
-  int batch_size = label.numel();
+  int64_t batch_size = label.numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+
   PADDLE_ENFORCE_LE(
       label.numel(),
       std::numeric_limits<int>::max(),

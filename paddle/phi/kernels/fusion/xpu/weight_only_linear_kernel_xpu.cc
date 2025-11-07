@@ -38,8 +38,16 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
   switch (x.dtype()) {
     case phi::DataType::FLOAT16: {
       using XPUType = typename XPUTypeTrait<phi::float16>::Type;
-      int n = weight.dims()[0];
-      int k = weight.dims()[1];
+      int64_t n = weight.dims()[0];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+      PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+
+      int64_t k = weight.dims()[1];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+      PADDLE_ENFORCE_LE_INT_MAX(k, "k");
+
       int m = x.numel() / k;
       DenseTensor max_value;
       max_value.Resize(weight_scale.dims());

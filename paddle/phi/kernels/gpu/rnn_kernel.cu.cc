@@ -236,9 +236,20 @@ void RnnKernel(const Context &dev_ctx,
 
   auto handle = dev_ctx.cudnn_handle();
 
-  int seq_length = x.dims()[0];
-  int batch_size = x.dims()[1];
-  int input_size_local = x.dims()[2];
+  int64_t seq_length = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(seq_length, "seq_length");
+
+  int64_t batch_size = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+
+  int64_t input_size_local = x.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(input_size_local, "input_size_local");
 
   size_t workspace_size;
   size_t reserve_size;

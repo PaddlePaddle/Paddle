@@ -135,12 +135,35 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
       (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
   int input_width =
       (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
-  int filter_depth = col->dims()[1];
-  int filter_height = col->dims()[2];
-  int filter_width = col->dims()[3];
-  int output_depth = col->dims()[4];
-  int output_height = col->dims()[5];
-  int output_width = col->dims()[6];
+  int64_t filter_depth = col->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(filter_depth, "filter_depth");
+
+  int64_t filter_height = col->dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(filter_height, "filter_height");
+
+  int64_t filter_width = col->dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(filter_width, "filter_width");
+
+  int64_t output_depth = col->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(output_depth, "output_depth");
+
+  int64_t output_height = col->dims()[5];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(output_height, "output_height");
+
+  int64_t output_width = col->dims()[6];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(output_width, "output_width");
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
@@ -344,12 +367,35 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
       (data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
   int input_width =
       (data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
-  int filter_depth = col.dims()[1];
-  int filter_height = col.dims()[2];
-  int filter_width = col.dims()[3];
-  int output_depth = col.dims()[4];
-  int output_height = col.dims()[5];
-  int output_width = col.dims()[6];
+  int64_t filter_depth = col.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(filter_depth, "filter_depth");
+
+  int64_t filter_height = col.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(filter_height, "filter_height");
+
+  int64_t filter_width = col.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(filter_width, "filter_width");
+
+  int64_t output_depth = col.dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(output_depth, "output_depth");
+
+  int64_t output_height = col.dims()[5];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(output_height, "output_height");
+
+  int64_t output_width = col.dims()[6];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(output_width, "output_width");
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];

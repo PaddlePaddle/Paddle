@@ -387,8 +387,15 @@ void SvdKernel(const Context& dev_ctx,
     batch_count *= dims[i];
   }
   int rank = dims.size();
-  int m = dims[rank - 2];
-  int n = dims[rank - 1];
+  int64_t m = dims[rank - 2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(m, "m");
+
+  int64_t n = dims[rank - 1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
 
   auto* u_data = dev_ctx.template Alloc<T>(U);
   auto* vh_data = dev_ctx.template Alloc<T>(VH);

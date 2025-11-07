@@ -66,9 +66,21 @@ void CrossAttentionXPUKernelImpl(
     fc_bias_data.emplace_back(fc_bias[i]->data<float>());
   }
 
-  int batch = input_q.dims()[0];
-  int max_q_len = input_q.dims()[1];
-  int max_kv_len = input_kv.dims()[1];
+  int64_t batch = input_q.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(batch, "batch");
+
+  int64_t max_q_len = input_q.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(max_q_len, "max_q_len");
+
+  int64_t max_kv_len = input_kv.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  PADDLE_ENFORCE_LE_INT_MAX(max_kv_len, "max_kv_len");
+
   int max_seq_len = std::max(max_q_len, max_kv_len);
   int qkv_shape = 0;  // B x L x H x D
   int hidden_dim = head_num * head_dim;
