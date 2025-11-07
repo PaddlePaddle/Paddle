@@ -19,15 +19,13 @@ import numpy as np
 import paddle
 
 
-class TestEigAPIError(unittest.TestCase):
+class TestEigAPI0Size(unittest.TestCase):
     def test_errors(self):
-        # The size of input in Eig should not be 0.
-        def test_0_size():
-            array = np.array([], dtype=np.float32)
-            x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-            paddle.linalg.eig(x)
-
-        self.assertRaises(ValueError, test_0_size)
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+        w, v = paddle.linalg.eig(x)
+        self.assertEqual(w.shape, [0])
+        self.assertEqual(v.shape, [0, 0])
 
 
 if __name__ == '__main__':
