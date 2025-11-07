@@ -428,15 +428,9 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
-        recompute_scale_factor (bool, optional):  Whether to recompute the scaling factor for interpolation calculation.
-             When set to `True`, the `scale_factor` parameter must be provided, and the function will use it along with
-             the input tensor shape to calculate the output tensor shape, then recalculate the scaling factor based on
-             the output and input tensor shapes. This parameter is particularly useful when `scale_factor` is a floating-point
-             value. When set to `False`, either `size` or `scale_factor` will be used directly for interpolation without
-             recalculation. Default: None.
-        antialias (bool, optional): Flag to apply anti-aliasing. Default: False. Using anti-alias
-             option together with ``align_corners=False``, interpolation result would match PIL
-             result for downsampling operation. Supported modes: ``'bilinear'``, ``'bicubic'``.
+        antialias(bool) : Flag to apply anti-aliasing. Default: False. Using anti-alias option together with align_corners=False,
+                          interpolation result would match Pillow result for downsampling operation.
+                          Supported modes: 'bilinear', 'bicubic'.
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
@@ -450,6 +444,12 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
              When it is `"NCHW"`, the data should be stored in the order of:
              `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
              data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        recompute_scale_factor (bool, optional):  Whether to recompute the scaling factor for interpolation calculation.
+             When set to `True`, the `scale_factor` parameter must be provided, and the function will use it along with
+             the input tensor shape to calculate the output tensor shape, then recalculate the scaling factor based on
+             the output and input tensor shapes. This parameter is particularly useful when `scale_factor` is a floating-point
+             value. When set to `False`, either `size` or `scale_factor` will be used directly for interpolation without
+             recalculation. Default: None.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
@@ -490,10 +490,6 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
         for idx in range(min(len_args - 5, len(param_keys))):
             safe_set_param(param_keys[idx], args[idx + 5])
         args = args[:5]
-    if kwargs.get("antialias"):  # args[6] = antialias, and its value is True
-        raise ValueError(
-            "The argument 'antialias' cannot be set to true because this feature is not supported yet and will be added later."
-        )
 
     return _interpolate_wrapper(*args, **kwargs)
 

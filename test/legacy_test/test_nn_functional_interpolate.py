@@ -133,27 +133,6 @@ class TestInterpolateParam(unittest.TestCase):
                 size=[12, 12],
             )
 
-    def test_params_5(self):
-        """test anti-aliasing not support"""
-        with self.assertRaises(ValueError):
-            out = paddle.nn.functional.interpolate(
-                self.input_data,  # input
-                None,  # size
-                [2, 1],  # scale_factor
-                'bilinear',  # mode
-                True,  # align_corners
-                True,  # recompute_scale_factor
-                True,  # antialias
-            )
-        with self.assertRaises(ValueError):
-            out = paddle.nn.functional.interpolate(
-                self.input_data,  # input
-                None,  # size
-                [2, 1],  # scale_factor
-                'bilinear',  # mode
-                antialias=True,
-            )
-
 
 if __name__ == '__main__':
     unittest.main()
