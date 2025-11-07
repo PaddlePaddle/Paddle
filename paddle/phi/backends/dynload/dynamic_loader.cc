@@ -40,7 +40,6 @@ COMMON_DECLARE_string(cupti_dir);
 COMMON_DECLARE_string(tensorrt_dir);
 COMMON_DECLARE_string(mklml_dir);
 COMMON_DECLARE_string(lapack_dir);
-COMMON_DECLARE_string(magma_dir);
 COMMON_DECLARE_string(mkl_dir);
 COMMON_DECLARE_string(op_dir);
 COMMON_DECLARE_string(cusparselt_dir);
@@ -48,6 +47,9 @@ COMMON_DECLARE_string(curand_dir);
 COMMON_DECLARE_string(cusolver_dir);
 COMMON_DECLARE_string(cusparse_dir);
 COMMON_DECLARE_string(win_cuda_bin_dir);
+#ifdef PADDLE_WITH_MAGMA
+COMMON_DECLARE_string(magma_dir);
+#endif
 
 #ifndef CUDA_LIB_NAME
 #define CUDA_LIB_NAME "libcuda.so"
