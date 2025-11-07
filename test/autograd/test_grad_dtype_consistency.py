@@ -140,6 +140,21 @@ class TestGradientDtypeConsistency(unittest.TestCase):
                     grad_dtype=dtype,
                 )
 
+    def test_add_with_middle_grad_change(self):
+        """Test add with middle gradient change"""
+        x_fp32 = paddle.randn([10, 10], dtype=paddle.float32)
+        y_fp16 = paddle.randn([10, 10], dtype=paddle.float16)
+        z_fp16 = paddle.randn([10, 10], dtype=paddle.float16)
+        x_fp32.stop_gradient = False
+        y_fp16.stop_gradient = False
+        z_fp16.stop_gradient = False
+
+        self._test_op_with_backward(
+            lambda a, b, c: paddle.add(a, paddle.add(b, c)),
+            [x_fp32, y_fp16, z_fp16],
+            [10, 10],
+        )
+
     # ==================== Test Matmul Operation ====================
 
     def test_matmul_with_different_grad_dtype(self):
