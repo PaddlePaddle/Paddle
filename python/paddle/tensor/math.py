@@ -2875,11 +2875,11 @@ def outer(
     xshape = x.shape
     yshape = y.shape
     if math.prod(xshape) == 0:  # If the size is 0
-        nx = x.reshape((0, 0))
+        nx = x.reshape((0, 1))
     else:
         nx = x.reshape((-1, 1))
     if math.prod(yshape) == 0:  # If the size is 0
-        ny = y.reshape((0, 0))
+        ny = y.reshape((1, 0))
     else:
         ny = y.reshape((1, -1))
 
@@ -2955,7 +2955,7 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
     correct_name="paddle.compat.max",
-    url_suffix="torch/torch.max",
+    url_suffix="torch.max",
 )
 def max(
     x: Tensor,
@@ -3120,7 +3120,7 @@ def max(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
     correct_name="paddle.compat.min",
-    url_suffix="torch/torch.min",
+    url_suffix="torch.min",
 )
 def min(
     x: Tensor,

@@ -854,6 +854,53 @@ class TestLogSigmoidAPI(unittest.TestCase):
             F.log_sigmoid(x_fp16)
 
 
+class TestLogSigmoidOutAndParaDecorator(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.apis = [
+            paddle.nn.functional.log_sigmoid,
+            paddle.nn.functional.logsigmoid,
+        ]
+        self.shape = [3, 4, 5]
+        self.input_np = np.random.random(self.shape).astype('float32')
+
+    def do_test(self, api, test_type):
+        self.test_types = [
+            "decorator1",
+        ]
+        x = paddle.to_tensor(self.input_np, stop_gradient=False)
+        out = paddle.zeros(self.shape, dtype='float32')
+        out.stop_gradient = False
+        if test_type == "raw":
+            out = paddle.nn.functional.log_sigmoid(x)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == "decorator1":
+            res = api(input=x)
+            loss = res.mean()
+            loss.backward()
+            x_grad = x.grad
+            return res, x_grad
+        else:
+            raise NotImplementedError(
+                f"Test type {test_type} is not implemented."
+            )
+
+    def test_api(self):
+        out_std, x_grad_std = self.do_test(
+            paddle.nn.functional.log_sigmoid, "raw"
+        )
+        for api in self.apis:
+            for test_type in self.test_types:
+                out, x_grad = self.do_test(api, test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-20
+                )
+                np.testing.assert_allclose(
+                    x_grad.numpy(), x_grad_std.numpy(), rtol=1e-20
+                )
+
+
 class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
