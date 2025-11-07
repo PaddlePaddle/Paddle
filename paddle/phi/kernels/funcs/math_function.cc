@@ -55,6 +55,9 @@ template struct SetConstant<phi::CPUContext, int>;
 template struct SetConstant<phi::CPUContext, int64_t>;
 template struct SetConstant<phi::CPUContext, bool>;
 template struct SetConstant<phi::CPUContext, uint8_t>;
+template struct SetConstant<phi::CPUContext, uint16_t>;
+template struct SetConstant<phi::CPUContext, uint32_t>;
+template struct SetConstant<phi::CPUContext, uint64_t>;
 template struct SetConstant<phi::CPUContext, int8_t>;
 template struct SetConstant<phi::CPUContext, phi::complex64>;
 template struct SetConstant<phi::CPUContext, phi::complex128>;
@@ -88,6 +91,9 @@ template struct SetConstant<phi::XPUContext, phi::complex128>;
   template struct PADDLE_API Transpose<phi::CPUContext, bool, RANK>;           \
   template struct PADDLE_API Transpose<phi::CPUContext, int16_t, RANK>;        \
   template struct PADDLE_API Transpose<phi::CPUContext, uint8_t, RANK>;        \
+  template struct PADDLE_API Transpose<phi::CPUContext, uint16_t, RANK>;       \
+  template struct PADDLE_API Transpose<phi::CPUContext, uint32_t, RANK>;       \
+  template struct PADDLE_API Transpose<phi::CPUContext, uint64_t, RANK>;       \
   template struct PADDLE_API Transpose<phi::CPUContext, int8_t, RANK>;         \
   template struct PADDLE_API Transpose<phi::CPUContext, phi::complex64, RANK>; \
   template struct PADDLE_API Transpose<phi::CPUContext, phi::complex128, RANK>;
@@ -141,6 +147,9 @@ DEFINE_CPU_TRANS_NORMAL(int64_t);
 DEFINE_CPU_TRANS_NORMAL(bool);
 DEFINE_CPU_TRANS_NORMAL(int16_t);
 DEFINE_CPU_TRANS_NORMAL(uint8_t);
+DEFINE_CPU_TRANS_NORMAL(uint16_t);
+DEFINE_CPU_TRANS_NORMAL(uint32_t);
+DEFINE_CPU_TRANS_NORMAL(uint64_t);
 DEFINE_CPU_TRANS_NORMAL(int8_t);
 DEFINE_CPU_TRANS_NORMAL(phi::complex64);
 DEFINE_CPU_TRANS_NORMAL(phi::complex128);
