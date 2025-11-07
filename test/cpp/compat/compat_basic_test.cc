@@ -312,3 +312,31 @@ TEST(TestSize, SizeNegativeIndex) {
   ASSERT_EQ(tensor.size(-3), 3);
   ASSERT_EQ(tensor.size(-4), 2);
 }
+
+TEST(TestTensorOperators, SubScriptOperator) {
+  const int M = 3;
+  const int N = 4;
+  const int K = 5;
+
+  at::Tensor tensor = at::arange(M * N * K, at::kFloat).reshape({M, N, K});
+
+  // Check tensor[0]
+  at::Tensor tensor_0 = tensor[0];
+  for (int i = 0; i < N * K; ++i) {
+    ASSERT_EQ(tensor_0.data_ptr<float>()[i], static_cast<float>(i));
+  }
+
+  // Check tensor[1]
+  at::Tensor tensor_1 = tensor[1];
+  int offset = N * K;
+  for (int i = 0; i < N * K; ++i) {
+    ASSERT_EQ(tensor_1.data_ptr<float>()[i], static_cast<float>(i + offset));
+  }
+
+  // Check tensor[2]
+  at::Tensor tensor_2 = tensor[2];
+  offset = 2 * N * K;
+  for (int i = 0; i < N * K; ++i) {
+    ASSERT_EQ(tensor_2.data_ptr<float>()[i], static_cast<float>(i + offset));
+  }
+}

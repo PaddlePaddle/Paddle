@@ -12,10 +12,12 @@
   name : [paddle.matmul,paddle.Tensor.matmul]
   args_alias :
     use_default_mapping : True
+
 - op : multiply
   name : [paddle.multiply,paddle.Tensor.multiply]
   args_alias :
     use_default_mapping : True
+
 - op : log2
   name : [paddle.log2,paddle.Tensor.log2]
   args_alias :
@@ -88,6 +90,7 @@
   name : [paddle.all,paddle.Tensor.all]
   args_alias:
     use_default_mapping : True
+
 - op : bmm
   name : [paddle.bmm, paddle.Tensor.bmm]
   args_alias:
@@ -193,6 +196,28 @@
     func : SumPreProcess(x, axis)
   args_mapper :
     func : ArgSumMapper
+
+- op : exp
+  name : [paddle.exp, paddle.Tensor.exp]
+  args_alias:
+    use_default_mapping : True
+
+- op : expm1
+  name : [paddle.expm1, paddle.Tensor.expm1]
+  args_alias:
+    use_default_mapping : True
+
+- op : diagonal
+  name : [paddle.diagonal, paddle.Tensor.diagonal]
+  args_alias:
+    x : [input]
+    axis1 : [dim1]
+    axis2 : [dim2]
+
+- op : round
+  name : [paddle.round, paddle.Tensor.round]
+  args_alias:
+    use_default_mapping : True
 
 - op : abs
   name : [paddle.abs, paddle.Tensor.abs]
