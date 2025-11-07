@@ -88,6 +88,12 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::npy_api::NPY_INT8_;
     case phi::DataType::UINT8:
       return pybind11::detail::npy_api::NPY_UINT8_;
+    case phi::DataType::UINT16:
+      return pybind11::detail::npy_api::NPY_UINT16_;
+    case phi::DataType::UINT32:
+      return pybind11::detail::npy_api::NPY_UINT32_;
+    case phi::DataType::UINT64:
+      return pybind11::detail::npy_api::NPY_UINT64_;
     case phi::DataType::INT16:
       return pybind11::detail::npy_api::NPY_INT16_;
     case phi::DataType::INT32:

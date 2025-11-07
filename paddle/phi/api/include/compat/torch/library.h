@@ -503,10 +503,7 @@ class PADDLE_API ClassRegistry {
  public:
   ClassRegistry() = default;
 
-  static ClassRegistry& instance() {
-    static ClassRegistry registry;
-    return registry;
-  }
+  static ClassRegistry& instance();
 
   void register_class(const std::string& namespace_name,
                       const std::string& class_name);
@@ -693,10 +690,7 @@ class PADDLE_API OperatorRegistry {
  public:
   OperatorRegistry() = default;
 
-  static OperatorRegistry& instance() {
-    static OperatorRegistry registry;
-    return registry;
-  }
+  static OperatorRegistry& instance();
 
   void register_schema(const std::string& qualified_name,
                        const std::string& schema);
