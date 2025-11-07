@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <complex>
+
 #include "Eigen/Core"
 #include "Eigen/LU"
 #include "paddle/phi/backends/context_pool.h"
@@ -32,7 +33,7 @@
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_MAGMA)
 #include "paddle/phi/kernels/funcs/magma/magma_function.h"
 #endif
 
@@ -41,20 +42,10 @@
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+
 #define EPSILON 1e-6
 
 namespace phi {
-
-template <class T, class Context>
-static DenseTensor Fill(const Context& dev_ctx,
-                        std::vector<int64_t> shape,
-                        T fill_value) {
-  DenseTensor ret;
-  ret.Resize(common::make_ddim(shape));
-  dev_ctx.template Alloc<T>(&ret);
-  funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
-  return ret;
-}
 
 inline int BatchCount(const DenseTensor& matrix) {
   int count = 1;
@@ -225,7 +216,7 @@ void LapackEig(DenseTensor* input,
   }
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_MAGMA)
 // -------------------------
 // GPU: Magma eig
 // -------------------------

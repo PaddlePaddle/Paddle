@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,48 +21,20 @@ set(MAGMA_INSTALL_DIR ${THIRD_PARTY_PATH}/install/magma)
 set(MAGMA_LIB_DIR ${MAGMA_INSTALL_DIR}/lib)
 
 # Note(zhouwei): magma need fortran compiler which many machines don't have, so use precompiled library.
-# use magma tag v3.10.0 on 06/28/2021 https://github.com/Reference-MAGMA/magma
+# use magma tag v2.9.0 on 07/28/2025 https://github.com/icl-utk-edu/magma/tree/v2.9.0
 if(LINUX)
   set(MAGMA_FILE
-      "magma_lnx_v2.9.0.20251105.tar.gz"
+      "magma_lnx_v2.9.0.20250728.tar.gz"
       CACHE STRING "" FORCE)
   set(MAGMA_URL
       "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
       CACHE STRING "" FORCE)
-  set(MAGMA_URL_MD5 80bf6529ee8aa5248a3c5a476f4ab5f2)
+  set(MAGMA_URL_MD5 35bb7d1d8641dc7fc3be96b02f32645b)
   set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.so")
 elseif(WIN32)
-  message(FATAL_ERROR "magma do not support windows")
-  # Refer to [magma-for-windows] http://icl.cs.utk.edu/magma-for-windows/magma/#magmae
-  set(MAGMA_FILE
-      "magma_win_v3.10.0.20210628.zip"
-      CACHE STRING "" FORCE)
-  set(MAGMA_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
-      CACHE STRING "" FORCE)
-  set(MAGMA_URL_MD5 590d080392dcd5abbd5dca767a50b63a)
-  set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.dll")
+  message("magma do not support windows yet, skip ...")
 else() # MacOS
-  message(FATAL_ERROR "magma do not support macos")
-  if(APPLE AND WITH_ARM)
-    set(MAGMA_FILE
-        "magma_mac_arm64_v0.3.26.tar.gz"
-        CACHE STRING "" FORCE)
-    set(MAGMA_URL
-        "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
-        CACHE STRING "" FORCE)
-    set(MAGMA_URL_MD5 3f6412105ae2b7465e5ee90c8673e6d4)
-    set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.dylib")
-  else()
-    set(MAGMA_FILE
-        "magma_mac_v3.10.0.20210628.tar.gz"
-        CACHE STRING "" FORCE)
-    set(MAGMA_URL
-        "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
-        CACHE STRING "" FORCE)
-    set(MAGMA_URL_MD5 427aecf8dee8523de3566ca8e47944d7)
-    set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.3.dylib")
-  endif()
+  message("magma do not support macos or other platform yet, skip ...")
 endif()
 
 function(download_magma)

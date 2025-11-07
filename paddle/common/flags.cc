@@ -1961,9 +1961,11 @@ PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",
                            "Specify path for loading liblapack.so.");  // NOLINT
 
+#ifdef PADDLE_WITH_MAGMA
 PHI_DEFINE_EXPORTED_string(magma_dir,
                            "",
                            "Specify path for loading libmagma.so.");  // NOLINT
+#endif
 
 /**
  * Apply check infer symbolic pass FLAG

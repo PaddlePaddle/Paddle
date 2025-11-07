@@ -1011,15 +1011,7 @@ void* GetLAPACKDsoHandle() {
 }
 
 void* GetMAGMADsoHandle() {
-#if defined(__APPLE__) || defined(__OSX__)
-#if defined(__arm__) || defined(__aarch64__)
-  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.dylib");
-#else
-  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.3.dylib");
-#endif
-#elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.dll");
-#else
+#if defined(PADDLE_WITH_MAGMA)
   return GetDsoHandleFromSearchPath(FLAGS_magma_dir, "libmagma.so");
 #endif
 }
