@@ -268,7 +268,7 @@ __global__ void GetSlogDetV2FromLU(const T* lu_data,
                                    T* logdet_data) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < batch_size) {
-    int offset_lu = idx * n * n;
+    auto offset_lu = idx * n * n;
     int offset_ipiv = idx * n;
     T det_val = T(1.0);
     for (int i = 0; i < n; i++) {

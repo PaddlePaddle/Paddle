@@ -190,7 +190,7 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
   int batches_per_warp = (next_pow2 <= 128) ? 2 : 1;
   constexpr int threads_per_block = 128;
 
-  int warps_per_block = (threads_per_block / warp_size);
+  auto warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
   PADDLE_ENFORCE_EQ(
       query_seq_len % batches_per_block,

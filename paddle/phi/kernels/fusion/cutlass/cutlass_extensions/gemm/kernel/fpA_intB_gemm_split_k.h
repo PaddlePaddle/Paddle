@@ -779,7 +779,7 @@ struct GemmFpAIntBSplitK {
 
     int iter_tile_first =
         reduce_tile_idx * params.block_mapping.iters_per_tile();
-    int iter_tile_last =
+    auto iter_tile_last =
         iter_tile_first + params.block_mapping.iters_per_tile() - 1;
 
     peer_idx_begin = params.block_mapping.get_sk_block_idx(iter_tile_first);

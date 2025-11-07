@@ -343,7 +343,7 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
     T *layernorm_dst) {
   int col_id = threadIdx.x;
   int row_id = blockIdx.x;
-  int idx = row_id * cols + col_id;
+  auto idx = row_id * cols + col_id;
   GPURAND(StatePhilox4_32_10_t) state;
   GPURAND(_init)(seed, idx, increment, &state);
 
@@ -579,10 +579,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
   const int warp_n = warp % WARPS_N;         // 0
   const int warp_m = warp / WARPS_N;         // 0, 1, 2, 3
 
-  const int c = warp_n * THREADS_PER_WARP + lane;  // lane
-  const int r = bidx * ROWS_PER_CTA + warp_m;      // row id
+  const auto c(warp_n * THREADS_PER_WARP + lane);
+  // lane
+  const auto r(bidx * ROWS_PER_CTA + warp_m);
+  // row id
 
-  int idx = r * ELTS_PER_ROW + c;
+  auto idx = r * ELTS_PER_ROW + c;
   GPURAND(StatePhilox4_32_10_t) state;
   if (HasDropout) {
     GPURAND(_init)(seed, idx, increment, &state);

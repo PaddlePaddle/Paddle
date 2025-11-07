@@ -109,9 +109,10 @@ void CollectFpnProposalsOpKernel(
     integral_of_all_rois[i + 1] = integral_of_all_rois[i] + all_rois;
   }
 
-  const int batch_size = (num_size == 0)
-                             ? multi_layer_rois[0]->lod().back().size() - 1
-                             : multi_rois_num[0]->numel();
+  const auto batch_size((num_size == 0)
+                            ? multi_layer_rois[0]->lod().back().size() - 1
+                            : multi_rois_num[0]->numel());
+
   // concatenate all fpn rois scores into a list
   // create a vector to store all scores
   std::vector<ScoreWithID<T>> scores_of_all_rois(

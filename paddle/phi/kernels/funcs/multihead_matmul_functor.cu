@@ -546,7 +546,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &dev_ctx,
                    seq_len * size_per_head);
 
   if (seq_len <= 1024) {
-    int grid = batch_size * head_num * seq_len;
+    auto grid = batch_size * head_num * seq_len;
     int block = seq_len;
 
     // Align block to 32, also limit seq_len to max block size.
@@ -594,7 +594,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &dev_ctx,
           qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
     }
   } else {
-    int grid = batch_size * head_num * seq_len;
+    auto grid = batch_size * head_num * seq_len;
     int block = 512;
     if (seq_len % 2 == 0) {
       if (std::is_same<T, float>::value) {
@@ -694,7 +694,7 @@ void MultiheadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
                                                T alpha,
                                                T beta) {
   auto stream = dev_ctx.stream();
-  const int tsize = batch * head_num * seq_len * head_size;
+  const auto tsize(batch * head_num * seq_len * head_size);
 
   T *qptr = tptr;
   T *kptr = qptr + tsize;

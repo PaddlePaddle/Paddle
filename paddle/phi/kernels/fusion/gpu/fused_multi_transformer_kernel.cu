@@ -208,9 +208,9 @@ void FusedMultiTransformerOpKernel(
     dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
   }
   int hidden_size = num_head * dim_head;
-  int output_size = gqa_group_size <= 0
-                        ? 3 * hidden_size
-                        : (num_head + 2 * gqa_group_size) * dim_head;
+  auto output_size = gqa_group_size <= 0
+                         ? 3 * hidden_size
+                         : (num_head + 2 * gqa_group_size) * dim_head;
   int input_size = dim_embed;
 
   // Set a flag whether need to add Matmul / Layernorm bias.

@@ -37,7 +37,7 @@ void CopyValidData(phi::DenseTensor* dst_tensor,
   T* dst_data = dst_tensor->data<T>();
 
   int seq_cpy_gap = step_width;
-  int pad_cpy_gap =
+  auto pad_cpy_gap =
       layout == kBatchLengthWidth ? step_width : seq_num * step_width;
   for (int seq_idx = 0; seq_idx < seq_num; ++seq_idx) {
     int valid_seq_len =
@@ -54,9 +54,9 @@ void CopyValidData(phi::DenseTensor* dst_tensor,
             pad_seq_len,
             valid_seq_len));
     int seq_data_offset = static_cast<int>(seq_offsets[seq_idx] * step_width);
-    int pad_data_offset = layout == kBatchLengthWidth
-                              ? seq_idx * pad_seq_len * step_width
-                              : seq_idx * step_width;
+    auto pad_data_offset = layout == kBatchLengthWidth
+                               ? seq_idx * pad_seq_len * step_width
+                               : seq_idx * step_width;
     float scale = 1.0f / static_cast<float>(valid_seq_len);
 
     for (int step_idx = 0; step_idx < valid_seq_len; ++step_idx) {

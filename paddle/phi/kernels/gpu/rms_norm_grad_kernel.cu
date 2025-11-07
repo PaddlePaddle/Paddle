@@ -59,9 +59,11 @@ void HostRMSNormGradient(const Context& dev_ctx,
     const int part_size = 16;
     const dim3 threads2(32, 4, 1);
     const dim3 blocks2((n2 + threads2.x - 1) / threads2.x, part_size, 1);
-    const int nshared2_a =
-        2 * sizeof(U) * threads2.y * threads2.y * (threads2.x + 1);
-    const int nshared2_b = threads2.x * threads2.y * sizeof(U);
+    const auto nshared2_a(2 * sizeof(U) * threads2.y * threads2.y *
+                          (threads2.x + 1));
+
+    const auto nshared2_b(threads2.x * threads2.y * sizeof(U));
+
     const int nshared2 = nshared2_a > nshared2_b ? nshared2_a : nshared2_b;
     std::vector<int64_t> shape = {part_size, n2};
     DenseTensor part_grad_gamma(
@@ -84,7 +86,8 @@ void HostRMSNormGradient(const Context& dev_ctx,
 
     const dim3 threads3(32, 8, 1);
     const dim3 blocks3((n2 + threads2.x - 1) / threads2.x, 1, 1);
-    const int nshared3 = threads3.x * threads3.y * sizeof(U);
+    const auto nshared3(threads3.x * threads3.y * sizeof(U));
+
     cuComputeGradGammaBeta<<<blocks3, threads3, nshared3, stream>>>(
         part_grad_gamma.data<U>(),
         part_grad_gamma.data<U>(), /* unused */
@@ -100,7 +103,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
   const uint64_t maxGridY = dev_ctx.GetCUDAMaxGridDimSize()[1];
   const dim3 blocks1(1, std::min((uint64_t)n1, maxGridY), 1);
   const dim3 threads1(32, 4, 1);
-  int nshared = threads1.y > 1 ? threads1.y * threads1.x * sizeof(U) : 0;
+  auto nshared = threads1.y > 1 ? threads1.y * threads1.x * sizeof(U) : 0;
 
   const V* gamma_tmp = gamma;
   cuComputeGradInput<<<blocks1, threads1, nshared, stream>>>(

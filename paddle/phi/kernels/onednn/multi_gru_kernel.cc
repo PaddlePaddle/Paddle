@@ -145,11 +145,11 @@ class MultiGRUHandler {
               layers_ * 2,
               scale_weights.size()));
 
-      const int weights_scale_mask =
+      const auto weights_scale_mask(
           0 +
           (1 << 3)  // bit, indicating the unique scales for `g` dim in `ldigo`
-          +
-          (1 << 4);  // bit, indicating the unique scales for `o` dim in `ldigo`
+          + (1 << 4));
+      // bit, indicating the unique scales for `o` dim in `ldigo`
 
       int w_scale_num = scale_weights.size();
       for (int i = 0; i < w_scale_num; ++i) {
@@ -371,7 +371,7 @@ class MultiGRUHandler {
 
       auto* weight_x_data =
           reinterpret_cast<float*>(user_memory.get_data_handle());
-      int idx = layer * 2 + (dir == R2L);
+      auto idx = layer * 2 + (dir == R2L);
       memcpy(weight_x_data,
              weights_x_[idx]->data<float>(),
              sizeof(float) * ICs[layer] * 3 * OCs[layer]);
@@ -414,7 +414,7 @@ class MultiGRUHandler {
       auto* weight_h_data =
           reinterpret_cast<float*>(user_memory.get_data_handle());
 
-      int idx = layer * 2 + (dir == R2L);
+      auto idx = layer * 2 + (dir == R2L);
       auto* user_weight_h_data = weights_h_[idx]->data<float>();
 
       auto src1_iter = user_weight_h_data;
@@ -465,7 +465,7 @@ class MultiGRUHandler {
           gru_pds_[{layer, dir}]->bias_desc(), engine_);
       auto* bias_data = reinterpret_cast<float*>(memory_p->get_data_handle());
 
-      int idx = layer * 2 + (dir == R2L);
+      auto idx = layer * 2 + (dir == R2L);
       if (!biases_.empty() && biases_[idx]) {
         const float* user_bias_data =
             biases_[idx]->data<float>();  // Bias in oneDNN is always float

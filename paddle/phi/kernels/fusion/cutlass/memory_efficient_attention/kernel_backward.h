@@ -1164,12 +1164,12 @@ struct AttentionBackwardKernel {
     }
 
     int32_t key_start = 0;
-    int32_t key_end = p.num_keys / kBlockSizeJ * kBlockSizeJ;
+    auto key_end = p.num_keys / kBlockSizeJ * kBlockSizeJ;
     for (; key_start < key_end; key_start += kBlockSizeJ) {
       output_frags.clear();
       int32_t query_start = getQueryStart(p, key_start);
-      int32_t query_end = query_start + (p.num_queries - query_start) /
-                                            kBlockSizeI * kBlockSizeI;
+      auto query_end = query_start + (p.num_queries - query_start) /
+                                         kBlockSizeI * kBlockSizeI;
       for (; query_start < query_end; query_start += kBlockSizeI) {
         processBlockIJ<true>(shared_storage,
                              output_frags,
@@ -1243,7 +1243,7 @@ struct AttentionBackwardKernel {
 
     CUTLASS_PRAGMA_UNROLL
     for (int j = 0; j < kBlockSizeJ; j += kParallelKeys) {
-      int key = key_start + j + (thread_id / kThreadsPerKey);
+      auto key = key_start + j + (thread_id / kThreadsPerKey);
       if (!skipBoundsChecks && key >= p.num_keys) {
         continue;
       }
@@ -1781,7 +1781,7 @@ struct AttentionBackwardKernel {
 
       bool isFirst = key_start == 0;
       int col_id = col / MatmulGradQ::ThreadblockShape::kN;
-      int storage_id =
+      auto storage_id =
           (col_id +
            query_start / kBlockSizeI *
                ceil_div(p.head_dim, MatmulGradQ::ThreadblockShape::kN));

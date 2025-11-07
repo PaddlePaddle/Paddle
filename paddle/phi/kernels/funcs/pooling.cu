@@ -1518,8 +1518,8 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int padding_height = paddings[1];
   const int padding_width = paddings[2];
 
-  int nthreads = batch_size * output_channels * output_depth * output_height *
-                 output_width;
+  auto nthreads = batch_size * output_channels * output_depth * output_height *
+                  output_width;
   int thread_num = 1024;
 #ifdef WITH_NV_JETSON
   thread_num = 512;

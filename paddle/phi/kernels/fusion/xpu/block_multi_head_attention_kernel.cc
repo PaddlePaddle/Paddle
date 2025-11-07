@@ -69,7 +69,7 @@ void qkv_split_rope_kernel(
   auto k_data = reinterpret_cast<XPUType*>(k_out->data<T>());
   auto v_data = reinterpret_cast<XPUType*>(v_out->data<T>());
   auto qkv_input_data = reinterpret_cast<const XPUType*>(qkv_input.data<T>());
-  int qkv_head = q_num_head + 2 * kv_num_head;
+  auto qkv_head = q_num_head + 2 * kv_num_head;
   int32_t ret;
   ret = baidu::xpu::api::split<XPUType>(xpu_ctx.x_context(),
                                         qkv_input_data,
@@ -195,7 +195,8 @@ void BlockMultiheadAttentionXPUKernel(
   const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
-  const int q_num_head = total_num_head - 2 * kv_num_head;
+  const auto q_num_head(total_num_head - 2 * kv_num_head);
+
   const int bsz = cum_offsets.dims()[0];
   const int max_block_per_seq = block_tables.dims()[1];
   const int out_row = fmha_out->dims()[0];

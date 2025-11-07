@@ -240,7 +240,7 @@ __global__ void ReduceAbsMaxKernel(const T* x,
   for (int row_idx = blockIdx.x; row_idx < rows; row_idx += gridDim.x) {
     for (int col_idx = threadIdx.x * VecSize; col_idx < cols;
          col_idx += blockDim.x * VecSize) {
-      int32_t linear_index = row_idx * cols + col_idx;
+      auto linear_index = row_idx * cols + col_idx;
       phi::Load<T, VecSize>(x + linear_index, &in_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
@@ -284,7 +284,7 @@ __global__ void QuantActKernel(const T* x,
        linear_index < elem_cnt;
        linear_index += gridDim.x * blockDim.x * VecSize) {
     int row_idx = linear_index / cols;
-    int col_idx =
+    auto col_idx =
         linear_index - row_idx * cols;  // equal to linear_index % cols
     phi::Load<T, VecSize>(x + linear_index, &in_vec);
     int32_t local_outlier_idx = outlier_idx[col_idx / 32];
@@ -353,13 +353,13 @@ __global__ void SplitKernel(const T* x,
     if (linear_idx < sub_w_elem_cnt) {
       constexpr int32_t k_permute_const = 8;
       int32_t k_mod_16 = k_id % 16;
-      int32_t temp_k_expr_1 = k_mod_16 - k_mod_16 / 8 * 8;
+      auto temp_k_expr_1 = k_mod_16 - k_mod_16 / 8 * 8;
       int32_t temp_k_expr_2 = k_mod_16 / 8;
-      int32_t permute_kk = temp_k_expr_1 + temp_k_expr_2 +
-                           (temp_k_expr_2 + 1) % 2 * k_mod_16 * 2 / 2 +
-                           temp_k_expr_1 * temp_k_expr_2 + k_id / 16 * 16;
-      int32_t permute_index = permute_kk % 64 + permute_kk / 64 * 128 +
-                              64 * (row_idx % 2) + k * 2 * (row_idx / 2);
+      auto permute_kk = temp_k_expr_1 + temp_k_expr_2 +
+                        (temp_k_expr_2 + 1) % 2 * k_mod_16 * 2 / 2 +
+                        temp_k_expr_1 * temp_k_expr_2 + k_id / 16 * 16;
+      auto permute_index = permute_kk % 64 + permute_kk / 64 * 128 +
+                           64 * (row_idx % 2) + k * 2 * (row_idx / 2);
       int8_t shifted_weight = static_cast<int8_t>(
           static_cast<int32_t>(weight[permute_index]) - 128);
       sub_weight[row_idx * kfp_num + col_idx] =
@@ -431,7 +431,7 @@ __global__ void DequantMergeKernel(const int32_t* x,
   for (int row_idx = blockIdx.x; row_idx < m; row_idx += gridDim.x) {
     for (int col_idx = threadIdx.x * VecSize; col_idx < n;
          col_idx += blockDim.x * VecSize) {
-      int linear_idx = row_idx * n + col_idx;
+      auto linear_idx = row_idx * n + col_idx;
       phi::Load(x_fp + linear_idx, &x_fp_vec);
       phi::Load(x + linear_idx, &x_vec);
 #pragma unroll

@@ -86,8 +86,9 @@ inline void ModulatedDeformableIm2colCPUKernel(
         }
         *data_col_ptr = val;
         if (data_mask_ptr) {
-          const int data_mask_hw_ptr =
-              ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
+          const auto data_mask_hw_ptr(
+              ((i * kernel_w + j) * height_col + h_col) * width_col + w_col);
+
           const T mask = data_mask_ptr[data_mask_hw_ptr];
           *data_col_ptr *= mask;
         }

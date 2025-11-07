@@ -107,7 +107,8 @@ void AddReluKernel(
     gpuStream_t stream, const int M, const int N, T* Y, const T* B, bool relu) {
   if (N % 4 == 0) {
     const int threads = 256;
-    const int num = M * N / 4;
+    const auto num(M * N / 4);
+
     const int blocks = (num + threads - 1) / threads;
     typedef typename FcTypeTraits<T>::Type trans_type;
     auto* bias_ptr_v4 = reinterpret_cast<const trans_type*>(B);
@@ -223,8 +224,10 @@ void LaunchBiasAddReluHalf2Kernel(cudaStream_t stream,
                                   const float16* B,
                                   bool relu) {
   const int threads = 256;
-  const int vec_num = rows * cols / (Half2VecSize * 2);
-  const int half2_num = rows * cols / 2;
+  const auto vec_num(rows * cols / (Half2VecSize * 2));
+
+  const auto half2_num(rows * cols / 2);
+
   const int blocks = (vec_num + threads - 1) / threads;
   // Here reinterpret_cast to half2 type.
   typedef typename FcTypeTraits<float16>::Type trans_type;
@@ -308,7 +311,8 @@ void AddReluKernel(gpuStream_t stream,
                    bool relu) {
   if (N % 4 == 0) {
     const int threads = 256;
-    const int num = M * N / 4;
+    const auto num(M * N / 4);
+
     const int blocks = (num + threads - 1) / threads;
     typedef typename FcTypeTraits<float16>::Type trans_type;
     auto* bias_ptr_v4 = reinterpret_cast<const trans_type*>(B);

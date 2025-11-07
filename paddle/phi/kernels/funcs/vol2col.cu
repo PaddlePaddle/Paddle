@@ -56,11 +56,11 @@ __global__ void vol2col(int64_t num_kernels,
     int w_out = index % output_width;
     int h_out = (index / output_width) % output_height;
     int d_out = (index / output_width / output_height) % output_detph;
-    int channel_in = index / output_width / output_height / output_detph;
-    int channel_out = channel_in * filter_depth * filter_height * filter_width;
-    int w_in = w_out * stride_width - padding_width;
-    int h_in = h_out * stride_height - padding_height;
-    int d_in = d_out * stride_depth - padding_depth;
+    auto channel_in = index / output_width / output_height / output_detph;
+    auto channel_out = channel_in * filter_depth * filter_height * filter_width;
+    auto w_in = w_out * stride_width - padding_width;
+    auto h_in = h_out * stride_height - padding_height;
+    auto d_in = d_out * stride_depth - padding_depth;
 
     data_col += ((static_cast<int64_t>(channel_out) * output_detph + d_out) *
                      output_height +
@@ -70,9 +70,9 @@ __global__ void vol2col(int64_t num_kernels,
     for (int k = 0; k < filter_depth; ++k) {
       for (int i = 0; i < filter_height; ++i) {
         for (int j = 0; j < filter_width; ++j) {
-          int d = d_in + k * dilation_d;
-          int h = h_in + i * dilation_h;
-          int w = w_in + j * dilation_w;
+          auto d = d_in + k * dilation_d;
+          auto h = h_in + i * dilation_h;
+          auto w = w_in + j * dilation_w;
           int64_t vol_idx;
           if (data_layout != DataLayout::kNHWC) {
             vol_idx =
@@ -242,11 +242,13 @@ __global__ void col2vol(int64_t num_kernels,
                         int output_width,
                         T* data_vol,
                         const DataLayout data_layout) {
-  const int d_filter_depth = dilation_d * (filter_depth - 1) + 1;
-  const int d_filter_height = dilation_h * (filter_height - 1) + 1;
-  const int d_filter_width = dilation_w * (filter_width - 1) + 1;
+  const auto d_filter_depth(dilation_d * (filter_depth - 1) + 1);
 
-  int input_channels = num_kernels / depth / height / width;
+  const auto d_filter_height(dilation_h * (filter_height - 1) + 1);
+
+  const auto d_filter_width(dilation_w * (filter_width - 1) + 1);
+
+  auto input_channels = num_kernels / depth / height / width;
   for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
@@ -264,22 +266,22 @@ __global__ void col2vol(int64_t num_kernels,
                                               : index % input_channels);
 
     // compute the start and end of the output
-    int w_col_start =
+    auto w_col_start =
         (w < d_filter_width) ? 0 : (w - d_filter_width) / stride_width + 1;
     int w_col_end = min(w / stride_width + 1, output_width);
-    int h_col_start =
+    auto h_col_start =
         (h < d_filter_height) ? 0 : (h - d_filter_height) / stride_height + 1;
     int h_col_end = min(h / stride_height + 1, output_height);
-    int d_col_start =
+    auto d_col_start =
         (d < d_filter_depth) ? 0 : (d - d_filter_depth) / stride_depth + 1;
     int d_col_end = min(d / stride_depth + 1, output_detph);
 
     for (int d_col = d_col_start; d_col < d_col_end; ++d_col) {
       for (int h_col = h_col_start; h_col < h_col_end; ++h_col) {
         for (int w_col = w_col_start; w_col < w_col_end; ++w_col) {
-          int d_off = (d - d_col * stride_depth);
-          int h_off = (h - h_col * stride_height);
-          int w_off = (w - w_col * stride_width);
+          auto d_off = (d - d_col * stride_depth);
+          auto h_off = (h - h_col * stride_height);
+          auto w_off = (w - w_col * stride_width);
           if (d_off % dilation_d == 0 && h_off % dilation_h == 0 &&
               w_off % dilation_w == 0) {
             d_off /= dilation_d;

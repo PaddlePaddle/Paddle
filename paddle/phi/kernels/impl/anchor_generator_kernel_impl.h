@@ -112,7 +112,7 @@ void AnchorGeneratorOpKernel(const Context& dev_ctx,
     var_et(0, i) = variances[i];
   }
 
-  int anchor_num = feature_height * feature_width * num_anchors;
+  auto anchor_num = feature_height * feature_width * num_anchors;
   auto var_dim = vars->dims();
   vars->Resize({anchor_num, static_cast<int>(variances.size())});
 

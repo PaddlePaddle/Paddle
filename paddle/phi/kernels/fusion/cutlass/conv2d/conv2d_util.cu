@@ -67,10 +67,10 @@ __global__ void naive_conv2d_kernel(const T *input,
                                     const T *residual,
                                     float alpha,  // for leaky_relu
                                     OpType op_type) {
-  int M = batch * oh * ow;
+  auto M = batch * oh * ow;
   int N = oc;
   int kc = ic / groups;
-  int K = kc * kh * kw;
+  auto K = kc * kh * kw;
   int m_i = threadIdx.x + blockIdx.x * blockDim.x;
   int n_i = threadIdx.y + blockIdx.y * blockDim.y;
   if (m_i >= M || n_i >= N) return;
@@ -79,23 +79,23 @@ __global__ void naive_conv2d_kernel(const T *input,
   int oh_i = (m_i % (oh * ow)) / ow;
   int ow_i = (m_i % (oh * ow)) % ow;
   int oc_i = n_i;
-  int groups_i = (oc_i / (oc / groups));
+  auto groups_i = (oc_i / (oc / groups));
 
   struct logical_coord weight_shape = {oc, kc, kh, kw};
   struct logical_coord input_shape = {batch, ic, ih, iw};
-  int out_offset = m_i * N + n_i;
+  auto out_offset = m_i * N + n_i;
   float *out_ptr = output + out_offset;
   float sum = 0.f;
 
   for (int k_i = 0; k_i < K; k_i++) {
-    int ic_i = k_i / (kh * kw) + groups_i * kc;
+    auto ic_i = k_i / (kh * kw) + groups_i * kc;
     int kh_i = (k_i % (kh * kw)) / kw;
     int kw_i = (k_i % (kh * kw)) % kw;
 
     struct logical_coord weight_index = {oc_i, k_i / (kh * kw), kh_i, kw_i};
 
-    int ih_i = oh_i * stride_h - pad_h + kh_i * dilation_h;
-    int iw_i = ow_i * stride_w - pad_w + kw_i * dilation_w;
+    auto ih_i = oh_i * stride_h - pad_h + kh_i * dilation_h;
+    auto iw_i = ow_i * stride_w - pad_w + kw_i * dilation_w;
 
     if (ih_i < 0 || ih_i >= ih) continue;
     if (iw_i < 0 || iw_i >= iw) continue;
@@ -170,7 +170,7 @@ float conv2d_diff_gpu(const ConvAllParams &params, OpType op_type, T a) {
 
   int oh = params.oh;
   int ow = params.ow;
-  int M = batch * oh * ow;
+  auto M = batch * oh * ow;
   int N = oc;
 
   constexpr int blockM = 16;
@@ -178,7 +178,7 @@ float conv2d_diff_gpu(const ConvAllParams &params, OpType op_type, T a) {
   uint3 grid = {(M + blockM - 1) / blockM, (N + blockN - 1) / blockN, 1};
   uint3 block = {blockM, blockN, 1};
 
-  int output_size = batch * oc * oh * ow;
+  auto output_size = batch * oc * oh * ow;
   T *output_from_cutlass =
       reinterpret_cast<T *>(malloc(sizeof(T) * output_size));
   cudaMemcpy(output_from_cutlass,

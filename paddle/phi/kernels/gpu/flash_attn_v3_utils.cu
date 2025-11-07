@@ -220,7 +220,7 @@ void set_params_fprop(Flash_fwd_params *params_handle,
   dynload::fa3_fwd_params_set_window_size_right(params_handle,
                                                 window_size_right);
 
-  int arch = dprops.major * 10 + dprops.minor;
+  auto arch = dprops.major * 10 + dprops.minor;
   int num_sm = dprops.multiProcessorCount - sm_margin;
 
   dynload::fa3_fwd_params_set_arch(params_handle, arch);
@@ -498,7 +498,7 @@ void set_flashmaskv2_params_fprop(Flash_fwd_params *params_handle,
   dynload::flashmaskv2_fwd_params_set_window_size_right(params_handle,
                                                         window_size_right);
 
-  int arch = dprops.major * 10 + dprops.minor;
+  auto arch = dprops.major * 10 + dprops.minor;
   int num_sm = dprops.multiProcessorCount - sm_margin;
 
   dynload::flashmaskv2_fwd_params_set_arch(params_handle, arch);

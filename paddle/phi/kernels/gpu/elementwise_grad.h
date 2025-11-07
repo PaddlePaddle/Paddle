@@ -115,7 +115,7 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
     const T *__restrict__ dout, int size, int vec_size, T *dx, T *dy) {
-  int tid = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
+  auto tid = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
   int stride = GRID_NUM_X * BLOCK_NUM_X;
   int loop = size / vec_size;
   int remainder = size % vec_size;

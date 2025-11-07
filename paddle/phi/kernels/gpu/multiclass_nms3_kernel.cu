@@ -98,7 +98,8 @@ size_t CalcSortScoresPerClassWorkspaceSize(const int num,
                                            const int num_classes,
                                            const int num_preds_per_class) {
   size_t wss[4];
-  const int array_len = num * num_classes * num_preds_per_class;
+  const auto array_len(num * num_classes * num_preds_per_class);
+
   wss[0] = array_len * sizeof(T);                  // temp scores
   wss[1] = array_len * sizeof(int);                // temp indices
   wss[2] = (num * num_classes + 1) * sizeof(int);  // offsets
@@ -180,7 +181,8 @@ __launch_bounds__(nthds_per_cta) __global__
   if (cur_idx < num_preds_per_batch) {
     const int class_idx = cur_idx / num_preds_per_class;
     for (int i = 0; i < num; i++) {
-      const int target_idx = i * num_preds_per_batch + cur_idx;
+      const auto target_idx(i * num_preds_per_batch + cur_idx);
+
       const T_SCORE score = conf_scores_gpu[target_idx];
 
       // "Clear" background labeled score and index
@@ -227,7 +229,8 @@ __launch_bounds__(nthds_per_cta) __global__
       }
 
       if ((cur_idx % num_preds_per_class) == 0) {
-        const int offset_ct = i * num_classes + cur_idx / num_preds_per_class;
+        const auto offset_ct(i * num_classes + cur_idx / num_preds_per_class);
+
         d_offsets[offset_ct] = offset_ct * num_preds_per_class;
         // set the last element in d_offset
         if (blockIdx.x == 0 && threadIdx.x == 0)
@@ -251,7 +254,8 @@ void SortScoresPerClassGPU(gpuStream_t stream,
                            const float score_shift) {
   const int num_segments = num * num_classes;
   void* temp_scores = workspace;
-  const int array_len = num * num_classes * num_preds_per_class;
+  const auto array_len(num * num_classes * num_preds_per_class);
+
   void* temp_idx = GetNextWorkspacePtr(reinterpret_cast<int8_t*>(temp_scores),
                                        array_len * sizeof(T_SCORE));
   void* d_offsets = GetNextWorkspacePtr(reinterpret_cast<int8_t*>(temp_idx),
@@ -677,7 +681,8 @@ __launch_bounds__(nthds_per_cta) __global__
        i += gridDim.x * nthds_per_cta) {
     const int imgId = i / keep_top_k;
     const int detId = i % keep_top_k;
-    const int offset = imgId * num_classes * top_k;
+    const auto offset(imgId * num_classes * top_k);
+
     const int index = indices[offset + detId];
     const T_SCORE score = scores[offset + detId];
     if (index == -1) {

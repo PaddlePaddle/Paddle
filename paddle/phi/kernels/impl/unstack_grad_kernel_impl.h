@@ -40,7 +40,7 @@ void UnStackGradKernel(const Context &dev_ctx,
   for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-  int total_num = pre * n * post;
+  auto total_num = pre * n * post;
 
   thrust::device_vector<const T *> device_x_vec(x_datas);
   auto x_data_arr = device_x_vec.data().get();

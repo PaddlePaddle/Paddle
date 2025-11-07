@@ -99,14 +99,14 @@ void compute_solve_eigen(const Context& dev_ctx,
   const auto& a_mat_dims = a.dims();
   const int a_rank = a_mat_dims.size();
   int n = a_mat_dims[a_rank - 1];
-  int a_batch_size = a_rank > 2 ? a.numel() / (n * n) : 1;
+  auto a_batch_size = a_rank > 2 ? a.numel() / (n * n) : 1;
 
   // prepare for b
   const auto& b_mat_dims = b.dims();
   const int b_rank = b_mat_dims.size();
   int b_h = n;
   int b_w = b_mat_dims[b_rank - 1];
-  int b_batch_size = b_rank > 2 ? b.numel() / (b_h * b_w) : 1;
+  auto b_batch_size = b_rank > 2 ? b.numel() / (b_h * b_w) : 1;
 
   const T* a_ptr = a.data<T>();
   const T* b_ptr = b.data<T>();

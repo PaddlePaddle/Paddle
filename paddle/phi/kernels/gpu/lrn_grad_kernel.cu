@@ -34,7 +34,8 @@ __global__ void KeCMRNormDiff(int img_size,
   if (idx < img_size) {
     const int w = idx % W;
     const int h = (idx / W) % H;
-    const int n = idx / W / H;
+    const auto n(idx / W / H);
+
     const int offset =
         (data_layout != DataLayout::kNHWC ? (n * C * H + h) * W + w
                                           : ((n * H + h) * W + w) * C);
@@ -45,8 +46,9 @@ __global__ void KeCMRNormDiff(int img_size,
     x_g += offset;
 
     const int step = H * W;
-    const int pre_pad = size - (size + 1) / 2;
-    const int post_pad = size - pre_pad - 1;
+    const auto pre_pad(size - (size + 1) / 2);
+
+    const auto post_pad(size - pre_pad - 1);
 
     int index = 0;
     T accum = 0;
@@ -88,7 +90,7 @@ void CrossMapNormalGrad(const phi::GPUContext& dev_ctx,
                         T alpha,
                         T beta,
                         const DataLayout data_layout) {
-  int img_size = N * H * W;
+  auto img_size = N * H * W;
 
   const int block_size = 1024;
   int grid_size = (img_size + block_size - 1) / block_size;

@@ -91,7 +91,7 @@ struct LRNFunctor<phi::CPUContext, T> {
       }
       for (int c = 1; c < C; ++c) {
         // copy previous scale
-        int mid_offset = i * fea_size + c * img_size;
+        auto mid_offset = i * fea_size + c * img_size;
         std::memcpy(mdata + mid_offset,
                     mdata + mid_offset - img_size,
                     img_size * sizeof(T));

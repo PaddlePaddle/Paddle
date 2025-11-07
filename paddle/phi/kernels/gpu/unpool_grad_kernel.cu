@@ -37,7 +37,7 @@ __global__ void KernelUnpool2dMaxGrad(const int64_t nthreads,
                                       T* input_grad) {
   CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
     int c = (linearIndex / input_width / input_height) % channels;
-    int n = linearIndex / input_width / input_height / channels;
+    auto n = linearIndex / input_width / input_height / channels;
     output_grad += (n * channels + c) * output_height * output_width;
     IndT maxind = indices_data[linearIndex];
     input_grad[linearIndex] = output_grad[maxind];
@@ -60,7 +60,7 @@ __global__ void KernelUnpool3dMaxGrad(const int64_t nthreads,
                                       T* input_grad) {
   CUDA_KERNEL_LOOP_TYPE(linearIndex, nthreads, int64_t) {
     int c = (linearIndex / input_depth / input_width / input_height) % channels;
-    int n = linearIndex / input_depth / input_width / input_height / channels;
+    auto n = linearIndex / input_depth / input_width / input_height / channels;
     output_grad +=
         (n * channels + c) * output_depth * output_height * output_width;
     IndT maxind = indices_data[linearIndex];

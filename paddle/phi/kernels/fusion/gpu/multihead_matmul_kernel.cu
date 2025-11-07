@@ -105,9 +105,11 @@ __global__ void TransposeQkvKernel(const int H,
 
   const int NH = N * H;
   const int NHS = NH * S;
-  const int in_offset = n * H + m * NH + s * 3 * NH + b * NHS * 3;
-  const int bias_offset = m * NH + n * H;
-  const int out_offset = s * H + n * S * H + b * NHS + m * NHS * B;
+  const auto in_offset(n * H + m * NH + s * 3 * NH + b * NHS * 3);
+
+  const auto bias_offset(m * NH + n * H);
+
+  const auto out_offset(s * H + n * S * H + b * NHS + m * NHS * B);
 
   const int i = threadIdx.x;
   output[out_offset + i] =
@@ -134,7 +136,7 @@ void TransQKVWithBias(const int batch,
                       float *output,
                       gpuStream_t stream) {
   // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
-  int scratch_size = batch * head_num * seq_len * seq_len;
+  auto scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
   // scratch % 4 == 0 to ensure the alignment
   if (head_size % 4 == 0 && scratch_size % 4 == 0) {
@@ -196,7 +198,7 @@ void TransQKVWithBias(const int batch,
                       phi::float16 *output,
                       gpuStream_t stream) {
   // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
-  int scratch_size = batch * head_num * seq_len * seq_len;
+  auto scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
   if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
@@ -302,7 +304,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
     temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
     auto *temp_qk_bias = dev_ctx.template Alloc<T>(
         &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-    int grid = batch * head_number * seq_len;
+    auto grid = batch * head_number * seq_len;
     int block = round_up(seq_len);
     broadcast<<<grid, block, 0, stream>>>(
         bias_qk_d, temp_qk_bias, seq_len, head_number);
@@ -315,14 +317,14 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
     temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
     auto *temp_qk_bias = dev_ctx.template Alloc<T>(
         &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-    int grid = batch * head_number * seq_len;
+    auto grid = batch * head_number * seq_len;
     int block = round_up(seq_len);
     broadcast_batch_head_number<<<grid, block, 0, stream>>>(
         bias_qk_d, temp_qk_bias, batch, seq_len, head_number);
     bias_qk_d = static_cast<const T *>(temp_qk_bias);
   }
   if (!bias_qk) {
-    int size = batch * head_number * seq_len * seq_len;
+    auto size = batch * head_number * seq_len * seq_len;
     temp_bias_tensor.Resize({size});
     auto *temp_qk_bias = dev_ctx.template Alloc<T>(
         &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
@@ -362,7 +364,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
 
   phi::DenseTensor multihead_temp_tensor;
   // B * head_number * S * S * 1 + B * S * 3 * N * H
-  int scratch_size = batch * head_number * seq_len * seq_len * 1;
+  auto scratch_size = batch * head_number * seq_len * seq_len * 1;
   multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});
   auto *multihead_temp_data = dev_ctx.template Alloc<T>(
       &multihead_temp_tensor, multihead_temp_tensor.numel() * sizeof(T));
@@ -408,7 +410,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
                            T(0.0));
   }
 
-  int grid = batch * head_number * seq_len;
+  auto grid = batch * head_number * seq_len;
   int block = head_size;
   transpose<T><<<grid, block, 0, stream>>>(
       tptr, output_d, batch, seq_len, head_number, head_size);

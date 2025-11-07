@@ -28,7 +28,7 @@ void FillSeqLod(int batch_size,
   for (int batch_idx = 0; batch_idx < batch_size; batch_idx++) {
     int cur_batch_seq_len = 0;
     for (int seq_idx = 0; seq_idx < max_seq_len; seq_idx++) {
-      int mask_idx = batch_idx * max_seq_len + seq_idx;
+      auto mask_idx = batch_idx * max_seq_len + seq_idx;
       if (mask[mask_idx] > 0) {
         cur_batch_seq_len++;
       } else {
@@ -47,7 +47,7 @@ void FillSeqLod<float>(int batch_size,
   for (int batch_idx = 0; batch_idx < batch_size; batch_idx++) {
     int cur_batch_seq_len = 0;
     for (int seq_idx = 0; seq_idx < max_seq_len; seq_idx++) {
-      int mask_idx = batch_idx * max_seq_len + seq_idx;
+      auto mask_idx = batch_idx * max_seq_len + seq_idx;
       if (mask[mask_idx] > 1e-7) {
         cur_batch_seq_len++;
       } else {

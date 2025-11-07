@@ -143,8 +143,8 @@ __global__ void KeBackwardLocalStats(const T *dy,
     BatchNormParamType<T> sum2 = 0.;
     auto mean = means[k];
     for (int i = threadIdx.x; i < N * M; i += blockDim.x) {
-      int id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
-                                           : i * C + k;
+      auto id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
+                                            : i * C + k;
       auto g = static_cast<BatchNormParamType<T>>(dy[id]);
       sum1 += g;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -187,8 +187,8 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
     auto mean = means[k];
     for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < N * M;
          i += gridDim.y * blockDim.y) {
-      int id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
-                                           : i * C + k;
+      auto id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
+                                            : i * C + k;
       auto g = static_cast<BatchNormParamType<T>>(dy[id]);
       sum1 += g;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -247,9 +247,10 @@ static __global__ void KeBNBackwardScaleBias(
     auto inv_var_i = inv_variance[i];
     auto mean_i = mean[i];
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int id = layout == DataLayout::kNCHW
-                         ? ((j / HxW) * C + i) * HxW + (j % HxW)
-                         : j * outer_size + i;
+      const auto id(layout == DataLayout::kNCHW
+                        ? ((j / HxW) * C + i) * HxW + (j % HxW)
+                        : j * outer_size + i);
+
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
       auto dy_i = static_cast<BatchNormParamType<T>>(dy[id]);
       ds_sum += dy_i * (x_i - mean_i);

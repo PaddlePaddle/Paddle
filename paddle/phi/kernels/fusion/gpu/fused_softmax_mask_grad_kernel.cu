@@ -65,7 +65,7 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
 
 #pragma unroll
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
-      int data_index = kOneLoadingCounts * local_idx + ii * WARP_SIZE;
+      auto data_index = kOneLoadingCounts * local_idx + ii * WARP_SIZE;
       if (data_index < batch_data) {
         load_data(temp_grad_input,
                   grad_input + i * key_seq_len + ii * warp_size);
@@ -103,7 +103,7 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
     if (i >= local_batches) break;
 #pragma unroll
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
-      int data_index = kOneLoadingCounts * local_idx + ii * warp_size;
+      auto data_index = kOneLoadingCounts * local_idx + ii * warp_size;
       if (data_index < key_seq_len) {
         // compute gradients
         T samples_out[kOneLoadingCounts];
@@ -149,7 +149,7 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
   // use 128 threads per block to maximum gpu utilization
   constexpr int threads_per_block = 128;
 
-  int warps_per_block = (threads_per_block / warp_size);
+  auto warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
   int64_t blocks = batch_count / batches_per_block;
   dim3 threads(warp_size, warps_per_block, 1);

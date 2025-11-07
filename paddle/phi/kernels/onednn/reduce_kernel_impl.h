@@ -30,7 +30,7 @@ inline std::vector<int64_t> CalculateReducedDims(
   std::vector<int64_t> output_dims(common::vectorize(input->dims()));
   for (size_t i = 0; i < dims.size(); ++i) {
     // handle negative dims, f.e. "-1" means rightmost dimension
-    int index = (dims[i] >= 0) ? dims[i] : input->dims().size() + dims[i];
+    auto index = (dims[i] >= 0) ? dims[i] : input->dims().size() + dims[i];
     output_dims[index] = 1;
   }
 

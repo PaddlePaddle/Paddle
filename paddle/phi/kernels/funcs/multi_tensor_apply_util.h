@@ -89,11 +89,13 @@ static __global__ void MultiTensorApplyCUDAKernel(
     Args... args) {
   const int block_id = blockIdx.x;
   const int tensor_id = meta.tensor_ids[block_id];
-  const int chunk_id = static_cast<int>(meta.chunk_ids[block_id]) +
-                       (tensor_id == 0) * meta.start_chunk_id;
+  const auto chunk_id(static_cast<int>(meta.chunk_ids[block_id]) +
+                      (tensor_id == 0) * meta.start_chunk_id);
+
   const int prev_offset = meta.offsets[tensor_id];
   const int next_offset = meta.offsets[tensor_id + 1];
-  const int ptr_offset = prev_offset + chunk_id * chunk_size;
+  const auto ptr_offset(prev_offset + chunk_id * chunk_size);
+
   const int size = min(next_offset - ptr_offset, chunk_size);
 
   functor(

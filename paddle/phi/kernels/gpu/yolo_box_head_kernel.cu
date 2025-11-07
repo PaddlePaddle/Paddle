@@ -40,7 +40,7 @@ __global__ void YoloBoxHeadCudaKernel(const T* input,
     return;
   }
   const int grids_num = grid_size_x * grid_size_y;
-  const int bbindex = y_id * grid_size_x + x_id;
+  const auto bbindex(y_id * grid_size_x + x_id);
 
   // objectness
   output[bbindex + grids_num * (z_id * (5 + class_num) + 4)] =
@@ -81,7 +81,8 @@ void YoloBoxHeadKernel(const Context& dev_ctx,
   const T* input_data = x.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   auto stream = dev_ctx.stream();
-  const int volume = x_dims[1] * h * w;
+  const auto volume(x_dims[1] * h * w);
+
   dim3 block(16, 16, 4);
   dim3 grid((grid_size_x / block.x) + 1,
             (grid_size_y / block.y) + 1,

@@ -140,7 +140,7 @@ struct BroadcastConfig {
       return kps::details::GetXpuReadLens(numel, 8, 64);
     }
     int max_buf_len = 512;
-    int buf_len = m / 16 * 16;
+    auto buf_len = m / 16 * 16;
     if (buf_len == 0) {
       buf_len = m;
     }
@@ -408,7 +408,7 @@ __device__ __inline__ void ReadData(Ty* dst,
             break;
           }
         }
-        int fix = thread_offset + idx * stride_nx + idy * stride_ny;
+        auto fix = thread_offset + idx * stride_nx + idy * stride_ny;
         mfence_local();
         GM2LM(src + fix, in_temp, sizeof(Tx));
         dst[idy * NX + idx] = static_cast<Ty>(in_temp[0]);
@@ -1194,7 +1194,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
                                       const details::BroadcastConfig& config,
                                       int total_num_output,
                                       int read_lens) {
-  int thread_offset = block_offset + core_id() * read_lens;
+  auto thread_offset = block_offset + core_id() * read_lens;
 
   if (config.cmp_type == details::OptType::MNK_M1K) {
     ReadDataBcM1kMnk<T>(dst, src, thread_offset, config, read_lens);
@@ -1248,7 +1248,7 @@ __device__ __forceinline__ void ReadDataBc(
     const details::BroadcastConfig& config,
     int total_num_output,
     int read_lens = NX) {
-  int thread_offset = block_offset + core_id() * read_lens;
+  auto thread_offset = block_offset + core_id() * read_lens;
   __local__ T in_temp[NX];
 
   if (config.cmp_type == details::OptType::MNK_M1K) {
@@ -1286,7 +1286,7 @@ __device__ __forceinline__ void ReadDataBc(
  */
 template <typename T, int NX, int NY>
 __device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
-  int thread_offset = block_offset + core_id() * NX;
+  auto thread_offset = block_offset + core_id() * NX;
 #pragma unroll
   for (int nx = 0; nx < NX; ++nx) {
     dst[nx] = static_cast<T>(thread_offset + nx);

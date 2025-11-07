@@ -65,7 +65,7 @@ class BlockRadixTopKGlobalMemory {
     assert(k < size && k > 0);
     int target_k = k;
     UnsignedBits key_pattern = 0;
-    int digit_pos = sizeof(KeyT) * 8 - RADIX_BITS;
+    auto digit_pos = sizeof(KeyT) * 8 - RADIX_BITS;
     for (; digit_pos >= 0; digit_pos -= RADIX_BITS) {
       UpdateSharedBins(data, size, digit_pos, key_pattern);
       InclusiveScanBins();
@@ -239,7 +239,7 @@ class BlockRadixTopKRegister {
 
 #pragma unroll
     for (unsigned int KEY = 0; KEY < ITEMS_PER_THREAD; KEY++) {
-      int idx = KEY * BLOCK_SIZE + tid_;
+      auto idx = KEY * BLOCK_SIZE + tid_;
       unsigned_keys[KEY] = KeyTraits::TwiddleIn(unsigned_keys[KEY]);
       if (GREATER) unsigned_keys[KEY] = ~unsigned_keys[KEY];
       if (idx < valid_count) search_mask_ |= (1U << KEY);
@@ -248,7 +248,7 @@ class BlockRadixTopKRegister {
     int target_k = k;
     int prefix_k = 0;
 
-    for (int digit_pos = sizeof(KeyT) * 8 - RADIX_BITS; digit_pos >= 0;
+    for (auto digit_pos = sizeof(KeyT) * 8 - RADIX_BITS; digit_pos >= 0;
          digit_pos -= RADIX_BITS) {
       UpdateSharedBins(unsigned_keys, digit_pos, prefix_k);
       InclusiveScanBins();

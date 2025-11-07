@@ -529,7 +529,7 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
           count_iter_begin[bid] += 1;
           if (val < threshold_now) {
             // don't sample low score token
-            int start_id = i == 0 ? 0 : i - 1;
+            auto start_id = i == 0 ? 0 : i - 1;
             for (int j = start_id; j >= 0; j--) {
               float val_now = static_cast<float>(beam_max[j].v);
               if (val_now >= threshold_now || j == 0) {

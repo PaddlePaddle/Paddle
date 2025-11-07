@@ -501,8 +501,9 @@ struct GemmFpAIntB {
           threadblock_tile_offset.m() * Mma::Shape::kM,
           threadblock_tile_offset.n() * Mma::Shape::kN);
 
-      int block_idx = threadblock_tile_offset.m() +
-                      threadblock_tile_offset.n() * params.grid_tiled_shape.m();
+      auto block_idx =
+          threadblock_tile_offset.m() +
+          threadblock_tile_offset.n() * params.grid_tiled_shape.m();
 
       // Construct the semaphore.
       Semaphore semaphore(params.semaphore + block_idx, thread_idx);

@@ -53,7 +53,7 @@ __global__ void Levenshtein(T* dist,
                             const int start) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int offset = N;
-  int index = start + idx * offset;
+  auto index = start + idx * offset;
   int row = index / (N + 1);
   int col = index % (N + 1);
   if (row > 0 && col > 0 && row < M + 1 && col < N + 1) {
@@ -171,12 +171,12 @@ void EditDistanceKernel(const Context& dev_ctx,
 
       // Compute the elements of distance matrix in the anti-diagonal direction
       for (int64_t slice = 2; slice < m + n + 1; ++slice) {
-        int z_m = slice < m + 1 ? 0 : slice - m;
-        int z_n = slice < n + 1 ? 0 : slice - n;
-        int size = slice - (z_m + z_n) + 1;  // number of elements in the same
-                                             // anti-diagonal line to update
+        auto z_m = slice < m + 1 ? 0 : slice - m;
+        auto z_n = slice < n + 1 ? 0 : slice - n;
+        auto size = slice - (z_m + z_n) + 1;  // number of elements in the same
+                                              // anti-diagonal line to update
         // the start index at which computes from
-        int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
+        auto start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
         Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
                          PADDLE_CUDA_NUM_THREADS,
                          0,

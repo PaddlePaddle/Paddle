@@ -140,7 +140,7 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
   // elements of the first four and last four threads of each 8 consecutive
   // threads will come from row 2N and row 2N+1 respectively before
   // interleaving.
-  int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
+  auto row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
   weight += tile_id * k * 2;
   output += row_id * k;
   float scale = static_cast<float>(scale_list[row_id]);
@@ -196,7 +196,7 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
   // elements of the first four and last four threads of each 8 consecutive
   // threads will come from row 2N and row 2N+1 respectively before
   // interleaving.
-  int row_id = tile_id * 4 + ((lane_id % 8) / 2);
+  auto row_id = tile_id * 4 + ((lane_id % 8) / 2);
   weight += tile_id * k / 2 * 4;
   output += row_id * k;
   float scale = static_cast<float>(scale_list[row_id]);
@@ -254,14 +254,14 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
   // elements of the first four and last four threads of each 8 consecutive
   // threads will come from row 2N and row 2N+1 respectively before
   // interleaving.
-  int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
+  auto row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
   weight += tile_id * k * 2;
   output += row_id * k;
 
   scales += row_id;
 #pragma unroll
   for (int i = lane_id * 16; i < k * 2; i += 16 * 32) {
-    int scale_offset = i / 2 / group_size;
+    auto scale_offset = i / 2 / group_size;
     float scale = static_cast<float>(scales[scale_offset * n]);
     Load<uint8_t, 16>(&weight[i], &vec_weight);
 #pragma unroll
@@ -314,14 +314,14 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
   // elements of the first four and last four threads of each 8 consecutive
   // threads will come from row 2N and row 2N+1 respectively before
   // interleaving.
-  int row_id = tile_id * 4 + ((lane_id % 8) / 2);
+  auto row_id = tile_id * 4 + ((lane_id % 8) / 2);
   weight += tile_id * k / 2 * 4;
   output += row_id * k;
   scales += row_id;
 #pragma unroll
   for (int i = lane_id * 32; i < k * 4; i += 32 * 32) {
     Load<uint8_t, 16>(&weight[i / 2], &vec_weight);
-    int scale_offset = i / 4 / group_size;
+    auto scale_offset = i / 4 / group_size;
     float scale = static_cast<float>(scales[scale_offset * n]);
 #pragma unroll
     for (int p = 0; p < 32; p += Converter::kHalfLength) {

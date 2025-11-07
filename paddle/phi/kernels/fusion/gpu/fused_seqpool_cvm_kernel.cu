@@ -298,7 +298,7 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
         lods.push_back(i + 1);
       }
     }
-    int cur_batch_size =
+    auto cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;

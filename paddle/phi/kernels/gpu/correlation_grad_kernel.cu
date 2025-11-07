@@ -47,7 +47,7 @@ __global__ void correlation_backward_input1(int64_t n,
 
   int kernel_rad = (kernel_size - 1) / 2;
   int displacement_rad = max_displacement / stride2;
-  int displacement_size = 2 * displacement_rad + 1;
+  auto displacement_size = 2 * displacement_rad + 1;
 
   int64_t xmin = (w - kernel_rad - max_displacement) / stride1;
   int64_t ymin = (h - kernel_rad - max_displacement) / stride1;
@@ -128,7 +128,7 @@ __global__ void correlation_backward_input2(int64_t n,
 
   int kernel_rad = (kernel_size - 1) / 2;
   int displacement_rad = max_displacement / stride2;
-  int displacement_size = 2 * displacement_rad + 1;
+  auto displacement_size = 2 * displacement_rad + 1;
 
   int64_t p_input_width = input_width + 2 * pad_size;
   int64_t p_input_height = input_height + 2 * pad_size;
@@ -208,8 +208,8 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
   int H = in_dims[2];
   int W = in_dims[3];
 
-  int padded_input_height = H + 2 * pad_size;
-  int padded_input_width = W + 2 * pad_size;
+  auto padded_input_height = H + 2 * pad_size;
+  auto padded_input_width = W + 2 * pad_size;
 
   phi::DenseTensor rinput1;
   rinput1.Resize({N, padded_input_height, padded_input_width, C});

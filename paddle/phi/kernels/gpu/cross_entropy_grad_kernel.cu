@@ -47,7 +47,7 @@ __global__ void SoftLabelCrossEntropyGradientKernel(T* logit_grad,
   if (ids < static_cast<int64_t>(n) * d) {
     int idx_n = ids / d;
     int idx_remain = ids % remain;
-    int idx_loss = idx_n * remain + idx_remain;
+    auto idx_loss = idx_n * remain + idx_remain;
     logit_grad[ids] = loss_grad[idx_loss] * (-labels[ids] / logit_grad[ids]);
   }
 }
@@ -63,7 +63,7 @@ __global__ void HardLabelCrossEntropyGradientKernel(T* logit_grad,
     int idx_n = index / remain;
     int idx_remain = index % remain;
     int tmp = static_cast<int>(labels[index]);
-    int idx = idx_n * d + tmp * remain + idx_remain;
+    auto idx = idx_n * d + tmp * remain + idx_remain;
     if (ignore_index != tmp) {
       logit_grad[idx] = -static_cast<T>(1.) / logit_grad[idx];
     }
@@ -81,7 +81,7 @@ __global__ void ScaleCrossEntropyGradient(T* logit_grad,
   CUDA_KERNEL_LOOP(index, num) {
     int idx_n = index / d;
     int idx_remain = index % remain;
-    int idx_lbl = idx_n * remain + idx_remain;
+    auto idx_lbl = idx_n * remain + idx_remain;
     int k = (index % d) / remain;
     auto lbl = static_cast<int64_t>(labels[idx_lbl]);
     if (lbl == ignore_index || lbl != k) {

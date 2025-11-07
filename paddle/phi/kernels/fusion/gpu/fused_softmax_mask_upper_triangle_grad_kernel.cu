@@ -178,7 +178,7 @@ void FusedSoftmaxMaskFuseUpperTriangleGradKernel(const Context& dev_ctx,
   // use 128 threads per block to maximum gpu utilization
   constexpr int threads_per_block = 128;
 
-  int warps_per_block = (threads_per_block / warp_size);
+  auto warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
   // if we use dim3 blocks(query_seq_len,
   //             (attn_mul_batch + batches_per_block) / batches_per_block,

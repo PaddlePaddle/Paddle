@@ -135,7 +135,7 @@ void SeqCompute(const Context &dev_ctx,
   }
 
   for (int i = 0; i < N; ++i) {
-    int bid = is_reverse ? N - 1 - i : i;
+    auto bid = is_reverse ? N - 1 - i : i;
     int seq_len = static_cast<int>(x_lod[0][bid + 1] - x_lod[0][bid]);
     const T *prev_c_data = nullptr;
     const T *prev_h_data = nullptr;
@@ -309,7 +309,8 @@ void BatchCompute(const Context &dev_ctx,
   // compute kernel part
   const auto &batch_starts = batched_lod[0];
   const int max_seq_len = static_cast<int>(batch_starts.size() - 1);
-  const int offset = tstart * max_bs * D;
+  const auto offset(tstart * max_bs * D);
+
   batched_input_data = batched_input_data + offset * 4;
   batched_h_out_data = batched_h_out_data + offset;
   batched_c_out_data = batched_c_out_data + offset;

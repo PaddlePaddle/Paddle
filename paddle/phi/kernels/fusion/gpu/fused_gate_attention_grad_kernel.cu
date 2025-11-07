@@ -59,8 +59,8 @@ void ComputeMergedQKVMatmulBackward(
   dev_ctx.Alloc<T>(qkv_weight_grad, qkv_weight_grad->numel() * sizeof(T));
 
   // Gradient of GEMM(query, qkv_weight)
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = 3 * config.num_heads * config.head_dim;
+  auto m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
       phi::fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
@@ -95,7 +95,7 @@ void ComputeSeparatedQKVMatmulBackward(
   const auto *key_weight = &key_weight_in;
   dev_ctx.Alloc<T>(key_weight_grad, key_weight_grad->numel() * sizeof(T));
 
-  int kv_m = config.batch_size * config.seq_len_m * config.m_size;
+  auto kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
   auto kv_compute = phi::fusion::AttnMatMul<T>(
@@ -119,7 +119,7 @@ void ComputeSeparatedQKVMatmulBackward(
   const auto *query_weight = &query_weight_in;
   dev_ctx.Alloc<T>(query_weight_grad, query_weight_grad->numel() * sizeof(T));
 
-  int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute =
@@ -155,7 +155,7 @@ void ComputeGatingLinearBackward(
   gate_bias_out.Resize(config.gate_out_dims);
   dev_ctx.Alloc<T>(&gate_bias_out, gate_bias_out.numel() * sizeof(T));
 
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_linear =
@@ -208,7 +208,7 @@ void ComputeOutputLinearBackward(
   dev_ctx.Alloc<T>(out_linear_bias_grad,
                    out_linear_bias_grad->numel() * sizeof(T));
 
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
   auto out_linear =

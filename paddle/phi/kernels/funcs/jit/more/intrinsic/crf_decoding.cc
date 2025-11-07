@@ -83,7 +83,7 @@ void CRFDecoding(const int seq_len,
       __m256i max_j = _mm256_set1_epi32(0);
 #endif
       /* Calculate the offset of transition_weights.*/
-      int trans_offset = state_trans_base_idx * tag_num + j_offset;
+      auto trans_offset = state_trans_base_idx * tag_num + j_offset;
       for (int i = 0; i < tag_num; ++i) {
 /* Initialize the content of alpha variable with related offset.*/
 #ifdef __AVX512F__

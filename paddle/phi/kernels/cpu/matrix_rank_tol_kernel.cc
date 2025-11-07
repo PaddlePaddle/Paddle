@@ -42,7 +42,7 @@ void LapackSVD(const T* x_data,
   int mn = std::min(rows, cols);
   T* a = const_cast<T*>(x_data);  // NOLINT
   int lda = rows;
-  int lwork = 3 * mn + std::max(mx, 7 * mn);
+  auto lwork = 3 * mn + std::max(mx, 7 * mn);
   std::vector<phi::dtype::Real<T>> rwork(
       std::max(5 * mn * mn + 5 * mn, 2 * mx * mn + 2 * mn * mn + mn));
   std::vector<T> work(lwork);

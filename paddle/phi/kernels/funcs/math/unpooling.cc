@@ -120,8 +120,8 @@ class Unpool3dMaxFunctor<phi::CPUContext, T> {
     const int output_depth = static_cast<int>(output->dims()[2]);
     const int output_height = static_cast<int>(output->dims()[3]);
     const int output_width = static_cast<int>(output->dims()[4]);
-    int input_feasize = input_depth * input_height * input_width;
-    int output_feasize = output_depth * output_height * output_width;
+    auto input_feasize = input_depth * input_height * input_width;
+    auto output_feasize = output_depth * output_height * output_width;
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = context.template Alloc<T>(output);
@@ -168,8 +168,8 @@ class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
     const int output_depth = static_cast<int>(output.dims()[2]);
     const int output_height = static_cast<int>(output.dims()[3]);
     const int output_width = static_cast<int>(output.dims()[4]);
-    int input_feasize = input_depth * input_height * input_width;
-    int output_feasize = output_depth * output_height * output_width;
+    auto input_feasize = input_depth * input_height * input_width;
+    auto output_feasize = output_depth * output_height * output_width;
     const int* indices_data = indices.data<int>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = context.template Alloc<T>(input_grad);

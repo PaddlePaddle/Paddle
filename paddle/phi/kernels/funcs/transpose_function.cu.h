@@ -153,7 +153,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   if (x < in_effective_thread_num) {
     // Read a tile from input using block.
     int x_i = x / TileY;
-    int x_j = x - x_i * TileY;
+    auto x_j = x - x_i * TileY;
     IndexType input_ind =
         input_origin_block_flat_index + x_i * input_dims[2] + x_j;
     IndexType input_inc = BlockReadRows * input_dims[2];
@@ -197,7 +197,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
 
   if (x < out_effective_thread_num) {
     int x_i = x / TileX;
-    int x_j = x - x_i * TileX;
+    auto x_j = x - x_i * TileX;
     IndexType output_ind =
         output_origin_block_flat_index + x_i * output_dims[2] + x_j;
     IndexType output_inc = BlockWriteRows * output_dims[2];
@@ -473,7 +473,7 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
     // can split input properly, in another words: num_wasted_threads=0.
     int num_full_tiles = input_long_edge / proposed_tile_long_edge;
 
-    int num_wasted_threads =
+    auto num_wasted_threads =
         input_long_edge - num_full_tiles * proposed_tile_long_edge;
 
     float cost = num_wasted_threads;
@@ -951,8 +951,8 @@ struct PermTypeClassifier {
           type_ = PermuteType::kGeneralTranspose;
           num_rows_tile_ = GET_TILE_SIZE(dims[rank - 2], kTileSize);
           int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
-          int tile_size = channel * num_rows_tile_ *
-                          GET_TILE_SIZE(dims[last_idx], kTileSize);
+          auto tile_size = channel * num_rows_tile_ *
+                           GET_TILE_SIZE(dims[last_idx], kTileSize);
           vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
         } else {
           type_ = PermuteType::kGeneralPermute;
@@ -970,7 +970,7 @@ struct PermTypeClassifier {
           num_rows_tile_ = GET_TILE_SIZE(dims[0], kTileSize);
 
           int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
-          int tile_size =
+          auto tile_size =
               dims[1] * num_rows_tile_ * GET_TILE_SIZE(dims[2], kTileSize);
           vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
         } else {
@@ -1232,7 +1232,7 @@ struct TransposeDataWriter {
         OutVecT tmp_data[ReadSize];
 #pragma unroll
         for (int i = 0; i < ReadSize; ++i) {
-          int tile_tail = tile_y * ReadSize + i;
+          auto tile_tail = tile_y * ReadSize + i;
           int major_share_idx = share_tile + tile_tail;
           IndexT row_in_mat = (blockIdx.x * kColTile + tile_tail) * col_stride;
 #pragma unroll
@@ -1266,7 +1266,8 @@ struct TransposeDataWriter<T, IndexT, ReadSize, 1> {
 #pragma unroll
       for (int tile_y = threadIdx.y; tile_y < cols_range;
            tile_y += kBlockRows) {
-        const int shared_major = shared_tile + tile_y * ReadSize;
+        const auto shared_major(shared_tile + tile_y * ReadSize);
+
         const IndexT row_major = (row_tile + tile_y * ReadSize) * col_stride;
 #pragma unroll
         for (int i = 0; i < ReadSize; ++i) {

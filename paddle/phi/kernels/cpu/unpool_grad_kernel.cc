@@ -113,8 +113,8 @@ void Unpool3dGrad(const Context& dev_ctx,
   const int output_depth = static_cast<int>(out.dims()[2]);
   const int output_height = static_cast<int>(out.dims()[3]);
   const int output_width = static_cast<int>(out.dims()[4]);
-  int input_feasize = input_depth * input_height * input_width;
-  int output_feasize = output_depth * output_height * output_width;
+  auto input_feasize = input_depth * input_height * input_width;
+  auto output_feasize = output_depth * output_height * output_width;
   const IndT* indices_data = indices.data<IndT>();
 
   for (int b = 0; b < batch_size; ++b) {

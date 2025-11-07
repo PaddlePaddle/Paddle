@@ -50,8 +50,8 @@ void ApplyBroadcast(const Context& dev_ctx,
   Eigen::DSizes<Eigen::DenseIndex, OutRank> bcast_dims;
   std::vector<int64_t> new_input_dims_vec(out_rank);
   for (int i = 0; i < out_rank; i++) {
-    int in_axis = in_rank - i - 1;
-    int out_axis = out_rank - i - 1;
+    auto in_axis = in_rank - i - 1;
+    auto out_axis = out_rank - i - 1;
 
     bcast_dims[out_axis] = output_dims[out_axis];
     new_input_dims_vec[out_axis] = 1;

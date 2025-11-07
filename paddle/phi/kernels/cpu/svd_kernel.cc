@@ -82,8 +82,8 @@ void BatchSvd(const T* X,
   // NOTE: this function is row major, because this function called the lapack.
   int stride = rows * cols;
   int k = std::min(rows, cols);
-  int stride_u = full ? rows * rows : k * rows;
-  int stride_v = full ? cols * cols : k * cols;
+  auto stride_u = full ? rows * rows : k * rows;
+  auto stride_v = full ? cols * cols : k * cols;
   for (int i = 0; i < batches; ++i) {
     LapackSvd<T>(X + i * stride,
                  U + i * stride_u,

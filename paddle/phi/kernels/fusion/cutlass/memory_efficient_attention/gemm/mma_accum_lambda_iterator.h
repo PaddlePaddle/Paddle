@@ -67,19 +67,19 @@ struct AccumLambdaIteratorSm80 {
     for (int mma_m = 0; mma_m < Policy::MmaIterations::kRow; ++mma_m) {
       CUTLASS_PRAGMA_UNROLL
       for (int row = 0; row < kAccumulatorRows; ++row) {
-        int accum_m = mma_m * InstructionShape::kM * OpDelta::kRow +
-                      row * kRowsPerTile + lane_offset.row();
+        auto accum_m = mma_m * InstructionShape::kM * OpDelta::kRow +
+                       row * kRowsPerTile + lane_offset.row();
         beginRow(accum_m);
 
         CUTLASS_PRAGMA_UNROLL
         for (int mma_n = 0; mma_n < Policy::MmaIterations::kColumn; ++mma_n) {
-          int mma_accum_start = kAccumulatorRows * kElementsPerAccess *
-                                (mma_n * Policy::MmaIterations::kRow + mma_m);
+          auto mma_accum_start = kAccumulatorRows * kElementsPerAccess *
+                                 (mma_n * Policy::MmaIterations::kRow + mma_m);
           CUTLASS_PRAGMA_UNROLL
           for (int col = 0; col < kElementsPerAccess; ++col) {
-            int accum_n = mma_n * InstructionShape::kN * OpDelta::kColumn +
-                          col + lane_offset.column();
-            int idx = mma_accum_start + row * kElementsPerAccess + col;
+            auto accum_n = mma_n * InstructionShape::kN * OpDelta::kColumn +
+                           col + lane_offset.column();
+            auto idx = mma_accum_start + row * kElementsPerAccess + col;
             op(accum_m, accum_n, idx);
           }
         }
@@ -179,9 +179,9 @@ struct AccumLambdaIteratorSm70 {
       for (int mma_m = 0; mma_m < Policy::MmaIterations::kRow; ++mma_m) {
         CUTLASS_PRAGMA_UNROLL
         for (int m = 0; m < EleShapePerPartial::kRow; ++m) {
-          int accum_m = tile_m * Policy::InterleavedTile::kRow +
-                        mma_m * QuadShapePerPartialMma::kRow + m * 2 +
-                        lane_offset.row();
+          auto accum_m = tile_m * Policy::InterleavedTile::kRow +
+                         mma_m * QuadShapePerPartialMma::kRow + m * 2 +
+                         lane_offset.row();
           beginRow(accum_m);
 
           CUTLASS_PRAGMA_UNROLL
@@ -201,12 +201,12 @@ struct AccumLambdaIteratorSm70 {
                            Policy::MmaIterations::kRow +
                        mma_m) *
                       kElementsPerMma;
-                  int accum_n = tile_n * Policy::InterleavedTile::kColumn +
-                                mma_n * QuadShapePerPartialMma::kColumn +
-                                p * Policy::InterleavedTile::kColumn / 2 + n +
-                                lane_offset.column();
-                  int idx = mma_accum_start + p * kElementsPerPartial +
-                            m * EleShapePerPartial::kColumn + n;
+                  auto accum_n = tile_n * Policy::InterleavedTile::kColumn +
+                                 mma_n * QuadShapePerPartialMma::kColumn +
+                                 p * Policy::InterleavedTile::kColumn / 2 + n +
+                                 lane_offset.column();
+                  auto idx = mma_accum_start + p * kElementsPerPartial +
+                             m * EleShapePerPartial::kColumn + n;
                   op(accum_m, accum_n, idx);
                 }
               }
@@ -252,17 +252,17 @@ struct AccumLambdaIteratorSimt {
     for (int mma_m = 0; mma_m < Iterations::kRow; ++mma_m) {
       CUTLASS_PRAGMA_UNROLL
       for (int m = 0; m < Policy::LaneMmaShape::kM; ++m) {
-        int accum_m = mma_m * Delta::kRow + m + lane_offset.row();
+        auto accum_m = mma_m * Delta::kRow + m + lane_offset.row();
         beginRow(accum_m);
 
         CUTLASS_PRAGMA_UNROLL
         for (int mma_n = 0; mma_n < Iterations::kColumn; ++mma_n) {
-          int accum_n =
+          auto accum_n =
               mma_n * Policy::WarpShape::kColumn * Policy::LaneMmaShape::kN +
               lane_offset.column();
           CUTLASS_PRAGMA_UNROLL
           for (int n = 0; n < Policy::LaneMmaShape::kN; ++n) {
-            int idx =
+            auto idx =
                 n + Policy::LaneMmaShape::kN *
                         (mma_n + Iterations::kColumn *
                                      (m + mma_m * Policy::LaneMmaShape::kM));

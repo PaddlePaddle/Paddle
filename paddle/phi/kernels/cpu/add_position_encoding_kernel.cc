@@ -76,8 +76,9 @@ void AddPositionEncodingKernel(const Context& dev_ctx,
 
   const int half_size = enc_size / 2;
   for (int i = 0; i < batch_size; ++i) {
-    const int max_length =
-        x_lod.empty() ? max_seq_len : x_lod[0][i + 1] - x_lod[0][i];
+    const auto max_length(x_lod.empty() ? max_seq_len
+                                        : x_lod[0][i + 1] - x_lod[0][i]);
+
     for (int j = 0; j < max_length; ++j) {
       for (int k = 0; k < half_size; ++k) {
         const double val =

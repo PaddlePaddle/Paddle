@@ -316,7 +316,8 @@ __global__ void int8_weight_only_gemv(const T* input,
   const int warp_id = threadIdx.x / kWarpSize;
   const int lane_id = threadIdx.x % kWarpSize;
   const int tile_id = blockIdx.x * blockDim.x / kWarpSize + warp_id;
-  const int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
+  const auto row_id(tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0));
+
   weight += tile_id * k * 2;
 
   float v = 0.f, scale = static_cast<float>(scale_list[row_id]), v_bias;
@@ -922,7 +923,8 @@ __global__ void weight_only_batched_gemv_multi_warp(const T* in,
   constexpr int Num = Batch * NPerBlock;
   const int tid = threadIdx.x;
   const int bid = blockIdx.x;
-  const int n_start_id = bid * NPerBlock * Interleave;
+  const auto n_start_id(bid * NPerBlock * Interleave);
+
   using HALF_2_TYPE = typename CUDA_HALF_2_TYPE_TARIS<T>::type;
   // Calculate the n-dimensional index of the data processed by the current
   // thread in the interleave tile
@@ -1039,7 +1041,7 @@ __global__ void weight_only_batched_gemv_multi_warp(const T* in,
 #endif
       bias_v = ConvertFloatFunc<T>::apply(bias[n_start_id + nid]);
     }
-    int b = i / NPerBlock / Interleave;
+    auto b = i / NPerBlock / Interleave;
     out[b * n + n_start_id + nid] = ConvertDstFunc<T>::apply(
         GeluActivation<float, Gelu>::apply(v + bias_v));
   }
@@ -1066,7 +1068,7 @@ void select_activation_and_bias(const T* input,
   static constexpr int kInterleave = WeightLayoutDetails<QType>::kInterleave;
   dim3 grid(n / NPerBlock / kInterleave);
   dim3 block(BlockSize);
-  int size = sizeof(float) * BlockSize / 32 * Batch * NPerBlock * kInterleave;
+  auto size = sizeof(float) * BlockSize / 32 * Batch * NPerBlock * kInterleave;
   if (bias) {
     if (act_method == "gelu") {
       weight_only_batched_gemv_multi_warp<T,

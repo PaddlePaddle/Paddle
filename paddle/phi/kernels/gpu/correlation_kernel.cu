@@ -41,7 +41,7 @@ __global__ void correlation_forward(T *output,
 
   int kernel_rad = (kernel_size - 1) / 2;
   int displacement_rad = max_displacement / stride2;
-  int displacement_size = 2 * displacement_rad + 1;
+  auto displacement_size = 2 * displacement_rad + 1;
 
   int64_t global_block_id = blockIdx.x;
   int64_t hw = (int64_t)OH * OW;
@@ -130,8 +130,8 @@ void CorrelationCUDAKernel(const Context &dev_ctx,
   int H = in_dims[2];
   int W = in_dims[3];
 
-  int padded_input_height = H + 2 * pad_size;
-  int padded_input_width = W + 2 * pad_size;
+  auto padded_input_height = H + 2 * pad_size;
+  auto padded_input_width = W + 2 * pad_size;
 
   phi::DenseTensor rinput1;
   rinput1.Resize({N, padded_input_height, padded_input_width, C});

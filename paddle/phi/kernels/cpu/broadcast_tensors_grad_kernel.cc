@@ -112,8 +112,8 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
     std::vector<int> reduce_dims_vec;
     std::vector<int> reshape_dims_vec;
     for (int j = 0; j < in_rank; j++) {
-      int out_axis = out_rank - j - 1;
-      int in_axis = in_rank - j - 1;
+      auto out_axis = out_rank - j - 1;
+      auto in_axis = in_rank - j - 1;
 
       reshape_dims_vec.push_back(static_cast<int>(input_dims[j]));
       if (out_axis < 0 || output_dims[out_axis] != input_dims[in_axis]) {

@@ -65,11 +65,11 @@ class RNNONEDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
     if (is_INT8) {
       // Int8 attributes
 
-      const int weights_scale_mask =
+      const auto weights_scale_mask(
           0 +
           (1 << 3)  // bit, indicating the unique scales for `g` dim in `ldigo`
-          +
-          (1 << 4);  // bit, indicating the unique scales for `o` dim in `ldigo`
+          + (1 << 4));
+      // bit, indicating the unique scales for `o` dim in `ldigo`
 
       attr_.set_rnn_data_qparams(scale_data, shift_data);
       attr_.set_rnn_weights_qparams(weights_scale_mask, scale_weights);

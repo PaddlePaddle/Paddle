@@ -39,14 +39,14 @@ void FoldKernel(const Context& dev_ctx,
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
   const auto& x_dims = x.dims();
 
-  int output_height = (output_sizes[0] + 2 * paddings[0] -
-                       (dilations[0] * (kernel_sizes[0] - 1) + 1)) /
-                          strides[0] +
+  auto output_height = (output_sizes[0] + 2 * paddings[0] -
+                        (dilations[0] * (kernel_sizes[0] - 1) + 1)) /
+                           strides[0] +
+                       1;
+  auto output_width = (output_sizes[1] + 2 * paddings[1] -
+                       (dilations[1] * (kernel_sizes[1] - 1) + 1)) /
+                          strides[1] +
                       1;
-  int output_width = (output_sizes[1] + 2 * paddings[1] -
-                      (dilations[1] * (kernel_sizes[1] - 1) + 1)) /
-                         strides[1] +
-                     1;
 
   int64_t n_input_plane = x_dims[1];
   int64_t n_output_plane = n_input_plane / (kernel_sizes[0] * kernel_sizes[1]);

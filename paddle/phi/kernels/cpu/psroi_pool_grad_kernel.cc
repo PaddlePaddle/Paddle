@@ -79,12 +79,12 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
       int pw = i % pooled_width;
       int ph = (i / pooled_width) % pooled_height;
       int c = (i / pooled_width / pooled_height) % output_channels;
-      int n = i / pooled_width / pooled_height / output_channels;
+      auto n = i / pooled_width / pooled_height / output_channels;
 
       // set roi_batch_id
       int roi_batch_id = rois_batch_id_data[n];
-      int input_channel = (c * pooled_height + ph) * pooled_width + pw;
-      int input_offset =
+      auto input_channel = (c * pooled_height + ph) * pooled_width + pw;
+      auto input_offset =
           (roi_batch_id * input_channels + input_channel) * height * width;
       T* offset_dx_data = dx_data + input_offset;
 
@@ -124,7 +124,7 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
       T diff_val = is_empty ? 0. : dout_data[i] / bin_area;
       for (int ih = hstart; ih < hend; ++ih) {
         for (int iw = wstart; iw < wend; ++iw) {
-          int input_index = ih * width + iw;
+          auto input_index = ih * width + iw;
           offset_dx_data[input_index] += diff_val;
         }
       }

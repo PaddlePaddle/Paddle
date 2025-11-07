@@ -66,7 +66,8 @@ __global__ void Normalize(const T* x,
     }
     __syncthreads();
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      const int index = base + j * post;
+      const auto index(base + j * post);
+
       y[index] = static_cast<T>((static_cast<MT>(x[index]) / norm));
     }
   }

@@ -47,7 +47,7 @@ void RollKernel(const Context& dev_ctx,
     shifts_data[0] = (shifts_data[0] % numel + numel) % numel;
   } else {
     for (int i = 0; i < rank; i++) {
-      int dim = axis[i] >= 0 ? axis[i] : axis[i] + input_dim.size();
+      auto dim = axis[i] >= 0 ? axis[i] : axis[i] + input_dim.size();
       int64_t size = input_dim[dim];
 
       if (size != 0) {

@@ -99,7 +99,7 @@ void ResetParameterVector(const std::vector<TensorType>& raw_params_vec,
     for (int j = 0; j < layer_weight_size; j++) {
       int k = j % 4;
       const int& section = j / 4;
-      int tensor_idx = i * 2 * direction_num + section * 2 + k % 2;
+      auto tensor_idx = i * 2 * direction_num + section * 2 + k % 2;
       if (k >= 2) {
         tensor_idx += bias_start_idx;
       }
@@ -217,8 +217,8 @@ void AllocateReserveData(const Context& dev_ctx,
   int direction_num = is_bidirec ? 2 : 1;
   int time_step = input->dims()[0];
   int batch_size = input->dims()[1];
-  int block_size = direction_num * time_step * batch_size * hidden_size;
-  int hidden_data_idx = (num_layers - 1);
+  auto block_size = direction_num * time_step * batch_size * hidden_size;
+  auto hidden_data_idx = (num_layers - 1);
   if (is_lstm(mode)) {
     hidden_data_idx += (gate_num + 2) * num_layers;
   } else if (is_gru(mode)) {

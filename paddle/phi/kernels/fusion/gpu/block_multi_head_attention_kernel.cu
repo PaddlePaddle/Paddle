@@ -341,7 +341,8 @@ void DispatchWithDtype(
   const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
-  const int q_num_head = total_num_head - 2 * kv_num_head;
+  const auto q_num_head(total_num_head - 2 * kv_num_head);
+
   const int bsz = cum_offsets.dims()[0];
   const int max_block_per_seq = block_tables.dims()[1];
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num

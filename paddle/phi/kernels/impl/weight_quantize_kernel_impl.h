@@ -224,8 +224,9 @@ void add_bias_and_interleave_inplace(int8_t* tensor_ptr, size_t num_elts) {
       uint32_t transformed_register = 0;
 
       for (int dest_idx = 0; dest_idx < 8; ++dest_idx) {
-        const int src_idx =
-            dest_idx < 4 ? 2 * dest_idx : 2 * (dest_idx - 4) + 1;
+        const auto src_idx(dest_idx < 4 ? 2 * dest_idx
+                                        : 2 * (dest_idx - 4) + 1);
+
         const int src_shift = 4 * src_idx;
         const int dest_shift = 4 * dest_idx;
 
@@ -264,8 +265,9 @@ void permute_B_rows_for_mixed_gemm(int8_t* permuted_quantized_tensor,
     for (int tile_row = 0; tile_row < B_ROWS_PER_MMA; ++tile_row) {
       for (int write_col = 0; write_col < num_vec_cols; ++write_col) {
         const int write_row = base_row + tile_row;
-        const int tile_read_row = 8 * (((tile_row % ELTS_PER_REG) / 2)) +
-                                  tile_row % 2 + 2 * (tile_row / ELTS_PER_REG);
+        const auto tile_read_row(8 * (((tile_row % ELTS_PER_REG) / 2)) +
+                                 tile_row % 2 + 2 * (tile_row / ELTS_PER_REG));
+
         const int read_row = base_row + tile_read_row;
         const int read_col = write_col;
 

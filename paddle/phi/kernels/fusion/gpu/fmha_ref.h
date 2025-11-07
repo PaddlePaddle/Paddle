@@ -95,9 +95,10 @@ __global__ void TransposeRemovingPadding(const T* input_data,
     const int ori_seq_id = ori_token_idx % seq_len;
     const int ori_head_id = (linear_index % dim_embed) / head_dim;
     const int ori_head_lane = (linear_index % dim_embed) % head_dim;
-    const int ori_idx = ori_batch_id * num_head * seq_len * head_dim +
-                        ori_head_id * seq_len * head_dim +
-                        ori_seq_id * head_dim + ori_head_lane;
+    const auto ori_idx(ori_batch_id * num_head * seq_len * head_dim +
+                       ori_head_id * seq_len * head_dim +
+                       ori_seq_id * head_dim + ori_head_lane);
+
     phi::Load<T, VecSize>(&input_data[ori_idx], &src_vec);
     phi::Store<T, VecSize>(src_vec, &output_data[linear_index]);
   }
@@ -116,7 +117,8 @@ void InvokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
   // [batch_size, num_head, seq_len, head_dim] -> [token_num, num_head,
   // head_dim]
   constexpr int VEC_16B = 16;
-  const int elem_cnt = token_num * num_head * head_dim;
+  const auto elem_cnt(token_num * num_head * head_dim);
+
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(
       head_dim % PackSize,
@@ -535,7 +537,7 @@ class FMHARef {
                        phi::DenseTensor* src_mask_grad_tensor,
                        phi::DenseTensor* qkv_input_grad_tensor) {
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
-    int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
+    auto q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
     int softmax_axis = -1;
 

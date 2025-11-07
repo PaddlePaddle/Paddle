@@ -605,10 +605,10 @@ class EpiloguePipelined : public EpilogueBase<Shape_,
       for (int group = 0; group < ThreadMap::Iterations::kGroup; ++group) {
         CUTLASS_PRAGMA_UNROLL
         for (int row = 0; row < ThreadMap::Iterations::kRow; ++row) {
-          int row_offset = row * ThreadMap::Delta::kRow +
-                           group * ThreadMap::Delta::kGroup +
-                           cluster * ThreadMap::Delta::kCluster;
-          int frag_row_idx =
+          auto row_offset = row * ThreadMap::Delta::kRow +
+                            group * ThreadMap::Delta::kGroup +
+                            cluster * ThreadMap::Delta::kCluster;
+          auto frag_row_idx =
               (row + ThreadMap::Iterations::kRow *
                          (group + ThreadMap::Iterations::kGroup * cluster));
           CUTLASS_PRAGMA_UNROLL

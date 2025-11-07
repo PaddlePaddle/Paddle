@@ -79,7 +79,7 @@ struct ThreadAssigner<1> {
                                    const int cols_per_thread,
                                    int *last_tid_idx) {
     int cols_this_thread = cols_per_thread;
-    int last_tid = (cols / cols_per_thread);
+    auto last_tid = (cols / cols_per_thread);
     *last_tid_idx = last_tid;
     if (threadIdx.x == last_tid) {
       cols_this_thread = cols - cols_per_thread * last_tid;

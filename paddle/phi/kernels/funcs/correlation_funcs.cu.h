@@ -84,8 +84,8 @@ __global__ void channel_first(const T *input,
   int64_t global_idx = static_cast<int64_t>(blockIdx.x);
   int64_t stride = static_cast<int64_t>(gridDim.x);
 
-  int p_H = H + 2 * pad_size;
-  int p_W = W + 2 * pad_size;
+  auto p_H = H + 2 * pad_size;
+  auto p_W = W + 2 * pad_size;
   int64_t p_dimcw = channel * p_W;
   int64_t p_dimchw = channel * p_H * p_W;
 

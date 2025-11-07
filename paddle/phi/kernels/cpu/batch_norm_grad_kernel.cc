@@ -181,7 +181,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
     bias_arr.setZero();
   }
 
-  int scale_coeff = use_global_stats ? 1 : N * sample_size;
+  auto scale_coeff = use_global_stats ? 1 : N * sample_size;
   const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coeff;
 
   DenseTensor dy_sum;

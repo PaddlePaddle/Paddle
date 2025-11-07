@@ -49,7 +49,7 @@ __device__ __forceinline__ float GenKeyFromWeight(
     random_num2 = rng.Random64();
     seed_count++;
   } while (!random_num2);
-  int one_bit = __clzll(random_num2) + seed_count * 64;
+  auto one_bit = __clzll(random_num2) + seed_count * 64;
   u *= exp2f(-one_bit);
   float logk = (log1pf(u) / logf(2.0)) * (1 / weight);
   return logk;
@@ -261,7 +261,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     const int tx = threadIdx.x;
 #pragma unroll
     for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      int idx = BLOCK_SIZE * j + tx;
+      auto idx = BLOCK_SIZE * j + tx;
       if (idx < neighbor_count) {
         float thread_weight = edge_weight[start + idx];
         weight_keys[j] = GenKeyFromWeight(thread_weight, rng);
@@ -274,14 +274,14 @@ __launch_bounds__(BLOCK_SIZE) __global__
     BlockRadixTopKT{sort_tmp_storage}.radixTopKToStriped(
         weight_keys, neighbor_idxs, max_sample_count, valid_count);
     __syncthreads();
-    const int stride = BLOCK_SIZE * ITEMS_PER_THREAD - max_sample_count;
+    const auto stride(BLOCK_SIZE * ITEMS_PER_THREAD - max_sample_count);
 
     for (int idx_offset = ITEMS_PER_THREAD * BLOCK_SIZE;
          idx_offset < neighbor_count;
          idx_offset += stride) {
 #pragma unroll
       for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-        int local_idx = BLOCK_SIZE * j + tx - max_sample_count;
+        auto local_idx = BLOCK_SIZE * j + tx - max_sample_count;
         int target_idx = idx_offset + local_idx;
         if (local_idx >= 0 && target_idx < neighbor_count) {
           float thread_weight = edge_weight[start + target_idx];
@@ -299,7 +299,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     }
 #pragma unroll
     for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-      int idx = j * BLOCK_SIZE + tx;
+      auto idx = j * BLOCK_SIZE + tx;
       if (idx < max_sample_count) {
         sample_output[offset + idx] = in_rows[start + neighbor_idxs[j]];
         if (return_eids) {

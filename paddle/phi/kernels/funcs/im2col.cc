@@ -121,7 +121,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
         common::errors::InvalidArgument("Output_height and padding(padding_up, "
                                         "padding_down) are inconsistent."));
 
-    int channels_col = im_channels * filter_height * filter_width;
+    auto channels_col = im_channels * filter_height * filter_width;
 
     T* im_data = im->data<T>();
     const T* col_data = col.data<T>();
@@ -131,9 +131,9 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
       int h_offset = (c / filter_width) % filter_height;
       int c_im = c / (filter_width * filter_height);
       for (int h = 0; h < col_height; ++h) {
-        int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
+        auto im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
         for (int w = 0; w < col_width; ++w) {
-          int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
+          auto im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
           if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
               (im_col_idx) >= 0 && (im_col_idx) < im_width) {
             int im_offset = 0;
@@ -215,14 +215,14 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
         for (int channel = 0; channel < im_channels; ++channel) {
           for (int filter_row_idx = 0; filter_row_idx < filter_height;
                ++filter_row_idx) {
-            int im_row_offset =
+            auto im_row_offset =
                 col_row_idx * stride[0] + filter_row_idx - padding[0];
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
-              int im_col_offset =
+              auto im_col_offset =
                   col_col_idx * stride[1] + filter_col_idx - padding[1];
 
-              int col_offset =
+              auto col_offset =
                   ((((col_row_idx)*col_width + col_col_idx) * im_channels +
                     channel) *
                        filter_height +
@@ -230,8 +230,9 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                       filter_width +
                   filter_col_idx;
 
-              int im_offset = (channel * im_height + im_row_offset) * im_width +
-                              im_col_offset;
+              auto im_offset =
+                  (channel * im_height + im_row_offset) * im_width +
+                  im_col_offset;
               col_data[col_offset] =
                   (im_row_offset < 0 || im_row_offset >= im_height ||
                    im_col_offset < 0 || im_col_offset >= im_width)
@@ -300,14 +301,14 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
         for (int channel = 0; channel < im_channels; ++channel) {
           for (int filter_row_idx = 0; filter_row_idx < filter_height;
                ++filter_row_idx) {
-            int im_row_offset =
+            auto im_row_offset =
                 col_row_idx * stride[0] + filter_row_idx - padding[0];
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
-              int im_col_offset =
+              auto im_col_offset =
                   col_col_idx * stride[1] + filter_col_idx - padding[1];
 
-              int col_offset =
+              auto col_offset =
                   (((col_row_idx * col_width + col_col_idx) * im_channels +
                     channel) *
                        filter_height +
@@ -317,7 +318,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
 
               if (im_row_offset >= 0 && im_row_offset < im_height &&
                   im_col_offset >= 0 && im_col_offset < im_width) {
-                int im_offset =
+                auto im_offset =
                     (channel * im_height + im_row_offset) * im_width +
                     im_col_offset;
                 im_data[im_offset] += col_data[col_offset];

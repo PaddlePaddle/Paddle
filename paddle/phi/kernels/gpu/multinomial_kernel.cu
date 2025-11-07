@@ -70,7 +70,7 @@ __device__ int binarySearchFunctor(T* cumulative_probs_data,
   int right = num_categories;
 
   while (right - left > 0) {
-    int mid = left + (right - left) / 2;
+    auto mid = left + (right - left) / 2;
 
     T temp_prob = cumulative_probs_data[mid];
     if (temp_prob < rng_number) {

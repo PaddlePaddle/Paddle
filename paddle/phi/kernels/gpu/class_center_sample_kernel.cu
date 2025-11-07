@@ -416,7 +416,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   size_t cub_temp_storage_bytes =
       std::max(std::max(cub_sort_temp_store_size, cub_scan_temp_store_size),
                cub_sum_temp_store_size);
-  int num_temp_ele = cub_temp_storage_bytes / sizeof(T) + 1;
+  auto num_temp_ele = cub_temp_storage_bytes / sizeof(T) + 1;
   PADDLE_ENFORCE_GT(
       (4 * num_buffer_ele + 3 * (nranks + 1) + num_temp_ele),
       0,

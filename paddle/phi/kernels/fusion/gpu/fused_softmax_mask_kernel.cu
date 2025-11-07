@@ -72,8 +72,9 @@ __global__ void SoftmaxMaskFuseV1GPUKernel(const T* x_data,
   // might be many batches per warp. compute the index within the batch
   int local_idx = threadIdx.x;
 
-  int x_offset = data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
-  int mask_offset = mask_fist_idx * key_seq_len + kOneLoadingCounts * local_idx;
+  auto x_offset = data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
+  auto mask_offset =
+      mask_fist_idx * key_seq_len + kOneLoadingCounts * local_idx;
   x_data += x_offset;
   mask_data += mask_offset;
   y_data += x_offset;
@@ -89,10 +90,10 @@ __global__ void SoftmaxMaskFuseV1GPUKernel(const T* x_data,
 
 #pragma unroll
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
-      int data_index = kOneLoadingCounts * local_idx + ii * warp_size;
+      auto data_index = kOneLoadingCounts * local_idx + ii * warp_size;
 
       if (data_index < batch_data) {
-        int itr_idx = i * key_seq_len + ii * warp_size;
+        auto itr_idx = i * key_seq_len + ii * warp_size;
 
         // efficiently load data from global memory
         load_data(temp_data, x_data + itr_idx);
@@ -148,7 +149,7 @@ __global__ void SoftmaxMaskFuseV1GPUKernel(const T* x_data,
     if (i >= local_batches) break;
 #pragma unroll
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
-      int idx = kOneLoadingCounts * local_idx + ii * warp_size;
+      auto idx = kOneLoadingCounts * local_idx + ii * warp_size;
       if (idx < key_seq_len) {
 #pragma unroll
         for (int counter = 0; counter < kOneLoadingCounts; ++counter) {
@@ -234,10 +235,10 @@ __global__ void SoftmaxMaskFuseV2GPUKernel(const T* x_data,
 
 #pragma unroll
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
-      int data_index = kOneLoadingCounts * local_idx + ii * warp_size;
+      auto data_index = kOneLoadingCounts * local_idx + ii * warp_size;
 
       if (data_index < batch_data) {
-        int itr_idx = i * key_seq_len + ii * warp_size;
+        auto itr_idx = i * key_seq_len + ii * warp_size;
 
         // efficiently load data from global memory
         load_data(temp_data, x_data + itr_idx);
@@ -293,7 +294,7 @@ __global__ void SoftmaxMaskFuseV2GPUKernel(const T* x_data,
     if (i >= local_batches) break;
 #pragma unroll
     for (int ii = 0; ii < kLocalIterations; ii += kOneLoadingCounts) {
-      int idx = kOneLoadingCounts * local_idx + ii * warp_size;
+      auto idx = kOneLoadingCounts * local_idx + ii * warp_size;
       if (idx < key_seq_len) {
 #pragma unroll
         for (int counter = 0; counter < kOneLoadingCounts; ++counter) {
@@ -538,7 +539,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
   // use 128 threads per block to maximum gpu utilization
   constexpr int threads_per_block = 128;
 
-  int warps_per_block = (threads_per_block / warp_size);
+  auto warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
   PADDLE_ENFORCE_EQ(
       query_seq_len % batches_per_block,

@@ -147,7 +147,8 @@ __global__ void YoloBoxNum(const float* input,
   }
 
   const int grids_num = grid_size * grid_size;
-  const int bbindex = y_id * grid_size + x_id;
+  const auto bbindex(y_id * grid_size + x_id);
+
   float objectness = input[bbindex + grids_num * (z_id * (5 + class_num) + 4)];
   if (objectness < prob_thresh) {
     return;
@@ -178,7 +179,8 @@ __global__ void YoloTensorParseKernel(const float* input,
   const float pic_h = im_shape_data[0] / im_scale_data[0];
   const float pic_w = im_shape_data[1] / im_scale_data[1];
   const int grids_num = grid_size * grid_size;
-  const int bbindex = y_id * grid_size + x_id;
+  const auto bbindex(y_id * grid_size + x_id);
+
   float objectness = input[bbindex + grids_num * (z_id * (5 + class_num) + 4)];
   if (objectness < prob_thresh) {
     return;
@@ -434,7 +436,7 @@ void YoloBoxPostKernel(const Context& dev_ctx,
       int c = boxes_input_dims[input_id][1];
       int h = boxes_input_dims[input_id][2];
       int w = boxes_input_dims[input_id][3];
-      int ts_id = batch_id * boxes_input.size() + input_id;
+      auto ts_id = batch_id * boxes_input.size() + input_id;
       int bbox_count_max_alloc = ts_info[ts_id].bbox_count_max_alloc;
 
       YoloTensorParseCuda(
@@ -494,7 +496,7 @@ void YoloBoxPostKernel(const Context& dev_ctx,
   for (int batch_id = 0; batch_id < batch; batch_id++) {
     std::vector<Detection> bbox_det_vec;
     for (int input_id = 0; input_id < boxes_input.size(); input_id++) {
-      int ts_id = batch_id * boxes_input.size() + input_id;
+      auto ts_id = batch_id * boxes_input.size() + input_id;
       int bbox_count = ts_info[ts_id].bbox_count_host;
       if (bbox_count <= 0) {
         continue;

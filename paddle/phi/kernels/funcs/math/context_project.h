@@ -162,7 +162,7 @@ class ContextProjectFunctor {
               up_pad, static_cast<int>(lod_level_0[i + 1] - lod_level_0[i]));
 
           for (int k = 0; k < padding_rows; ++k) {
-            int padding_size =
+            auto padding_size =
                 k + context_length < up_pad ? context_length : up_pad - k;
             phi::DenseTensor out_t_sub = out_t.Slice(
                 k * context_length, k * context_length + padding_size);
@@ -176,7 +176,7 @@ class ContextProjectFunctor {
                        (sequence_height - context_start - context_length) + 1) +
               1;
           int padding_begin = std::max(0, context_start - sequence_height);
-          int padding_size =
+          auto padding_size =
               sequence_height - context_start >= context_length
                   ? 1
                   : context_length - (sequence_height - context_start);
@@ -292,7 +292,7 @@ class ContextProjectGradFunctor {
                 up_pad, static_cast<int>(lod_level_0[i + 1] - lod_level_0[i]));
 
             for (int k = 0; k < padding_rows; ++k) {
-              int padding_size =
+              auto padding_size =
                   k + context_length < up_pad ? context_length : up_pad - k;
               phi::DenseTensor out_t_sub = out_t.Slice(
                   k * context_length, k * context_length + padding_size);
@@ -309,7 +309,7 @@ class ContextProjectGradFunctor {
                     0, (sequence_height - context_start - context_length) + 1) +
                 1;
             int padding_begin = std::max(0, context_start - sequence_height);
-            int padding_size =
+            auto padding_size =
                 sequence_height - context_start >= context_length
                     ? 1
                     : context_length - (sequence_height - context_start);

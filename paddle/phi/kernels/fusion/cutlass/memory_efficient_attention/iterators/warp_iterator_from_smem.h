@@ -186,7 +186,7 @@ class WarpIteratorFromSmem {
           CUTLASS_PRAGMA_UNROLL
           for (int access_m_idx = 0; access_m_idx < kTilesPerInstruction;
                ++access_m_idx) {
-            int access_idx =
+            auto access_idx =
                 access_m_idx + kTilesPerInstruction *
                                    (inner_idx + kAccessesInner * inst_m_idx);
 

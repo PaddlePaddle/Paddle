@@ -108,7 +108,7 @@ void SeqCompute(const Context& dev_ctx,
     hidden_out_data = hidden_out_data + gate_offset;
   };
   for (int i = 0; i < N; ++i) {
-    int bid = is_reverse ? N - 1 - i : i;
+    auto bid = is_reverse ? N - 1 - i : i;
     int seq_len = static_cast<int>(x_lod[0][bid + 1] - x_lod[0][bid]);
     const T* prev_hidden_data = nullptr;
     int tstart = 0;

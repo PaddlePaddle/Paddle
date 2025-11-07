@@ -135,7 +135,7 @@ void RoiPoolKernel(const Context& dev_ctx,
           wstart = std::min(std::max(wstart + box_start_w, 0), width);
           wend = std::min(std::max(wend + box_start_w, 0), width);
 
-          const int pool_index = ph * pooled_width + pw;
+          const auto pool_index(ph * pooled_width + pw);
 
           // Define an empty pooling region to be zero
           bool is_empty = (hend <= hstart) || (wend <= wstart);
@@ -145,7 +145,8 @@ void RoiPoolKernel(const Context& dev_ctx,
 
           for (int h = hstart; h < hend; ++h) {
             for (int w = wstart; w < wend; ++w) {
-              const int index = h * width + w;
+              const auto index(h * width + w);
+
               if (batch_data[index] > output_data[pool_index]) {
                 output_data[pool_index] = batch_data[index];
                 arg_max_data[pool_index] = index;

@@ -175,7 +175,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
           out_grad_data + n * out_stride[0] + c * out_stride[1];
       for (int ph = 0; ph < pooled_height; ++ph) {
         for (int pw = 0; pw < pooled_width; ++pw) {
-          int pool_index = ph * pooled_width + pw;
+          auto pool_index = ph * pooled_width + pw;
           T out_grad_this_bin = batch_out_grad_data[pool_index];
           int roi_bin_grid_h = (sampling_ratio > 0)
                                    ? sampling_ratio

@@ -309,9 +309,9 @@ class PredicatedTileIteratorPrefetch {
       for (int group = 0; group < ThreadMap::Iterations::kGroup; ++group) {
         CUTLASS_PRAGMA_UNROLL
         for (int row = 0; row < ThreadMap::Iterations::kRow; ++row) {
-          int row_offset = row * ThreadMap::Delta::kRow +
-                           group * ThreadMap::Delta::kGroup +
-                           cluster * ThreadMap::Delta::kCluster;
+          auto row_offset = row * ThreadMap::Delta::kRow +
+                            group * ThreadMap::Delta::kGroup +
+                            cluster * ThreadMap::Delta::kCluster;
 
           AccessType* memory_pointer =
               reinterpret_cast<AccessType*>(byte_pointer);
@@ -360,13 +360,13 @@ class PredicatedTileIteratorPrefetch {
       for (int group = 0; group < ThreadMap::Iterations::kGroup; ++group) {
         CUTLASS_PRAGMA_UNROLL
         for (int row = 0; row < ThreadMap::Iterations::kRow; ++row) {
-          int frag_row_idx =
+          auto frag_row_idx =
               (row + ThreadMap::Iterations::kRow *
                          (group + ThreadMap::Iterations::kGroup * cluster));
 
-          int row_offset = row * ThreadMap::Delta::kRow +
-                           group * ThreadMap::Delta::kGroup +
-                           cluster * ThreadMap::Delta::kCluster;
+          auto row_offset = row * ThreadMap::Delta::kRow +
+                            group * ThreadMap::Delta::kGroup +
+                            cluster * ThreadMap::Delta::kCluster;
 
           bool row_guard = ((row_offset + thread_start_row_) < extent_row_);
 
@@ -431,13 +431,13 @@ class PredicatedTileIteratorPrefetch {
       for (int group = 0; group < ThreadMap::Iterations::kGroup; ++group) {
         CUTLASS_PRAGMA_UNROLL
         for (int row = 0; row < ThreadMap::Iterations::kRow; ++row) {
-          int frag_row_idx =
+          auto frag_row_idx =
               (row + ThreadMap::Iterations::kRow *
                          (group + ThreadMap::Iterations::kGroup * cluster));
 
-          int row_offset = row * ThreadMap::Delta::kRow +
-                           group * ThreadMap::Delta::kGroup +
-                           cluster * ThreadMap::Delta::kCluster;
+          auto row_offset = row * ThreadMap::Delta::kRow +
+                            group * ThreadMap::Delta::kGroup +
+                            cluster * ThreadMap::Delta::kCluster;
 
           bool row_guard = ((row_offset + thread_start_row_) < extent_row_);
 
@@ -517,13 +517,13 @@ class PredicatedTileIteratorPrefetch {
       for (int group = 0; group < ThreadMap::Iterations::kGroup; ++group) {
         CUTLASS_PRAGMA_UNROLL
         for (int row = 0; row < ThreadMap::Iterations::kRow; ++row) {
-          int frag_row_idx =
+          auto frag_row_idx =
               (row + ThreadMap::Iterations::kRow *
                          (group + ThreadMap::Iterations::kGroup * cluster));
 
-          int row_offset = row * ThreadMap::Delta::kRow +
-                           group * ThreadMap::Delta::kGroup +
-                           cluster * ThreadMap::Delta::kCluster;
+          auto row_offset = row * ThreadMap::Delta::kRow +
+                            group * ThreadMap::Delta::kGroup +
+                            cluster * ThreadMap::Delta::kCluster;
 
           bool row_guard = ((row_offset + thread_start_row_) < extent_row_);
 
@@ -533,9 +533,9 @@ class PredicatedTileIteratorPrefetch {
           int output_P = output_PQ / convolution_Q;
           int output_Q = output_PQ % convolution_Q;
 
-          int input_row = output_N * 2 * convolution_P * 2 * convolution_Q +
-                          (2 * output_P + add_P) * 2 * convolution_Q +
-                          2 * output_Q + add_Q;
+          auto input_row = output_N * 2 * convolution_P * 2 * convolution_Q +
+                           (2 * output_P + add_P) * 2 * convolution_Q +
+                           2 * output_Q + add_Q;
 
           int64_t byte_offset =
               (input_row - output_row) * problem_N * sizeof(float);
@@ -592,13 +592,13 @@ class PredicatedTileIteratorPrefetch {
       for (int group = 0; group < ThreadMap::Iterations::kGroup; ++group) {
         CUTLASS_PRAGMA_UNROLL
         for (int row = 0; row < ThreadMap::Iterations::kRow; ++row) {
-          int frag_row_idx =
+          auto frag_row_idx =
               (row + ThreadMap::Iterations::kRow *
                          (group + ThreadMap::Iterations::kGroup * cluster));
 
-          int row_offset = row * ThreadMap::Delta::kRow +
-                           group * ThreadMap::Delta::kGroup +
-                           cluster * ThreadMap::Delta::kCluster;
+          auto row_offset = row * ThreadMap::Delta::kRow +
+                            group * ThreadMap::Delta::kGroup +
+                            cluster * ThreadMap::Delta::kCluster;
 
           bool row_guard = ((row_offset + thread_start_row_) < extent_row_);
 
@@ -612,9 +612,10 @@ class PredicatedTileIteratorPrefetch {
           if (output_P > convolution_P - 2) row_add_P = 0;
           if (output_Q > convolution_Q - 2) row_add_Q = 0;
 
-          int input_row = output_N * (convolution_P / 2) * (convolution_Q / 2) +
-                          ((output_P + row_add_P) / 2) * (convolution_Q / 2) +
-                          (output_Q + row_add_Q) / 2;
+          auto input_row =
+              output_N * (convolution_P / 2) * (convolution_Q / 2) +
+              ((output_P + row_add_P) / 2) * (convolution_Q / 2) +
+              (output_Q + row_add_Q) / 2;
 
           int64_t byte_offset =
               (input_row - output_row) * problem_N * sizeof(float);

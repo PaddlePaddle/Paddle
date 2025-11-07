@@ -148,7 +148,7 @@ void PsroiPoolKernel(const Context& dev_ctx,
           wend = std::min(std::max(wend, 0), width);
 
           int output_index = out_row_offset + pw;
-          int input_channel = (c * pooled_height + ph) * pooled_width + pw;
+          auto input_channel = (c * pooled_height + ph) * pooled_width + pw;
           int input_plane_offset = static_cast<int>(
               roi_batch_id * in_stride[0] + input_channel * in_stride[1]);
           const T* offset_input_data = input_data + input_plane_offset;

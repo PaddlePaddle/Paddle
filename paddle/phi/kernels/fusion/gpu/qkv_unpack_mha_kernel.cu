@@ -92,14 +92,14 @@ __global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
-  const int bhi = bi * params.num_head + hi;
+  const auto bhi(bi * params.num_head + hi);
 
   const int kv_num_head = params.kv_num_head;
   const int num_head_per_group = params.num_head / kv_num_head;
 
-  const int kv_bhi = bi * kv_num_head + hi / num_head_per_group;
+  const auto kv_bhi(bi * kv_num_head + hi / num_head_per_group);
 
-  const int bbhi = bbi * params.beam_width * params.num_head + hi;
+  const auto bbhi(bbi * params.beam_width * params.num_head + hi);
 
   const int tid = threadIdx.x;
 
@@ -108,7 +108,7 @@ __global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
 
   int act_time_step = params.timestep;
 
-  int qkv_base_offset = bi * (params.num_head) * Dh + hi * Dh;
+  auto qkv_base_offset = bi * (params.num_head) * Dh + hi * Dh;
 
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
@@ -120,9 +120,9 @@ __global__ void qkv_attention_kernel(QkvUnpackMhaParams<T> params,
 
   // load q element to q smem
   if (tid < QK_VECS_PER_WARP) {
-    int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
-    int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
-    int k_bias_offset = hi / num_head_per_group * Dh + tid * QK_VEC_SIZE;
+    auto qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
+    auto q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
+    auto k_bias_offset = hi / num_head_per_group * Dh + tid * QK_VEC_SIZE;
 
     Qk_vec q;
     zero(q);

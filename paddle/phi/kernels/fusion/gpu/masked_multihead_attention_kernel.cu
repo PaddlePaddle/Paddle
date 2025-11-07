@@ -126,16 +126,17 @@ __global__ void masked_multihead_attention_kernel(
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.y;
-  const int bhi = bi * params.num_head + hi;
+  const auto bhi(bi * params.num_head + hi);
 
   const int kv_num_head = params.kv_num_head;
   const int num_head_per_group = params.num_head / kv_num_head;
   // hi means the head index in query processed by this cuda thread.
   // kv_bhi means the merged batch and head index in key and value processed by
   // this cuda thread.
-  const int kv_bhi = bi * kv_num_head + hi / num_head_per_group;
+  const auto kv_bhi(bi * kv_num_head + hi / num_head_per_group);
 
-  const int bbhi = bbi * params.beam_width * params.num_head + hi;
+  const auto bbhi(bbi * params.beam_width * params.num_head + hi);
+
   const int tid = threadIdx.x;
 
   const int bi_seq_len_offset = bi * params.max_seq_length;
@@ -153,7 +154,7 @@ __global__ void masked_multihead_attention_kernel(
   int start_seq = 0;
   int end_seq = act_time_step;
   bool is_last_block = (SPLIT == false);
-  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
+  auto real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
   if constexpr (SPLIT) {
     if (split_index >= real_split_each_batch) return;
 
@@ -168,7 +169,8 @@ __global__ void masked_multihead_attention_kernel(
 
   // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
   // this hi means the head index in query!
-  int qkv_base_offset = bi * (params.num_head + 2 * kv_num_head) * Dh + hi * Dh;
+  auto qkv_base_offset =
+      bi * (params.num_head + 2 * kv_num_head) * Dh + hi * Dh;
 
   // QK_VEC_SIZE is only used for compute q dot k .
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
@@ -198,9 +200,9 @@ __global__ void masked_multihead_attention_kernel(
   // k has QK_VECS_PER_WARP elements: [Qk_vec, Qk_vec, ..., Qk_vec]
   // per cuda thread read a Qk_vec of q and k and compute q dot k.
   if (tid < QK_VECS_PER_WARP) {
-    int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
-    int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
-    int k_bias_offset = hi / num_head_per_group * Dh + tid * QK_VEC_SIZE;
+    auto qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
+    auto q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
+    auto k_bias_offset = hi / num_head_per_group * Dh + tid * QK_VEC_SIZE;
 
     Qk_vec q;
     zero(q);
@@ -246,7 +248,7 @@ __global__ void masked_multihead_attention_kernel(
 
     if (!params.neox_rotary_style) {
       if (params.rotary_emb_dims != 0) {
-        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        auto rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
         const float *cos_base = params.rotary_emb;
         const float *sin_base = params.rotary_emb + params.batch_size * Dh;
         Qk_vec_RoPE cos_emb, sin_emb;
@@ -267,16 +269,16 @@ __global__ void masked_multihead_attention_kernel(
       if (params.rotary_emb_dims != 0) {
         int last_dim = Dh / params.rotary_emb_dims;
         int half_lastdim = last_dim / 2;
-        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        auto rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
         const float *cos_base = params.rotary_emb;
         const float *sin_base = params.rotary_emb + params.batch_size * Dh;
         int stride = half_lastdim / QK_VEC_SIZE;
         int stride_all_lastdim = 2 * stride;
-        int right_id = tid / stride_all_lastdim * stride_all_lastdim +
-                       (tid + stride) % (stride_all_lastdim);
-        int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
-        int q_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
-        int k_right_bias_offset =
+        auto right_id = tid / stride_all_lastdim * stride_all_lastdim +
+                        (tid + stride) % (stride_all_lastdim);
+        auto qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
+        auto q_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
+        auto k_right_bias_offset =
             hi / num_head_per_group * Dh + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
         zero(q_right);
@@ -346,9 +348,9 @@ __global__ void masked_multihead_attention_kernel(
     if (is_last_block) {
       int co = tid / QK_VECS_IN_16B;
       int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
-      int offset = kv_bhi * params.max_seq_length * Dh +
-                   co * params.max_seq_length * QK_ELTS_IN_16B +
-                   act_time_step * QK_ELTS_IN_16B + ci;
+      auto offset = kv_bhi * params.max_seq_length * Dh +
+                    co * params.max_seq_length * QK_ELTS_IN_16B +
+                    act_time_step * QK_ELTS_IN_16B + ci;
       if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
         *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
       }
@@ -395,7 +397,7 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
   constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
 
-  int ko = tid / THREADS_PER_KEY + start_seq;
+  auto ko = tid / THREADS_PER_KEY + start_seq;
   int ki = (tid % THREADS_PER_KEY) * K_VEC_SIZE;
 
   static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD, "");
@@ -412,7 +414,7 @@ __global__ void masked_multihead_attention_kernel(
 
   T *k_cache = &params.cache_kv[kv_bhi * params.max_seq_length * Dh + ki];
   T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh + ki];
-  int ti_end = div_up(curr_seq_section, K_PER_WARP) * K_PER_WARP + start_seq;
+  auto ti_end = div_up(curr_seq_section, K_PER_WARP) * K_PER_WARP + start_seq;
 
   const int *beam_offsets = params.beam_cache_offset
                                 ? &params.beam_cache_offset[bi_seq_len_offset]
@@ -420,15 +422,16 @@ __global__ void masked_multihead_attention_kernel(
 
 #pragma unroll
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
-    const int beam_offset = beam_offsets ? beam_offsets[ti] * params.num_head *
-                                               params.max_seq_length * Dh
-                                         : 0;
+    const auto beam_offset(beam_offsets ? beam_offsets[ti] * params.num_head *
+                                              params.max_seq_length * Dh
+                                        : 0);
+
     K_vec k[K_VECS_PER_THREAD];
     K_vec k_vec_zero;
     zero(k_vec_zero);
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-      int jj = ii * params.max_seq_length + ti;
+      auto jj = ii * params.max_seq_length + ti;
       if (ti < end_seq) {
         if (beam_offset) {
           k[ii] =
@@ -487,7 +490,7 @@ __global__ void masked_multihead_attention_kernel(
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
-  int useful_smem_index =
+  auto useful_smem_index =
       is_last_block ? curr_seq_section : curr_seq_section - 1;
   float sum = 0.f;
   for (int ti = tid; ti <= useful_smem_index; ti += THREADS_PER_BLOCK) {
@@ -527,7 +530,7 @@ __global__ void masked_multihead_attention_kernel(
   // vi means the head_dim index processed by this cuda thread in the value.
   // so this cuda thread compute [1, k] * [k, vi:vi+V_VEC_SIZE] and k starts
   // from vo and increases by a step V_PER_ITER.
-  int vo = tid / THREADS_PER_VALUE + start_seq;
+  auto vo = tid / THREADS_PER_VALUE + start_seq;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
 
   T *v_cache = &params.cache_kv[params.cache_batch_size * kv_num_head *
@@ -550,10 +553,10 @@ __global__ void masked_multihead_attention_kernel(
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
     for (int ti = vo; ti < end_seq; ti += V_PER_ITER) {
-      const int beam_offset =
-          beam_offsets
-              ? beam_offsets[ti] * params.num_head * params.max_seq_length * Dh
-              : 0;
+      const auto beam_offset(beam_offsets ? beam_offsets[ti] * params.num_head *
+                                                params.max_seq_length * Dh
+                                          : 0);
+
       V_vec v;
       if (beam_offset) {
         v = *reinterpret_cast<const V_vec *>(
@@ -662,14 +665,15 @@ __global__ void post_process_kernel(Masked_multihead_attention_params<T> params,
   int act_time_step = params.sequence_lengths == nullptr
                           ? params.timestep
                           : params.sequence_lengths[bi];
-  int real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
+  auto real_split_each_batch = (act_time_step - 1) / params.steps_per_block + 1;
   if (real_split_each_batch <= 1) {
     return;
   }
 
   const int tid = threadIdx.x;
   const int hi = blockIdx.x;
-  const int bhi = (bi * params.num_head + hi);
+  const auto bhi((bi * params.num_head + hi));
+
   const int bhsi = (bi * params.num_head + hi) * params.split_seq;
   extern __shared__ float2 qk_sum_max_smem[];
 
@@ -1018,7 +1022,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   int k_num_head = cache_kv.dims()[2];
   int v_num_head = k_num_head;
   // this num_head means query's head
-  int num_head =
+  auto num_head =
       x.dims()[x.dims().size() - 1] / dim_head - k_num_head - v_num_head;
 
   Masked_multihead_attention_params<T> params;

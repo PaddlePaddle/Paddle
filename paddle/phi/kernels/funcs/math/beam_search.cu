@@ -98,7 +98,7 @@ __device__ __forceinline__ int SelectTopBeam(Triple* top_beam,
           Insert(top_beam_local, tmp, beam_size);
         }
       } else {
-        int index = offset * seq_width + tid_of_seq;
+        auto index = offset * seq_width + tid_of_seq;
         if (!IsAccumulated) {
           float pre_score = pre_scores[offset];
           for (int i = tid_of_seq; i < seq_width; i += num_used_threads) {
@@ -263,7 +263,8 @@ __device__ void BeamSearchDetails(int64_t* selected_ids,
     int selected_seq_length = finish_flag ? 0 : num_items;
 
     if (MaxSeqs > 1) {
-      const int seq_id = (MaxSeqs > 1) ? tid / MaxThreadsPerSeq : tid;
+      const auto seq_id((MaxSeqs > 1) ? tid / MaxThreadsPerSeq : tid);
+
       __shared__ int shared_mem[MaxSeqs];
 
       // [0, MaxSeqs - 1], length of each sequences
@@ -322,7 +323,7 @@ __global__ void BeamSearchKernel(int64_t* selected_ids,
                                  bool is_accumulated,
                                  int num_used_threads) {
   const int tid = threadIdx.x;
-  const int seq_id = (MaxSeqs > 1) ? tid / MaxThreadsPerSeq : tid;
+  const auto seq_id((MaxSeqs > 1) ? tid / MaxThreadsPerSeq : tid);
 
   int seq_offset_start = static_cast<int>(seq_offsets[seq_id]);
   int seq_offset_end = static_cast<int>(seq_offsets[seq_id + 1]);

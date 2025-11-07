@@ -67,7 +67,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 
   // Copy the addresses of A and A_inv from host to device,
   // and allocate device memory for info and pivots.
-  int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
+  auto num_ints = n < 32 ? batch_size : batch_size * (n + 1);
   size_t total_bytes = cpu_ptrs.size() * sizeof(T*) + num_ints * sizeof(int);
   phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),

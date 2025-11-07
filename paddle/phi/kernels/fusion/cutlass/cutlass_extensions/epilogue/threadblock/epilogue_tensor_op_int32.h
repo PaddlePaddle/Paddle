@@ -263,12 +263,12 @@ class SharedLoadIteratorMixed<ThreadMap_, int32_t, 32, 16, 8, 8> {
       for (int group = 0; group < ThreadMap::Iterations::kGroup; ++group) {
         CUTLASS_PRAGMA_UNROLL
         for (int row = 0; row < ThreadMap::Iterations::kRow; ++row) {
-          int row_ptr_offset = row * ThreadMap::Delta::kRow * stride_ +
-                               group * ThreadMap::Delta::kGroup * stride_ +
-                               cluster * ThreadMap::Delta::kCluster * stride_ +
-                               pointer_offset / LoadType::kElements;
+          auto row_ptr_offset = row * ThreadMap::Delta::kRow * stride_ +
+                                group * ThreadMap::Delta::kGroup * stride_ +
+                                cluster * ThreadMap::Delta::kCluster * stride_ +
+                                pointer_offset / LoadType::kElements;
 
-          int frag_row_idx =
+          auto frag_row_idx =
               (row + ThreadMap::Iterations::kRow *
                          (group + ThreadMap::Iterations::kGroup * cluster));
 
@@ -277,13 +277,13 @@ class SharedLoadIteratorMixed<ThreadMap_, int32_t, 32, 16, 8, 8> {
           CUTLASS_PRAGMA_UNROLL
           for (int column = 0; column < ThreadMap::Iterations::kColumn;
                ++column) {
-            int frag_idx =
+            auto frag_idx =
                 frag_row_idx * ThreadMap::Iterations::kColumn + column;
 
             CUTLASS_PRAGMA_UNROLL
             for (int v = 0; v < kLoadsPerAccess; ++v) {
-              int vector_idx = (column * ThreadMap::Delta::kColumn /
-                                kElementsPerAccess * kLoadsPerAccess);
+              auto vector_idx = (column * ThreadMap::Delta::kColumn /
+                                 kElementsPerAccess * kLoadsPerAccess);
 
               LoadType const* memory_pointer = pointers_[v] + row_ptr_offset;
 

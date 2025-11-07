@@ -77,8 +77,9 @@ inline int ConvOutSize(int input_size,
                        int pad_left,
                        int pad_right,
                        int stride) {
-  const int dkernel = dilation * (filter_size - 1) + 1;
-  int output_size =
+  const auto dkernel(dilation * (filter_size - 1) + 1);
+
+  auto output_size =
       (input_size + (pad_left + pad_right) - dkernel) / stride + 1;
 
   PADDLE_ENFORCE_GT(

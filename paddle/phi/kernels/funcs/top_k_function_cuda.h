@@ -793,7 +793,7 @@ __device__ void RadixSearch(const T* input,
   RadixType desired_mask = 0;
 
 #pragma unroll
-  for (int digit_pos = sizeof(T) * 8 - RADIX_BITS; digit_pos >= 0;
+  for (auto digit_pos = sizeof(T) * 8 - RADIX_BITS; digit_pos >= 0;
        digit_pos -= RADIX_BITS) {
     RadixCountUsingMask<T, RadixType, IndexType, RADIX_SIZE, RADIX_BITS>(
         input,

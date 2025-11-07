@@ -86,7 +86,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
       for (int c = 0; c < channels; ++c) {
         for (int ph = 0; ph < pooled_height; ++ph) {
           for (int pw = 0; pw < pooled_width; ++pw) {
-            int pool_index = ph * pooled_width + pw;
+            auto pool_index = ph * pooled_width + pw;
             if (arg_max_data[pool_index] >= 0) {
               auto index = arg_max_data[pool_index];
               batch_grad_data[index] += out_grad_data[pool_index];

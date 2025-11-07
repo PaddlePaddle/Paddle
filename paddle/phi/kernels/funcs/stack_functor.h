@@ -26,8 +26,8 @@ struct StackFunctor {
 
   HOSTDEVICE void operator()(int idx) {
     int i = idx / (n_ * post_);
-    int which_x = idx / post_ - i * n_;
-    int x_index = i * post_ + idx % post_;
+    auto which_x = idx / post_ - i * n_;
+    auto x_index = i * post_ + idx % post_;
     y_[idx] = x_[which_x][x_index];
   }
 
@@ -45,8 +45,8 @@ struct StackGradFunctor {
 
   HOSTDEVICE void operator()(int idx) {
     int i = idx / (n_ * post_);
-    int which_x = idx / post_ - i * n_;
-    int x_index = i * post_ + idx % post_;
+    auto which_x = idx / post_ - i * n_;
+    auto x_index = i * post_ + idx % post_;
     if (dx_[which_x] != nullptr) dx_[which_x][x_index] = dy_[idx];
   }
 

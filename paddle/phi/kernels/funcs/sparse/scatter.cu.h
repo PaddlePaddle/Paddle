@@ -48,7 +48,7 @@ __global__ void ScatterKernel(const T* input,
   for (int i = tid; i < non_zero_num * vec_channels;
        i += gridDim.x * blockDim.x) {
     int indices_i = i / vec_channels;
-    int channels_i = i - indices_i * vec_channels;
+    auto channels_i = i - indices_i * vec_channels;
 
     int start = unique_value[indices_i];
     int end = indices_i == non_zero_num - 1 ? rulebook_len
@@ -89,14 +89,15 @@ __global__ void ScatterKernelV2(const T* input,
   for (int i = tid; i < non_zero_num * vec_channels;
        i += gridDim.x * blockDim.x) {
     int indices_i = i / vec_channels;
-    int channels_i = i - indices_i * vec_channels;
+    auto channels_i = i - indices_i * vec_channels;
 
     StoreT sums = {static_cast<T>(0)};
     phi::Load<T, VecSize>(out + indices_i * channels + channels_i * VecSize,
                           &sums);
     for (int it = 0; it < buffer_counts; it++) {
       int len = index_counts[indices_i + it * non_zero_num];
-      const int group_offset = it * kernel_size * non_zero_num;
+      const auto group_offset(it * kernel_size * non_zero_num);
+
       for (int j = 0; j < len; j++) {
         const int out_feature_i =
             index_groups[indices_i * kernel_size + j + group_offset];

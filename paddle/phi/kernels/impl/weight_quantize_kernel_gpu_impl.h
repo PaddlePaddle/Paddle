@@ -150,7 +150,7 @@ __global__ void weight_interleave_add_bias_kernel_wint4(int8_t* input_data_dev,
 #pragma unroll
     for (int idx = 0; idx < 8; ++idx) {
       const int offset = idx / 4;
-      const int src = (idx % 4) * 2 + offset;
+      const auto src((idx % 4) * 2 + offset);
 
       const int src_shift = src * 4;
       const int dst_shift = idx * 4;
@@ -314,7 +314,7 @@ __global__ void per_channel_quant_gpu_int4_row_pack(const T* weight_data,
       for (int i = 0; i < VectorSize / 2; ++i) {
         int8_t packed_int4s = 0;
         for (int pack = 0; pack < 2; ++pack) {
-          int vector_index = i * 2 + pack;
+          auto vector_index = i * 2 + pack;
           const float r_scale = 1 / static_cast<float>(scale[vector_index]);
           const float weight_elt =
               static_cast<float>(weight[vector_index]) * r_scale;

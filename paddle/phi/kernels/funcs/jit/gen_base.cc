@@ -81,7 +81,8 @@ std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
   }
   // one for x, one for y, others for z
   const int max_used_regs_for_n = max_num_regs - 2;
-  const int aligned_n = n % block == 0 ? n : (n / block + 1) * block;
+  const auto aligned_n(n % block == 0 ? n : (n / block + 1) * block);
+
   const int num_block = aligned_n / block;
   const int num_groups = num_block / max_used_regs_for_n;
   std::vector<int> groups(num_groups, max_used_regs_for_n);

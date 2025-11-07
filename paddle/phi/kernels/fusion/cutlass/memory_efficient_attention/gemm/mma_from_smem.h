@@ -1812,21 +1812,21 @@ struct B2bGemm<cutlass::gemm::warp::MmaVoltaTensorOpAccumulatorTileIterator<
             for (int p = 0; p < kAccumulatorPartials; ++p) {
               CUTLASS_PRAGMA_UNROLL
               for (int m = 0; m < EleShapePerPartial::kRow; ++m) {
-                int accum_m = tile_m * Policy::InterleavedTile::kRow +
-                              mma_m * QuadShapePerPartialMma::kRow + m * 2;
-                int accum_n = tile_n * Policy::InterleavedTile::kColumn +
-                              mma_n * QuadShapePerPartialMma::kColumn +
-                              p * Policy::InterleavedTile::kColumn / 2;
-                int r = (accum_m + lane_offset.row());
+                auto accum_m = tile_m * Policy::InterleavedTile::kRow +
+                               mma_m * QuadShapePerPartialMma::kRow + m * 2;
+                auto accum_n = tile_n * Policy::InterleavedTile::kColumn +
+                               mma_n * QuadShapePerPartialMma::kColumn +
+                               p * Policy::InterleavedTile::kColumn / 2;
+                auto r = (accum_m + lane_offset.row());
                 AccessType to_store;
                 CUTLASS_PRAGMA_UNROLL
                 for (int n = 0; n < EleShapePerPartial::kColumn; ++n) {
-                  int idx = mma_accum_start + p * kElementsPerPartial +
-                            m * EleShapePerPartial::kColumn + n;
-                  int c = (accum_n + n + lane_offset.column());
+                  auto idx = mma_accum_start + p * kElementsPerPartial +
+                             m * EleShapePerPartial::kColumn + n;
+                  auto c = (accum_n + n + lane_offset.column());
                   to_store[n] = scalar_t(accum[idx]);
                 }
-                int c = (accum_n + lane_offset.column());
+                auto c = (accum_n + lane_offset.column());
                 assert(r < 32);
                 assert(c < 32);
                 *reinterpret_cast<AccessType*>(ref_.data() +
@@ -1961,11 +1961,11 @@ struct B2bGemm<
         for (int mma_m = 0; mma_m < Iterations::kRow; ++mma_m) {
           CUTLASS_PRAGMA_UNROLL
           for (int m = 0; m < Policy::LaneMmaShape::kM; ++m) {
-            int r =
+            auto r =
                 Policy::LaneMmaShape::kM * (mma_m * Policy::WarpShape::kRow) +
                 m;
-            int c = mma_n * Delta::kColumn + n;
-            int idx =
+            auto c = mma_n * Delta::kColumn + n;
+            auto idx =
                 n + Policy::LaneMmaShape::kN *
                         (mma_n + Iterations::kColumn *
                                      (m + mma_m * Policy::LaneMmaShape::kM));

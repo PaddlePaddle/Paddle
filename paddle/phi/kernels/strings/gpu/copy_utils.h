@@ -136,7 +136,7 @@ void DeserializeOnCPU(const Context& dev_ctx,
                       StringTensor* dst) {
   auto* strings_data = reinterpret_cast<const char*>(src.data<uint8_t>());
   auto* strings_offset = reinterpret_cast<const int*>(strings_data);
-  int numel = strings_offset[0] / sizeof(int) - 1;
+  auto numel = strings_offset[0] / sizeof(int) - 1;
   dst->Resize(common::make_ddim({numel}));
   dtype::pstring* dst_str = dev_ctx.template HostAlloc<dtype::pstring>(dst);
   for (int i = 0; i < numel; ++i) {

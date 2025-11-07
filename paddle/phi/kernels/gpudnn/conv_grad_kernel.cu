@@ -129,8 +129,8 @@ void ConvCudnnGradKernelImplV7(
              &o_w);
   }
 
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
+  auto group_offset_in = i_c / groups * i_h * i_w * i_d;
+  auto group_offset_out = o_c / groups * o_h * o_w * o_d;
   int group_offset_filter = transformed_filter_channel->numel() / groups;
 
 // ------------------- cudnn backward algorithm ---------------------
@@ -1186,8 +1186,8 @@ void ConvCudnnGradGradKernel(
            &o_h,
            &o_w);
 
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
+  auto group_offset_in = i_c / groups * i_h * i_w * i_d;
+  auto group_offset_out = o_c / groups * o_h * o_w * o_d;
   int group_offset_filter = W->numel() / groups;
 
   ScalingParamType<T> alpha = 1.0f;

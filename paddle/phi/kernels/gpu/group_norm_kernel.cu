@@ -825,7 +825,7 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   params_.eps = epsilon;
   auto stream = dev_ctx.stream();
   DenseTensor redBuffer;
-  int buffer_sizes = 2 * params_.n * groups;
+  auto buffer_sizes = 2 * params_.n * groups;
   redBuffer.Resize({1, buffer_sizes});
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
   int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
@@ -1201,7 +1201,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                                  mean_data,
                                                  temp_var_data);
   }
-  int flags =
+  auto flags =
       (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
   UNROLL_ALL_CASES(flags,
                    GroupNormForward,

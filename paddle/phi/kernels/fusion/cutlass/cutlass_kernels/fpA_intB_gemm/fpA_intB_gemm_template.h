@@ -162,11 +162,11 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
 
     using Gemm = cutlass::gemm::device::GemmUniversalBase<GemmKernel>;
 
-    const int ldb =
+    const auto ldb(
         cutlass::platform::is_same<cutlass::layout::RowMajor,
                                    typename MixedGemmArchTraits::LayoutB>::value
             ? n
-            : k * GemmKernel::kInterleave;
+            : k * GemmKernel::kInterleave);
 
     typename Gemm::Arguments args(
         {m, n, k},
@@ -272,11 +272,12 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
 
     using Gemm = cutlass::gemm::device::GemmUniversalBase<GemmKernel>;
 
-    const int ldb =
+    const auto ldb(
         cutlass::platform::is_same<cutlass::layout::RowMajor,
                                    typename MixedGemmArchTraits::LayoutB>::value
             ? n
-            : k * GemmKernel::kInterleave;
+            : k * GemmKernel::kInterleave);
+
     typename Gemm::Arguments args(
         cutlass::gemm::GemmUniversalMode::kGemm,
         {m, n, k},

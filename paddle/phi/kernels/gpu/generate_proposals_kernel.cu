@@ -210,7 +210,7 @@ static __global__ void FilterBBoxes(const T *bboxes,
     }
     __syncthreads();
     if (threadIdx.x == 0) {
-      int size = (num - i) < BlockSize ? num - i : BlockSize;
+      auto size = (num - i) < BlockSize ? num - i : BlockSize;
       for (int j = 0; j < size; ++j) {
         if (keep_index[j] > -1) {
           keep[cnt++] = keep_index[j];

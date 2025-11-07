@@ -68,7 +68,7 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
                           ref_lod.size()));
     int thread_x = std::min(32, std::max(static_cast<int>(ref_lod.size()), 16));
     int thread_y = 16;
-    int thread_z = 1024 / thread_x / thread_y;
+    auto thread_z = 1024 / thread_x / thread_y;
     int block_x = static_cast<int>(ref_lod.size());
     dim3 block_size(thread_x, thread_y, thread_z);
     dim3 grid_size(block_x, 1);

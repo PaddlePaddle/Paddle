@@ -213,7 +213,7 @@ __global__ void FusedSPAQKernel(const phi::bfloat16 *__restrict__ Xin,
       threadIdx.x / 128;  // 0 or 1, two quant blocks per block
   const int in_y_idx = blockIdx.y;
   const int in_x_idx = blockIdx.x * blockDim.x + x_offset;
-  const int src_idx = in_y_idx * cols + in_x_idx;
+  const auto src_idx(in_y_idx * cols + in_x_idx);
 
   // Load data and compute swiGLU activation
   if (in_x_idx < cols / 2) [[likely]] {        // NOLINT

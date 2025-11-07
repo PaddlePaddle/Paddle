@@ -264,8 +264,8 @@ void FusedSeqpoolCVMGradCUDAKernel(
       }
     }
 
-    int cur_batch_size = in_grad->lod().size() ? in_grad->lod()[0].size() - 1
-                                               : in_grad->dims()[0];
+    auto cur_batch_size = in_grad->lod().size() ? in_grad->lod()[0].size() - 1
+                                                : in_grad->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {

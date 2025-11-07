@@ -336,7 +336,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
                                         (ThreadMap::Delta::kContiguous *
                                          sizeof_bits<Element>::value / 8) +
                                     the_predicates.iteration_vector_;
-      int strided_index =
+      auto strided_index =
           gather_offset_strided +
           the_predicates.iteration_strided_ * ThreadMap::Delta::kStrided;
 

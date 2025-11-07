@@ -120,7 +120,7 @@ void DecodeCenterSize(const DenseTensor *target_box,
       std::array<T, 4> var_data{1., 1., 1., 1.};
       T *var_ptr = var_data.data();
       size_t offset = i * col * len + j * len;
-      int prior_box_offset = axis == 0 ? j * len : i * len;
+      auto prior_box_offset = axis == 0 ? j * len : i * len;
 
       T prior_box_width = prior_box_data[prior_box_offset + 2] -
                           prior_box_data[prior_box_offset] +
@@ -135,7 +135,7 @@ void DecodeCenterSize(const DenseTensor *target_box,
 
       T target_box_center_x = 0, target_box_center_y = 0;
       T target_box_width = 0, target_box_height = 0;
-      int prior_var_offset = axis == 0 ? j * len : i * len;
+      auto prior_var_offset = axis == 0 ? j * len : i * len;
       if (var_size == 2) {
         std::memcpy(var_ptr,
                     prior_box_var->data<T>() + prior_var_offset,

@@ -84,7 +84,7 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   const T* output_grad_data = output_grad.data<T>();
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   for (int i = 0; i < batch_size; ++i) {
-    int blen = fea_size * output_channels * i;
+    auto blen = fea_size * output_channels * i;
     for (int c = 0; c < output_channels; ++c) {
       int clen = fea_size * c;
       for (int f = 0; f < fea_size; ++f) {

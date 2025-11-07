@@ -236,7 +236,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   }
   // Get actual dimension
   const int ndim = x.dims().size();
-  const int target_dim = (dim < 0) ? ndim + dim : dim;
+  const auto target_dim((dim < 0) ? ndim + dim : dim);
 
   // Calculate sizes
   int64_t outer_size = 1;

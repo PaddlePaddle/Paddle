@@ -543,7 +543,7 @@ __device__ __forceinline__ void Cumsum(OutT* out,
   temp[stride_size + tidx + (stride_size + tidx) / 32] = in[1];
   for (int stride = 1; stride <= stride_size; stride *= 2) {
     __syncthreads();
-    int index = (tidx + 1) * 2 * stride - 1;
+    auto index = (tidx + 1) * 2 * stride - 1;
     if (index < (blockDim.x * 2)) {
       temp[index + index / 32] =
           compute(temp[index + index / 32],
@@ -552,7 +552,7 @@ __device__ __forceinline__ void Cumsum(OutT* out,
   }
   for (int stride = (blockDim.x * 2) / 4; stride > 0; stride /= 2) {
     __syncthreads();
-    int index = (tidx + 1) * 2 * stride - 1;
+    auto index = (tidx + 1) * 2 * stride - 1;
     if ((index + stride) < (blockDim.x * 2)) {
       temp[index + stride + (stride + index) / 32] =
           compute(temp[index + stride + (stride + index) / 32],

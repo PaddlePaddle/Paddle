@@ -58,7 +58,8 @@ static __global__ void add_param(const T *input,
   for (int i = blockIdx.x; i < C; i += gridDim.x) {
     MPType ou = static_cast<MPType>(0);
     for (int j = threadIdx.x; j < repeat_num; j += blockDim.x) {
-      const int index = j * C + i;
+      const auto index(j * C + i);
+
       ou = ou + static_cast<MPType>(input[index]);
     }
     ou = BlockReduce(ou_storage).Reduce(ou, cub::Sum());

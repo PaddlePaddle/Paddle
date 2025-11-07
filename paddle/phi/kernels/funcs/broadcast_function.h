@@ -445,7 +445,7 @@ void LaunchBroadcastKernel(
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
   auto stream = dev_ctx.x_context()->xpu_stream;
-  int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
+  auto main_offset = (numel / (read_lens * threads)) * read_lens * threads;
   int tail_tid = numel % (read_lens * threads);
 
   VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, false>
@@ -465,7 +465,7 @@ void LaunchBroadcastKernel(
   auto stream = dev_ctx.stream();
   auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;
-  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  auto main_offset = (numel / (VecSize * threads)) * VecSize * threads;
   int tail_tid = numel % (VecSize * threads);
 
   if (classifier.all_elementwise) {

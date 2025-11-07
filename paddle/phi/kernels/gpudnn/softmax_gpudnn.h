@@ -1295,7 +1295,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       // use 128 threads per block to maximize gpu utilization
       constexpr int threads_per_block = 128;
 
-      int warps_per_block = (threads_per_block / warp_size);
+      auto warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
       IndexType blocks = (N + batches_per_block - 1) / batches_per_block;
       dim3 threads(warp_size, warps_per_block, 1);
@@ -1389,7 +1389,7 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
 
       constexpr int threads_per_block = 128;
 
-      int warps_per_block = (threads_per_block / warp_size);
+      auto warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
       IndexType blocks = (N + batches_per_block - 1) / batches_per_block;
       dim3 threads(warp_size, warps_per_block, 1);

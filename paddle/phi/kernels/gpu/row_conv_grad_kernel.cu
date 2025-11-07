@@ -121,7 +121,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
   int xdim_sh_in = block_y;
   int xdim_sh_dout = block_y;
   int ydim_sh_in = block_x;
-  int ydim_sh_dout = block_x + future_context - 1;
+  auto ydim_sh_dout = block_x + future_context - 1;
   int ydim_sh_dfilter = block_y;
 
   T *sh_in = mem;
@@ -154,7 +154,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
       __syncthreads();
 
       if (thy < future_context - 1) {
-        int pos_offset = pos - future_context + 1;
+        auto pos_offset = pos - future_context + 1;
         sh_dout[thx * ydim_sh_dout + thy] =
             (d < input_dim && pos_offset >= start)
                 ? dout[pos_offset * input_dim + d]

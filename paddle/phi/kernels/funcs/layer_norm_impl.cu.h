@@ -223,8 +223,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
   const int warp_n = warp % WARPS_N;         // 0
   const int warp_m = warp / WARPS_N;         // 0, 1, 2, 3
 
-  const int c = warp_n * THREADS_PER_WARP + lane;  // lane
-  const int r = bidx * ROWS_PER_CTA + warp_m;      // row id
+  const auto c(warp_n * THREADS_PER_WARP + lane);
+  // lane
+  const auto r(bidx * ROWS_PER_CTA + warp_m);
+  // row id
 
   Vec_scale gamma[LDGS];
   Vec_scale beta[LDGS];
@@ -874,9 +876,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_fast_final_kernel(
   const int warp = tidx / THREADS_PER_WARP;
   const int warp_m = warp / WARPS_N;
   const int warp_n = warp % WARPS_N;
-  const int tid_c = warp_n * THREADS_PER_WARP + lane;
+  const auto tid_c(warp_n * THREADS_PER_WARP + lane);
 
-  const int c = bidx * THREADS_PER_ROW + tid_c;
+  const auto c(bidx * THREADS_PER_ROW + tid_c);
+
   const int r = warp_m;
 
   __shared__ U smem_space[(WARPS_M - 1) * THREADS_PER_ROW * VecSize];
@@ -1017,7 +1020,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     const int ROWS_PER_CTA = WARPS_M;
 
     // 4 * 1024 * 4
-    const int SMEM_BYTES = ROWS_PER_CTA * cols * sizeof(U);
+    const auto SMEM_BYTES(ROWS_PER_CTA * cols * sizeof(U));
 
     // #blocks = 2 * #SM
     const int gridx = 2 * dev_ctx.GetSMCount();
@@ -1591,7 +1594,8 @@ __global__ void LayerNormBackwardComputeGradInputWithSmallFeatureSize(
         VecT temp_grad;
 #pragma unroll
         for (int k = 0; k < DataPerTid; ++k) {
-          const int idx = i * DataPerTid + k;
+          const auto idx(i * DataPerTid + k);
+
           const U c_h = input_data[idx];
           const U c_loss = dout_data[idx];
           U f_grad_input = fH * c_loss * gamma_data[idx] - sum_loss1;
@@ -1606,7 +1610,8 @@ __global__ void LayerNormBackwardComputeGradInputWithSmallFeatureSize(
         VecT temp_grad;
 #pragma unroll
         for (int k = 0; k < DataPerTid; ++k) {
-          const int idx = i * DataPerTid + k;
+          const auto idx(i * DataPerTid + k);
+
           const U c_h = input_data[idx];
           const U c_loss = dout_data[idx];
           U f_grad_input = fH * c_loss - sum_loss1;

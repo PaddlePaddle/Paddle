@@ -66,9 +66,11 @@ struct EyeFunctor {
 
   HOSTDEVICE void operator()(size_t index) const {
     const int global_row = index / n_;
-    const int col = index - global_row * n_;
+    const auto col(index - global_row * n_);
+
     const int batch = global_row / m_;
-    const int row = global_row - batch * m_;
+    const auto row(global_row - batch * m_);
+
     output_[index] = col == row ? static_cast<T>(1) : static_cast<T>(0);
   }
 
@@ -103,10 +105,12 @@ struct MatrixSetDiagFunctor {
 
   HOSTDEVICE void operator()(size_t index) const {
     const int batch_and_diag_index = index / max_diag_len_;
-    const int index_in_the_diagonal =
-        index - batch_and_diag_index * max_diag_len_;
+    const auto index_in_the_diagonal(index -
+                                     batch_and_diag_index * max_diag_len_);
+
     const int batch = batch_and_diag_index / num_diags_;
-    const int diag_index_in_input = batch_and_diag_index - batch * num_diags_;
+    const auto diag_index_in_input(batch_and_diag_index - batch * num_diags_);
+
     // diag_index=0 refers to the main diagonal
     const int diag_index = upper_diag_index_ - diag_index_in_input;
     // shift down for subdiagonal if diag_index < 0
@@ -119,7 +123,8 @@ struct MatrixSetDiagFunctor {
     // Upper-bound checks for diagonals shorter than max_diag_len.
     // y_index and x_index are nonnegative by construction.
     if (y_index < m_ && x_index < n_) {
-      const int out_index = batch * m_ * n_ + y_index * n_ + x_index;
+      const auto out_index(batch * m_ * n_ + y_index * n_ + x_index);
+
       output_[out_index] = diag_[index];
     }
   }
@@ -152,11 +157,13 @@ struct MatrixDiagPartFunctor {
 
   HOSTDEVICE void operator()(size_t index) const {
     const int batch_and_mapped_diag_index = index / max_diag_len_;
-    const int index_in_the_diagonal =
-        index - batch_and_mapped_diag_index * max_diag_len_;
+    const auto index_in_the_diagonal(index - batch_and_mapped_diag_index *
+                                                 max_diag_len_);
+
     const int batch = batch_and_mapped_diag_index / num_diags_;
-    const int mapped_diag_index =
-        batch_and_mapped_diag_index - batch * num_diags_;
+    const auto mapped_diag_index(batch_and_mapped_diag_index -
+                                 batch * num_diags_);
+
     // diag_index=0 refers to the main diagonal
     const int diag_index = upper_diag_index_ - mapped_diag_index;
     // shift down for subdiagonal if diag_index < 0

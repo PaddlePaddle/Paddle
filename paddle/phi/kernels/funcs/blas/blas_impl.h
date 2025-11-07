@@ -1620,13 +1620,13 @@ void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
     int sub_width = W2 / head_number;
 
     for (int i = 0; i < head_number; i++) {
-      int sub_matA_offset = (transA == CblasNoTrans)
-                                ? i * (W1 / head_number)
-                                : i * (W1 / head_number) * H1;
-      int sub_matB_offset = (transB == CblasNoTrans)
-                                ? i * (W2 / head_number)
-                                : i * (W2 / head_number) * H2;
-      int sub_matC_offset = i * W2 / head_number;
+      auto sub_matA_offset = (transA == CblasNoTrans)
+                                 ? i * (W1 / head_number)
+                                 : i * (W1 / head_number) * H1;
+      auto sub_matB_offset = (transB == CblasNoTrans)
+                                 ? i * (W2 / head_number)
+                                 : i * (W2 / head_number) * H2;
+      auto sub_matC_offset = i * W2 / head_number;
       for (int k = 0; k < batchCount; ++k) {
         a_array[k] = &A[k * strideA] + sub_matA_offset;
         b_array[k] = &B[k * strideB] + sub_matB_offset;
@@ -1665,12 +1665,12 @@ void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
     int sub_width = W1 / head_number;
 
     for (int i = 0; i < head_number; i++) {
-      int sub_matA_offset = (transA == CblasNoTrans)
-                                ? i * (W1 / head_number)
-                                : i * (W1 / head_number) * H1;
-      int sub_matB_offset = (transB == CblasNoTrans)
-                                ? i * (W1 / head_number) * W2
-                                : i * (W1 / head_number);
+      auto sub_matA_offset = (transA == CblasNoTrans)
+                                 ? i * (W1 / head_number)
+                                 : i * (W1 / head_number) * H1;
+      auto sub_matB_offset = (transB == CblasNoTrans)
+                                 ? i * (W1 / head_number) * W2
+                                 : i * (W1 / head_number);
       int sub_matC_offset = i * W2;
       for (int k = 0; k < batchCount; ++k) {
         a_array[k] = &A[k * strideA] + sub_matA_offset;

@@ -49,8 +49,8 @@ void ComputeMergedQKVMatmulForward(
   auto *qkv_weight = &qkv_weight_in;
 
   // qkv_out = GEMM(query, qkv_weight^T)
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = 3 * config.num_heads * config.head_dim;
+  auto m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
       phi::fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
@@ -77,7 +77,7 @@ void ComputeSeparatedQKVMatmulForward(
   // query: shape=[batch_size, seq_len_m, seq_len_r, q_dim]
   // query_weight: shape=[q_dim, num_heads, head_dim]
   // query_out: shape=[batch_size, seq_len_m, seq_len_r, num_heads, head_dim]
-  int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute =
@@ -88,7 +88,7 @@ void ComputeSeparatedQKVMatmulForward(
   // key: shape=[batch_size, seq_len_m, m_size, kv_dim]
   // key_weight: shape=[kv_dim, num_heads, head_dim]
   // key_out: shape=[batch_size, seq_len_m, m_size, num_heads, head_dim]
-  int kv_m = config.batch_size * config.seq_len_m * config.m_size;
+  auto kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
   auto kv_compute = phi::fusion::AttnMatMul<T>(
@@ -116,7 +116,7 @@ void ComputeGatingLinearForward(
   // and the second gate_bias_out stores the result of the multiplication +
   // bias.
   //   gate_out = GEMM(query, gate_weight) + gate_bias
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_linear =
@@ -148,7 +148,7 @@ void ComputeOutputLinearForward(
   const auto *out_linear_bias = &out_linear_bias_in;
 
   // out = GEMM(fmha_or_gate_out, out_linear_weight) + out_linear_bias
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  auto m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
   auto out_linear =

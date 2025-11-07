@@ -80,11 +80,11 @@ void transpose_before_bmm1(const T* qkvBuffer,
         const T* v_src_each_batch =
             reinterpret_cast<const T*>(vBuffer) + blocksize * 3 * i;
 
-        int dst_offset_each_bmHead = k * tokenSize * cols_per_bmHead;
+        auto dst_offset_each_bmHead = k * tokenSize * cols_per_bmHead;
         int src_offset_each_line = k * cols_per_bmHead;
 
         int dst_offset_each_line = j * cols_per_bmHead;
-        int src_offset_each_bmHead = j * hiddenSize * 3;
+        auto src_offset_each_bmHead = j * hiddenSize * 3;
 
         Tt* q_dst_each_line = q_buffer + i * blocksize +
                               dst_offset_each_bmHead + dst_offset_each_line;
@@ -131,7 +131,7 @@ void transpose_after_bmm2(T* Buffer,
       int dst_offset_each_line = k * hiddenSize;
 
       for (int j = 0; j < bmHead; j++) {
-        int src_offset_each_line = j * tokenSize * cols_per_bmHead;
+        auto src_offset_each_line = j * tokenSize * cols_per_bmHead;
         int dst_offset_each_head = j * cols_per_bmHead;
 
         Tt* q_dst_each_line = TransBuffer + dst_offset_each_head +
@@ -391,13 +391,13 @@ void scaled_dp_attention(const float* query,
 #else
         int tid = 0;
 #endif
-        int ooffset =
+        auto ooffset =
             i * num_head * otsize * head_size + j * otsize * head_size;
         const float* k = key + ooffset;
         const float* v = value + ooffset;
 
         int q_rblk = std::min(iblk, itsize - m);
-        int ioffset =
+        auto ioffset =
             i * num_head * otsize * head_size + j * otsize * head_size;
         const float* q = query + ioffset + m * head_size;
         float* out = output + ioffset + m * head_size;

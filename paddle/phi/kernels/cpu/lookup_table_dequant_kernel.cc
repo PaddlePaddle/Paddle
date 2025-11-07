@@ -82,7 +82,7 @@ void LookupTableDequantKernel(const Context &dev_ctx,
               ids[i]));
       float min = *(table + ids[i] * quant_number);
       float max = *(table + ids[i] * quant_number + 1);
-      int offset = ids[i] * quant_number + 2;
+      auto offset = ids[i] * quant_number + 2;
       const unsigned char *tensor_buf =
           reinterpret_cast<const unsigned char *>(table + offset);
       dequant(

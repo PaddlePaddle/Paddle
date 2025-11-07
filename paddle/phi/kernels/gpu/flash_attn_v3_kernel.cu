@@ -212,9 +212,10 @@ void FlashAttnV3BaseKernel(
   }
 
   auto const sizes = q.dims();
-  const int batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
+  const auto batch_size(!is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1);
+
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
-  int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
+  auto total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
   int num_heads = q.dims()[q.dims().size() - 2];
   int const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
@@ -522,7 +523,7 @@ void FlashAttnV3BaseKernel(
     // We don't need max_seqlen_k_new, so seqlen_k_new can be whatever when
     // is_varlen_k_new
     int seqlen_k_new = !is_varlen_k_new ? k_new.dims()[1] : 0;
-    int total_k_new =
+    auto total_k_new =
         !is_varlen_k_new ? batch_size * k_new.dims()[1] : k_new.dims()[0];
     if (!is_varlen_k_new) {
       CHECK_SHAPE(k_new, batch_size, seqlen_k_new, num_heads_k, head_size);
@@ -601,8 +602,8 @@ void FlashAttnV3BaseKernel(
                         : ((params_is_causal && !is_varlen) ||
                            (is_varlen && params_num_splits > 1));
   if (scheduler_needs_semaphore || use_dynamic_split) {
-    int metadata_size = static_cast<int>(scheduler_needs_semaphore) +
-                        static_cast<int>(use_dynamic_split) * params_b;
+    auto metadata_size = static_cast<int>(scheduler_needs_semaphore) +
+                         static_cast<int>(use_dynamic_split) * params_b;
     phi::dynload::fa3_fwd_params_set_skip_scheduler_metadata_computation(
         params_handle, scheduler_metadata_.is_initialized());
     if (scheduler_metadata_.is_initialized()) {
@@ -1372,9 +1373,10 @@ void FlashMaskV2BaseKernel(
   }
 
   auto const sizes = q.dims();
-  const int batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
+  const auto batch_size(!is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1);
+
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
-  int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
+  auto total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
   int num_heads = q.dims()[q.dims().size() - 2];
   int const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
@@ -1684,7 +1686,7 @@ void FlashMaskV2BaseKernel(
     // We don't need max_seqlen_k_new, so seqlen_k_new can be whatever when
     // is_varlen_k_new
     int seqlen_k_new = !is_varlen_k_new ? k_new.dims()[1] : 0;
-    int total_k_new =
+    auto total_k_new =
         !is_varlen_k_new ? batch_size * k_new.dims()[1] : k_new.dims()[0];
     if (!is_varlen_k_new) {
       CHECK_SHAPE(k_new, batch_size, seqlen_k_new, num_heads_k, head_size);
@@ -1768,8 +1770,8 @@ void FlashMaskV2BaseKernel(
                         : ((params_is_causal && !is_varlen) ||
                            (is_varlen && params_num_splits > 1));
   if (scheduler_needs_semaphore || use_dynamic_split) {
-    int metadata_size = static_cast<int>(scheduler_needs_semaphore) +
-                        static_cast<int>(use_dynamic_split) * params_b;
+    auto metadata_size = static_cast<int>(scheduler_needs_semaphore) +
+                         static_cast<int>(use_dynamic_split) * params_b;
     phi::dynload::
         flashmaskv2_fwd_params_set_skip_scheduler_metadata_computation(
             params_handle, scheduler_metadata_.is_initialized());

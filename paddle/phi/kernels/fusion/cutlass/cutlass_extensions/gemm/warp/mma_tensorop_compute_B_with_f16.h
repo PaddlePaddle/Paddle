@@ -268,7 +268,7 @@ class MmaTensorOpComputeBWithF16 {
       for (int m = 0; m < MmaIterations::kRow; ++m) {
         int m_serpentine = ((n % 2) ? (MmaIterations::kRow - 1 - m) : m);
 
-        int n_offsetB = warp_tileB_k_offset + kExpansionFactor * n;
+        auto n_offsetB = warp_tileB_k_offset + kExpansionFactor * n;
         if (AccumulatorsInRowMajor) {  // matrix B is reordered
           mma(ptr_D[n + m_serpentine * MmaIterations::kColumn],
               ptr_A[m_serpentine],
@@ -290,7 +290,7 @@ class MmaTensorOpComputeBWithF16 {
       for (int n = 0; n < MmaIterations::kColumn; ++n) {
         int n_serpentine = ((m % 2) ? (MmaIterations::kColumn - 1 - n) : n);
 
-        int n_serpentine_offsetB =
+        auto n_serpentine_offsetB =
             warp_tileB_k_offset + kExpansionFactor * n_serpentine;
         if (AccumulatorsInRowMajor) {  // matrix B is reordered
           mma(ptr_D[n_serpentine + m * MmaIterations::kColumn],

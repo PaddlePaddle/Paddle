@@ -388,7 +388,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
             groups,
             std::min(max_grid_z, x_dims[0]));
   dim3 threads(block_size, 1, 1);
-  int flags =
+  auto flags =
       (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
   if (data_layout == DataLayout::kNCHW) {
     const int max_num_threads = 1024;
@@ -486,7 +486,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
     set_zero_AccT(dev_ctx, &temp_mean, static_cast<AccT>(0));
     auto* temp_mean_data = temp_mean.data<AccT>();
 
-    int flags =
+    auto flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     UNROLL_ALL_CASES(flags,
                      GroupNormBackwardGetMeanAndVar,

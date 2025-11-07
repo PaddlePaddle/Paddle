@@ -41,8 +41,8 @@ __global__ void im2col(const T* data_im,
                        int col_width,
                        T* data_col,
                        const DataLayout data_layout) {
-  int input_channels = num_outs / col_height / col_width;
-  int channels_col = input_channels * filter_height * filter_width;
+  auto input_channels = num_outs / col_height / col_width;
+  auto channels_col = input_channels * filter_height * filter_width;
   const int index =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
   if (index < num_outs) {
@@ -55,15 +55,15 @@ __global__ void im2col(const T* data_im,
     int channel_in =
         (data_layout != DataLayout::kNHWC ? index / col_width / col_height
                                           : index % input_channels);
-    int channel_out = channel_in * filter_height * filter_width;
-    int h_in = h_out * stride_height - padding_height;
-    int w_in = w_out * stride_width - padding_width;
+    auto channel_out = channel_in * filter_height * filter_width;
+    auto h_in = h_out * stride_height - padding_height;
+    auto w_in = w_out * stride_width - padding_width;
 
     data_col += (channel_out * col_height + h_out) * col_width + w_out;
     for (int i = 0; i < filter_height; ++i) {
       for (int j = 0; j < filter_width; ++j) {
-        int rIdx = h_in + i * dilation_h;
-        int cIdx = w_in + j * dilation_w;
+        auto rIdx = h_in + i * dilation_h;
+        auto cIdx = w_in + j * dilation_w;
         int im_idx;
         if (data_layout != DataLayout::kNHWC) {
           im_idx = (channel_in * im_height + rIdx) * im_width + cIdx;
@@ -126,7 +126,7 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
     int col_height = col->dims()[3];
     int col_width = col->dims()[4];
 
-    int num_outputs = im_channels * col_height * col_width;
+    auto num_outputs = im_channels * col_height * col_width;
     int num_thread = 1024;
 #ifdef WITH_NV_JETSON
     phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
@@ -175,10 +175,11 @@ __global__ void col2im(int n,
   const int index =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
 
-  const int d_filter_height = dilation_h * (filter_height - 1) + 1;
-  const int d_filter_width = dilation_w * (filter_width - 1) + 1;
+  const auto d_filter_height(dilation_h * (filter_height - 1) + 1);
 
-  int input_channels = n / im_height / im_width;
+  const auto d_filter_width(dilation_w * (filter_width - 1) + 1);
+
+  auto input_channels = n / im_height / im_width;
 
   if (index < n) {
     T val = static_cast<T>(0);
@@ -193,21 +194,21 @@ __global__ void col2im(int n,
                                               : index % input_channels);
 
     // compute the start and end of the output
-    int w_col_start =
+    auto w_col_start =
         (w < d_filter_width) ? 0 : (w - d_filter_width) / stride_width + 1;
     int w_col_end = min(w / stride_width + 1, col_width);
-    int h_col_start =
+    auto h_col_start =
         (h < d_filter_height) ? 0 : (h - d_filter_height) / stride_height + 1;
     int h_col_end = min(h / stride_height + 1, col_height);
 
     for (int h_col = h_col_start; h_col < h_col_end; ++h_col) {
       for (int w_col = w_col_start; w_col < w_col_end; ++w_col) {
-        int h_off = (h - h_col * stride_height);
-        int w_off = (w - w_col * stride_width);
+        auto h_off = (h - h_col * stride_height);
+        auto w_off = (w - w_col * stride_width);
         if (h_off % dilation_h == 0 && w_off % dilation_w == 0) {
           h_off /= dilation_h;
           w_off /= dilation_w;
-          int data_col_index =
+          auto data_col_index =
               (((c * filter_height + h_off) * filter_width + w_off) *
                    col_height +
                h_col) *
@@ -358,15 +359,15 @@ __global__ void im2colOCF(const T* im_data,
        channelid += blockDim.z) {
     for (int idy = threadIdx.y; idy < filter_height; idy += blockDim.y) {
       for (int idx = threadIdx.x; idx < filter_width; idx += blockDim.x) {
-        int width_offset = idx + swid * stride_width - padding_width;
-        int height_offset = idy + shid * stride_height - padding_height;
-        int im_offset = width_offset + height_offset * im_width +
-                        channelid * im_height * im_width;
+        auto width_offset = idx + swid * stride_width - padding_width;
+        auto height_offset = idy + shid * stride_height - padding_height;
+        auto im_offset = width_offset + height_offset * im_width +
+                         channelid * im_height * im_width;
 
-        int col_offset = idx + idy * filter_width +
-                         channelid * filter_height * filter_width +
-                         (shid * col_width + swid) *
-                             (im_channels * filter_height * filter_width);
+        auto col_offset = idx + idy * filter_width +
+                          channelid * filter_height * filter_width +
+                          (shid * col_width + swid) *
+                              (im_channels * filter_height * filter_width);
 
         col_data[col_offset] =
             (height_offset >= im_height || height_offset < 0 ||
@@ -430,7 +431,7 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
       block_dim_y = 32;
     }
 
-    int block_dim_z = 1024 / block_dim_x / block_dim_y;
+    auto block_dim_z = 1024 / block_dim_x / block_dim_y;
     dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
     dim3 grid(col_width, col_height);
     im2colOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(im.data<T>(),
@@ -469,15 +470,15 @@ __global__ void col2imOCF(const T* col_data,
        channelid += blockDim.z) {
     for (int idy = threadIdx.y; idy < filter_height; idy += blockDim.y) {
       for (int idx = threadIdx.x; idx < filter_width; idx += blockDim.x) {
-        int width_offset = idx + swid * stride_width - padding_width;
-        int height_offset = idy + shid * stride_height - padding_height;
-        int im_offset = width_offset + height_offset * im_width +
-                        channelid * im_height * im_width;
+        auto width_offset = idx + swid * stride_width - padding_width;
+        auto height_offset = idy + shid * stride_height - padding_height;
+        auto im_offset = width_offset + height_offset * im_width +
+                         channelid * im_height * im_width;
 
-        int col_offset = idx + idy * filter_width +
-                         channelid * filter_height * filter_width +
-                         (shid * col_width + swid) *
-                             (im_channels * filter_height * filter_width);
+        auto col_offset = idx + idy * filter_width +
+                          channelid * filter_height * filter_width +
+                          (shid * col_width + swid) *
+                              (im_channels * filter_height * filter_width);
 
         if (height_offset >= 0 && height_offset < im_height &&
             width_offset >= 0 && width_offset < im_width) {
@@ -557,7 +558,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
       block_dim_y = 32;
     }
 
-    int block_dim_z = 1024 / block_dim_x / block_dim_y;
+    auto block_dim_z = 1024 / block_dim_x / block_dim_y;
     dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
     dim3 grid(col_width, col_height);
     col2imOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(col.data<T>(),

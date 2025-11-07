@@ -61,7 +61,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
     int64_t output_depth = col->dims()[4];
     int64_t output_height = col->dims()[5];
     int64_t output_width = col->dims()[6];
-    int channels_col =
+    auto channels_col =
         input_channels * filter_depth * filter_height * filter_width;
 
     // changed
@@ -187,7 +187,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
     int output_depth = static_cast<int>(col.dims()[4]);
     int output_height = static_cast<int>(col.dims()[5]);
     int output_width = static_cast<int>(col.dims()[6]);
-    int channels_col =
+    auto channels_col =
         input_channels * filter_depth * filter_height * filter_width;
 
     bool paddings_size_is_6 = (paddings.size() == 6);
@@ -238,13 +238,13 @@ class Col2VolFunctor<phi::CPUContext, T> {
       int w_offset = c % filter_width;
       int h_offset = (c / filter_width) % filter_height;
       int d_offset = (c / filter_width / filter_height) % filter_depth;
-      int cIm = c / filter_width / filter_height / filter_depth;
+      auto cIm = c / filter_width / filter_height / filter_depth;
       for (int d = 0; d < output_depth; ++d) {
-        int d_pad = d * strides[0] - pad_d_forth + d_offset * dilations[0];
+        auto d_pad = d * strides[0] - pad_d_forth + d_offset * dilations[0];
         for (int h = 0; h < output_height; ++h) {
-          int h_pad = h * strides[1] - pad_h_up + h_offset * dilations[1];
+          auto h_pad = h * strides[1] - pad_h_up + h_offset * dilations[1];
           for (int w = 0; w < output_width; ++w) {
-            int w_pad = w * strides[2] - pad_w_left + w_offset * dilations[2];
+            auto w_pad = w * strides[2] - pad_w_left + w_offset * dilations[2];
 
             if (h_pad >= 0 && h_pad < input_height && w_pad >= 0 &&
                 w_pad < input_width && d_pad >= 0 && d_pad < input_depth) {
@@ -259,7 +259,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
                         input_channels +
                     cIm;
               }
-              int col_idx =
+              auto col_idx =
                   ((c * output_depth + d) * output_height + h) * output_width +
                   w;
               vol_data[vol_idx] += col_data[col_idx];

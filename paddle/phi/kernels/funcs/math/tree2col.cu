@@ -34,7 +34,8 @@ __global__ void tree2col(const T* eta,
   const int patch_id = thread_id / feature_size;
   const int j = thread_id % feature_size;
   if (patch_id < n) {
-    const int begin_o = patch_id * 3 * feature_size;
+    const auto begin_o(patch_id * 3 * feature_size);
+
     const int begin = index[patch_id * 2], end = index[patch_id * 2 + 1];
     T res_l = 0, res_r = 0, res_t = 0;
     for (int i = begin; i < end; i++) {

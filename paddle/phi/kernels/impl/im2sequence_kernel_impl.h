@@ -26,8 +26,9 @@ namespace phi {
 
 inline int Im2SeqOutputSize(
     int input_size, int filter_size, int padding_0, int padding_1, int stride) {
-  const int output_size =
-      (input_size + padding_0 + padding_1 - filter_size) / stride + 1;
+  const auto output_size(
+      (input_size + padding_0 + padding_1 - filter_size) / stride + 1);
+
   return output_size;
 }
 

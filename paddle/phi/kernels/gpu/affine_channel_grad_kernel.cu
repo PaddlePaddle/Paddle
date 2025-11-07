@@ -65,9 +65,10 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(const T* dy,
     T ds_sum = 0;
     T db_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == phi::DataLayout::kNCHW
-                            ? (j / HxW * C + i) * HxW + j % HxW
-                            : j * outer_size + i;
+      const auto index(layout == phi::DataLayout::kNCHW
+                           ? (j / HxW * C + i) * HxW + j % HxW
+                           : j * outer_size + i);
+
       ds_sum += dy[index] * x[index];
       db_sum += dy[index];
     }

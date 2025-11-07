@@ -382,8 +382,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
       for (int c = 0; c < ThreadMap::Iterations::kContiguous; ++c) {
         CUTLASS_PRAGMA_UNROLL
         for (int v = 0; v < kAccessesPerVector; ++v) {
-          int idx = v + kAccessesPerVector *
-                            (c + s * ThreadMap::Iterations::kContiguous);
+          auto idx = v + kAccessesPerVector *
+                             (c + s * ThreadMap::Iterations::kContiguous);
 
           address_iterator_.set_iteration_index(idx);
           char const* byte_ptr =
@@ -425,8 +425,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
       for (int c = 0; c < ThreadMap::Iterations::kContiguous; ++c) {
         CUTLASS_PRAGMA_UNROLL
         for (int v = 0; v < kAccessesPerVector; ++v) {
-          int idx = v + kAccessesPerVector *
-                            (c + s * ThreadMap::Iterations::kContiguous);
+          auto idx = v + kAccessesPerVector *
+                             (c + s * ThreadMap::Iterations::kContiguous);
 
           char* byte_ptr =
               reinterpret_cast<char*>(address_iterator_.get()) + byte_offset;
@@ -1071,8 +1071,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
       for (int c = 0; c < ThreadMap::Iterations::kContiguous; ++c) {
         CUTLASS_PRAGMA_UNROLL
         for (int v = 0; v < kAccessesPerVector; ++v) {
-          int idx = v + kAccessesPerVector *
-                            (c + s * ThreadMap::Iterations::kContiguous);
+          auto idx = v + kAccessesPerVector *
+                             (c + s * ThreadMap::Iterations::kContiguous);
 
           address_iterator_.set_iteration_index(idx);
           char const* byte_ptr =
@@ -1114,8 +1114,8 @@ class PredicatedTileIteratorResidualLast<Shape_,
       for (int c = 0; c < ThreadMap::Iterations::kContiguous; ++c) {
         CUTLASS_PRAGMA_UNROLL
         for (int v = 0; v < kAccessesPerVector; ++v) {
-          int idx = v + kAccessesPerVector *
-                            (c + s * ThreadMap::Iterations::kContiguous);
+          auto idx = v + kAccessesPerVector *
+                             (c + s * ThreadMap::Iterations::kContiguous);
 
           char* byte_ptr =
               reinterpret_cast<char*>(address_iterator_.get()) + byte_offset;

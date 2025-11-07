@@ -384,7 +384,7 @@ struct GradLayer {
       const std::string& mode) {
     int direction_num = is_bidirec ? 2 : 1;
     int current_reverse_idx = is_reverse ? 1 : 0;
-    int current_layer_idx = direction_num * layer_idx + current_reverse_idx;
+    auto current_layer_idx = direction_num * layer_idx + current_reverse_idx;
     int begin_idx = 0;
     if (is_reverse) {
       begin_idx = time_step;

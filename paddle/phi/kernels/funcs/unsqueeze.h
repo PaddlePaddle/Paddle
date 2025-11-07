@@ -54,8 +54,8 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
         continue;
       }
 
-      int current = squeeze_dims[i] < 0 ? squeeze_dims[i] + in_dims.size()
-                                        : squeeze_dims[i];
+      auto current = squeeze_dims[i] < 0 ? squeeze_dims[i] + in_dims.size()
+                                         : squeeze_dims[i];
 
       PADDLE_ENFORCE_GE(
           current,
@@ -118,7 +118,7 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
                                       UNSQUEEZE_MAX_RANK_SUPPORTED));
 
   for (int axis : unsqz_dims) {
-    int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
+    auto cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
     // Validity Check: the axis bound
     PADDLE_ENFORCE_GE(
         cur,

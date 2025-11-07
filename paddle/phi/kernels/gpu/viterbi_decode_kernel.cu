@@ -233,7 +233,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   std::vector<DenseTensor> historys;
   // We create tensor buffer in order to avoid allocating memory frequently
   // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
-  int buffer_size = batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
+  auto buffer_size = batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
   DenseTensor int_buffer = Empty<int64_t>(dev_ctx, {buffer_size});
   funcs::TensorBuffer int_tensor_buffer(int_buffer);
   // create float tensor buffer

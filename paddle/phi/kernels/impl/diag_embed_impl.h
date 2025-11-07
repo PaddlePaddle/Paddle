@@ -83,8 +83,8 @@ void DiagEmbedKernel(const Context& dev_ctx,
   set_zero(dev_ctx, out, static_cast<T>(0.0));
 
   auto out_dims = out->dims();
-  int dim1_ = dim1 < 0 ? out_dims.size() + dim1 : dim1;
-  int dim2_ = dim2 < 0 ? out_dims.size() + dim2 : dim2;
+  auto dim1_ = dim1 < 0 ? out_dims.size() + dim1 : dim1;
+  auto dim2_ = dim2 < 0 ? out_dims.size() + dim2 : dim2;
   auto stride = common::stride(out_dims);
   int64_t diag_size;
   int64_t storage_offset = 0;

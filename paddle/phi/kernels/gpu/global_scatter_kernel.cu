@@ -114,7 +114,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < n_expert; ++i) {
       comm_ctx->GroupStart();
       for (auto j = 0; j < nranks; ++j) {
-        int idx = i + j * n_expert;
+        auto idx = i + j * n_expert;
         if (cpu_local_count_data[idx]) {
           auto send_buf = distributed::GetPartialTensor(
               *x,

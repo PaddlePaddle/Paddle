@@ -40,7 +40,8 @@ void SeqPoolJitCode::genCode() {
     vdivps(xmm_t(1), xmm_t(1), xmm_t(0));
     vmovss(ptr[reg_tmp], xmm_t(1));
   }
-  const int group_len = max_num_regs * block * sizeof(float);
+  const auto group_len(max_num_regs * block * sizeof(float));
+
   for (int g = 0; g < num_groups; ++g) {
     pool_height<ymm_t>(g * group_len, block, max_num_regs);
   }

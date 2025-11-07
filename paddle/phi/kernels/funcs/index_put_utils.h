@@ -161,7 +161,7 @@ static phi::DDim BroadCastTensorsDims(
     int target_dim_size = 1;
     for (const auto& tensor : tensors) {
       auto input_ddim = tensor->dims();
-      int axis = static_cast<int>(input_ddim.size()) - index - 1;
+      auto axis = static_cast<int>(input_ddim.size()) - index - 1;
       int dim_size = 1;
       if (axis >= 0) {
         dim_size = input_ddim[axis];

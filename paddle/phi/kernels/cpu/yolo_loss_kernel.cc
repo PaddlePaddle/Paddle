@@ -282,7 +282,7 @@ void YoloLossKernel(const Context& dev_ctx,
           // If best IoU is bigger then ignore_thresh,
           // ignore the objectness loss.
           if (best_iou > ignore_thresh) {
-            int obj_idx = (i * mask_num + j) * stride + k * w + l;
+            auto obj_idx = (i * mask_num + j) * stride + k * w + l;
             obj_mask_data[obj_idx] = static_cast<T>(-1);
           }
           // all losses should be calculated if best IoU
@@ -339,7 +339,7 @@ void YoloLossKernel(const Context& dev_ctx,
                                stride,
                                score);
 
-        int obj_idx = (i * mask_num + mask_idx) * stride + gj * w + gi;
+        auto obj_idx = (i * mask_num + mask_idx) * stride + gj * w + gi;
         obj_mask_data[obj_idx] = score;
 
         int label = gt_label_data[i * b + t];

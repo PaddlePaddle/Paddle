@@ -459,7 +459,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                   : x_dims[x_dims.size() - 1]);
   const int N = x_dims[0];
   const int64_t num = X->numel();
-  const int sample_size = num / N / C;
+  const auto sample_size(num / N / C);
+
   phi::DenseTensor scale_tmp;
   if (!Scale) {
     scale_tmp.Resize({C});

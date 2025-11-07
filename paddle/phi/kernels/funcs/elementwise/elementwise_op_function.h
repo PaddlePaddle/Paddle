@@ -123,7 +123,7 @@ static void FusedElemwiseAndActBroadcast1CPU(const T *x,
                                              T *intermediate_out) {
   for (int i = 0; i < h; ++i) {
     for (int j = 0; j < w; ++j) {
-      int offset = i * w + j;
+      auto offset = i * w + j;
 
       T y_val = BcastY ? y[j] : y[offset];
       T x_val = BcastY ? x[offset] : x[j];
@@ -171,7 +171,7 @@ static void FusedElemwiseAndActBroadcast2CPU(const T *x,
   for (int i = 0; i < pre; ++i) {
     for (int j = 0; j < n; ++j) {
       for (int k = 0; k < post; ++k) {
-        int offset = i * n * post + j * post + k;
+        auto offset = i * n * post + j * post + k;
 
         T y_val = BcastY ? y[j] : y[offset];
         T x_val = BcastY ? x[offset] : x[j];
@@ -219,7 +219,7 @@ static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
   int j = threadIdx.x;
 
   while (j < w) {
-    int offset = i * w + j;
+    auto offset = i * w + j;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -295,7 +295,7 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
     int k = tid % post;
     if (i >= pre) break;
 
-    int offset = i * n * post + j * post + k;
+    auto offset = i * n * post + j * post + k;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -596,7 +596,7 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
   T zero = static_cast<T>(0);
   for (int i = 0; i < h; ++i) {
     for (int j = 0; j < w; ++j) {
-      int offset = i * w + j;
+      auto offset = i * w + j;
 
       tmp_out_idx = BcastY ? j : offset;
       y_idx = BcastY ? j : offset;
@@ -694,7 +694,7 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
   for (int i = 0; i < pre; ++i) {
     for (int j = 0; j < n; ++j) {
       for (int k = 0; k < post; ++k) {
-        int offset = i * n * post + j * post + k;
+        auto offset = i * n * post + j * post + k;
 
         tmp_out_idx = BcastY ? j : offset;
         y_idx = BcastY ? j : offset;
@@ -988,7 +988,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     int k = ttid % post;
     if (i >= pre) break;
 
-    int offset = i * n * post + j * post + k;
+    auto offset = i * n * post + j * post + k;
 
     tmp_out_idx = BcastY ? j : offset;
     y_idx = BcastY ? j : offset;

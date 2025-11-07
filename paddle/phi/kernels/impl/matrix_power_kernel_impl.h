@@ -26,7 +26,8 @@ struct IdentityMatrixFunctor {
   IdentityMatrixFunctor(const int m, T* output) : m_(m), output_(output) {}
 
   HOSTDEVICE void operator()(size_t index) const {
-    const int row = index / m_ % m_;
+    const auto row(index / m_ % m_);
+
     const int col = index % m_;
     output_[index] = col == row ? static_cast<T>(1) : static_cast<T>(0);
   }

@@ -31,7 +31,8 @@ __global__ void KeCMRNormFillScale(int img_size,
   if (idx < img_size) {
     const int w = idx % W;
     const int h = (idx / W) % H;
-    const int n = idx / W / H;
+    const auto n(idx / W / H);
+
     const int offset =
         (data_layout != DataLayout::kNHWC ? (n * C * H + h) * W + w
                                           : ((n * H + h) * W + w) * C);
@@ -40,7 +41,7 @@ __global__ void KeCMRNormFillScale(int img_size,
     mid += offset;
     const int step = H * W;
     const int pre_pad = (size - 1) / 2;
-    const int post_pad = size - pre_pad - 1;
+    const auto post_pad(size - pre_pad - 1);
 
     T accum = 0;
     int index = 0;
@@ -90,14 +91,14 @@ void CrossMapNormal(const phi::GPUContext& dev_ctx,
                     T alpha,
                     T beta,
                     const DataLayout data_layout) {
-  int img_size = N * H * W;
+  auto img_size = N * H * W;
   const int block_size = 1024;
   int grid_size = (img_size + block_size - 1) / block_size;
 
   KeCMRNormFillScale<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       img_size, inputs, mid, C, H, W, n, k, alpha, data_layout);
 
-  int input_size = N * H * W * C;
+  auto input_size = N * H * W * C;
   grid_size = (input_size + block_size - 1) / block_size;
   KeCMRNormOutput<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       input_size, inputs, mid, -beta, outputs);

@@ -30,8 +30,8 @@ inline std::vector<int64_t> CorrelationOutputSize(int batch,
   std::vector<int64_t> output_shape({batch});
   int kernel_radius = (kernel_size - 1) / 2;
   int border_radius = kernel_radius + max_displacement;
-  int padded_input_height = input_height + 2 * pad_size;
-  int padded_input_width = input_width + 2 * pad_size;
+  auto padded_input_height = input_height + 2 * pad_size;
+  auto padded_input_width = input_width + 2 * pad_size;
   int output_channel = ((max_displacement / stride2) * 2 + 1) *
                        ((max_displacement / stride2) * 2 + 1);
   output_shape.push_back(output_channel);

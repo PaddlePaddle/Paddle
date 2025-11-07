@@ -37,9 +37,11 @@ __global__ void ShuffleChannel(const int nthreads,
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (size_t ii = index; ii < nthreads; ii += offset) {
-    const int n = index / group_row / group_column / len;
+    const auto n(index / group_row / group_column / len);
+
     const int i = (index / group_column / len) % group_row;
-    const int j = index / len % group_column;
+    const auto j(index / len % group_column);
+
     const int k = index - (n * feature_map_size + (i * group_column + j) * len);
     T* p_o = output + n * feature_map_size + (j * group_row + i) * len;
     p_o[k] = input[index];

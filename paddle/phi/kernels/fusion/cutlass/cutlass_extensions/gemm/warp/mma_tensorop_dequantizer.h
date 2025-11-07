@@ -469,7 +469,8 @@ class MmaTensorOpDequantizer<
                          const int warp_idx_n,
                          const int lane_idx) {
     const int warp_offset = warp_idx_n * Shape::kN;
-    const int base_col = lane_idx & 0xF8 + lane_idx % 4;
+    const auto base_col(lane_idx & 0xF8 + lane_idx % 4);
+
     const int thread_offset = warp_offset + base_col;
     pointer_ = smem_scales.data() + thread_offset;
   }
