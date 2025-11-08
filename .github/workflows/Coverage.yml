@@ -170,6 +170,7 @@ jobs:
           mkdir -p ${CFS_DIR}/.ccache/coverage
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
 
@@ -247,7 +248,7 @@ jobs:
         if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d;rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
 
