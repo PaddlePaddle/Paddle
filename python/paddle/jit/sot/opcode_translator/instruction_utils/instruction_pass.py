@@ -95,7 +95,7 @@ def find_loaded_once_local_vars(instrs: list[Instruction], code_options):
 
 def find_related_local_opcodes(instrs: list[Instruction], code_options):
     """
-    find out the opcode pairs consist with LOAD_FAST and LOAD_FAST_BORROW and STORE_FAST and LOAD_FAST_CHECK
+    Find opcode pairs consisting of LOAD_FAST, LOAD_FAST_BORROW, STORE_FAST, and LOAD_FAST_CHECK.
     """
     stack = []
     opcode_pairs = []
