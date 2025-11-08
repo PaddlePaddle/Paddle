@@ -37,6 +37,10 @@ repos:
           (?x)^(
             test/dygraph_to_static/test_error.py
           )$
+  - repo: https://github.com/PFCCLab/ast-grep-pre-commit-mirror
+    rev: v0.39.9
+    hooks:
+      - id: ast-grep
   - repo: local
     hooks:
       - id: copyright_checker
