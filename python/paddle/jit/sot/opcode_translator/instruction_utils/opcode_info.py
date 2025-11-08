@@ -153,3 +153,15 @@ def _get_binary_op_arg_map() -> dict[str, int]:
 
 
 BINARY_OP_ARG_MAP: dict[str, int] = _get_binary_op_arg_map()
+
+FUSED_INSTS: dict[str, tuple[str, str]] = {
+    "LOAD_FAST_LOAD_FAST": ("LOAD_FAST", "LOAD_FAST"),
+    "LOAD_FAST_BORROW_LOAD_FAST_BORROW": (
+        "LOAD_FAST_BORROW",
+        "LOAD_FAST_BORROW",
+    ),
+    "STORE_FAST_STORE_FAST": ("STORE_FAST", "STORE_FAST"),
+    "STORE_FAST_LOAD_FAST": ("STORE_FAST", "LOAD_FAST"),
+}
+
+TO_FUSED_INSTS = {v: k for k, v in FUSED_INSTS.items()}
