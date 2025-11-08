@@ -110,7 +110,7 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.XPUPlace(0))
 
-        res = exe.run(
+        (res,) = exe.run(
             paddle.static.default_main_program(),
             feed={"x": np_x, "mask": np_mask},
             fetch_list=[out],
