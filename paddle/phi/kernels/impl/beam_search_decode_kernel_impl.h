@@ -34,8 +34,11 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     // First make a copy of GPU data on CPU
-    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
-      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU ||
+        step_ids_origin_[0].place().GetType() == phi::AllocationType::CUSTOM) {
+      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU ||
+          step_ids_origin_[0].place().GetType() ==
+              phi::AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
@@ -55,9 +58,13 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU ||
+        step_scores_origin_[0].place().GetType() ==
+            phi::AllocationType::CUSTOM) {
       if (step_scores_origin_[0].place().GetType() ==
-          phi::AllocationType::GPU) {
+              phi::AllocationType::GPU ||
+          step_scores_origin_[0].place().GetType() ==
+              phi::AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();

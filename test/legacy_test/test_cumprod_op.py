@@ -1170,5 +1170,73 @@ class TestCumprodAPI_WithFlatten(unittest.TestCase):
             run(place)
 
 
+class TestCumprodAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = ['cpu', get_device_place()]
+        self.shape = [2, 3, 4]
+        self.dtype = "float32"
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+        self.dim = 1
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.cumprod(x, self.dim)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.cumprod(x=x, dim=self.dim)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch compatibility
+        out3 = paddle.cumprod(input=x, dim=self.dim)
+        paddle_dygraph_out.append(out3)
+        # Tensor method args
+        out4 = x.cumprod(dim=self.dim)
+        paddle_dygraph_out.append(out4)
+        # Test 'out' parameter for torch compatibility
+        out5 = paddle.empty_like(x)
+        paddle.cumprod(x, dim=self.dim, out=out5)
+        paddle_dygraph_out.append(out5)
+        # Numpy reference output
+        ref_out = np.cumprod(self.np_x, axis=self.dim)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.cumprod(x, self.dim)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.cumprod(x=x, dim=self.dim)
+            # Key words args for torch compatibility
+            out3 = paddle.cumprod(input=x, dim=self.dim)
+            # Tensor method args
+            out4 = x.cumprod(dim=self.dim)
+            # Numpy reference output
+            ref_out = np.cumprod(self.np_x, axis=self.dim)
+
+            fetch_list = [out1, out2, out3, out4]
+            for place in self.places:
+                exe = paddle.base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+
 if __name__ == "__main__":
     unittest.main()
