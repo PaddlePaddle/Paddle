@@ -62,7 +62,7 @@ jobs:
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
           CUDA_ARCH_NAME: "Manual"
-          CUDA_ARCH_BIN: "70 80 90"
+          CUDA_ARCH_BIN: "70 75 80 90"
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
