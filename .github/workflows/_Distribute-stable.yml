@@ -188,7 +188,7 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
-          paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: "*.whl"
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
