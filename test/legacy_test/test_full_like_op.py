@@ -271,7 +271,7 @@ class TestFullKernelZeroSize(unittest.TestCase):
         shape = [0, 3]
         tensor = paddle.full(shape, value, dtype=dtype)
         expected = np.full(shape, value, dtype=dtype)
-        np.testing.assert_array_equal(tensor.numpy(), expected)
+        self.assertTrue(np.array_equal(tensor.numpy(), expected))
         paddle.enable_static()
 
     @unittest.skipIf(
@@ -286,7 +286,7 @@ class TestFullKernelZeroSize(unittest.TestCase):
         shape = [0, 3]
         tensor = paddle.full(shape, value, dtype=dtype)
         expected = np.full(shape, value, dtype=dtype)
-        np.testing.assert_array_equal(tensor.numpy(), expected)
+        self.assertTrue(np.array_equal(tensor.numpy(), expected))
         paddle.enable_static()
 
 
