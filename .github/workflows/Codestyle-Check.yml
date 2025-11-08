@@ -49,6 +49,12 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           pip install pre-commit==2.17.0 cpplint==1.6.0  clang-format==13.0.0
+          pip install ast-grep-cli==0.39.9 # This version should be consistent with the one in .pre-commit-config.yaml
+
+      - name: Run ast-grep unit tests
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          ast-grep test
 
       - name: Check pre-commit
         if: steps.check-bypass.outputs.can-skip != 'true'
