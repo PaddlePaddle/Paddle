@@ -49,7 +49,6 @@ jobs:
           WITH_TESTING: "ON"
           WITH_INFERENCE_API_TEST: "OFF"
           COVERALLS_UPLOAD: "ON"
-          PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           GPUBOX_DEMO_INSTALL_DIR: /root/.cache/build
@@ -89,7 +88,6 @@ jobs:
             -e WITH_TESTING \
             -e COVERALLS_UPLOAD \
             -e GIT_PR_ID \
-            -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
             -e PY_VERSION \
             -e WITH_TENSORRT \
