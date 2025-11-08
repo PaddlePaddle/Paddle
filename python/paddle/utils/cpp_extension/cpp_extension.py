@@ -59,7 +59,6 @@ from .extension_utils import (
 )
 from .extension_utils import _reset_so_rpath, clean_object_if_change_cflags
 from .extension_utils import (
-    bootstrap_context,
     get_build_directory,
     add_std_without_repeat,
     custom_write_stub,
@@ -256,9 +255,7 @@ def setup(**attr: Any) -> None:
     # See http://peak.telecommunity.com/DevCenter/setuptools#setting-the-zip-safe-flag
     attr['zip_safe'] = False
 
-    # switch `write_stub` to inject paddle api in .egg
-    with bootstrap_context():
-        setuptools.setup(**attr)
+    setuptools.setup(**attr)
 
 
 def CppExtension(
@@ -971,9 +968,6 @@ class InstallCommand(install):
       2) ensure a single top-level entry for the package in site/dist-packages so
          legacy tests that expect a sole artifact (egg/package) keep working
       3) rename the compiled library to *_pd_.so to avoid shadowing the python stub
-
-    Note: This is primarily for legacy 'python setup.py install' usage.
-    For modern 'pip install', the BdistWheelCommand handles file layout.
     """
 
     def finalize_options(self) -> None:

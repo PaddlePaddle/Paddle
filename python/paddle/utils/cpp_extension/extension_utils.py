@@ -31,10 +31,7 @@ import sysconfig
 import textwrap
 import threading
 import warnings
-from contextlib import contextmanager
 from importlib import machinery
-
-from setuptools.command import bdist_egg
 
 try:
     from subprocess import DEVNULL  # py3
@@ -149,18 +146,6 @@ DEFAULT_OP_ATTR_NAMES = [
     core.op_proto_and_checker_maker.kOpDeviceAttrName(),
     core.op_proto_and_checker_maker.kOpWithQuantAttrName(),
 ]
-
-
-@contextmanager
-def bootstrap_context():
-    """
-    Context to manage how to write `__bootstrap__` code in .egg
-    """
-    origin_write_stub = bdist_egg.write_stub
-    bdist_egg.write_stub = custom_write_stub
-    yield
-
-    bdist_egg.write_stub = origin_write_stub
 
 
 def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
