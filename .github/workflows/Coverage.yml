@@ -56,13 +56,13 @@ jobs:
     steps:
       - name: Check docker image and run container
         env:
-          CACHE_DIR: "/root/.cache/coverage-129"
-          CCACHE_DIR: "/root/.ccache/coverage-129"
+          CACHE_DIR: "/root/.cache/coverage"
+          CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
           CUDA_ARCH_NAME: "Manual"
-          CUDA_ARCH_BIN: "70 75 80 86 89 90"
+          CUDA_ARCH_BIN: "75 80 86 89 90"
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
