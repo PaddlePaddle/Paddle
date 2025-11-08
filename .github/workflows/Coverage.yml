@@ -61,7 +61,8 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: "Manual"
+          CUDA_ARCH_BIN: "70 90"
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
@@ -109,6 +110,7 @@ jobs:
             -e CTEST_PARALLEL_LEVEL \
             -e WITH_GPU \
             -e CUDA_ARCH_NAME \
+            -e CUDA_ARCH_BIN \
             -e WITH_AVX \
             -e WITH_COVERAGE \
             -e COVERALLS_UPLOAD \
@@ -248,7 +250,7 @@ jobs:
         if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d;rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
 
