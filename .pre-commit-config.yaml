@@ -158,7 +158,10 @@ repos:
           (?x)^(
             \.github/.+\.(yaml|yml)|
             \.pre-commit-config\.yaml|
-            \.yamlfmt
+            \.yamlfmt|
+            sgconfig\.yml|
+            ci/rules/.+\.yml|
+            ci/rule-tests/.+\.yml
           )
   # Others
   - repo: local
