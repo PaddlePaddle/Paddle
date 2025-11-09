@@ -119,6 +119,11 @@ class TestCompatEqual(unittest.TestCase):
         with self.assertRaises(AttributeError):
             equal(paddle.to_tensor([1, 2, 3]), [1, 2, 3])
 
+        with self.assertRaises(TypeError):
+            x = paddle.to_tensor([1.0, 2.0, 3.0])
+            y = paddle.to_tensor([1.0, 2.0, 3.0])
+            equal(x=x, y=y)
+
 
 if __name__ == '__main__':
     unittest.main()
