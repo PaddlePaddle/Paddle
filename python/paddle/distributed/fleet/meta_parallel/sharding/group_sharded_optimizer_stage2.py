@@ -29,6 +29,11 @@ from collections import OrderedDict
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import ParallelMode, fleet
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    ShardedWeight,
+    create_sharded_weight_with_new_local,
+)
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
@@ -698,3 +703,90 @@ class GroupShardedOptimizerStage2(Optimizer):
                         self._forward_pre_hook_function(tasks)
                     )
                 )
+
+    def sharded_state_dict(
+        self,
+        model_sharded_state_dict: ShardedStateDict,
+    ) -> ShardedStateDict:
+        """
+        Convert optimizer state dict to a sharded state dict based on model sharding information.
+
+        Args:
+            model_sharded_state_dict (dict): Sharded state dict of the model, containing tensor metadata.
+
+        Returns:
+            dict: A new optimizer state dict where weights are wrapped as ShardedWeight.
+        """
+
+        _FP32_MASTER = "fp32_master_0"
+        _MOMENT_NAME = "moment"
+        _optimizer_scalar_name = [
+            "beta1_pow_acc_0",
+            "beta2_pow_acc_0",
+        ]
+        _optimizer_non_scaler_name = [
+            "moment1_0",
+            "moment2_0",
+            "velocity_0",
+        ]
+
+        def _generate_base_static_name(vname):
+            if _FP32_MASTER in vname:
+                return tuple(vname.split("_" + _FP32_MASTER + "_", 1))
+            for name in _optimizer_scalar_name + _optimizer_non_scaler_name:
+                if vname.endswith(name):
+                    return vname[: -(len(name) + 1)], name
+            raise ValueError(f"Cannot split variable name: {vname}.")
+
+        optimizer_sharded_state_dict = {}
+        optimizer_state_dict = self.state_dict()
+        # Build name mapping and remove non-tensor entries from optimizer state
+        static_to_struct_mapping = {}
+        model_sharded_state_dict = dict(
+            sorted(model_sharded_state_dict.items())
+        )
+        for k, v in model_sharded_state_dict.items():
+            # When shared weights exist, the v.local_tensor.name of shared parameters are identical, but only the first parameter has optimizer states. Therefore, only the key-value pairs of the first occurrence in the shared parameter group need to be retained.
+            if v.local_tensor.name not in static_to_struct_mapping:
+                static_to_struct_mapping[v.local_tensor.name] = k
+
+        master_weights = optimizer_state_dict.pop("master_weights", None)
+        optimizer_state_dict.pop("LR_Scheduler", None)
+
+        # Process main optimizer states
+        for key, tensor in optimizer_state_dict.items():
+            static_name, optim_state_type = _generate_base_static_name(key)
+            struct_name = static_to_struct_mapping[static_name]
+            sharded_weight = model_sharded_state_dict[struct_name]
+
+            unified_name = f"{struct_name}.{optim_state_type}"
+
+            # Determine tensor partitioning scheme
+            if _MOMENT_NAME in optim_state_type:
+                optimizer_sharded_state_dict[unified_name] = (
+                    create_sharded_weight_with_new_local(
+                        unified_name, tensor, sharded_weight
+                    )
+                )
+            else:  # Non-momentum parameters
+                optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                    key=unified_name,
+                    local_tensor=tensor,
+                    local_shape=(1,),
+                    global_shape=(1,),
+                    global_offset=(0,),
+                )
+
+        # Process master weights if using mixed precision
+        if master_weights is not None:
+            for key, tensor in master_weights.items():
+                struct_name = static_to_struct_mapping[key]
+                sharded_weight = model_sharded_state_dict[struct_name]
+                unified_name = f"{struct_name}.w_0"
+                optimizer_sharded_state_dict[unified_name] = (
+                    create_sharded_weight_with_new_local(
+                        unified_name, tensor, sharded_weight
+                    )
+                )
+
+        return optimizer_sharded_state_dict

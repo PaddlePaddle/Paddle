@@ -194,6 +194,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
   SetPythonStack();
   std::string classname =
       std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
+  std::string forward_stack;
+  if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
+    // record the forward stack
+    forward_stack = egr::Controller::Instance().GetPythonStack();
+  }
   VLOG(3) << classname << ":Running PyLayer Apply ";
   VLOG(4) << classname << ":"
           << "Construct PyLayerContext";
@@ -551,7 +556,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
             << grad_node;
     // For dump call stack
     if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
-      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+      grad_node->SetForwardTrace(forward_stack);
     }
 
 #ifdef PADDLE_WITH_CUDA
