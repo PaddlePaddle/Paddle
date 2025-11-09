@@ -36,6 +36,7 @@
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -1669,5 +1670,15 @@ void SavePythonCallStackToFile(const std::string& file_name,
       api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
       "append");
 }
-
+#define SEPARATOR "============================"
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg) {
+  std::ostringstream oss;
+  oss << SEPARATOR << " Error message in backward of " << node->name() << "("
+      << node << ")" << SEPARATOR << std::endl;
+  oss << error_mesg << std::endl;
+  oss << SEPARATOR << SEPARATOR << SEPARATOR << SEPARATOR << std::endl;
+  return "\n{\n" + paddle::framework::InsertIndentationIntoEachLine(oss.str()) +
+         "\n}\n";
+}
 }  // namespace egr

@@ -24,6 +24,7 @@ from ...utils import InnerError
 from .opcode_info import (
     ABS_JUMP,
     ALL_JUMP,
+    FUSED_INSTS,
     PYOPCODE_CACHE_SIZE,
     REL_BWD_JUMP,
     REL_JUMP,
@@ -118,16 +119,6 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
             is_generated=is_generated,
             jump_to=instr.jump_to,
         )
-
-    FUSED_INSTS: dict[str, tuple[str, str]] = {
-        "LOAD_FAST_LOAD_FAST": ("LOAD_FAST", "LOAD_FAST"),
-        "LOAD_FAST_BORROW_LOAD_FAST_BORROW": (
-            "LOAD_FAST_BORROW",
-            "LOAD_FAST_BORROW",
-        ),
-        "STORE_FAST_STORE_FAST": ("STORE_FAST", "STORE_FAST"),
-        "STORE_FAST_LOAD_FAST": ("STORE_FAST", "LOAD_FAST"),
-    }
 
     for instr in instructions:
         if instr.opname in FUSED_INSTS:
@@ -428,6 +419,7 @@ def modify_vars(instructions: list[Instruction], code_options):
     for instrs in instructions:
         if instrs.opname in [
             'LOAD_FAST',
+            'LOAD_FAST_BORROW',
             'LOAD_FAST_CHECK',
             'STORE_FAST',
             'DELETE_FAST',
@@ -443,11 +435,7 @@ def modify_vars(instructions: list[Instruction], code_options):
                     f"`{instrs.argval}` not in {namemap}"
                 )
                 instrs.arg = namemap.index(instrs.argval)
-        elif instrs.opname in [
-            'LOAD_FAST_LOAD_FAST',
-            'STORE_FAST_STORE_FAST',
-            'STORE_FAST_LOAD_FAST',
-        ]:
+        elif instrs.opname in FUSED_INSTS.keys():
             assert instrs.argval[0] in co_varnames, (
                 f"`{instrs.argval[0]}` not in {co_varnames}"
             )

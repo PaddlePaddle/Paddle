@@ -152,6 +152,9 @@ template struct SetConstant<phi::GPUContext, bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
 template struct SetConstant<phi::GPUContext, double>;
 template struct SetConstant<phi::GPUContext, uint8_t>;
+template struct SetConstant<phi::GPUContext, uint16_t>;
+template struct SetConstant<phi::GPUContext, uint32_t>;
+template struct SetConstant<phi::GPUContext, uint64_t>;
 template struct SetConstant<phi::GPUContext, int8_t>;
 template struct SetConstant<phi::GPUContext, int>;
 template struct SetConstant<phi::GPUContext, int16_t>;
@@ -166,6 +169,9 @@ template struct SetConstant<phi::GPUPinnedContext, bfloat16>;
 template struct SetConstant<phi::GPUPinnedContext, float>;
 template struct SetConstant<phi::GPUPinnedContext, double>;
 template struct SetConstant<phi::GPUPinnedContext, uint8_t>;
+template struct SetConstant<phi::GPUPinnedContext, uint16_t>;
+template struct SetConstant<phi::GPUPinnedContext, uint32_t>;
+template struct SetConstant<phi::GPUPinnedContext, uint64_t>;
 template struct SetConstant<phi::GPUPinnedContext, int8_t>;
 template struct SetConstant<phi::GPUPinnedContext, int>;
 template struct SetConstant<phi::GPUPinnedContext, int16_t>;
@@ -177,7 +183,10 @@ template struct SetConstant<phi::GPUPinnedContext, phi::complex128>;
 
 #define DEFINE_GPU_TRANS(RANK)                                      \
   template struct Transpose<phi::GPUContext, bool, RANK>;           \
-  template struct Transpose<phi::GPUContext, unsigned char, RANK>;  \
+  template struct Transpose<phi::GPUContext, uint8_t, RANK>;        \
+  template struct Transpose<phi::GPUContext, uint16_t, RANK>;       \
+  template struct Transpose<phi::GPUContext, uint32_t, RANK>;       \
+  template struct Transpose<phi::GPUContext, uint64_t, RANK>;       \
   template struct Transpose<phi::GPUContext, float, RANK>;          \
   template struct Transpose<phi::GPUContext, double, RANK>;         \
   template struct Transpose<phi::GPUContext, float8_e4m3fn, RANK>;  \
@@ -338,6 +347,9 @@ DEFINE_GPU_TRANS_NORMAL(int64_t);
 DEFINE_GPU_TRANS_NORMAL(bool);
 DEFINE_GPU_TRANS_NORMAL(int16_t);
 DEFINE_GPU_TRANS_NORMAL(uint8_t);
+DEFINE_GPU_TRANS_NORMAL(uint16_t);
+DEFINE_GPU_TRANS_NORMAL(uint32_t);
+DEFINE_GPU_TRANS_NORMAL(uint64_t);
 DEFINE_GPU_TRANS_NORMAL(int8_t);
 DEFINE_GPU_TRANS_NORMAL(phi::complex64);
 DEFINE_GPU_TRANS_NORMAL(phi::complex128);

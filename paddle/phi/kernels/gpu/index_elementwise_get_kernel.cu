@@ -67,12 +67,11 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = output->numel();
-  PADDLE_ENFORCE_GE(
-      N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
-  PADDLE_ENFORCE_LE(
-      N,
-      std::numeric_limits<int32_t>::max(),
-      common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
+  PADDLE_ENFORCE_EQ(true,
+                    funcs::IsInUint32Range(N, input.numel()),
+                    common::errors::PreconditionNotMet(
+                        "the numel of input or output should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);

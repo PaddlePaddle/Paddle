@@ -202,7 +202,7 @@ class Linear(Layer):
         illegal_keys={"bias", "device", "dtype"},
         func_name="paddle.nn.Linear",
         correct_name="paddle.compat.nn.Linear",
-        url_suffix="nn/torch.nn.Linear",
+        url_suffix="torch.nn.Linear",
     )
     def __init__(
         self,
@@ -582,6 +582,7 @@ class UpsamplingNearest2D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         out = F.interpolate(
             x,
@@ -678,6 +679,7 @@ class UpsamplingBilinear2D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         out = F.interpolate(
             x,
@@ -1214,6 +1216,7 @@ class _PadnD(Layer):
         )
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.pad(
             x,
@@ -2544,7 +2547,7 @@ class Unfold(Layer):
         illegal_keys={"kernel_size", "dilation", "padding", "stride"},
         func_name="paddle.nn.Unfold",
         correct_name="paddle.compat.nn.Unfold",
-        url_suffix="nn/torch.nn.Unfold",
+        url_suffix="torch.nn.Unfold",
     )
     def __init__(
         self,
