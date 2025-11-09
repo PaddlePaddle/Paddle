@@ -64,7 +64,7 @@ jobs:
           WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.10
+          PY_VERSION: "3.10"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
@@ -257,14 +257,14 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Auto
+          CUDA_ARCH_NAME: Hopper
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.10
+          PY_VERSION: "3.10"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
