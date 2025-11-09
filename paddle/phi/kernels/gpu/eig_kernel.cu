@@ -123,6 +123,7 @@ void EigKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_MAGMA
 PD_REGISTER_KERNEL(eig,
                    GPU,
                    ALL_LAYOUT,
@@ -137,3 +138,4 @@ PD_REGISTER_KERNEL(eig,
     kernel->OutputAt(1).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
   }
 }
+#endif

@@ -523,6 +523,7 @@ void EigGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 // Register the kernel
+#ifdef PADDLE_WITH_MAGMA
 PD_REGISTER_KERNEL(eig_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -535,3 +536,4 @@ PD_REGISTER_KERNEL(eig_grad,
   kernel->InputAt(2).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
+#endif
