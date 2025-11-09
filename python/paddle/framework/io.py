@@ -1243,7 +1243,11 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                             safetensors.__version__ > "0.6.2"
                             and paddle.__version__ >= "3.2.0"
                         ):
-                            load_result = load_file(path, device='cuda')
+                            # NOTE(Ruibiao): load_file may cause segmentation fault in some case.
+                            f = safetensors.safe_open(path, framework="paddle")
+                            load_result = {}
+                            for k in f.keys():
+                                load_result[k] = f.get_tensor(k).cuda()
                         else:
                             load_result = load_file(
                                 path, device=_current_expected_place()
