@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import numpy as np
@@ -22,9 +23,10 @@ from paddle import base
 from paddle.base import core
 
 
-def compiled_with_cuda():
+def compiled_with_linux_and_cuda():
     return (
-        paddle.device.is_compiled_with_cuda()
+        platform.system().lower().startswith("linux")
+        and paddle.device.is_compiled_with_cuda()
         and not paddle.device.is_compiled_with_rocm()
     )
 
@@ -68,7 +70,7 @@ def eig_backward(w, v, grad_w, grad_v):
 class TestEigOp(OpTest):
     def setUp(self):
         paddle.enable_static()
-        if not compiled_with_cuda():
+        if not compiled_with_linux_and_cuda():
             paddle.device.set_device("cpu")
         self.op_type = "eig"
         self.python_api = paddle.linalg.eig
@@ -193,7 +195,7 @@ class TestEigOp(OpTest):
         self.check_output_with_place_customized(
             checker=self.checker,
             place=get_device_place()
-            if compiled_with_cuda()
+            if compiled_with_linux_and_cuda()
             else core.CPUPlace(),
             check_pir=True,
         )
@@ -253,7 +255,11 @@ class TestFloat(TestEigOp):
 class TestEigStatic(TestEigOp):
     def test_check_output_with_place(self):
         paddle.enable_static()
-        place = get_device_place() if compiled_with_cuda() else core.CPUPlace()
+        place = (
+            get_device_place()
+            if compiled_with_linux_and_cuda()
+            else core.CPUPlace()
+        )
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
         with base.program_guard(base.Program(), base.Program()):
@@ -298,7 +304,7 @@ class TestEigDyGraph(unittest.TestCase):
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
 
-        if not compiled_with_cuda():
+        if not compiled_with_linux_and_cuda():
             paddle.set_device("cpu")
         paddle.disable_static()
 
@@ -331,7 +337,7 @@ class TestEigDyGraph(unittest.TestCase):
     def test_check_grad(self):
         test_shape = [3, 3]
         test_type = 'float64'
-        if not compiled_with_cuda():
+        if not compiled_with_linux_and_cuda():
             paddle.set_device("cpu")
         np.random.seed(1024)
         input_np = np.random.random(test_shape).astype(test_type)
@@ -362,7 +368,7 @@ class TestEigDyGraph(unittest.TestCase):
 
 class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
-        if not compiled_with_cuda():
+        if not compiled_with_linux_and_cuda():
             paddle.device.set_device("cpu")
         paddle.disable_static()
         a = np.random.random(3).astype('float32')
@@ -372,7 +378,7 @@ class TestEigWrongDimsError(unittest.TestCase):
 
 class TestEigNotSquareError(unittest.TestCase):
     def test_error(self):
-        if not compiled_with_cuda():
+        if not compiled_with_linux_and_cuda():
             paddle.device.set_device("cpu")
         paddle.disable_static()
         a = np.random.random((1, 2, 3)).astype('float32')
@@ -382,7 +388,7 @@ class TestEigNotSquareError(unittest.TestCase):
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
     def test_error(self):
-        if not compiled_with_cuda():
+        if not compiled_with_linux_and_cuda():
             paddle.device.set_device("cpu")
         paddle.disable_static()
         a = (np.random.random((3, 3)) * 10).astype('int64')

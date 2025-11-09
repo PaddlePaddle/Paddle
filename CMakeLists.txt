@@ -104,6 +104,12 @@ endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
+if(NOT WITH_MAGMA
+   AND WITH_GPU
+   AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
+   AND NOT WITH_ARM)
+  set(WITH_MAGMA ON)
+endif()
 
 if(WITH_GPU AND NOT APPLE)
   if(WITH_PIP_CUDA_LIBRARIES AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
