@@ -72,7 +72,7 @@ jobs:
           CACHE_DIR: /root/.cache/build
           CCACHE_DIR: /root/.ccache/formers
           CFS_DIR: /home/data/cfs
-          paddle_whl: /workspace/dist/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: /workspace/dist/*.whl
           formers_docker: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda126-dev-latest
         run: |
           export CUDA_SO="$(\ls -d /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls -d /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"

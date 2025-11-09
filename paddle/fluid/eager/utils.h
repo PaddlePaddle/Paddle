@@ -492,4 +492,6 @@ static inline std::string GetGradNodeHexAddress(GradNodeBase* ptr) {
 }
 void SavePythonCallStackToFile(const std::string& file_name,
                                const std::string& api_name);
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg);
 }  // namespace egr

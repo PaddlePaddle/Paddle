@@ -40,7 +40,7 @@ __global__ void IndexEleGetGradAccKernel(
     offset_calc_t offset_calc) {
   const int tid = threadIdx.x;
   const int nv = nt * vt;
-  int idx = nv * blockIdx.x + tid;
+  int64_t idx = nv * static_cast<int64_t>(blockIdx.x) + tid;
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
@@ -111,10 +111,17 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = numel;
+
+  PADDLE_ENFORCE_EQ(true,
+                    funcs::IsInUint32Range(N, value.numel()),
+                    common::errors::PreconditionNotMet(
+                        "the numel of input or output should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  const dim3 grid((N + static_cast<int64_t>(block.x) * vt - 1) /
+                  (static_cast<int64_t>(block.x) * vt));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
@@ -171,11 +178,12 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
   using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
-    int64_t idx = blockIdx.x * blockDim.y + threadIdx.y;
+    int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
     if (idx < numel &&
         (idx == 0 || sorted_indices[idx] != sorted_indices[idx - 1])) {
       do {
-        int64_t start_feature = threadIdx.x + blockIdx.y * blockDim.x * SZ;
+        int64_t start_feature =
+            threadIdx.x + static_cast<int64_t>(blockIdx.y) * blockDim.x * SZ;
         if (!accumulate && (idx < numel - 1) &&
             sorted_indices[idx] == sorted_indices[idx + 1]) {
           idx++;
@@ -221,7 +229,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                   static_cast<scalar_t>(weight[ii]);
             }
           }
-          start_feature += gridDim.y * blockDim.x * SZ;
+          start_feature += static_cast<int64_t>(gridDim.y) * blockDim.x * SZ;
         }
         idx++;
       } while (idx < numel && sorted_indices[idx] == sorted_indices[idx - 1]);
