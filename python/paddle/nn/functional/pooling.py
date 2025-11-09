@@ -24,6 +24,9 @@ from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
 )
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -1435,6 +1438,7 @@ def max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool1d(
     x: Tensor, output_size: int, name: str | None = None
 ) -> Tensor:
@@ -1446,6 +1450,7 @@ def adaptive_avg_pool1d(
 
     Args:
         x (Tensor): The input Tensor of pooling, which is a 3-D tensor with shape :math:`[N, C, L]`, where :math:`N` is batch size, :math:`C` is the number of channels and :math:`L` is the length of the feature. The data type is float32 or float64.
+            Alias: ``input``.
         output_size (int): The target output size. Its data type must be int.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1522,6 +1527,7 @@ def adaptive_avg_pool1d(
         return squeeze(pool_out, [2])
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool2d(
     x: Tensor,
     output_size: Size2,
@@ -1545,6 +1551,7 @@ def adaptive_avg_pool2d(
     Args:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
                           The data type can be float32 or float64.
+            Alias: ``input``.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two element, (H, W). H and W can be either a int, or None which means
             the size will be the same as that of the input.
@@ -1658,6 +1665,7 @@ def adaptive_avg_pool2d(
         return pool_out
 
 
+@param_one_alias(["x", "input"])
 def adaptive_avg_pool3d(
     x: Tensor,
     output_size: Size3,
@@ -1684,6 +1692,7 @@ def adaptive_avg_pool3d(
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
             The data type can be float32, float64.
+            Alias: ``input``.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or
             list, it must contain three elements, (D, H, W). D, H and W can be either a int,
             or None which means the size will be the same as that of the input.
