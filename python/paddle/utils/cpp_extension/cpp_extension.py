@@ -1021,9 +1021,16 @@ class InstallCommand(install):
                     target = c
                     break
         if target:
-            self.install_lib = target
-            self.install_purelib = target
-            self.install_platlib = target
+            option_dict = self.distribution.get_option_dict('install')
+
+            if 'install_lib' not in option_dict:
+                self.install_lib = target
+
+            if 'install_purelib' not in option_dict:
+                self.install_purelib = target
+
+            if 'install_platlib' not in option_dict:
+                self.install_platlib = target
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         super().run(*args, **kwargs)
