@@ -65,6 +65,7 @@ jobs:
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: "3.10"
+          WITH_FA_BUILD_WITH_CACHE: "ON"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
@@ -110,6 +111,7 @@ jobs:
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
+            -e WITH_FA_BUILD_WITH_CACHE \
             -e WITH_SHARED_PHI \
             -e WITH_CINN \
             -e INFERENCE_DEMO_INSTALL_DIR \
