@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_MAGMA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -29,7 +28,6 @@
 
 namespace phi {
 
-#ifdef PADDLE_WITH_MAGMA
 template <typename T>
 void SolveLinearSystemGPU(const GPUContext& dev_ctx,
                           const T* matrix_data,
@@ -498,7 +496,6 @@ void EigGradKernel(const Context& dev_ctx,
                    const paddle::optional<DenseTensor>& dout_w,
                    const paddle::optional<DenseTensor>& dout_v,
                    DenseTensor* dx) {
-#ifdef PADDLE_WITH_MAGMA
   auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
   if (dx->numel() == 0) {
     return;
@@ -511,13 +508,6 @@ void EigGradKernel(const Context& dev_ctx,
 
   ComputeBackwardForComplexInputGPU<phi::dtype::Complex<T>, Context>(
       out_w, out_v, dout_w, dout_v, dx_data, batch_count, order, dev_ctx);
-#else
-  PADDLE_ENFORCE_EQ(false,
-                    true,
-                    common::errors::Unavailable(
-                        "eig_grad_kernel not supported, please compile Paddle "
-                        "with '-DWITH_MAGMA=ON' or fallback to cpu"));
-#endif
 }
 
 }  // namespace phi

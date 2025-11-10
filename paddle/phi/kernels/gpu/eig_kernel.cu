@@ -25,8 +25,6 @@ void EigKernel(const Context& dev_ctx,
                const DenseTensor& x,
                DenseTensor* out_w,
                DenseTensor* out_v) {
-#ifdef PADDLE_WITH_MAGMA
-
   dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
   dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
 
@@ -112,13 +110,6 @@ void EigKernel(const Context& dev_ctx,
   // copy result from cpu to gpu tensor
   phi::Copy(dev_ctx, out_w_cpu, phi::GPUPlace(), false, out_w);
   phi::Copy(dev_ctx, out_v_cpu, phi::GPUPlace(), false, out_v);
-#else
-  PADDLE_ENFORCE_EQ(false,
-                    true,
-                    common::errors::Unavailable(
-                        "eig_kernel not supported, please compile Paddle with "
-                        "'-DWITH_MAGMA=ON' or fallback to cpu"));
-#endif
 }
 
 }  // namespace phi
