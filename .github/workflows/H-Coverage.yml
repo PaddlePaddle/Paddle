@@ -55,27 +55,17 @@ jobs:
           WITH_GPU: "ON"
           CUDA_ARCH_NAME: Hopper
           WITH_AVX: "ON"
-          WITH_COVERAGE: "OFF"
-          COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
-          WITH_PIP_CUDA_LIBRARIES: "OFF"
-          WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: "3.10"
-          WITH_FA_BUILD_WITH_CACHE: "ON"
-          WITH_SHARED_PHI: "ON"
-          WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
           CCACHE_MAXSIZE: 200G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          ON_INFER: "ON"
-          PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UT_RUN_TYPE_SETTING: WITHOUT_HYBRID
         run: |
           container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -102,26 +92,16 @@ jobs:
             -e WITH_GPU \
             -e CUDA_ARCH_NAME \
             -e WITH_AVX \
-            -e WITH_COVERAGE \
-            -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
-            -e WITH_PIP_CUDA_LIBRARIES \
-            -e WITH_FLAGCX \
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
-            -e WITH_FA_BUILD_WITH_CACHE \
-            -e WITH_SHARED_PHI \
-            -e WITH_CINN \
             -e INFERENCE_DEMO_INSTALL_DIR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
-            -e ON_INFER \
-            -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
             -e GITHUB_TOKEN \
             -e GITHUB_API_TOKEN \
-            -e UT_RUN_TYPE_SETTING \
             -e CFS_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
@@ -164,7 +144,6 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
-          sleep 3d
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
 
