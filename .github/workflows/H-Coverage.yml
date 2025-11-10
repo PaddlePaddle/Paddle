@@ -146,7 +146,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           set -x
           cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DWITH_CUDNN_FRONTEND=ON
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DWITH_CUDNN_FRONTEND=ON -DFA_JOB_POOLS_COMPILE=2
           make -j20
           '
 
