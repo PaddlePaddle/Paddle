@@ -127,31 +127,38 @@ static __global__ void MixedPrecisionElemwiseAddGradCUDAKernel(
   int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t stride = static_cast<int64_t>(gridDim.x) * blockDim.x;
 
-  constexpr int vec_size = 4;
-  int64_t loop_limit = size / vec_size;
+  constexpr int VEC_SIZE = 4;
+  constexpr int UNROLL = 4;
+  int64_t loop_limit = size / VEC_SIZE;
 
-  const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
-  float4 *dx_vec = reinterpret_cast<float4 *>(dx);
-  Pack4<T_dy> *dy_vec = reinterpret_cast<Pack4<T_dy> *>(dy);
+  const float4 *__restrict__ dout_vec = reinterpret_cast<const float4 *>(dout);
+  float4 *__restrict__ dx_vec = reinterpret_cast<float4 *>(dx);
+  Pack4<T_dy> *__restrict__ dy_vec = reinterpret_cast<Pack4<T_dy> *>(dy);
 
-  for (int64_t i = tid; i < loop_limit; i += stride) {
-    const float4 val = dout_vec[i];
-    dx_vec[i] = val;
+  for (int64_t i = tid; i < loop_limit; i += stride * UNROLL) {
+#pragma unroll
+    for (int u = 0; u < UNROLL; ++u) {
+      int64_t idx = i + u * stride;
+      if (idx < loop_limit) {
+        float4 val = __ldg(dout_vec + idx);
 
-    Pack4<T_dy> dy_pack;
-    dy_pack.val[0] = static_cast<T_dy>(val.x);
-    dy_pack.val[1] = static_cast<T_dy>(val.y);
-    dy_pack.val[2] = static_cast<T_dy>(val.z);
-    dy_pack.val[3] = static_cast<T_dy>(val.w);
+        dx_vec[idx] = val;
 
-    dy_vec[i] = dy_pack;
+        Pack4<T_dy> dy_pack;
+        dy_pack.val[0] = static_cast<T_dy>(val.x);
+        dy_pack.val[1] = static_cast<T_dy>(val.y);
+        dy_pack.val[2] = static_cast<T_dy>(val.z);
+        dy_pack.val[3] = static_cast<T_dy>(val.w);
+        dy_vec[idx] = dy_pack;
+      }
+    }
   }
 
-  int64_t remainder_start = loop_limit * vec_size;
-  for (int64_t i = remainder_start + tid; i < size; i += stride) {
-    float val = dout[i];
-    dx[i] = val;
-    dy[i] = static_cast<T_dy>(val);
+  int64_t remainder_start = loop_limit * VEC_SIZE;
+  for (int64_t idx = remainder_start + tid; idx < size; idx += stride) {
+    float val = __ldg(dout + idx);
+    dx[idx] = val;
+    dy[idx] = static_cast<T_dy>(val);
   }
 }
 
