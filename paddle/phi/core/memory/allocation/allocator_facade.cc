@@ -1013,7 +1013,8 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth &&
+        !FLAGS_use_multi_scale_virtual_memory_auto_growth) {
       auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
       cuda_allocators_[p][stream] =
           std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
@@ -1095,7 +1096,8 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth &&
+        !FLAGS_use_multi_scale_virtual_memory_auto_growth) {
       auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
       allocators_[p] =
           std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(

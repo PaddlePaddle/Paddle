@@ -226,6 +226,12 @@ decltype(auto) static_unique_ptr_cast(std::unique_ptr<Base, BaseDel>&& p) {
   return std::unique_ptr<Derived, BaseDel>(d, p.get_deleter());
 }
 
+/**
+ * \brief MultiScalePoolAllocator is a decorator of Allocator.
+ * It allocates small request from small_allocator and large request from
+ * large_allocator.
+ */
+
 class PADDLE_API MultiScalePoolAllocator : public Allocator {
  public:
   MultiScalePoolAllocator(const std::shared_ptr<Allocator>& small_allocator,
@@ -237,18 +243,20 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
         alignment_(alignment),
         place_(place) {}
 
-  // bool IsAllocThreadSafe() const override { return true; }
-
+  // Allocate an allocation from small_allocator or large_allocator according to
+  // size.
   AllocationPtr Allocate(size_t size) override {
     return IsSmallRequest(size) ? small_allocator_->Allocate(size)
                                 : large_allocator_->Allocate(size);
   };
+  // Free an allocation from small_allocator or large_allocator.
   void Free(phi::Allocation* allocation) override {
     IsSmallRequest(allocation->size()) ? small_allocator_->Free(allocation)
                                        : large_allocator_->Free(allocation);
   };
 
  protected:
+  // Get small_allocator_ and large_allocator_.
   std::shared_ptr<Allocator>& GetSmallAllocator() { return small_allocator_; }
   std::shared_ptr<Allocator>& GetLargeAllocator() { return large_allocator_; }
 

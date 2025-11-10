@@ -82,6 +82,12 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   SpinLock spinlock_;
 };
 
+/**
+ * VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator is a multi-scale
+ * allocator that combines the virtual memory management technology of
+ * VirtualMemoryAutoGrowthBestFitAllocator and the multi-scale pooling strategy
+ * of MultiScalePoolAllocator.
+ */
 class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
     : public MultiScalePoolAllocator {
  public:
@@ -98,6 +104,7 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
   void PreAlloc() override;
 
  private:
+  // Determine if the request size is a small request.
   bool IsSmallRequest(size_t size) override;
 };
 
