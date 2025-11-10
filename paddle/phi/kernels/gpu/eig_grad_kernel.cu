@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_MAGMA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -28,6 +29,7 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_MAGMA
 template <typename T>
 void SolveLinearSystemGPU(const GPUContext& dev_ctx,
                           const T* matrix_data,
