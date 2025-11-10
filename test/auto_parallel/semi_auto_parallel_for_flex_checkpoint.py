@@ -54,14 +54,21 @@ class TestCheckpointConsistency:
             learning_rate=0.001, parameters=model.parameters()
         )
         opt = dist.shard_optimizer(opt, dist.ShardingStage1("dp", self.mesh))
+        model, opt = paddle.amp.decorate(
+            model, optimizers=opt, level='O2', master_grad=True
+        )
         return model, opt
 
     def run_training_and_save(self):
         model, opt = self.create_model_and_optimizer()
 
         for step in range(3):
-            inputs = paddle.ones([self.batch_size, self.hidden_size])
-            labels = paddle.ones([self.batch_size, self.hidden_size])
+            inputs = paddle.ones(
+                [self.batch_size, self.hidden_size], dtype='float16'
+            )
+            labels = paddle.ones(
+                [self.batch_size, self.hidden_size], dtype='float16'
+            )
             inputs = dist.shard_tensor(inputs, self.mesh, [dist.Shard(0)])
             logits = model(inputs)
             loss = paddle.nn.functional.mse_loss(logits, labels)
@@ -115,8 +122,12 @@ class TestCheckpointConsistency:
         load_md5 = [p._md5sum() for p in model.parameters()]
 
         for step in range(1):
-            inputs = paddle.ones([self.batch_size, self.hidden_size])
-            labels = paddle.ones([self.batch_size, self.hidden_size])
+            inputs = paddle.ones(
+                [self.batch_size, self.hidden_size], dtype='float16'
+            )
+            labels = paddle.ones(
+                [self.batch_size, self.hidden_size], dtype='float16'
+            )
             inputs = dist.shard_tensor(inputs, self.mesh, [dist.Shard(0)])
             logits = model(inputs)
             loss = paddle.nn.functional.mse_loss(logits, labels)
