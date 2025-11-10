@@ -1971,15 +1971,16 @@ def reset_peak_memory_stats(device: PlaceLike | int | None = None) -> None:
     It sets the peak memory usage back to zero for all devices.
 
     Example:
-        >>> # doctest: +REQUIRES(env:GPU)
-        >>> import paddle
-        >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+        .. code-block:: python
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
-        >>> # paddle.cuda.reset_max_memory_allocated() is equivalent to paddle.device.reset_max_memory_allocated()
+            >>> # paddle.cuda.reset_max_memory_allocated() is equivalent to paddle.device.reset_max_memory_allocated()
 
-        >>> paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
-        >>> paddle.device.reset_max_memory_allocated(0)
-        >>> paddle.device.reset_max_memory_allocated("gpu:0")
+            >>> paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
+            >>> paddle.device.reset_max_memory_allocated(0)
+            >>> paddle.device.reset_max_memory_allocated("gpu:0")
     """
     reset_max_memory_allocated()
 
