@@ -148,12 +148,6 @@ class PADDLE_API Device final {
   void GetParameterSetterForExecGraph(graph::CUDAGraph_t graph,
                                       graph::GraphHookManager* hook);
 
-  // void CudaGraphInstantiateWithFlags();
-
-  // void CudaStreamGetCaptureInfo();
-
-  // void CudaGraphDebugDotPrint();
-
   // Blas
   // ! y = alpha * x + beta * y
   template <typename T>
@@ -395,6 +389,11 @@ class PADDLE_API DeviceManager {
                                 graph::CUDAGraph_t Graph,
                                 graph::CUDAGraphNode_t* pNodes,
                                 size_t* numNodes);
+  
+  static void CudaGraphDebugDotPrint(const Place& place,
+                                     graph::CUDAGraph_t Graph,
+                                     const char* path,
+                                     unsigned int flags);
 
   static void CudaStreamGetCaptureInfo(
       const Place& place,
@@ -410,6 +409,10 @@ class PADDLE_API DeviceManager {
       const Place& place,
       graph::CUDAGraph_t graph,
       graph::GraphHookManager* hook);
+
+  static void CudaThreadExchangeStreamCaptureMode(
+      const Place& place, 
+      graph::streamCaptureMode* mode);
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);

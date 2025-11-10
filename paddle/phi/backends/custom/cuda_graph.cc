@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/custom/cuda_graph.h"
-#include "paddle/phi/backends/device_manager.h"
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 
@@ -28,11 +27,11 @@ std::vector<std::function<void()>> CUDAGraph::cudagraph_pre_capture_callbacks_;
 void CUDAGraph::Reset() {
   if (is_reset_) return;
   for (auto graph : graphs_) {
-    phi::DeviceManager::CudaGraphDestroy(capturing_graph_->place_, graph);
+    phi::DeviceManager::CudaGraphDestroy(place_, graph);
   }
   graphs_.clear();
   for (auto exec_graph : exec_graphs_) {
-    phi::DeviceManager::CudaGraphExecDestroy(capturing_graph_->place_, exec_graph);
+    phi::DeviceManager::CudaGraphExecDestroy(place_, exec_graph);
   }
   exec_graphs_.clear();
   // callback should be called in reverse order because the latter added
@@ -59,7 +58,7 @@ void CUDAGraph::Replay() {
         hook(exec_graphs_[i]);
       }
     }
-    phi::DeviceManager::CudaGraphLaunch(capturing_graph_->place_, exec_graphs_[i], stream_);
+    phi::DeviceManager::CudaGraphLaunch(place_, exec_graphs_[i], stream_);
   }
   is_first_run_ = false;
 }
@@ -82,7 +81,7 @@ void CUDAGraph::BeginSegmentCapture() {
   for (auto &hook : cudagraph_pre_capture_callbacks_) {
     hook();
   }
-  phi::DeviceManager::CUDAStreamBeginCapture(capturing_graph_->place_, 
+  phi::DeviceManager::CUDAStreamBeginCapture(place_, 
                                           capturing_graph_->stream_,
                                           capturing_graph_->capture_mode_);
       PADDLE_ENFORCE_EQ(IsValidCapturing(),
@@ -105,6 +104,7 @@ void CUDAGraph::BeginCapture(phi::CustomPlace place,
       stream,
       common::errors::PermissionDenied(
           "CUDA Graph cannot be captured in default CUDA stream 0."));
+  place_ = place;
   capturing_graph_.reset(new CUDAGraph());
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
@@ -139,16 +139,16 @@ void CUDAGraph::EndSegmentCapture() {
   capturing_graph_->streams_to_join_.clear();
 
   phi::graph::CUDAGraph_t graph;
-  phi::DeviceManager::CudaStreamEndCapture(capturing_graph_->place_, 
+  phi::DeviceManager::CudaStreamEndCapture(place_, 
                                           capturing_graph_->stream_,
                                           &graph);
   auto num_nodes = static_cast<size_t>(-1);
-  phi::DeviceManager::CudaGraphGetNodes(capturing_graph_->place_,
+  phi::DeviceManager::CudaGraphGetNodes(place_,
                                         graph,
                                         nullptr, 
                                         &num_nodes);
   if (num_nodes == 0) {
-    phi::DeviceManager::CudaGraphDestroy(capturing_graph_->place_, graph);
+    phi::DeviceManager::CudaGraphDestroy(place_, graph);
     VLOG(10) << "Skip empty CUDA Graph with ID " << capturing_graph_->id_
              << ", segment id " << capturing_graph_->graphs_.size()
              << ", memory pool id " << capturing_graph_->pool_id_;
@@ -163,10 +163,10 @@ void CUDAGraph::EndSegmentCapture() {
 
   capturing_graph_->cudagraph_pre_replay_callbacks_.emplace_back(
       CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(
-          capturing_graph_->place_, graph));
+          place_, graph));
 
   phi::graph::CUDAGraphExec_t exec_graph;
-  phi::DeviceManager::CudaGraphInstantiate(capturing_graph_->place_, 
+  phi::DeviceManager::CudaGraphInstantiate(place_, 
                                            &exec_graph,
                                            &graph, 
                                            nullptr, 
@@ -190,7 +190,7 @@ bool CUDAGraph::IsValidCapturing() {
   if (!IsCapturing()) return false;
   phi::graph::streamCaptureStatus status =
       phi::graph::streamCaptureStatus::StreamCaptureStatusNone;
-  phi::DeviceManager::CudaStreamGetCaptureInfo(capturing_graph_->place_,
+  phi::DeviceManager::CudaStreamGetCaptureInfo(place_,
                                                capturing_graph_->stream_,
                                                &status);
   return status == phi::graph::streamCaptureStatus::StreamCaptureStatusActive;
@@ -212,7 +212,16 @@ static std::string ConcatPath(const std::string &dirname,
 
 void CUDAGraph::PrintToDotFiles(const std::string &dirname,
                                 unsigned int flags) {
-  // TODO(zhangxiao): print.
+  for (size_t i = 0; i < graphs_.size(); ++i) {
+    auto filename =
+        ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
+    VLOG(10) << "Save the " << i << "-th segment of graph " << id_ << " to "
+             << filename;
+    phi::DeviceManager::CudaGraphDebugDotPrint(place_,
+                                               graphs_[i], 
+                                               filename.c_str(), 
+                                               flags);
+  }
 }
 
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
@@ -235,7 +244,7 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(
   phi::graph::GraphHookManager graph_hook;
   phi::DeviceManager::GetParameterSetterForExecGraph(place, graph, &graph_hook);
   std::vector<GraphExecuterSetter_t> hooks;
-  for (int i = 0; i < graph_hook.count; i++) {
+  for (size_t i = 0; i < graph_hook.hooks.size(); i++) {
     hooks.emplace_back(graph_hook.hooks[i]);
   }
   return hooks;

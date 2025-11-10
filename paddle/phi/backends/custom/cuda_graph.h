@@ -33,6 +33,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_code.h"
 #include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -165,6 +166,9 @@ class CUDAGraphNodeLauncher {
     return *launcher;
   }
 
+  std::unordered_map<void *, std::map<unsigned int, parameterSetter_t>>
+      parameterSetters;
+
  private:
   CUDAGraphNodeLauncher() : id(0) {}
   DISABLE_COPY_AND_ASSIGN(CUDAGraphNodeLauncher);
@@ -172,8 +176,6 @@ class CUDAGraphNodeLauncher {
   unsigned int GenerateIdentifier() { return id++; }
 
   unsigned int id;
-  std::unordered_map<void *, std::map<unsigned int, parameterSetter_t>>
-      parameterSetters;
 };
 
 using CUDAGraphID = unsigned long long;  // NOLINT
@@ -356,41 +358,34 @@ class CUDAGraph {
   static std::unique_ptr<CUDAGraph> capturing_graph_;
 };
 
-// #if CUDA_VERSION >= 10010
-// class CUDAGraphCaptureModeGuard {
-//   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
+class CUDAGraphCaptureModeGuard {
+  DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
-//  public:
-//   explicit CUDAGraphCaptureModeGuard(
-//       phi::graph::streamCaptureMode mode = StreamCaptureModeRelaxed) {
-//     if (UNLIKELY(CUDAGraph::IsCapturing())) {
-//       PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
-//       // After cudaThreadExchangeStreamCaptureMode is called,
-//       // the variable "mode" would be set to the old capturing mode.
-//       old_mode_ = mode;
-//     }
-//   }
+ public:
+  explicit CUDAGraphCaptureModeGuard(phi::graph::streamCaptureMode mode = phi::graph::streamCaptureMode::StreamCaptureModeRelaxed) {
+    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+      auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+      for (auto &dev_type : device_types) {
+        place_ = phi::CustomPlace(dev_type);
+        break;
+      }
+      phi::DeviceManager::CudaThreadExchangeStreamCaptureMode(place_, &mode);
+      // After cudaThreadExchangeStreamCaptureMode is called,
+      // the variable "mode" would be set to the old capturing mode.
+      old_mode_ = mode;
+    }
+  }
 
-//   ~CUDAGraphCaptureModeGuard() PADDLE_MAY_THROW {
-//     if (UNLIKELY(CUDAGraph::IsCapturing())) {
-//       PADDLE_ENFORCE_GPU_SUCCESS(
-//           cudaThreadExchangeStreamCaptureMode(&old_mode_));
-//     }
-//   }
+  ~CUDAGraphCaptureModeGuard() PADDLE_MAY_THROW {
+    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+      phi::DeviceManager::CudaThreadExchangeStreamCaptureMode(place_, &old_mode_);
+    }
+  }
 
-//  private:
-//   phi::graph::streamCaptureMode old_mode_;
-// };
-// #else
-// class CUDAGraphCaptureModeGuard {
-//   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
-
-//  public:
-//   explicit CUDAGraphCaptureModeGuard(
-//       phi::graph::streamCaptureMode mode =
-//       phi::graph::streamCaptureMode::StreamCaptureModeRelaxed) {}
-// };
-// #endif
+ private:
+  phi::graph::streamCaptureMode old_mode_;
+  phi::CustomPlace place_;
+};
 
 }  // namespace gpu
 }  // namespace backends

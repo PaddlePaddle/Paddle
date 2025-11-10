@@ -34,12 +34,16 @@ static void ConvertEnum(const void* in, void* out) {
   *reinterpret_cast<int*>(out) = value;
 }
 
-inline void ConvertCToCpp(const C_GraphHookManager* c_mgr,
+inline void ConvertCToCpp(C_GraphHookManager* c_mgr,
                           phi::graph::GraphHookManager* cpp_mgr) {
-  cpp_mgr->count = c_mgr->count;
-  for (int i = 0; i < c_mgr->count; ++i) {
-    cpp_mgr->hooks[i] =
-        reinterpret_cast<phi::graph::GraphExecHook>(c_mgr->hooks[i]);
+  for (size_t i = 0; i < c_mgr->size; i++) {
+    auto fn_c = c_mgr->hooks[i];
+    void* userdata = c_mgr->user_data[i];
+
+    cpp_mgr->hooks.emplace_back((
+      [fn_c, userdata](phi::graph::CUDAGraphExec_t exec){
+        fn_c(reinterpret_cast<C_GraphExec>(exec), userdata);
+        }));
   }
 }
 
@@ -1211,6 +1215,26 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
+  void CudaGraphDebugDotPrint(graph::CUDAGraph_t graph,
+                              const char* path, 
+                              unsigned int flags) {
+    if (pimpl_->cuda_graph_debug_dot_print) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->cuda_graph_debug_dot_print(
+              reinterpret_cast<C_CudaGraph>(graph), path, flags));
+    }
+  }
+
+  void CudaThreadExchangeStreamCaptureMode(graph::streamCaptureMode* mode) {
+    if (pimpl_->cuda_thread_exchange_stream_capthure_mode) {
+      C_StreamCaptureMode c_mode = C_StreamCaptureModeGlobal;
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->cuda_thread_exchange_stream_capthure_mode(
+              &c_mode));
+      ConvertEnum(&c_mode, mode);
+    }
+  }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();  // NOLINT
@@ -1344,6 +1368,8 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(cuda_graph_get_nodes, false);
   CHECK_INTERFACE(cuda_stream_capture_info, false);
   CHECK_INTERFACE(get_parameter_setter_for_exec_graph, false);
+  CHECK_INTERFACE(cuda_graph_debug_dot_print, false);
+  CHECK_INTERFACE(cuda_thread_exchange_stream_capthure_mode, false);
 
   return true;
 #undef CHECK_INTERFACE

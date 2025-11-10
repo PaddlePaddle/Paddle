@@ -548,6 +548,17 @@ void DeviceInterface::GetParameterSetterForExecGraph(
   INTERFACE_UNIMPLEMENT;
 }
 
+void DeviceInterface::CudaGraphDebugDotPrint(
+    graph::CUDAGraph_t graph,
+    const char* path,
+    unsigned flags) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaThreadExchangeStreamCaptureMode(graph::streamCaptureMode* mode) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi

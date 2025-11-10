@@ -13,7 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <vector>
-#define MAX_HOOKS 1024
+#include <functional>
 
 namespace phi {
 namespace graph {
@@ -21,11 +21,9 @@ typedef void* CUDAGraph_t;
 typedef void* CUDAGraphExec_t;
 typedef void* CUDAGraphNode_t;
 typedef void* CUDAKernelNodeParams_t;
-typedef void (*GraphExecHook)(CUDAGraphExec_t exec);
 
 typedef struct {
-  GraphExecHook hooks[MAX_HOOKS];
-  int count;
+  std::vector<std::function<void(CUDAGraphExec_t)>> hooks;
 } GraphHookManager;
 
 enum streamCaptureMode {

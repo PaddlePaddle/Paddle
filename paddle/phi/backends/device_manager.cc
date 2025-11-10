@@ -913,10 +913,25 @@ void DeviceManager::GetParameterSetterForExecGraph(
     graph::CUDAGraph_t graph,
     graph::GraphHookManager* hook) {
   auto device_type = place.GetDeviceType();
-  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->GetParameterSetterForExecGraph(graph, hook);
+}
 
+void DeviceManager::CudaGraphDebugDotPrint(
+    const Place& place,
+    graph::CUDAGraph_t Graph,
+    const char* path,
+    unsigned int flags) {
+  auto device_type = place.GetDeviceType();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CudaGraphDebugDotPrint(Graph, path, flags);
+}
+
+void DeviceManager::CudaThreadExchangeStreamCaptureMode(const Place& place, 
+                                                        graph::streamCaptureMode* mode) {
+  auto device_type = place.GetDeviceType();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CudaThreadExchangeStreamCaptureMode(mode);
 }
 
 

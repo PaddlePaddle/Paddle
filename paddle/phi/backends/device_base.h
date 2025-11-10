@@ -373,6 +373,12 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual void GetParameterSetterForExecGraph(graph::CUDAGraph_t graph,
                                               graph::GraphHookManager* hook);
+  
+  virtual void CudaGraphDebugDotPrint(graph::CUDAGraph_t graph,
+                                      const char* path,
+                                      unsigned flags);
+    
+  virtual void CudaThreadExchangeStreamCaptureMode(graph::streamCaptureMode* mode);
 
  private:
   const std::string type_;

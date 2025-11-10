@@ -104,17 +104,20 @@ typedef struct C_CudaGraph_t_st* C_CudaGraph;
 
 typedef struct C_CudaGraphNode_st* C_CudaGraphNode;
 
+typedef void (*C_GraphExecuterSetter)(C_GraphExec exec_graph, void* user_data);
+
+typedef struct {
+    size_t size;
+    C_GraphExecuterSetter* hooks;
+    void** user_data;
+} C_GraphHookManager;
+
 typedef void (*C_Callback)(C_Device device,
                            C_Stream stream,
                            void* user_data,
                            C_Status* status);
 
 typedef void (*C_GraphExecHook)(C_GraphExec exec);
-
-typedef struct {
-  C_GraphExecHook hooks[MAX_HOOKS];
-  int count;
-} C_GraphHookManager;
 
 typedef struct {
   size_t sz;
@@ -855,6 +858,11 @@ struct C_DeviceInterface {
 
   C_Status (*get_parameter_setter_for_exec_graph)(C_CudaGraph graph,
                                                   C_GraphHookManager* c_hook);
+
+  C_Status (*cuda_graph_debug_dot_print)(C_CudaGraph graph,
+                                         const char* path,
+                                         unsigned int flags);
+  C_Status (*cuda_thread_exchange_stream_capthure_mode) (C_StreamCaptureMode* mode);
 
   ///////////////
   // other api //
