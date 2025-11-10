@@ -347,7 +347,7 @@ class Module(nn.Layer):
             Module: self
         """
         if device is None:
-            device = paddle.XPUPlace(paddle.xpu.current_device())
+            device = paddle.XPUPlace(0)
         elif isinstance(device, int):
             device = paddle.XPUPlace(device)
         elif isinstance(device, paddle.XPUPlace):
