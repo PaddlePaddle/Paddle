@@ -140,6 +140,11 @@ class TestGradientDtypeConsistency(unittest.TestCase):
                     grad_dtype=dtype,
                 )
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_float16_supported(core.CUDAPlace(0)),
+        reason="only support float16 when compiled with CUDA.",
+    )
     def test_add_with_middle_grad_change(self):
         """Test add with middle gradient change"""
         x_fp32 = paddle.randn([10, 10], dtype=paddle.float32)
