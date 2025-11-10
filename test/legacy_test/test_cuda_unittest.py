@@ -45,11 +45,7 @@ class TestCudaCompat(unittest.TestCase):
         self.assertEqual(_device_to_paddle(), paddle.device.get_device())
 
     def test_ipc_collect(self):
-        if (
-            paddle.is_compiled_with_cuda()
-            or paddle.is_compiled_with_rocm()
-            or paddle.is_compiled_with_xpu()
-        ):
+        if paddle.is_compiled_with_cuda() or paddle.is_compiled_with_xpu():
             paddle.cuda.ipc_collect()
             paddle.device.ipc_collect()
 
