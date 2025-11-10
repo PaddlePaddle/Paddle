@@ -31,8 +31,8 @@ __global__ void VectorizedIndexKernel(T *out,
                                       size_t numel,
                                       size_t main_offset,
                                       Functor func) {
-  size_t data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
-  size_t stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
+  size_t data_offset = static_cast<size_t>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
+  size_t stride = static_cast<size_t>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
   size_t args[VecSize];
   T result[VecSize];
   for (; data_offset < main_offset; data_offset += stride) {
@@ -69,7 +69,8 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
   int block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 #endif
-  size_t main_offset = (numel / (vec_size * block)) * vec_size * block;
+  size_t main_offset =
+      (numel / (vec_size * static_cast<size_t>(block))) * vec_size * block;
   switch (vec_size) {
     case 4:
       VectorizedIndexKernel<T, Functor, 4>

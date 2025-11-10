@@ -49,6 +49,15 @@ const char *AllocationTypeStr(AllocationType type) {
   }
 }
 
+std::ostream &operator<<(std::ostream &os, AllocationType type) {
+  os << AllocationTypeStr(type);
+  return os;
+}
+
+bool operator==(AllocationType lhs, AllocationType rhs) {
+  return static_cast<int>(lhs) == static_cast<int>(rhs);
+}
+
 Place::Place(AllocationType type, const std::string &dev_type)
     : device(0),
       alloc_type_(type),

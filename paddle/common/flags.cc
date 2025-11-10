@@ -2275,7 +2275,7 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
  * Note: Whether use Stride_Compute_Kernel.
  */
 PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
-                         false,
+                         true,
                          "Whether use Stride_Compute_Kernel.");
 
 /**

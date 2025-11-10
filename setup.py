@@ -497,12 +497,16 @@ def get_tensorrt_version() -> str:
         return None
 
 
+def get_paddle_version() -> int:
+    return env_dict.get("PADDLE_VERSION")
+
+
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
 import inspect
 
-full_version     = '%(major)d.%(minor)d.%(patch)s'
+full_version     = '%(paddle_version)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
@@ -824,6 +828,7 @@ def cuda_archs():
         f.write(
             cnt
             % {
+                'paddle_version': get_paddle_version(),
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
