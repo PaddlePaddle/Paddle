@@ -166,7 +166,7 @@ class TestLegacyLossArgs(unittest.TestCase):
         _ = KLDivLoss('mean', True)
 
     def test_kldiv_positional_legacy_reduce_trigger(self):
-        # KLDivLoss(log_target=True)（未提供 reduction 字符串，视为 legacy reduce）
+        # KLDivLoss(log_target=True)(Not provide reduction string, treat as legacy reduce)
         with self.assertRaises(ValueError) as cm:
             KLDivLoss(True)
         self.assertIn("reduction='mean'", str(cm.exception))

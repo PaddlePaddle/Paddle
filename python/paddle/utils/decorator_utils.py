@@ -739,14 +739,6 @@ def floor_divide_decorator():
     return decorator
 
 
-def compute_legacy_reduction(reduce_val, size_average_val):
-    if reduce_val is False:
-        return 'none'
-    if reduce_val is True:
-        return 'sum' if size_average_val is False else 'mean'
-    return 'sum' if size_average_val is False else 'mean'
-
-
 _SA0_RD1 = {'size_average': 0, 'reduce': 1}
 _SA1_RD2 = {'size_average': 1, 'reduce': 2}
 _SA1_RD3 = {'size_average': 1, 'reduce': 3}
@@ -785,48 +777,66 @@ LEGACY_POS: dict[str, dict[str, int]] = {
 }
 
 
-def check_deprecated_params_on_init(init_func):
+def compute_legacy_reduction(reduce_val, size_average_val):
+    reduce_val = reduce_val if reduce_val != '' else None
+    size_average_val = size_average_val if size_average_val != '' else None
+    if reduce_val is False:
+        return 'none'
+    if reduce_val is True:
+        return 'sum' if size_average_val is False else 'mean'
+    return 'sum' if size_average_val is False else 'mean'
+
+
+def get_legacy_reduce_and_size_average(cls_name, args, kwargs):
+    reduce_val = ''
+    size_avg_val = ''
+    pos = LEGACY_POS.get(cls_name)
+    idx = pos.get('size_average')
+    if 'size_average' in kwargs:
+        size_avg_val = kwargs.pop('size_average')
+    elif len(args) > idx:
+        v = args[idx]
+        if type(v) is bool:
+            size_avg_val = v
+    idx = pos.get('reduce')
+    if 'reduce' in kwargs:
+        reduce_val = kwargs.pop('reduce')
+    elif len(args) > idx:
+        v = args[idx]
+        if type(v) is bool:
+            reduce_val = v
+    return reduce_val, size_avg_val
+
+
+def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
+    suggested = compute_legacy_reduction(reduce_val, size_avg_val)
+    raise ValueError(
+        f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
+        f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
+        f"\nPlease use: reduction='{suggested}' instead."
+    )
+
+
+def legacy_reduction_guard(init_func):
     """
     Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
     """
 
     @functools.wraps(init_func)
     def wrapper(self, *args, **kwargs):
-        reduce_val = None
-        size_avg_val = None
         cls_name = self.__class__.__name__
-        pos = LEGACY_POS.get(cls_name)
-
-        idx = pos.get('size_average')
-        if 'size_average' in kwargs:
-            size_avg_val = kwargs.pop('size_average')
-        elif len(args) > idx:
-            v = args[idx]
-            if type(v) is bool:
-                size_avg_val = v
-
-        idx = pos.get('reduce')
-        if 'reduce' in kwargs:
-            reduce_val = kwargs.pop('reduce')
-        elif len(args) > idx:
-            v = args[idx]
-            if type(v) is bool:
-                reduce_val = v
-
-        if reduce_val is not None or size_avg_val is not None:
-            suggested = compute_legacy_reduction(reduce_val, size_avg_val)
-            raise ValueError(
-                f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
-                f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
-                f"\nPlease use: reduction='{suggested}' instead."
-            )
+        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
+            cls_name, args, kwargs
+        )
+        if reduce_val != '' or size_avg_val != '':
+            raise_deprecated_error(cls_name, reduce_val, size_avg_val)
 
         return init_func(self, *args, **kwargs)
 
     return wrapper
 
 
-def check_deprecated_params_with_special_cases(init_func):
+def legacy_reduction_special_guard(init_func):
     """
     Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment based on general logic.
     """
@@ -834,27 +844,20 @@ def check_deprecated_params_with_special_cases(init_func):
     @functools.wraps(init_func)
     def wrapper(self, *args, **kwargs):
         cls_name = self.__class__.__name__
-        _base_wrapper = check_deprecated_params_on_init(init_func)
-        try:
-            return _base_wrapper(self, *args, **kwargs)
-        except ValueError as e:
-            msg = str(e)
-            if (
+        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
+            cls_name, args, kwargs
+        )
+        if reduce_val != '' or size_avg_val != '':
+            if not (
                 cls_name == 'CrossEntropyLoss'
                 and len(args) > 2
                 and args[2] in {'mean', 'sum', 'none'}
-            ):
-                # soft_label special case: skip error
-                return init_func(self, *args, **kwargs)
-            elif (
+            ) or (
                 cls_name == 'KLDivLoss'
                 and len(args) > 0
                 and args[0] in {'mean', 'sum', 'none', 'batchmean'}
             ):
-                # log_target special case: skip error
-                return init_func(self, *args, **kwargs)
-            else:
-                # not special case: re-throw error
-                raise e
+                raise_deprecated_error(cls_name, reduce_val, size_avg_val)
+        return init_func(self, *args, **kwargs)
 
     return wrapper
