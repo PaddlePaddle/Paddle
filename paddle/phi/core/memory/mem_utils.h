@@ -22,8 +22,7 @@
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 
 namespace paddle {
-namespace memory {
-namespace allocation {
+namespace memory::allocation {
 
 struct BlockAllocation;
 struct Block {
@@ -47,7 +46,10 @@ struct BlockAllocation : public Allocation {
   }
   std::list<Block>::iterator block_it_;
 };
+}  // namespace memory::allocation
 
+namespace memory {
+using allocation::Block;
 /*!
  * Author: liujinnan
  * Note: MemoryCompactionStrategy is an abstract class that defines the
@@ -63,22 +65,20 @@ class MemoryCompactionStrategy {
    * \param blocks A list of memory blocks to be compacted.
    * \param start_ptr A pointer to the start of the memory blocks.
    * \param end_ptr A pointer to the end of the memory blocks.
-   * \return Whether the defragmentation was successful.
+   * \return if return -1 mean compact failed, else return compacted size.
    */
-  virtual bool compact(std::list<Block>& blocks,  // NOLINT
-                       void* start_ptr,
-                       void* end_ptr) = 0;
+  virtual size_t Compact(std::list<Block>& blocks,  // NOLINT
+                         void* start_ptr,
+                         void* end_ptr) = 0;
 };
 
 // `TotalMemoryCompactor` strategy will compact all free blocks to the
 // whole memory pool by moving the non-free blocks.
 class TotalMemoryCompactor final : public MemoryCompactionStrategy {
  public:
-  bool compact(std::list<Block>& blocks,  // NOLINT
-               void* start_ptr,
-               void* end_ptr) override;
+  size_t Compact(std::list<Block>& blocks,  // NOLINT
+                 void* start_ptr,
+                 void* end_ptr) override;
 };
-
-}  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

@@ -19,28 +19,32 @@ import numpy as np
 import paddle
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), 'should compile with cuda.'
+)
 class TestVMMAllocator(unittest.TestCase):
     def setUp(self):
+        self.GB = 1000**3
+        self.MB = 1000**2
         paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
-        paddle.set_flags({'FLAGS_enable_compact_mem': True})
+        paddle.set_flags({'FLAGS_native_compact': True})
         self.cmds = [
-            ["Alloc", 15 * 1000**3, "0x100000000"],
-            ["Alloc", 15 * 1000**3, "0x100000001"],
-            ["Alloc", 15 * 1000**3, "0x100000002"],
-            ["Alloc", 15 * 1000**3, "0x100000003"],
-            ["Alloc", 15 * 1000**3, "0x100000004"],
-            ["Free", 15 * 1000**3, "0x100000001"],
-            ["Free", 15 * 1000**3, "0x100000003"],
-            ["Alloc", 30 * 1000**3, "0x100000005"],
+            ["Alloc", 10 * self.GB, "0x100000000"],
+            ["Alloc", 5 * self.GB, "0x100000001"],
+            ["Alloc", 10 * self.GB, "0x100000002"],
+            ["Alloc", 5 * self.GB, "0x100000003"],
+            ["Free", 10 * self.GB, "0x100000000"],
+            ["Free", 10 * self.GB, "0x100000002"],
+            ["Alloc", 20 * self.GB, "0x100000005"],
         ]
 
     def test_paddle(self):
         params = {}
-        old_tensor4, old_tensor4_ptr, new_tensor4, new_tensor4_ptr = 0, 0, 0, 0
+        old_tensor1, old_tensor1_ptr, new_tensor1, new_tensor1_ptr = 0, 0, 0, 0
 
         for op, size, ptr in self.cmds:
             paddle.device.synchronize()
-            paddle_reserved1 = paddle.device.cuda.memory_reserved() // (1000**2)
+            paddle_reserved1 = paddle.device.cuda.memory_reserved() // self.MB
 
             if op == "Alloc":
                 params[ptr] = paddle.randn(
@@ -49,29 +53,27 @@ class TestVMMAllocator(unittest.TestCase):
             if op == "Free" and ptr in params:
                 del params[ptr]
 
-            if ptr == '0x100000004':
-                old_tensor4 = params['0x100000004'].numpy()[0:100]
-                old_tensor4_ptr = hex(params['0x100000004'].data_ptr())
+            if ptr == '0x100000001':
+                old_tensor1 = params['0x100000001'].numpy()[0:100]
+                old_tensor1_ptr = hex(params['0x100000001'].data_ptr())
 
             paddle.device.synchronize()
-            paddle_reserved2 = paddle.device.cuda.memory_reserved() // (1000**2)
-            paddle_allocated2 = paddle.device.cuda.memory_allocated() // (
-                1000**2
-            )
-            paddle_max_reserved = paddle.device.cuda.max_memory_reserved() // (
-                1000**2
+            paddle_reserved2 = paddle.device.cuda.memory_reserved() // self.MB
+            paddle_allocated2 = paddle.device.cuda.memory_allocated() // self.MB
+            paddle_max_reserved = (
+                paddle.device.cuda.max_memory_reserved() // self.MB
             )
             paddle_max_allocated = (
-                paddle.device.cuda.max_memory_allocated() // (1000**2)
+                paddle.device.cuda.max_memory_allocated() // self.MB
             )
 
             print(
                 f"reserved = {paddle_reserved2} allocated = {paddle_allocated2} auto growth = {paddle_reserved2 - paddle_reserved1} max_allocated = {paddle_max_allocated} max_reserved = {paddle_max_reserved}"
             )
-        new_tensor4 = params['0x100000004'].numpy()[0:100]
-        new_tensor4_ptr = hex(params['0x100000004'].data_ptr())
-        np.testing.assert_array_equal(old_tensor4, new_tensor4)
-        assert old_tensor4_ptr != new_tensor4_ptr
+        new_tensor1 = params['0x100000001'].numpy()[0:100]
+        new_tensor1_ptr = hex(params['0x100000001'].data_ptr())
+        np.testing.assert_array_equal(old_tensor1, new_tensor1)
+        assert old_tensor1_ptr != new_tensor1_ptr
 
 
 if __name__ == '__main__':

@@ -23,7 +23,10 @@ PHI_DEFINE_EXPORTED_bool(
     dump_vmm_allocation_info,
     false,
     "dump VirtualMemoryAutoGrowthBestFitAllocator's allocation info");
-PHI_DEFINE_EXPORTED_bool(enable_compact_mem, false, "enable_compact_mem");
+PHI_DEFINE_EXPORTED_bool(native_compact,
+                         false,
+                         "native_compact means compact memory after OOM, The "
+                         "algorithm still needs to be upgraded.");
 
 namespace paddle {
 namespace memory {
@@ -149,14 +152,15 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
 std::optional<AllocationPtr>
 VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
   AllocationPtr allocateptr = nullptr;
-  if (!FLAGS_enable_compact_mem) return underlying_allocator_->Allocate(size);
+  if (!FLAGS_native_compact) return underlying_allocator_->Allocate(size);
   try {
     allocateptr = std::move(underlying_allocator_->Allocate(size));
   } catch (const paddle::memory::allocation::BadAlloc &e) {
     VLOG(4) << "Do Memory Compact allocate size and compact " << size;
-    bool success = memory_compactor_->compact(
+    size_t compact_free_size = memory_compactor_->Compact(
         all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
-    if (!success) throw;
+    if (compact_free_size < 0) throw;
+    VLOG(4) << "Memory Compacted Size: " << compact_free_size;
     auto free_block = std::prev(all_blocks_.end());
     if (free_block->is_free_ && free_block->size_ < size) {
       auto realloc_size = size - free_block->size_;
