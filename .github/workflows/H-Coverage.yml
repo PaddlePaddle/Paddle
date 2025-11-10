@@ -164,6 +164,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
+          sleep 3d
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
 
