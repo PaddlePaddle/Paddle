@@ -17,6 +17,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import nn
@@ -48,161 +49,161 @@ class TestLayerNormOp(unittest.TestCase):
         self.x_shape = [2, 6, 6, 3]
         self.epsilon = 1e-5
         self.begin_norm_axis = 1
+        self.places = get_places()
 
-    @unittest.skipIf(
-        not paddle.in_dynamic_mode(), "test is only for dynamic mode"
-    )
     def test_basic_fp32(self):
         """test basic functionality with float32."""
-        x_np = np.random.random(self.x_shape).astype('float32')
-        scale_np = np.random.random(
-            self.x_shape[self.begin_norm_axis :]
-        ).astype('float32')
-        bias_np = np.random.random(self.x_shape[self.begin_norm_axis :]).astype(
-            'float32'
-        )
-        scale = paddle.to_tensor(scale_np).reshape(-1)
-        bias = paddle.to_tensor(bias_np).reshape(-1)
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                x_np = np.random.random(self.x_shape).astype('float32')
+                scale_np = np.random.random(
+                    self.x_shape[self.begin_norm_axis :]
+                ).astype('float32')
+                bias_np = np.random.random(
+                    self.x_shape[self.begin_norm_axis :]
+                ).astype('float32')
+                scale = paddle.to_tensor(scale_np).reshape(-1)
+                bias = paddle.to_tensor(bias_np).reshape(-1)
 
-        ln = nn.LayerNorm(
-            normalized_shape=self.x_shape[self.begin_norm_axis :],
-            weight_attr=nn.initializer.Assign(scale),
-            bias_attr=nn.initializer.Assign(bias),
-            epsilon=self.epsilon,
-        )
+                ln = nn.LayerNorm(
+                    normalized_shape=self.x_shape[self.begin_norm_axis :],
+                    weight_attr=nn.initializer.Assign(scale),
+                    bias_attr=nn.initializer.Assign(bias),
+                    epsilon=self.epsilon,
+                )
 
-        x_pd = paddle.to_tensor(x_np)
-        y_pd = ln(x_pd)
-        expect_res = _reference_layer_norm_naive(
-            x_np, scale_np, bias_np, self.epsilon, self.begin_norm_axis
-        )
+                x_pd = paddle.to_tensor(x_np)
+                y_pd = ln(x_pd)
+                expect_res = _reference_layer_norm_naive(
+                    x_np, scale_np, bias_np, self.epsilon, self.begin_norm_axis
+                )
 
-        np.testing.assert_allclose(
-            y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
-        )
+                np.testing.assert_allclose(
+                    y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
+                )
 
-    @unittest.skipIf(
-        not paddle.in_dynamic_mode(), "test is only for dynamic mode"
-    )
     def test_no_scale_no_bias_fp32(self):
         """test the case when both scale and bias are disabled (FP32)."""
-        x_np = np.random.random(self.x_shape).astype('float32')
-        x_pd = paddle.to_tensor(x_np)
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                x_np = np.random.random(self.x_shape).astype('float32')
+                x_pd = paddle.to_tensor(x_np)
 
-        ln = nn.LayerNorm(
-            normalized_shape=self.x_shape[self.begin_norm_axis :],
-            elementwise_affine=False,
-            epsilon=self.epsilon,
-        )
-        y_pd = ln(x_pd)
+                ln = nn.LayerNorm(
+                    normalized_shape=self.x_shape[self.begin_norm_axis :],
+                    elementwise_affine=False,
+                    epsilon=self.epsilon,
+                )
+                y_pd = ln(x_pd)
 
-        expect_res = _reference_layer_norm_naive(
-            x_np, None, None, self.epsilon, self.begin_norm_axis
-        )
-        np.testing.assert_allclose(
-            y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
-        )
+                expect_res = _reference_layer_norm_naive(
+                    x_np, None, None, self.epsilon, self.begin_norm_axis
+                )
+                np.testing.assert_allclose(
+                    y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
+                )
 
-    @unittest.skipIf(
-        not paddle.in_dynamic_mode(), "test is only for dynamic mode"
-    )
     def test_with_scale_no_bias_fp32(self):
         """test the case when only scale is enabled (FP32)."""
-        x_np = np.random.random(self.x_shape).astype('float32')
-        scale_np = np.random.random(
-            self.x_shape[self.begin_norm_axis :]
-        ).astype('float32')
-        scale = paddle.to_tensor(scale_np).reshape(-1)
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                x_np = np.random.random(self.x_shape).astype('float32')
+                scale_np = np.random.random(
+                    self.x_shape[self.begin_norm_axis :]
+                ).astype('float32')
+                scale = paddle.to_tensor(scale_np).reshape(-1)
 
-        ln = nn.LayerNorm(
-            normalized_shape=self.x_shape[self.begin_norm_axis :],
-            elementwise_affine=True,
-            bias_attr=False,
-            epsilon=self.epsilon,
-        )
-        with paddle.no_grad():
-            ln.weight.set_value(scale)
+                ln = nn.LayerNorm(
+                    normalized_shape=self.x_shape[self.begin_norm_axis :],
+                    elementwise_affine=True,
+                    bias_attr=False,
+                    epsilon=self.epsilon,
+                )
+                with paddle.no_grad():
+                    ln.weight.set_value(scale)
 
-        x_pd = paddle.to_tensor(x_np)
-        y_pd = ln(x_pd)
+                x_pd = paddle.to_tensor(x_np)
+                y_pd = ln(x_pd)
 
-        expect_res = _reference_layer_norm_naive(
-            x_np, scale_np, None, self.epsilon, self.begin_norm_axis
-        )
-        np.testing.assert_allclose(
-            y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
-        )
+                expect_res = _reference_layer_norm_naive(
+                    x_np, scale_np, None, self.epsilon, self.begin_norm_axis
+                )
+                np.testing.assert_allclose(
+                    y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
+                )
 
-    @unittest.skipIf(
-        not paddle.in_dynamic_mode(), "test is only for dynamic mode"
-    )
     def test_no_scale_with_bias_fp32(self):
         """test the case when only bias is enabled (FP32)."""
-        x_np = np.random.random(self.x_shape).astype('float32')
-        bias_np = np.random.random(self.x_shape[self.begin_norm_axis :]).astype(
-            'float32'
-        )
-        bias = paddle.to_tensor(bias_np).reshape(-1)
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                x_np = np.random.random(self.x_shape).astype('float32')
+                bias_np = np.random.random(
+                    self.x_shape[self.begin_norm_axis :]
+                ).astype('float32')
+                bias = paddle.to_tensor(bias_np).reshape(-1)
 
-        ln = nn.LayerNorm(
-            normalized_shape=self.x_shape[self.begin_norm_axis :],
-            elementwise_affine=True,
-            weight_attr=False,
-            epsilon=self.epsilon,
-        )
-        with paddle.no_grad():
-            ln.bias.set_value(bias)
+                ln = nn.LayerNorm(
+                    normalized_shape=self.x_shape[self.begin_norm_axis :],
+                    elementwise_affine=True,
+                    weight_attr=False,
+                    epsilon=self.epsilon,
+                )
+                with paddle.no_grad():
+                    ln.bias.set_value(bias)
 
-        x_pd = paddle.to_tensor(x_np)
-        y_pd = ln(x_pd)
+                x_pd = paddle.to_tensor(x_np)
+                y_pd = ln(x_pd)
 
-        expect_res = _reference_layer_norm_naive(
-            x_np, None, bias_np, self.epsilon, self.begin_norm_axis
-        )
-        np.testing.assert_allclose(
-            y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
-        )
+                expect_res = _reference_layer_norm_naive(
+                    x_np, None, bias_np, self.epsilon, self.begin_norm_axis
+                )
+                np.testing.assert_allclose(
+                    y_pd.numpy(), expect_res, rtol=1e-5, atol=1e-4
+                )
 
     def test_bf16_forward_backward(self):
         """test forward and backward pass with bfloat16 precision."""
-        place = paddle.CUDAPlace(0)
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                x_np = np.random.random(self.x_shape).astype('float32')
+                scale_np = np.random.random(
+                    self.x_shape[self.begin_norm_axis :]
+                ).astype('float32')
+                bias_np = np.random.random(
+                    self.x_shape[self.begin_norm_axis :]
+                ).astype('float32')
 
-        with paddle.base.dygraph.guard(place):
-            x_np = np.random.random(self.x_shape).astype('float32')
-            scale_np = np.random.random(
-                self.x_shape[self.begin_norm_axis :]
-            ).astype('float32')
-            bias_np = np.random.random(
-                self.x_shape[self.begin_norm_axis :]
-            ).astype('float32')
+                x = paddle.to_tensor(x_np).cast(paddle.bfloat16)
+                x.stop_gradient = False
 
-            x = paddle.to_tensor(x_np).cast(paddle.bfloat16)
-            x.stop_gradient = False
+                scale = (
+                    paddle.to_tensor(scale_np).cast(paddle.bfloat16).reshape(-1)
+                )
+                bias = (
+                    paddle.to_tensor(bias_np).cast(paddle.bfloat16).reshape(-1)
+                )
 
-            scale = paddle.to_tensor(scale_np).cast(paddle.bfloat16).reshape(-1)
-            bias = paddle.to_tensor(bias_np).cast(paddle.bfloat16).reshape(-1)
+                ln = nn.LayerNorm(
+                    normalized_shape=self.x_shape[self.begin_norm_axis :],
+                    weight_attr=nn.initializer.Assign(scale),
+                    bias_attr=nn.initializer.Assign(bias),
+                    epsilon=self.epsilon,
+                )
 
-            ln = nn.LayerNorm(
-                normalized_shape=self.x_shape[self.begin_norm_axis :],
-                weight_attr=nn.initializer.Assign(scale),
-                bias_attr=nn.initializer.Assign(bias),
-                epsilon=self.epsilon,
-            )
-            ln.to(device='cuda')
+                y = ln(x)
+                loss = y.sum()
+                loss.backward()
 
-            y = ln(x)
-            loss = y.sum()
-            loss.backward()
-
-            self.assertIsNotNone(x.grad)
-            self.assertIsNotNone(ln.weight.grad)
-            self.assertIsNotNone(ln.bias.grad)
+                self.assertIsNotNone(x.grad)
+                self.assertIsNotNone(ln.weight.grad)
+                self.assertIsNotNone(ln.bias.grad)
 
 
 class TestLayerNormParam(unittest.TestCase):
     def setUp(self):
         self.normalized_shape = [6]
         self.x_tensor = paddle.randn([2, 4, 4, 6])
+        self.places = get_places()
 
     def test_elementwise_affine_false(self):
         """test that when elementwise_affine=False, no learnable parameters are created."""
@@ -215,21 +216,21 @@ class TestLayerNormParam(unittest.TestCase):
         out = layer(self.x_tensor)
         self.assertEqual(out.shape, self.x_tensor.shape)
 
-    @unittest.skipIf(
-        not paddle.in_dynamic_mode(), "test is only for dynamic mode"
-    )
     def test_elementwise_affine_true(self):
         """test that when elementwise_affine=True and attr=None, parameters are created with default initialization."""
-        layer = nn.LayerNorm(
-            normalized_shape=self.normalized_shape, elementwise_affine=True
-        )
-        self.assertIsNotNone(layer.weight)
-        self.assertIsNotNone(layer.bias)
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                layer = nn.LayerNorm(
+                    normalized_shape=self.normalized_shape,
+                    elementwise_affine=True,
+                )
+                self.assertIsNotNone(layer.weight)
+                self.assertIsNotNone(layer.bias)
 
-        expected_weight = paddle.ones([6])
-        expected_bias = paddle.zeros([6])
-        self.assertTrue(paddle.allclose(layer.weight, expected_weight))
-        self.assertTrue(paddle.allclose(layer.bias, expected_bias))
+                expected_weight = paddle.ones([6])
+                expected_bias = paddle.zeros([6])
+                self.assertTrue(paddle.allclose(layer.weight, expected_weight))
+                self.assertTrue(paddle.allclose(layer.bias, expected_bias))
 
     def test_bias_false(self):
         """test that when bias=False, the bias parameter is disabled even if elementwise_affine=True."""
@@ -241,42 +242,45 @@ class TestLayerNormParam(unittest.TestCase):
         self.assertIsNotNone(layer.weight)
         self.assertIsNone(layer.bias)
 
-    @unittest.skipIf(
-        not paddle.in_dynamic_mode(), "test is only for dynamic mode"
-    )
     def test_attr_custom_initialization(self):
         """test that weight_attr and bias_attr can be used to customize the initialization of the weight parameter."""
-        weight_attr = paddle.nn.initializer.Constant(value=2.0)
-        bias_attr = paddle.nn.initializer.Constant(value=3.0)
-        layer = nn.LayerNorm(
-            normalized_shape=self.normalized_shape,
-            elementwise_affine=True,
-            weight_attr=weight_attr,
-            bias_attr=bias_attr,
-        )
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                weight_attr = paddle.nn.initializer.Constant(value=2.0)
+                bias_attr = paddle.nn.initializer.Constant(value=3.0)
+                layer = nn.LayerNorm(
+                    normalized_shape=self.normalized_shape,
+                    elementwise_affine=True,
+                    weight_attr=weight_attr,
+                    bias_attr=bias_attr,
+                )
 
-        expected_weight = paddle.full([6], 2.0)
-        expected_bias = paddle.full([6], 3.0)
-        self.assertTrue(paddle.allclose(layer.weight, expected_weight))
-        self.assertTrue(paddle.allclose(layer.bias, expected_bias))
+                expected_weight = paddle.full([6], 2.0)
+                expected_bias = paddle.full([6], 3.0)
+                self.assertTrue(paddle.allclose(layer.weight, expected_weight))
+                self.assertTrue(paddle.allclose(layer.bias, expected_bias))
 
     def test_alias(self):
         """test parameter alias epsilon/eps"""
-        layer_epsilon = nn.LayerNorm(
-            normalized_shape=self.normalized_shape,
-            elementwise_affine=True,
-            epsilon=1e-5,
-        )
-        layer_eps = nn.LayerNorm(
-            normalized_shape=self.normalized_shape,
-            elementwise_affine=True,
-            eps=1e-5,
-        )
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                layer_epsilon = nn.LayerNorm(
+                    normalized_shape=self.normalized_shape,
+                    elementwise_affine=True,
+                    epsilon=1e-5,
+                )
+                layer_eps = nn.LayerNorm(
+                    normalized_shape=self.normalized_shape,
+                    elementwise_affine=True,
+                    eps=1e-5,
+                )
 
-        out_epsilon = layer_epsilon(self.x_tensor)
-        out_eps = layer_eps(self.x_tensor)
+                out_epsilon = layer_epsilon(self.x_tensor)
+                out_eps = layer_eps(self.x_tensor)
 
-        np.testing.assert_array_equal(out_epsilon.numpy(), out_eps.numpy())
+                np.testing.assert_array_equal(
+                    out_epsilon.numpy(), out_eps.numpy()
+                )
 
     def test_errors(self):
         """test for errors."""
