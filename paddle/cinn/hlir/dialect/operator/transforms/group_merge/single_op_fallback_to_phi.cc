@@ -150,6 +150,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
         {paddle::dialect::AssignOut_Op::name(),
          &FusionOpPattern::AssignOutOpPattern},
         {paddle::dialect::CastOp::name(), &FusionOpPattern::CastOpPattern},
+        {cinn::dialect::ConcatOp::name(), &FusionOpPattern::ConcatOpPattern},
     };
     return handler_map;
   }
