@@ -936,23 +936,8 @@ void ReshardKernelOutputToApiOutput(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
-    if (ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
-      auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
-      auto tensor_name =
-          (dst_tensor->name().empty() ? "None" : src_tensor->name());
-      VLOG(4) << "Reshard output(bwd): " << argument_name << "(" << tensor_name
-              << ") "
-              << ReshardDebugInfo(*src_tensor, dist_tensor->dist_attr());
-      auto* func = phi::distributed::ChooseProperReshardFunction(
-          *src_tensor, dist_tensor->dist_attr());
-      func->Eval(dev_ctx, *src_tensor, dist_tensor->dist_attr(), dist_tensor);
-    } else {
-      // TODO(chenweihang): add dist attr compare and default copy rule to
-      // avoid add branch here
-      // shallow copy dense tensor
-      *dist_tensor->unsafe_mutable_value() = src_tensor->value();
-      dist_tensor->unsafe_set_dist_attr(src_tensor->dist_attr());
-    }
+    *dist_tensor->unsafe_mutable_value() = src_tensor->value();
+    dist_tensor->unsafe_set_dist_attr(src_tensor->dist_attr());
   } else {
     VLOG(3) << "The output tensor is nullptr when call "
                "ReshardKernelOutputToApiOutput.";

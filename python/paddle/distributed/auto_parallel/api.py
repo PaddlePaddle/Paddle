@@ -1169,8 +1169,9 @@ class _ShardOptimizer(Optimizer):
 
         # Invoke register hook for sharding stage 2 strategy
         if isinstance(self._shard_fn, ShardingStage2) and not in_auto_dp_mode():
-            for param in self._inner_opt._parameter_list:
-                self._shard_fn._register_hook_for_param_grad(param)
+            self._shard_fn._register_backward_final_hook(
+                self._inner_opt._parameter_list
+            )
 
         # Invoke shard_parameter in sharding stage 3 strategy
         if isinstance(self._shard_fn, ShardingStage3):
@@ -2217,30 +2218,23 @@ class ShardingStage2(_ShardingStageBase):
             )
         return tensor
 
-    @staticmethod
-    def _grad_hook(grad):
-        # do reshard only if the grad is dist tensor and in partial status
-        if grad.is_dist():
-            partial_mesh_axis = None
-            for mesh_axis, placement in enumerate(grad.placements):
-                if isinstance(placement, dist.Partial):
-                    partial_mesh_axis = mesh_axis
-            if partial_mesh_axis is not None:
-                new_placements = get_placement_with_sharding(
-                    grad, partial_mesh_axis
-                )
-                return reshard(grad, grad.process_mesh, new_placements)
+    def _register_backward_final_hook(self, params):
+        def final_grad_hook():
+            for param in params:
+                grad = param.main_grad
+                # do reshard only if the grad is dist tensor and in partial status
+                if grad.is_dist():
+                    partial_mesh_axis = None
+                    for mesh_axis, placement in enumerate(grad.placements):
+                        if isinstance(placement, dist.Partial):
+                            partial_mesh_axis = mesh_axis
+                    if partial_mesh_axis is not None:
+                        new_placements = get_placement_with_sharding(
+                            grad, partial_mesh_axis
+                        )
+                        reshard(grad, grad.process_mesh, new_placements)
 
-        return grad
-
-    def _register_hook_for_param_grad(self, param):
-        if param.is_dense() and self._mesh is not None:
-            placements = []
-            for _ in range(len(self._mesh.shape)):
-                placements.append(dist.Replicate())
-            param._to_dist_(placements, self._mesh)
-        if param.is_dist():
-            param.register_hook(ShardingStage2._grad_hook)
+        core.eager._add_backward_final_hook(final_grad_hook)
 
 
 class ShardingStage3(_ShardingStageBase):
