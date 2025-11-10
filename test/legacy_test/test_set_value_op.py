@@ -17,7 +17,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_devices
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_devices,
+)
 
 import paddle
 from paddle.base import core
