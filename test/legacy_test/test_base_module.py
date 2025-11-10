@@ -464,6 +464,16 @@ class TestNamedModules(unittest.TestCase):
     def setUp(self):
         self.module = Module()
 
+    def test_modules_basic(self):
+        child1 = SubModule()
+        child2 = nn.ReLU()
+        self.module.add_sublayer('submodule', child1)
+        self.module.add_sublayer('activation', child2)
+
+        modules = list(self.module.modules())
+
+        self.assertEqual(len(modules), 4)
+
     def test_named_modules_basic(self):
         child1 = SubModule()
         child2 = nn.ReLU()

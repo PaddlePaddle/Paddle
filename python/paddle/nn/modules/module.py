@@ -635,6 +635,17 @@ class Module(nn.Layer):
             remove_duplicate=remove_duplicate,
         )
 
+    def modules(self) -> Iterator[Module]:
+        """
+        Return an iterator over all modules in the network.
+
+        Yields:
+            Module: a module in the network.
+
+        """
+        for _, module in self.named_modules():
+            yield module
+
     def named_modules(
         self,
         memo: set[Module] | None = None,
