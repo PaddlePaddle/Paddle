@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
 import unittest
 
 import numpy as np
@@ -26,21 +24,9 @@ from paddle.pir.core import create_parameter
 np.random.seed(2013)
 
 
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
-
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "weight_only_linear requires CUDA >= 11.2",
+    not core.is_compiled_with_cuda(),
+    "weight_only_linear requires compiled with CUDA",
 )
 class TestFusedWeightOnlyLinearPass_WithBias(PassTest):
     def is_config_valid(self, w_shape, bias_shape):
@@ -71,6 +57,11 @@ class TestFusedWeightOnlyLinearPass_WithBias(PassTest):
                 is False
                 and (
                     paddle.device.cuda.get_device_capability()[0] == 7
+                    and paddle.device.cuda.get_device_capability()[1] == 0
+                )
+                is False
+                and (
+                    paddle.device.cuda.get_device_capability()[0] == 9
                     and paddle.device.cuda.get_device_capability()[1] == 0
                 )
                 is False
@@ -146,8 +137,8 @@ class TestFusedWeightOnlyLinearPass_WithBias(PassTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "weight_only_linear requires CUDA >= 11.2",
+    not core.is_compiled_with_cuda(),
+    "weight_only_linear requires compiled with CUDA",
 )
 class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
     def get_valid_op_map(self, dtype, w_shape):
@@ -174,6 +165,11 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
                 is False
                 and (
                     paddle.device.cuda.get_device_capability()[0] == 7
+                    and paddle.device.cuda.get_device_capability()[1] == 0
+                )
+                is False
+                and (
+                    paddle.device.cuda.get_device_capability()[0] == 9
                     and paddle.device.cuda.get_device_capability()[1] == 0
                 )
                 is False
@@ -233,8 +229,8 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "weight_only_linear requires CUDA >= 11.2",
+    not core.is_compiled_with_cuda(),
+    "weight_only_linear requires compiled with CUDA",
 )
 class TestFusedWeightOnlyLinearPass_Weight_Only_Int8(
     TestFusedWeightOnlyLinearPass_NoBias
@@ -252,8 +248,8 @@ class TestFusedWeightOnlyLinearPass_Weight_Only_Int8(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "weight_only_linear requires CUDA >= 11.2",
+    not core.is_compiled_with_cuda(),
+    "weight_only_linear requires compiled with CUDA",
 )
 class TestFusedWeightOnlyLinearPass_Weight_Only_Int8_WithBias(
     TestFusedWeightOnlyLinearPass_WithBias

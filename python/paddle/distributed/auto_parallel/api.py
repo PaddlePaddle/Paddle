@@ -209,10 +209,17 @@ class DistAttr(core.TensorDistAttr):
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
         self._sharding_specs = sharding_specs
-        dims_mapping = [
-            mesh.dim_names.index(dim_name) if dim_name is not None else -1
-            for dim_name in sharding_specs
-        ]
+        dims_mapping = []
+        for dim_name in sharding_specs:
+            if dim_name is None:
+                dims_mapping.append(-1)
+            else:
+                if dim_name not in mesh.dim_names:
+                    raise ValueError(
+                        f"Invalid sharding dimension '{dim_name}'. "
+                        f"Available dimensions in mesh are: {mesh.dim_names}."
+                    )
+                dims_mapping.append(mesh.dim_names.index(dim_name))
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
@@ -255,7 +262,7 @@ def shard_tensor(
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
             be Shard, Replicate and Partial.
-        dtype(str|np.dtype, optional): The desired data type of returned tensor.
+        dtype(str|paddle.dtype|np.dtype, optional): The desired data type of returned tensor.
             It Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None. If None, the the dtype is inferred from ``data``
             except for python float number, in which case the dtype is inferred from ``get_default_type`` .
@@ -1160,6 +1167,11 @@ class _ShardOptimizer(Optimizer):
             self._set_and_check_sharding_prop_from_param()
             self._shard_fn._set_sharding_axis(self._sharding_axis)
 
+        # Invoke register hook for sharding stage 2 strategy
+        if isinstance(self._shard_fn, ShardingStage2) and not in_auto_dp_mode():
+            for param in self._inner_opt._parameter_list:
+                self._shard_fn._register_hook_for_param_grad(param)
+
         # Invoke shard_parameter in sharding stage 3 strategy
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
@@ -1549,7 +1561,10 @@ class _ShardOptimizer(Optimizer):
         for layer in self._layers.sublayers():
             for p in layer.parameters(include_sublayers=False):
                 param2layer[id(p)] = layer
-
+        if len(self.fuse_param_view) != len(self.grad_storage):
+            raise RuntimeError(
+                f"Length mismatch: fuse_param_view ({len(self.fuse_param_view)}) vs grad_storage ({len(self.grad_storage)})"
+            )
         for i in range(len(self.fuse_param_view)):
             self._reduce_scatter_gradients(self.grad_storage[i])
 
@@ -2137,7 +2152,7 @@ class ShardingStage1(_ShardingStageBase):
         return self._apply_placement(tensor, param, placements)
 
 
-class ShardingStage2(ShardingStage1):
+class ShardingStage2(_ShardingStageBase):
     """
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 2.
 
@@ -2176,9 +2191,56 @@ class ShardingStage2(ShardingStage1):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    # Note(luchang): Due to reshard optimizations in Paddle where all-reduce + slicing is fused into reduce_scatter,
-    # the current behavior of ShardingStage2 is effectively the same as ShardingStage1.
-    pass
+    def __init__(
+        self,
+        sharding_mesh_dim: int | str,
+        mesh: ProcessMesh | None = None,
+    ) -> None:
+        super().__init__(mesh, sharding_mesh_dim)
+
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
+        if param.is_dist():
+            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
+            if 'beta' not in key:
+                placements = get_placement_with_sharding(
+                    param, self._sharding_axis
+                )
+            else:
+                placements = [
+                    dist.Replicate()
+                    for _ in range(len(param.process_mesh.shape))
+                ]
+            return shard_tensor(
+                tensor,
+                mesh=param.process_mesh,
+                placements=placements,
+            )
+        return tensor
+
+    @staticmethod
+    def _grad_hook(grad):
+        # do reshard only if the grad is dist tensor and in partial status
+        if grad.is_dist():
+            partial_mesh_axis = None
+            for mesh_axis, placement in enumerate(grad.placements):
+                if isinstance(placement, dist.Partial):
+                    partial_mesh_axis = mesh_axis
+            if partial_mesh_axis is not None:
+                new_placements = get_placement_with_sharding(
+                    grad, partial_mesh_axis
+                )
+                return reshard(grad, grad.process_mesh, new_placements)
+
+        return grad
+
+    def _register_hook_for_param_grad(self, param):
+        if param.is_dense() and self._mesh is not None:
+            placements = []
+            for _ in range(len(self._mesh.shape)):
+                placements.append(dist.Replicate())
+            param._to_dist_(placements, self._mesh)
+        if param.is_dist():
+            param.register_hook(ShardingStage2._grad_hook)
 
 
 class ShardingStage3(_ShardingStageBase):
@@ -2399,11 +2461,17 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                             tgt_grad, '_is_initialized', lambda: False
                         )()
                     ):
-                        if src_mesh is None:
+                        if (
+                            src_mesh is None
+                            and tgt_grad.process_mesh is not None
+                        ):
                             src_mesh = tgt_grad.process_mesh
+                        else:
+                            pass
                         if (
                             current_process_mesh is None
                             and tgt_grad._is_initialized()
+                            and tgt_grad.process_mesh is not None
                         ):
                             current_process_mesh = tgt_grad.process_mesh
                         if tgt_grad.process_mesh not in mesh2param_grads:
@@ -2506,6 +2574,12 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                     self._found_inf, process_mesh, self._found_inf.placements
                 )
         else:
+            if current_process_mesh is None or not hasattr(
+                current_process_mesh, "ranks"
+            ):
+                raise ValueError(
+                    "Invalid current_process_mesh: must be a valid ProcessMesh."
+                )
             # The rank of other mesh, should overwrite the original variable `self._found_inf`
             self._found_inf = dist.reshard(
                 self._found_inf,
@@ -2902,6 +2976,8 @@ class DistModel:
             strategy
             and strategy.sharding.enable_tensor_fusion
             and isinstance(optimizer, _ShardOptimizer)
+            and hasattr(optimizer, '_shard_fn')
+            and hasattr(optimizer, '_inner_opt')
             and use_pir_api()
         ):
             assert isinstance(optimizer._shard_fn, ShardingStage1), (
@@ -3954,6 +4030,8 @@ class ShardDataloader:
         return len(self._dataloader)
 
     def __iter__(self):
+        # Reset iterator state to allow restarting iteration
+        self.iter = None
         return self
 
     def _get_mesh_and_placement(self, index):
@@ -4007,7 +4085,9 @@ class ShardDataloader:
     ):
         dist_data = []
         for j in range(len(list_tensors)):
-            if dense_tensor_idx is not None and j in dense_tensor_idx:
+            if (
+                dense_tensor_idx is not None and j in dense_tensor_idx
+            ) or not isinstance(list_tensors[j], paddle.Tensor):
                 dist_data.append(list_tensors[j])
             else:
                 dist_data.append(
@@ -4088,16 +4168,14 @@ class ShardDataloader:
                         self.dense_tensor_idx is not None
                         and self.dense_tensor_idx[i] != []
                     ):
-                        dist_batch_data.append(input_data)
+                        dist_batch_data[key] = input_data
                     else:
                         mesh, placements = self._get_mesh_and_placement(i)
                         dist_batch_data[key] = dtensor_from_local(
                             batch_data[key], mesh, placements
                         )
                 else:
-                    raise ValueError(
-                        f"Unsupported input_data type {type(input_data)}"
-                    )
+                    dist_batch_data[key] = input_data
             return dist_batch_data
         elif isinstance(batch_data, paddle.Tensor):
             mesh, placements = self._get_mesh_and_placement(0)
@@ -4112,7 +4190,8 @@ class ShardDataloader:
         return self._get_batch(batch_data)
 
     def __call__(self):
-        self.iter = self._dataloader.__iter__()
+        # Reset iterator state to allow restarting iteration
+        self.iter = None
         return self
 
 

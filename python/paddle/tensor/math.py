@@ -39,6 +39,8 @@ from paddle._C_ops import (  # noqa: F401
     multiply,
     sign,
     sin,
+    sum,
+    tanh,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
@@ -48,7 +50,6 @@ from paddle.utils.decorator_utils import (
     floor_divide_decorator,
     param_one_alias,
     param_two_alias,
-    sum_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1045,33 +1046,7 @@ def divide(
         return res
     elif rounding_mode == "trunc":
         if in_dynamic_or_pir_mode():
-            tmp = _C_ops.divide(x, y)
-            res = _C_ops.trunc(tmp, out=out)
-
-            if x.dtype in (
-                paddle.uint8,
-                paddle.int8,
-                paddle.int16,
-                paddle.int32,
-                paddle.int64,
-            ) and y.dtype in (
-                paddle.uint8,
-                paddle.int8,
-                paddle.int16,
-                paddle.int32,
-                paddle.int64,
-            ):
-                if x.dtype == paddle.int64 or y.dtype == paddle.int64:
-                    target_dtype = paddle.int64
-                elif x.dtype == paddle.int32 or y.dtype == paddle.int32:
-                    target_dtype = paddle.int32
-                elif x.dtype == paddle.int16 or y.dtype == paddle.int16:
-                    target_dtype = paddle.int16
-                elif x.dtype == paddle.int8 or y.dtype == paddle.int8:
-                    target_dtype = paddle.int8
-                else:
-                    target_dtype = paddle.uint8
-                _C_ops.cast_(res, target_dtype)
+            res = _C_ops.trunc_divide(x, y, out=out)
         else:
             tmp = _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -1123,24 +1098,7 @@ def divide_(
     if rounding_mode is None:
         res = _C_ops.divide_(x, y)
     elif rounding_mode == "trunc":
-        x_dtype = x.dtype
-        y_dtype = y.dtype
-        tmp = _C_ops.divide_(x, y)
-        res = _C_ops.trunc_(tmp)
-        if x_dtype in (
-            paddle.uint8,
-            paddle.int8,
-            paddle.int16,
-            paddle.int32,
-            paddle.int64,
-        ) and y_dtype in (
-            paddle.uint8,
-            paddle.int8,
-            paddle.int16,
-            paddle.int32,
-            paddle.int64,
-        ):
-            _C_ops.cast_(res, x_dtype)
+        res = _C_ops.trunc_divide_(x, y)
     elif rounding_mode == "floor":
         res = _C_ops.floor_divide_(x, y)
     else:
@@ -1240,7 +1198,9 @@ def floor_divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
-def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def remainder(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Mod two tensors element-wise. The equation is:
 
@@ -1262,6 +1222,7 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
@@ -1293,7 +1254,7 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             y = paddle.full([], y, dtype=x.dtype)
-        return _C_ops.remainder(x, y)
+        return _C_ops.remainder(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
@@ -1586,168 +1547,6 @@ def fmin(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.fmin(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
-
-
-@sum_decorator()
-def sum(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    dtype: DTypeLike | None = None,
-    keepdim: bool = False,
-    out: Tensor | None = None,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the sum of tensor elements over the given dimension.
-
-     .. note::
-        Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
-        For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
-        For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
-
-    Args:
-        x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
-            uint8, int8, int16, int32, int64, complex64, complex128.
-            alias: ``input``.
-        axis (int|list|tuple|None, optional): The dimensions along which the sum is performed. If
-            :attr:`None`, sum all elements of :attr:`x` and return a
-            Tensor with a single element, otherwise must be in the
-            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
-            the dimension to reduce is :math:`rank + axis[i]`.
-            alias: ``dim``.
-        dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype
-            of output is the same as input Tensor `x`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result Tensor will have one fewer dimension
-            than the :attr:`x` unless :attr:`keepdim` is true, default
-            value is False.
-        out (Tensor|None, optional): The output tensor. Default: None.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
-        otherwise it's data type is the same as `x`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # x is a Tensor with following elements:
-            >>> #    [[0.2, 0.3, 0.5, 0.9]
-            >>> #     [0.1, 0.2, 0.6, 0.7]]
-            >>> # Each example is followed by the corresponding output tensor.
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-            ...                       [0.1, 0.2, 0.6, 0.7]])
-            >>> out1 = paddle.sum(x)
-            >>> out1
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            3.50000000)
-            >>> out2 = paddle.sum(x, axis=0)
-            >>> out2
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.30000001, 0.50000000, 1.10000002, 1.59999990])
-            >>> out3 = paddle.sum(x, axis=-1)
-            >>> out3
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.89999998, 1.60000002])
-            >>> out4 = paddle.sum(x, axis=1, keepdim=True)
-            >>> out4
-            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1.89999998],
-             [1.60000002]])
-
-            >>> # y is a Tensor with shape [2, 2, 2] and elements as below:
-            >>> #      [[[1, 2], [3, 4]],
-            >>> #      [[5, 6], [7, 8]]]
-            >>> # Each example is followed by the corresponding output tensor.
-            >>> y = paddle.to_tensor([[[1, 2], [3, 4]],
-            ...                       [[5, 6], [7, 8]]])
-            >>> out5 = paddle.sum(y, axis=[1, 2])
-            >>> out5
-            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [10, 26])
-            >>> out6 = paddle.sum(y, axis=[0, 1])
-            >>> out6
-            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [16, 20])
-
-            >>> # x is a Tensor with following elements:
-            >>> #    [[True, True, True, True]
-            >>> #     [False, False, False, False]]
-            >>> # Each example is followed by the corresponding output tensor.
-            >>> x = paddle.to_tensor([[True, True, True, True],
-            ...                       [False, False, False, False]])
-            >>> out7 = paddle.sum(x)
-            >>> out7
-            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
-            4)
-            >>> out8 = paddle.sum(x, axis=0)
-            >>> out8
-            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [1, 1, 1, 1])
-            >>> out9 = paddle.sum(x, axis=1)
-            >>> out9
-            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [4, 0])
-    """
-
-    dtype_flag = False
-    if dtype is not None:
-        dtype_flag = True
-        if not isinstance(dtype, paddle.dtype):
-            dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if in_dynamic_mode():
-        return _C_ops.sum(x, axis, dtype, keepdim, out=out)
-    else:
-        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        if in_pir_mode():
-            return _C_ops.sum(x, axis, dtype, keepdim, out=out)
-        else:
-            attrs = {'dim': axis, 'keep_dim': keepdim}
-
-            if dtype_flag:
-                attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
-
-            check_variable_and_dtype(
-                x,
-                'x',
-                [
-                    'bool',
-                    'uint16',
-                    'int8',
-                    'uint8',
-                    'float16',
-                    'float32',
-                    'float64',
-                    'int16',
-                    'int32',
-                    'int64',
-                    'complex64',
-                    'complex128',
-                ],
-                'sum',
-            )
-
-            check_type(
-                axis, 'axis', (int, list, tuple, type(None), Variable), 'sum'
-            )
-
-            helper = LayerHelper('sum', **locals())
-            if dtype_flag:
-                out = helper.create_variable_for_type_inference(dtype=dtype)
-            else:
-                out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type='reduce_sum',
-                inputs={'X': x},
-                outputs={'Out': out},
-                attrs=attrs,
-            )
-            return out
 
 
 def reduce_as(x: Tensor, target: Tensor, name: str | None = None) -> Tensor:
@@ -3077,29 +2876,15 @@ def outer(
     xshape = x.shape
     yshape = y.shape
     if math.prod(xshape) == 0:  # If the size is 0
-        nx = x.reshape((0, 0))
+        nx = x.reshape((0, 1))
     else:
         nx = x.reshape((-1, 1))
     if math.prod(yshape) == 0:  # If the size is 0
-        ny = y.reshape((0, 0))
+        ny = y.reshape((1, 0))
     else:
         ny = y.reshape((1, -1))
 
-    if in_dynamic_mode():
-        return _C_ops.multiply(nx, ny, out=out)
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val,
-                name,
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'outer',
-            )
-
-    __check_input(nx, ny)
-    if in_pir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiply(nx, ny, out=out)
     else:
         helper = LayerHelper('outer', **locals())
@@ -3171,7 +2956,7 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
     correct_name="paddle.compat.max",
-    url_suffix="torch/torch.max",
+    url_suffix="torch.max",
 )
 def max(
     x: Tensor,
@@ -3336,7 +3121,7 @@ def max(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
     correct_name="paddle.compat.min",
-    url_suffix="torch/torch.min",
+    url_suffix="torch.min",
 )
 def min(
     x: Tensor,
@@ -4405,17 +4190,21 @@ def logcumsumexp(
         return out
 
 
+@param_one_alias(["x", "input"])
 def cumprod(
     x: Tensor,
     dim: int | None = None,
+    *,
     dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
-    Note:
+    .. note::
         The first element of the result is the same as the first element of the input.
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
@@ -4424,6 +4213,7 @@ def cumprod(
         dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information,
                     please refer to :ref:`api_guide_Name`.
 
@@ -4478,7 +4268,7 @@ def cumprod(
             x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cumprod(x, dim, False, False)
+        return _C_ops.cumprod(x, dim, False, False, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -4667,60 +4457,6 @@ def prod(
             outputs={'Out': out},
             attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
         )
-        return out
-
-
-def tanh(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Tanh Activation Operator.
-
-    .. math::
-        out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
-
-    Args:
-        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64,
-            float16, uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Output of Tanh operator, a Tensor with same data type and shape as input
-            (integer types are autocasted into float32).
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.tanh(x)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.tanh(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'tanh',
-        )
-        check_type(x, 'x', (Variable), 'tanh')
-        helper = LayerHelper('tanh', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
         return out
 
 
@@ -8147,6 +7883,7 @@ def sinc_(x: Tensor, name: str | None = None) -> Tensor:
     return paddle.where(~paddle.isnan(x), x, paddle.full_like(x, 1.0))
 
 
+@param_two_alias(["x", "elements"], ["test_x", "test_elements"])
 def isin(
     x: Tensor,
     test_x: Tensor,
@@ -8157,9 +7894,13 @@ def isin(
     r"""
     Tests if each element of `x` is in `test_x`.
 
+    .. note::
+        Alias Support: The parameter name ``elements`` can be used as an alias for ``x``, and the parameter name ``test_elements`` can be used as an alias for ``test_x``.
+        For example, ``isin(elements=tensor1, test_elements=tensor2)`` is equivalent to ``isin(x=tensor1, test_x=tensor2)``.
+
     Args:
-        x (Tensor): The input Tensor. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
-        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
+        x (Tensor): The input Tensor. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'. alias: ``elements``.
+        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'. alias: ``test_elements``.
         assume_unique (bool, optional): If True, indicates both `x` and `test_x` contain unique elements, which could make the calculation faster. Default: False.
         invert (bool, optional): Indicate whether to invert the boolean return tensor. If True, invert the results. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.

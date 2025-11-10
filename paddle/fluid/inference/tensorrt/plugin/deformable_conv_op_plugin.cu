@@ -220,13 +220,8 @@ nvinfer1::Dims DeformableConvPlugin::getOutputDimensions(
 bool DeformableConvPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
     return (type == nvinfer1::DataType::kHALF) &&
            (format == nvinfer1::TensorFormat::kLINEAR);
-#else
-    return (type == nvinfer1::DataType::kFLOAT) &&
-           (format == nvinfer1::TensorFormat::kLINEAR);
-#endif
   } else {
     return (type == nvinfer1::DataType::kFLOAT) &&
            (format == nvinfer1::TensorFormat::kLINEAR);
@@ -246,23 +241,13 @@ size_t DeformableConvPlugin::getWorkspaceSize(int max_batch_size) const
 
 int DeformableConvPlugin::enqueue(int batch_size,
                                   const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-                                  void** outputs,
-                                  void* workspace,
-#else
                                   void* const* outputs,
                                   void* workspace,
-#endif
                                   cudaStream_t stream) TRT_NOEXCEPT {
   if (data_type_ == nvinfer1::DataType::kFLOAT) {
     enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
-#if TRT_PLUGIN_FP16_AVAILABLE
     enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
-#else
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Current CUDA arch dose not support fp16. Please use fp32 instead."));
-#endif
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The DeformableConv TRT Plugin's input type should be float or half."));
@@ -642,13 +627,8 @@ void gemm_impl<half>(cublasHandle_t handle,
                      const half* beta,
                      half* C,
                      int ldc) {
-#if TRT_PLUGIN_FP16_AVAILABLE
   phi::dynload::cublasHgemm(
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-#else
-  PADDLE_THROW(common::errors::InvalidArgument(
-      "Current CUDA arch dose not support fp16. Please use fp32 instead."));
-#endif
 }
 
 template <typename T>
@@ -966,8 +946,6 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::deserializePlugin(
   return plugin;
 }
 
-#if IS_TRT_VERSION_GE(6000)
-
 DeformableConvPluginDynamic::DeformableConvPluginDynamic(
     const nvinfer1::DataType data_type,
     const nvinfer1::Weights& weights,
@@ -1237,13 +1215,8 @@ int DeformableConvPluginDynamic::enqueue(
     enqueue_impl<float>(
         input_desc, output_desc, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
-#if TRT_PLUGIN_FP16_AVAILABLE
     enqueue_impl<half>(
         input_desc, output_desc, inputs, outputs, workspace, stream);
-#else
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Current CUDA arch dose not support fp16. Please use fp32 instead."));
-#endif
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The DeformableConv TRT Plugin's input type should be float or half."));
@@ -1675,13 +1648,8 @@ int PIRDeformableConvPluginDynamic::enqueue(
     enqueue_impl<float>(
         input_desc, output_desc, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
-#if TRT_PLUGIN_FP16_AVAILABLE
     enqueue_impl<half>(
         input_desc, output_desc, inputs, outputs, workspace, stream);
-#else
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Current CUDA arch dose not support fp16. Please use fp32 instead."));
-#endif
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The DeformableConv TRT Plugin's input type should be float or half."));
@@ -1870,7 +1838,6 @@ PIRDeformableConvPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

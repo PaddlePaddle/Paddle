@@ -44,6 +44,13 @@ inline void im2col_common(const phi::DenseTensor& im,
   int output_width = col->dims()[4];
   int channels_col = im_channels * filter_height * filter_width;
 
+  // Convert dimensions to 64-bit to prevent overflow in arithmetic operations
+  const int64_t im_channels64 = im_channels;
+  const int64_t im_height64 = im_height;
+  const int64_t im_width64 = im_width;
+  const int64_t output_height64 = output_height;
+  const int64_t output_width64 = output_width;
+
   const T* im_data = im.data<T>();
   T* col_data = col->data<T>();
   for (int c = 0; c < channels_col; ++c) {
@@ -54,18 +61,27 @@ inline void im2col_common(const phi::DenseTensor& im,
       int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
       for (int w = 0; w < output_width; ++w) {
         int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
-        int im_idx;
-        if (data_layout != DataLayout::kNHWC) {
-          im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
-        } else {
-          im_idx = (im_row_idx * im_width + im_col_idx) * im_channels + c_im;
-        }
-        int col_idx = (c * output_height + h) * output_width + w;
 
-        col_data[col_idx] = (im_row_idx < 0 || im_row_idx >= im_height ||
-                             im_col_idx < 0 || im_col_idx >= im_width)
-                                ? static_cast<T>(0)
-                                : im_data[im_idx];
+        // Calculate col_idx using 64-bit arithmetic to prevent overflow
+        int64_t col_idx64 =
+            ((int64_t)c * output_height64 + h) * output_width64 + w;
+
+        // Check bounds first to avoid buffer overflow in im_idx calculation
+        if (im_row_idx < 0 || im_row_idx >= im_height || im_col_idx < 0 ||
+            im_col_idx >= im_width) {
+          *(col_data + col_idx64) = static_cast<T>(0);
+        } else {
+          int64_t im_idx64;
+          if (data_layout != DataLayout::kNHWC) {
+            im_idx64 = ((int64_t)c_im * im_height64 + im_row_idx) * im_width64 +
+                       im_col_idx;
+          } else {
+            im_idx64 = ((int64_t)im_row_idx * im_width64 + im_col_idx) *
+                           im_channels64 +
+                       c_im;
+          }
+          *(col_data + col_idx64) = *(im_data + im_idx64);
+        }
       }
     }
   }
@@ -193,7 +209,6 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
       dst_data_ic = dst_data_ic + col_block_ic;
     }
     // fill core
-    size_t copy_size = sizeof(T) * (output_width - plw - prw);
     for (int oh = 0; oh < output_height; ++oh) {
       const T* im_data_start =
           im_data + (oh - plh > 0 ? oh - plh : 0) * im_width;
@@ -207,7 +222,18 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
             continue;
           }
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(dst_data + plw, src_data, copy_size);
+            // Safe memcpy for filter_width == 1 case
+            int want = output_width - plw - prw;
+            int avail = im_width;
+            int n = std::max(0, std::min(want, avail));
+            if (n > 0) {
+              std::memcpy(dst_data + plw, src_data, sizeof(T) * n);
+            }
+            // Zero any shortfall
+            int shortfall = want - n;
+            if (shortfall > 0) {
+              std::memset(dst_data + plw + n, 0, sizeof(T) * shortfall);
+            }
           } else {
             for (int kow = 0; kow < output_width - plw - prw; ++kow) {
               int im_row = oh - plh + kh;
@@ -268,9 +294,21 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
         // try to unify
         for (int kw = 0; kw < plw; ++kw) {
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(dst_data + (plw - kw),
-                        src_data,
-                        sizeof(T) * (output_width - (plw - kw)));
+            // Left band: clamp memcpy to avoid over-read
+            int want = output_width - (plw - kw);
+            int src_col_start = 0;
+            int avail = im_width - src_col_start;
+            int n = std::max(0, std::min(want, avail));
+            if (n > 0) {
+              std::memcpy(dst_data + (plw - kw),
+                          src_data + src_col_start,
+                          sizeof(T) * n);
+            }
+            // Zero any shortfall
+            int shortfall = want - n;
+            if (shortfall > 0) {
+              std::memset(dst_data + (plw - kw) + n, 0, sizeof(T) * shortfall);
+            }
           } else {
             for (int kow = 0; kow < output_width - (plw - kw); ++kow) {
               int im_row = oh - plh + kh;
@@ -288,8 +326,17 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
         }
         for (int kw = plw; kw < filter_width - prw; ++kw) {
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(
-                dst_data, src_data + (kw - plw), sizeof(T) * output_width);
+            // Middle band: clamp memcpy to avoid over-read
+            int src_col_start = kw - plw;
+            int want = output_width;
+            int avail = im_width - src_col_start;
+            int n = std::max(0, std::min(want, avail));
+            if (n > 0) {
+              std::memcpy(dst_data, src_data + src_col_start, sizeof(T) * n);
+            }
+            if (n < want) {
+              std::memset(dst_data + n, 0, sizeof(T) * (want - n));
+            }
           } else {
             for (int kow = 0; kow < output_width; ++kow) {
               int im_row = oh - plh + kh;
@@ -308,9 +355,17 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
         int i = 1;
         for (int kw = filter_width - prw; kw < filter_width; ++kw, ++i) {
           if (data_layout != DataLayout::kNHWC) {
-            std::memcpy(dst_data,
-                        src_data + (kw - plw),
-                        sizeof(T) * (output_width - i));
+            // Right band: clamp memcpy to avoid over-read
+            int src_col_start = kw - plw;
+            int want = output_width - i;
+            int avail = im_width - src_col_start;
+            int n = std::max(0, std::min(want, avail));
+            if (n > 0) {
+              std::memcpy(dst_data, src_data + src_col_start, sizeof(T) * n);
+            }
+            if (n < want) {
+              std::memset(dst_data + n, 0, sizeof(T) * (want - n));
+            }
           } else {
             for (int kow = 0; kow < output_width - i; ++kow) {
               int im_row = oh - plh + kh;

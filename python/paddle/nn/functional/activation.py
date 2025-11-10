@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -35,6 +35,11 @@ from ...tensor.ops import sigmoid
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DataLayout2D, DTypeLike
+
+from paddle._C_ops import (  # noqa: F401
+    gelu,
+    softplus,
+)
 
 
 def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
@@ -149,89 +154,6 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
     return _C_ops.elu_(x, alpha)
-
-
-def gelu(
-    x: Tensor,
-    approximate: Literal["tanh", "none"] | bool = False,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    gelu activation.
-
-    The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
-
-    approximate parameter must be True, False, "tanh", "none".
-
-    if approximate is True or "tanh"
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
-
-    else
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        approximate (str|bool, optional): Whether to enable approximation. Default is False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
-            >>> out1 = F.gelu(x)
-            >>> print(out1)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15865529,  0.34573123],
-             [ 0.84134471,  1.39978933]])
-            >>> out2 = F.gelu(x, True)
-            >>> print(out2)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15880796,  0.34571400],
-             [ 0.84119201,  1.39957154]])
-            >>> out3 = F.gelu(x, "none")
-            >>> print(out3)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15865529,  0.34573123],
-             [ 0.84134471,  1.39978933]])
-            >>> out4 = F.gelu(x, "tanh")
-            >>> print(out4)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15880796,  0.34571400],
-             [ 0.84119201,  1.39957154]])
-    """
-
-    if approximate == "tanh":
-        approximate = True
-    elif approximate == "none":
-        approximate = False
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.gelu(x, approximate)
-    else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'gelu'
-        )
-        helper = LayerHelper("gelu", **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='gelu',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'approximate': approximate},
-        )
-        return out
 
 
 def hardshrink(
@@ -833,6 +755,7 @@ def relu_(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.relu_(x)
 
 
+@param_one_alias(["x", "input"])
 def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     log_sigmoid activation.
@@ -843,6 +766,7 @@ def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1341,67 +1265,6 @@ def softmax_(
         dtype = convert_np_dtype_to_dtype_(dtype)
     outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
     return _C_ops.softmax_(outs_cast, axis)
-
-
-def softplus(
-    x: Tensor, beta: float = 1, threshold: float = 20, name: str | None = None
-) -> Tensor:
-    r"""
-    softplus activation
-
-    .. math::
-        softplus(x)=\begin{cases}
-                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
-                x,&x>\frac{\varepsilon}{\beta}.
-            \end{cases}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
-        beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
-        threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
-            >>> out = F.softplus(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.softplus(x, beta, threshold)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'softplus',
-        )
-        helper = LayerHelper('softplus', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='softplus',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'beta': beta, 'threshold': threshold},
-        )
-        return out
 
 
 def softshrink(

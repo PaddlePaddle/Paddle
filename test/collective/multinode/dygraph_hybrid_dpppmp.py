@@ -20,12 +20,20 @@ from test_collective_multi_nodes import (
 
 import paddle
 from paddle import nn
-from paddle.distributed import fleet
+from paddle.distributed import broadcast, fleet
 
 
 def weight_init(mp, shape, col=True, seed=1024):
     np.random.seed(seed)
-    w = np.random.normal(0, 0.02, size=shape)
+    if mp is None or mp.rank == 0:
+        w = np.random.normal(0, 0.02, size=shape)
+    else:
+        w = np.empty(shape, dtype=np.float32)
+    if mp is not None and mp.nranks > 1:
+        w_tensor = paddle.to_tensor(w)
+        broadcast(w_tensor, src=0)
+        w = w_tensor.numpy()
+
     if mp is None:
         _w = w
     else:

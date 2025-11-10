@@ -15,6 +15,7 @@
 
 import math
 import re
+from itertools import product
 
 from .lexer import Token, TokenType
 
@@ -55,7 +56,27 @@ GLOBAL_ATTRIBUTE_KEYWORDS = [
     'num_heads',
     'num_key_value_groups',
     'permute',
+    'dtype',
+    'fused_qkv',
 ]
+
+EXTRA_SUFFIX = [
+    "^T",
+]
+
+
+def extract_axis_and_clean_tokens(tokens):
+    axis = 1
+    for idx, tkn in enumerate(tokens):
+        if tkn.value == "axis" and idx + 2 < len(tokens):
+            axis = int(tokens[idx + 2].value)
+            end_idx = idx + 3
+            if end_idx < len(tokens) - 1:
+                assert tokens[end_idx].value == ","
+                end_idx += 1
+            tokens = tokens[:idx] + tokens[end_idx:]
+            break
+    return axis, tokens
 
 
 # star_macro must be called after layer_id_macro
@@ -69,7 +90,7 @@ def star_macro(tokens, expression, context):
         pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         filtered_keys = []
         for key in allkeys:
-            match = pattern.match(key)
+            match = pattern.fullmatch(key)
             if match:
                 num = int(match.group(1))
                 filtered_keys.append((key, num))
@@ -86,10 +107,11 @@ def star_macro(tokens, expression, context):
             allkeys = (
                 context.get_all_dst_state_keys()
                 if not pre_rarrow
-                else context.get_all_dst_state_keys()
+                else context.get_all_src_state_keys()
             )
             assert len(allkeys) != 0, (
-                f"No keys found with prefix {prefix} and suffix {suffix}!"
+                f"No keys found with prefix '{prefix}' and suffix '{suffix}' in "
+                f"{'destination_state_shard_info' if not pre_rarrow else 'source_state_shard_info'}, please check!"
             )
             keys = list(_sort_keys_by_numeric_part(prefix, suffix, allkeys))
             for key in keys:
@@ -102,44 +124,60 @@ def star_macro(tokens, expression, context):
     return new_expression
 
 
-@macro(name='layer_id_macro', priority=1)
-def layer_id_macro(tokens, expression, context):
-    LAYER_ID_MACRO_TAG = "$LAYER_ID"
-    if LAYER_ID_MACRO_TAG not in expression:
+@macro(name='layer_id_offset_macro', priority=1)
+def layer_id_offset_macro(tokens, expression, context):
+    LAYER_ID_OFFSET_MACRO_TAG = "$LAYER_ID_OFFSET"
+    if LAYER_ID_OFFSET_MACRO_TAG not in expression:
         return expression
 
-    name_with_layer_id = next(
+    name_with_layer_id_offset = next(
         (
             token.value
             for token in tokens
             if token.type == TokenType.IDENTIFIER
-            and LAYER_ID_MACRO_TAG in token.value
+            and LAYER_ID_OFFSET_MACRO_TAG in token.value
         ),
         None,
     )
-    assert name_with_layer_id, "No $LAYER_ID found in NAME tokens"
+    assert name_with_layer_id_offset, "No $LAYER_ID_OFFSET found in NAME tokens"
+    assert all(
+        (t.type != TokenType.IDENTIFIER)
+        or (LAYER_ID_OFFSET_MACRO_TAG in t.value)
+        or (t.value in GLOBAL_ATTRIBUTE_KEYWORDS)
+        for t in tokens
+    ), (
+        f"All IDENTIFIER tokens must contain {LAYER_ID_OFFSET_MACRO_TAG} when a NAME with it is present, except for GLOBAL_ATTRIBUTE_KEYWORDS."
+    )
 
-    num_layers = context.get_num_hidden_layers(
-        name_with_layer_id, LAYER_ID_MACRO_TAG
+    match_layer_id_offset = context.get_num_hidden_layers(
+        name_with_layer_id_offset, LAYER_ID_OFFSET_MACRO_TAG
     )
     expanded_expressions = []
 
-    for layer_id in range(num_layers):
+    match_layer_id_offset = sorted(match_layer_id_offset)
+
+    for layer_id in match_layer_id_offset:
         expr = ""
+        before_rarrow = True
         for token in tokens:
+            if token.type == TokenType.RARROW:
+                before_rarrow = False
+            if before_rarrow:
+                cur_layer_id = layer_id
+            else:
+                cur_layer_id = layer_id - 1
             if token.type == TokenType.IDENTIFIER:
-                if LAYER_ID_MACRO_TAG in token.value:
+                if LAYER_ID_OFFSET_MACRO_TAG in token.value:
                     expr += token.value.replace(
-                        LAYER_ID_MACRO_TAG, str(layer_id)
+                        LAYER_ID_OFFSET_MACRO_TAG, str(cur_layer_id)
                     )
                 elif token.value not in GLOBAL_ATTRIBUTE_KEYWORDS:
-                    expr += f"{token.value}.layer.{layer_id}"
+                    expr += f"{token.value}.layer.{cur_layer_id}"
                 else:
                     expr += token.value
             else:
                 expr += token.value
         expanded_expressions.append(expr)
-
     return expanded_expressions
 
 
@@ -175,11 +213,13 @@ def array_macro(tokens, expression, context):
     return new_expression
 
 
-@macro(name='fused_qkv_old_macro', priority=4)
+@macro(name='fused_qkv_old_macro', priority=6)
 def fused_qkv_old_macro(tokens, expression, context):
     FUSED_QKV_OLD_TAG = "fused_qkv_old"
     if not any(tkn.value == FUSED_QKV_OLD_TAG for tkn in tokens):
         return expression
+
+    axis, tokens = extract_axis_and_clean_tokens(tokens)
 
     attn_head_num = None
     num_key_value_groups = None
@@ -263,10 +303,14 @@ def fused_qkv_old_macro(tokens, expression, context):
                 for c, n in head_config
             ]
             if idx == 0:
-                mapping = f"{qkv_weight_name} -> {','.join(qkv_parts)}, axis=1"
+                mapping = (
+                    f"{qkv_weight_name} -> {','.join(qkv_parts)}, axis={axis}"
+                )
                 results.append(mapping)
             elif qkv_weight_name is not None:
-                mapping = f"{','.join(qkv_parts)} -> {qkv_weight_name}, axis=1"
+                mapping = (
+                    f"{','.join(qkv_parts)} -> {qkv_weight_name}, axis={axis}"
+                )
                 results.append(mapping)
 
         if fused_qkv_old_pos > 4:
@@ -275,7 +319,7 @@ def fused_qkv_old_macro(tokens, expression, context):
                 elements = ",".join(
                     f"fused_qkv_old_tmp.{prefix}_{i}" for i in range(count)
                 )
-                return f"{elements} -> {target_name}, axis=1"
+                return f"{elements} -> {target_name}, axis={axis}"
 
             q_name = tokens[2].value
             k_name = tokens[4].value
@@ -292,7 +336,7 @@ def fused_qkv_old_macro(tokens, expression, context):
 
         fused_qkv_tmp_name = f"{q_name}.{k_name}.{v_name}.tmp"
         results.append(
-            f"{q_name},{k_name},{v_name}  ->  {fused_qkv_tmp_name}, axis=1"
+            f"{q_name},{k_name},{v_name}  ->  {fused_qkv_tmp_name}, axis={axis}"
         )
         dst_state_shard_num = context.get_dst_state_shard_num(
             dst_qkv_weight_name
@@ -324,9 +368,13 @@ def fused_qkv_old_macro(tokens, expression, context):
                 for c, n in head_config
             ]
             if idx == 0:
-                mapping = f"{qkv_weight_name} -> {','.join(qkv_parts)}, axis=1"
+                mapping = (
+                    f"{qkv_weight_name} -> {','.join(qkv_parts)}, axis={axis}"
+                )
             else:
-                mapping = f"{','.join(qkv_parts)} -> {qkv_weight_name}, axis=1"
+                mapping = (
+                    f"{','.join(qkv_parts)} -> {qkv_weight_name}, axis={axis}"
+                )
             results.append(mapping)
     else:
         raise ValueError(
@@ -335,11 +383,14 @@ def fused_qkv_old_macro(tokens, expression, context):
     return results
 
 
-@macro(name='fused_ffn_macro', priority=4)
+@macro(name='fused_ffn_macro', priority=6)
 def fused_ffn_macro(tokens, expression, context):
     FUSED_FFN_TAG = "fused_ffn"
     if not any(tkn.value == FUSED_FFN_TAG for tkn in tokens):
         return expression
+
+    axis, tokens = extract_axis_and_clean_tokens(tokens)
+
     rarrow_pos = None
     fused_ffn_pos = None
     for idx, token in enumerate(tokens):
@@ -388,11 +439,11 @@ def fused_ffn_macro(tokens, expression, context):
             ]
             if idx == 0:
                 results.append(
-                    f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis=1"
+                    f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis={axis}"
                 )
             elif ffn_weight_name is not None:
                 results.append(
-                    f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis=1"
+                    f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis={axis}"
                 )
         if fused_ffn_pos > 4:
 
@@ -400,7 +451,7 @@ def fused_ffn_macro(tokens, expression, context):
                 elements = ",".join(
                     f"fused_ffn_tmp.{prefix}_{i}" for i in range(count)
                 )
-                return f"{elements} -> {target_name}, axis=1"
+                return f"{elements} -> {target_name}, axis={axis}"
 
             gate_name = tokens[2].value
             up_name = tokens[4].value
@@ -415,7 +466,7 @@ def fused_ffn_macro(tokens, expression, context):
 
         fused_gate_up_tmp_name = f"{gate_name}.{up_name}.tmp"
         results.append(
-            f"{gate_name},{up_name}  ->  {fused_gate_up_tmp_name}, axis=1"
+            f"{gate_name},{up_name}  ->  {fused_gate_up_tmp_name}, axis={axis}"
         )
         dst_state_shard_num = context.get_dst_state_shard_num(
             dst_ffn_weight_name
@@ -445,11 +496,11 @@ def fused_ffn_macro(tokens, expression, context):
             ]
             if idx == 0:
                 results.append(
-                    f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis=1"
+                    f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis={axis}"
                 )
             else:
                 results.append(
-                    f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis=1"
+                    f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis={axis}"
                 )
     else:
         raise ValueError(f"Unsupported fused_ffn macro format: {expression}.")
@@ -502,11 +553,13 @@ def transpose_macro(tokens, expression, context):
     return results
 
 
-@macro(name='fused_qkv', priority=4)
-def fused_qkv(tokens, expression, context):
+@macro(name='fused_qkv_macro', priority=6)
+def fused_qkv_macro(tokens, expression, context):
     FUSED_QKV_TAG = "fused_qkv"
     if not any(tkn.value == FUSED_QKV_TAG for tkn in tokens):
         return expression
+
+    axis, tokens = extract_axis_and_clean_tokens(tokens)
 
     attn_head_num = num_heads = None
     num_key_value_groups = None
@@ -566,12 +619,12 @@ def fused_qkv(tokens, expression, context):
             fused_qkv_order.append(k_names[g])
             fused_qkv_order.append(v_names[g])
         results.append(
-            f"{fused_qkv_var} -> {','.join(fused_qkv_order)}, axis=1"
+            f"{fused_qkv_var} -> {','.join(fused_qkv_order)}, axis={axis}"
         )
 
-        results.append(f"{','.join(q_names)} -> {q_var}, axis=1")
-        results.append(f"{','.join(k_names)} -> {k_var}, axis=1")
-        results.append(f"{','.join(v_names)} -> {v_var}, axis=1")
+        results.append(f"{','.join(q_names)} -> {q_var}, axis={axis}")
+        results.append(f"{','.join(k_names)} -> {k_var}, axis={axis}")
+        results.append(f"{','.join(v_names)} -> {v_var}, axis={axis}")
 
         return results
 
@@ -585,9 +638,9 @@ def fused_qkv(tokens, expression, context):
         k_names = make_names(k_var, num_key_value_groups)
         v_names = make_names(v_var, num_key_value_groups)
 
-        results.append(f"{q_var} -> {','.join(q_names)}, axis=1")
-        results.append(f"{k_var} -> {','.join(k_names)}, axis=1")
-        results.append(f"{v_var} -> {','.join(v_names)}, axis=1")
+        results.append(f"{q_var} -> {','.join(q_names)}, axis={axis}")
+        results.append(f"{k_var} -> {','.join(k_names)}, axis={axis}")
+        results.append(f"{v_var} -> {','.join(v_names)}, axis={axis}")
 
         fused_qkv_order = []
         for g in range(num_key_value_groups):
@@ -597,9 +650,179 @@ def fused_qkv(tokens, expression, context):
             fused_qkv_order.append(k_names[g])
             fused_qkv_order.append(v_names[g])
         results.append(
-            f"{','.join(fused_qkv_order)} -> {fused_qkv_var}, axis=1"
+            f"{','.join(fused_qkv_order)} -> {fused_qkv_var}, axis={axis}"
         )
         return results
 
     else:
         return expression
+
+
+class IDMatcher:
+    def __init__(
+        self,
+        source_keys: list[str],
+        extra_suffixes: list[str],
+        allowed_placeholders: list[str],
+    ):
+        self.source_keys = set(source_keys)
+        self.allowed_placeholders = allowed_placeholders
+        # Dynamically build regex pattern from allowed placeholders
+        placeholder_pattern = '|'.join(
+            re.escape(ph) for ph in self.allowed_placeholders
+        )
+        self._placeholder_pattern = re.compile(f'({placeholder_pattern})')
+        self.extra_suffixes = sorted(extra_suffixes, key=lambda x: (-len(x), x))
+
+    def _remove_extra_suffixes(self, key: str) -> str:
+        for sfx in self.extra_suffixes:
+            if key.endswith(sfx):
+                key = key[: -len(sfx)]
+                break
+        return key
+
+    def _pattern_to_regex(self, pattern: str) -> tuple[re.Pattern, list[str]]:
+        placeholders = sorted(set(self._placeholder_pattern.findall(pattern)))
+        regex_str = re.escape(pattern)
+        for ph in placeholders:
+            group_name = ph[1:]
+            regex_str = regex_str.replace(
+                re.escape(ph), f'(?P<{group_name}>\\d+)'
+            )
+        return re.compile(f'^{regex_str}$'), [ph[1:] for ph in placeholders]
+
+    def _substitute_ids(self, pattern: str, id_dict: dict[str, int]) -> str:
+        key = pattern
+        for ph, value in id_dict.items():
+            key = key.replace(f'${ph}', str(value))
+        return key
+
+    def find_matches(self, pattern: str) -> dict[str, list[int]]:
+        pattern = self._remove_extra_suffixes(pattern)
+        regex, ph_names = self._pattern_to_regex(pattern)
+        id_values = {ph: set() for ph in ph_names}
+        for key in self.source_keys:
+            match = regex.match(key)
+            if match:
+                for k, v in match.groupdict().items():
+                    id_values[k].add(int(v))
+        return {k: sorted(vs) for k, vs in id_values.items()}
+
+
+# Global registry for allowed_placeholders
+_REGISTERED_PLACEHOLDERS = ['$EXPERT_ID', '$LAYER_ID']
+
+
+# TODO: need to adapt the scene of temp_layers.\$LAYER_ID.weight -> dst_layers.\$LAYER_ID.weight
+@macro(name='id_macro', priority=1)
+def id(tokens, expression, context):
+    allowed_placeholders = _REGISTERED_PLACEHOLDERS
+    has_allowed_placeholder = any(
+        ph in expression for ph in allowed_placeholders
+    )
+    if not has_allowed_placeholder:
+        return expression
+
+    name_with_id = next(
+        (
+            token.value
+            for token in tokens
+            if token.type == TokenType.IDENTIFIER
+            and any(ph in token.value for ph in allowed_placeholders)
+        ),
+        None,
+    )
+
+    assert name_with_id is not None, "No $ID found in NAME tokens"
+    all_src_state_keys = context.get_all_src_state_keys()
+    id_matcher = IDMatcher(
+        all_src_state_keys, EXTRA_SUFFIX, allowed_placeholders
+    )
+    valid_id_combos = id_matcher.find_matches(name_with_id)
+
+    from collections import Counter
+
+    def dict_list_equal_unordered(
+        d1: dict[str, list[int]], d2: dict[str, list[int]]
+    ) -> bool:
+        if set(d1.keys()) != set(d2.keys()):
+            return False
+        for k in d1:
+            if Counter(d1[k]) != Counter(d2[k]):
+                return False
+        return True
+
+    for tkn in tokens:
+        if tkn.type == TokenType.RARROW:
+            break
+        if tkn.type == TokenType.IDENTIFIER and any(
+            ph in tkn.value for ph in allowed_placeholders
+        ):
+            assert dict_list_equal_unordered(
+                id_matcher.find_matches(tkn.value), valid_id_combos
+            )
+
+    def dict_cartesian_tuples(d: dict[str, list[int]]):
+        keys = list(d.keys())
+        value_lists = [d[k] for k in keys]
+        for prod in product(*value_lists):
+            yield tuple(zip(keys, prod))
+
+    results = []
+    id_combs = dict_cartesian_tuples(valid_id_combos)
+    id_combs = sorted(id_combs)
+    for id_comb in id_combs:
+        cur_statement = ""
+        for tkn in tokens:
+            tkn_val = tkn.value
+            if tkn.type == TokenType.IDENTIFIER and any(
+                ph in tkn.value for ph in allowed_placeholders
+            ):
+                for id_tag, id_val in id_comb:
+                    tkn_val = tkn_val.replace("$" + id_tag, str(id_val))
+                cur_statement += tkn_val
+            else:
+                cur_statement += tkn_val
+        results.append(cur_statement)
+
+    return results
+
+
+# This macro processes variable mappings between source and destination states,
+# but it requires that all expansion macros (layer_id_macro, expert_id_macro,
+# star_macro, array_macro, etc.) have already been executed to expand template
+# variables into concrete variable names.
+@macro(name='get_var_mapping_chain_macro', priority=4)
+def get_var_mapping_chain_macro(tokens, expression, context):
+    flag_left_var = True
+    left_var_list = []
+    right_var_list = []
+    for tkn in tokens:
+        if tkn.value in GLOBAL_ATTRIBUTE_KEYWORDS:
+            break
+        if tkn.type == TokenType.RARROW:
+            flag_left_var = False
+        if tkn.type == TokenType.IDENTIFIER:
+            extra_suffix_removed_value = tkn.value
+            for sfx in EXTRA_SUFFIX:
+                extra_suffix_removed_value = (
+                    extra_suffix_removed_value.removesuffix(sfx)
+                )
+            if flag_left_var:
+                left_var_list.append(extra_suffix_removed_value)
+            else:
+                right_var_list.append(extra_suffix_removed_value)
+    assert len(left_var_list) == 1 or len(right_var_list) == 1, (
+        "Left or right variable must have the only one element"
+    )
+    if len(left_var_list) == 1:
+        context.left_var_to_right_var_mapping[left_var_list[0]] = right_var_list
+        for right_var in right_var_list:
+            context.right_var_from_left_var_mapping[right_var] = left_var_list
+    else:
+        context.right_var_from_left_var_mapping[right_var_list[0]] = (
+            left_var_list
+        )
+        for left_var in left_var_list:
+            context.left_var_to_right_var_mapping[left_var] = right_var_list
+    return expression

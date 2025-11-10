@@ -773,6 +773,7 @@
   output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
+    spmd_rule: BmmInferSpmd
   kernel :
     func : bmm
   backward : bmm_grad
@@ -2112,7 +2113,7 @@
   backward : flash_attn_v3_grad
 
 - op : flash_attn_v3_varlen
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, int max_seqlen_q, int max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin)
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, Scalar max_seqlen_q, Scalar max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin)
   output : Tensor(out), Tensor(softmax_lse)
   optional : seqused_q, seqused_k, qv, q_descale, k_descale, v_descale
   infer_meta :
@@ -3084,7 +3085,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : leaky_relu
-  args : (Tensor x, float negative_slope = 0.02f)
+  args : (Tensor x, double negative_slope = 0.02)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3311,7 +3312,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logit
-  args : (Tensor x, float eps = 1e-6f)
+  args : (Tensor x, double eps = 1e-6)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -4109,7 +4110,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pad3d
-  args : (Tensor x, IntArray paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCDHW")
+  args : (Tensor x, IntArray paddings, str mode = "constant", double pad_value = 0.0, str data_format = "NCDHW")
   output : Tensor(out)
   infer_meta :
     func : Pad3dInferMeta
@@ -4351,6 +4352,19 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
+
+- op : random
+  args : (Tensor x, int64_t from, int64_t to)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomInferMeta
+    param : [x]
+  kernel :
+    func : random
+  inplace : (x -> out)
+  backward: random_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
@@ -5074,7 +5088,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softplus
-  args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
+  args : (Tensor x, double beta = 1.0, double threshold = 20.0)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -5601,6 +5615,18 @@
   inplace: (input -> out)
   backward : trunc_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : trunc_divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : trunc_divide
+  inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits : paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - op : truncated_gaussian_random

@@ -34,6 +34,7 @@ from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 from paddle.utils.dlpack import DLDeviceType
+from paddle.utils.download import check_and_create_dir
 
 from .. import core, framework, unique_name
 from ..framework import (
@@ -46,6 +47,8 @@ from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
 
 if TYPE_CHECKING:
+    from enum import IntEnum
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 
@@ -283,6 +286,8 @@ def monkey_patch_tensor():
         self: Tensor,
         grad_tensor: Tensor | None = None,
         retain_graph: bool = False,
+        *,
+        dump_backward_graph_path: str | None = None,
     ) -> None:
         """
         Run backward of current Graph which starts from current Tensor.
@@ -300,6 +305,9 @@ def monkey_patch_tensor():
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
+            dump_backward_graph_path(str, optional): Specifies the directory path for storing the debug file.
+                If this parameter is specified, the backward-related graph (in dot format)
+                and the debugging call stack information will be generated in this directory.
 
         Returns:
             None
@@ -313,37 +321,26 @@ def monkey_patch_tensor():
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward()
                 ...     print("{}: {}".format(i, x.grad))
-                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                500.)
-                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1000.)
-                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1500.)
-                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2000.)
-                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2500.)
+                0: 500.0
+                1: 1000.0
+                2: 1500.0
+                3: 2000.0
+                4: 2500.0
 
                 >>> x.clear_grad()
                 >>> print("{}".format(x.grad))
-                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                0.)
+                0.0
 
                 >>> grad_tensor=paddle.to_tensor(2.)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward(grad_tensor)
                 ...     print("{}: {}".format(i, x.grad))
-                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1000.)
-                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2000.)
-                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                3000.)
-                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                4000.)
-                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                5000.)
+                0: 1000.0
+                1: 2000.0
+                2: 3000.0
+                3: 4000.0
+                4: 5000.0
         """
         if framework.in_dygraph_mode():
             if in_profiler_mode():
@@ -367,8 +364,10 @@ def monkey_patch_tensor():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-
-            core.eager.run_backward([self], grad_tensor, retain_graph)
+            check_and_create_dir(dump_backward_graph_path)
+            core.eager.run_backward(
+                [self], grad_tensor, retain_graph, dump_backward_graph_path
+            )
 
             if in_profiler_mode():
                 record_event.end()
@@ -1257,7 +1256,9 @@ def monkey_patch_tensor():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Convert the current DenseTensor to SparseTensor in COO format.
+        Convert the current DenseTensor to SparseTensor in COO format. When the input is already a SparseCooTensor, this function will directly return
+        the input itself without performing any conversion.
+
 
         Returns:
             Tensor: A SparseCooTensor
@@ -1275,6 +1276,8 @@ def monkey_patch_tensor():
                                 [1, 3, 2, 3]],
                        values=[1., 2., 3., 4.])
         """
+        if self.is_sparse_coo():
+            return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
@@ -1443,15 +1446,31 @@ def monkey_patch_tensor():
             "version": 2,
         }
 
-    def __dlpack__(self, stream=None):
+    def __dlpack__(
+        self,
+        *,
+        stream: int | None = None,
+        max_version: tuple[int, int] | None = None,
+        dl_device: tuple[IntEnum, int] | None = None,
+        copy: bool | None = None,
+    ):
         """
         Creates a DLPack capsule of the current tensor to be exported to other libraries.
         Args:
-            stream (int | None): An optional Python integer representing a pointer
-                                to a CUDA stream. Synchronizes the tensor with this
-                                stream before exporting.
-                                If None or -1, no synchronization is performed.
-                                If 0, the default stream is used.
+            stream (int | None, optional): An optional Python integer representing a pointer
+                to a CUDA stream. Synchronizes the tensor with this stream before exporting.
+                If None or -1, no synchronization is performed. If 0, the default stream is used.
+            max_version (tuple[int, int] | None): An optional Python tuple with
+                2 integers, representing the maximum version the caller supports. If
+                None (default), we will fallback to DLPack 0.8.
+            dl_device (tuple[IntEnum, int] | None, optional): The DLPack device type. Default is
+                None, meaning the exported capsule should be on the same device as self is. When
+                specified, the format must be a 2-tuple, following that of the return value of
+                array.__dlpack_device__().
+            copy (bool | None, optional): Whether or not to copy the input. If True, the output
+                tensor always copied. If False, the output tensor must never copied, and raise a
+                BufferError in case a copy is deemed necessary. If None, the output tensor must
+                reuse the existing memory buffer if possible and copy otherwise. Default: None.
         """
 
         if self.is_sparse():
@@ -1474,7 +1493,12 @@ def monkey_patch_tensor():
                     event.record(current_stream)
                     current_stream.synchronize()
 
-        return paddle.to_dlpack(self)
+        if max_version is None or max_version[0] < 1:
+            return self.get_tensor()._to_dlpack(dl_device=dl_device, copy=copy)
+
+        return self.get_tensor()._to_dlpack_versioned(
+            dl_device=dl_device, copy=copy
+        )
 
     def get_device(self: Tensor) -> int:
         """
@@ -1566,6 +1590,7 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
+        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

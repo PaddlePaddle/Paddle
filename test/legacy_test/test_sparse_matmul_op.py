@@ -11,30 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import re
 import unittest
 
 import numpy as np
 import scipy.sparse as sp
-from op_test import is_custom_device
+from op_test import get_cuda_version, is_custom_device
 
 import paddle
 from paddle.base.framework import in_pir_mode
 
 paddle.set_default_dtype('float64')
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 class TestMatmulSparseDense(unittest.TestCase):
@@ -81,8 +67,8 @@ class TestMatmulSparseDense(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_2d(self):
         self.check_result([16, 12], [12, 10], 'coo')
@@ -139,8 +125,8 @@ class TestMatmulSparseSparseInt64Index(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_2d(self):
         self.check_result([16, 12], [12, 10], 'coo')
@@ -148,8 +134,8 @@ class TestMatmulSparseSparseInt64Index(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_3d(self):
         self.check_result([8, 16, 12], [8, 12, 10], 'coo')
@@ -220,8 +206,8 @@ class TestMatmulSparseSparseInt32Index(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_2d(self):
         self.check_result([16, 12], [12, 10], 'coo')
@@ -229,8 +215,8 @@ class TestMatmulSparseSparseInt32Index(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_3d(self):
         self.check_result([8, 16, 12], [8, 12, 10], 'coo')
@@ -381,8 +367,8 @@ class TestMatmulSparseDenseStatic(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_2d(self):
         if in_pir_mode():
@@ -476,8 +462,8 @@ class TestMatmulSparseSparseStatic(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_2d(self):
         if in_pir_mode():
@@ -485,8 +471,8 @@ class TestMatmulSparseSparseStatic(unittest.TestCase):
 
     @unittest.skipIf(
         not (paddle.is_compiled_with_cuda() or is_custom_device())
-        or get_cuda_version() < 11000,
-        "only support cuda>=11.0",
+        or paddle.is_compiled_with_rocm(),
+        "only support cuda",
     )
     def test_matmul_3d(self):
         if in_pir_mode():

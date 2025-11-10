@@ -17,11 +17,11 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/utils/test_macros.h"
-
 namespace egr {
 
 class TensorWrapper;
@@ -311,6 +311,34 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
   }
 };
 
+struct CheckInputsNeedConvertDistTensor
+    : ArgsIterator<CheckInputsNeedConvertDistTensor> {
+  bool have_dense = false;
+  bool have_dist = false;
+  const phi::distributed::ProcessMesh** mesh = nullptr;
+
+  explicit CheckInputsNeedConvertDistTensor(
+      const phi::distributed::ProcessMesh** m)
+      : mesh(m) {}
+
+  bool need_convert() {
+    if (have_dense && have_dist) {
+      return true;
+    }
+    return false;
+  }
+  void operator()(const paddle::Tensor& x);
+  void operator()(const paddle::optional<paddle::Tensor>& x);
+  void operator()(const std::vector<paddle::Tensor>& x);
+  void operator()(const paddle::optional<std::vector<paddle::Tensor>>& x);
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+
 struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
   const phi::distributed::ProcessMesh* mesh = nullptr;
 
@@ -343,6 +371,12 @@ bool InputsContainDistTensor(const phi::distributed::ProcessMesh** mesh,
 }
 
 template <typename... Args>
+bool InputsNeedConvertDistTensor(const phi::distributed::ProcessMesh** mesh,
+                                 const Args&... args) {
+  return CheckInputsNeedConvertDistTensor(mesh).apply(args...).need_convert();
+}
+
+template <typename... Args>
 void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
                                   Args&... args) {
   PADDLE_ENFORCE_NE(
@@ -355,6 +389,31 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 void ConvertToDistTensor(paddle::Tensor* x,
                          const phi::distributed::ProcessMesh* mesh);
 
+struct DistTensorPtrConverter : ArgsIterator<DistTensorPtrConverter> {
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+
+  explicit DistTensorPtrConverter(const phi::distributed::ProcessMesh* m)
+      : mesh(m) {
+    PADDLE_ENFORCE_NE(
+        m,
+        nullptr,
+        common::errors::InvalidArgument(
+            "Input mesh of DistTensorPtrConverter() shouldn't be nullptr."));
+  }
+
+  std::shared_ptr<paddle::Tensor> builder(const paddle::Tensor& x);
+  std::shared_ptr<paddle::Tensor> operator()(const paddle::Tensor& x);
+
+  // skip other type args, eg, `vector<paddle::Tensor>` and
+  // `optional<std::vector<paddle::Tensor>>`, these args don't used in
+  // dense2dist transpose in op_ad_func.
+  template <typename T>
+  std::shared_ptr<T> operator()(const T& x) {
+    // do nothing
+    return std::make_shared<T>(x);
+  }
+};
+
 void inline CUDAErrorCheck(const std::string& check_tag) {
 #ifdef PADDLE_WITH_CUDA
   std::cout << check_tag << " checking..." << std::endl;
@@ -363,4 +422,76 @@ void inline CUDAErrorCheck(const std::string& check_tag) {
   std::cout << check_tag << " check done." << std::endl;
 #endif
 }
+std::string CreateNodeLabelInDot(GradNodeBase* node);
+std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor);
+std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor);
+std::string CreateForwardNodeLabelInDot(GradNodeBase* node);
+void SaveDebugInfo(std::string dir_path,
+                   const std::string& serialized_forward_graph,
+                   const std::string& call_stack,
+                   const std::string& serialized_backward_graph,
+                   const std::string& debug_grad_tensors);
+
+void SaveStringToFile(const std::string& file_path,
+                      const std::string& str,
+                      const std::string& mode = "trunc");
+TEST_API void SaveTensorMD5CheckSumToFile(const std::string& file_path,
+                                          const paddle::Tensor& t);
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const paddle::optional<paddle::Tensor>& t);
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path, const std::vector<paddle::Tensor>& tensors);
+TEST_API void SaveTensorMD5CheckSumToFile(
+    const std::string& file_path,
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors);
+static inline const std::string GenerateUniqueApiName(
+    const std::string& api_name, const int64_t& call_count) {
+  return api_name + std::to_string(call_count);
+}
+
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::Tensor* tensor);
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            paddle::optional<paddle::Tensor>* tensor);
+TEST_API void SetTensorName(const std::string& unique_api_name,
+                            const std::string& var_name,
+                            std::vector<paddle::Tensor>* tensors);
+TEST_API void SetTensorName(
+    const std::string& unique_api_name,
+    const std::string& var_name,
+    paddle::optional<std::vector<paddle::Tensor>>* tensors);
+TEST_API void SetGradTensorName(
+    std::vector<paddle::Tensor>* tensors,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+        bwd_out_meta);
+TEST_API void SetGradTensorName(
+    paddle::Tensor* tensor,
+    const int slot,
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        bwd_out_meta);
+std::string AddNodeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
+                                        GradNodeBase* node,
+                                        bool need_dump_backward_subgraph);
+void AddEdgeToDebugBackwardGraph(paddle::inference::analysis::Dot* dot,
+                                 GradNodeBase* node,
+                                 GradNodeBase* next_node,
+                                 const paddle::Tensor& t,
+                                 const std::string& node_label,
+                                 bool need_dump_backward_subgraph);
+
+const std::string FormatTensor(const paddle::Tensor& t);
+static inline std::string GetGradNodeHexAddress(GradNodeBase* ptr) {
+  std::ostringstream oss;
+  // Use std::hex to output in hexadecimal format
+  // std::showbase to include the 0x prefix
+  oss << std::showbase << std::hex << reinterpret_cast<std::uintptr_t>(ptr);
+  return oss.str();
+}
+void SavePythonCallStackToFile(const std::string& file_name,
+                               const std::string& api_name);
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg);
 }  // namespace egr

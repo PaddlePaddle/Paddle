@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include <ATen/ops/from_blob.h>
 
-#include <ATen/ATen.h>
-#include <ATen/core/TensorBody.h>
 #include <ATen/ops/abs.h>
+#include <ATen/ops/arange.h>
+#include <ATen/ops/cat.h>
 #include <ATen/ops/empty.h>
 #include <ATen/ops/empty_like.h>
+#include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/reshape.h>

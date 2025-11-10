@@ -737,10 +737,74 @@ PHI_DEFINE_EXPORTED_int32(
     "summary will be shown."
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
+/**
+ * Debug related FLAG
+ * Name: dump_grad_node_forward_stack_path
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump grad node forward call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
+                           "",
+                           "Dump grad node forward call stack to the dir path");
+/**
+ * Debug related FLAG
+ * Name: dump_api_python_stack_path
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump api forward python call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(
+    dump_api_python_stack_path,
+    "",
+    "Dump api forward python call stack to the dir path");
 
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_output_path
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Export all API output tensors to the specified file.
+ * If tensor_md5_checksum_output_path is "", this flag will not take effect.
+ */
+PHI_DEFINE_EXPORTED_string(
+    tensor_md5_checksum_output_path,
+    "",
+    "Export all API output tensors to the specified file.");
+
+/**
+ * Debug related FLAG
+ * Name: enable_unique_name
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True,the Tensor, C++ API and GradNode will has unique name,such as
+ * 'matmul2_out_float32_2x10' or 'matmul2_out_float32_2x10@Grad'
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_unique_name,
+    false,
+    "Enable unique name in Eager mode for Tensor, C++ API and GradNode.");
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_precision
+ * Since Version: 3.2.1
+ * Value Range: int32, default=3
+ * Example:
+ * Note: The precision of the tensor data used for computing the MD5 checksum
+ * (the number of decimal places after the decimal point).
+ *
+ */
+PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
+                          3,
+                          "The precision of tensor md5 checksum.");
 
 /**
  * Debug related FLAG
@@ -2211,7 +2275,7 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
  * Note: Whether use Stride_Compute_Kernel.
  */
 PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
-                         false,
+                         true,
                          "Whether use Stride_Compute_Kernel.");
 
 /**
@@ -2225,3 +2289,28 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
 PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
                           0,
                           "Whether use prealloc for deepep communication.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_force_stride_compute_contig_out
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether force Stride_Compute_Kernel output contiguous.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    force_stride_compute_contig_out,
+    false,
+    "Whether force Stride_Compute_Kernel output contiguous.");
+
+/**
+ * Torch Compatible related FLAG
+ * Name: FLAGS_use_accuracy_compatible_kernel
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use torch compatible version kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
+                         false,
+                         "Whether use torch compatible version kernel.");

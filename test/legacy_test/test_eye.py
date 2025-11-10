@@ -27,7 +27,7 @@ class TestTensorCreation(unittest.TestCase):
         if paddle.device.is_compiled_with_cuda() or is_custom_device():
             self.devices.append(get_device_place())
             self.devices.append(get_device())
-            self.devices.append("gpu:0")
+            self.devices.append(get_device(True))
         if paddle.device.is_compiled_with_xpu():
             self.devices.append(paddle.XPUPlace(0))
         if paddle.device.is_compiled_with_ipu():
@@ -35,21 +35,22 @@ class TestTensorCreation(unittest.TestCase):
 
         self.requires_grads = [True, False]
         self.dtypes = [None, paddle.float32]
-        self.pin_memorys = [False]
+        self.pin_memories = [False]
         if (
-            paddle.device.is_compiled_with_cuda() or is_custom_device()
-        ) and not paddle.device.is_compiled_with_rocm():
-            self.pin_memorys.append(True)
+            paddle.device.is_compiled_with_cuda()
+            and not paddle.device.is_compiled_with_rocm()
+        ):
+            self.pin_memories.append(True)
 
     def test_eye(self):
         for device, requires_grad, dtype, pin_memory in product(
-            self.devices, self.requires_grads, self.dtypes, self.pin_memorys
+            self.devices, self.requires_grads, self.dtypes, self.pin_memories
         ):
             if (
                 device
                 not in [
                     get_device(),
-                    "gpu:0",
+                    get_device(True),
                     get_device_place()
                     if (
                         paddle.device.is_compiled_with_cuda()

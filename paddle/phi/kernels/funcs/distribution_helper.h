@@ -102,6 +102,20 @@ struct uniform_int_transform {
   int min_;
 };
 
+template <typename T, typename R>
+struct uniform_int_from_to_distribution {
+  explicit uniform_int_from_to_distribution(uint64_t range, int64_t base)
+      : range_(range), base_(base) {}
+
+  HOSTDEVICE inline T operator()(R rand) const {
+    return static_cast<T>(static_cast<int64_t>(rand % range_) + base_);
+  }
+
+ private:
+  uint64_t range_;
+  int64_t base_;
+};
+
 template <typename T>
 struct normal_transform {
   explicit normal_transform(T mean, T std) : mean_(mean), std_(std) {}

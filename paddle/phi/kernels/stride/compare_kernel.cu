@@ -34,6 +34,7 @@
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
 
@@ -66,14 +67,13 @@ void LaunchCompareStrideKernel(const Context &dev_ctx,
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -96,6 +96,11 @@ void LaunchCompareStrideKernel(const Context &dev_ctx,
                                 "be called, something wrong has happened!")); \
     }                                                                         \
                                                                               \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+    }                                                                         \
     if (out->IsSharedWith(x_)) {                                              \
       auto x_origin = x_;                                                     \
       LaunchCompareStrideKernel<T, Context>(                                  \

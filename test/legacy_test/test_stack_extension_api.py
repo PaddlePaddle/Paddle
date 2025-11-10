@@ -89,6 +89,10 @@ class BaseTest(unittest.TestCase):
         names: list,
     ):
         """Test `static`, convert `Tensor` to `numpy array` before feed into graph"""
+        # convert grad value to bool if dtype is bool
+        grad_value = 123.0 if dtypes[0] != 'bool' else True
+        if dtypes[0] == 'bfloat16':
+            grad_value = paddle.to_tensor(grad_value, dtype=dtypes[0]).numpy()
         paddle.enable_static()
 
         for device, place in PLACES:
@@ -130,8 +134,6 @@ class BaseTest(unittest.TestCase):
                     exe = paddle.static.Executor(place)
                     res, *res_grad = exe.run(feed=feed, fetch_list=fetch_list)
 
-                    # convert grad value to bool if dtype is bool
-                    grad_value = 123.0 if dtypes[0] != 'bool' else True
                     np.testing.assert_allclose(
                         res_grad[0], np.ones(x[0].shape) * grad_value
                     )

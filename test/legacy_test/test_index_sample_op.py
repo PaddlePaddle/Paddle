@@ -59,9 +59,7 @@ class TestIndexSampleOp(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
     def config(self):
-        """
-        For multi-dimension input
-        """
+        """For multi-dimension input."""
         self.x_shape = (10, 20)
         self.x_type = "float64"
         self.index_shape = (10, 10)
@@ -70,9 +68,7 @@ class TestIndexSampleOp(OpTest):
 
 class TestCase1(TestIndexSampleOp):
     def config(self):
-        """
-        For one dimension input
-        """
+        """For one dimension input."""
         self.x_shape = (100, 1)
         self.x_type = "float64"
         self.index_shape = (100, 1)
@@ -81,9 +77,7 @@ class TestCase1(TestIndexSampleOp):
 
 class TestCase2(TestIndexSampleOp):
     def config(self):
-        """
-        For int64_t index type
-        """
+        """For int64_t index type."""
         self.x_shape = (10, 100)
         self.x_type = "float64"
         self.index_shape = (10, 10)
@@ -92,9 +86,7 @@ class TestCase2(TestIndexSampleOp):
 
 class TestCase3(TestIndexSampleOp):
     def config(self):
-        """
-        For int index type
-        """
+        """For int index type."""
         self.x_shape = (10, 100)
         self.x_type = "float64"
         self.index_shape = (10, 10)
@@ -103,9 +95,7 @@ class TestCase3(TestIndexSampleOp):
 
 class TestCase4(TestIndexSampleOp):
     def config(self):
-        """
-        For int64 index type
-        """
+        """For int64 index type."""
         self.x_shape = (10, 128)
         self.x_type = "float64"
         self.index_shape = (10, 64)
@@ -114,9 +104,7 @@ class TestCase4(TestIndexSampleOp):
 
 class TestCase5(TestIndexSampleOp):
     def config(self):
-        """
-        For float16 x type
-        """
+        """For float16 x type."""
         self.x_shape = (10, 128)
         self.x_type = "float16"
         self.index_shape = (10, 64)
@@ -125,9 +113,7 @@ class TestCase5(TestIndexSampleOp):
 
 class TestCase6(TestIndexSampleOp):
     def config(self):
-        """
-        For float16 x type
-        """
+        """For float16 x type."""
         self.x_shape = (10, 128)
         self.x_type = "float16"
         self.index_shape = (10, 64)
@@ -182,9 +168,7 @@ class TestIndexSampleOp_ZeroSize2(TestIndexSampleOp_ZeroSize):
 @unittest.skipIf(core.is_compiled_with_xpu(), "complex is not supported on XPU")
 class TestIndexSampleComplex64(TestIndexSampleOp):
     def config(self):
-        """
-        For complex64 x type
-        """
+        """For complex64 x type."""
         self.x_shape = (10, 128)
         self.x_type = np.complex64
         self.index_shape = (10, 64)
@@ -194,9 +178,7 @@ class TestIndexSampleComplex64(TestIndexSampleOp):
 @unittest.skipIf(core.is_compiled_with_xpu(), "complex is not supported on XPU")
 class TestIndexSampleComplex128(TestIndexSampleOp):
     def config(self):
-        """
-        For complex64 x type
-        """
+        """For complex64 x type."""
         self.x_shape = (10, 128)
         self.x_type = np.complex128
         self.index_shape = (10, 64)
@@ -240,9 +222,7 @@ class TestIndexSampleBF16Op(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out', check_pir=True)
 
     def config(self):
-        """
-        For multi-dimension input
-        """
+        """For multi-dimension input."""
         self.x_shape = (10, 20)
         self.x_type = "float32"
         self.dtype = np.uint16

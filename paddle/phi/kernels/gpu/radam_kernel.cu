@@ -36,7 +36,7 @@ __global__ void RAdamGPUKernel(const T* param,
                                MT beta2,
                                MT epsilon,
                                MT rho_inf,
-                               int num,
+                               int64_t num,
                                T* param_out,
                                MT* beta1_pow_out,
                                MT* beta2_pow_out,
@@ -48,7 +48,7 @@ __global__ void RAdamGPUKernel(const T* param,
 
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-  for (int index = idx; index < num; index += gridDim.x * blockDim.x) {
+  for (int64_t index = idx; index < num; index += gridDim.x * blockDim.x) {
     // load and cast input to MT
     MT d_param =
         master_param ? master_param[index] : static_cast<MT>(param[index]);
@@ -147,9 +147,10 @@ void RAdamKernel(const Context& dev_ctx,
       static_cast<MPDType>(2) / (static_cast<MPDType>(1) - beta2_) -
       static_cast<MPDType>(1);
 
-  int numel = param.numel();
+  int64_t numel = param.numel();
   int block = 512;
-  int grid = (param.numel() + block - 1) / block;
+  int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((param.numel() + block - 1) / block, grid_max);
   auto stream = dev_ctx.stream();
 
   RAdamGPUKernel<T, MPDType>

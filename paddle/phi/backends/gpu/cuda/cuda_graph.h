@@ -38,7 +38,6 @@
 #include "paddle/utils/optional.h"
 
 #ifdef PADDLE_WITH_CUDA
-
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -151,7 +150,7 @@ class CUDAGraphNodeLauncher {
   //  With the callbacks defined and the CUDA function obtained, the kernel can
   //  be launched using the `KernelNodeLaunch` method.
   void KernelNodeLaunch(parameterSetter_t parameterSetter,
-                        gpuKernelCallback_t cudakernelCallback);
+                        gpuKernelCallback_t cudaKernelCallback);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
       cudaGraph_t graph);
@@ -315,7 +314,6 @@ class CUDAGraph {
   std::vector<cudaGraph_t> graphs_;
   std::vector<cudaGraphExec_t> exec_graphs_;
   gpuStreamCaptureMode capture_mode_;
-
   cudaStream_t stream_{nullptr};
   phi::GPUPlace place_;
   CUDAGraphID id_;

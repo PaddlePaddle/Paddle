@@ -51,7 +51,7 @@ class LeakyReluGradOp : public popart::Op {
   // an estimate of how valuable sub-graph matching will be
   float getSubgraphValue() const final { return getHighSubgraphValue(); }
 
-  float getAlpha() const { return alpha; }
+  double getAlpha() const { return alpha; }
 
   // Implementation defined below
   void appendAttributes(popart::OpSerialiserBase &os) const override;
@@ -60,13 +60,13 @@ class LeakyReluGradOp : public popart::Op {
   void appendOutlineAttributes(popart::OpSerialiserBase &os) const override;
 
  private:
-  float alpha;
+  double alpha;
 };
 
 class LeakyReluOp : public popart::Op {
  public:
   LeakyReluOp(const popart::OperatorIdentifier &_opid,
-              float _alpha,
+              double _alpha,
               const popart::Op::Settings &settings_)
       : popart::Op(_opid, settings_), alpha(_alpha) {}
 
@@ -97,10 +97,10 @@ class LeakyReluOp : public popart::Op {
   bool requiresRandomSeed() const override { return false; }
 
   // Attributes
-  float getAlpha() const { return alpha; }
+  double getAlpha() const { return alpha; }
 
  private:
-  float alpha;
+  double alpha;
 };
 
 namespace {
@@ -118,7 +118,7 @@ static popart::OpCreator<LeakyReluOp> leakyReluOpCreator(
     popart::OpDefinitions({{CustomOperators::LeakyReluId, leakyReluOpDef}}),
     [](const popart::OpCreatorInfo &info) {
       // default alpha is 10**(-2)
-      float alpha = info.attributes.getAttribute<popart::Attributes::Float>(
+      double alpha = info.attributes.getAttribute<popart::Attributes::Double>(
           "alpha", 1e-2f);
       return std::make_unique<LeakyReluOp>(info.opid, alpha, info.settings);
     },
@@ -146,7 +146,7 @@ class LeakyReluOpx : public popart::popx::Opx {
 
     poplar::Tensor input = getInTensor(0);
 
-    float alpha = op.getAlpha();
+    double alpha = op.getAlpha();
 
     // x < 0.0f ? alpha * x : x
     auto expression = pe::Select(pe::Mul(pe::Const(alpha), pe::_1),
@@ -177,7 +177,7 @@ class LeakyReluGradOpx : public popart::popx::Opx {
     poplar::Tensor grad = getInTensor(0);
     poplar::Tensor input = getInTensor(1);
 
-    float alpha = op.getAlpha();
+    double alpha = op.getAlpha();
 
     // (grad * (x < 0.0f ? alpha : 1))
     pe::Mul expression = pe::Mul(

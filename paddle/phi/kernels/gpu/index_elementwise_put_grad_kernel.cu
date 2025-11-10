@@ -57,9 +57,12 @@ void GPUIndexElementwisePutGradKernel(
   std::array<std::vector<int64_t>, 3> strides_vec;
   std::vector<int64_t> value_dims;
   std::vector<int64_t> value_strides;
+  // default value_ele_size when value_grad is nullptr
+  int64_t value_ele_size = 4;
   if (value_grad) {
     value_dims = common::vectorize<int64_t>(value_grad->dims());
     value_strides = common::vectorize<int64_t>(value_grad->strides());
+    value_ele_size = phi::SizeOf(value_grad->dtype());
   }
 
   funcs::IndexPutStride<3>(input_dims,
@@ -67,7 +70,7 @@ void GPUIndexElementwisePutGradKernel(
                            phi::SizeOf(out_grad.dtype()),
                            value_dims,
                            value_strides,
-                           4,
+                           value_ele_size,
                            shape_tmp,
                            stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
@@ -78,8 +81,11 @@ void GPUIndexElementwisePutGradKernel(
   auto offset_calc =
       funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -125,6 +131,11 @@ void GPUIndexElementwisePutGradKernel(
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
+    PADDLE_ENFORCE_EQ(true,
+                      funcs::IsInUint32Range(value_grad->numel()),
+                      common::errors::PreconditionNotMet(
+                          "the numel of input or output should be in [0, "
+                          "std::numeric_limits<int32_t>::max()]"));
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
           const auto offsets = offset_calc.get(idx);
@@ -147,6 +158,11 @@ void GPUIndexElementwisePutGradKernel(
   } else {
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
+    PADDLE_ENFORCE_EQ(true,
+                      funcs::IsInUint32Range(value_grad->numel()),
+                      common::errors::PreconditionNotMet(
+                          "the numel of input or output should be in [0, "
+                          "std::numeric_limits<int32_t>::max()]"));
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {

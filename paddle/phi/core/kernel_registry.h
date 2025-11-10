@@ -168,11 +168,29 @@ struct KernelRegistrar {
  */
 #define PD_NARGS(...) _PD_NARGS((__VA_ARGS__, _PD_RESQ_N()))
 #define _PD_NARGS(...) _PD_ARG_N(__VA_ARGS__)
-#define _PD_ARG_N_EXPAND(                                                     \
-    _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, N, ...) \
+#define _PD_ARG_N_EXPAND(_1,  \
+                         _2,  \
+                         _3,  \
+                         _4,  \
+                         _5,  \
+                         _6,  \
+                         _7,  \
+                         _8,  \
+                         _9,  \
+                         _10, \
+                         _11, \
+                         _12, \
+                         _13, \
+                         _14, \
+                         _15, \
+                         _16, \
+                         _17, \
+                         N,   \
+                         ...) \
   N
 #define _PD_ARG_N(args) _PD_ARG_N_EXPAND args
-#define _PD_RESQ_N() 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+#define _PD_RESQ_N() \
+  17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
 // The macro for passing KernelArgsParseFunctor's function
 #define ARG_PARSE_FUNCTOR(meta_kernel_fn, cpp_dtype, context) \
@@ -615,6 +633,30 @@ struct KernelRegistrar {
                                             context,                    \
                                             kernel_instantiation_macro, \
                                             __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_16(meta_kernel_fn,                     \
+                                    backend,                            \
+                                    context,                            \
+                                    kernel_instantiation_macro,         \
+                                    cpp_dtype,                          \
+                                    ...)                                \
+  kernel_instantiation_macro(meta_kernel_fn, cpp_dtype, context)        \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_15(meta_kernel_fn,             \
+                                            backend,                    \
+                                            context,                    \
+                                            kernel_instantiation_macro, \
+                                            __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_17(meta_kernel_fn,                     \
+                                    backend,                            \
+                                    context,                            \
+                                    kernel_instantiation_macro,         \
+                                    cpp_dtype,                          \
+                                    ...)                                \
+  kernel_instantiation_macro(meta_kernel_fn, cpp_dtype, context)        \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_16(meta_kernel_fn,             \
+                                            backend,                    \
+                                            context,                    \
+                                            kernel_instantiation_macro, \
+                                            __VA_ARGS__))
 
 #define PD_KERNEL_REGISTRAR_INIT(reg_type,                          \
                                  kernel_name,                       \
@@ -696,32 +738,33 @@ struct KernelRegistrar {
       kernel_unfold_macro(meta_kernel_fn<cpp_dtype, context>),                 \
       variadic_kernel_unfold_marco(meta_kernel_fn<cpp_dtype, context>));
 
-#define _PD_KERNEL_REGISTRAR_INIT_1(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    arg_parse_functor_macro,                   \
-                                    kernel_unfold_macro,                       \
-                                    variadic_kernel_unfold_marco,              \
-                                    cpp_dtype)                                 \
-  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                        \
-                              kernel_name,                                     \
-                              backend,                                         \
-                              context,                                         \
-                              layout,                                          \
-                              registrar_id,                                    \
-                              args_def_fn,                                     \
-                              meta_kernel_fn,                                  \
-                              arg_parse_functor_macro,                         \
-                              kernel_unfold_macro,                             \
-                              variadic_kernel_unfold_marco,                    \
-                              cpp_dtype)                                       \
-  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                  \
+#define _PD_KERNEL_REGISTRAR_INIT_1(reg_type,                       \
+                                    kernel_name,                    \
+                                    backend,                        \
+                                    context,                        \
+                                    layout,                         \
+                                    registrar_id,                   \
+                                    args_def_fn,                    \
+                                    meta_kernel_fn,                 \
+                                    arg_parse_functor_macro,        \
+                                    kernel_unfold_macro,            \
+                                    variadic_kernel_unfold_marco,   \
+                                    cpp_dtype)                      \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                             \
+                              kernel_name,                          \
+                              backend,                              \
+                              context,                              \
+                              layout,                               \
+                              registrar_id,                         \
+                              args_def_fn,                          \
+                              meta_kernel_fn,                       \
+                              arg_parse_functor_macro,              \
+                              kernel_unfold_macro,                  \
+                              variadic_kernel_unfold_marco,         \
+                              cpp_dtype)                            \
+  PADDLE_EXP_API int                                                \
+      TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                       \
   }
 #define _PD_KERNEL_REGISTRAR_INIT_2(reg_type,                         \
                                     kernel_name,                      \
@@ -1241,6 +1284,80 @@ struct KernelRegistrar {
                                          kernel_unfold_macro,          \
                                          variadic_kernel_unfold_marco, \
                                          __VA_ARGS__))
+#define _PD_KERNEL_REGISTRAR_INIT_16(reg_type,                         \
+                                     kernel_name,                      \
+                                     backend,                          \
+                                     context,                          \
+                                     layout,                           \
+                                     registrar_id,                     \
+                                     args_def_fn,                      \
+                                     meta_kernel_fn,                   \
+                                     arg_parse_functor_macro,          \
+                                     kernel_unfold_macro,              \
+                                     variadic_kernel_unfold_marco,     \
+                                     cpp_dtype,                        \
+                                     ...)                              \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                \
+                              kernel_name,                             \
+                              backend,                                 \
+                              context,                                 \
+                              layout,                                  \
+                              registrar_id,                            \
+                              args_def_fn,                             \
+                              meta_kernel_fn,                          \
+                              arg_parse_functor_macro,                 \
+                              kernel_unfold_macro,                     \
+                              variadic_kernel_unfold_marco,            \
+                              cpp_dtype)                               \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_15(reg_type,                     \
+                                         kernel_name,                  \
+                                         backend,                      \
+                                         context,                      \
+                                         layout,                       \
+                                         PD_ID,                        \
+                                         args_def_fn,                  \
+                                         meta_kernel_fn,               \
+                                         arg_parse_functor_macro,      \
+                                         kernel_unfold_macro,          \
+                                         variadic_kernel_unfold_marco, \
+                                         __VA_ARGS__))
+#define _PD_KERNEL_REGISTRAR_INIT_17(reg_type,                         \
+                                     kernel_name,                      \
+                                     backend,                          \
+                                     context,                          \
+                                     layout,                           \
+                                     registrar_id,                     \
+                                     args_def_fn,                      \
+                                     meta_kernel_fn,                   \
+                                     arg_parse_functor_macro,          \
+                                     kernel_unfold_macro,              \
+                                     variadic_kernel_unfold_marco,     \
+                                     cpp_dtype,                        \
+                                     ...)                              \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                \
+                              kernel_name,                             \
+                              backend,                                 \
+                              context,                                 \
+                              layout,                                  \
+                              registrar_id,                            \
+                              args_def_fn,                             \
+                              meta_kernel_fn,                          \
+                              arg_parse_functor_macro,                 \
+                              kernel_unfold_macro,                     \
+                              variadic_kernel_unfold_marco,            \
+                              cpp_dtype)                               \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_16(reg_type,                     \
+                                         kernel_name,                  \
+                                         backend,                      \
+                                         context,                      \
+                                         layout,                       \
+                                         PD_ID,                        \
+                                         args_def_fn,                  \
+                                         meta_kernel_fn,               \
+                                         arg_parse_functor_macro,      \
+                                         kernel_unfold_macro,          \
+                                         variadic_kernel_unfold_marco, \
+                                         __VA_ARGS__))
 /** PD_REGISTER_KERNEL_FOR_ALL_DTYPE
  *
  * Basic Kernel register marco, used to register a instantiated kernel function
@@ -1292,24 +1409,25 @@ struct KernelRegistrar {
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(           \
       const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
-#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                    \
-    reg_type, kernel_name, backend, layout, kernel_fn)                         \
-  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(    \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);              \
-  static const ::phi::KernelRegistrar                                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
-          reg_type,                                                            \
-          #kernel_name,                                                        \
-          #backend,                                                            \
-          DATA_LAYOUT(layout),                                                 \
-          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,          \
-          &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,       \
-          PHI_KERNEL(kernel_fn),                                               \
-          PHI_VARIADIC_KERNEL(kernel_fn));                                     \
-  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                  \
-  }                                                                            \
-  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(           \
+#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                 \
+    reg_type, kernel_name, backend, layout, kernel_fn)                      \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
+  static const ::phi::KernelRegistrar                                       \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                \
+          reg_type,                                                         \
+          #kernel_name,                                                     \
+          #backend,                                                         \
+          DATA_LAYOUT(layout),                                              \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
+          &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
+          PHI_KERNEL(kernel_fn),                                            \
+          PHI_VARIADIC_KERNEL(kernel_fn));                                  \
+  PADDLE_EXP_API int                                                        \
+      TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {         \
+    return 0;                                                               \
+  }                                                                         \
+  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
 
@@ -1431,20 +1549,21 @@ struct KernelRegistrar {
     return 0;                                                                  \
   }
 #else
-#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                           \
-    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)            \
-  static const ::phi::KernelRegistrar                                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
-          reg_type,                                                            \
-          #kernel_name,                                                        \
-          #backend,                                                            \
-          DATA_LAYOUT(layout),                                                 \
-          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,          \
-          &args_def_fn,                                                        \
-          PHI_KERNEL(kernel_fn),                                               \
-          PHI_VARIADIC_KERNEL(kernel_fn));                                     \
-  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                  \
+#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                  \
+    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)   \
+  static const ::phi::KernelRegistrar                                 \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(          \
+          reg_type,                                                   \
+          #kernel_name,                                               \
+          #backend,                                                   \
+          DATA_LAYOUT(layout),                                        \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse, \
+          &args_def_fn,                                               \
+          PHI_KERNEL(kernel_fn),                                      \
+          PHI_VARIADIC_KERNEL(kernel_fn));                            \
+  PADDLE_EXP_API int                                                  \
+      TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {   \
+    return 0;                                                         \
   }
 #endif
 #define _PD_FOR_ALL_BACKEND_DTYPE_1(                                     \

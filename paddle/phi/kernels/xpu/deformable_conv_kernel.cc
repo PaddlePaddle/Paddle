@@ -65,7 +65,7 @@ void DeformableConvKernel(const Context& dev_ctx,
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();
   const float* offset_ptr = offset.data<T>();
-  const float* mask_ptr = mask->data<T>();
+  const float* mask_ptr = mask ? mask->data<T>() : nullptr;
   T* output_prt = out->data<T>();
 
   // set zeros for d_table_data

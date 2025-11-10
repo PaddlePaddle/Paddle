@@ -15,7 +15,7 @@ import ctypes
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import get_device_place
 
 import paddle
 from paddle.device import cuda
@@ -23,7 +23,7 @@ from paddle.device import cuda
 
 class TestCurrentStream(unittest.TestCase):
     def test_current_stream(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = cuda.current_stream()
             self.assertTrue(isinstance(s, cuda.Stream))
 
@@ -35,27 +35,30 @@ class TestCurrentStream(unittest.TestCase):
 
             self.assertEqual(s1, s2)
 
-            self.assertRaises(ValueError, cuda.current_stream, "gpu:0")
+            s3 = cuda.current_stream('gpu:0')
+            self.assertTrue(isinstance(s3, cuda.Stream))
 
 
 class TestSynchronize(unittest.TestCase):
     def test_synchronize(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             self.assertIsNone(cuda.synchronize())
             self.assertIsNone(cuda.synchronize(0))
             self.assertIsNone(cuda.synchronize(get_device_place()))
+            self.assertIsNone(cuda.synchronize("gpu:0"))
+            self.assertIsNone(cuda.synchronize("gpu"))
 
-            self.assertRaises(ValueError, cuda.synchronize, "gpu:0")
+            self.assertRaises(ValueError, cuda.synchronize, "xpu")
 
 
 class TestCUDAStream(unittest.TestCase):
     def test_cuda_stream(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = paddle.device.cuda.Stream()
             self.assertIsNotNone(s)
 
     def test_cuda_stream_synchronize(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = paddle.device.cuda.Stream()
             e1 = paddle.device.cuda.Event(True, False, False)
             e2 = paddle.device.cuda.Event(True, False, False)
@@ -71,7 +74,7 @@ class TestCUDAStream(unittest.TestCase):
             self.assertTrue(s.query())
 
     def test_cuda_stream_wait_event_and_record_event(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s1 = cuda.Stream(0)
             tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
             tensor2 = paddle.matmul(tensor1, tensor1)
@@ -84,16 +87,35 @@ class TestCUDAStream(unittest.TestCase):
 
             self.assertTrue(e1.query() and s1.query() and s2.query())
 
+    def test_cuda_stream_protocol(self):
+        if paddle.cuda.is_available() and paddle.is_compiled_with_cuda():
+            stream = paddle.cuda.Stream()
+
+            self.assertTrue(hasattr(stream, "__cuda_stream__"))
+
+            result = stream.__cuda_stream__()
+
+            self.assertIsInstance(result, tuple)
+            self.assertEqual(len(result), 2)
+            self.assertEqual(result[0], 0)  # Protocol version
+            self.assertEqual(
+                result[1], stream.stream_base.cuda_stream
+            )  # Stream handle
+
+            external_stream = paddle.cuda.get_stream_from_external(result[1], 0)
+            external_result = external_stream.__cuda_stream__()
+            self.assertEqual(result, external_result)
+
 
 class TestCUDAEvent(unittest.TestCase):
     def test_cuda_event(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             e = paddle.device.cuda.Event(True, False, False)
             self.assertIsNotNone(e)
             s = paddle.device.cuda.current_stream()
 
     def test_cuda_event_methods(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             e = paddle.device.cuda.Event(True, False, False)
             s = paddle.device.cuda.current_stream()
             event_query_1 = e.query()
@@ -114,7 +136,7 @@ class TestStreamGuard(unittest.TestCase):
     '''
 
     def test_stream_guard_normal(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = paddle.device.cuda.Stream()
             a = paddle.to_tensor(np.array([0, 2, 4], dtype="int32"))
             b = paddle.to_tensor(np.array([1, 3, 5], dtype="int32"))
@@ -128,7 +150,7 @@ class TestStreamGuard(unittest.TestCase):
             np.testing.assert_array_equal(np.array(c), np.array(d))
 
     def test_stream_guard_default_stream(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s1 = paddle.device.cuda.current_stream()
             with paddle.device.cuda.stream_guard(s1):
                 pass
@@ -137,14 +159,14 @@ class TestStreamGuard(unittest.TestCase):
             self.assertTrue(id(s1) == id(s2))
 
     def test_set_current_stream_default_stream(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             cur_stream = paddle.device.cuda.current_stream()
             new_stream = paddle.device.cuda._set_current_stream(cur_stream)
 
             self.assertTrue(id(cur_stream) == id(new_stream))
 
     def test_stream_guard_raise_error(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
 
             def test_not_correct_stream_guard_input():
                 tmp = np.zeros(5)
@@ -154,7 +176,7 @@ class TestStreamGuard(unittest.TestCase):
             self.assertRaises(TypeError, test_not_correct_stream_guard_input)
 
     def test_set_current_stream_raise_error(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             self.assertRaises(
                 TypeError, paddle.device.cuda._set_current_stream, np.zeros(5)
             )
@@ -165,7 +187,7 @@ class TestStreamGuard(unittest.TestCase):
 
 class TestRawStream(unittest.TestCase):
     def test_cuda_stream(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             cuda_stream = paddle.device.cuda.current_stream().cuda_stream
             print(cuda_stream)
             self.assertTrue(type(cuda_stream) is int)

@@ -37,6 +37,10 @@ repos:
           (?x)^(
             test/dygraph_to_static/test_error.py
           )$
+  - repo: https://github.com/PFCCLab/ast-grep-pre-commit-mirror
+    rev: v0.39.9
+    hooks:
+      - id: ast-grep
   - repo: local
     hooks:
       - id: copyright_checker
@@ -50,13 +54,13 @@ repos:
             paddle/cinn/utils/registry.h
           )$
   - repo: https://github.com/PFCCLab/typos-pre-commit-mirror.git
-    rev: v1.34.0
+    rev: v1.36.2
     hooks:
       - id: typos
         args: [--force-exclude]
   # For Python files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.0
+    rev: v0.14.4
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
@@ -158,7 +162,10 @@ repos:
           (?x)^(
             \.github/.+\.(yaml|yml)|
             \.pre-commit-config\.yaml|
-            \.yamlfmt
+            \.yamlfmt|
+            sgconfig\.yml|
+            ci/rules/.+\.yml|
+            ci/rule-tests/.+\.yml
           )
   # Others
   - repo: local

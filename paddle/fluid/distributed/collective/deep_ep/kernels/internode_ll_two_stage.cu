@@ -28,6 +28,70 @@ namespace deep_ep {
 
 namespace internode_ll_two_stage {
 
+template <int kNumThreads>
+__launch_bounds__(kNumThreads, 1) __global__
+    void clean_low_latency_buffer_two_stage(void** buffer_ptrs_gpu,
+                                            const size_t max_nvl_num_bytes,
+                                            const size_t signal_bytes,
+                                            const int nvl_rank,
+                                            const int num_experts,
+                                            int* clean_0,
+                                            int num_clean_int_0,
+                                            int* clean_1,
+                                            int num_clean_int_1) {
+  // Barrier before cleaning (in case of unfinished chunked EP)
+  nvshmemx_barrier_all_block();
+
+  auto thread_id = static_cast<int>(threadIdx.x);
+  // Clean NVL Buffer
+  int* buffer_ptrs_gpu_signal0 = reinterpret_cast<int*>(
+      reinterpret_cast<uint8_t*>(buffer_ptrs_gpu[nvl_rank]) +
+      max_nvl_num_bytes);
+  int* buffer_ptrs_gpu_signal1 = reinterpret_cast<int*>(
+      reinterpret_cast<uint8_t*>(buffer_ptrs_gpu[nvl_rank]) +
+      (max_nvl_num_bytes * 2 + signal_bytes));
+#pragma unroll
+  for (int i = thread_id; i < num_experts; i += kNumThreads) {
+    buffer_ptrs_gpu_signal0[i] = 0;
+    buffer_ptrs_gpu_signal1[i] = 0;
+  }
+
+  // Clean RDMA Buffer
+#pragma unroll
+  for (int i = thread_id; i < num_clean_int_0; i += kNumThreads) clean_0[i] = 0;
+#pragma unroll
+  for (int i = thread_id; i < num_clean_int_1; i += kNumThreads) clean_1[i] = 0;
+
+  // Barrier after cleaning (make sure low-latency mode work fine)
+  nvshmemx_barrier_all_block();
+}
+
+void clean_low_latency_buffer_two_stage(void** buffer_ptrs_gpu,
+                                        const size_t max_nvl_num_bytes,
+                                        const size_t signal_bytes,
+                                        const int nvl_rank,
+                                        const int num_experts,
+                                        int* clean_0,
+                                        int num_clean_int_0,
+                                        int* clean_1,
+                                        int num_clean_int_1,
+                                        cudaStream_t stream) {
+  constexpr int kNumThreads = 512;
+
+  SETUP_LAUNCH_CONFIG(1, kNumThreads, stream);
+  LAUNCH_KERNEL(&cfg,
+                clean_low_latency_buffer_two_stage<kNumThreads>,
+                buffer_ptrs_gpu,
+                max_nvl_num_bytes,
+                signal_bytes,
+                nvl_rank,
+                num_experts,
+                clean_0,
+                num_clean_int_0,
+                clean_1,
+                num_clean_int_1);
+}
+
 template <bool kUseFP8,
           int kNumWarpGroups,
           int kNumWarpsPerGroup,

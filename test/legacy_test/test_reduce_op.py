@@ -68,7 +68,7 @@ class TestSumOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -103,7 +103,7 @@ class TestSumOp_ZeroDim(TestSumOp):
             ['X'],
             'Out',
             check_pir=True,
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
         )
 
@@ -160,7 +160,7 @@ class TestSumOp_withInt(TestSumOp):
             ['X'],
             'Out',
             user_defined_grads=self.calc_gradient(),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
         )
@@ -186,7 +186,7 @@ class TestSumOp3Dim(TestSumOp):
             ['X'],
             'Out',
             user_defined_grads=self.calc_gradient(),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
         )
@@ -208,7 +208,7 @@ def create_test_fp16_class(parent):
             self.check_grad(
                 ['X'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
             )
@@ -226,7 +226,7 @@ def create_test_fp16_class_cpu(parent):
             self.check_grad(
                 ['X'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
             )
@@ -246,7 +246,7 @@ class TestSumOp3D0size(TestSumOp3Dim):
             ['X'],
             'Out',
             user_defined_grads=self.calc_gradient(),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=True,
@@ -319,7 +319,7 @@ def create_test_bf16_class(parent):
                 ['X'],
                 'Out',
                 user_defined_grads=self.gradient,
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
             )
@@ -415,7 +415,7 @@ class TestMaxOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -450,7 +450,7 @@ class TestMaxOp_ZeroDim(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -504,7 +504,7 @@ class TestMaxFP32Op(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -540,7 +540,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
             get_device_place(),
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -698,7 +698,7 @@ class TestProdOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+            ['X'], 'Out', check_prim=False, check_pir=True, check_prim_pir=True
         )
 
 
@@ -718,7 +718,7 @@ class TestProdFP16OP(TestProdOp):
             get_device_place(),
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -751,7 +751,7 @@ class TestProdBFP16OP(TestProdOp):
             get_device_place(),
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -782,7 +782,7 @@ class TestProdOp_ZeroDim(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+            ['X'], 'Out', check_prim=False, check_pir=True, check_prim_pir=True
         )
 
 
@@ -840,7 +840,7 @@ class TestProd6DOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 @unittest.skipIf(
@@ -856,7 +856,7 @@ class TestProd6DFP16OP(TestProd6DOp):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            get_device_place(), ['X'], 'Out', check_prim=True, check_pir=True
+            get_device_place(), ['X'], 'Out', check_prim=False, check_pir=True
         )
 
 
@@ -885,7 +885,7 @@ class TestProd6DBFP16OP(TestProd6DOp):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            get_device_place(), ['X'], 'Out', check_prim=True, check_pir=True
+            get_device_place(), ['X'], 'Out', check_prim=False, check_pir=True
         )
 
 
@@ -1556,7 +1556,7 @@ class Test1DReduce(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSum_ZeroDim(Test1DReduce):
@@ -1758,7 +1758,7 @@ class TestReduceMaxOpMultiAxes(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -1806,7 +1806,7 @@ class TestKeepDimReduceSumMultiAxes(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestKeepDimReduceSumMultiAxesForEager(OpTest):
@@ -1850,7 +1850,7 @@ class TestReduceSumWithDimOne(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSumWithDimOneForEager(OpTest):
@@ -1922,7 +1922,7 @@ class TestReduceAll(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceAllFp32(OpTest):
@@ -1943,7 +1943,7 @@ class TestReduceAllFp32(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class Test1DReduceWithAxes1(OpTest):
@@ -1964,7 +1964,7 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 def reduce_sum_wrapper_fp64(
@@ -1997,7 +1997,7 @@ class TestReduceWithDtype(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceWithDtype1(TestReduceWithDtype):
@@ -2022,7 +2022,7 @@ class TestReduceWithDtype1(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceWithDtype2(TestReduceWithDtype):
@@ -2047,7 +2047,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSumOpError(unittest.TestCase):

@@ -339,6 +339,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             dy_last_cell_value = last_cell.numpy()
             dy_last_hidden_value = last_hidden.numpy()
 
+        paddle.enable_static()
         with new_program_scope():
             paddle.seed(seed)
             if paddle.framework.use_pir_api():
@@ -461,6 +462,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             np.testing.assert_allclose(
                 value, dy_param_updated[key], atol=1e-10, rtol=1e-6
             )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

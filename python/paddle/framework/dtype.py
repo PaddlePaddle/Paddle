@@ -66,6 +66,9 @@ def bind_vartype():
     dtype.__module__ = "paddle"
 
     uint8 = VarDesc.VarType.UINT8
+    uint16 = VarDesc.VarType.UINT16
+    uint32 = VarDesc.VarType.UINT32
+    uint64 = VarDesc.VarType.UINT64
     int8 = VarDesc.VarType.INT8
     int16 = VarDesc.VarType.INT16
     short = int16
@@ -95,6 +98,9 @@ def bind_vartype():
 
     paddle.dtype = dtype
     paddle.uint8 = uint8
+    paddle.uint16 = uint16
+    paddle.uint32 = uint32
+    paddle.uint64 = uint64
     paddle.int8 = int8
     paddle.int16 = int16
     paddle.short = short
@@ -139,6 +145,7 @@ def bind_datatype():
     global float32
     global double
     global float64
+    global half
     global float16
     global bfloat16
     global float8_e4m3fn
@@ -189,6 +196,9 @@ def bind_datatype():
 
     paddle.dtype = dtype
     paddle.uint8 = uint8
+    paddle.uint16 = uint16
+    paddle.uint32 = uint32
+    paddle.uint64 = uint64
     paddle.int8 = int8
     paddle.short = short
     paddle.int16 = int16
@@ -196,7 +206,6 @@ def bind_datatype():
     paddle.int32 = int32
     paddle.long = long
     paddle.int64 = int64
-    paddle.long = int64
 
     paddle.float = float
     paddle.float32 = float32
@@ -235,7 +244,7 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
-        dtype(paddle.dtype|string):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
+        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
 
     Returns:
         An iinfo object, which has the following 4 attributes:
@@ -285,8 +294,8 @@ def finfo(dtype: DTypeLike) -> core_finfo:
     For example, ``type=paddle.float32`` is equivalent to ``type=paddle.float32``.
 
     Args:
-        dtype(paddle.dtype|string):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
-            ``paddle.float8_e4m3fn``, ``paddle.float8_e5m2``, ``paddle.complex64`` and ``paddle.complex128``.
+        dtype(str|paddle.dtype|np.dtype):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
+            ``paddle.complex64``, and ``paddle.complex128``.
         type: An alias for ``dtype`` , with identical behavior.
 
     Returns:

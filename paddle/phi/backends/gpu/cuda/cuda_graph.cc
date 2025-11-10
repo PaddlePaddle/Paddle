@@ -18,13 +18,6 @@
 
 #ifdef PADDLE_WITH_CUDA
 
-#if CUDA_VERSION < 11000
-cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
-                                const void *symbolPtr) {
-  return cudaSuccess;
-}
-#endif
-
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
@@ -42,11 +35,19 @@ static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
       cudaGraphGetNodes(graph, nodes.data(), &num_nodes));
 
   size_t num_edges;
+#if CUDA_VERSION < 13000
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaGraphGetEdges(graph, nullptr, nullptr, &num_edges));
   std::vector<cudaGraphNode_t> from(num_edges), to(num_edges);
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaGraphGetEdges(graph, from.data(), to.data(), &num_edges));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaGraphGetEdges(graph, nullptr, nullptr, nullptr, &num_edges));
+  std::vector<cudaGraphNode_t> from(num_edges), to(num_edges);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaGraphGetEdges(graph, from.data(), to.data(), nullptr, &num_edges));
+#endif
 
   std::unordered_map<cudaGraphNode_t, std::unordered_set<cudaGraphNode_t>>
       in_edges, out_edges;
@@ -241,9 +242,15 @@ void CUDAGraph::EndSegmentCapture() {
   cudaGraphExec_t exec_graph;
   if (FLAGS_use_cuda_malloc_async_allocator &&
       FLAGS_auto_free_cudagraph_allocations_on_launch) {
+#if CUDA_VERSION >= 11040
     VLOG(1) << "cudaGraphInstantiateFlagAutoFreeOnLaunch is enabled!";
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiateWithFlags(
         &exec_graph, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "The cudaGraphInstantiateFlagAutoFreeOnLaunch is only supported when "
+        "CUDA version >= 11.4.0"));
+#endif
   } else {
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
@@ -287,6 +294,7 @@ static std::string ConcatPath(const std::string &dirname,
 void CUDAGraph::PrintToDotFiles(const std::string &dirname,
                                 unsigned int flags) {
   ThrowErrorIfNotSupportCUDAGraph();
+#if CUDA_VERSION >= 11030
   for (size_t i = 0; i < graphs_.size(); ++i) {
     auto filename =
         ConcatPath(dirname, "segment_" + std::to_string(i) + ".dot");
@@ -295,19 +303,24 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaGraphDebugDotPrint(graphs_[i], filename.c_str(), flags));
   }
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "The print_to_dot_files() method is only supported when CUDA version >= "
+      "11.3."));
+#endif
 }
 
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    parameterSetter_t parameterSetter, gpuKernelCallback_t cudakernelCallback) {
+    parameterSetter_t parameterSetter, gpuKernelCallback_t cudaKernelCallback) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     unsigned int id = GenerateIdentifier();
-    auto cudaFunc = cudakernelCallback(id);
+    auto cudaFunc = cudaKernelCallback(id);
 
     parameterSetters[cudaFunc][id] = parameterSetter;
     VLOG(10) << "[KernelNodeLaunch] Launch kernel with cudaFunc = " << cudaFunc
              << " id = " << id;
   } else {
-    cudakernelCallback(0);
+    cudaKernelCallback(0);
   }
 }
 

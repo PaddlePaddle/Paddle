@@ -73,8 +73,11 @@ void CPUIndexElementwisePutGradKernel(
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   using dtype = funcs::OpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());

@@ -21,7 +21,6 @@ class RnnNativeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a rnn op to tensorrt rnn layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -306,7 +305,6 @@ class RnnNativeOpConverter : public OpConverter {
     if (is_bidirec) {
       for (auto& weight_bias : weight_bias_vec) delete[] weight_bias;
     }
-#endif
   }
 };
 

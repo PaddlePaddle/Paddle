@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <ostream>
 #include <string>
 #include <unordered_map>
 
@@ -56,6 +57,7 @@ class CustomRegisteredDeviceMap {
 };
 
 PADDLE_API const char* AllocationTypeStr(AllocationType type);
+PADDLE_API std::ostream& operator<<(std::ostream& os, AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
 class PADDLE_API Place {
@@ -173,7 +175,7 @@ class XPUPinnedPlace : public Place {
 
   // Allow construction from a generic Place.
   // (Typically the passed Place should be an XPUPlace.)
-  XPUPinnedPlace(const Place& place)         // NOLINT
+  XPUPinnedPlace(const Place& place UNUSED)  // NOLINT
       : Place(AllocationType::XPUPINNED) {}  // NOLINT
 };
 
@@ -269,6 +271,7 @@ The historical PlaceType using:
 - auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 
 */
+// Change to not use PlaceType, please do not use paddle::PlaceType anymore.
 enum class PlaceType {
   kUNK = static_cast<int>(phi::AllocationType::UNDEFINED),
   kCPU = static_cast<int>(phi::AllocationType::CPU),
