@@ -5396,7 +5396,8 @@ void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                     2,
                     common::errors::InvalidArgument(
                         "The dims size of first input should be 2."));
-  out->set_dims(common::make_ddim({-1, ins_dims[axis] * n}));
+  out->set_dims(
+      common::make_ddim({-1, ins_dims[axis] * static_cast<int64_t>(n)}));
   out->set_dtype((*x[0]).dtype());
 }
 
@@ -5848,7 +5849,7 @@ void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
                         "The dims size of first input should be equal to 2, "
                         "but received value is %d.",
                         ins_dims[0].size()));
-  out->set_dims({-1, ins_dims[0][axis] * n});
+  out->set_dims({-1, ins_dims[0][axis] * static_cast<int64_t>(n)});
   out->set_dtype(x[0]->dtype());
 }
 
