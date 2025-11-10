@@ -1346,6 +1346,20 @@ class TestEagerTensor(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
 
+    def test_tensor_dtype_compare(self):
+        a = paddle.randn([2], dtype="float32")
+        b = paddle.randn([2], dtype="float32")
+        c = paddle.randn([2], dtype="float64")
+
+        self.assertTrue(a.dtype == paddle.float32)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.dtype != paddle.float64)
+        self.assertTrue(a.dtype != c.dtype)
+        self.assertTrue(a.dtype is paddle.float32)
+        self.assertTrue(a.dtype is b.dtype)
+        self.assertTrue(a.dtype is not paddle.float64)
+        self.assertTrue(a.dtype is not c.dtype)
+
     def test___cuda_array_interface__(self):
         """test Tensor.__cuda_array_interface__"""
         with dygraph_guard():

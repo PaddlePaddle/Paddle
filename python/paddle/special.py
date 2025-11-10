@@ -14,8 +14,10 @@
 
 from .tensor.compat_softmax import softmax
 from .tensor.math import logsumexp
+from .tensor.ops import expm1
 
 __all__ = [
     "logsumexp",
     "softmax",
+    "expm1",
 ]

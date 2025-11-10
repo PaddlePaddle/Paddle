@@ -49,6 +49,7 @@ from ..instruction_utils import (
 )
 from ..instruction_utils.opcode_info import (
     ALL_JUMP,
+    BINARY_OP_ARG_MAP,
     RETURN,
     UNCONDITIONAL_JUMP,
     JumpDirection,
@@ -805,7 +806,11 @@ class PyCodeGen:
         return self.add_instr("STORE_SUBSCR")
 
     def gen_subscribe(self):
-        return self.add_instr("BINARY_SUBSCR")
+        if sys.version_info < (3, 14):
+            return self.add_instr("BINARY_SUBSCR")
+        # see: https://docs.python.org/3.14/library/dis.html#opcode-BINARY_OP and
+        # https://github.com/python/cpython/blob/0e46c0499413bc5f9f8336fe76e2e67cf93f64d8/Include/opcode.h#L36
+        return self.add_instr("BINARY_OP", arg=BINARY_OP_ARG_MAP["NB_SUBSCR"])
 
     def gen_build_tuple(self, count):
         return self.add_instr("BUILD_TUPLE", arg=count, argval=count)

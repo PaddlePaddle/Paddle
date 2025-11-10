@@ -27,6 +27,9 @@ from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding
     DygraphShardingOptimizer,
     DygraphShardingOptimizerV2,
 )
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
+    GroupShardedOptimizerStage2,
+)
 from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     ColumnSequenceParallelLinear,
     RowSequenceParallelLinear,
@@ -356,6 +359,48 @@ class TestParallelLayersLogic:
                                 == model_var_globle_size_flattened
                             )
 
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].local_shape
+                        ) == tuple(value.local_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_shape
+                        ) == tuple(value.global_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_offset
+                        ) == tuple(value.global_offset)
+
+        elif self.layer_type == "GroupShardedOptimizerStage2":
+            opt = GroupShardedOptimizerStage2(
+                opt._parameter_list, opt, self.hcg.get_sharding_parallel_group()
+            )
+
+            model.train()
+            x = paddle.randint(
+                low=0,
+                high=self.vocab_size,
+                shape=[self.batch_size, self.seq_len, self.hidden_size],
+                dtype='int64',
+            )
+            rank = paddle.distributed.get_rank()
+            sharidng_x = (
+                x[0 : self.batch_size // 2]
+                if rank == 0
+                else x[self.batch_size // 2 :]
+            )
+            y = model(sharidng_x).mean()
+            y.backward()
+            opt.step()
+            opt.clear_grad()
+
+            model_sharded_state_dict = model.sharded_state_dict()
+            opt_sharded_state_dict = opt.sharded_state_dict(
+                model_sharded_state_dict
+            )
+
+            for key, value in model_sharded_state_dict.items():
+                for state_name in self.optimizer_var_suffix:
+                    opt__var_name = key + state_name
+                    if opt__var_name in opt_sharded_state_dict:
                         assert tuple(
                             opt_sharded_state_dict[opt__var_name].local_shape
                         ) == tuple(value.local_shape)

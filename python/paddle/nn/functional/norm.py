@@ -14,8 +14,11 @@
 
 from __future__ import annotations
 
+import inspect
 import numbers
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -681,6 +684,7 @@ def local_response_norm(
     return res
 
 
+@overload
 def group_norm(
     x: Tensor,
     num_groups: int,
@@ -689,16 +693,40 @@ def group_norm(
     bias: Tensor | None = None,
     data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
     name: str | None = None,
-) -> Tensor:
+) -> Tensor: ...
+
+
+@overload
+def group_norm(
+    input: Tensor,
+    num_groups: int,
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    eps: float = 1e-05,
+) -> Tensor: ...
+
+
+def group_norm(*args: Any, **kwargs: Any) -> Tensor:
     """
     nn.GroupNorm is recommended.
     For more information, please refer to :ref:`api_paddle_nn_GroupNorm` .
 
+    This function has two functionalities, depending on the parameters passed:
+
+    1. ``group_norm(Tensor input, int num_groups, Tensor weight = None, Tensor bias = None, float eps = 1e-05)``:
+        PyTorch compatible group_norm.
+
+    2. ``group_norm(Tensor x, int num_groups, float epsilon = 1e-05, Tensor weight = None, Tensor bias = None,
+        DataLayout1D | DataLayout2D | DataLayout3D data_format = 'NCHW', str | None name = None)``:
+        The original paddle.nn.functional.group_norm, see the following docs.
+
     Parameters:
         x(Tensor): Input Tensor with shape: attr:`(batch, num_features, *)`.
+            alias: ``input``.
         num_groups(int): The number of groups that divided from channels.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
+            alias: ``eps``.
         weight(Tensor, optional): The weight Tensor of group_norm, with shape: attr:`[num_channels]`.
             Default: None.
         bias(Tensor, optional): The bias Tensor of group_norm, with shape: attr:`[num_channels]`.
@@ -744,6 +772,44 @@ def group_norm(
               [[-1.34163547, -0.44721183],
                [ 0.44721183,  1.34163547]]]])
     """
+
+    len_args = len(args)
+    if len_args + len(kwargs) < 2:
+        raise TypeError(
+            f"Too few arguments in the function call: {len_args}, {len(kwargs)}. Expect one of: \n"
+            " - (Tensor input, int num_groups, Tensor weight = None, Tensor bias = None, float eps = 1e-05)\n"
+            " - (Tensor x, int num_groups, float epsilon = 1e-05, Tensor weight = None, Tensor bias = None, "
+            "DataLayout1D | DataLayout2D | DataLayout3D data_format = 'NCHW', str | None name = None)"
+        )
+
+    def safe_set_param(key: str, value: Any):
+        if key in kwargs:
+            raise TypeError(f"got multiple values for argument '{key}'")
+        kwargs[key] = value
+
+    if 'input' in kwargs:
+        safe_set_param('x', kwargs.pop('input'))
+
+    if 'eps' in kwargs:
+        safe_set_param('epsilon', kwargs.pop('eps'))
+
+    if len_args >= 3 and not isinstance(args[2], float):
+        param_keys = ["weight", "bias", "epsilon"]
+        for idx in range(min(len_args - 2, len(param_keys))):
+            safe_set_param(param_keys[idx], args[idx + 2])
+        args = args[:2]
+    return _group_norm_wrapper(*args, **kwargs)
+
+
+def _group_norm_wrapper(
+    x: Tensor,
+    num_groups: int,
+    epsilon: float = 1e-05,
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    data_format: DataLayout1D | DataLayout2D | DataLayout3D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     if data_format not in ['NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']:
         raise ValueError("unsupported data layout:" + data_format)
 
@@ -794,3 +860,6 @@ def group_norm(
         )
 
         return helper.append_activation(group_norm_out)
+
+
+group_norm.__signature__ = inspect.signature(_group_norm_wrapper)
