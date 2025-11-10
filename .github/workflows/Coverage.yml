@@ -75,6 +75,7 @@ jobs:
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: "3.10"
           WITH_SHARED_PHI: "ON"
+          FA_BUILD_WITH_CACHE: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
           CCACHE_MAXSIZE: 200G
@@ -122,6 +123,7 @@ jobs:
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
             -e WITH_SHARED_PHI \
+            -e WITH_FA_BUILD_WITH_CACHE \
             -e WITH_CINN \
             -e INFERENCE_DEMO_INSTALL_DIR \
             -e CCACHE_MAXSIZE \
@@ -250,7 +252,7 @@ jobs:
         if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d;rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
 
