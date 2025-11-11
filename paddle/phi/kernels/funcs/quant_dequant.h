@@ -94,8 +94,13 @@ __global__ void QuantKernel(const T* input,
                             const int round_type,
                             const float max_bound,
                             const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
@@ -121,8 +126,13 @@ __global__ void QuantKernelWithVecSize(const T* input,
                                        const int round_type,
                                        const float max_bound,
                                        const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
@@ -148,8 +158,13 @@ __global__ void QuantKernelWithVecSize(const T* input,
                                        const int round_type,
                                        const float max_bound,
                                        const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) * 3;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      3;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
@@ -173,8 +188,13 @@ __global__ void QuantKernelWithVecSize(const T* input,
                                        const int round_type,
                                        const float max_bound,
                                        const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) * 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
@@ -196,8 +216,12 @@ __global__ void QuantKernelWithVecSize(const T* input,
                                        const int round_type,
                                        const float max_bound,
                                        const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x);
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x));
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
@@ -323,7 +347,10 @@ __global__ void DequantKernel(T* output,
                               const float* dequant_out_scale_data) {
   int numel = m * n;
   int stride = blockDim.x * gridDim.x * VecSize;
-  int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
   int col_id = idx % n;
 
   phi::AlignedVector<int32_t, VecSize> in_vec;
@@ -369,7 +396,10 @@ __global__ void DequantKernelWithScaleOfInputAndWeight(
     float quant_max_bound) {
   int numel = m * n;
   int stride = blockDim.x * gridDim.x * VecSize;
-  int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
   int col_id = idx % n;
 
   phi::AlignedVector<int32_t, VecSize> in_vec;
