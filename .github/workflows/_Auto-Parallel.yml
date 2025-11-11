@@ -96,6 +96,8 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           cd PaddleNLP
           git pull
+          git checkout 6ac04028757dfbcc089916997493611f62de81b2
+          git switch -c 6ac04028757dfbcc089916997493611f62de81b2
           git submodule update --init --recursive --force
           '
 

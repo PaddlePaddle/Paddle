@@ -149,8 +149,13 @@ __global__ void QuantKernel(const data_t* input,
                             const int round_type,
                             const float max_bound,
                             const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
   bool check = ((m_id < m) && (n_id < n));
 
   if (check) {
@@ -177,8 +182,13 @@ __global__ void FP8QuantKernel(const data_t* input,
                                const int round_type,
                                const float max_bound,
                                const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
   bool check = ((m_id < m) && (n_id < n));
 
   if (check) {
@@ -207,8 +217,13 @@ __global__ void QuantKernel(const data_t* input,
                             const int round_type,
                             const float max_bound,
                             const float min_bound) {
-  int n_id = (blockIdx.x * blockDim.x + threadIdx.x) << 2;
-  int m_id = blockIdx.y * blockDim.y + threadIdx.y;
+  int64_t n_id =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x))
+      << 2;
+  int64_t m_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
   bool check = ((m_id < m) && (n_id < n));
 
   if (check) {
