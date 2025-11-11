@@ -44,15 +44,15 @@ def build_program():
             bias = paddle.ones([4, 64], dtype='float32', name='bias')
             add_out = paddle.add(matmul_out, bias, name='add_out')
 
-        # add_out -> [memcpy_d2h] -> add_out' -> [sub] -> sub_out -> [tanh] -> tanh_out
+        # add_out -> [memcpy_d2h] -> add_out' -> [sub] -> sub_out -> [silu] -> silu_out
         with paddle.static.device_guard('cpu'):
             sub_out = paddle.subtract(add_out, data, name='sub_out')
-            tanh_out = paddle.tanh(sub_out, name='tanh_out')
+            silu_out = paddle.nn.functional.silu(sub_out, name='silu_out')
 
         with paddle.static.device_guard('gpu'):
             bias_1 = paddle.add(bias, sub_out, name='bias_1')
-            out_before = paddle.tanh(bias_1, name='out_before')
-            out_last = paddle.subtract(tanh_out, data, name='out_last')
+            out_before = paddle.nn.functional.silu(bias_1, name='out_before')
+            out_last = paddle.subtract(silu_out, data, name='out_last')
 
             out = paddle.add(out_before, out_last, name='out')
             mean = paddle.mean(out, name='mean_out')

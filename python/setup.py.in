@@ -1056,6 +1056,12 @@ if (
     packages.extend(['paddle.distributed.communication.deep_ep'])
 
 if (
+    '@WITH_XPU@' == 'ON'
+    and '@WITH_XPU_XRE5@' == 'ON'
+):
+    packages.extend(['paddle.distributed.communication.deep_ep'])
+
+if (
     '@WITH_GPU@' == 'ON'
     and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (12, 9)
     and '@COMPILED_CUDA_ARCHS@'.find("90") != -1
