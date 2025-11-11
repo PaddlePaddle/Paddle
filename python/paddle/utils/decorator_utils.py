@@ -849,13 +849,16 @@ def legacy_reduction_special_guard(init_func):
         )
         if reduce_val != '' or size_avg_val != '':
             if not (
-                cls_name == 'CrossEntropyLoss'
-                and len(args) > 2
-                and args[2] in {'mean', 'sum', 'none'}
-            ) or (
-                cls_name == 'KLDivLoss'
-                and len(args) > 0
-                and args[0] in {'mean', 'sum', 'none', 'batchmean'}
+                (
+                    cls_name == 'CrossEntropyLoss'
+                    and len(args) > 2
+                    and args[2] in {'mean', 'sum', 'none'}
+                )
+                or (
+                    cls_name == 'KLDivLoss'
+                    and len(args) > 0
+                    and args[0] in {'mean', 'sum', 'none', 'batchmean'}
+                )
             ):
                 raise_deprecated_error(cls_name, reduce_val, size_avg_val)
         return init_func(self, *args, **kwargs)
