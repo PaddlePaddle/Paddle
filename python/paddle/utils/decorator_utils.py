@@ -778,8 +778,6 @@ LEGACY_POS: dict[str, dict[str, int]] = {
 
 
 def compute_legacy_reduction(reduce_val, size_average_val):
-    reduce_val = reduce_val if reduce_val != '' else None
-    size_average_val = size_average_val if size_average_val != '' else None
     if reduce_val is False:
         return 'none'
     if reduce_val is True:
@@ -810,6 +808,8 @@ def get_legacy_reduce_and_size_average(cls_name, args, kwargs):
 
 def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
     suggested = compute_legacy_reduction(reduce_val, size_avg_val)
+    reduce_val = None if reduce_val == '' else reduce_val
+    size_avg_val = None if size_avg_val == '' else size_avg_val
     raise ValueError(
         f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
         f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
@@ -817,7 +817,7 @@ def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
     )
 
 
-def legacy_reduction_guard(init_func):
+def legacy_reduction_decorator(init_func):
     """
     Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
     """
@@ -836,7 +836,7 @@ def legacy_reduction_guard(init_func):
     return wrapper
 
 
-def legacy_reduction_special_guard(init_func):
+def legacy_reduction_special_decorator(init_func):
     """
     Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment based on general logic.
     """
