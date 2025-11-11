@@ -645,11 +645,11 @@ void FlashAttnInferMeta(const MetaTensor& q,
   softmax->set_dtype(q.dtype());
   softmax_lse->set_dtype(q.dtype());
   if (out_dims.size() == 4) {
-    auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
-    int batch_size = q.dims()[0];
-    int num_heads = q.dims()[2];
-    int seqlen_q_rounded = round_multiple(q.dims()[1]);
-    int seqlen_k_rounded = round_multiple(k.dims()[1]);
+    auto round_multiple = [](int64_t x) { return (x + 127) / 128 * 128; };
+    int64_t batch_size = q.dims()[0];
+    int64_t num_heads = q.dims()[2];
+    int64_t seqlen_q_rounded = round_multiple(q.dims()[1]);
+    int64_t seqlen_k_rounded = round_multiple(k.dims()[1]);
     if (softmax) {
       softmax->set_dims(
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
@@ -659,11 +659,11 @@ void FlashAttnInferMeta(const MetaTensor& q,
     }
   }
   if (out_dims.size() == 3) {  // when use flash_attn_unpadded
-    auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
-    int batch_and_seq_size = q.dims()[0];
-    int num_heads = q.dims()[1];
-    int seqlen_q_rounded = round_multiple(batch_and_seq_size);
-    int seqlen_k_rounded = round_multiple(batch_and_seq_size);
+    auto round_multiple = [](int64_t x) { return (x + 127) / 128 * 128; };
+    int64_t batch_and_seq_size = q.dims()[0];
+    int64_t num_heads = q.dims()[1];
+    int64_t seqlen_q_rounded = round_multiple(batch_and_seq_size);
+    int64_t seqlen_k_rounded = round_multiple(batch_and_seq_size);
     if (softmax) {
       softmax->set_dims({num_heads, seqlen_q_rounded, seqlen_k_rounded});
     }
@@ -732,7 +732,9 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
                      "calc_reduced_attn_scores must receive input q and "
                      "softmax_lse with consistent batch_size!"));
 
-  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  auto round_multiple = [](int64_t x, int64_t m) {
+    return (x + m - 1) / m * m;
+  };
   PADDLE_ENFORCE(round_multiple(q.dims()[1], 128) == softmax_lse.dims()[2],
                  common::errors::InvalidArgument(
                      "calc_reduced_attn_scores must receive input q and "
@@ -748,9 +750,9 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
                      "calc_reduced_attn_scores must receive input q and k "
                      "with consistent head_dim!"));
 
-  int batch_size = q.dims()[0];
-  int num_heads = q.dims()[2];
-  int seqlen_k = k.dims()[1];
+  int64_t batch_size = q.dims()[0];
+  int64_t num_heads = q.dims()[2];
+  int64_t seqlen_k = k.dims()[1];
 
   reduced_scores->set_dtype(phi::DataType::FLOAT32);
   reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
@@ -761,10 +763,10 @@ void FlashMaskV2InferMeta(const MetaTensor& q,
                           const MetaTensor& v,
                           MetaTensor* out,
                           MetaTensor* softmax_lse) {
-  const int batch_size = q.dims()[0];
-  const int seqlen_q = q.dims()[1];
-  const int num_heads = q.dims()[q.dims().size() - 2];
-  const int head_size_v = v.dims()[v.dims().size() - 1];
+  const int64_t batch_size = q.dims()[0];
+  const int64_t seqlen_q = q.dims()[1];
+  const int64_t num_heads = q.dims()[q.dims().size() - 2];
+  const int64_t head_size_v = v.dims()[v.dims().size() - 1];
   auto q_type = q.dtype();
   auto out_type =
       q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
@@ -782,10 +784,10 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
                           const MetaTensor& v,
                           MetaTensor* out,
                           MetaTensor* softmax_lse) {
-  const int batch_size = q.dims()[0];
-  const int seqlen_q = q.dims()[1];
-  const int num_heads = q.dims()[q.dims().size() - 2];
-  const int head_size_v = v.dims()[v.dims().size() - 1];
+  const int64_t batch_size = q.dims()[0];
+  const int64_t seqlen_q = q.dims()[1];
+  const int64_t num_heads = q.dims()[q.dims().size() - 2];
+  const int64_t head_size_v = v.dims()[v.dims().size() - 1];
   auto q_type = q.dtype();
   auto out_type =
       q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
@@ -803,9 +805,9 @@ void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
                                 const MetaTensor& v,
                                 MetaTensor* out,
                                 MetaTensor* softmax_lse) {
-  const int total_q = q.dims()[0];
-  const int num_heads = q.dims()[q.dims().size() - 2];
-  const int head_size_v = v.dims()[v.dims().size() - 1];
+  const int64_t total_q = q.dims()[0];
+  const int64_t num_heads = q.dims()[q.dims().size() - 2];
+  const int64_t head_size_v = v.dims()[v.dims().size() - 1];
   auto q_type = q.dtype();
   auto out_type =
       q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
@@ -1378,8 +1380,8 @@ void LayerNormInferMeta(const MetaTensor& x,
 
   // keep the axis size before normalization for shape of variance and mean
   auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
-  // int left = static_cast<int>(matrix_dim[0]);
-  int right = static_cast<int>(matrix_dim[1]);
+  // int64_t left = matrix_dim[0];
+  int64_t right = matrix_dim[1];
   if (scale) {
     PADDLE_ENFORCE_EQ(scale.dims().size(),
                       1,
@@ -2524,9 +2526,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
       }
       r_updates_dims.emplace_back(index_dims[i]);
     }
-    for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
-         i < ref_dims_size;
-         ++i) {
+    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
       if (ref_dims[i] == -1) {
         without_dynamic_shape = false;
       }
@@ -2669,7 +2669,7 @@ void SequenceConvInferMeta(const MetaTensor& x,
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
     int total_pad = up_pad + down_pad;
-    int input_width = static_cast<int>(in_dims[1]);
+    int64_t input_width = in_dims[1];
     bool start_equals_zero = context_start == 0;
     bool length_equals_one = context_length == 1;
     bool start_length = start_equals_zero && length_equals_one;
@@ -2742,11 +2742,11 @@ void SpectralNormInferMeta(const MetaTensor& weight,
           "Attr(power_iters) should be greater equal then 0, but received %d",
           power_iters));
 
-  int h = static_cast<int>(dim_weight[dim]);
-  int w = 1;
+  int64_t h = dim_weight[dim];
+  int64_t w = 1;
   for (int i = 0; i < rank_weight; i++) {
     if (i != dim) {
-      w *= static_cast<int>(dim_weight[i]);
+      w *= dim_weight[i];
     }
   }
   auto dim_u = u.dims();
