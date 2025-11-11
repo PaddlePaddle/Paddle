@@ -28,12 +28,12 @@ namespace phi {
 
 template <typename probs_T>
 struct expert_infos {
-  int expert_row_idx;
+  int64_t expert_row_idx;
   probs_T expert_probs;
 
   __device__ __host__ expert_infos()
       : expert_row_idx(-1), expert_probs(probs_T(0)) {}
-  __device__ __host__ expert_infos(int idx, probs_T prob)
+  __device__ __host__ expert_infos(int64_t idx, probs_T prob)
       : expert_row_idx(idx), expert_probs(prob) {}
 
   __device__ __host__ expert_infos &operator=(const expert_infos &other) {
@@ -58,17 +58,18 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     int *__restrict__ zipped_expertwise_rowmap,
     probs_T *__restrict__ probs_unzipped,
     float *__restrict__ XScale_unzipped,
-    int *global_expertwise_block_cumsum,
-    const int total_zipped_tokens_num,
-    const int token_length,
-    const int scale_length,
+    int64_t *global_expertwise_block_cumsum,
+    const int64_t total_zipped_tokens_num,
+    const int64_t token_length,
+    const int64_t scale_length,
     const int num_experts,
     const int topk) {
   using expert_infos_t = expert_infos<probs_T>;
-  int local_cumsum = 0;
-  int local_expert_offsets;
-  const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
-  int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
+  int64_t local_cumsum = 0;
+  int64_t local_expert_offsets;
+  const int64_t block_row_base =
+      static_cast<int64_t>(blockIdx.x) * CUMSUM_BLOCK_SIZE;
+  int64_t cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
   __shared__ expert_infos_t
       shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
@@ -76,10 +77,10 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
   if (threadIdx.x < num_experts) {
     local_expert_offsets = expert_base_offset[threadIdx.x];
     expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
-    for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
+    for (int64_t row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
          row++) {
       if (row >= total_zipped_tokens_num) break;
-      const int internal_row = row - block_row_base;
+      const int64_t internal_row = row - block_row_base;
 #pragma unroll
       for (int k = 0; k < topk; k++) {
         expert_infos_t proposed = {routemap_topk[row * topk + k],
@@ -93,8 +94,10 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       }
     }
     // Inter-block communication
-    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
+    const int64_t anticipate_signal_idx =
+        static_cast<int64_t>(blockIdx.x) * num_experts + threadIdx.x;
+    const int64_t push_signal_idx =
+        (static_cast<int64_t>(blockIdx.x) + 1) * num_experts + threadIdx.x;
     if (blockIdx.x != 0) {
       // signal receive from previous block, using light-weight atomicAdd(check)
       // this will not change any data, only do fetch in low-cost
@@ -104,7 +107,7 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       }
     }
     // signal send for next block, with current cumsum
-    const int proposed_offset = cumsum_offset + local_cumsum;
+    const int64_t proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
     // Intra-block communication;
 #pragma unroll
@@ -119,16 +122,16 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
 
   // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
-  for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
+  for (int64_t row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
        row++) {
     // OOB check
     if (row >= total_zipped_tokens_num) return;
-    const int internal_row = row - block_row_base;
+    const int64_t internal_row = row - block_row_base;
 #pragma unroll
     for (int expert = 0; expert < num_experts; expert++) {
       const expert_infos_t this_expert_token_info =
           shared_expert_infos[internal_row][expert];
-      const int proposed_row_idx = this_expert_token_info.expert_row_idx;
+      const int64_t proposed_row_idx = this_expert_token_info.expert_row_idx;
       if (threadIdx.x == 0)
         zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
       if (proposed_row_idx == -1) continue;  // no memcpy
@@ -162,11 +165,11 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   DenseTensor *token_prob_unzipped,
                                   DenseTensor *XScale_unzipped,
                                   DenseTensor *global_expertwise_block_cumsum,
-                                  const int total_zipped_tokens_num,
-                                  const int token_length,
+                                  const int64_t total_zipped_tokens_num,
+                                  const int64_t token_length,
                                   const int topk,  // deprecated
                                   const int num_experts,
-                                  const int scale_length,
+                                  const int64_t scale_length,
                                   const bool do_gather) {
   dim3 grid, block;
   grid.x =
@@ -186,12 +189,12 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
       GET_DATA(expert_routemap_topk, INT_T),                        \
       GET_DATA(expert_prob_topk, PROB_T),                           \
       XScale ? XScale.get_ptr()->data<float>() : nullptr,           \
-      GET_DATA(expert_offsets, int),                                \
+      GET_DATA(expert_offsets, int64_t),                            \
       GET_PTR_DATA(X_unzipped, TOKEN_T),                            \
-      GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                \
+      GET_PTR_DATA(zipped_expertwise_rowmap, int64_t),              \
       GET_PTR_DATA(token_prob_unzipped, PROB_T),                    \
       XScale_unzipped->data<float>(),                               \
-      global_expertwise_block_cumsum->data<int>(),                  \
+      global_expertwise_block_cumsum->data<int64_t>(),              \
       total_zipped_tokens_num,                                      \
       token_length,                                                 \
       scale_length,                                                 \
@@ -219,8 +222,8 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
     HANDLE_TOKEN_TYPE(float, INT_T)                           \
   }
 
-  if (DTYPE_CASE(zipped_expertwise_rowmap->dtype(), INT32)) {
-    HANDLE_PROB_TYPE(int)
+  if (DTYPE_CASE(zipped_expertwise_rowmap->dtype(), INT64)) {
+    HANDLE_PROB_TYPE(int64_t)
   }
 
 #undef DTYPE_CASE
@@ -245,8 +248,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
                       DenseTensor *XScale_unzipped) {
-  const int rows = X.dims()[0];
-  const int cols = X.dims()[1];
+  const int64_t rows = X.dims()[0];
+  const int64_t cols = X.dims()[1];
   PADDLE_ENFORCE_LE(
       num_experts,
       MAX_NUM_EXPERTS,
@@ -256,11 +259,11 @@ void MoePermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
-  const int quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
+  const int64_t quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
 
   // Expert base offset initialization, tensor numeric range [0, max_token_num]
-  int expert_offset[MAX_NUM_EXPERTS];
-  int tokens_cumulated = 0;
+  int64_t expert_offset[MAX_NUM_EXPERTS];
+  int64_t tokens_cumulated = 0;
   for (int i = 0; i < MAX_NUM_EXPERTS; i++) {
     if (i < num_experts) {
       expert_offset[i] = tokens_cumulated;
@@ -273,26 +276,27 @@ void MoePermuteKernel(const Context &dev_ctx,
   }
   DenseTensor expert_offset_tensor;
   expert_offset_tensor.Resize({MAX_NUM_EXPERTS});
-  dev_ctx.template Alloc<int>(&expert_offset_tensor);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                                             expert_offset,
-                                             sizeof(int) * MAX_NUM_EXPERTS,
-                                             cudaMemcpyHostToDevice,
-                                             dev_ctx.stream()));
+  dev_ctx.template Alloc<int64_t>(&expert_offset_tensor);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemcpyAsync(expert_offset_tensor.data<int64_t>(),
+                      expert_offset,
+                      sizeof(int64_t) * MAX_NUM_EXPERTS,
+                      cudaMemcpyHostToDevice,
+                      dev_ctx.stream()));
   // ------------------- resource allocate -------------------------
-  const int output_rows = tokens_cumulated;
-  const int topk = expert_routemap_topk.dims()[1];
+  const int64_t output_rows = tokens_cumulated;
+  const int64_t topk = expert_routemap_topk.dims()[1];
   token_prob_unzipped->Resize({output_rows});
   if (do_gather) {  // no gather, no resize.
     X_unzipped->Resize({output_rows, cols});
     if (XScale) {
-      const int quanted_cols = XScale.get_ptr()->dims()[1];
+      const int64_t quanted_cols = XScale.get_ptr()->dims()[1];
       XScale_unzipped->Resize({output_rows, quanted_cols});
     }
   }
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<float>(XScale_unzipped);
-  dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
+  dev_ctx.template Alloc<int64_t>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<float>(token_prob_unzipped);
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   auto token_prob_unzipped_ptr =
@@ -329,12 +333,12 @@ void MoePermuteKernel(const Context &dev_ctx,
   if (X.numel() == 0) return;
 
   // -------- Initialize semaphore for cumsum ---------------
-  const int cumsum_blocknum =
+  const int64_t cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  DenseTensor global_expertwise_block_cumsum =
-      phi::Full<int, Context>(dev_ctx,
-                              phi::IntArray({cumsum_blocknum + 1, num_experts}),
-                              CUMSUM_INVALID_TAG);
+  DenseTensor global_expertwise_block_cumsum = phi::Full<int64_t, Context>(
+      dev_ctx,
+      phi::IntArray({cumsum_blocknum + 1, num_experts}),
+      CUMSUM_INVALID_TAG);
   dispatch_tokens_unzip_stable<T, Context>(dev_ctx,
                                            X,
                                            expert_routemap_topk,
