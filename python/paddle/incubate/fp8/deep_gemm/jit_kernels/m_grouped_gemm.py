@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import os
 from functools import reduce
-from typing import tuple
 
 import paddle
 

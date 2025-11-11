@@ -21,7 +21,6 @@ from cuda.bindings import nvrtc
 print(f"NVRTC version: {nvrtc.nvrtcVersion()[1:]}")
 
 import random
-from typing import list, tuple
 
 from deep_gemm import calc_diff, ceil_div, get_col_major_tma_aligned_tensor
 from deep_gemm.jit_kernels.utils import get_m_alignment_for_contiguous_layout

@@ -22,7 +22,7 @@ import enum
 import os
 import subprocess
 import time
-from typing import Any, dict, type
+from typing import Any
 
 import cuda.bindings.driver as cbd
 
@@ -179,9 +179,9 @@ class RuntimeCache:
                 int(os.getenv("DG_JIT_DEBUG", 0))
                 or int(os.getenv("DG_PRINT_CONFIGS", 0))
             ):
-                simplified_kwargs = dict()
+                simplified_kwargs = {}
                 for key, value in (
-                    kwargs.items() if kwargs is not None else dict().items()
+                    kwargs.items() if kwargs is not None else {}.items()
                 ):
                     value = (
                         f"paddle.Tensor<{value.dtype}>"

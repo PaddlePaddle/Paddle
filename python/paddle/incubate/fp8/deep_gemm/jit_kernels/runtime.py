@@ -16,7 +16,7 @@
 # Copyright (c) 2025 DeepSeek
 # Licensed under the MIT License - https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
 
-from typing import Any, dict, tuple
+from typing import Any
 
 import cuda.bindings.driver as cbd
 

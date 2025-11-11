@@ -21,7 +21,6 @@ from __future__ import annotations
 import math
 import os
 from functools import cache
-from typing import tuple
 
 import paddle
 
