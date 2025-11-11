@@ -230,7 +230,7 @@ def lp_pool_decorator(
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if len(args) == 5 and isinstance(args[4], bool):
             warnings.warn(
-                "The 5th positional argument is a boolean value in '__init__', which is being interpreted as 'ceil_mode' for compatibility with PyTorch.",
+                "The 4th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
                 category=Warning,
                 stacklevel=2,
             )

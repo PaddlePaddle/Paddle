@@ -226,6 +226,16 @@ class TestFoldAPI_Compatibility(TestFoldOp):
         }
         self.check_output(check_pir=True)
 
+    def test_check_grad(self):
+        self.attrs = {
+            'kernel_sizes': self.kernel_sizes,
+            'paddings': self.paddings,
+            'dilations': self.dilations,
+            'strides': self.strides,
+            'output_sizes': self.output_sizes,
+        }
+        self.check_grad(['X'], 'Y', check_pir=True)
+
     def test_api(self):
         # self.attrs in nn.Fold can be alias
         self.attrs = {

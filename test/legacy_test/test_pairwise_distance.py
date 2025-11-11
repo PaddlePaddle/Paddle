@@ -355,9 +355,7 @@ class TestPairwiseDistance(unittest.TestCase):
 
         self.assertEqual(dygraph_ret.shape, excepted_value.shape)
 
-        np.testing.assert_allclose(
-            dygraph_ret.numpy(), excepted_value, rtol=1e-05
-        )
+        np.testing.assert_allclose(dygraph_ret, excepted_value, rtol=1e-05)
 
 
 class TestPairwiseDistance_ZeroSize(unittest.TestCase):
