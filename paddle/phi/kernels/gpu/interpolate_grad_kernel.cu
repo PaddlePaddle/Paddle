@@ -1265,9 +1265,9 @@ static void Interpolate3DCUDABwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_d = -1;
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_d = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -1369,12 +1369,13 @@ static void Interpolate3DCUDABwd(
     return;
   }
 
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   double ratio_d =
-      funcs::AreaPixelComputeScale<double>(in_d, out_d, align_corners, scale_d);
+      funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
   double ratio_h =
-      funcs::AreaPixelComputeScale<double>(in_h, out_h, align_corners, scale_h);
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   double ratio_w =
-      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_dhw = in_d * in_h * in_w;
   int64_t out_dhw = out_d * out_h * out_w;

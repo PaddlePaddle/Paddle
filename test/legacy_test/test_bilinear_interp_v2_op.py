@@ -305,38 +305,31 @@ def bilinear_interp_np(
     out = np.zeros((batch_size, channel, out_h, out_w))
 
     for i in range(out_h):
-        # 计算源位置
         if align_mode == 0 and not align_corners:
             src_h = ratio_h * (i + 0.5) - 0.5
         else:
             src_h = ratio_h * i
 
-        # 计算索引和lambda（按CUDA实现的顺序）
         h = int(np.floor(src_h))
-        h = max(0, min(h, in_h - 1))  # clamp索引
+        h = max(0, min(h, in_h - 1))
         hid = 1 if h < in_h - 1 else 0
 
-        # lambda基于原始src_h和clamped的h
         h1lambda = max(0.0, min(1.0, src_h - h))
         h2lambda = 1.0 - h1lambda
 
         for j in range(out_w):
-            # 计算源位置
             if align_mode == 0 and not align_corners:
                 src_w = ratio_w * (j + 0.5) - 0.5
             else:
                 src_w = ratio_w * j
 
-            # 计算索引和lambda（按CUDA实现的顺序）
             w = int(np.floor(src_w))
-            w = max(0, min(w, in_w - 1))  # clamp索引
+            w = max(0, min(w, in_w - 1))
             wid = 1 if w < in_w - 1 else 0
 
-            # lambda基于原始src_w和clamped的w
             w1lambda = max(0.0, min(1.0, src_w - w))
             w2lambda = 1.0 - w1lambda
 
-            # 确保所有索引都在有效范围内
             h_next = min(h + hid, in_h - 1)
             w_next = min(w + wid, in_w - 1)
 

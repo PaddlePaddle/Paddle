@@ -1905,8 +1905,7 @@ PD_REGISTER_KERNEL(interp_antialias,
                    float,
                    double,
                    phi::float16,
-                   phi::bfloat16,
-                   int) {
+                   phi::bfloat16) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);

@@ -847,6 +847,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         input_np = np.random.random(self.input_shape).astype("float32")
         self.inputs = {'X': input_np}
 
+        scale_d = scale_h = scale_w = 0
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale:
@@ -892,9 +893,9 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
             out_d,
             out_h,
             out_w,
-            0,
-            0,
-            0,
+            scale_d,
+            scale_h,
+            scale_w,
             self.out_size,
             self.actual_shape,
             self.align_corners,
@@ -931,7 +932,7 @@ class TestTrilinearInterp_attr_tensor_Case1(TestTrilinearInterpOp_attr_tensor):
         self.out_h = 16
         self.out_w = 8
         self.scale = 0.3
-        self.out_size = [12, 4, 4]
+        self.out_size = [14, 4, 4]
         self.align_corners = True
         self.align_mode = 1
 
