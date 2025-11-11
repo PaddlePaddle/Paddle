@@ -370,7 +370,9 @@ __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
                                               const int sample_size,
                                               const int64_t num,
                                               T *dx) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   if (ddscale != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
@@ -397,7 +399,9 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
                                                const int sample_size,
                                                const int64_t num,
                                                T *ddy) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
 
   if (ddx != nullptr) {
