@@ -75,7 +75,7 @@ inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
   return false;
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename OffsetT = uint32_t>
 void LaunchIndexPutKernel_V2(const Context& dev_ctx,
                              const DenseTensor& x,
                              const std::vector<const DenseTensor*>& indices,
@@ -243,8 +243,13 @@ void IndexPutKernel_V2(const Context& dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
-  LaunchIndexPutKernel_V2<T, Context>(
-      dev_ctx, x_, indices, value_, accumulate, out);
+  if (out && !funcs::IsInUint32Range(out->numel(), value_.numel())) {
+    LaunchIndexPutKernel_V2<T, Context, uint64_t>(
+        dev_ctx, x_, indices, value_, accumulate, out);
+  } else {
+    LaunchIndexPutKernel_V2<T, Context>(
+        dev_ctx, x_, indices, value_, accumulate, out);
+  }
 }
 
 }  // namespace phi
