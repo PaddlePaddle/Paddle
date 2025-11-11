@@ -41,7 +41,7 @@ jobs:
     needs: [clone]
     if: needs.clone.outputs.can-skip != 'true'
     runs-on:
-      group: HK-CPU
+      group: GZ_BD-CPU
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
@@ -142,10 +142,9 @@ jobs:
           mkdir -p ${CFS_DIR}/.ccache/coverage
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           set -x
-          cd build
-          sleep 3d
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DFA_JOB_POOLS_COMPILE=2
-          make -j20
+          make build && cd build
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=2
+          make -j10
           '
 
       - name: Check added unittests
