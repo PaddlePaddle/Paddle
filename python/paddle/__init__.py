@@ -101,6 +101,7 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint16,
     uint32,
     uint64,
 )
@@ -226,6 +227,7 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .amp.auto_cast import autocast
 from .autograd import (
     enable_grad,
     grad,
@@ -282,6 +284,7 @@ from .hapi import (
     summary,
 )
 from .nn.functional import (
+    adaptive_avg_pool1d,
     conv1d,
     conv2d,
     conv3d,
@@ -972,7 +975,6 @@ manual_seed = seed
 sub = subtract
 sub_ = subtract_
 
-
 __all__ = [
     'block_diag',
     'gt',
@@ -981,6 +983,7 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint16',
     'uint32',
     'uint64',
     'int8',
@@ -1483,6 +1486,8 @@ __all__ = [
     'manual_seed',
     'softmax',
     'Generator',
+    'adaptive_avg_pool1d',
+    'autocast',
 ]
 import os
 

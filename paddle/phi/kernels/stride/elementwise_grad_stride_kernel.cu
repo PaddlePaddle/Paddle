@@ -76,16 +76,6 @@ void AddGradStrideKernel(const Context& dev_ctx,
 
   if (FLAGS_use_stride_compute_kernel && !inplace_add) {
     auto meta = dout.meta();
-    if (dx != nullptr && dy != nullptr && dx->dims() == dout.dims() &&
-        dy->dims() == dout.dims()) {
-      dx->set_meta(meta);
-      dx->ResetHolder(dout.Holder());
-      dx->ShareInplaceVersionCounterWith(dout);
-      dy->set_meta(meta);
-      dy->ResetHolder(dout.Holder());
-      dy->ShareInplaceVersionCounterWith(dout);
-      return;
-    }
     if (dx != nullptr && dy == nullptr && dx->dims() == dout.dims()) {
       dx->set_meta(meta);
       dx->ResetHolder(dout.Holder());
