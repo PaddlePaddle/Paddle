@@ -1663,6 +1663,13 @@ uint64_t AllocatorFacade::Release(const phi::Place& place) {
       ->Release(place);
 }
 
+void AllocatorFacade::Accept(const phi::Place& place,
+                             AllocatorVisitor* visitor) {
+  GetPrivate()
+      ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
+      ->Accept(visitor);
+}
+
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
     const phi::Place& place, size_t size, const phi::Stream& stream) {
   return std::shared_ptr<phi::Allocation>(Alloc(place, size, stream));

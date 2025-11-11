@@ -3602,7 +3602,9 @@ All parameter, weight, gradient are variables in Paddle.
         return platform::GetDeviceProperties(id);
       },
       py::return_value_policy::copy);
-
+  m.def("vmm_max_free_size", [] {
+    memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()), 1);
+  });
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })

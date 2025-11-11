@@ -41,6 +41,10 @@ PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 PADDLE_API extern uint64_t Release(const phi::Place& place);
 
+// return a pair of <largest_free_block_size, sum_of_n_largest_free_block_size>
+PADDLE_API extern std::pair<size_t, size_t> VmmMaxFreeSize(
+    const phi::GPUPlace& place, int32_t n);
+
 PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
     const phi::Place& place, size_t size, const phi::Stream& stream);
 
