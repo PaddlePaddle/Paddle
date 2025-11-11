@@ -547,7 +547,7 @@ class TestShardingV2ChunkOffload(unittest.TestCase):
         self.strategy.hybrid_configs["sharding_configs"].split_param = True
         self.strategy.hybrid_configs[
             "sharding_configs"
-        ].offload_opt_buffer_size = 0.000000000001
+        ].offload_opt_buffer_size = 0
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
             np.random.randint(
