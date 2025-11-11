@@ -28,10 +28,10 @@ struct UniformGenerator {
   T min_, max_;
   unsigned int seed_;
   T diag_val_;
-  unsigned int diag_num_;
-  unsigned int diag_step_;
+  uint64_t diag_num_;
+  uint64_t diag_step_;
   __host__ __device__ UniformGenerator(
-      T min, T max, int seed, int diag_num, int diag_step, T diag_val)
+      T min, T max, int seed, uint64_t diag_num, uint64_t diag_step, T diag_val)
       : min_(min),
         max_(max),
         seed_(seed),
@@ -39,13 +39,13 @@ struct UniformGenerator {
         diag_step_(diag_step),
         diag_val_(diag_val) {}
 
-  __host__ __device__ T operator()(const unsigned int n) const {
+  __host__ __device__ T operator()(const uint64_t n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(min_, max_);
     rng.discard(n);
     T out = dist(rng);
-    unsigned int remainder = n % (diag_step_ + 1);
+    uint64_t remainder = n % (diag_step_ + 1);
     if (remainder == 0 && diag_num_ > n / (diag_step_ + 1)) {
       out = diag_val_;
     }
