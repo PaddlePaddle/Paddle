@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from datetime import datetime
 
 import paddle
 from paddle.base import core
-
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3])
 
 
 class TestMemoryreserved(unittest.TestCase):

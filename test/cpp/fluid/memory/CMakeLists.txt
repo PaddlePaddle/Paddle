@@ -101,18 +101,11 @@ if(WITH_GPU)
     cuda_malloc_async_allocator_test
     SRCS cuda_malloc_async_allocator_test.cu
     DEPS phi common)
-  nv_test(
-    vmm_auto_growth_best_fit_allocator_test
-    SRCS vmm_auto_growth_best_fit_allocator_test.cu
-    DEPS phi common)
   if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
     set_tests_properties(
       stream_safe_cuda_alloc_test
       PROPERTIES ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true; \
         FLAGS_allocator_strategy=auto_growth")
-    set_tests_properties(
-      vmm_auto_growth_best_fit_allocator_test
-      PROPERTIES ENVIRONMENT "FLAGS_use_virtual_memory_auto_growth=true")
   endif()
   if(WITH_TESTING AND TEST cuda_malloc_async_allocator_test)
     set_tests_properties(
@@ -180,3 +173,19 @@ cc_test(
   system_allocator_test
   SRCS system_allocator_test.cc
   DEPS phi common)
+
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip vmm_auto_growth_best_fit_allocator_test on Windows")
+  else()
+    nv_test(
+      vmm_auto_growth_best_fit_allocator_test
+      SRCS vmm_auto_growth_best_fit_allocator_test.cu
+      DEPS phi common)
+    if(WITH_TESTING AND TEST vmm_auto_growth_best_fit_allocator_test)
+      set_tests_properties(
+        vmm_auto_growth_best_fit_allocator_test
+        PROPERTIES ENVIRONMENT "FLAGS_use_virtual_memory_auto_growth=true")
+    endif()
+  endif()
+endif()
