@@ -118,7 +118,7 @@ struct alignas(sizeof(T) * 4) Pack4 {
   T val[4];
 };
 
-template <typename T_dy, bool HasTail = true>
+template <typename T_dy>
 static __global__ void MixedPrecisionElemwiseAddGradCUDAKernel(
     const float *__restrict__ dout,
     int64_t size,
@@ -157,26 +157,23 @@ static __global__ void MixedPrecisionElemwiseAddGradCUDAKernel(
       dy_vec[idx] = dy_pack;
     }
   }
+}
 
-  if constexpr (HasTail) {
-    for (int64_t i = main_end + tid; i < loop_limit; i += stride) {
-      float4 val = __ldg(dout_vec + i);
-      dx_vec[i] = val;
+template <typename T_dy>
+static __global__ void MixedPrecisionElemwiseAddGradCUDATailKernel(
+    const float *__restrict__ dout,
+    int64_t size,
+    int64_t tail_start_index,
+    float *__restrict__ dx,
+    T_dy *__restrict__ dy) {
+  const int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const int64_t stride = static_cast<int64_t>(gridDim.x) * blockDim.x;
 
-      Pack4<T_dy> dy_pack;
-      dy_pack.val[0] = static_cast<T_dy>(val.x);
-      dy_pack.val[1] = static_cast<T_dy>(val.y);
-      dy_pack.val[2] = static_cast<T_dy>(val.z);
-      dy_pack.val[3] = static_cast<T_dy>(val.w);
-      dy_vec[i] = dy_pack;
-    }
-
-    const int64_t remainder_start = loop_limit * VEC_SIZE;
-    for (int64_t idx = remainder_start + tid; idx < size; idx += stride) {
-      float val = __ldg(dout + idx);
-      dx[idx] = val;
-      dy[idx] = static_cast<T_dy>(val);
-    }
+  for (int64_t idx = tail_start_index + tid; idx < size; idx += stride) {
+    float val = __ldg(dout + idx);
+    dx[idx] = val;
+    dy[idx] = static_cast<T_dy>(val);
   }
 }
 
@@ -202,25 +199,33 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   auto size = dout.numel();
   if (size == 0) return;
 
-  const int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T_dy)), 1);
-  dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
-  dim3 grid_size =
-      dim3(std::min((size + vec_size * PREDEFINED_BLOCK_SIZE - 1) /
-                        (vec_size * PREDEFINED_BLOCK_SIZE),
-                    static_cast<int64_t>(dev_ctx.GetMaxPhysicalThreadCount())),
-           1);
-
   constexpr int UNROLL = 4;
   constexpr int VEC_SIZE = 4;
-  bool has_tail = (size % (UNROLL * VEC_SIZE)) != 0;
-  if (has_tail) {
-    MixedPrecisionElemwiseAddGradCUDAKernel<T_dy, true>
-        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            dout_data, size, dx_data, dy_data);
-  } else {
-    MixedPrecisionElemwiseAddGradCUDAKernel<T_dy, false>
-        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            dout_data, size, dx_data, dy_data);
+  const int64_t vec_chunk_size = UNROLL * VEC_SIZE;
+
+  const int64_t main_size = (size / vec_chunk_size) * vec_chunk_size;
+  const int64_t tail_start_index = main_size;
+  const int64_t tail_size = size - main_size;
+
+  dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+
+  if (main_size > 0) {
+    dim3 grid_size_main = dim3(
+        std::min((main_size + (VEC_SIZE * PREDEFINED_BLOCK_SIZE) - 1) /
+                     (VEC_SIZE * PREDEFINED_BLOCK_SIZE),
+                 static_cast<int64_t>(dev_ctx.GetMaxPhysicalThreadCount())),
+        1);
+    MixedPrecisionElemwiseAddGradCUDAKernel<T_dy>
+        <<<grid_size_main, block_size, 0, dev_ctx.stream()>>>(
+            dout_data, main_size, dx_data, dy_data);
+  }
+
+  if (tail_size > 0) {
+    dim3 grid_size_tail = dim3(
+        (tail_size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+    MixedPrecisionElemwiseAddGradCUDATailKernel<T_dy>
+        <<<grid_size_tail, block_size, 0, dev_ctx.stream()>>>(
+            dout_data, size, tail_start_index, dx_data, dy_data);
   }
 }
 
