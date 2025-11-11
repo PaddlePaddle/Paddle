@@ -28,7 +28,6 @@ from paddle.device import (
     amp,  # noqa: F401
     current_device,
     device,
-    ipc_collect,
     is_available as _device_is_available,
     is_bf16_supported,
     is_current_stream_capturing as _is_current_stream_capturing,
@@ -880,5 +879,4 @@ __all__ = [
     "reset_peak_memory_stats",
     "Event",
     "StreamContext",
-    "ipc_collect",
 ]
