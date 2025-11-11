@@ -14,11 +14,15 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
+from paddle import static
 from paddle.compat import equal
+from paddle.static import Program, program_guard
 
 
-class TestCompatEqual(unittest.TestCase):
+class TestCompatEqualDygraph(unittest.TestCase):
     def test_equal_tensors(self):
         """Test equal tensors return True"""
         x = paddle.to_tensor([1.0, 2.0, 3.0])
@@ -123,6 +127,153 @@ class TestCompatEqual(unittest.TestCase):
             x = paddle.to_tensor([1.0, 2.0, 3.0])
             y = paddle.to_tensor([1.0, 2.0, 3.0])
             equal(x=x, y=y)
+
+
+class TestCompatEqualStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def run_static_test(self, place, input1_data, input2_data):
+        main_program = Program()
+        startup_program = Program()
+
+        with program_guard(main_program, startup_program):
+            input1 = static.data(
+                name='input1',
+                shape=input1_data.shape,
+                dtype=str(input1_data.dtype),
+            )
+            input2 = static.data(
+                name='input2',
+                shape=input2_data.shape,
+                dtype=str(input2_data.dtype),
+            )
+
+            res = paddle.compat.equal(input1, input2)
+
+        exe = paddle.static.Executor(place)
+        exe.run(startup_program)
+
+        result = exe.run(
+            main_program,
+            feed={'input1': input1_data, 'input2': input2_data},
+            fetch_list=[res],
+        )
+
+        return result[0]
+
+    def test_equal_tensors_static(self):
+        """Test equal tensors return True on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.array([1.0, 2.0, 3.0], dtype='float32')
+                input2_data = np.array([1.0, 2.0, 3.0], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+                input1_data = np.array([1, 2, 3], dtype='int32')
+                input2_data = np.array([1, 2, 3], dtype='int32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+    def test_unequal_tensors_static(self):
+        """Test unequal tensors return False on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.array([1.0, 2.0, 3.0], dtype='float32')
+                input2_data = np.array([1.0, 2.0, 4.0], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertFalse(result.all())
+
+    def test_different_dtypes_static(self):
+        """Test tensors with different dtypes on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.array([1.0, 2.0, 3.0], dtype='float32')
+                input2_data = np.array([1, 2, 3], dtype='float64')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+    def test_complex_tensors_static(self):
+        """Test with complex tensor structures on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.arange(24).reshape([2, 3, 4]).astype('float32')
+                input2_data = np.arange(24).reshape([2, 3, 4]).astype('float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+                input2_data_modified = input2_data.copy()
+                input2_data_modified[0, 0, 0] = 100.0
+                result = self.run_static_test(
+                    place, input1_data, input2_data_modified
+                )
+                self.assertFalse(result.all())
+
+    def test_nan_and_inf_static(self):
+        """Test with NaN and Inf values on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.array([1.0, np.nan, 3.0], dtype='float32')
+                input2_data = np.array([1.0, np.nan, 3.0], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertFalse(result.all())
+
+                input1_data = np.array([1.0, np.inf, 3.0], dtype='float32')
+                input2_data = np.array([1.0, np.inf, 3.0], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+    def test_large_tensors_static(self):
+        """Test with large tensors on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.ones([50, 50], dtype='float32')
+                input2_data = np.ones([50, 50], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+                input2_data_modified = input2_data.copy()
+                input2_data_modified[25, 25] = 2.0
+                result = self.run_static_test(
+                    place, input1_data, input2_data_modified
+                )
+                self.assertFalse(result.all())
+
+    def test_broadcast_comparison_static(self):
+        """Test broadcast comparison in static graph on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.array([[1.0, 2.0, 3.0]], dtype='float32')
+                input2_data = np.array([[1.0, 2.0, 3.0]], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+    def test_multi_dimensional_static(self):
+        """Test multi-dimensional tensors on all devices"""
+        for place in self.places:
+            with self.subTest(place=place):
+                input1_data = np.array([1.0, 2.0, 3.0], dtype='float32')
+                input2_data = np.array([1.0, 2.0, 3.0], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+                input1_data = np.array(
+                    [[1.0, 2.0], [3.0, 4.0]], dtype='float32'
+                )
+                input2_data = np.array(
+                    [[1.0, 2.0], [3.0, 4.0]], dtype='float32'
+                )
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
+
+                input1_data = np.ones([2, 3, 4], dtype='float32')
+                input2_data = np.ones([2, 3, 4], dtype='float32')
+                result = self.run_static_test(place, input1_data, input2_data)
+                self.assertTrue(result.all())
 
 
 if __name__ == '__main__':
