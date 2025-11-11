@@ -290,7 +290,6 @@ class Generator:
 
                 >>> import paddle
                 >>> g_cpu = paddle.Generator()
-                >>> g_cuda = paddle.Generator(device='cuda')
         """
         place = paddle.device.device_to_place(device)
         if isinstance(place, core.CPUPlace):
