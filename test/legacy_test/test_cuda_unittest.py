@@ -37,6 +37,19 @@ from paddle.cuda import (
 )
 
 
+class TestCudaIpcCollect(unittest.TestCase):
+    def test_ipc_collect(self):
+        if platform.system().lower() == "windows":
+            print("Skip: Windows is not supported.")
+            return
+        device = paddle.device.get_device()
+        if not (device.startswith("gpu") or device.startswith("xpu")):
+            print("Skip: not compiled with CUDA/XPU.")
+            return
+        paddle.device.ipc_collect()
+        paddle.cuda.ipc_collect()
+
+
 class TestCudaCompat(unittest.TestCase):
     # ---------------------
     # _device_to_paddle test

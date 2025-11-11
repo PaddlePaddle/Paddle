@@ -180,6 +180,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/memory/allocation/xpu_ipc_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
@@ -1696,9 +1697,13 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("_ipc_collect", []() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
-    paddle::memory::allocation::IpcCollect();
+#if defined(_WIN32)
+    PADDLE_THROW(common::errors::Unavailable(
+        "ipc_collect is not supported on Windows (CUDA IPC)."));
 #else
-            PADDLE_THROW(common::errors::Unavailable(
+      paddle::memory::allocation::IpcCollect();
+#else
+      PADDLE_THROW(common::errors::Unavailable(
                 "Paddle is not compiled with CUDA/XPU, "
                 "so `ipc_collect` cannot be used."));
 #endif
