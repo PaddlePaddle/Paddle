@@ -55,7 +55,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   // OOM happens, it will try to compact memory.
   std::optional<AllocationPtr> AllocateOrCompact(size_t size);
   phi::Allocation *AllocFromFreeBlocks(size_t size);
-  void ExtendAndMerge(size_t size);
+  void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
   void DumpInfo(std::string phase) const;
 

@@ -56,7 +56,7 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(
   auto result = AllocFromFreeBlocks(size);
 
   if (!result) {
-    ExtendAndMerge(size);
+    ExtendOrCompact(size);
     result = AllocFromFreeBlocks(size);
   }
 
@@ -183,10 +183,10 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
   return allocateptr;
 }
 
-void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
+void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
   void *ptr = nullptr;
   if (FLAGS_dump_vmm_allocation_info) {
-    DumpInfo("===== Before ExtendAndMerge =====");
+    DumpInfo("===== Before ExtendOrCompact =====");
   }
 
   auto allocateptr = AllocateOrCompact(size).value_or(nullptr);
@@ -200,8 +200,9 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
     } else {
       LOG(INFO) << "Dont have free block after memory compact";
     }
-    if (FLAGS_dump_vmm_allocation_info)
-      DumpInfo("===== After ExtendAndMerge do compact =====");
+    if (FLAGS_dump_vmm_allocation_info) {
+      DumpInfo("===== After ExtendOrCompact do compact =====");
+    }
     // After compact, Merge is not needed. just return.
     return;
   }
@@ -233,8 +234,9 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
     block_it--;
     free_blocks_.emplace(std::make_pair(size, ptr), block_it);
   }
-  if (FLAGS_dump_vmm_allocation_info)
-    DumpInfo("===== After ExtendAndMerge =====");
+  if (FLAGS_dump_vmm_allocation_info) {
+    DumpInfo("===== After ExtendOrCompact =====");
+  }
 }
 
 phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(

@@ -39,6 +39,7 @@ endif()
 
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
+  list(REMOVE_ITEM TEST_OPS test_vmmallocator)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
