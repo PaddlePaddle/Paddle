@@ -109,7 +109,7 @@ __global__ void KeLinearInterpFw(const T* in,
                                  const size_t output_h,
                                  const size_t output_w,
                                  const size_t num_channels,
-                                 const float ratio_w,
+                                 const double ratio_w,
                                  const bool align_corners,
                                  const int align_mode,
                                  const DataLayout data_layout) {
@@ -168,8 +168,8 @@ __global__ void KeNearestNeighborInterpNCHWFw(const T* in,
                                               const size_t out_img_h,
                                               const size_t out_img_w,
                                               const size_t nc,
-                                              const float ratio_h,
-                                              const float ratio_w,
+                                              const double ratio_h,
+                                              const double ratio_w,
                                               const bool align_corners) {
   size_t out_img_idx =
       threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
@@ -217,8 +217,8 @@ __global__ void KeNearestNeighborInterpFw(
     const size_t output_h,
     const size_t output_w,
     const size_t num_channels,
-    const float ratio_h,
-    const float ratio_w,
+    const double ratio_h,
+    const double ratio_w,
     const bool align_corners,
     funcs::FastDivModForInterpolate divmods) {
   size_t nthreads = output_h * output_w;
@@ -843,7 +843,7 @@ static void Interpolate1DCUDAFwd(
     return;
   }
 
-  float ratio_w = 0.f;
+  double ratio_w = 0.f;
   if (out_w > 1) {
     float new_scale_w = 0.f;
     new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)

@@ -592,28 +592,11 @@ static void Interpolate2DCPUBwd(
     return;
   }
 
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = static_cast<float>(
-        (scale_h > 0) ? (1.f / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h));
-    ratio_h =
-        static_cast<float>(align_corners ? (static_cast<float>(in_h) - 1.f) /
-                                               (static_cast<float>(out_h) - 1.f)
-                                         : new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = static_cast<float>(
-        (scale_w > 0) ? (1.f / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w));
-    ratio_w =
-        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
-                                               (static_cast<float>(out_w) - 1.f)
-                                         : new_scale_w);
-  }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  double ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   if ("bilinear" == interp_method) {
     BilinearInterpolationGrad<T>(output_grad,
@@ -778,38 +761,13 @@ static void Interpolate3DCPUBwd(
     return;
   }
 
-  float ratio_d = 0.f;
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
-  if (out_d > 1) {
-    float new_scale_d = 0.f;
-    new_scale_d = static_cast<float>(
-        (scale_d > 0) ? (1.f / scale_d)
-                      : static_cast<float>(in_d) / static_cast<float>(out_d));
-    ratio_d =
-        static_cast<float>(align_corners ? (static_cast<float>(in_d) - 1.f) /
-                                               (static_cast<float>(out_d) - 1.f)
-                                         : new_scale_d);
-  }
-  if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = static_cast<float>(
-        (scale_h > 0) ? (1.f / scale_h)
-                      : static_cast<float>(in_h) / static_cast<float>(out_h));
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) /
-                                    (static_cast<float>(out_h) - 1)
-                              : static_cast<float>(new_scale_h);
-  }
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = static_cast<float>(
-        (scale_w > 0) ? (1.f / scale_w)
-                      : static_cast<float>(in_w) / static_cast<float>(out_w));
-    ratio_w =
-        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
-                                               (static_cast<float>(out_w) - 1.f)
-                                         : new_scale_w);
-  }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  double ratio_d =
+      funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
+  double ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  double ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolationGrad<T>(output_grad,
