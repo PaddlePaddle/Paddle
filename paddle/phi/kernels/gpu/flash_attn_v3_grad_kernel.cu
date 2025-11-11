@@ -1115,7 +1115,7 @@ void FlashMaskV2GradBaseKernel(
       // umiswing: by now, we reuse template instantiation of head dim 256 for
       // head dim in range (128, 256], and therefore no separate dispatch for
       // head dim in range (128, 192]
-      if(has_lt_end && has_ut_start) {
+      if (has_lt_end && has_ut_start) {
         return {64, 32};
       } else {
         return {64, 64};
