@@ -156,7 +156,7 @@ __global__ void CumsumOneBlock(const InT *in,
                                int64_t numel,
                                int64_t main_offset,
                                Functor func) {
-  int64_t stride = BLOCK_NUM_X * VecSize;
+  int64_t stride = static_cast<int64_t>(BLOCK_NUM_X) * VecSize;
   int64_t offset = 0;
   OutT pre_cumsum = static_cast<OutT>(0);
   for (; offset < main_offset; offset += stride) {
@@ -164,7 +164,7 @@ __global__ void CumsumOneBlock(const InT *in,
         in + offset, out + offset, &pre_cumsum, stride, func);
   }
 
-  int num = numel - offset;
+  int64_t num = numel - offset;
   if (num > 0) {
     CumsumImpl<InT, OutT, Functor, VecSize, true>(
         in + offset, out + offset, &pre_cumsum, num, func);

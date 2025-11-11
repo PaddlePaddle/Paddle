@@ -167,7 +167,8 @@ class TestLayerPrint(unittest.TestCase):
 
         module = nn.ZeroPad2D(padding=[1, 0, 1, 2])
         self.assertEqual(
-            str(module), 'ZeroPad2D(padding=[1, 0, 1, 2], data_format=NCHW)'
+            str(module),
+            'ZeroPad2D(padding=[1, 0, 1, 2], mode=constant, value=0.0, data_format=NCHW)',
         )
 
         module = nn.Pad3D(padding=[1, 0, 1, 2, 0, 0], mode='constant')

@@ -125,7 +125,8 @@ void GroupNormKernel(const Context& dev_ctx,
                                    bias_data,
                                    mean_data,
                                    var_data,
-                                   channel_first);
+                                   channel_first,  // is_nchw
+                                   false);         // is_rstd
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "group_norm");
 }
 

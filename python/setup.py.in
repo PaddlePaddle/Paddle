@@ -176,12 +176,15 @@ def get_tensorrt_version() -> str:
         print(f"Error while getting TensorRT version: {e}")
         return None
 
+def get_paddle_version() -> str:
+    return '@PADDLE_VERSION@'
+
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
 import inspect
 
-full_version     = '%(major)d.%(minor)d.%(patch)s'
+full_version     = '%(paddle_version)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
@@ -502,6 +505,7 @@ def cuda_archs():
 
     with open(filename, 'w') as f:
         f.write(cnt % {
+            'paddle_version': get_paddle_version(),
             'major': get_major(),
             'minor': get_minor(),
             'patch': get_patch(),
@@ -937,7 +941,6 @@ packages=['paddle',
           'paddle.jit',
           'paddle.jit.dy2static',
           'paddle.jit.dy2static.transformers',
-          'paddle.jit.pir_dy2static',
           'paddle.jit.sot',
           'paddle.jit.sot.opcode_translator',
           'paddle.jit.sot.opcode_translator.executor',
@@ -1049,6 +1052,12 @@ if (
     '@WITH_GPU@' == 'ON'
     and '@CUDA_ARCH_BIN@'
     and '@CUDA_ARCH_BIN@'.find("90") != -1
+):
+    packages.extend(['paddle.distributed.communication.deep_ep'])
+
+if (
+    '@WITH_XPU@' == 'ON'
+    and '@WITH_XPU_XRE5@' == 'ON'
 ):
     packages.extend(['paddle.distributed.communication.deep_ep'])
 
