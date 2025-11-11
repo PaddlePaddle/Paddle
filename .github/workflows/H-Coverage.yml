@@ -124,7 +124,6 @@ jobs:
           git config pull.rebase false
           git checkout test
           echo "Pull upstream $BRANCH"
-          source ${{ github.workspace }}/../../../proxy
           bash ci/git_pull.sh $BRANCH
           '
 
@@ -141,7 +140,6 @@ jobs:
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
           mkdir -p ${CFS_DIR}/.ccache/coverage
-          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           set -x
@@ -155,7 +153,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
-          source ${{ github.workspace }}/../../../proxy
           bash $ci_scripts/check_added_ut.sh
           '
 
@@ -184,7 +181,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"
-          source ${{ github.workspace }}/../../../proxy
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
           export AK=paddle
