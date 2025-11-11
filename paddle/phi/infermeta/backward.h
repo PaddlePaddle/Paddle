@@ -842,4 +842,21 @@ PADDLE_API void IndexElementwiseGetGradInferMeta(
     const bool accumulate,
     const bool is_combined,
     MetaTensor* x_grad);
+
+PADDLE_API void FastLayerNormGradInfermeta(const MetaTensor& x,
+                                           const MetaTensor& scale,
+                                           const MetaTensor& invvar,
+                                           const MetaTensor& y_grad,
+                                           float epsilon,
+                                           MetaTensor* x_grad,
+                                           MetaTensor* scale_grad,
+                                           MetaTensor* bias_grad);
+
+PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,
+                                         const MetaTensor& scale,
+                                         const MetaTensor& invvar,
+                                         const MetaTensor& y_grad,
+                                         float epsilon,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* scale_grad);
 }  // namespace phi

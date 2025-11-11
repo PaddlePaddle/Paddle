@@ -179,6 +179,14 @@ PADDLE_API void FlashAttnV3InferMeta(const MetaTensor& q,
                                      MetaTensor* out,
                                      MetaTensor* softmax_lse);
 
+PADDLE_API void FastLayerNormInfermeta(const MetaTensor& x,
+                                       const MetaTensor& scale,
+                                       const MetaTensor& bias,
+                                       float epsilon,
+                                       MetaTensor* y,
+                                       MetaTensor* mean,
+                                       MetaTensor* invvar);
+
 PADDLE_API void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
                                            const MetaTensor& k,
                                            const MetaTensor& v,

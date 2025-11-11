@@ -5975,6 +5975,26 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op: fast_ln
+  args: (Tensor x, Tensor scale, Tensor bias, float epsilon)
+  output: Tensor(y), Tensor(mean), Tensor(invvar)
+  infer_meta:
+    func: FastLayerNormInfermeta
+  kernel:
+    func: fast_ln
+    data_type: scale
+  backward: fast_ln_grad
+
+- op: fast_rms_norm
+  args: (Tensor x, Tensor scale, float epsilon)
+  output: Tensor(y), Tensor(invvar)
+  infer_meta:
+    func: FastRMSNormInfermeta
+  kernel:
+    func: fast_rms_norm
+    data_type: scale
+  backward: fast_rms_norm_grad
+
 - op: fp8_gemm_blockwise_
   args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor input_result, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
   output: Tensor (output), Tensor (pre_gelu_out), Tensor (workspace_out)
