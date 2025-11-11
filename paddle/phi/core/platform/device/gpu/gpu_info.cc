@@ -603,6 +603,8 @@ void EmptyCache() {
   }
 }
 
+void VmmCompact() { memory::Compact(phi::GPUPlace(GetCurrentDeviceId())); }
+
 bool IsGPUManagedMemorySupported(int dev_id) {
   return phi::backends::gpu::IsGPUManagedMemorySupported(dev_id);
 }
