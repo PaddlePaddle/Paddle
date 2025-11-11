@@ -782,11 +782,6 @@ class TestType(unittest.TestCase):
         self.assertEqual(self.module.weight.dtype, paddle.float16)
         self.assertEqual(self.module.buffer.dtype, paddle.float16)
 
-    def test_bfloat16(self):
-        self.module.bfloat16()
-        self.assertEqual(self.module.weight.dtype, paddle.bfloat16)
-        self.assertEqual(self.module.buffer.dtype, paddle.bfloat16)
-
     def test_type_error(self):
         with self.assertRaises(ValueError):
             self.module.type("invalid_dtype")

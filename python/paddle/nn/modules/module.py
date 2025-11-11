@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Note:
+# This section primarily addresses compatibility issues involving differing paths, API aliases, or parameter aliases.
+# Avoid adding unnecessary code here. Only introduce new module-related aliases and paths.
+# New class methods should be added to `paddle.nn.Layer`.
+
 from __future__ import annotations
 
 import warnings
@@ -22,20 +28,16 @@ from typing import (
     overload,
 )
 
-import numpy as np
 from typing_extensions import Self
 
 import paddle
 from paddle import Tensor, nn
-from paddle.base import framework
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
-    from paddle._typing import PlaceLike
     from paddle.nn.parameter import Parameter
 
-from paddle import dtype
 from paddle.nn.layer.layers import (
     _convert_camel_to_snake,
     _scope_dist2single,
@@ -181,26 +183,7 @@ class Module(nn.Layer):
         Returns:
             Module: The submodule referenced by ``target``.
         """
-        if target == "":
-            return self
-
-        atoms: list[str] = target.split(".")
-        # mod: paddle.nn.Module = self
-        mod: paddle.nn.Layer = self
-
-        for item in atoms:
-            if not hasattr(mod, item):
-                raise AttributeError(
-                    mod._get_name() + " has no attribute `" + item + "`"
-                )
-
-            mod = getattr(mod, item)
-
-            # if not isinstance(mod, paddle.nn.Module):
-            if not isinstance(mod, (paddle.nn.Module, paddle.nn.Layer)):
-                raise AttributeError("`" + item + "` is not an nn.Module")
-
-        return mod
+        return super().get_sublayer(target=target)
 
     def set_submodule(
         self, target: str, module: Module, strict: bool = False
@@ -216,29 +199,8 @@ class Module(nn.Layer):
                 the method will only attempt to replace an existing submodule and throw an error
                 if the submodule doesn't already exist.
         """
-        if target == "":
-            raise ValueError("Cannot set the submodule without a target name!")
 
-        atoms: list[str] = target.split(".")
-        if not isinstance(module, (paddle.nn.Module, paddle.nn.Layer)):
-            raise ValueError(
-                "`" + "module" + f"` is not an nn.Module, found {type(module)}"
-            )
-        if len(atoms) == 1:
-            parent: paddle.nn.Module = self
-        else:
-            parent_key = ".".join(atoms[:-1])
-            parent = self.get_submodule(parent_key)
-
-        if strict and not hasattr(parent, atoms[-1]):
-            raise AttributeError(
-                parent._get_name() + " has no attribute `" + atoms[-1] + "`"
-            )
-        if hasattr(parent, atoms[-1]):
-            mod = getattr(parent, atoms[-1])
-            if not isinstance(mod, (paddle.nn.Module, paddle.nn.Layer)):
-                raise AttributeError("`" + atoms[-1] + "` is not an nn.Module")
-        setattr(parent, atoms[-1], module)
+        super().set_sublayer(target, module, strict)
 
     def get_parameter(self, target: str) -> Parameter:
         """
@@ -269,178 +231,6 @@ class Module(nn.Layer):
             raise AttributeError("`" + param_name + "` is not an nn.Parameter")
 
         return param
-
-    def get_buffer(self, target: str) -> Tensor:
-        """
-        Return the buffer given by ``target`` if it exists, otherwise throw an error.
-
-        See the docstring for ``get_submodule`` for a more detailed
-        explanation of this method's functionality as well as how to
-        correctly specify ``target``.
-
-        Parameters:
-            target(str): The fully-qualified string name of the buffer to look for.
-
-        Returns:
-            Tensor: The buffer referenced by ``target``.
-        """
-        module_path, _, buffer_name = target.rpartition(".")
-
-        mod = self.get_submodule(module_path)
-
-        if not hasattr(mod, buffer_name):
-            raise AttributeError(
-                mod._get_name() + " has no attribute `" + buffer_name + "`"
-            )
-
-        buffer = getattr(mod, buffer_name)
-
-        if buffer_name not in mod._buffers:
-            raise AttributeError("`" + buffer_name + "` is not a buffer")
-
-        return buffer
-
-    def get_extra_state(self) -> Any:
-        raise RuntimeError(
-            "Reached a code path in Module.get_extra_state() that should never be called. "
-        )
-
-    def cuda(self, device: int | PlaceLike | None = None) -> Self:
-        """
-        Move all model parameters and buffers to the GPU.
-
-        This also makes associated parameters and buffers different objects. So
-        it should be called before constructing the optimizer if the module will
-        live on GPU while being optimized.
-
-        Parameters:
-            device(int, optional): if specified, all parameters will be copied to that device.
-
-        Returns:
-            Module: self
-        """
-        if device is None:
-            device = paddle.CUDAPlace(paddle.cuda.current_device())
-        elif isinstance(device, int):
-            device = paddle.CUDAPlace(device)
-        elif isinstance(device, paddle.CUDAPlace):
-            pass
-        else:
-            raise TypeError(
-                f"device must be int, paddle.CUDAPlace or None, got {type(device)}"
-            )
-
-        return self._to_impl(device=device)
-
-    def xpu(self, device: int | PlaceLike | None = None) -> Self:
-        """
-        Move all model parameters and buffers to the XPU.
-
-        This also makes associated parameters and buffers different objects. So
-        it should be called before constructing optimizer if the module will
-        live on XPU while being optimized.
-
-        Parameters:
-            device(int, optional): if specified, all parameters will be copied to that device.
-
-        Returns:
-            Module: self
-        """
-        if device is None:
-            device = paddle.XPUPlace(0)
-        elif isinstance(device, int):
-            device = paddle.XPUPlace(device)
-        elif isinstance(device, paddle.XPUPlace):
-            pass
-        else:
-            raise TypeError(
-                f"device must be int, paddle.XPUPlace or None, got {type(device)}"
-            )
-
-        return self._to_impl(device=device)
-
-    def cpu(self) -> Self:
-        """
-        Move all model parameters and buffers to the CPU.
-
-        Returns:
-            Module: self
-        """
-        return self._to_impl(device=paddle.CPUPlace())
-
-    def type(self, dst_type: dtype | str) -> Self:
-        """
-        Casts all parameters and buffers to :attr:`dst_type`.
-
-        Parameters:
-            dtype(str|paddle.dtype): target data type of layer.
-                If set str, it can be "bool", "bfloat16", "float16", "float32", "float64",
-                "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
-                Default: None
-
-        Returns:
-            Module: self
-        """
-        valid_dtypes = [
-            "bfloat16",
-            "float16",
-            "float32",
-            "float64",
-            "int8",
-            "int16",
-            "int32",
-            "int64",
-            "uint8",
-            "complex64",
-            "complex128",
-            "bool",
-        ]
-        if (
-            isinstance(dst_type, (paddle.dtype, np.dtype))
-            or type(dst_type) is str
-            and dst_type in valid_dtypes
-        ):
-            if isinstance(dst_type, (str, np.dtype)):
-                dst_type = framework.convert_np_dtype_to_dtype_(dst_type)
-
-            def layer_trans(layer):
-                layer._to_impl(
-                    dtype=dst_type, floating_only=False, include_sublayers=True
-                )
-
-            return self.apply(layer_trans)
-        else:
-            raise ValueError(
-                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but receive "
-                + str(dtype)
-            )
-
-    def double(self) -> Self:
-        """
-        Casts all floating point parameters and buffers to ``double`` datatype.
-
-        Returns:
-            Module: self
-        """
-        return self.type(paddle.float64)
-
-    def half(self) -> Self:
-        """
-        Casts all floating point parameters and buffers to ``half`` datatype.
-
-        Returns:
-            Module: self
-        """
-        return self.type(paddle.float16)
-
-    def bfloat16(self) -> Self:
-        """
-        Casts all floating point parameters and buffers to ``bfloat16`` datatype.
-
-        Returns:
-            Module: self
-        """
-        return self.type(paddle.bfloat16)
 
     T_destination = TypeVar("T_destination", bound=dict[str, Any])
 
@@ -600,7 +390,7 @@ class Module(nn.Layer):
 
     def buffers(self, recurse: bool = True) -> Iterator[Tensor]:
         """
-        Returns a list of all buffers from current module and its sub-modules.
+        Returns a iterator of all buffers from current module and its sub-modules.
 
         Parameters:
             recurse(bool, optional): Whether include the buffers of submodules. If True, also include the buffers from submodules. Default: True.
@@ -608,8 +398,8 @@ class Module(nn.Layer):
         Returns:
             list of Tensor, a list of buffers.
         """
-        ret = [buffer for _, buffer in self.named_buffers(recurse=recurse)]
-        return ret
+        for _, buf in self.named_buffers(recurse=recurse):
+            yield buf
 
     def named_buffers(
         self,
@@ -684,44 +474,3 @@ class Module(nn.Layer):
             Module: self
         """
         return super().train(mode=mode)
-
-    def requires_grad_(self, requires_grad: bool = True) -> Self:
-        """
-        Change if autograd should record operations on parameters in this module.
-
-        Parameters:
-            requires_grad (bool): whether autograd should record operations on
-                                  parameters in this module. Default: ``True``.
-
-        Returns:
-            Module: self
-        """
-        for p in self.parameters():
-            p.stop_gradient = not requires_grad
-        return self
-
-    def zero_grad(self, set_to_none: bool = True) -> None:
-        """
-        Reset gradients of all model parameters.
-
-        Parameters:
-            set_to_none (bool): instead of setting to zero, set the grads to None. Currently, set_to_none=True
-            is not fully supported.
-        """
-        if getattr(self, "_is_replica", False):
-            warnings.warn(
-                "Calling .zero_grad() from a module created with nn.DataParallel() has no effect. "
-                "The parameters are copied (in a differentiable manner) from the original module. "
-                "This means they are not leaf nodes in autograd and so don't accumulate gradients. "
-                "If you need gradients in your forward method, consider using autograd.grad instead.",
-                stacklevel=2,
-            )
-        for p in self.parameters():
-            if p.grad is not None:
-                if set_to_none:
-                    p.clear_gradient(set_to_zero=False)
-                else:
-                    p.clear_gradient(set_to_zero=True)
-
-    def _get_name(self):
-        return self.__class__.__name__
