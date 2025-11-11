@@ -49,7 +49,6 @@ jobs:
           WITH_TESTING: "ON"
           WITH_INFERENCE_API_TEST: "OFF"
           COVERALLS_UPLOAD: "ON"
-          PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           GPUBOX_DEMO_INSTALL_DIR: /root/.cache/build
@@ -89,7 +88,6 @@ jobs:
             -e WITH_TESTING \
             -e COVERALLS_UPLOAD \
             -e GIT_PR_ID \
-            -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
             -e PY_VERSION \
             -e WITH_TENSORRT \
@@ -190,7 +188,7 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
-          paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: "*.whl"
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x

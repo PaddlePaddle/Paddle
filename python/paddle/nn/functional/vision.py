@@ -100,8 +100,8 @@ def affine_grid(
             False  # ROCM platform do not have MIOPEN kernel for affine_grid
         )
 
-    if paddle.get_flags(["FLAGS_torch_compatible_kernel"]).get(
-        "FLAGS_torch_compatible_kernel", False
+    if paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+        "FLAGS_use_accuracy_compatible_kernel", False
     ):
         use_cudnn = False
 
