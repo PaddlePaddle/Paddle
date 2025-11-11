@@ -825,19 +825,16 @@ def legacy_reduction_decorator(
     """
 
     @functools.wraps(init_func)
-    def wrapper(self, *args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        cls_name = init_func.__qualname__.split(
-            "."
-        )[
-            0
-        ]  # avoid subclass calling parent class init, causing cls_name to be inaccurate
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        # avoid subclass calling parent class init, causing cls_name to be inaccurate
+        cls_name = init_func.__qualname__.split(".")[0]
         reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
-            cls_name, args, kwargs
+            cls_name, args[1:], kwargs
         )
         if reduce_val != '' or size_avg_val != '':
             raise_deprecated_error(cls_name, reduce_val, size_avg_val)
 
-        return init_func(self, *args, **kwargs)
+        return init_func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
@@ -852,26 +849,27 @@ def legacy_reduction_special_decorator(
     """
 
     @functools.wraps(init_func)
-    def wrapper(self, *args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls_name = init_func.__qualname__.split(".")[0]
+        use_args = args[1:]
         reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
-            cls_name, args, kwargs
+            cls_name, use_args, kwargs
         )
         if reduce_val != '' or size_avg_val != '':
             if not (
                 (
                     cls_name == 'CrossEntropyLoss'
-                    and len(args) > 2
-                    and args[2] in {'mean', 'sum', 'none'}
+                    and len(use_args) > 2
+                    and use_args[2] in {'mean', 'sum', 'none'}
                 )
                 or (
                     cls_name == 'KLDivLoss'
-                    and len(args) > 0
-                    and args[0] in {'mean', 'sum', 'none', 'batchmean'}
+                    and len(use_args) > 0
+                    and use_args[0] in {'mean', 'sum', 'none', 'batchmean'}
                 )
             ):
                 raise_deprecated_error(cls_name, reduce_val, size_avg_val)
-        return init_func(self, *args, **kwargs)
+        return init_func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
