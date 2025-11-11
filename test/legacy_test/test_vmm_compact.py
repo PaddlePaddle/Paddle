@@ -22,18 +22,18 @@ import paddle
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), 'should compile with cuda.'
 )
-class TestVMMAllocator(unittest.TestCase):
+class TestVmmCompact(unittest.TestCase):
     def setUp(self):
         self.GB = 1000**3
         self.MB = 1000**2
         paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
         self.cmds = [
-            ["Alloc", 6 * self.GB, "0x100000000"],
-            ["Alloc", 11 * self.GB, "0x100000001"],
-            ["Alloc", 1 * self.GB, "0x100000002"],
-            ["Alloc", 10 * self.GB, "0x100000003"],
-            ["Free", 6 * self.GB, "0x100000000"],
-            ["Free", 10 * self.GB, "0x100000003"],
+            ["Alloc", 1 * self.GB, "0x100000000"],
+            ["Alloc", 2 * self.GB, "0x100000001"],
+            ["Alloc", 2 * self.GB, "0x100000002"],
+            ["Alloc", 1 * self.GB, "0x100000003"],
+            ["Free", 1 * self.GB, "0x100000000"],
+            ["Free", 1 * self.GB, "0x100000003"],
         ]
 
     def test_compact_api(self):
