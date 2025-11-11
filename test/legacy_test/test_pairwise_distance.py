@@ -33,6 +33,18 @@ def call_pairwise_distance_layer(x, y, p=2.0, epsilon=1e-6, keepdim='False'):
     return distance
 
 
+def call_pairwise_distance_layer_compatibility(
+    x, y, p=2.0, epsilon=1e-6, keepdim='False'
+):
+    pairwise_distance = paddle.nn.PairwiseDistance(
+        p=p + 1, eps=epsilon + 1, keepdim=keepdim
+    )
+    pairwise_distance.eps = epsilon
+    pairwise_distance.norm = p
+    distance = pairwise_distance(x1=x, x2=y)
+    return distance
+
+
 def call_pairwise_distance_functional(
     x, y, p=2.0, epsilon=1e-6, keepdim='False'
 ):
@@ -322,6 +334,30 @@ class TestPairwiseDistance(unittest.TestCase):
         x_np = np.random.random(shape).astype('float16')
         y_np = np.random.random(shape).astype('float16')
         static_ret = test_static(place, x_np, y_np)
+
+    def test_pairwise_distance_compatibility(self):
+        shape = [10, 10]
+        epsilon = 1e-6
+        keepdim = False
+        place = paddle.CPUPlace()
+        x_np = np.random.random(shape).astype('float32')
+        y_np = np.random.random(shape).astype('float32')
+
+        dygraph_ret = call_pairwise_distance_layer_compatibility(
+            x=paddle.to_tensor(x_np),
+            y=paddle.to_tensor(y_np),
+            epsilon=epsilon,
+            keepdim=keepdim,
+        )
+        excepted_value = np_pairwise_distance(
+            x_np, y_np, epsilon=epsilon, keepdim=keepdim
+        )
+
+        self.assertEqual(dygraph_ret.shape, excepted_value.shape)
+
+        np.testing.assert_allclose(
+            dygraph_ret.numpy(), excepted_value, rtol=1e-05
+        )
 
 
 class TestPairwiseDistance_ZeroSize(unittest.TestCase):

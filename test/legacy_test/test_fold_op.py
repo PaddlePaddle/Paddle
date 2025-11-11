@@ -200,6 +200,44 @@ class TestFoldAPI(TestFoldOp):
         str(paddle.nn.Fold(**self.attrs))
 
 
+class TestFoldAPI_Compatibility(TestFoldOp):
+    # This is for test on paddle.nn.Fold
+
+    def setUp(self):
+        self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
+        self.set_data()
+        self.places = get_places()
+
+    def set_data(self):
+        self.init_dtype()
+        self.init_data()
+        self.calc_fold()
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+        self.attrs = {
+            'kernel_size': self.kernel_sizes,
+            'padding': self.paddings,
+            'dilation': self.dilations,
+            'stride': self.strides,
+            'output_size': self.output_sizes,
+        }
+        self.outputs = {'Y': self.outputs}
+
+    def test_api(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input = paddle.to_tensor(self.x)
+                m = paddle.nn.Fold(**self.attrs)
+                m.eval()
+                result = m(input)
+                np.testing.assert_allclose(
+                    result.numpy(), self.outputs['Y'], rtol=1e-05
+                )
+
+    def test_info(self):
+        str(paddle.nn.Fold(**self.attrs))
+
+
 class TestFoldOpError(unittest.TestCase):
     def test_errors(self):
         from paddle.base.framework import Program, program_guard
