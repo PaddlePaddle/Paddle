@@ -191,22 +191,21 @@ jobs:
             mkdir ${{ env.home_path }}/bos_retry
             tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
-          cd /paddle/dist
+          cd /paddle
           echo "Uploading coverage build"
           mv /Paddle.tar.gz .
           python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          echo "Uploading coverage wheel"
-          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          #echo "Uploading coverage wheel"
+          #python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
-          rm Paddle.tar.gz
           '
 
       - name: Terminate and delete the container
         if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d;rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
 
