@@ -443,7 +443,7 @@ class TestPool2D_API(unittest.TestCase):
             result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-            lp_pool2d_dg = paddle.nn.layer.LPPool2d(
+            lp_pool2d_dg = paddle.nn.LPPool2d(
                 norm_type,
                 2,
                 1,

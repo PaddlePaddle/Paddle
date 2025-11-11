@@ -202,6 +202,12 @@ class TestFoldAPI(TestFoldOp):
 
 class TestFoldAPI_Compatibility(TestFoldOp):
     # This is for test on paddle.nn.Fold
+    def set_data(self):
+        self.init_dtype()
+        self.init_data()
+        self.calc_fold()
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+        self.outputs = {'Y': self.outputs}
 
     def setUp(self):
         self.op_type = 'fold'
@@ -209,11 +215,19 @@ class TestFoldAPI_Compatibility(TestFoldOp):
         self.set_data()
         self.places = get_places()
 
-    def set_data(self):
-        self.init_dtype()
-        self.init_data()
-        self.calc_fold()
-        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+    def test_check_output(self):
+        # self.attrs in OpTest needs original parameters
+        self.attrs = {
+            'kernel_sizes': self.kernel_sizes,
+            'paddings': self.paddings,
+            'dilations': self.dilations,
+            'strides': self.strides,
+            'output_sizes': self.output_sizes,
+        }
+        self.check_output(check_pir=True)
+
+    def test_api(self):
+        # self.attrs in nn.Fold can be alias
         self.attrs = {
             'kernel_size': self.kernel_sizes,
             'padding': self.paddings,
@@ -221,9 +235,6 @@ class TestFoldAPI_Compatibility(TestFoldOp):
             'stride': self.strides,
             'output_size': self.output_sizes,
         }
-        self.outputs = {'Y': self.outputs}
-
-    def test_api(self):
         for place in self.places:
             with base.dygraph.guard(place):
                 input = paddle.to_tensor(self.x)
@@ -235,6 +246,13 @@ class TestFoldAPI_Compatibility(TestFoldOp):
                 )
 
     def test_info(self):
+        self.attrs = {
+            'kernel_size': self.kernel_sizes,
+            'padding': self.paddings,
+            'dilation': self.dilations,
+            'stride': self.strides,
+            'output_size': self.output_sizes,
+        }
         str(paddle.nn.Fold(**self.attrs))
 
 

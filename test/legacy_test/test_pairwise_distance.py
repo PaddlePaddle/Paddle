@@ -42,7 +42,7 @@ def call_pairwise_distance_layer_compatibility(
     pairwise_distance.eps = epsilon
     pairwise_distance.norm = p
     distance = pairwise_distance(x1=x, x2=y)
-    return distance
+    return distance.numpy()
 
 
 def call_pairwise_distance_functional(

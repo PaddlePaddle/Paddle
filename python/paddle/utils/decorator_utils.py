@@ -235,7 +235,7 @@ def lp_pool_decorator(
                 stacklevel=2,
             )
             kwargs["ceil_mode"] = args[4]
-            args = args[:5]
+            args = args[:4]
         return func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(func)
