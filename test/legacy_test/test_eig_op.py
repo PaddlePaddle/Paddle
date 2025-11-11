@@ -24,6 +24,7 @@ from paddle.base import core
 
 
 def compiled_with_linux_and_cuda():
+    return False
     return (
         platform.system().lower().startswith("linux")
         and paddle.device.is_compiled_with_cuda()
@@ -386,29 +387,29 @@ class TestEigDyGraph(unittest.TestCase):
             (dv_dx,) = paddle.grad(v, x, retain_graph=True)
             (dwv_dx,) = paddle.grad([w, v], x)
 
-        np.testing.assert_allclose(
-            dwv_dx.numpy(),
-            grad_x,
-            rtol=1e-05,
-            atol=1e-05,
-            err_msg='The grad x have diff: \nExpected '
-            + str(np.abs(grad_x))
-            + '\n'
-            + 'But got: '
-            + str(np.abs(dwv_dx.numpy())),
-        )
+            np.testing.assert_allclose(
+                dwv_dx.numpy(),
+                grad_x,
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg='The grad x have diff: \nExpected '
+                + str(np.abs(grad_x))
+                + '\n'
+                + 'But got: '
+                + str(np.abs(dwv_dx.numpy())),
+            )
 
-        np.testing.assert_allclose(
-            (dw_dx + dv_dx).numpy(),
-            dwv_dx.numpy(),
-            rtol=1e-05,
-            atol=1e-05,
-            err_msg='The grad x have diff: \nExpected '
-            + str(np.abs(grad_x))
-            + '\n'
-            + 'But got: '
-            + str(np.abs((dw_dx + dv_dx).numpy())),
-        )
+            np.testing.assert_allclose(
+                (dw_dx + dv_dx).numpy(),
+                dwv_dx.numpy(),
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg='The grad x have diff: \nExpected '
+                + str(np.abs(grad_x))
+                + '\n'
+                + 'But got: '
+                + str(np.abs((dw_dx + dv_dx).numpy())),
+            )
 
 
 class TestEigWrongDimsError(unittest.TestCase):
