@@ -192,9 +192,9 @@ jobs:
             tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /paddle/dist
-          mkdir -p ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
-          echo "Uploading coverage build size"
-          python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          echo "Uploading coverage build"
+          mv /Paddle.tar.gz .
+          python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
