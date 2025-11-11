@@ -27,7 +27,7 @@ namespace paddle::framework::ir {
 
 // Delete dequantize_linear_op, then dequantize weight
 void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
-  if (!(FLAGS_all_blocks_convert_trt && FLAGS_convert_all_blocks)) {
+  if (!(FLAGS_convert_all_blocks_trt && FLAGS_convert_all_blocks)) {
     VLOG(3) << "Running set_subgraph_edge_pass need set environment variables: "
                "export FLAGS_convert_all_blocks = true";
     return;

@@ -131,19 +131,19 @@ Graph *Pass::Apply(Graph *graph) const {
   std::vector<std::string> subgraph_passes;
   bool use_xpu = Has("use_xpu") && Get<bool>("use_xpu");
   bool use_tensorrt = Has("use_tensorrt") && Get<bool>("use_tensorrt");
-  bool all_blocks_convert = false;
+  bool convert_all_blocks = false;
   if (use_xpu) {
     subgraph_passes = xpu_support_subgraph_passes;
-    all_blocks_convert = FLAGS_convert_all_blocks;
+    convert_all_blocks = FLAGS_convert_all_blocks;
   } else if (use_tensorrt) {
     subgraph_passes = trt_support_subgraph_passes;
-    all_blocks_convert =
-        FLAGS_all_blocks_convert_trt && FLAGS_convert_all_blocks;
+    convert_all_blocks =
+        FLAGS_convert_all_blocks_trt && FLAGS_convert_all_blocks;
   } else {
     subgraph_passes = gpu_support_subgraph_passes;
-    all_blocks_convert = FLAGS_convert_all_blocks;
+    convert_all_blocks = FLAGS_convert_all_blocks;
   }
-  if (all_blocks_convert && graph->IsMainGraph() &&
+  if (convert_all_blocks && graph->IsMainGraph() &&
       (std::count(subgraph_passes.begin(), subgraph_passes.end(), Type()) ||
        std::count(support_subgraph_generate_passes.begin(),
                   support_subgraph_generate_passes.end(),

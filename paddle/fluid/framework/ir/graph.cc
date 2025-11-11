@@ -22,7 +22,7 @@ PHI_DEFINE_EXPORTED_bool(convert_all_blocks,
                          true,
                          "Convert all blocks in program into SSAgraphs");
 
-PHI_DEFINE_EXPORTED_bool(all_blocks_convert_trt,
+PHI_DEFINE_EXPORTED_bool(convert_all_blocks_trt,
                          false,
                          "Convert all blocks'Ops into TensorRT Ops");
 

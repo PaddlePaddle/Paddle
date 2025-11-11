@@ -30,7 +30,7 @@ limitations under the License. */
 #endif
 #include "paddle/common/flags.h"
 PD_DECLARE_bool(convert_all_blocks);
-PD_DECLARE_bool(all_blocks_convert_trt);
+PD_DECLARE_bool(convert_all_blocks_trt);
 PHI_DEFINE_EXPORTED_string(print_sub_graph_dir,
                            "",
                            "FLAGS_print_sub_graph_dir is used "
