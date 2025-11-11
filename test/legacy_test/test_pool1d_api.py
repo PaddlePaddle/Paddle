@@ -609,11 +609,6 @@ class TestPool1D_API(unittest.TestCase):
                 None,
                 False,
             )
-            lp_pool1d_dg = paddle.nn.LPPool1d(
-                norm_type=7,
-                kernel_size=2,
-                stride=None,
-            )
             result = lp_pool1d_dg(input=input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 

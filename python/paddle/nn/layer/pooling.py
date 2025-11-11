@@ -19,7 +19,7 @@ import warnings
 from typing import TYPE_CHECKING
 
 from paddle.utils.decorator_utils import (
-    LPPool_decorator,
+    lp_pool_decorator,
     param_one_alias,
 )
 
@@ -445,7 +445,7 @@ class LPPool1D(Layer):
     data_format: DataLayout1D
     name: str | None
 
-    @LPPool_decorator()
+    @lp_pool_decorator
     def __init__(
         self,
         norm_type: float,
@@ -562,7 +562,7 @@ class LPPool2D(Layer):
     data_format: DataLayout2D
     name: str | None
 
-    @LPPool_decorator()
+    @lp_pool_decorator
     def __init__(
         self,
         norm_type: float,

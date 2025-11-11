@@ -400,4 +400,9 @@ __all__ = [
     'ZeroPad1D',
     'ZeroPad3D',
     'Parameter',
+    'AdaptiveMaxPool1d',
+    'AdaptiveMaxPool2d',
+    'AdaptiveMaxPool3d',
+    'LPPool2d',
+    'LPPool1d',
 ]

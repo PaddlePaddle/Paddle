@@ -223,21 +223,23 @@ def param_two_alias(
     return decorator
 
 
-def LPPool_decorator() -> Callable[
-    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
-]:
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if len(args) == 5 and isinstance(args[4], bool):
-                kwargs["ceil_mode"] = args[4]
-                args = args[:5]
-            return func(*args, **kwargs)
+def lp_pool_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) == 5 and isinstance(args[4], bool):
+            warnings.warn(
+                "The 5th positional argument is a boolean value in '__init__', which is being interpreted as 'ceil_mode' for compatibility with PyTorch.",
+                category=Warning,
+                stacklevel=2,
+            )
+            kwargs["ceil_mode"] = args[4]
+            args = args[:5]
+        return func(*args, **kwargs)
 
-        wrapper.__signature__ = inspect.signature(func)
-        return wrapper
-
-    return decorator
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
 
 
 def tensor_split_decorator(
