@@ -145,7 +145,6 @@ void ChannelDequantizeFunctor<Context, T>::operator()(
     int64_t n_scales = in->dims()[x_num_col_dims];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(n_scales, "n_scales");
 
     const T* scale_one = scales[0]->data<T>();
     const T* scale_two = scales[1]->data<T>();

@@ -46,7 +46,6 @@ void TDMSamplerInner(const Context &dev_ctx,
   int64_t input_ids_num = input_tensor.numel();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(input_ids_num, "input_ids_num");
 
   VLOG(3) << "TDM: input ids nums: " << input_ids_num;
   auto layer_nums = neg_samples_num_list.size();

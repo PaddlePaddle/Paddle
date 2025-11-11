@@ -123,7 +123,6 @@ void RowConvKernel(const Context &dev_ctx,
   int64_t timesteps = X->dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(timesteps, "timesteps");
 
   if (is_tensor) {
     for (int i = 0; i < batch_size + 1; i++) {
@@ -139,7 +138,6 @@ void RowConvKernel(const Context &dev_ctx,
   int64_t future_context = Filter->dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(future_context, "future_context");
 
   phi::MixVector<size_t> mix_vector(&batch_indices);
   size_t *idx = mix_vector.CUDAMutableData(dev_ctx.GetPlace());

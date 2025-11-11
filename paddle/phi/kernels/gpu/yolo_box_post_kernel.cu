@@ -411,7 +411,6 @@ void YoloBoxPostKernel(const Context& dev_ctx,
   int64_t batch = image_shape.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(batch, "batch");
 
   TensorInfo* ts_info = new TensorInfo[batch * boxes_input.size()];
   for (int i = 0; i < batch * static_cast<int>(boxes_input.size()); i++) {

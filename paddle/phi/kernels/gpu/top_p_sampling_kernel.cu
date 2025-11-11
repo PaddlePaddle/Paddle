@@ -1097,7 +1097,6 @@ void TopPSamplingKernel(const Context& dev_ctx,
   int64_t p_num = ps.numel();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(p_num, "p_num");
 
   int bs = in_dims[0];
   int vocab_size = in_dims[1];

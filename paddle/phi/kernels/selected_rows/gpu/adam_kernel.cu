@@ -241,7 +241,6 @@ void AdamDenseParamSparseGradKernel(
     int64_t ndim = param.numel();
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(ndim, "ndim");
 
     int blocks = (ndim + threads - 1) / threads;
 

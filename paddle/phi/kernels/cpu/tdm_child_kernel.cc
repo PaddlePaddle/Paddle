@@ -39,7 +39,6 @@ void TDMChildInner(const Context &dev_ctx,
   int64_t input_ids_num = input.numel();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(input_ids_num, "input_ids_num");
 
   VLOG(4) << "TDM child op: input numel ->  " << input_ids_num;
 

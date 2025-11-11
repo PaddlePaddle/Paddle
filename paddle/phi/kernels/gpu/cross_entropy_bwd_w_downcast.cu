@@ -244,7 +244,6 @@ void CrossEntropyWithSoftmaxBwdWithDowncastGPUKernel(
   int64_t axis_dim = logit_grad->dims()[axis_v];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "axis_dim");
 
   const int64_t n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());

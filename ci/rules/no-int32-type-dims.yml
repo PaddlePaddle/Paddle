@@ -30,25 +30,21 @@ constraints:
       - pattern: $E.dims()[$INDEX]
       - pattern: $E->dims[$INDEX]
       - pattern: $E->dims()[$INDEX]
-      - pattern: dims[$INDEX]
-      - pattern: dims()[$INDEX]
       # shape[...] / expr.shape()[...] / expr->shape()[...]
       - pattern: $E.shape[$INDEX]
       - pattern: $E.shape()[$INDEX]
       - pattern: $E->shape[$INDEX]
       - pattern: $E->shape()[$INDEX]
-      - pattern: shape[$INDEX]
-      - pattern: shape()[$INDEX]
       # strides[...] / expr.strides()[...] / expr->strides()[...]
       - pattern: $E.strides[$INDEX]
       - pattern: $E.strides()[$INDEX]
       - pattern: $E->strides[$INDEX]
       - pattern: $E->strides()[$INDEX]
-      - pattern: strides[$INDEX]
-      - pattern: strides()[$INDEX]
       # numel / numel()
       - pattern: $E.numel
       - pattern: $E.numel()
+      - pattern: $E->numel()
+      - pattern: $E->numel()
         # offset / offset()
         # unsafe
         # - pattern: $E.offset
@@ -56,4 +52,3 @@ constraints:
 fix: |
   int64_t $VAR = $RIGHT;
   // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX($VAR, "$VAR");

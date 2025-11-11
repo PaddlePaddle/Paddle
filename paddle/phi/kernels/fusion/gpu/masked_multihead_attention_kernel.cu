@@ -1012,17 +1012,14 @@ void DispatchWithDtype(const Context &dev_ctx,
   int64_t cache_bsz = cache_kv.dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(cache_bsz, "cache_bsz");
 
   int64_t max_seq_len = cache_kv.dims()[3];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "max_seq_len");
 
   int64_t dim_head = cache_kv.dims()[4];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(dim_head, "dim_head");
 
   int timestep = max_seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
@@ -1030,7 +1027,6 @@ void DispatchWithDtype(const Context &dev_ctx,
   int64_t k_num_head = cache_kv.dims()[2];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(k_num_head, "k_num_head");
 
   int v_num_head = k_num_head;
   // this num_head means query's head

@@ -49,12 +49,10 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
   int64_t rows = x.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
 
   int64_t cols = x.dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(cols, "cols");
 
   int r = 0;
   if (bias) {

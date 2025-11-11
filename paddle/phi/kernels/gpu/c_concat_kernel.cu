@@ -96,7 +96,6 @@ void CConcatKernel(const Context& dev_ctx,
   int64_t rows_per_tensor = x->dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(rows_per_tensor, "rows_per_tensor");
 
   int offset = 0;
   for (int i = 0; i < nranks; i++) {

@@ -386,7 +386,6 @@ void FusedMultiTransformerINT8OpKernel(
       int64_t max_seq_len = cache_kv->dims()[3];
       // TODO(large-tensor): downstream functors may still use int; guard until
       // upgraded.
-      PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "max_seq_len");
 
       phi::fusion::fmha<T>(dev_ctx,
                            qkv_out,
@@ -433,7 +432,6 @@ void FusedMultiTransformerINT8OpKernel(
       int64_t max_seq_len = cache_kv_out->dims()[3];
       // TODO(large-tensor): downstream functors may still use int; guard until
       // upgraded.
-      PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "max_seq_len");
 
       T *cache_kv_data = cache_kv_out->data<T>();
       int64_t cache_k_size = bsz * num_head * max_seq_len * dim_head;

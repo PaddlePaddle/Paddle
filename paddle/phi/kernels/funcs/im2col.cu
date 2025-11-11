@@ -124,22 +124,18 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
     int64_t filter_height = col->dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_height, "filter_height");
 
     int64_t filter_width = col->dims()[2];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_width, "filter_width");
 
     int64_t col_height = col->dims()[3];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_height, "col_height");
 
     int64_t col_width = col->dims()[4];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_width, "col_width");
 
     int num_outputs = im_channels * col_height * col_width;
     int num_thread = 1024;
@@ -274,22 +270,18 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
     int64_t filter_height = col.dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_height, "filter_height");
 
     int64_t filter_width = col.dims()[2];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_width, "filter_width");
 
     int64_t col_height = col.dims()[3];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_height, "col_height");
 
     int64_t col_width = col.dims()[4];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_width, "col_width");
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] -
@@ -439,37 +431,30 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     int64_t im_channels = im.dims()[0];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(im_channels, "im_channels");
 
     int64_t im_height = im.dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(im_height, "im_height");
 
     int64_t im_width = im.dims()[2];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(im_width, "im_width");
 
     int64_t filter_height = col->dims()[3];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_height, "filter_height");
 
     int64_t filter_width = col->dims()[4];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_width, "filter_width");
 
     int64_t col_height = col->dims()[0];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_height, "col_height");
 
     int64_t col_width = col->dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_width, "col_width");
 
     int block_dim_x = 0;
     int block_dim_y = 0;
@@ -578,37 +563,30 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     int64_t im_channels = im->dims()[0];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(im_channels, "im_channels");
 
     int64_t im_height = im->dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(im_height, "im_height");
 
     int64_t im_width = im->dims()[2];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(im_width, "im_width");
 
     int64_t filter_height = col.dims()[3];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_height, "filter_height");
 
     int64_t filter_width = col.dims()[4];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(filter_width, "filter_width");
 
     int64_t col_height = col.dims()[0];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_height, "col_height");
 
     int64_t col_width = col.dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(col_width, "col_width");
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] -

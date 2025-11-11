@@ -218,7 +218,6 @@ void FlashAttnV3BaseKernel(
   int64_t num_heads = q.dims()[q.dims().size() - 2];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(num_heads, "num_heads");
 
   int const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
@@ -1382,7 +1381,6 @@ void FlashMaskV2BaseKernel(
   int64_t num_heads = q.dims()[q.dims().size() - 2];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(num_heads, "num_heads");
 
   int const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];

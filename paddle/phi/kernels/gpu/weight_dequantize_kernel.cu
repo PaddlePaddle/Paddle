@@ -381,12 +381,10 @@ void WeightDequantize(const Context& dev_ctx,
   int64_t n = scale.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
 
   int64_t k = x.dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(k, "k");
 
   PADDLE_ENFORCE_EQ(
       (k % NUMPERTHREAD == 0),

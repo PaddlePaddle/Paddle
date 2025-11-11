@@ -74,7 +74,6 @@ void MultiEncoderXPUKernel(
   int64_t batch_size = x.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
 
   int seq_len = 1;
   int head_dim;
@@ -181,7 +180,6 @@ void MultiEncoderXPUKernel(
   int64_t batch = x.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(batch, "batch");
 
   // matmul_size * layer_num
   if (seq_lod_data) {
@@ -240,7 +238,6 @@ void MultiEncoderXPUKernel(
     int64_t max_seq_len_value = x.dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(max_seq_len_value, "max_seq_len_value");
 
     xpu::QKVAttnParam qkv_attn_param(batch,
                                      max_seq_len_value,
@@ -290,7 +287,6 @@ void MultiEncoderXPUKernel(
     int64_t max_seq_len_value = x.dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(max_seq_len_value, "max_seq_len_value");
 
     std::vector<int> lod;
     for (int i = 0; i < batch + 1; i++) {

@@ -119,12 +119,10 @@ void CudnnLSTMGradKernel(
   int64_t batch_size = x.dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
 
   int64_t input_size = x.dims()[2];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(input_size, "input_size");
 
   size_t workspace_size;
   size_t reserve_size;

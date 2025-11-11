@@ -464,17 +464,14 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
   int64_t cache_bsz = q.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(cache_bsz, "cache_bsz");
 
   int64_t max_seq_len = v.dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "max_seq_len");
 
   int64_t dim_head = v.dims()[3];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(dim_head, "dim_head");
 
   int timestep = max_seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
@@ -482,14 +479,12 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
   int64_t k_num_head = k.dims()[2];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(k_num_head, "k_num_head");
 
   int v_num_head = k_num_head;
   // this num_head means query's head
   int64_t num_head = q.dims()[2];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(num_head, "num_head");
 
   QkvUnpackMhaParams<T> params;
 

@@ -116,22 +116,18 @@ void SpatialTransformerResblockXPUKernel(
     int64_t xn = conv_filter[i]->dims()[0];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(xn, "xn");
 
     int64_t nc = conv_filter[i]->dims()[1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(nc, "nc");
 
     int64_t nh = conv_filter[i]->dims()[2];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(nh, "nh");
 
     int64_t nw = conv_filter[i]->dims()[3];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(nw, "nw");
 
     xft_conv_weights_.emplace_back(
         const_cast<int16_t*>(

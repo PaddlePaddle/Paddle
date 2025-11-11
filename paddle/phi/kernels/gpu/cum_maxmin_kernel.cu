@@ -269,7 +269,6 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int64_t row_size = x.dims()[ndim - 1];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(row_size, "row_size");
 
     int num_rows = x.numel() / row_size;
 

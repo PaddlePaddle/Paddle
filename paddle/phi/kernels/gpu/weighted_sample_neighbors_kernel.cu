@@ -334,7 +334,6 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   int64_t bs = x.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(bs, "bs");
 
   thread_local std::random_device rd;
   thread_local std::mt19937 gen(rd());

@@ -57,7 +57,6 @@ void FcXPUKernelImpl(const Context& dev_ctx,
   int64_t n = w.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
 
   auto* x_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
   const float* x_max_data =

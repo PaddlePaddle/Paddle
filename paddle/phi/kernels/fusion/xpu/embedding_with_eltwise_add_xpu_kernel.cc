@@ -110,7 +110,6 @@ void MultiEmbeddingKernel(const Context& dev_ctx,
     int64_t batch_size = mask_tensor->dims()[0];
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.
-    PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
 
     auto pad_seq_len = mask_tensor->dims()[1];
     max_seq_len->Resize({1});

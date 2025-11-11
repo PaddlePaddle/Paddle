@@ -1360,17 +1360,14 @@ void WeightOnlyGemvKernel(const Context& dev_ctx,
   int64_t m = x.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(m, "m");
 
   int64_t k = x.dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(k, "k");
 
   int64_t n = weight.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
 
   WeightOnlyGemvWrapper<T>(dev_ctx,
                            x_data,

@@ -136,7 +136,6 @@ void PsroiPoolKernel(const Context& dev_ctx,
   int64_t rois_num_t = rois.dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(rois_num_t, "rois_num_t");
 
   if (rois_num_t == 0) return;
   int rois_batch_size;

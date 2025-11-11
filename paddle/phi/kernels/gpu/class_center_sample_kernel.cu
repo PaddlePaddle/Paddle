@@ -335,7 +335,6 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   int64_t batch_size = label.numel();
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
 
   PADDLE_ENFORCE_LE(
       label.numel(),

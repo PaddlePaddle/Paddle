@@ -86,12 +86,10 @@ void LookupTableGradCUDAKernel(
   int64_t N = d_table_t->dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(N, "N");
 
   int64_t D = d_table_t->dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(D, "D");
 
   int K = ids_t->numel();
   const int64_t *ids = ids_t->data<int64_t>();

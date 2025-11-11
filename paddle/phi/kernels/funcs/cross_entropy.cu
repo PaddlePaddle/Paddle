@@ -125,12 +125,10 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   int64_t batch_size = prob->dims()[0];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
 
   int64_t class_num = prob->dims()[1];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(class_num, "class_num");
 
   constexpr int kMaxBlockDim = 512;
 

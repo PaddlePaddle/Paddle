@@ -45,7 +45,6 @@ void SkipLayerNormKernel(const Context &dev_ctx,
   int64_t hidden = x.dims()[2];
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
-  PADDLE_ENFORCE_LE_INT_MAX(hidden, "hidden");
 
   phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
