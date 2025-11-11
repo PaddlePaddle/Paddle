@@ -469,6 +469,7 @@ def test_native_code_function():
     res13 = paddle.base.libpaddle.is_compiled_with_distribute()
     res14 = paddle.base.libpaddle.is_compiled_with_brpc()
     res15 = paddle.base.libpaddle.is_compiled_with_dist()
+    res16 = paddle.device.cuda.get_device_properties()
     return (
         res1,
         res2,
@@ -486,6 +487,7 @@ def test_native_code_function():
         res13,
         res14,
         res15,
+        res16,
     )
 
 
