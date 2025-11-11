@@ -45,7 +45,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   int64_t n = theta->dims()[0];
 
   auto& size_attr = outputShape.GetData();
-  int64_t h_size_data[4] = {0};
+  int h_size_data[4] = {0};
   h_size_data[0] = n;
   h_size_data[1] = size_attr[1];
   h_size_data[2] = size_attr[2];
