@@ -69,6 +69,7 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
   virtual void Visit(StatAllocator* allocator);
   virtual void Visit(StreamSafeCUDAAllocator* allocator);
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator);
+  virtual void Visit(Allocator* allocator) {}
 };
 
 /**
