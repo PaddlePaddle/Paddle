@@ -48,9 +48,11 @@ class AllocatorVisitorReqImpl {
   virtual ~AllocatorVisitorReqImpl() = default;
   virtual void Visit(RetryAllocator* allocator) = 0;
   virtual void Visit(StatAllocator* allocator) = 0;
+  virtual void Visit(Allocator* allocator) {}
+#ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator) = 0;
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) = 0;
-  virtual void Visit(Allocator* allocator) {}
+#endif
 };
 
 /**
@@ -67,11 +69,14 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
   virtual ~AllocatorVisitor() = default;
   virtual void Visit(RetryAllocator* allocator);
   virtual void Visit(StatAllocator* allocator);
+  virtual void Visit(Allocator* allocator) {}
+#ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator);
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator);
-  virtual void Visit(Allocator* allocator) {}
+#endif
 };
 
+#ifdef PADDLE_WITH_CUDA
 /**
  * @brief FreeMemoryMetricsVisitor is a Concrete Visitor class designed to
  * inspect allocators for free memory information.
@@ -119,6 +124,7 @@ class FreeMemoryMetricsVisitor : public AllocatorVisitor {
   size_t large_size_ = 0;
   size_t sum_size_ = 0;
 };
+#endif
 
 }  // namespace memory
 }  // namespace paddle

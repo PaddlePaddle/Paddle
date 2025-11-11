@@ -17,8 +17,11 @@
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -31,6 +34,7 @@ void AllocatorVisitor::Visit(StatAllocator* allocator) {
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
 
+#ifdef PADDLE_WITH_CUDA
 void AllocatorVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
   const std::vector<StreamSafeCUDAAllocator*>& allocators =
       allocator->GetAllocatorByPlace();
@@ -51,5 +55,6 @@ void FreeMemoryMetricsVisitor::Visit(
   VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator large_free_size:"
           << large_size_ << " sum_free_size:" << sum_size_;
 }
+#endif
 }  // namespace memory
 }  // namespace paddle
