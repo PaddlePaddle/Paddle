@@ -24,7 +24,6 @@ from paddle.base import core
 
 
 def compiled_with_linux_and_cuda():
-    return False
     return (
         platform.system().lower().startswith("linux")
         and paddle.device.is_compiled_with_cuda()
