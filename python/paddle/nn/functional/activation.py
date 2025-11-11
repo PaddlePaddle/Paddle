@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
 from paddle._C_ops import (  # noqa: F401
     gelu,
+    softplus,
 )
 
 
@@ -1264,67 +1265,6 @@ def softmax_(
         dtype = convert_np_dtype_to_dtype_(dtype)
     outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
     return _C_ops.softmax_(outs_cast, axis)
-
-
-def softplus(
-    x: Tensor, beta: float = 1, threshold: float = 20, name: str | None = None
-) -> Tensor:
-    r"""
-    softplus activation
-
-    .. math::
-        softplus(x)=\begin{cases}
-                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
-                x,&x>\frac{\varepsilon}{\beta}.
-            \end{cases}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
-        beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
-        threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
-            >>> out = F.softplus(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.softplus(x, beta, threshold)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'softplus',
-        )
-        helper = LayerHelper('softplus', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='softplus',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'beta': beta, 'threshold': threshold},
-        )
-        return out
 
 
 def softshrink(

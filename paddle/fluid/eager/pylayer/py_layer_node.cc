@@ -171,8 +171,9 @@ GradNodePyLayer::operator()(
   auto outputs = PyObject_CallObject(backward_fn, backward_args);
   egr::Controller::Instance().SetHasGrad(need_grad_tmp);
   if (!outputs) {
-    PADDLE_THROW(
-        common::errors::External(pybind11::detail::error_string().c_str()));
+    std::string err_msg =
+        FormatPyLayerBackwardErrorMsg(this, pybind11::detail::error_string());
+    PADDLE_THROW(common::errors::External(err_msg.c_str()));
   }
 
   VLOG(6) << "PyLayer backward function finish...";

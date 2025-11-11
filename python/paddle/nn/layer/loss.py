@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
     from ..functional.loss import _ReduceMode
 
+from paddle.utils.decorator_utils import param_one_alias
 
 __all__ = []
 
@@ -1537,6 +1538,7 @@ class SmoothL1Loss(Layer):
         self.is_huber = is_huber
         self.name = name
 
+    @param_one_alias(["label", "target"])
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
         return F.smooth_l1_loss(
             input,

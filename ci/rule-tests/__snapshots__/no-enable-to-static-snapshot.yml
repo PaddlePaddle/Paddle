@@ -1,0 +1,20 @@
+id: no-enable-to-static
+snapshots:
+  enable_to_static(True):
+    labels:
+      - source: enable_to_static(True)
+        style: primary
+        start: 0
+        end: 22
+  jit.enable_to_static(False):
+    labels:
+      - source: jit.enable_to_static(False)
+        style: primary
+        start: 0
+        end: 27
+  paddle.jit.enable_to_static(True):
+    labels:
+      - source: paddle.jit.enable_to_static(True)
+        style: primary
+        start: 0
+        end: 33

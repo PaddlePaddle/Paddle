@@ -193,9 +193,14 @@
   args_alias:
     use_default_mapping : True
   pre_process:
-    func : SumPreProcess(x, axis)
+    static_func : SumPreProcess(x, axis)
   args_mapper :
     func : ArgSumMapper
+
+- op : tanh
+  name : [paddle.tanh, paddle.Tensor.tanh, paddle.nn.functional.tanh]
+  args_alias:
+    use_default_mapping : True
 
 - op : exp
   name : [paddle.exp, paddle.Tensor.exp]
@@ -235,3 +240,14 @@
   args_alias :
     value : [values]
     use_default_mapping : True
+
+- op : softplus
+  name : [paddle.nn.functional.softplus]
+  args_alias :
+    use_default_mapping : True
+- op : isclose
+  name : [paddle.isclose, paddle.Tensor.isclose]
+  args_alias :
+    use_default_mapping : True
+  pre_process:
+    static_func: IsClosePreProcess(x, y, rtol,atol)

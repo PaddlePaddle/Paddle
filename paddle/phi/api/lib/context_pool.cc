@@ -87,6 +87,20 @@ PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place) {
       static_cast<const phi::GPUContext*>(pool.Get(place));
   return dev_ctx->cuda_stream();
 }
+#elif defined(PADDLE_WITH_XPU)
+PADDLE_API cudaStream_t GetCurrentCUDAStream(const phi::Place& place) {
+  PADDLE_ENFORCE_EQ(place.GetType(),
+                    phi::AllocationType::XPU,
+                    common::errors::InvalidArgument(
+                        "GetCurrentCUDAStream only supports XPUPlace input. "
+                        "However, your input is place=%s",
+                        place));
+
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  const phi::XPUContext* dev_ctx =
+      static_cast<const phi::XPUContext*>(pool.Get(place));
+  return reinterpret_cast<cudaStream_t>(dev_ctx->stream());
+}
 #endif
 
 }  // namespace paddle
