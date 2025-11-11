@@ -40,10 +40,7 @@ size_t TotalMemoryCompactor::Compact(std::list<Block>& blocks,
 #ifndef PADDLE_WITH_CUDA
   return -1;
 #else
-  if (!IsContiguousAndAscending(blocks)) {
-    std::cerr << "blocks is not ascending order!!!" << std::endl;
-    return -1;
-  }
+  if (!IsContiguousAndAscending(blocks)) return -1;
   void* new_ptr = start_ptr;
   size_t remaining_size = 0;
   std::list<Block> new_blocks;
@@ -62,20 +59,12 @@ size_t TotalMemoryCompactor::Compact(std::list<Block>& blocks,
                                               src + offset,
                                               current_chunk,
                                               cudaMemcpyDeviceToDevice);
-            if (err != cudaSuccess) {
-              std::cerr << "cudaMemcpyAsync failed: " << cudaGetErrorString(err)
-                        << std::endl;
-              return -1;
-            }
+            if (err != cudaSuccess) return -1;
           }
         } else {
           cudaError_t err =
               cudaMemcpyAsync(dst, src, sz, cudaMemcpyDeviceToDevice);
-          if (err != cudaSuccess) {
-            std::cerr << "cudaMemcpy failed in TotalMemoryCompactor::compact."
-                      << std::endl;
-            return -1;
-          }
+          if (err != cudaSuccess) return -1;
         }
       }
       block.allocation_->set_ptr(new_ptr);

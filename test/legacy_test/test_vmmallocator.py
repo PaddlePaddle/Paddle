@@ -20,7 +20,8 @@ import paddle
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), 'should compile with cuda.'
+    (not paddle.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm,
+    'should compile with cuda.',
 )
 class TestVMMAllocator(unittest.TestCase):
     def setUp(self):
@@ -39,7 +40,7 @@ class TestVMMAllocator(unittest.TestCase):
             ["Alloc", 17 * self.GB, "0x100000004"],
         ]
 
-    def test_paddle(self):
+    def test_vmm_allocator(self):
         params = {}
         old_tensor1, old_tensor1_ptr, new_tensor1, new_tensor1_ptr = 0, 0, 0, 0
 
