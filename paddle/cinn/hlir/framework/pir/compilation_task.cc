@@ -320,7 +320,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
   ir::Module ir_moduleCX86 = context_->CX86_module_builder_.Build();
   cinn::common::OpDataTypePromote(&ir_module);
   cinn::common::OpDataTypePromote(&ir_moduleCX86);
-  VLOG(5) << "YUHAN!!! Begin BuildPirCINNKernelInfo";
+  VLOG(5) << "YUHAN!!! Begin BuildPirCINNKernelInfo " << context_->GetFusionHash();
   return BuildPirCINNKernelInfo(
       ir_module, ir_moduleCX86, context_->NeedCompileCX86Kernel());
 }
@@ -331,8 +331,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
     bool need_x86_kernel) {
   auto compilation_result = std::make_shared<pir::CompilationResult>(
       context_->target_, need_x86_kernel);
-  // 如果需要从其他地方获取hash，可以在这里设置
-  // compilation_result->SetFusionHash(some_hash_value);
+  
   
   auto backend_resource = std::make_shared<pir::BackendResource>(
       context_->target_,
@@ -340,7 +339,8 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->group_->FuncName() + "_infer_shape",
       context_->group_->symbol_args_map(),
       context_->group_->temp_space_sizes());
-  VLOG(5) << "Start to compile module into cuda kernel...";
+  VLOG(5) << "Start to compile module into cuda kernel..." << context_->GetFusionHash();
+  backend_resource->GetBackendCompiler()->SetFusionHash(context_->GetFusionHash());
   backend_resource->GetBackendCompiler()->Build(module, ""); // gen device Code, JIT Linking function
   backend_resource->GetBackendCompiler()->AppendCX86(CX86module); // 
   backend_resource->GetBackendCompiler()->EndCompile(); // 生成llvm IR加入jit
@@ -356,8 +356,7 @@ CompilationTask::CompileBroadcastModules(
     const std::unordered_map<int, ir::Var>& symbolic_shape_var_index) {
   auto compilation_result =
       std::make_shared<pir::CompilationResult>(context_->target_);
-  // 如果需要从其他地方获取hash，可以在这里设置
-  // compilation_result->SetFusionHash(some_hash_value);
+
   auto backend_resource = std::make_shared<pir::BackendResource>(
       context_->target_,
       context_->group_->FuncName(),

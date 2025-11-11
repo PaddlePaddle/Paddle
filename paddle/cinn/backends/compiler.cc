@@ -353,11 +353,7 @@ void Compiler::RegisterDeviceModuleSymbol() {
 
 void Compiler::RegisterCudaModuleSymbol() {
 #ifdef CINN_WITH_CUDA
-  // 获取CompilationResult的fusion hash
-  // if (compilation_result_) {
-  //   std::string fusion_hash = compilation_result_->GetFusionHash();
-  //   VLOG(3) << "RegisterCudaModuleSymbol with fusion hash: " << fusion_hash;
-  // }
+
   
   VLOG(3) << "RegisterCudaModuleSymbol with kernel cache: " << cinn_kernel_cache_;
   std::string source_code = CodeGenCudaDev::GetSourceHeader() + device_fn_code_;
@@ -684,7 +680,7 @@ void* Compiler::Lookup(std::string_view fn_name) {
 std::string Compiler::ComputeSourceHash(const std::string& source_code) {
   // 简单的哈希计算（实际应该使用更复杂的哈希算法）
   std::hash<std::string> hasher;
-  return std::to_string(hasher(source_code));
+  return std::to_string(fusion_hash_);
 }
 std::string Compiler::ExtractKernelName(const std::string& source_code) {
   // 从CUDA源码中提取kernel函数名
@@ -789,8 +785,9 @@ std::string Compiler::ExtractKernelName(const std::string& source_code) {
 }
 
 std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code) {
-  // 传统方式：直接生成fatbin文件
+  // 生成一个临时.cu文件，然后使用nvcc编译为.so文件
   std::string library_name = "cinn_kernel_" + std::to_string(std::time(nullptr)) + ".fatbin";
+  // std::string library_name = "cinn_kernel_" + std::to_string(std::time(nullptr)) + ".so";
   std::string library_path = "/tmp/" + library_name;
   
   // 编译fatbin
@@ -807,7 +804,17 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
                            "-DCUDA_VERSION=12030 " +
                            "-Wno-deprecated-gpu-targets " +
                            "--generate-code=arch=compute_90,code=sm_90";
-  
+  // std::string compile_cmd = "nvcc --shared -Xcompiler -fPIC -o " + library_path + " " + cuda_source_file + 
+  //                          " -arch=sm_90 --std=c++14 --expt-relaxed-constexpr " +
+  //                          "-I/workspace/xuyuhan/env3.10/lib/python3.10/site-packages/paddle/libs " +
+  //                          "-I/usr/local/cuda/include -include cuda_fp16.h " +
+  //                          "-DCINN_CUDA_FP16 -include cuda_fp8.h -DCINN_CUDA_FP8 " +
+  //                          "-DCUDA_VERSION=12030 " +
+  //                          "-Wno-deprecated-gpu-targets " +
+  //                          "--generate-code=arch=compute_90,code=sm_90";
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache FusionHash \n" << std::to_string(fusion_hash_);;
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache compile_cmd \n" << compile_cmd;
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache " << library_path;
   int result = std::system((compile_cmd + " > compile.log 2>&1").c_str());
   if (result != 0) {
     std::ifstream log_file("compile.log");
@@ -816,8 +823,8 @@ std::string Compiler::GenerateFatbinWithoutCache(const std::string& source_code)
     LOG(ERROR) << "Compilation failed with output:\n" << log_content;
     return "";
   }
-  
-  std::remove(cuda_source_file.c_str());
+  VLOG(3) << "Yuhan!!! GenerateFatbinWithoutCache " << library_path;
+  // std::remove(cuda_source_file.c_str());
   return library_path;
 }
 

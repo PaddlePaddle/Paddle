@@ -141,6 +141,16 @@ class Compiler final {
    */
   bool GetKernelCache() const { return cinn_kernel_cache_; }
 
+  /**
+   * Set pir fusion hash
+   */
+  void SetFusionHash(size_t hash) { fusion_hash_ = hash; }
+
+  /**
+   * Get pir fusion hash
+   */
+  size_t GetFusionHash() const { return fusion_hash_; }
+
  private:
   // do not register device symbol until end=true for build function
   void RegisterDeviceModuleSymbol();
@@ -176,6 +186,8 @@ class Compiler final {
   std::string device_fn_code_;
   // kernel cache control
   bool cinn_kernel_cache_{true};
+  size_t fusion_hash_{0};
+
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
   // dynamic library support

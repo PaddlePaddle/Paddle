@@ -227,15 +227,26 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
                                 std::unique_ptr<llvm::LLVMContext> context) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
   module->setDataLayout(jit_->getDataLayout());
-  if (VLOG_IS_ON(5)) {
-    VLOG(5) << "======= dump jit lib ==========";
-    std::string buffer;
-    llvm::raw_string_ostream os(buffer);
-    module->print(os, {});
-    // main_jd_->dump(os);
-    os.flush();
-    VLOG(5) << buffer;
+  // if (VLOG_IS_ON(5)) {
+  //   VLOG(5) << "======= dump jit lib ==========";
+  //   std::string buffer;
+  //   llvm::raw_string_ostream os(buffer);
+  //   module->print(os, {});
+  //   // main_jd_->dump(os);
+  //   os.flush();
+  //   VLOG(5) << buffer;
+  // }
+
+  std::error_code EC;
+  llvm::raw_fd_ostream out("/workspace/xuyuhan/test_so_cuda/module.ll", EC);
+  if (EC) {
+      LOG(ERROR) << "Failed to open file: " << EC.message();
+      return false;
   }
+  module->print(out, {});
+  out.close();
+  VLOG(5) << "LLVM IR dumped to module.ll";
+
   llvm::orc::ThreadSafeContext tsc(std::move(context));
   llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
   llvm::cantFail(jit_->addIRModule(std::move(tsm)));
