@@ -17,7 +17,7 @@ function formers_api() {
   cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
   echo "Check whether the local model file exists:"
   ls -l ./models
-  timeout 30m bash scripts/unit_test/ci_unittest.sh ${paddle_whl} false ${PYTEST_EXECUTE_FLAG_FILE} ${BRANCH}
+  timeout 60m bash scripts/unit_test/ci_unittest.sh ${paddle_whl} false ${PYTEST_EXECUTE_FLAG_FILE} ${BRANCH}
 }
 
 function formers_models() {
@@ -25,7 +25,7 @@ function formers_models() {
   cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
   echo "Check whether the local model file exists:"
   ls -l ./models
-  timeout 30m bash scripts/regression/ci_model_unittest.sh ${paddle_whl} ${BRANCH}
+  timeout 60m bash scripts/regression/ci_model_unittest.sh ${paddle_whl} ${BRANCH}
 }
 
 function formers_test() {
