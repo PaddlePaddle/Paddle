@@ -145,7 +145,7 @@ jobs:
           set -x
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON
           make -j20
           '
 
