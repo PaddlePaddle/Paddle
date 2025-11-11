@@ -30,7 +30,7 @@ class TestMemoryreserved(unittest.TestCase):
             )
 
     def func_test_memory_stats(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
             # 256 float32 data, with 4 bytes for each one
             alloc_size = 4 * 256
             # The chunk size of VMM allocator is aligned to granularity, which is at least 2 MB.
