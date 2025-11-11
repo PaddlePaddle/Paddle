@@ -608,7 +608,8 @@ class Module(nn.Layer):
         Returns:
             list of Tensor, a list of buffers.
         """
-        return super().buffers(include_sublayers=recurse)
+        ret = [buffer for _, buffer in self.named_buffers(recurse=recurse)]
+        return ret
 
     def named_buffers(
         self,

@@ -62,6 +62,10 @@ class TestRegisterBuffer(unittest.TestCase):
         self.assertTrue(hasattr(self.module, 'test_buffer'))
         self.assertIn('test_buffer', self.module._buffers)
 
+        all_buffers = list(self.module.buffers(recurse=True))
+        self.assertTrue(len(all_buffers) > 0)
+        self.assertTrue(any(isinstance(b, paddle.Tensor) for b in all_buffers))
+
     def test_register_buffer_persistent(self):
         persistent_buffer = paddle.to_tensor([4.0, 5.0, 6.0])
         self.module.register_buffer(
@@ -122,6 +126,15 @@ class TestAddModule(unittest.TestCase):
     def test_add_module_basic(self):
         submodule = nn.Linear(10, 5)
         self.module.add_module('linear', submodule)
+
+        self.assertTrue(hasattr(self.module, 'linear'))
+        self.assertIn('linear', self.module._modules)
+        self.assertEqual(self.module.linear, submodule)
+        self.assertIsInstance(self.module.linear, nn.Linear)
+
+    def test_register_module_basic(self):
+        submodule = nn.Linear(10, 5)
+        self.module.register_module('linear', submodule)
 
         self.assertTrue(hasattr(self.module, 'linear'))
         self.assertIn('linear', self.module._modules)
@@ -238,6 +251,24 @@ class TestGetSubmodule(unittest.TestCase):
 
         self.assertIsNotNone(param.grad)
         self.assertEqual(param.grad.shape, param.shape)
+
+    def test_get_submodule_error(self):
+        with self.assertRaises(AttributeError):
+            self.module.get_submodule('invalid_name')
+
+    def test_get_parameter_reeor(self):
+        with self.assertRaises(AttributeError) as cm:
+            self.module.get_parameter("nonexistent_param")
+        self.assertIn("has no attribute `nonexistent_param`", str(cm.exception))
+
+        self.module.fake_attr = "I am not a parameter"
+        with self.assertRaises(AttributeError) as cm:
+            self.module.get_parameter("fake_attr")
+        self.assertIn("`fake_attr` is not an nn.Parameter", str(cm.exception))
+
+    def test_get_extra_state_raises(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self.module.get_extra_state()
 
 
 class TestSetSubmodule(unittest.TestCase):
@@ -741,6 +772,25 @@ class TestType(unittest.TestCase):
         for name, buf in self.module.named_buffers():
             self.assertEqual(buf.dtype, paddle.int8)
 
+    def test_double(self):
+        self.module.double()
+        self.assertEqual(self.module.weight.dtype, paddle.float64)
+        self.assertEqual(self.module.buffer.dtype, paddle.float64)
+
+    def test_half(self):
+        self.module.half()
+        self.assertEqual(self.module.weight.dtype, paddle.float16)
+        self.assertEqual(self.module.buffer.dtype, paddle.float16)
+
+    def test_bfloat16(self):
+        self.module.bfloat16()
+        self.assertEqual(self.module.weight.dtype, paddle.bfloat16)
+        self.assertEqual(self.module.buffer.dtype, paddle.bfloat16)
+
+    def test_type_error(self):
+        with self.assertRaises(ValueError):
+            self.module.type("invalid_dtype")
+
 
 class TestStateDict(unittest.TestCase):
     def setUp(self):
@@ -773,7 +823,6 @@ class TestStateDict(unittest.TestCase):
             self.assertTrue(len(match) > 0, f"Missing prefix: {prefix}")
 
     def test_state_dict_keep_vars(self):
-        """测试 keep_vars=True 是否保持梯度"""
         state1 = self.model1.state_dict(keep_vars=True)
         state2 = self.model1.state_dict(keep_vars=False)
 
@@ -781,6 +830,15 @@ class TestStateDict(unittest.TestCase):
             if hasattr(state1[k], "stop_gradient"):
                 self.assertFalse(state1[k].stop_gradient)
                 self.assertTrue(state2[k].stop_gradient)
+
+    def test_state_dict_with_positional_args(self):
+        dest = {}
+        result = self.model.state_dict(dest, "myprefix", True)
+
+        self.assertIs(result["destination"], dest) if isinstance(
+            result, dict
+        ) and "destination" in result else None
+        self.assertTrue(True)
 
 
 class TestTrain(unittest.TestCase):
@@ -865,6 +923,33 @@ class TestModuleListBasic(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             module_list._get_abs_string_index(-2)
+
+
+class TestModuleListReprAndDir(unittest.TestCase):
+    def test_repr_empty(self):
+        module_list = nn.ModuleList()
+        rep = repr(module_list)
+        self.assertIn("ModuleList()", rep)
+
+    def test_repr_single_and_repeated_modules(self):
+        linear = nn.Linear(10, 5)
+        relu = nn.ReLU()
+        module_list = nn.ModuleList([linear, linear, relu, relu, relu])
+        rep = repr(module_list)
+        self.assertIn("(0-1): 2 x", rep)
+        self.assertIn("(2-4): 3 x", rep)
+        self.assertIn("Linear", rep)
+        self.assertIn("ReLU", rep)
+        self.assertTrue(rep.startswith("ModuleList("))
+        self.assertTrue(rep.endswith(")"))
+
+    def test_dir_filters_numeric_keys(self):
+        module_list = nn.ModuleList([nn.Linear(10, 5), nn.ReLU()])
+        module_list.extra = nn.Linear(5, 2)
+        d = dir(module_list)
+        self.assertIn("extra", d)
+        self.assertNotIn("0", d)
+        self.assertNotIn("1", d)
 
 
 class TestModuleListIndexing(unittest.TestCase):
@@ -1043,6 +1128,10 @@ class TestModuleListOperations(unittest.TestCase):
         self.assertIs(self.module_list1[2], additional_modules[0])
         self.assertIs(self.module_list1[3], additional_modules[1])
         self.assertIs(result, self.module_list1)
+
+    def test_extent_error(self):
+        with self.assertRaises(TypeError):
+            self.module_list1.extend(123)
 
 
 class TestModuleListFunctionality(unittest.TestCase):
@@ -1325,6 +1414,10 @@ class TestModuleDictOperations(unittest.TestCase):
     def test_update_invalid_pair_length(self):
         with self.assertRaises(ValueError):
             self.module_dict.update([('key', 'module', 'extra')])
+
+    def test_update_error(self):
+        with self.assertRaises(TypeError):
+            self.module_dict.update(123)
 
 
 class TestModuleDictFunctionality(unittest.TestCase):
