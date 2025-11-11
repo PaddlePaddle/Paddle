@@ -973,7 +973,7 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr,
      nullptr,
      nullptr},
-    {"shape",
+    {"_shape",
      (getter)tensor_properties_get_shape,
      nullptr,
      tensor_shape__doc__,

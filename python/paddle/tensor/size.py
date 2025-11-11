@@ -15,16 +15,16 @@ import functools
 from collections.abc import Iterable, Sequence
 
 
-class Size(tuple):
+class Size(list):
     """The result type of a call to ``paddle.Tensor.size()``.
-    It describes the size of all dimensions of the original tensor. As a subclass of tuple,
+    It describes the size of all dimensions of the original tensor. As a subclass of list,
     it supports all common sequence operations like indexing, slicing, concatenation, etc.
 
     Args:
         *args: Either a sequence of integers or multiple integer arguments representing dimensions.
 
     Returns:
-        Size: A special tuple subclass representing tensor dimensions.
+        Size: A special list subclass representing tensor dimensions.
 
     Examples:
         .. code-block:: python
@@ -35,7 +35,7 @@ class Size(tuple):
             paddle.Size([2, 3, 4])
     """
 
-    def __new__(cls, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         if len(args) == 1 and isinstance(args[0], Sequence):
             seq = args[0]
         else:
@@ -53,7 +53,7 @@ class Size(tuple):
                     f"paddle.Size() takes an iterable of 'int' (got {type(item).__name__})"
                 )
 
-        return super().__new__(cls, converted)
+        super().__init__(converted)
 
     def __repr__(self):
         if not self:
@@ -61,20 +61,20 @@ class Size(tuple):
         return f"paddle.Size([{', '.join(map(str, self))}])"
 
     def __add__(self, other: Iterable):
-        if isinstance(other, (tuple)):
-            return Size(super().__add__(tuple(other)))
+        if isinstance(other, tuple | list | Size):
+            return Size(super().__add__(list(other)))
         raise TypeError(
-            f"can only concatenate tuple (not {type(other).__name__}) to Size"
+            f"can only concatenate tuple | list | Size (not {type(other).__name__}) to Size"
         )
 
     def __radd__(self, other: Iterable):
-        if isinstance(other, (tuple)):
-            return Size(tuple(other).__add__(self))
+        if isinstance(other, tuple | list | Size):
+            return Size(list(other).__add__(self))
         raise TypeError(
-            f"can only concatenate tuple (not {type(other).__name__}) to Size"
+            f"can only concatenate tuple | list | Size (not {type(other).__name__}) to Size"
         )
 
-    def __mul__(self, other: Iterable):
+    def __mul__(self, other):
         if isinstance(other, int):
             return Size(super().__mul__(other))
         return NotImplemented
@@ -85,18 +85,16 @@ class Size(tuple):
         return functools.reduce(lambda x, y: x * y, self, 1)
 
     def __reduce__(self):
-        return (Size, (tuple(self),))
+        return (Size, (list(self),))
 
     def __concat__(self, other: Iterable):
-        if not isinstance(other, (tuple, Size)):
+        if not isinstance(other, tuple | Size | list):
             raise TypeError(
-                f"can only concatenate tuple (not {type(other).__name__}) to paddle.Size"
+                f"can only concatenate tuple | list | Size (not {type(other).__name__}) to paddle.Size"
             )
         return self + other
 
     def __getitem__(self, key):
-        from builtins import slice
-
         result = super().__getitem__(key)
         if isinstance(key, slice):
             return Size(result)
