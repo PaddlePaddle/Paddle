@@ -140,10 +140,10 @@ jobs:
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
           mkdir -p ${CFS_DIR}/.ccache/coverage
-          bash ${ci_scripts}/cmake-predownload.sh
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           set -x
           cd build
+          sleep 3d
           cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DFA_JOB_POOLS_COMPILE=2
           make -j20
           '
