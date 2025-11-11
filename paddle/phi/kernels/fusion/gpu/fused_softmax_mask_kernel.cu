@@ -54,15 +54,21 @@ __global__ void SoftmaxMaskFuseV1GPUKernel(const T* x_data,
   constexpr int kLocalBatchSize = (next_pow2 <= 128) ? 2 : 1;
   constexpr int kOneLoadingCounts = 4;
 
-  int data_first_idx =
-      (blockDim.y *
-           (blockIdx.x + gridDim.x * (blockIdx.y + gridDim.y * blockIdx.z)) +
-       threadIdx.y) *
-      kLocalBatchSize;
+  int64_t data_first_idx = (static_cast<int64_t>(blockDim.y) *
+                                (static_cast<int64_t>(blockIdx.x) +
+                                 static_cast<int64_t>(gridDim.x) *
+                                     (static_cast<int64_t>(blockIdx.y) +
+                                      static_cast<int64_t>(gridDim.y) *
+                                          static_cast<int64_t>(blockIdx.z))) +
+                            static_cast<int64_t>(threadIdx.y)) *
+                           kLocalBatchSize;
 
-  int mask_fist_idx =
-      (blockDim.y * (blockIdx.x + gridDim.x * blockIdx.z) + threadIdx.y) *
-      kLocalBatchSize;
+  int64_t mask_fist_idx = (static_cast<int64_t>(blockDim.y) *
+                               (static_cast<int64_t>(blockIdx.x) +
+                                static_cast<int64_t>(gridDim.x) *
+                                    static_cast<int64_t>(blockIdx.z)) +
+                           static_cast<int64_t>(threadIdx.y)) *
+                          kLocalBatchSize;
 
   // batch_count might not be a multiple of kLocalBatchSize. Check how
   // many batches have to computed within this WARP.

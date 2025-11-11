@@ -2511,6 +2511,11 @@ def get_setup_parameters():
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
     if (
+        env_dict.get("WITH_XPU") == 'ON'
+        and env_dict.get("WITH_XPU_XRE5") == 'ON'
+    ):
+        packages.extend(['paddle.distributed.communication.deep_ep'])
+    if (
         env_dict.get("WITH_GPU") == 'ON'
         and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
         and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
