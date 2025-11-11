@@ -817,14 +817,20 @@ def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
     )
 
 
-def legacy_reduction_decorator(init_func):
+def legacy_reduction_decorator(
+    init_func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
     """
     Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
     """
 
     @functools.wraps(init_func)
-    def wrapper(self, *args, **kwargs):
-        cls_name = self.__class__.__name__
+    def wrapper(self, *args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        cls_name = init_func.__qualname__.split(
+            "."
+        )[
+            0
+        ]  # avoid subclass calling parent class init, causing cls_name to be inaccurate
         reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
             cls_name, args, kwargs
         )
@@ -833,17 +839,21 @@ def legacy_reduction_decorator(init_func):
 
         return init_func(self, *args, **kwargs)
 
+    wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
 
 
-def legacy_reduction_special_decorator(init_func):
+def legacy_reduction_special_decorator(
+    init_func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
     """
-    Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment based on general logic.
+    Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment
+    based on the general legacy_reduction_decorator logic.
     """
 
     @functools.wraps(init_func)
-    def wrapper(self, *args, **kwargs):
-        cls_name = self.__class__.__name__
+    def wrapper(self, *args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        cls_name = init_func.__qualname__.split(".")[0]
         reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
             cls_name, args, kwargs
         )
@@ -863,4 +873,5 @@ def legacy_reduction_special_decorator(init_func):
                 raise_deprecated_error(cls_name, reduce_val, size_avg_val)
         return init_func(self, *args, **kwargs)
 
+    wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
