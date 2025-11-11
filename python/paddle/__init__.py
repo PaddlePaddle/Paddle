@@ -269,6 +269,7 @@ from .framework import (  # noqa: F401
     set_default_dtype,
 )
 from .framework.random import (
+    Generator,
     get_cuda_rng_state,
     get_rng_state,
     seed,
@@ -1481,6 +1482,7 @@ __all__ = [
     'conv3d',
     'manual_seed',
     'softmax',
+    'Generator',
 ]
 import os
 
