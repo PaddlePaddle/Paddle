@@ -27,6 +27,13 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
+auto is_integer_or_bool = [](const pir::Type& x) {
+  return x.isa<pir::IndexType>() || x.isa<pir::Int64Type>() ||
+         x.isa<pir::Int32Type>() || x.isa<pir::Int16Type>() ||
+         x.isa<pir::Int8Type>() || x.isa<pir::UInt8Type>() ||
+         x.isa<pir::BoolType>();
+};
+
 pir::Type GetOutputDtype(const pir::Type& x, const pir::Type& y) {
   pir::IrContext* context = pir::IrContext::Instance();
   // type promotion
@@ -37,13 +44,7 @@ pir::Type GetOutputDtype(const pir::Type& x, const pir::Type& y) {
     return pir::Complex64Type::get(context);
   }
 
-  if (x.isa<pir::IndexType>() || y.isa<pir::IndexType>() ||
-      x.isa<pir::Int64Type>() || y.isa<pir::Int64Type>() ||
-      x.isa<pir::Int32Type>() || y.isa<pir::Int32Type>() ||
-      x.isa<pir::Int16Type>() || y.isa<pir::Int16Type>() ||
-      x.isa<pir::Int8Type>() || y.isa<pir::Int8Type>() ||
-      x.isa<pir::UInt8Type>() || y.isa<pir::UInt8Type>() ||
-      x.isa<pir::BoolType>() || y.isa<pir::BoolType>()) {
+  if (is_integer_or_bool(x) || is_integer_or_bool(y)) {
     PADDLE_THROW(::common::errors::InvalidType(
         "Type promotion only support calculations between floating-point "
         "numbers and between complex and real numbers. But got different "

@@ -15,21 +15,25 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+)
 
 import paddle
 
 SEED = 2025
 np.random.seed(SEED)
+paddle.seed(SEED)
 
 
 def func(x, y):
     return x + y
 
 
-class TestAddCastToElementwiseAddPass(unittest.TestCase):
+class TestAddCastToElementwiseAddPass(Dy2StTestBase):
     # test AddCastToElementwiseAddPass
     def test_bf16(self, dtype="float16"):
-        static_fn = paddle.jit.to_static(func, full_graph=False, backend="CINN")
+        static_fn = paddle.jit.to_static(func)
         x = paddle.randn([200, 200])
         y = paddle.randn([200, 200], dtype=dtype)
         np.testing.assert_allclose(
