@@ -25,12 +25,12 @@ class TestMultiScaleAllocator(unittest.TestCase):
         self.GB = 1000**3
         self.MB = 1000**2
         self.cmds = [
-            ["Alloc", 6 * self.GB, "0x100000000"],
-            ["Alloc", 11 * self.GB, "0x100000001"],
+            ["Alloc", 1 * self.GB, "0x100000000"],
+            ["Alloc", 2 * self.GB, "0x100000001"],
             ["Alloc", 1 * self.GB, "0x100000002"],
-            ["Alloc", 10 * self.GB, "0x100000003"],
-            ["Free", 6 * self.GB, "0x100000000"],
-            ["Free", 10 * self.GB, "0x100000003"],
+            ["Alloc", 2 * self.GB, "0x100000003"],
+            ["Free", 1 * self.GB, "0x100000000"],
+            ["Free", 2 * self.GB, "0x100000003"],
         ]
 
     def allocate_cmds(self, cmds):
@@ -71,7 +71,7 @@ class TestMultiScaleAllocator(unittest.TestCase):
         paddle.set_flags(
             {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
         )
-        paddle.set_flags({'FLAGS_vmm_small_pool_size_in_mb': 7168})
+        paddle.set_flags({'FLAGS_vmm_small_pool_size_in_mb': 1536})
         paddle.set_flags({'FLAGS_vmm_small_pool_pre_alloc_in_mb': 512})
         paddle.set_flags({'FLAGS_vmm_large_pool_pre_alloc_in_mb': 2048})
         params = self.allocate_cmds(self.cmds)
