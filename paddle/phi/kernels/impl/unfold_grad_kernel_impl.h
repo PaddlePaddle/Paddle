@@ -40,18 +40,18 @@ void UnfoldGradKernel(const Context& dev_ctx,
   const auto& x_dims = x_grad->dims();
   const int64_t batch_size = x_dims[0];
 
-  int out_height = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[2]),
-                                              kernel_sizes[0],
-                                              dilations[0],
-                                              paddings[0],
-                                              paddings[2],
-                                              strides[0]);
-  int out_width = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[3]),
-                                             kernel_sizes[1],
-                                             dilations[1],
-                                             paddings[1],
-                                             paddings[3],
-                                             strides[1]);
+  int64_t out_height = phi::funcs::CalcOutputSize(x_dims[2],
+                                                  kernel_sizes[0],
+                                                  dilations[0],
+                                                  paddings[0],
+                                                  paddings[2],
+                                                  strides[0]);
+  int64_t out_width = phi::funcs::CalcOutputSize(x_dims[3],
+                                                 kernel_sizes[1],
+                                                 dilations[1],
+                                                 paddings[1],
+                                                 paddings[3],
+                                                 strides[1]);
 
   DDim x_shape = common::make_ddim({x_dims[1], x_dims[2], x_dims[3]});
   DDim out_matrix_shape = common::make_ddim(

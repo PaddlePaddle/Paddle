@@ -111,7 +111,6 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
       desired_shape, strides_array);
 
   const int64_t N = numel;
-
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);

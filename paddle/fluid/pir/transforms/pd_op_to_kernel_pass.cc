@@ -74,7 +74,7 @@ COMMON_DECLARE_bool(use_onednn);
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(enable_collect_shape);
-COMMON_DECLARE_bool(torch_compatible_kernel);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 REGISTER_FILE_SYMBOLS(pd_op_to_kernel_pass);
 namespace paddle::dialect {
 
@@ -283,7 +283,7 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     }
   } else if ((op->isa<AffineGridOp>() || op->isa<AffineGridGradOp>()) &&
              kernel_key.backend() == phi::Backend::GPUDNN) {
-    if (FLAGS_torch_compatible_kernel) {
+    if (FLAGS_use_accuracy_compatible_kernel) {
       return true;
     }
     bool use_cudnn = true;
