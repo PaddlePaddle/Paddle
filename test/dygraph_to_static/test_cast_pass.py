@@ -14,7 +14,12 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
+
+SEED = 2025
+np.random.seed(SEED)
 
 
 def func(x, y):
@@ -23,8 +28,17 @@ def func(x, y):
 
 class TestAddCastToElementwiseAddPass(unittest.TestCase):
     # test AddCastToElementwiseAddPass
-    def test():
+    def test_bf16(self, dtype="float16"):
         static_fn = paddle.jit.to_static(func, full_graph=False, backend="CINN")
         x = paddle.randn([200, 200])
-        y = paddle.randn([200, 200], dtype="bfloat16")
-        out = static_fn(x, y)
+        y = paddle.randn([200, 200], dtype=dtype)
+        np.testing.assert_allclose(
+            static_fn(x, y).numpy(), x.numpy() + y.cast("float32").numpy()
+        )
+
+    def test_fp16(self):
+        self.test_bf16("float16")
+
+
+if __name__ == '__main__':
+    unittest.main()
