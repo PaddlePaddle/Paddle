@@ -1699,13 +1699,14 @@ PYBIND11_MODULE(libpaddle, m) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 #if defined(_WIN32)
     PADDLE_THROW(common::errors::Unavailable(
-        "ipc_collect is not supported on Windows (CUDA IPC)."));
+        "ipc_collect is not supported on Windows (CUDA/XPU IPC)."));
 #else
       paddle::memory::allocation::IpcCollect();
+#endif
 #else
       PADDLE_THROW(common::errors::Unavailable(
-                "Paddle is not compiled with CUDA/XPU, "
-                "so `ipc_collect` cannot be used."));
+        "Paddle is not compiled with CUDA/XPU, "
+        "so `ipc_collect` cannot be used."));
 #endif
   });
 
