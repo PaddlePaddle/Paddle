@@ -4091,7 +4091,7 @@
 
 - backward_op: fast_ln_grad
   forward: fast_ln (Tensor x, Tensor scale, Tensor bias, float epsilon) -> Tensor(y), Tensor(mean), Tensor(invvar)
-  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, float epsilon)
+  args: (Tensor x, Tensor scale, Tensor mean, Tensor invvar, Tensor y_grad, float epsilon)
   output: Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta:
     func: FastLayerNormGradInfermeta

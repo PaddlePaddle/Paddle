@@ -2246,7 +2246,7 @@ void MoeGateDispatchAutoGradInferMeta(const MetaTensor& combine_weights,
 void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const MetaTensor& invvar,
-                               const MetaTensor& dy,
+                               const MetaTensor& y_grad,
                                float epsilon,
                                MetaTensor* x_grad,
                                MetaTensor* scale_grad) {
@@ -2275,12 +2275,20 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
 
 PADDLE_API void FastLayerNormGradInfermeta(const MetaTensor& x,
                                            const MetaTensor& scale,
+                                           const MetaTensor& mean,
                                            const MetaTensor& invvar,
                                            const MetaTensor& y_grad,
                                            float epsilon,
                                            MetaTensor* x_grad,
                                            MetaTensor* scale_grad,
                                            MetaTensor* bias_grad) {
+  std::cout << "bwd: invvar.shape: " << invvar.dims() << std::endl;
+  std::cout << "bwd: invvar.meta: " << &invvar << std::endl;
+  std::cout << "========BW: before infermeta: ========" << std::endl;
+  std::cout << "x addr : " << &(x) << std::endl;
+  std::cout << "scale addr: " << &(scale) << std::endl;
+  std::cout << "invvar addr : " << &(invvar) << std::endl;
+  std::cout << "==================" << std::endl;
   PADDLE_ENFORCE_EQ(
       x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
           x.dtype() == DataType::BFLOAT16,
@@ -2298,13 +2306,23 @@ PADDLE_API void FastLayerNormGradInfermeta(const MetaTensor& x,
                                       scale.dtype()));
   if (x_grad && x) {
     x_grad->share_meta(x);
+    std::cout << "[infermeta]x_grad.shape: " << x_grad->dims() << std::endl;
   }
   if (scale_grad && scale) {
     scale_grad->share_meta(scale);
+    std::cout << "[infermeta]scale_grad.shape: " << scale_grad->dims()
+              << std::endl;
   }
   if (bias_grad) {
     bias_grad->share_meta(scale);
+    std::cout << "[infermeta]bias_grad.shape: " << bias_grad->dims()
+              << std::endl;
   }
+  std::cout << "========BW: After infermeta: ========" << std::endl;
+  std::cout << "x addr : " << &(x) << std::endl;
+  std::cout << "scale addr: " << &(scale) << std::endl;
+  std::cout << "invvar addr : " << &(invvar) << std::endl;
+  std::cout << "==================" << std::endl;
 }
 
 PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,

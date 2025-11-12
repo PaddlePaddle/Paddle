@@ -30,29 +30,21 @@ void LnBwdKernel(const Context &dev_ctx,
                  const DenseTensor &scale,
                  const DenseTensor &mean,
                  const DenseTensor &invvar,
-                 const DenseTensor &dy,
-                 const float epsilon,
-                 DenseTensor *dx,
-                 DenseTensor *dscale,
-                 DenseTensor *dbias) {
+                 const DenseTensor &y_grad,
+                 float epsilon,
+                 DenseTensor *x_grad,
+                 DenseTensor *scale_grad,
+                 DenseTensor *bias_grad) {
   auto input_type = x.type();
   auto weight_type = scale.type();
   auto output_type = weight_type;
   auto compute_type = paddle::DataType::FLOAT32;
 
-  PD_CHECK(dy.dtype() == output_type);
-  PD_CHECK(mean.dtype() == compute_type);
-  PD_CHECK(invvar.dtype() == compute_type);
+  PD_CHECK(y_grad.dtype() == output_type);
 
-  PD_CHECK(!x.is_cpu());
-  PD_CHECK(!dy.is_cpu());
-  PD_CHECK(!mean.is_cpu());
-  PD_CHECK(!invvar.is_cpu());
-  PD_CHECK(!scale.is_cpu());
-
-  auto sizes = x.shape();
+  auto sizes = x.dims();
   PD_CHECK(sizes.size() >= 2);
-  PD_CHECK(dy.shape() == sizes);
+  PD_CHECK(y_grad.dims() == sizes);
 
   int64_t rows = 1;
   for (size_t i = 0; i + 1 < sizes.size(); ++i) {
@@ -63,34 +55,37 @@ void LnBwdKernel(const Context &dev_ctx,
   auto hidden_size = scale.numel();
 
   PD_CHECK(mean.numel() == rows);
-  PD_CHECK(mean.shape() == invvar.shape());
+
+  PD_CHECK(mean.dims() == invvar.dims());
 
   PD_CHECK(scale.numel() == cols);
 
-  auto dx = paddle::empty_like(x);
-  auto dscale = paddle::empty_like(scale);
-  auto dbias = paddle::empty_like(scale);
+  dev_ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(scale_grad);
+  dev_ctx.template Alloc<T>(bias_grad);
 
   auto place = x.place();
 
-  LaunchNormBwd(x.stream(),
-                place,
-                /* x_ptr */ x.data(),
-                /* scale_ptr */ scale.data(),
-                /* mean_ptr */ mean.data(),
-                /* invvar_ptr */ invvar.data(),
-                /* dy_ptr */ dy.data(),
-                /* dx_ptr */ dx.data(),
-                /* dscale_ptr */ dscale.data(),
-                /* dbias_ptr */ dbias.data(),
-                weight_type,
-                input_type,
-                output_type,
-                compute_type,
-                hidden_size,
-                rows,
-                cols,
-                epsilon);
+  LaunchNormBwd<T, Context>(
+      dev_ctx,
+      dev_ctx.stream(),
+      place,
+      /* x_ptr */ x.data(),
+      /* scale_ptr */ scale.data(),
+      /* mean_ptr */ mean.data(),
+      /* invvar_ptr */ invvar.data(),
+      /* y_grad_ptr */ y_grad.data(),
+      /* x_grad_ptr */ x_grad ? x_grad->data() : nullptr,
+      /* scale_grad_ptr */ scale_grad ? scale_grad->data() : nullptr,
+      /* bias_grad_ptr */ bias_grad ? bias_grad->data() : nullptr,
+      weight_type,
+      input_type,
+      output_type,
+      compute_type,
+      hidden_size,
+      rows,
+      cols,
+      epsilon);
 }
 }  // namespace phi
 

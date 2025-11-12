@@ -671,14 +671,11 @@ void FastLayerNormInfermeta(const MetaTensor& x,
   y->set_dims(x_dim);
   y->set_dtype(scale_dtype);
 
-  if (mean) {
-    mean->set_dims({matrix_dim[0]});
-    mean->set_dtype(paddle::DataType::FLOAT32);
-  }
-  if (invvar) {
-    variance->set_dims({matrix_dim[0]});
-    variance->set_dtype(paddle::DataType::FLOAT32);
-  }
+  auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
+  mean->set_dims({row_shape});
+  mean->set_dtype(paddle::DataType::FLOAT32);
+  invvar->set_dims({row_shape});
+  invvar->set_dtype(paddle::DataType::FLOAT32);
 }
 void FakeQuantizeRangeAbsMaxInferMeta(const MetaTensor& x,
                                       const MetaTensor& in_scale,

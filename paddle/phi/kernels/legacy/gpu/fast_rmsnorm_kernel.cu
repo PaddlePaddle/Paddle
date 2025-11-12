@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void RMSLnFwdKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& scale,
-                    const float epsilon,
+                    float epsilon,
                     DenseTensor* y,
                     DenseTensor* invvar) {
   auto input_type = x.type();
@@ -35,13 +35,8 @@ void RMSLnFwdKernel(const Context& dev_ctx,
   auto output_type = weight_type;
   auto compute_type = paddle::DataType::FLOAT32;
 
-  PD_CHECK(!x.is_cpu());
-  PD_CHECK(!scale.is_cpu());
-
-  auto sizes = x.shape();
+  auto sizes = x.dims();
   PD_CHECK(sizes.size() >= 2);
-
-  std::vector<int> row_sizes(sizes.begin(), sizes.begin() + sizes.size() - 1);
 
   const int cols = sizes[sizes.size() - 1];
   const int rows = x.numel() / cols;
@@ -51,26 +46,26 @@ void RMSLnFwdKernel(const Context& dev_ctx,
   PD_CHECK(epsilon >= 0.f);
 
   auto place = x.place();
+  dev_ctx.template Alloc<T>(y);
+  dev_ctx.template Alloc<float>(invvar);
 
-  auto y = paddle::empty(sizes, output_type, place);
-  auto invvar = paddle::empty({row_sizes}, compute_type, place);
-
-  LaunchNormFwd(x.stream(),
-                place,
-                /* x_ptr */ x.data(),
-                /* scale_ptr */ scale.data(),
-                /* bias_ptr */ nullptr,
-                /* y_ptr */ y.data(),
-                /* mean_ptr */ nullptr,
-                /* invvar_ptr */ invvar.data(),
-                weight_type,
-                input_type,
-                output_type,
-                compute_type,
-                hidden_size,
-                rows,
-                cols,
-                epsilon);
+  LaunchNormFwd<T, Context>(dev_ctx,
+                            dev_ctx.stream(),
+                            place,
+                            /* x_ptr */ x.data(),
+                            /* scale_ptr */ scale.data(),
+                            /* bias_ptr */ nullptr,
+                            /* y_ptr */ y->data(),
+                            /* mean_ptr */ nullptr,
+                            /* invvar_ptr */ invvar->data(),
+                            weight_type,
+                            input_type,
+                            output_type,
+                            compute_type,
+                            hidden_size,
+                            rows,
+                            cols,
+                            epsilon);
 }
 }  // namespace phi
 

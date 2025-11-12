@@ -825,7 +825,7 @@ PADDLE_API void MoeGateDispatchAutoGradInferMeta(
 PADDLE_API void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                           const MetaTensor& scale,
                                           const MetaTensor& invvar,
-                                          const MetaTensor& dy,
+                                          const MetaTensor& y_grad,
                                           float epsilon,
                                           MetaTensor* x_grad,
                                           MetaTensor* scale_grad);
@@ -845,6 +845,7 @@ PADDLE_API void IndexElementwiseGetGradInferMeta(
 
 PADDLE_API void FastLayerNormGradInfermeta(const MetaTensor& x,
                                            const MetaTensor& scale,
+                                           const MetaTensor& mean,
                                            const MetaTensor& invvar,
                                            const MetaTensor& y_grad,
                                            float epsilon,

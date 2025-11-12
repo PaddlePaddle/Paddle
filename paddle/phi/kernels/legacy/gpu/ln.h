@@ -25,7 +25,25 @@
 #include <cstdio>
 #include <unordered_map>
 
-#include "paddle/extension.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
+
+#define EMPTY_LIKE(dev_ctx, x)                                   \
+  [&]() -> DenseTensor {                                         \
+    if (x.dtype() == phi::DataType::BFLOAT16) {                  \
+      return phi::EmptyLike<phi::bfloat16, Context>(dev_ctx, x); \
+    } else if (x.dtype() == phi::DataType::FLOAT32) {            \
+      return phi::EmptyLike<float, Context>(dev_ctx, x);         \
+    } else if (x.dtype() == phi::DataType::FLOAT16) {            \
+      return phi::EmptyLike<phi::float16, Context>(dev_ctx, x);  \
+    } else {                                                     \
+      PD_THROW("Unsupported data type for EMPTY_LIKE macro.");   \
+    }                                                            \
+  }()
 
 namespace layer_norm {
 
@@ -34,7 +52,7 @@ struct LaunchParams {
   size_t workspace_bytes;
   size_t barrier_size;
 
-  cudaDeviceProp *props;
+  cudaDeviceProp* props;
 
   cudaStream_t stream;
 
@@ -61,24 +79,24 @@ struct ParamsBase {
   int cols;
 
   // Common data pointers.
-  void *x;
-  void *mean;
-  void *invvar;
-  void *scale;
+  void* x;
+  void* mean;
+  void* invvar;
+  void* scale;
 
   // Multi-CTA workspace in gmem.
-  void *workspace;
+  void* workspace;
 
   // Multi-CTA sync barriers in gmem.
-  int *barrier;
+  int* barrier;
 };
 
 struct FwdParams : public ParamsBase {
   FwdParams() : ParamsBase(), y(nullptr), bias(nullptr), epsilon(0.f) {}
 
   // Output of LN FWD.
-  void *y;
-  void *bias;
+  void* y;
+  void* bias;
   float epsilon;
 };
 
@@ -93,21 +111,21 @@ struct BwdParams : public ParamsBase {
         dscale(nullptr) {}
 
   // Input: gradient wrt. LN FWD output.
-  void *dy;
+  void* dy;
 
   // Workspace for Wgrad pre-reduction.
-  void *dbias_part;
-  void *dscale_part;
+  void* dbias_part;
+  void* dscale_part;
 
   // Output: Dgrad.
-  void *dx;
+  void* dx;
   // Output: Wgrad.
-  void *dbias;
-  void *dscale;
+  void* dbias;
+  void* dscale;
 };
 
-using FwdFunction = std::function<void(LaunchParams<FwdParams> &, const bool)>;
-using BwdFunction = std::function<void(LaunchParams<BwdParams> &, const bool)>;
+using FwdFunction = std::function<void(LaunchParams<FwdParams>&, const bool)>;
+using BwdFunction = std::function<void(LaunchParams<BwdParams>&, const bool)>;
 using FunctionKey = uint64_t;
 using FwdRegistry = std::unordered_map<FunctionKey, FwdFunction>;
 using BwdRegistry = std::unordered_map<FunctionKey, BwdFunction>;
@@ -207,13 +225,14 @@ uint64_t get_key(paddle::DataType weight_type,
 
 }  // namespace layer_norm
 
-layer_norm::FwdFunction &get_fwd_launcher(paddle::DataType weight_type,
+namespace phi {
+layer_norm::FwdFunction& get_fwd_launcher(paddle::DataType weight_type,
                                           paddle::DataType input_type,
                                           paddle::DataType output_type,
                                           paddle::DataType compute_type,
                                           uint32_t hidden_size);
 
-layer_norm::BwdFunction &get_bwd_launcher(paddle::DataType weight_type,
+layer_norm::BwdFunction& get_bwd_launcher(paddle::DataType weight_type,
                                           paddle::DataType input_type,
                                           paddle::DataType output_type,
                                           paddle::DataType compute_type,
@@ -227,19 +246,21 @@ inline static cudaDeviceProp GetDevicePropImpl() {
   return prop;
 }
 
-inline static cudaDeviceProp *GetDeviceProp() {
+inline static cudaDeviceProp* GetDeviceProp() {
   static auto prop = GetDevicePropImpl();
   return &prop;
 }
 
-void LaunchNormFwd(const cudaStream_t &stream,
-                   const paddle::Place &place,
-                   const void *x_ptr,
-                   const void *scale_ptr,
-                   const void *bias_ptr,
-                   void *y_ptr,
-                   void *mean_ptr,
-                   void *invvar_ptr,
+template <typename T, typename Context>
+void LaunchNormFwd(const Context& dev_ctx,
+                   const cudaStream_t& stream,
+                   const paddle::Place& place,
+                   const void* x_ptr,
+                   const void* scale_ptr,
+                   const void* bias_ptr,
+                   void* y_ptr,
+                   void* mean_ptr,
+                   void* invvar_ptr,
                    const paddle::DataType weight_type,
                    const paddle::DataType input_type,
                    const paddle::DataType output_type,
@@ -247,18 +268,57 @@ void LaunchNormFwd(const cudaStream_t &stream,
                    const uint32_t hidden_size,
                    const int64_t rows,
                    const int64_t cols,
-                   const float epsilon);
+                   const float epsilon) {
+  layer_norm::LaunchParams<layer_norm::FwdParams> launch_params;
 
-void LaunchNormBwd(const cudaStream_t &stream,
-                   const paddle::Place &place,
-                   const void *x_ptr,
-                   const void *scale_ptr,
-                   const void *mean_ptr,
-                   const void *invvar_ptr,
-                   const void *dy_ptr,
-                   void *dx_ptr,
-                   void *dscale_ptr,
-                   void *dbias_ptr,
+  launch_params.props = GetDeviceProp();
+  launch_params.stream = stream;
+
+  // Request the kernel launcher.
+  auto launcher = get_fwd_launcher(
+      weight_type, input_type, output_type, compute_type, hidden_size);
+
+  // Query the kernel-specific launch parameters.
+  launcher(launch_params, true);
+
+  // Set the kernel runtime parameters.
+  layer_norm::FwdParams& params = launch_params.params;
+  params.rows = rows;
+  params.cols = cols;
+  params.x = const_cast<void*>(x_ptr);
+  params.scale = const_cast<void*>(scale_ptr);
+  params.bias = const_cast<void*>(bias_ptr);
+  params.y = y_ptr;
+  params.mean = mean_ptr;
+  params.invvar = invvar_ptr;
+  params.epsilon = epsilon;
+
+  DenseTensor workspace = phi::Empty<uint8_t, Context>(
+      dev_ctx,
+      phi::IntArray({static_cast<int64_t>(launch_params.workspace_bytes)}));
+  DenseTensor barrier = phi::Full<int, Context>(
+      dev_ctx,
+      phi::IntArray({static_cast<int64_t>(launch_params.barrier_size)}),
+      0);
+
+  params.workspace = workspace.data();
+  params.barrier = barrier.data<int>();
+
+  launcher(launch_params, false);
+}
+
+template <typename T, typename Context>
+void LaunchNormBwd(const Context& dev_ctx,
+                   const cudaStream_t& stream,
+                   const paddle::Place& place,
+                   const void* x_ptr,
+                   const void* scale_ptr,
+                   const void* mean_ptr,
+                   const void* invvar_ptr,
+                   const void* dy_ptr,
+                   void* dx_ptr,
+                   void* dscale_ptr,
+                   void* dbias_ptr,
                    const paddle::DataType weight_type,
                    const paddle::DataType input_type,
                    const paddle::DataType output_type,
@@ -266,4 +326,55 @@ void LaunchNormBwd(const cudaStream_t &stream,
                    const uint32_t hidden_size,
                    const int64_t rows,
                    const int64_t cols,
-                   const float epsilon);
+                   const float epsilon) {
+  layer_norm::LaunchParams<layer_norm::BwdParams> launch_params;
+  launch_params.stream = stream;
+  launch_params.props = GetDeviceProp();
+
+  auto launcher = get_bwd_launcher(
+      weight_type, input_type, output_type, compute_type, hidden_size);
+
+  launcher(launch_params, true);
+
+  DenseTensor dscale_part, dbias_part;
+  std::cout << "before dscale_part " << std::endl;
+  dscale_part = phi::Empty<float, Context>(
+      dev_ctx,
+      phi::IntArray({static_cast<int64_t>(launch_params.params.ctas_per_col),
+                     static_cast<int64_t>(hidden_size)}));
+  std::cout << "before dbias_part" << std::endl;
+  if (dbias_ptr) {
+    dbias_part = phi::Empty<float, Context>(
+        dev_ctx,
+        phi::IntArray({static_cast<int64_t>(launch_params.params.ctas_per_col),
+                       static_cast<int64_t>(hidden_size)}));
+  }
+
+  layer_norm::BwdParams& params = launch_params.params;
+  params.rows = rows;
+  params.cols = cols;
+  params.x = const_cast<void*>(x_ptr);
+  params.scale = const_cast<void*>(scale_ptr);
+  params.mean = const_cast<void*>(mean_ptr);
+  params.invvar = const_cast<void*>(invvar_ptr);
+  params.dy = const_cast<void*>(dy_ptr);
+  params.dx = dx_ptr;
+  params.dscale = dscale_ptr;
+  params.dbias = dbias_ptr;
+  params.dscale_part = dscale_part.data();
+  params.dbias_part = dbias_ptr ? dbias_part.data() : nullptr;
+
+  DenseTensor workspace = phi::Empty<uint8_t, Context>(
+      dev_ctx,
+      phi::IntArray({static_cast<int64_t>(launch_params.workspace_bytes)}));
+  DenseTensor barrier = phi::Full<int, Context>(
+      dev_ctx,
+      phi::IntArray({static_cast<int64_t>(launch_params.barrier_size)}),
+      0);
+
+  params.workspace = workspace.data();
+  params.barrier = barrier.data<int>();
+  launcher(launch_params, false);
+}
+
+}  // namespace phi

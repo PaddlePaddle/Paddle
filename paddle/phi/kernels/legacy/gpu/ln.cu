@@ -25,8 +25,6 @@
 #include <cstdio>
 #include <unordered_map>
 
-#include "paddle/extension.h"
-
 namespace layer_norm {
 // Create registries and provide runtime versions of config hash functions.
 
@@ -59,6 +57,7 @@ uint64_t get_key(paddle::DataType weight_type,
 
 }  // namespace layer_norm
 
+namespace phi {
 layer_norm::FwdFunction& get_fwd_launcher(paddle::DataType weight_type,
                                           paddle::DataType input_type,
                                           paddle::DataType output_type,
@@ -99,124 +98,4 @@ layer_norm::BwdFunction& get_bwd_launcher(paddle::DataType weight_type,
   }
 }
 
-void LaunchNormFwd(const cudaStream_t& stream,
-                   const paddle::Place& place,
-                   const void* x_ptr,
-                   const void* scale_ptr,
-                   const void* bias_ptr,
-                   void* y_ptr,
-                   void* mean_ptr,
-                   void* invvar_ptr,
-                   const paddle::DataType weight_type,
-                   const paddle::DataType input_type,
-                   const paddle::DataType output_type,
-                   const paddle::DataType compute_type,
-                   const uint32_t hidden_size,
-                   const int64_t rows,
-                   const int64_t cols,
-                   const float epsilon) {
-  layer_norm::LaunchParams<layer_norm::FwdParams> launch_params;
-
-  launch_params.props = GetDeviceProp();
-  launch_params.stream = stream;
-
-  // Request the kernel launcher.
-  auto launcher = get_fwd_launcher(
-      weight_type, input_type, output_type, compute_type, hidden_size);
-
-  // Query the kernel-specific launch parameters.
-  launcher(launch_params, true);
-
-  // Set the kernel runtime parameters.
-  layer_norm::FwdParams& params = launch_params.params;
-  params.rows = rows;
-  params.cols = cols;
-  params.x = const_cast<void*>(x_ptr);
-  params.scale = const_cast<void*>(scale_ptr);
-  params.bias = const_cast<void*>(bias_ptr);
-  params.y = y_ptr;
-  params.mean = mean_ptr;
-  params.invvar = invvar_ptr;
-  params.epsilon = epsilon;
-
-  paddle::Tensor workspace, barrier;
-  if (launch_params.barrier_size > 0) {
-    barrier = paddle::zeros({static_cast<int64_t>(launch_params.barrier_size)},
-                            paddle::DataType::INT32,
-                            place);
-    workspace =
-        paddle::empty({static_cast<int64_t>(launch_params.workspace_bytes)},
-                      paddle::DataType::UINT8,
-                      place);
-    params.workspace = workspace.data();
-    params.barrier = barrier.data<int>();
-  }
-
-  launcher(launch_params, false);
-}
-
-void LaunchNormBwd(const cudaStream_t& stream,
-                   const paddle::Place& place,
-                   const void* x_ptr,
-                   const void* scale_ptr,
-                   const void* mean_ptr,
-                   const void* invvar_ptr,
-                   const void* dy_ptr,
-                   void* dx_ptr,
-                   void* dscale_ptr,
-                   void* dbias_ptr,
-                   const paddle::DataType weight_type,
-                   const paddle::DataType input_type,
-                   const paddle::DataType output_type,
-                   const paddle::DataType compute_type,
-                   const uint32_t hidden_size,
-                   const int64_t rows,
-                   const int64_t cols,
-                   const float epsilon) {
-  layer_norm::LaunchParams<layer_norm::BwdParams> launch_params;
-  launch_params.stream = stream;
-  launch_params.props = GetDeviceProp();
-
-  auto launcher = get_bwd_launcher(
-      weight_type, input_type, output_type, compute_type, hidden_size);
-
-  launcher(launch_params, true);
-
-  paddle::Tensor dscale_part, dbias_part;
-
-  dscale_part = paddle::empty(
-      {launch_params.params.ctas_per_col, hidden_size}, compute_type, place);
-  if (dbias_ptr) {
-    dbias_part = paddle::empty(
-        {launch_params.params.ctas_per_col, hidden_size}, compute_type, place);
-  }
-
-  layer_norm::BwdParams& params = launch_params.params;
-  params.rows = rows;
-  params.cols = cols;
-  params.x = const_cast<void*>(x_ptr);
-  params.scale = const_cast<void*>(scale_ptr);
-  params.mean = const_cast<void*>(mean_ptr);
-  params.invvar = const_cast<void*>(invvar_ptr);
-  params.dy = const_cast<void*>(dy_ptr);
-  params.dx = dx_ptr;
-  params.dscale = dscale_ptr;
-  params.dbias = dbias_ptr;
-  params.dscale_part = dscale_part.data();
-  params.dbias_part = dbias_ptr ? dbias_part.data() : nullptr;
-
-  paddle::Tensor workspace, barrier;
-  if (launch_params.barrier_size > 0) {
-    barrier = paddle::zeros({static_cast<int64_t>(launch_params.barrier_size)},
-                            paddle::DataType::INT32,
-                            place);
-    workspace =
-        paddle::empty({static_cast<int64_t>(launch_params.workspace_bytes)},
-                      paddle::DataType::UINT8,
-                      place);
-    params.workspace = workspace.data();
-    params.barrier = barrier.data<int>();
-  }
-
-  launcher(launch_params, false);
-}
+}  // namespace phi
