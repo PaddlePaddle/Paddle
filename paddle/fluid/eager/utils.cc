@@ -1724,4 +1724,19 @@ void CheckGradNodeAccumulation(
     CheckGradNodeAccumulation(tensor);
   }
 }
+
+void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors) {
+  for (const auto& tensor : tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
+void CheckGradNodeAccumulation(
+    const std::vector<std::vector<paddle::Tensor*>>& tensors) {
+  for (const auto& sub_tensors : tensors) {
+    for (const auto& tensor : sub_tensors) {
+      CheckGradNodeAccumulation(*tensor);
+    }
+  }
+}
 }  // namespace egr

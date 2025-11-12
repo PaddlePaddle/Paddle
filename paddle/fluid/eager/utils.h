@@ -498,4 +498,7 @@ void CheckGradNodeAccumulation(const paddle::Tensor& tensor);
 void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor);
 void CheckGradNodeAccumulation(
     const paddle::optional<std::vector<paddle::Tensor>>& tensors);
+void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors);
+void CheckGradNodeAccumulation(
+    const std::vector<std::vector<paddle::Tensor*>>& tensors);
 }  // namespace egr
