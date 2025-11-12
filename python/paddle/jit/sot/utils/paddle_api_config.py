@@ -158,6 +158,6 @@ def is_directly_run_api(api):
         paddle.base.libpaddle.is_compiled_with_brpc,
         paddle.base.libpaddle.is_compiled_with_dist,
         paddle.base.libpaddle.is_compiled_with_flagcx,
-        paddle.device.cuda.get_device_properties,
+        paddle.base.libpaddle.get_device_properties,
     }
     return api in NATIVE_CODE_PURE_FUNCTIONS
