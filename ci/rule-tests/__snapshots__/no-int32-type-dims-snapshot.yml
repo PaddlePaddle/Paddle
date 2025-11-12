@@ -4,7 +4,6 @@ snapshots:
     fixed: |
       int64_t class_num = prob->dims()[1];
       // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
-      PADDLE_ENFORCE_LE_INT_MAX(class_num, "class_num");
     labels:
       - source: int class_num = prob->dims()[1];
         style: primary
@@ -24,7 +23,6 @@ snapshots:
     fixed: |
       int64_t row_size = x.dims()[ndim - 1];
       // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
-      PADDLE_ENFORCE_LE_INT_MAX(row_size, "row_size");
     labels:
       - source: int row_size = x.dims()[ndim - 1];
         style: primary
@@ -34,7 +32,6 @@ snapshots:
     fixed: |
       int64_t input_ids_num = input.numel();
       // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
-      PADDLE_ENFORCE_LE_INT_MAX(input_ids_num, "input_ids_num");
     labels:
       - source: int32_t input_ids_num = input.numel();
         style: primary

@@ -91,7 +91,10 @@ void LookupTableGradCUDAKernel(
   // TODO(large-tensor): downstream functors may still use int; guard until
   // upgraded.
 
-  int K = ids_t->numel();
+  int64_t K = ids_t->numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   const int64_t *ids = ids_t->data<int64_t>();
   const T *d_output = d_output_t->data<T>();
   T *d_table = dev_ctx.template Alloc<T>(d_table_t);

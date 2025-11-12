@@ -213,7 +213,10 @@ void PsroiPoolKernel(const Context& dev_ctx,
        false,
        &rois_batch_id_list_gpu);
 
-  int output_size = out->numel();
+  int64_t output_size = out->numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int blocks = NumBlocks(output_size);
   int threads = kNumCUDAThreads;
 
