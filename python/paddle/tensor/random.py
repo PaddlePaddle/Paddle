@@ -1403,7 +1403,6 @@ def normal(
         if shape is not None:
             check_shape(shape, 'normal')
 
-    _out = out
     if isinstance(mean, complex):
         if isinstance(std, float):
             return gaussian(
@@ -1412,10 +1411,10 @@ def normal(
                 std=std,
                 dtype='complex64',
                 name=name,
-                out=_out,
+                out=out,
             )
         else:
-            out = gaussian(
+            out_tensor = gaussian(
                 shape=paddle.shape(std),
                 mean=(0.0 + 0.0j),
                 std=1.0,
@@ -1434,7 +1433,7 @@ def normal(
                 std = paddle.reshape(std, mean_shape)
             else:
                 std = float(std)
-            out = gaussian(
+            out_tensor = gaussian(
                 shape=paddle.shape(mean),
                 mean=(0.0 + 0.0j),
                 std=1.0,
@@ -1449,20 +1448,21 @@ def normal(
                 std = paddle.reshape(std, mean_shape)
             else:
                 std = float(std)
-            out = standard_normal(paddle.shape(mean), mean.dtype, name)
+            out_tensor = standard_normal(paddle.shape(mean), mean.dtype, name)
     elif isinstance(std, (Variable, paddle.pir.Value)):
         mean = float(mean)
-        out = standard_normal(paddle.shape(std), std.dtype, name)
+        out_tensor = standard_normal(paddle.shape(std), std.dtype, name)
     else:
-        return gaussian(shape=shape, mean=mean, std=std, name=name, out=_out)
+        return gaussian(shape=shape, mean=mean, std=std, name=name, out=out)
 
-    out = out * std + mean
+    out_tensor = out_tensor * std + mean
     if not in_dynamic_or_pir_mode():
-        out.stop_gradient = True
-    if _out is not None:
-        paddle.assign(out, _out)
-        out = _out
-    return out
+        out_tensor.stop_gradient = True
+    if out is not None:
+        paddle.assign(out_tensor, out)
+        out_tensor = out
+
+    return out_tensor
 
 
 @dygraph_only

@@ -1392,7 +1392,17 @@ def dropout(
         if in_dynamic_or_pir_mode():
             if paddle.static.default_main_program().random_seed != 0:
                 seed = paddle.static.default_main_program().random_seed
-            out = _C_ops.dropout(
+            if inplace:
+                return _C_ops.dropout_(
+                    x,
+                    None,
+                    p,
+                    not training,
+                    mode,
+                    seed if seed is not None else 0,
+                    seed is not None,
+                )
+            return _C_ops.dropout(
                 x,
                 None,
                 p,
@@ -1401,11 +1411,6 @@ def dropout(
                 seed if seed is not None else 0,
                 seed is not None,
             )
-            if inplace:
-                paddle.assign(out, x)
-                return x
-
-            return out
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
@@ -1446,6 +1451,10 @@ def dropout(
             )
             return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
+        if inplace:
+            raise NotImplementedError(
+                "inplace not supported for dropout_nd yet"
+            )
         if not in_dynamic_mode():
             check_variable_and_dtype(
                 x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
@@ -1454,19 +1463,9 @@ def dropout(
         keep_prob = 1 - p
         if training:
             if in_dynamic_mode() and p == 1.0:
-                out = paddle.scale(x, scale=0.0)
-                if inplace:
-                    paddle.assign(out, x)
-                    return x
-                else:
-                    return out
+                return paddle.scale(x, scale=0.0)
             elif in_pir_mode() and isinstance(p, (float, int)) and p == 1.0:
-                out = paddle.scale(x, scale=0.0)
-                if inplace:
-                    paddle.assign(out, x)
-                    return x
-                else:
-                    return out
+                return paddle.scale(x, scale=0.0)
 
             scale_input = (
                 paddle.scale(x, scale=1 / keep_prob)
@@ -1505,9 +1504,6 @@ def dropout(
             scale_input = paddle.cast(scale_input, dtype)
             keep_mask = paddle.cast(keep_mask, dtype)
             ret = paddle.multiply(scale_input, keep_mask, name=name)
-            if inplace:
-                paddle.assign(ret, x)
-                return x
             return ret
         else:  # test
             ret = (
@@ -1515,9 +1511,6 @@ def dropout(
                 if mode == 'downscale_in_infer'
                 else x
             )
-            if inplace and ret is not x:
-                paddle.assign(ret, x)
-                return x
             return ret
 
 
