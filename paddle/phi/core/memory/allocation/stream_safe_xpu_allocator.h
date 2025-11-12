@@ -38,6 +38,7 @@ class StreamSafeXPUAllocation : public Allocation {
                           StreamSafeXPUAllocator *allocator);
 
   bool RecordStream(XPUStream stream);
+  void EraseStream(XPUStream stream);
   bool CanBeFreed();
   XPUStream GetOwningStream() const;
 
