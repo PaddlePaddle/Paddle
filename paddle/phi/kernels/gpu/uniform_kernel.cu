@@ -31,7 +31,7 @@ struct UniformGenerator {
   uint64_t diag_num_;
   uint64_t diag_step_;
   __host__ __device__ UniformGenerator(
-      T min, T max, int seed, uint64_t diag_num, uint64_t diag_step, T diag_val)
+      T min, T max, int seed, int64_t diag_num, int64_t diag_step, T diag_val)
       : min_(min),
         max_(max),
         seed_(seed),
