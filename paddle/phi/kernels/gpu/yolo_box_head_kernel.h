@@ -24,7 +24,6 @@ template <typename T, typename Context>
 void YoloBoxHeadKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const std::vector<int>& anchors,
-
                        int class_num,
                        DenseTensor* out);
 
