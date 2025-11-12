@@ -605,12 +605,12 @@ __global__ void KeBicubicInterpBw(T* in,
 
     for (int64_t i = 0; i < 4; i++) {
       for (int64_t j = 0; j < 4; j++) {
-        int64_t access_y = max(min(static_cast<int>(input_y - 1 + j),
-                                   static_cast<int>(in_img_h - 1)),
-                               0);
-        int64_t access_x = max(min(static_cast<int>(input_x - 1 + i),
-                                   static_cast<int>(in_img_w - 1)),
-                               0);
+        int64_t access_y = max(min(static_cast<int64_t>(input_y - 1 + j),
+                                   static_cast<int64_t>(in_img_h - 1)),
+                               static_cast<int64_t>(0));
+        int64_t access_x = max(min(static_cast<int64_t>(input_x - 1 + i),
+                                   static_cast<int64_t>(in_img_w - 1)),
+                               static_cast<int64_t>(0));
         if (data_layout == DataLayout::kNCHW) {
           in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
                        access_y * in_img_w + access_x];
