@@ -1997,6 +1997,12 @@ class Device(str):
         else:
             raise TypeError(f"Unsupported type for Device: {type}")
 
+        s = f"{dev_type}:{dev_index}" if dev_type != "cpu" else "cpu"
+        obj = str.__new__(cls, s)
+        obj._dev_type = dev_type
+        obj._index = dev_index
+        return obj
+
     @property
     def type(self):
         return self._dev_type
