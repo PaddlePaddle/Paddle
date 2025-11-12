@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ def func(x, y):
 
 class TestAddCastToElementwiseAddPass(Dy2StTestBase):
     # test AddCastToElementwiseAddPass
-    def test_bf16(self, dtype="float16"):
+    def _run(self, dtype):
         static_fn = paddle.jit.to_static(func)
         x = paddle.randn([200, 200])
         y = paddle.randn([200, 200], dtype=dtype)
@@ -40,8 +40,11 @@ class TestAddCastToElementwiseAddPass(Dy2StTestBase):
             static_fn(x, y).numpy(), x.numpy() + y.cast("float32").numpy()
         )
 
+    def test_bf16(self):
+        self._run(dtype="bfloat16")
+
     def test_fp16(self):
-        self.test_bf16("float16")
+        self._run(dtype="float16")
 
 
 if __name__ == '__main__':

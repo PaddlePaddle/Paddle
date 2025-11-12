@@ -27,13 +27,6 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-auto is_integer_or_bool = [](const pir::Type& x) {
-  return x.isa<pir::IndexType>() || x.isa<pir::Int64Type>() ||
-         x.isa<pir::Int32Type>() || x.isa<pir::Int16Type>() ||
-         x.isa<pir::Int8Type>() || x.isa<pir::UInt8Type>() ||
-         x.isa<pir::BoolType>();
-};
-
 pir::Type GetOutputDtype(const pir::Type& x, const pir::Type& y) {
   pir::IrContext* context = pir::IrContext::Instance();
   // type promotion
@@ -43,6 +36,13 @@ pir::Type GetOutputDtype(const pir::Type& x, const pir::Type& y) {
   if (x.isa<pir::Complex64Type>() || y.isa<pir::Complex64Type>()) {
     return pir::Complex64Type::get(context);
   }
+
+  auto is_integer_or_bool = [](const pir::Type& x) {
+    return x.isa<pir::IndexType>() || x.isa<pir::Int64Type>() ||
+           x.isa<pir::Int32Type>() || x.isa<pir::Int16Type>() ||
+           x.isa<pir::Int8Type>() || x.isa<pir::UInt8Type>() ||
+           x.isa<pir::BoolType>();
+  };
 
   if (is_integer_or_bool(x) || is_integer_or_bool(y)) {
     PADDLE_THROW(::common::errors::InvalidType(
