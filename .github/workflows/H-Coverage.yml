@@ -124,6 +124,7 @@ jobs:
           git config pull.rebase false
           git checkout test
           echo "Pull upstream $BRANCH"
+          source ${{ github.workspace }}/../../../proxy
           bash ci/git_pull.sh $BRANCH
           '
 
