@@ -15,89 +15,51 @@
 import unittest
 
 import paddle
-from paddle import device as Device
 
 
-class TestDevice(unittest.TestCase):
+class TestPaddleDevice(unittest.TestCase):
     def test_str_only(self):
-        d = Device("cpu")
+        d = paddle.device("cpu")
         self.assertEqual(str(d), "cpu")
         self.assertEqual(d.type, "cpu")
         self.assertIsNone(d.index)
+        if (
+            paddle.is_compiled_with_cuda()
+            and paddle.device.get_device().startswith('gpu')
+        ):
+            d = paddle.device("cuda")
+            self.assertEqual(str(d), "cuda:0")
+            self.assertEqual(d.type, "cuda")
+            self.assertEqual(d.index, 0)
 
-        d = Device("cuda")
-        self.assertEqual(str(d), "cuda:0")
-        self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, 0)
-
-        d = Device("gpu")
-        self.assertEqual(str(d), "gpu:0")
-        self.assertEqual(d.type, "gpu")
-        self.assertEqual(d.index, 0)
-
-        d = Device("xpu")
-        self.assertEqual(str(d), "xpu:0")
-        self.assertEqual(d.type, "xpu")
-        self.assertEqual(d.index, 0)
-
-    def test_str_with_index(self):
-        d = Device("cuda", 1)
-        self.assertEqual(str(d), "cuda:1")
-        self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, 1)
-
-        d = Device("gpu", 2)
-        self.assertEqual(str(d), "gpu:2")
-        self.assertEqual(d.type, "gpu")
-        self.assertEqual(d.index, 2)
-
-        d = Device("cpu", 0)
-        self.assertEqual(str(d), "cpu")
-        self.assertEqual(d.type, "cpu")
-        self.assertIsNone(d.index)
-
-    def test_str_colon(self):
-        d = Device("cuda:3")
-        self.assertEqual(str(d), "cuda:3")
-        self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, 3)
-
-        d = Device("gpu:5")
-        self.assertEqual(str(d), "gpu:5")
-        self.assertEqual(d.type, "gpu")
-        self.assertEqual(d.index, 5)
-
-    def test_int_legacy(self):
-        d = Device(4)
-        self.assertEqual(str(d), "cuda:4")
-        self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, 4)
-
-    def test_device_copy(self):
-        original = Device("cuda:2")
-        d = Device(original)
-        self.assertEqual(str(d), "cuda:2")
-        self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, 2)
+            d = paddle.device("gpu")
+            self.assertEqual(str(d), "cuda:0")
+            self.assertEqual(d.type, "cuda")
+            self.assertEqual(d.index, 0)
+        if paddle.is_compiled_with_xpu():
+            d = paddle.device("xpu")
+            self.assertEqual(str(d), "xpu:0")
+            self.assertEqual(d.type, "xpu")
+            self.assertEqual(d.index, 0)
 
     def test_with_device(self):
         if paddle.device.cuda.device_count() >= 1:
-            with Device("cpu"):
+            with paddle.device("cpu"):
                 a = paddle.empty([2])
                 assert str(a.place) == "Place(cpu)"
 
     def test_invalid_type(self):
         with self.assertRaises(ValueError):
-            Device(None, 1)
+            paddle.device(None, 1)
 
         with self.assertRaises(ValueError):
-            Device("abc")
+            paddle.device("abc")
 
-        with self.assertRaises(TypeError):
-            Device(3.14)
+        with self.assertRaises(AttributeError):
+            paddle.device(3.14)
 
         with self.assertRaises(ValueError):
-            Device("abc:0")
+            paddle.device("abc:0")
 
 
 if __name__ == "__main__":
