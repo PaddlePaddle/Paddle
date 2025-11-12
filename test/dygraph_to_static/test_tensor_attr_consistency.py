@@ -82,7 +82,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         "__dlpack_device__",
         "__tvm_ffi_env_stream__",
         "__c_dlpack_exchange_api__",
-        "device",
     ]
 )
 STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
