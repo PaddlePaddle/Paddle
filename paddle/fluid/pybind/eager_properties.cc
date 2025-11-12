@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -637,7 +638,8 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     }
   }
 
-  return ToPyObject(value);
+  return paddle::pybind::Paddle_Size_NewFromInt64Array(value.data(),
+                                                       value.size());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -973,7 +975,7 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr,
      nullptr,
      nullptr},
-    {"_shape",
+    {"shape",
      (getter)tensor_properties_get_shape,
      nullptr,
      tensor_shape__doc__,

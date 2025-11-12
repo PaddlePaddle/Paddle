@@ -306,10 +306,6 @@ def monkey_patch_math_tensor():
         return TensorSize(var.shape)
 
     @property
-    def _shape_(var: Tensor) -> paddle.Size:
-        return paddle.Size(var._shape)
-
-    @property
     def _T_(var: Tensor) -> Tensor:
         if len(var.shape) == 1:
             return var
@@ -622,7 +618,6 @@ def monkey_patch_math_tensor():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('size', _size_),
-        ('shape', _shape_),
         ('T', _T_),
         ('mT', _mT_),
         ('new_full', _new_full_),
