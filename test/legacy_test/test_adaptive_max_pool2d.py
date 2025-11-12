@@ -368,6 +368,7 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(
                 output_size=[None, 3], return_indices=True
             )
+            self.assertEqual(adaptive_max_pool.return_indices, True)
             adaptive_max_pool.return_indices = False
             out_6 = adaptive_max_pool(input=x)
 

@@ -335,6 +335,7 @@ class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
                 output_size=[3, 3, 3],
                 return_indices=True,
             )
+            self.assertEqual(adaptive_max_pool.return_indices, True)
             adaptive_max_pool.return_indices = False
             out_6 = adaptive_max_pool(input=x)
 

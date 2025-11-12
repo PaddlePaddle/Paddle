@@ -249,6 +249,16 @@ class TestFoldAPI_Compatibility(TestFoldOp):
             with base.dygraph.guard(place):
                 input = paddle.to_tensor(self.x)
                 m = paddle.nn.Fold(**self.attrs)
+                self.assertEqual(m.kernel_size, self.kernel_sizes)
+                self.assertEqual(m.padding, self.paddings)
+                self.assertEqual(m.dilation, self.dilations)
+                self.assertEqual(m.stride, self.strides)
+                self.assertEqual(m.output_size, self.output_sizes)
+                m.kernel_size = self.kernel_sizes
+                m.padding = self.paddings
+                m.dilation = self.dilations
+                m.stride = self.strides
+                m.output_size = self.output_sizes
                 m.eval()
                 result = m(input)
                 np.testing.assert_allclose(

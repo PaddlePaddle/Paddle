@@ -1576,7 +1576,9 @@ class TestHardShrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-            hd = paddle.nn.Hardshrink(lambd=0.6)
+            hd = paddle.nn.Hardshrink(lambd=0.7)
+            self.assertEqual(hd.lambd, 0.7)
+            hd.lambd = 0.6
             out2 = hd(input=x)
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
@@ -1746,6 +1748,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
             softshrink = paddle.nn.Softshrink(lambd=self.threshold + 1)
+            self.assertEqual(softshrink.lambd, self.threshold + 1)
             softshrink.lambd = self.threshold
             out2 = softshrink(input=x)
             for r in [out1, out2]:

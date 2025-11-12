@@ -95,6 +95,7 @@ class TestPool1D_API(unittest.TestCase):
                 output_size=16,
                 return_indices=True,
             )
+            self.assertEqual(ada_max_pool1d_dg.return_indices, True)
             ada_max_pool1d_dg.return_indices = False
             result = ada_max_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)

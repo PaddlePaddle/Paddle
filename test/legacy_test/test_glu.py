@@ -75,6 +75,7 @@ class TestnnGLU(unittest.TestCase):
                 y_np1 = act1(x_var).numpy()
                 y_np2 = act1(input=x_var).numpy()
                 act2 = nn.GLU(dim=1000)
+                self.assertEqual(act2.dim, 1000)
                 act2.dim = dim
                 y_np3 = act2(x_var).numpy()
                 out = glu(self.x, dim)

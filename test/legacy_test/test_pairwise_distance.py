@@ -39,6 +39,11 @@ def call_pairwise_distance_layer_compatibility(
     pairwise_distance = paddle.nn.PairwiseDistance(
         p=p + 1, eps=epsilon + 1, keepdim=keepdim
     )
+    if pairwise_distance.eps != epsilon + 1 or pairwise_distance.norm != p + 1:
+        raise ValueError(
+            f"eps and norm should be {epsilon + 1}, {p + 1}, but got {pairwise_distance.eps}, {pairwise_distance.norm}"
+        )
+
     pairwise_distance.eps = epsilon
     pairwise_distance.norm = p
     distance = pairwise_distance(x1=x, x2=y)
