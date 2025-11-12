@@ -142,12 +142,12 @@ jobs:
           mkdir -p ${CFS_DIR}/.cache/coverage
           mkdir -p ${CFS_DIR}/.ccache/coverage
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
-          export WITH_FA_BUILD_WITH_CACHE=ON
-          set -x
+          source ${{ github.workspace }}/../../../proxy
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DWITH_FA_BUILD_WITH_CACHE=ON
           make -j20
+          python setup.py bdist_wheel
           '
 
       - name: Check added unittests
@@ -196,8 +196,8 @@ jobs:
           echo "Uploading coverage build"
           mv /Paddle.tar.gz .
           python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          #echo "Uploading coverage wheel"
-          #python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          echo "Uploading coverage wheel"
+          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
           '
