@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import (
+    get_device_class,
     get_places,
 )
 
@@ -70,7 +71,24 @@ class TestDropoutInplaceDygraph(unittest.TestCase):
                 self.assertEqual(id(result), input_id)
 
 
+class DropoutNet(paddle.nn.Layer):
+    def __init__(self, p=0.0, training=False, inplace=True):
+        super().__init__()
+        self.p = p
+        self.training = training
+        self.inplace = inplace
+
+    def forward(self, x):
+        return paddle.nn.functional.dropout(
+            x, p=self.p, training=self.training, inplace=self.inplace
+        )
+
+
 class TestDropoutInplacePIR(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+        self.device_class = get_device_class()
+
     def test_pir_mode(self):
         with (
             paddle.pir_utils.IrGuard(),
@@ -78,14 +96,52 @@ class TestDropoutInplacePIR(unittest.TestCase):
                 paddle.static.Program(), paddle.static.Program()
             ),
         ):
-            input = paddle.static.data(
+            input_data = paddle.static.data(
                 name='x', shape=[32, 64], dtype='float32'
             )
-            input_id = id(input)
+            input_id = id(input_data)
             result = paddle.nn.functional.dropout(
-                input, p=0.0, training=False, inplace=True
+                input_data, p=0.0, training=False, inplace=True
             )
             self.assertEqual(id(result), input_id)
+
+    def test_pir_cinn_mode(self):
+        for place in self.places:
+            if not isinstance(place, self.device_class):
+                continue
+
+            paddle.disable_static()
+            paddle.set_device(place)
+
+            net = DropoutNet(p=0.5, training=False, inplace=True)
+            try:
+                static_net = paddle.jit.to_static(
+                    net, backend="CINN", full_graph=True
+                )
+            except Exception as e:
+                self.fail(
+                    f"paddle.jit.to_static(backend='CINN') failed on {place}: {e}"
+                )
+
+            x_np = np.random.random((32, 64)).astype("float32")
+            x = paddle.to_tensor(x_np, place=place)
+
+            try:
+                result = static_net(x)
+            except Exception as e:
+                self.fail(
+                    f"Running CINN-compiled network failed on {place}: {e}"
+                )
+
+            np.testing.assert_allclose(
+                result.numpy(),
+                x_np,
+                rtol=1e-5,
+                atol=1e-5,
+                err_msg=f"CINN dropout(training=False) output mismatch on {place}.",
+            )
+
+        paddle.enable_static()
 
 
 class TestDropoutInplaceAxisDygraph(unittest.TestCase):
