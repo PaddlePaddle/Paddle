@@ -57,6 +57,7 @@ from .creation import (  # noqa: F401
     range,
     resize_,
     set_,
+    split_with_sizes,
     to_tensor,
     tril,
     tril_,
@@ -949,6 +950,7 @@ tensor_method_func = [
     'greater',
     'clamp',
     'clamp_',
+    'split_with_sizes',
 ]
 
 
