@@ -4693,7 +4693,7 @@ class TestLog1pAPI_Compatibility(unittest.TestCase):
 
         # Tensor method args
         out4 = paddle.empty([])
-        out5 = x.log1p(x, out=out4)
+        out5 = x.log1p(out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
         # Tensor method kwargs
