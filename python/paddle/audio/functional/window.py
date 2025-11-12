@@ -492,8 +492,33 @@ def hamming_window(
     layout: str | None = None,
     device: str | None = None,
     pin_memory: None | bool = None,
-    requires_grad: None | bool = None,
+    requires_grad: bool = False,
 ):
+    """
+    Compute a generalized Hamming window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        alpha (float, optional): The coefficient α in the equation above. Defaults to 0.54.
+        beta (float, optional): The coefficient β in the equation above. Defaults to 0.46.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device (str, optional): The device to place the returned tensor on. Defaults to None (uses the default device).
+        pin_memory (bool, optional): If True, returned tensor would be allocated in the pinned memory else not. Works only for CPU tensors. Defaults to None.
+        requires_grad (bool, optional): If True, operations on the returned tensor will be tracked by autograd for gradient computation else not. Defaults to False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Hamming window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.hamming_window(400, requires_grad=True)
+            >>> win = paddle.hamming_window(256, alpha=0.5, beta=0.5)
+    """
     w0 = get_window('hamming', window_length, fftbins=periodic, dtype=dtype)
     alpha0, beta0 = 0.54, 0.46
     B = beta / beta0
@@ -516,8 +541,31 @@ def hann_window(
     layout: str | None = None,
     device: str | None = None,
     pin_memory: None | bool = None,
-    requires_grad: None | bool = None,
+    requires_grad: bool = False,
 ):
+    """
+    Compute a Hann window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device (str, optional): The device to place the returned tensor on. Defaults to None (uses the default device).
+        pin_memory (bool, optional): If True, returned tensor would be allocated in the pinned memory else not. Works only for CPU tensors. Defaults to None.
+        requires_grad (bool, optional): If True, operations on the returned tensor will be tracked by autograd for gradient computation else not. Defaults to False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Hann window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.hann_window(512)
+            >>> win = paddle.hann_window(512, requires_grad=True)
+    """
     w = get_window('hann', window_length, fftbins=periodic, dtype=dtype)
     return _apply_window_postprocess(
         w,
@@ -537,8 +585,32 @@ def kaiser_window(
     layout: str | None = None,
     device: str | None = None,
     pin_memory: None | bool = None,
-    requires_grad: None | bool = None,
+    requires_grad: bool = False,
 ):
+    """
+    Compute a Kaiser window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        beta (float, optional): Shape parameter for the window. Defaults to 12.0.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device (str, optional): The device to place the returned tensor on. Defaults to None (uses the default device).
+        pin_memory (bool, optional): If True, returned tensor would be allocated in the pinned memory else not. Works only for CPU tensors. Defaults to None.
+        requires_grad (bool, optional): If True, operations on the returned tensor will be tracked by autograd for gradient computation else not. Defaults to False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Kaiser window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.kaiser_window(400, beta=8.6)
+            >>> win = paddle.kaiser_window(400, requires_grad=True)
+    """
     w = get_window(
         ('kaiser', beta), window_length, fftbins=periodic, dtype=dtype
     )
@@ -559,8 +631,31 @@ def blackman_window(
     layout: str | None = None,
     device: str | None = None,
     pin_memory: None | bool = None,
-    requires_grad: None | bool = None,
+    requires_grad: bool = False,
 ):
+    """
+    Compute a Blackman window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device (str, optional): The device to place the returned tensor on. Defaults to None (uses the default device).
+        pin_memory (bool, optional): If True, returned tensor would be allocated in the pinned memory else not. Works only for CPU tensors. Defaults to None.
+        requires_grad (bool, optional): If True, operations on the returned tensor will be tracked by autograd for gradient computation else not. Defaults to False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Blackman window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> win = paddle.blackman_window(256)
+            >>> win = paddle.blackman_window(256, requires_grad=True)
+    """
     w = get_window('blackman', window_length, fftbins=periodic, dtype=dtype)
     return _apply_window_postprocess(
         w,
@@ -579,8 +674,33 @@ def bartlett_window(
     layout: str | None = None,
     device: str | None = None,
     pin_memory: None | bool = None,
-    requires_grad: None | bool = None,
+    requires_grad: bool = False,
 ):
+    """
+    Compute a Bartlett window.
+
+    Args:
+        window_length (int): The size of the returned window. Must be positive.
+        periodic (bool, optional): If True, returns a window for use as a periodic function; if False, returns a symmetric window. Defaults to True.
+        dtype (str, optional): The data type of the returned tensor. Defaults to 'float64'.
+        layout (str, optional): Only included for API consistency with PyTorch; ignored in Paddle. Defaults to None.
+        device (str, optional): The device to place the returned tensor on. Defaults to None (uses the default device).
+        pin_memory (bool, optional): If True, returned tensor would be allocated in the pinned memory else not. Works only for CPU tensors. Defaults to None.
+        requires_grad (bool, optional): If True, operations on the returned tensor will be tracked by autograd for gradient computation else not. Defaults to False.
+
+    Returns:
+        Tensor: A 1-D tensor of shape `(window_length,)` containing the Bartlett window.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> n_fft = 512
+            >>> win = paddle.bartlett_window(n_fft)
+
+            >>> win = paddle.bartlett_window(n_fft, requires_grad=True)
+    """
     w = get_window('bartlett', window_length, fftbins=periodic, dtype=dtype)
     return _apply_window_postprocess(
         w,
