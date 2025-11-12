@@ -3788,7 +3788,9 @@ __global__ void ShiftSmoothQuant(const T *input,
   phi::AlignedVector<T, VecSize> smooth_vec;
   phi::AlignedVector<int8_t, VecSize> out_vec;
 
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_id =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_id * VecSize < num;
        linear_id += gridDim.x * blockDim.x) {
     int idx = linear_id * VecSize;
@@ -3826,7 +3828,9 @@ __global__ void ShiftSmooth(const T *input,
   phi::AlignedVector<T, VecSize> smooth_vec;
   phi::AlignedVector<T, VecSize> out_vec;
 
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_id =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_id * VecSize < num;
        linear_id += gridDim.x * blockDim.x) {
     int idx = linear_id * VecSize;

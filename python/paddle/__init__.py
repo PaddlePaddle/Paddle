@@ -101,6 +101,7 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint16,
     uint32,
     uint64,
 )
@@ -176,6 +177,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    compat as compat,
     cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
@@ -207,7 +209,6 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
-    compat as compat,
     fft as fft,
     functional as functional,
     hub as hub,
@@ -226,6 +227,7 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .amp.auto_cast import autocast
 from .autograd import (
     enable_grad,
     grad,
@@ -281,6 +283,7 @@ from .hapi import (
     summary,
 )
 from .nn.functional import (
+    adaptive_avg_pool1d,
     conv1d,
     conv2d,
     conv3d,
@@ -971,7 +974,6 @@ manual_seed = seed
 sub = subtract
 sub_ = subtract_
 
-
 __all__ = [
     'block_diag',
     'gt',
@@ -980,6 +982,7 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint16',
     'uint32',
     'uint64',
     'int8',
@@ -1481,6 +1484,8 @@ __all__ = [
     'conv3d',
     'manual_seed',
     'softmax',
+    'adaptive_avg_pool1d',
+    'autocast',
 ]
 import os
 

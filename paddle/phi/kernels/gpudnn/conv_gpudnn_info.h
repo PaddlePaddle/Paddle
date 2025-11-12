@@ -30,7 +30,7 @@ namespace phi {
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = 1;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 1;
 static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 1;
-#elif CUDNN_VERSION_MIN(6, 0, 5)
+#elif defined(PADDLE_WITH_CUDA)
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS =
     CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;

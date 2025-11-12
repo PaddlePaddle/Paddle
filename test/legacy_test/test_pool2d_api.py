@@ -770,7 +770,7 @@ class TestPool2D_API(unittest.TestCase):
         paddle.disable_static()
 
     def test_torch_compatible(self):
-        paddle.set_flags({'FLAGS_torch_compatible_kernel': 1})
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         paddle.enable_static()
         for place in self.places:
             self.check_max_static_results(place)

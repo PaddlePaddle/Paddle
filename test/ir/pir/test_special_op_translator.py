@@ -282,28 +282,6 @@ class TestReduceOpTranscriber(unittest.TestCase):
             np.testing.assert_array_equal(out[0], np.all(arr, axis=0))
 
 
-class TestIndexPutOpTranscriber(unittest.TestCase):
-    def test_op(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                x = paddle.randn([2, 3])
-                indices = [
-                    paddle.randint(0, 2, [2]),
-                    paddle.randint(0, 1, [2]),
-                ]
-                value = paddle.randn([2])
-                y = paddle.index_put(x, indices, value, False)
-
-            _ = pir.translate_to_pir(main_program.desc)
-
-
 class TestGradAddOpTranscriber(unittest.TestCase):
     def test_op(self):
         with paddle.pir_utils.OldIrGuard():

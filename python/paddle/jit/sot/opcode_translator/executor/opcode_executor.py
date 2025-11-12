@@ -996,6 +996,16 @@ class OpcodeExecutorBase:
     def LOAD_FAST_CHECK(self, instr: Instruction):
         self.LOAD_FAST(instr)
 
+    def LOAD_SMALL_INT(self, instr: Instruction):
+        int_value = instr.argval
+        int_var = ConstantVariable.wrap_literal(int_value, self._graph)
+        self.stack.push(int_var)
+
+    # 3.14 opcodes
+    LOAD_FAST_BORROW = LOAD_FAST
+    NOT_TAKEN = NOP
+    POP_ITER = POP_TOP
+
     def DELETE_FAST(self, instr: Instruction):
         varname = self.vframe.code.co_varnames[instr.arg]
         del self.vframe.locals[varname]

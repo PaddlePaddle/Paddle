@@ -37,6 +37,7 @@ from typing_extensions import ParamSpec
 import paddle
 
 from .. import pir
+from ..utils.download import check_and_create_dir
 from . import core, unique_name
 from .libpaddle import DataType
 from .proto import (
@@ -149,6 +150,11 @@ def set_flags(flags: dict[str, bool | str | float]) -> None:
     for key, value in flags.items():
         if _global_flags().is_public(key):
             _global_flags()[key] = value
+            prefix = "FLAGS_"
+            if key.startswith(prefix):
+                _global_flags().update_linked_vars(
+                    key[len(prefix) :], str(value)
+                )
         else:
             raise ValueError(
                 f"Flag {key} cannot set its value through this function."
@@ -3645,7 +3651,7 @@ class Operator:
                 and name == "compilation_key"
             ):
                 key = self.desc.attr(name)
-                v = core.get_serialize_comile_key(key)
+                v = core.get_serialize_compile_key(key)
                 prog = Program()
                 prog = prog.parse_from_string(v)
                 s = prog._to_readable_code()
@@ -8573,6 +8579,22 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
+
+
+@signature_safe_contextmanager
+def capture_backward_subgraph_guard(
+    dump_dir_path: str, need_dump_grad_tensors: bool = False
+) -> Generator[None, None, None]:
+    assert dump_dir_path is not None, "The dump_dir_path should not be None"
+    check_and_create_dir(dump_dir_path)
+    paddle.base.core.eager._init_backward_subgraph_recorder(
+        dump_dir_path, need_dump_grad_tensors
+    )
+    paddle.base.core.eager._start_capture_debug_backward_subgraph()
+    try:
+        yield
+    finally:
+        paddle.base.core.eager._end_capture_debug_backward_subgraph()
 
 
 @signature_safe_contextmanager

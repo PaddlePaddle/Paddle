@@ -29,7 +29,9 @@ struct QuantizeDataType<phi::float16> {
 
 template <typename T>
 __global__ void FindAbsMaxKernel(const T *in, const int64_t n, T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t bid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int tid = threadIdx.x;
 
   extern __shared__ char *shared_max_data_tmp[];
@@ -70,7 +72,9 @@ __global__ void ClipAndQuantKernel(const T *in,
                                    const int round_type,
                                    const int64_t n,
                                    T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t bid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int tid = threadIdx.x;
 
   using ComputeDataType = typename QuantizeDataType<T>::type;
@@ -155,7 +159,9 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
                                           const int round_type,
                                           const int64_t n,
                                           T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t bid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int tid = threadIdx.x;
 
   using ComputeDataType = typename QuantizeDataType<T>::type;
