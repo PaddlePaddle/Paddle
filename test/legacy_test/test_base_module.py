@@ -194,7 +194,7 @@ class TestGetSubmodule(unittest.TestCase):
         for target in test_cases:
             with self.subTest(target=target):
                 module = self.module.get_submodule(target)
-                self.assertIsInstance(module, (nn.Module, nn.Layer))
+                self.assertIsInstance(module, nn.Module)
 
     def test_get_submodule_empty_target(self):
         result = self.module.get_submodule('')
@@ -224,7 +224,7 @@ class TestGetSubmodule(unittest.TestCase):
         for target in test_cases:
             with self.subTest(target=target):
                 param = self.module.get_parameter(target)
-                self.assertIsInstance(param, (nn.Parameter, Tensor))
+                self.assertIsInstance(param, nn.Parameter)
                 self.assertTrue(param.trainable)
 
     def test_get_parameter_vs_get_submodule(self):
@@ -235,7 +235,7 @@ class TestGetSubmodule(unittest.TestCase):
         self.assertIsInstance(module, nn.Linear)
 
         weight_param = self.module.get_parameter('nested.layer1.linear.weight')
-        self.assertIsInstance(weight_param, (nn.Parameter, Tensor))
+        self.assertIsInstance(weight_param, nn.Parameter)
         self.assertTrue(paddle.allclose(weight_param, module.weight))
 
     def test_get_parameter_gradients(self):

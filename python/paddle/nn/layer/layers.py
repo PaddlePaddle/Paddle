@@ -63,6 +63,9 @@ from paddle import dtype
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -922,6 +925,31 @@ class Layer:
             temp_attr, shape, dtype, is_bias, default_initializer, device=device
         )
 
+    def get_parameter(self, target: str) -> Parameter:
+        """
+        Return the parameter given by ``target`` if it exists, otherwise throw an error.
+        Parameters:
+            target(str): The fully-qualified string name of the Parameter to look for.
+
+        Returns:
+            Parameter: The Parameter referenced by ``target``.
+        """
+        module_path, _, param_name = target.rpartition(".")
+
+        mod: paddle.nn.Layer = self.get_sublayer(module_path)
+
+        if not hasattr(mod, param_name):
+            raise AttributeError(
+                mod._get_name() + " has no attribute `" + param_name + "`"
+            )
+
+        param: paddle.nn.Parameter = getattr(mod, param_name)
+
+        if not isinstance(param, (paddle.nn.Parameter, paddle.Tensor)):
+            raise AttributeError("`" + param_name + "` is not an nn.Parameter")
+
+        return param
+
     @deprecated(
         since="2.0.0",
         update_to="paddle.nn.Layer.create_tensor",
@@ -1039,6 +1067,7 @@ class Layer:
             type=core.VarDesc.VarType.DENSE_TENSOR,
         )
 
+    @param_one_alias(["include_sublayers", "recurse"])
     def parameters(self, include_sublayers: bool = True) -> list[Tensor]:
         """
 
@@ -1245,6 +1274,7 @@ class Layer:
         ]
         return ret
 
+    @param_one_alias(["include_sublayers", "recurse"])
     def named_parameters(
         self,
         prefix: str = '',
@@ -1394,6 +1424,7 @@ class Layer:
                 remove_duplicate=remove_duplicate,
             )
 
+    @param_one_alias(["persistable", "persistent"])
     def register_buffer(
         self, name: str, tensor: Tensor, persistable: bool = True
     ) -> None:
@@ -1528,6 +1559,7 @@ class Layer:
 
         return buffer
 
+    @param_one_alias(["include_sublayers", "recurse"])
     def named_buffers(
         self,
         prefix: str = '',
@@ -1818,6 +1850,7 @@ class Layer:
 
         return mod
 
+    @param_one_alias(["layer", "module"])
     def set_sublayer(
         self, target: str, layer: Layer, strict: bool = False
     ) -> None:
@@ -1930,6 +1963,18 @@ class Layer:
 
             self._parameters[name] = parameter
         return parameter
+
+    def register_parameter(self, name: str, param: Parameter | None) -> None:
+        """
+        Adds a Parameter instance. Added parameter can be accessed by self.name
+
+        Parameters:
+            name(str): name of this submodule.
+            parameter(Optional[Parameter]): an instance of Parameter.
+        Returns:
+            None
+        """
+        self.add_parameter(name, param)
 
     def _set_op_attrs(self, attrs):
         """

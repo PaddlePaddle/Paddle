@@ -23,7 +23,12 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-class Parameter(EagerParamBase):
+class _ParameterMeta(type(EagerParamBase)):
+    def __instancecheck__(cls, instance):
+        return isinstance(instance, EagerParamBase)
+
+
+class Parameter(EagerParamBase, metaclass=_ParameterMeta):
     """
     Parameter is a subclass of Tensor, which is a persistable Tensor
     that can be updated by optimizers during training.

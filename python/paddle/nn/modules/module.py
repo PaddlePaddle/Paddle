@@ -28,15 +28,11 @@ from typing import (
     overload,
 )
 
-from typing_extensions import Self
-
-import paddle
 from paddle import Tensor, nn
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
-    from paddle.nn.parameter import Parameter
 
 from paddle.nn.layer.layers import (
     _convert_camel_to_snake,
@@ -59,7 +55,12 @@ class _IncompatibleKeys(
     __str__ = __repr__
 
 
-class Module(nn.Layer):
+class _ModuleMeta(type(nn.Layer)):
+    def __instancecheck__(cls, instance):
+        return isinstance(instance, nn.Layer)
+
+
+class Module(nn.Layer, metaclass=_ModuleMeta):
     """
     Base class for all neural network modules.
 
@@ -119,43 +120,8 @@ class Module(nn.Layer):
         self._non_persistable_buffer_names_set.clear()
         self._non_persistable_buffer_names_set.update(value)
 
-    def register_buffer(
-        self, name: str, tensor: Tensor | None, persistent: bool = True
-    ) -> None:
-        """
-        Registers a tensor as buffer into the module.
-
-        `buffer` is a non-trainable tensor and will not be updated by optimizer,
-        but is necessary for evaluation and inference. For example, the mean and variance in BatchNorm layers.
-        The registered buffer is persistent by default, and will be saved into
-        `state_dict` alongside parameters. If set persistent=False, it registers
-        a non-persistent buffer, so that it will not be a part of `state_dict` .
-
-        Buffers can be accessed as attributes using given names.
-
-        Parameters:
-            name (string): name of the buffer. The buffer can be accessed
-                from this module using the given name
-            tensor (Optional[Tensor]): the tensor to be registered as buffer.
-            persistent (bool): whether the buffer is part of this module's
-                state_dict.
-
-        Returns:
-            None
-        """
-        super().register_buffer(name, tensor, persistable=persistent)
-
-    def register_parameter(self, name: str, param: Parameter | None) -> None:
-        """
-        Adds a Parameter instance. Added parameter can be accessed by self.name
-
-        Parameters:
-            name(str): name of this submodule.
-            parameter(Optional[Parameter]): an instance of Parameter.
-        Returns:
-            None
-        """
-        super().add_parameter(name, param)
+    get_submodule = nn.Layer.get_sublayer
+    set_submodule = nn.Layer.set_sublayer
 
     def add_module(self, name: str, module: Module | None) -> None:
         """
@@ -172,65 +138,6 @@ class Module(nn.Layer):
     def register_module(self, name: str, module: Module | None) -> None:
         """Alias for :func:`add_module`."""
         self.add_module(name, module)
-
-    def get_submodule(self, target: str) -> Module:
-        """
-        Return the submodule given by ``target`` if it exists, otherwise throw an error.
-
-        Parameters:
-            target(str): The fully-qualified string name of the submodule to look for.
-
-        Returns:
-            Module: The submodule referenced by ``target``.
-        """
-        return super().get_sublayer(target=target)
-
-    def set_submodule(
-        self, target: str, module: Module, strict: bool = False
-    ) -> None:
-        """
-        Set the submodule given by ``target`` if it exists, otherwise throw an error.
-
-        Parameters:
-            target(str): The fully-qualified string name of the submodule to look for.
-            module(Module): The module to set the submodule to.
-            strict(bool): If ``False``, the method will replace an existing submodule
-                or create a new submodule if the parent module exists. If ``True``,
-                the method will only attempt to replace an existing submodule and throw an error
-                if the submodule doesn't already exist.
-        """
-
-        super().set_sublayer(target, module, strict)
-
-    def get_parameter(self, target: str) -> Parameter:
-        """
-        Return the parameter given by ``target`` if it exists, otherwise throw an error.
-
-        See the docstring for ``get_submodule`` for a more detailed
-        explanation of this method's functionality as well as how to
-        correctly specify ``target``.
-
-        Parameters:
-            target(str): The fully-qualified string name of the Parameter to look for.
-
-        Returns:
-            Parameter: The Parameter referenced by ``target``.
-        """
-        module_path, _, param_name = target.rpartition(".")
-
-        mod: paddle.nn.Module = self.get_submodule(module_path)
-
-        if not hasattr(mod, param_name):
-            raise AttributeError(
-                mod._get_name() + " has no attribute `" + param_name + "`"
-            )
-
-        param: paddle.nn.Parameter = getattr(mod, param_name)
-
-        if not isinstance(param, (paddle.nn.Parameter, paddle.Tensor)):
-            raise AttributeError("`" + param_name + "` is not an nn.Parameter")
-
-        return param
 
     T_destination = TypeVar("T_destination", bound=dict[str, Any])
 
@@ -347,47 +254,6 @@ class Module(nn.Layer):
             )
         return _IncompatibleKeys(missing_keys, unexpected_keys)
 
-    def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
-        """
-
-        Returns a list of all Parameters from current module and its sub-modules.
-        Parameters:
-            recurse (bool, optional): Whether to return the parameters of the submodule.
-                If True, the returned list contains the parameters of the submodule.
-                Default: True.
-
-        Returns:
-            list, list of Tensor, a list of Parameters.
-        """
-        return super().parameters(include_sublayers=recurse)
-
-    def named_parameters(
-        self,
-        prefix: str = "",
-        recurse: bool = True,
-        remove_duplicate: bool = True,
-        **kwargs,
-    ) -> Iterator[tuple[str, Parameter]]:
-        """
-        Returns an iterator over all parameters in the module, yielding tuple of name and parameter.
-
-        Parameters:
-            prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
-            recurse(bool, optional): Whether include the parameters of submodules.
-                If True, also include the named parameters from submodules. Default: True.
-            remove_duplicate(bool, optional): Whether to remove duplicated parameters in the result.
-                Default: True.
-
-        Yields:
-            (string, Parameter): Tuple of name and Parameter
-        """
-        include_sublayers = kwargs.pop("include_sublayers", recurse)
-        return super().named_parameters(
-            prefix=prefix,
-            include_sublayers=include_sublayers,
-            remove_duplicate=remove_duplicate,
-        )
-
     def buffers(self, recurse: bool = True) -> Iterator[Tensor]:
         """
         Returns a iterator of all buffers from current module and its sub-modules.
@@ -400,31 +266,6 @@ class Module(nn.Layer):
         """
         for _, buf in self.named_buffers(recurse=recurse):
             yield buf
-
-    def named_buffers(
-        self,
-        prefix: str = "",
-        recurse: bool = True,
-        remove_duplicate: bool = True,
-    ) -> Iterator[tuple[str, Tensor]]:
-        """
-        Returns an iterator over all buffers in the module, yielding tuple of name and Tensor.
-
-        Parameters:
-            prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
-            recurse(bool, optional): Whether include the buffers of submodules.
-                If True, also include the named buffers from submodules. Default: True.
-            remove_duplicate(bool, optional): Whether to remove duplicated buffers in the result.
-                Default: True.
-
-        Yields:
-            (string, Tensor): Tuple of name and tensor
-        """
-        return super().named_buffers(
-            prefix=prefix,
-            include_sublayers=recurse,
-            remove_duplicate=remove_duplicate,
-        )
 
     def modules(self) -> Iterator[Module]:
         """
@@ -464,13 +305,3 @@ class Module(nn.Layer):
             layers_set=layers_set,
             remove_duplicate=remove_duplicate,
         )
-
-    def train(self, mode: bool = True) -> Self:
-        """
-        Sets this Module and all its submodules to training mode.
-        This only effects certain modules like `Dropout` and `BatchNorm`.
-
-        Returns:
-            Module: self
-        """
-        return super().train(mode=mode)
