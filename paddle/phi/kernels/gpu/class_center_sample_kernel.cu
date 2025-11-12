@@ -56,6 +56,33 @@ namespace cub = hipcub;
 #include <iterator>
 #include <random>
 
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#endif
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#ifdef PADDLE_WITH_HIP
+#include <hiprand.h>
+#include <hiprand_kernel.h>
+
+#include <hipcub/hipcub.hpp>
+typedef hiprandState curandState;
+namespace cub = hipcub;
+#else
+#include <curand.h>
+#include <curand_kernel.h>
+
+#include <cub/cub.cuh>
+#endif
+
+#include <iterator>
+#include <random>
+
 #include "paddle/phi/kernels/class_center_sample_kernel.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
