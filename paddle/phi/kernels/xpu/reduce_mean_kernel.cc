@@ -71,5 +71,6 @@ PD_REGISTER_KERNEL(mean_raw,
                    ALL_LAYOUT,
                    phi::MeanRawKernel,
                    float,
+                   double,
                    phi::float16,
                    phi::bfloat16) {}
