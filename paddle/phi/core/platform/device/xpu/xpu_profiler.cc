@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,20 +18,7 @@ namespace paddle::platform {
 
 void CudaProfilerInit(const std::string& output_file,
                       const std::string& output_mode,
-                      const std::string& config_file) {
-  // #if CUDA_VERSION < 11000
-  //   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv",
-  //                  common::errors::InvalidArgument(
-  //                      "Unsupported cuda profiler output mode, expect `kvp`
-  //                      or "
-  //                      "`csv`, but received `%s`.",
-  //                      output_mode));
-  //   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV :
-  //   cudaKeyValuePair; PADDLE_ENFORCE_GPU_SUCCESS(
-  //       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(),
-  //       mode));
-  // #endif
-}
+                      const std::string& config_file) {}
 
 void CudaProfilerStart() { PADDLE_ENFORCE_XRE_SUCCESS(cudaProfilerStart()); }
 
@@ -51,6 +38,5 @@ void CudaNvtxRangePush(const std::string& name, const NvtxRangeColor color) {
 }
 
 void CudaNvtxRangePop() { phi::dynload::nvtxRangePop(); }
-// #endif
 
 }  // namespace paddle::platform

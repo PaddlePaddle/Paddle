@@ -44,9 +44,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
-// #else
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
-// #endif
 
 namespace paddle {
 namespace platform {

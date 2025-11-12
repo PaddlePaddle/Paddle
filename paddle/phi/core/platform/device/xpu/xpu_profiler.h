@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ void CudaProfilerStart();
 
 void CudaProfilerStop();
 
-// #ifndef _WIN32
 enum class NvtxRangeColor : uint32_t {
   Black = 0x00000000,
   Red = 0x00ff0000,
@@ -46,7 +45,6 @@ void CudaNvtxRangePush(const std::string& name,
                        const NvtxRangeColor color = NvtxRangeColor::Green);
 
 void CudaNvtxRangePop();
-// #endif
 
 }  // namespace platform
 }  // namespace paddle
