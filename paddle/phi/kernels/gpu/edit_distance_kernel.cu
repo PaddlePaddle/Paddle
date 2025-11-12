@@ -30,7 +30,9 @@ using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx < N + 1) {
     dist[idx] = idx;
   }
@@ -38,7 +40,9 @@ __global__ void FillFirstRow(T* dist, const int N) {
 
 template <typename T>
 __global__ void FillFirstColumn(T* dist, const int M, const int N) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx < M + 1) {
     dist[idx * (N + 1)] = idx;
   }
@@ -51,7 +55,9 @@ __global__ void Levenshtein(T* dist,
                             const int M,
                             const int N,
                             const int start) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = N;
   int index = start + idx * offset;
   int row = index / (N + 1);
@@ -68,7 +74,9 @@ __global__ void Levenshtein(T* dist,
 template <typename T>
 __global__ void SetOutput(
     T* out, const T* dist, const int M, const int N, bool normalized) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx == 0) {
     out[0] = normalized ? dist[M * (N + 1) + N] / N : dist[M * (N + 1) + N];
   }
