@@ -15,9 +15,9 @@
 #pragma once
 
 #include <vector>
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+
 namespace phi {
 
 // Function declaration for the YOLO box head kernel
