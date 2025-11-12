@@ -62,22 +62,6 @@ def _calculate_gain(nonlinearity, param):
     return recommended_gain[nonlinearity]
 
 
-def _calculate_fan_in_and_fan_out(var: paddle.Tensor) -> tuple[int, int]:
-    shape = var.shape
-    if not shape or len(shape) == 0:
-        fan_in = fan_out = 1
-    elif len(shape) == 1:
-        fan_in = fan_out = shape[0]
-    elif len(shape) == 2:
-        fan_in = shape[0]
-        fan_out = shape[1]
-    else:
-        receptive_field_size = np.prod(shape[2:])
-        fan_in = shape[1] * receptive_field_size
-        fan_out = shape[0] * receptive_field_size
-    return (fan_in, fan_out)
-
-
 class Test_calculate_gain(unittest.TestCase):
     def test(self):
         for nonlinearity in [
@@ -106,20 +90,23 @@ class Test_calculate_gain(unittest.TestCase):
 class TestCAlFanINOUT(unittest.TestCase):
     def test_cal_fan_in_and_out(self):
         x = paddle.tensor.randn([10])
+        x_expected = (10, 10)
         self.assertEqual(
-            _calculate_fan_in_and_fan_out(x),
+            x_expected,
             paddle.nn.init._calculate_fan_in_and_fan_out(x),
         )
 
         y = paddle.tensor.randn([10, 10])
+        y_expected = (10, 10)
         self.assertEqual(
-            _calculate_fan_in_and_fan_out(y),
+            y_expected,
             paddle.nn.init._calculate_fan_in_and_fan_out(y),
         )
 
         z = paddle.randn([10, 10, 10])
+        z_expected = (100, 100)
         self.assertEqual(
-            _calculate_fan_in_and_fan_out(z),
+            z_expected,
             paddle.nn.init._calculate_fan_in_and_fan_out(z),
         )
 

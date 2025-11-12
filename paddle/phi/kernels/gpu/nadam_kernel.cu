@@ -46,7 +46,9 @@ __global__ void NAdamGPUKernel(const T* param,
                                MT* master_param_out) {
   MT lr_scalar = static_cast<MT>(learning_rate[0]);
 
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (int64_t index = idx; index < num; index += gridDim.x * blockDim.x) {
     // load and cast input to MT

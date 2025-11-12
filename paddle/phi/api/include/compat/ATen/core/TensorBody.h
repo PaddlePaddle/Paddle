@@ -24,6 +24,8 @@ class Tensor : public TensorBase {
  public:
   Tensor() = default;
   Tensor(const PaddleTensor& tensor) : TensorBase(tensor){};  // NOLINT
+  Tensor(const Tensor& tensor) = default;
+  Tensor(Tensor&& tensor) = default;
 
   // Implicitly move-constructible from TensorBase, but must be explicit to
   // increase refcount
@@ -31,18 +33,33 @@ class Tensor : public TensorBase {
   /*implicit*/ Tensor(TensorBase&& base)                         // NOLINT
       : TensorBase(std::move(base)) {}
 
-  // TODO(dev): Implement assignment operators
-  // Tensor& operator=(const Tensor& x) & noexcept {
-  //   return operator=(static_cast<const TensorBase&>(x));
-  // }
-  // Tensor& operator=(Tensor&& x) & noexcept {
-  //   return operator=(static_cast<TensorBase&&>(x));
-  // }
+  Tensor& operator=(const PaddleTensor& x) & noexcept {
+    tensor_ = x;
+    return *this;
+  }
+  Tensor& operator=(const TensorBase& x) & noexcept {
+    const PaddleTensor& inner = x._PD_GetInner();
+    tensor_ = inner;
+    return *this;
+  }
+  Tensor& operator=(PaddleTensor&& x) & noexcept {
+    tensor_ = std::move(x);
+    return *this;
+  }
+  Tensor& operator=(TensorBase&& x) & noexcept {
+    tensor_ = std::move(x)._PD_GetInner();
+    return *this;
+  }
 
+  Tensor& operator=(const Tensor& x) & noexcept {
+    return operator=(static_cast<const TensorBase&>(x));
+  }
+  Tensor& operator=(Tensor&& x) & noexcept {
+    return operator=(static_cast<TensorBase&&>(x));
+  }
   Tensor& operator=(const Scalar& v) && { return fill_(v); }
-  // TODO(dev): Implement assignment operators
-  // Tensor& operator=(const Tensor& rhs) && { return copy_(rhs); }
-  // Tensor& operator=(Tensor&& rhs) && { return copy_(rhs); }
+  Tensor& operator=(const Tensor& rhs) && { return copy_(rhs); }
+  Tensor& operator=(Tensor&& rhs) && { return copy_(rhs); }
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
