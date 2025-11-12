@@ -37,6 +37,22 @@ from paddle.cuda import (
 )
 
 
+class TestDevice(unittest.TestCase):
+    def test_device(self):
+        cpu_tensor = paddle.tensor([1]).to("cpu")
+        cpu_device = cpu_tensor.device
+        with cpu_device:
+            new_tensor = paddle.tensor([1])
+            assert new_tensor.device == cpu_device
+
+        if paddle.device.is_compiled_with_cuda():
+            gpu_tensor = paddle.tensor([1]).to("gpu:0")
+            gpu_device = gpu_tensor.device
+            with gpu_device:
+                new_tensor = paddle.tensor([1])
+                assert new_tensor.device == gpu_device
+
+
 class TestCudaCompat(unittest.TestCase):
     # ---------------------
     # _device_to_paddle test

@@ -1955,34 +1955,28 @@ class Device(str):
     _DEFAULT_DEVICE_STACK = []
     _SUPPORTED_TYPES = {"cpu", "gpu", "cuda", "xpu"}
 
-    def __new__(cls, type: str | int | None = None, index: int | None = None):
-        if isinstance(type, str):
-            t = type.lower()
-            if t not in cls._SUPPORTED_TYPES and ":" not in t:
-                raise ValueError(f"Unsupported device type: {t}")
-            if index is not None:
-                dev_type = t
-                dev_index = index if t != "cpu" else None
-            else:
-                if ":" in t:
-                    dev_type, idx = t.split(":")
-                    dev_type = dev_type.lower()
-                    if dev_type not in cls._SUPPORTED_TYPES:
-                        raise ValueError(f"Unsupported device type: {dev_type}")
-                    dev_index = int(idx)
-                else:
-                    dev_type = t
-                    dev_index = 0 if t != "cpu" else None
+    def __new__(
+        cls,
+        type: str | int | core.Place | None = None,
+        index: int | None = None,
+    ):
+        if index is not None:
+            type = str(type) + f":{index}"
 
-        elif isinstance(type, int):
-            dev_type = "cuda"
-            dev_index = type
+        place = device_to_place(type)
 
-        elif type is None and index is not None:
-            raise ValueError("Device type must be specified if index is given")
-
-        else:
-            raise TypeError(f"Unsupported type for Device: {type}")
+        if place.is_cpu_place():
+            dev_type = 'cpu'
+            dev_index = None
+        elif place.is_gpu_place():
+            dev_type = 'cuda'
+            dev_index = place.gpu_device_id()
+        elif place.is_xpu_place():
+            dev_type = 'cuda'
+            dev_index = place.gpu_device_id()
+        elif place.is_custom_device():
+            dev_index = place.get_device_id()
+            dev_type = place.get_device_type()
 
         s = f"{dev_type}:{dev_index}" if dev_type != "cpu" else "cpu"
         obj = str.__new__(cls, s)
@@ -2020,6 +2014,18 @@ class Device(str):
     def __exit__(self, exc_type, exc_val, exc_tb):
         previous_device = Device._DEFAULT_DEVICE_STACK.pop()
         paddle.set_device(previous_device)
+
+    def __eq__(self, other):
+        """Compare with another device or place.
+
+        If other is a Place object, it will be wrapped as Device first.
+        """
+        if isinstance(other, core.Place):
+            other = Device(other)
+        return str(self) == str(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class _DeviceModule(types.ModuleType):
