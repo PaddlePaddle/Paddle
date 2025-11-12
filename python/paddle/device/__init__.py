@@ -2015,18 +2015,6 @@ class Device(str):
         previous_device = Device._DEFAULT_DEVICE_STACK.pop()
         paddle.set_device(previous_device)
 
-    def __eq__(self, other):
-        """Compare with another device or place.
-
-        If other is a Place object, it will be wrapped as Device first.
-        """
-        if isinstance(other, core.Place):
-            other = Device(other)
-        return str(self) == str(other)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
 
 class _DeviceModule(types.ModuleType):
     """A callable package module: paddle.device(...) -> Device(...)"""
