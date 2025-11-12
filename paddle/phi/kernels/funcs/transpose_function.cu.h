@@ -460,8 +460,8 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
           "SelectProperTileSize should return true, but return value is:%d.",
           ret));
 
-  int tile_long_edge = 0;
-  int tile_short_edge = 0;
+  IndexType tile_long_edge = 0;
+  IndexType tile_short_edge = 0;
   float lowest_cost = std::numeric_limits<float>::max();
   IndexType input_long_edge = std::max(input_dims[1], input_dims[2]);
 
