@@ -17,7 +17,8 @@ limitations under the License. */
 #ifndef NVTX_SUPPRESS_V2_DEPRECATION_WARNING
 #define NVTX_SUPPRESS_V2_DEPRECATION_WARNING
 #endif
-#if (CUDA_VERSION >= 13000)
+
+#if (CUDA_VERSION >= 13000) || defined(PADDLE_WITH_XPU)
 #include <nvtx3/nvToolsExt.h>
 #else
 #include <nvToolsExt.h>
@@ -29,6 +30,35 @@ limitations under the License. */
 
 namespace phi {
 namespace dynload {
+
+#ifdef PADDLE_WITH_XPU
+// =====================
+// XPU: 直接调用 NVTX 符号
+// =====================
+#define DECLARE_DIRECT_NVTX_WRAP(__name)                       \
+  struct DynLoad__##__name {                                   \
+    template <typename... Args>                                \
+    int operator()(Args... args) {                             \
+      using nvtxFunc = decltype(&::__name);                    \
+      /* 直接转发到真实 NVTX 符号（不做 dlsym）*/ \
+      return reinterpret_cast<nvtxFunc>(::__name)(args...);    \
+    }                                                          \
+  };                                                           \
+  extern DynLoad__##__name __name
+
+#define NVTX_ROUTINE_EACH(__macro) \
+  __macro(nvtxRangePushA);         \
+  __macro(nvtxRangePushEx);        \
+  __macro(nvtxRangePop);
+
+NVTX_ROUTINE_EACH(DECLARE_DIRECT_NVTX_WRAP);
+
+#undef DECLARE_DIRECT_NVTX_WRAP
+
+#else  // !PADDLE_WITH_XPU
+// ============================================
+// 非 XPU：保持原有 dlsym 动态加载的包装逻辑
+// ============================================
 extern std::once_flag nvtx_dso_flag;
 extern void *nvtx_dso_handle;
 
@@ -54,6 +84,8 @@ extern void *nvtx_dso_handle;
 NVTX_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVTX_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_NVTX_WRAP
+#endif  // PADDLE_WITH_XPU
+
 }  // namespace dynload
 }  // namespace phi
 #endif

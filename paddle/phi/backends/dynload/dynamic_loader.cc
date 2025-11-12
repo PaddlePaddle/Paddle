@@ -142,6 +142,7 @@ PHI_DEFINE_EXPORTED_string(
 
 #ifdef PADDLE_WITH_XPU
 PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
+PD_DEFINE_string(xputx_dir, "", "Specify path for loading llibxpuToolsExt.so.");
 #endif
 
 namespace phi::dynload {
@@ -1000,9 +1001,11 @@ void* GetNvtxDsoHandle() {
   PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Apple."));
 #elif defined(_WIN32)
   PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Windows."));
-#elif !defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(
-      common::errors::Unimplemented("Nvtx do not support without CUDA."));
+#elif !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU)
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Nvtx do not support without CUDA or XPU."));
+#elif defined(PADDLE_WITH_XPU)
+  return GetDsoHandleFromSearchPath("FLAGS_xputx_dir", "libxpuToolsExt.so");
 #else
   if (CUDA_VERSION >= 12090) {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvtx3interop.so.1");
