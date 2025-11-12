@@ -305,6 +305,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          pip install safetensors
+          pip install dist/*.whl --no-deps
           bash $ci_scripts/h-test.sh
           '
 
@@ -313,6 +315,6 @@ jobs:
         run: |
           set +e
           rm Paddle.tar.gz
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 3d;rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
