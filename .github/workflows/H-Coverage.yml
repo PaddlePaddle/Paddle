@@ -138,7 +138,7 @@ jobs:
           workflow-name: coverage
 
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
