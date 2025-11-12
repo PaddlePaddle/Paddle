@@ -58,7 +58,7 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     int *__restrict__ zipped_expertwise_rowmap,
     probs_T *__restrict__ probs_unzipped,
     float *__restrict__ XScale_unzipped,
-    int64_t *global_expertwise_block_cumsum,
+    int *global_expertwise_block_cumsum,
     const int64_t total_zipped_tokens_num,
     const int64_t token_length,
     const int64_t scale_length,
@@ -189,12 +189,12 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
       GET_DATA(expert_routemap_topk, INT_T),                        \
       GET_DATA(expert_prob_topk, PROB_T),                           \
       XScale ? XScale.get_ptr()->data<float>() : nullptr,           \
-      GET_DATA(expert_offsets, int64_t),                            \
+      GET_DATA(expert_offsets, int),                                \
       GET_PTR_DATA(X_unzipped, TOKEN_T),                            \
-      GET_PTR_DATA(zipped_expertwise_rowmap, int64_t),              \
+      GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                \
       GET_PTR_DATA(token_prob_unzipped, PROB_T),                    \
       XScale_unzipped->data<float>(),                               \
-      global_expertwise_block_cumsum->data<int64_t>(),              \
+      global_expertwise_block_cumsum->data<int>(),                  \
       total_zipped_tokens_num,                                      \
       token_length,                                                 \
       scale_length,                                                 \
@@ -222,8 +222,8 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
     HANDLE_TOKEN_TYPE(float, INT_T)                           \
   }
 
-  if (DTYPE_CASE(zipped_expertwise_rowmap->dtype(), INT64)) {
-    HANDLE_PROB_TYPE(int64_t)
+  if (DTYPE_CASE(zipped_expertwise_rowmap->dtype(), INT32)) {
+    HANDLE_PROB_TYPE(int)
   }
 
 #undef DTYPE_CASE
@@ -276,13 +276,12 @@ void MoePermuteKernel(const Context &dev_ctx,
   }
   DenseTensor expert_offset_tensor;
   expert_offset_tensor.Resize({MAX_NUM_EXPERTS});
-  dev_ctx.template Alloc<int64_t>(&expert_offset_tensor);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemcpyAsync(expert_offset_tensor.data<int64_t>(),
-                      expert_offset,
-                      sizeof(int64_t) * MAX_NUM_EXPERTS,
-                      cudaMemcpyHostToDevice,
-                      dev_ctx.stream()));
+  dev_ctx.template Alloc<int>(&expert_offset_tensor);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
+                                             expert_offset,
+                                             sizeof(int) * MAX_NUM_EXPERTS,
+                                             cudaMemcpyHostToDevice,
+                                             dev_ctx.stream()));
   // ------------------- resource allocate -------------------------
   const int64_t output_rows = tokens_cumulated;
   const int64_t topk = expert_routemap_topk.dims()[1];
@@ -296,7 +295,7 @@ void MoePermuteKernel(const Context &dev_ctx,
   }
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<float>(XScale_unzipped);
-  dev_ctx.template Alloc<int64_t>(zipped_expertwise_rowmap);
+  dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<float>(token_prob_unzipped);
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   auto token_prob_unzipped_ptr =
@@ -335,10 +334,10 @@ void MoePermuteKernel(const Context &dev_ctx,
   // -------- Initialize semaphore for cumsum ---------------
   const int64_t cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  DenseTensor global_expertwise_block_cumsum = phi::Full<int64_t, Context>(
-      dev_ctx,
-      phi::IntArray({cumsum_blocknum + 1, num_experts}),
-      CUMSUM_INVALID_TAG);
+  DenseTensor global_expertwise_block_cumsum =
+      phi::Full<int, Context>(dev_ctx,
+                              phi::IntArray({cumsum_blocknum + 1, num_experts}),
+                              CUMSUM_INVALID_TAG);
   dispatch_tokens_unzip_stable<T, Context>(dev_ctx,
                                            X,
                                            expert_routemap_topk,
