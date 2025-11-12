@@ -1968,28 +1968,34 @@ class Device(str):
     _DEFAULT_DEVICE_STACK = []
     _SUPPORTED_TYPES = {"cpu", "gpu", "cuda", "xpu"}
 
-    def __new__(
-        cls,
-        type: str | int | core.Place | None = None,
-        index: int | None = None,
-    ):
-        if index is not None:
-            type = str(type) + f":{index}"
+    def __new__(cls, type: str | int | None = None, index: int | None = None):
+        if isinstance(type, str):
+            t = type.lower()
+            if t not in cls._SUPPORTED_TYPES and ":" not in t:
+                raise ValueError(f"Unsupported device type: {t}")
+            if index is not None:
+                dev_type = t
+                dev_index = index if t != "cpu" else None
+            else:
+                if ":" in t:
+                    dev_type, idx = t.split(":")
+                    dev_type = dev_type.lower()
+                    if dev_type not in cls._SUPPORTED_TYPES:
+                        raise ValueError(f"Unsupported device type: {dev_type}")
+                    dev_index = int(idx)
+                else:
+                    dev_type = t
+                    dev_index = 0 if t != "cpu" else None
 
-        place = device_to_place(type)
+        elif isinstance(type, int):
+            dev_type = "cuda"
+            dev_index = type
 
-        if place.is_cpu_place():
-            dev_type = 'cpu'
-            dev_index = None
-        elif place.is_gpu_place():
-            dev_type = 'cuda'
-            dev_index = place.gpu_device_id()
-        elif place.is_xpu_place():
-            dev_type = 'xpu'
-            dev_index = place.gpu_device_id()
-        elif place.is_custom_device():
-            dev_index = place.get_device_id()
-            dev_type = place.get_device_type()
+        elif type is None and index is not None:
+            raise ValueError("Device type must be specified if index is given")
+
+        else:
+            raise TypeError(f"Unsupported type for Device: {type}")
 
     @property
     def type(self):
