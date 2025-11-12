@@ -1972,7 +1972,7 @@ class Device(str):
             dev_type = 'cuda'
             dev_index = place.gpu_device_id()
         elif place.is_xpu_place():
-            dev_type = 'cuda'
+            dev_type = 'xpu'
             dev_index = place.gpu_device_id()
         elif place.is_custom_device():
             dev_index = place.get_device_id()

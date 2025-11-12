@@ -52,6 +52,13 @@ class TestDevice(unittest.TestCase):
                 new_tensor = paddle.tensor([1])
                 assert new_tensor.device == gpu_device
 
+        if paddle.device.is_compiled_with_xpu():
+            xpu_tensor = paddle.tensor([1]).to("xpu:0")
+            xpu_device = xpu_tensor.device
+            with xpu_device:
+                new_tensor = paddle.tensor([1])
+                assert new_tensor.device == xpu_device
+
 
 class TestCudaCompat(unittest.TestCase):
     # ---------------------
