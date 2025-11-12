@@ -118,15 +118,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 file(
-  GLOB TEST_MKLDNN_IR_PASSES
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "test_mkldnn_*.py")
-string(REPLACE ".py" "" TEST_MKLDNN_IR_PASSES "${TEST_MKLDNN_IR_PASSES}")
-foreach(TEST_INFERENCE_IR_PASS ${TEST_MKLDNN_IR_PASSES})
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
-endforeach()
-
-file(
   GLOB TEST_ONEDNN_IR_PASSES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_onednn_*.py")
@@ -138,11 +129,6 @@ endforeach()
 if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")
 elseif(WITH_ONEDNN)
-  foreach(target ${TEST_MKLDNN_IR_PASSES})
-    py_test_modules(${target} MODULES ${target})
-    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
-  endforeach()
-
   foreach(target ${TEST_ONEDNN_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
@@ -276,7 +262,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
       message(STATUS "Skip tests unrelated to CUDA/TRT")
     else()
-      set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT
+      set_tests_properties(test_onednn_depthwise_conv_pass PROPERTIES TIMEOUT
                                                                       120)
       set_tests_properties(test_onednn_mish_op PROPERTIES TIMEOUT 300)
       set_tests_properties(test_onednn_conv3d_op PROPERTIES TIMEOUT 300)
@@ -290,7 +276,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_onednn_conv_hard_swish_fuse_pass
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
+      set_tests_properties(test_onednn_matmul_v2_transpose_reshape_fuse_pass
                            PROPERTIES TIMEOUT 100)
       set_tests_properties(test_onednn_conv_mish_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
@@ -305,8 +291,7 @@ endif()
 if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")
 elseif(WITH_ONEDNN)
-
-  set(PIR_COVERAGE_MKLDNN_TESTS
+  set(PIR_COVERAGE_ONEDNN_TESTS
       test_onednn_conv_affine_channel_fuse_pass
       test_onednn_conv_gelu_fuse_pass
       test_onednn_conv_hard_sigmoid_fuse_pass
@@ -314,16 +299,9 @@ elseif(WITH_ONEDNN)
       test_onednn_conv_mish_fuse_pass
       test_onednn_conv_transpose_bias_fuse_pass
       test_onednn_conv3d_op
-      test_mkldnn_depthwise_conv_pass
+      test_onednn_depthwise_conv_pass
       test_onednn_shape_op
-      test_onednn_shuffle_channel_op)
-  foreach(target ${PIR_COVERAGE_MKLDNN_TESTS})
-    py_test_modules(${target}_pir MODULES ${target} ENVS FLAGS_enable_pir_api=1)
-    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
-    message(STATUS "PIR Copied Test: ${target}_pir in inference test")
-  endforeach()
-
-  set(PIR_COVERAGE_ONEDNN_TESTS
+      test_onednn_shuffle_channel_op
       test_onednn_batch_norm_act_fuse_pass
       test_onednn_conv_bias_fuse_pass
       test_onednn_conv_bn_fuse_pass
@@ -405,7 +383,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_onednn_conv_transpose_bias_fuse_pass_pir
                            PROPERTIES TIMEOUT 100)
       set_tests_properties(test_onednn_conv3d_op_pir PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_depthwise_conv_pass_pir
+      set_tests_properties(test_onednn_depthwise_conv_pass_pir
                            PROPERTIES TIMEOUT 120)
 
       set_tests_properties(test_onednn_conv_bn_fuse_pass_pir PROPERTIES TIMEOUT

@@ -24,8 +24,6 @@ from op_test import (
 import paddle
 from paddle import base
 
-paddle.enable_static()
-
 
 def strided_slice_native_forward(input, axes, starts, ends, strides):
     dim = input.ndim
@@ -1169,17 +1167,16 @@ class TestStridedSliceFloat16(unittest.TestCase):
         self.infer_flags = [1, 1, 1, 1, 1]
 
     def check_main(self, x_np, dtype):
-        paddle.disable_static()
-        x_np = x_np.astype(dtype)
-        x = paddle.to_tensor(x_np)
-        x.stop_gradient = False
-        output = strided_slice_native_forward(
-            x, self.axes, self.starts, self.ends, self.strides
-        )
-        x_grad = paddle.grad(output, x)
-        output_np = output[0].numpy().astype('float32')
-        x_grad_np = x_grad[0].numpy().astype('float32')
-        paddle.enable_static()
+        with paddle.base.dygraph.guard():
+            x_np = x_np.astype(dtype)
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            output = strided_slice_native_forward(
+                x, self.axes, self.starts, self.ends, self.strides
+            )
+            x_grad = paddle.grad(output, x)
+            output_np = output[0].numpy().astype('float32')
+            x_grad_np = x_grad[0].numpy().astype('float32')
         return output_np, x_grad_np
 
     def test_check(self):
@@ -1195,4 +1192,5 @@ class TestStridedSliceFloat16(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

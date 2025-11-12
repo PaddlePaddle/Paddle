@@ -31,7 +31,7 @@ __global__ void RpropKernelGPUImpl(const T* param,
                                    const MT* master_param,
                                    const T* learning_rate_range,
                                    const T* etas,
-                                   int num,
+                                   int64_t num,
                                    T* param_out,
                                    T* prev_out,
                                    T* learning_rate_out,
@@ -44,7 +44,7 @@ __global__ void RpropKernelGPUImpl(const T* param,
   MT one_data = static_cast<MT>(1);
   MT negative_one_data = static_cast<MT>(-1);
 
-  CUDA_KERNEL_LOOP(i, num) {
+  CUDA_KERNEL_LOOP_TYPE(i, num, int64_t) {
     MT param_data = master_param ? master_param[i] : static_cast<MT>(param[i]);
     MT grad_data = static_cast<MT>(grad[i]);
     MT prev_data = static_cast<MT>(prev[i]);
@@ -107,7 +107,8 @@ void RpropKernel(const Context& dev_ctx,
                       : nullptr;
 
   int block = 512;
-  int grid = (param.numel() + block - 1) / block;
+  int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((param.numel() + block - 1) / block, grid_max);
 
   RpropKernelGPUImpl<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
       param.data<T>(),

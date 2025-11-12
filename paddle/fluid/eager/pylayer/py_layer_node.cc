@@ -46,6 +46,9 @@ GradNodePyLayer::operator()(
   }
   pybind11::gil_scoped_acquire gil;
   VLOG(3) << "Running Eager Backward Node: " << name();
+  if (FLAGS_call_stack_level == 3) {
+    VLOG(3) << "PyLayer forward call stack: " << this->GetForwardTrace();
+  }
 
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       hooked_grads = GradNodePyLayer::ApplyGradientHooks(grads);
@@ -168,12 +171,9 @@ GradNodePyLayer::operator()(
   auto outputs = PyObject_CallObject(backward_fn, backward_args);
   egr::Controller::Instance().SetHasGrad(need_grad_tmp);
   if (!outputs) {
-    PADDLE_THROW(
-        common::errors::External(pybind11::detail::error_string().c_str()));
-  }
-
-  if (FLAGS_call_stack_level == 3) {
-    this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    std::string err_msg =
+        FormatPyLayerBackwardErrorMsg(this, pybind11::detail::error_string());
+    PADDLE_THROW(common::errors::External(err_msg.c_str()));
   }
 
   VLOG(6) << "PyLayer backward function finish...";
@@ -188,7 +188,9 @@ GradNodePyLayer::operator()(
   }
 
   size_t outputs_size = PyTuple_GET_SIZE(outputs_tuple);
-
+  VLOG(6) << "Pylayer backward output size " << outputs_size;
+  VLOG(6) << "Pylayer forward duplicable input size"
+          << ctx->forward_input_tensor_is_duplicable.size();
   if (outputs_size > ctx->forward_input_tensor_is_duplicable.size()) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The number of outputs of `PyLayer.backward` should be %d, but "
@@ -201,6 +203,8 @@ GradNodePyLayer::operator()(
       grad_out;
   grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
+    VLOG(8) << "forward_input_tensor_is_duplicable[" << i
+            << "] = " << ctx->forward_input_tensor_is_duplicable[i];
     if (i < outputs_size) {
       PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
       if (this->OutputMeta()[i][0].IsStopGradient()) {

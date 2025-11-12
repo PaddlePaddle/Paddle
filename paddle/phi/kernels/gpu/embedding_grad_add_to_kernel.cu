@@ -38,13 +38,15 @@ __global__ void EmbeddingGradAddTo(T* main_grad_out,
                                    const int64_t num_tokens,
                                    const int64_t token_length) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDim.x;
+  int64_t idy =
+      static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(gridDim.x);
 
   while (idy < num_tokens) {
     auto id = static_cast<int64_t>(token_indices[idy]);
     const phi::bfloat16* token_out_grad = out_grad + idy * token_length;
     T* token_main_grad = main_grad_out + id * token_length;
-    for (int i = idx; i < token_length; i += blockDim.x) {
+    for (int64_t i = idx; i < token_length; i += blockDim.x) {
       phi::CudaAtomicAdd(&token_main_grad[i],
                          static_cast<T>(token_out_grad[i]));
     }

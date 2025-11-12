@@ -1351,6 +1351,7 @@ class DygraphShardingOptimizerV2:
             sorted(model_sharded_state_dict.items())
         )
         for k, v in model_sharded_state_dict.items():
+            # When shared weights exist, the v.local_tensor.name of shared parameters are identical, but only the first parameter has optimizer states. Therefore, only the key-value pairs of the first occurrence in the shared parameter group need to be retained.
             if v.local_tensor.name not in static_to_struct:
                 static_to_struct[v.local_tensor.name] = k
 
@@ -1364,6 +1365,9 @@ class DygraphShardingOptimizerV2:
             flattened_range = param_slice_info[base_name]
             is_padded = base_name in padded_param
 
+            if flattened_range.stop - flattened_range.start == 0:
+                continue
+
             sharded_state[unified_name] = _create_sharded_weight(
                 unified_name, tensor, sharded_param, is_padded, flattened_range
             )
@@ -1375,6 +1379,9 @@ class DygraphShardingOptimizerV2:
                 unified_name = f"{struct_name}.w_0"
                 flattened_range = param_slice_info[weight_key]
                 is_padded = weight_key in padded_param
+
+                if flattened_range.stop - flattened_range.start == 0:
+                    continue
 
                 sharded_state[unified_name] = _create_sharded_weight(
                     unified_name,

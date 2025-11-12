@@ -85,6 +85,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/logging_utils.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #include "paddle/phi/core/raw_tensor.h"
@@ -495,6 +496,15 @@ struct iinfo {
       case phi::DataType::UINT8:
         CASE_IINFO_BODY(uint8, uint8_t);
         break;
+      case phi::DataType::UINT16:
+        CASE_IINFO_BODY(uint16, uint16_t);
+        break;
+      case phi::DataType::UINT32:
+        CASE_IINFO_BODY(uint32, uint32_t);
+        break;
+      case phi::DataType::UINT64:
+        CASE_IINFO_BODY(uint64, uint64_t);
+        break;
       case phi::DataType::INT8:
         CASE_IINFO_BODY(int8, int8_t);
         break;
@@ -761,6 +771,108 @@ class PyLayerBlockContextManager {
  private:
   // disable default constructor
   PyLayerBlockContextManager() = default;
+};
+
+int DLPackDLTensorFromPyObjectNoSync(void *py_obj, DLTensor *out) {
+  try {
+    // Use handle (non-owning) to avoid unnecessary refcount operations
+    py::handle handle(static_cast<PyObject *>(py_obj));
+    paddle::Tensor tensor = handle.cast<paddle::Tensor>();
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, out);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackManagedTensorFromPyObjectNoSync(void *py_obj,
+                                          DLManagedTensorVersioned **out) {
+  try {
+    py::handle handle(static_cast<PyObject *>(py_obj));
+    paddle::Tensor tensor = handle.cast<paddle::Tensor>();
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackManagedTensorToPyObjectNoSync(DLManagedTensorVersioned *src,
+                                        void **py_obj_out) {
+  try {
+    phi::DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
+    paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(dense_tensor));
+    egr::EagerUtils::autograd_meta(&tensor)->SetPersistable(false);
+    *py_obj_out = ToPyObject(tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+int DLPackManagedTensorAllocator(::DLTensor *prototype,
+                                 ::DLManagedTensorVersioned **out,
+                                 void *error_ctx,
+                                 void (*SetError)(void *error_ctx,
+                                                  const char *kind,
+                                                  const char *message)) {
+  try {
+    phi::IntArray shape(prototype->shape, prototype->ndim);
+    phi::Place place(paddle::framework::DLDeviceToPlace(prototype->device));
+    phi::DataType dtype =
+        paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
+    paddle::Tensor tensor = paddle::empty(shape, dtype, place);
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
+    return 0;
+  } catch (const std::exception &e) {
+    SetError(error_ctx, "DLPackManagedTensorAllocator", e.what());
+    return -1;
+  }
+}
+
+int DLPackCurrentWorkStream(DLDeviceType device_type,
+                            int32_t device_id,
+                            void **out_stream) {
+  try {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    if (device_type == kDLCUDA || device_type == kDLROCM) {
+      *out_stream = platform::get_current_stream(device_id)->raw_stream();
+    }
+#endif
+    return 0;
+  } catch (const std::exception &e) {
+    PyErr_SetString(PyExc_RuntimeError, e.what());
+    return -1;
+  }
+}
+
+struct PaddleDLPackExchangeAPI : public ::DLPackExchangeAPI {
+  PaddleDLPackExchangeAPI() {
+    header.version.major = DLPACK_MAJOR_VERSION;
+    header.version.minor = DLPACK_MINOR_VERSION;
+    header.prev_api = nullptr;
+    managed_tensor_allocator = DLPackManagedTensorAllocator;
+    managed_tensor_from_py_object_no_sync =
+        DLPackManagedTensorFromPyObjectNoSync;
+    managed_tensor_to_py_object_no_sync = DLPackManagedTensorToPyObjectNoSync;
+    dltensor_from_py_object_no_sync = DLPackDLTensorFromPyObjectNoSync;
+    current_work_stream = DLPackCurrentWorkStream;
+  }
+
+  static const DLPackExchangeAPI *Instance() {
+    static PaddleDLPackExchangeAPI inst;
+    return &inst;
+  }
 };
 
 // NOTE: use to load file by Mmap
@@ -1113,6 +1225,16 @@ struct MmapStorage {
           size_ / 1073741824));
     }
 #endif
+  }
+  ~MmapStorage() {
+    if (base_ptr_) {
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN6)
+      UnmapViewOfFile(base_ptr_);
+#else
+      munmap(base_ptr_, size);
+#endif
+      base_ptr_ = nullptr;
+    }
   }
   void *base_ptr_;
   int64_t size;
@@ -1771,6 +1893,10 @@ PYBIND11_MODULE(libpaddle, m) {
     ::DLDevice dl_device = PlaceToDLDevice(place);
     return py::make_tuple(static_cast<int>(dl_device.device_type),
                           dl_device.device_id);
+  });
+
+  m.def("dlpack_exchange_api_ptr", []() -> int64_t {
+    return reinterpret_cast<int64_t>(PaddleDLPackExchangeAPI::Instance());
   });
 
   m.def("from_dlpack", [](py::object data) {
@@ -3206,6 +3332,7 @@ All parameter, weight, gradient are variables in Paddle.
           // It may cause configuration effects for a single module
           VLOG(3) << "Set the VLOG level of all modules to " << level;
           FLAGS_v = level;
+          phi::set_phi_vlog_level(level);
         } else if (py::isinstance<py::dict>(module_levels)) {
           auto module_levels_dict = module_levels.cast<py::dict>();
           for (auto &item : module_levels_dict) {
@@ -3214,8 +3341,10 @@ All parameter, weight, gradient are variables in Paddle.
             if (module_name == "*") {
               VLOG(3) << "Set the VLOG level of all modules to " << level;
               FLAGS_v = level;
+              phi::set_phi_vlog_level(level);
             } else {
               google::SetVLOGLevel(module_name.c_str(), level);
+              phi::set_phi_vlog_level(module_name.c_str(), level);
             }
           }
         } else {
@@ -3818,7 +3947,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
   m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
   m.def("get_cublas_switch", phi::AllowTF32Cublas);
   m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);
@@ -4092,7 +4222,12 @@ All parameter, weight, gradient are variables in Paddle.
       .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .value("PSTRING", phi::DataType::PSTRING)
       .value("ALL_DTYPE", phi::DataType::ALL_DTYPE)
-      .export_values();
+      .export_values()
+      .def("__dlpack_data_type__", [](const phi::DataType &self) {
+        ::DLDataType dl_dtype =
+            paddle::framework::PhiDataTypeToDLDataType(self);
+        return py::make_tuple(dl_dtype.code, dl_dtype.bits, dl_dtype.lanes);
+      });
 
   py::class_<paddle::platform::EngineParams> engine_params(m,
                                                            "TRTEngineParams");

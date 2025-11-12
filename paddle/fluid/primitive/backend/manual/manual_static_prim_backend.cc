@@ -29,7 +29,7 @@ Tensor full<LazyTensor>(const IntArray& shape,
                         DataType dtype,
                         Place place) {
   auto op_res =
-      paddle::dialect::full(shape.GetData(), value.to<float>(), dtype, place);
+      paddle::dialect::full(shape.GetData(), value.to<double>(), dtype, place);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   return out;
 }
@@ -42,7 +42,7 @@ Tensor full_with_tensor<LazyTensor>(const Tensor& shape,
   pir::Value shape_res =
       std::static_pointer_cast<LazyTensor>(shape.impl())->value();
   pir::Value value_res = paddle::dialect::full(
-      std::vector<int64_t>{}, value.to<float>(), dtype, place);
+      std::vector<int64_t>{}, value.to<double>(), dtype, place);
   auto op_res = paddle::dialect::full_with_tensor(value_res, shape_res, dtype);
   Tensor out(std::make_shared<LazyTensor>(op_res));
   return out;

@@ -1082,8 +1082,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const paddle::optional<DenseTensor> &q_descale,
                              const paddle::optional<DenseTensor> &k_descale,
                              const paddle::optional<DenseTensor> &v_descale,
-                             const int max_seqlen_q,
-                             const int max_seqlen_k,
+                             const Scalar &max_seqlen_q,
+                             const Scalar &max_seqlen_k,
                              const float softmax_scale,
                              const bool causal,
                              const int window_size_left,
@@ -1150,6 +1150,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
 
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
+  const int64_t max_seqlen_q_ = max_seqlen_q.to<int64_t>();
+  const int64_t max_seqlen_k_ = max_seqlen_k.to<int64_t>();
   FlashAttnV3BaseKernel<T, Context>(dev_ctx,
                                     q,
                                     k,
@@ -1171,9 +1173,9 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                                     q_descale,
                                     k_descale,
                                     v_descale,
-                                    paddle::none,  // scheduler_metadata
-                                    max_seqlen_q,  // max_seqlen_q_
-                                    max_seqlen_k,  // max_seqlen_k_
+                                    paddle::none,   // scheduler_metadata
+                                    max_seqlen_q_,  // max_seqlen_q_
+                                    max_seqlen_k_,  // max_seqlen_k_
                                     softmax_scale,
                                     causal,
                                     window_size_left,
@@ -1394,7 +1396,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = std::min(flashmaskv2_get_max_headdim(), 128);
+  int const max_headdim = flashmaskv2_get_max_headdim();
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,
@@ -1762,9 +1764,7 @@ void FlashMaskV2BaseKernel(
   const int params_arch =
       phi::dynload::flashmaskv2_fwd_params_get_arch(params_handle);
   bool const scheduler_needs_semaphore =
-      params_arch >= 90 ? (((params_is_causal || params_is_local) &&
-                            (params_num_splits == 1)) ||
-                           is_varlen)
+      params_arch >= 90 ? true
                         : ((params_is_causal && !is_varlen) ||
                            (is_varlen && params_num_splits > 1));
   if (scheduler_needs_semaphore || use_dynamic_split) {
@@ -2089,8 +2089,32 @@ void FlashMaskV2BaseKernel(
     // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
     // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
     // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin_shape[2] =
-        ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+
+    int device_id = dev_ctx.GetPlace().GetDeviceId();
+    auto dprops = paddle::platform::GetDeviceProperties(device_id);
+    const bool is_sm90 = dprops.major == 9 && dprops.minor == 0;
+
+    if (is_sm90) {
+      // seqlen_k to nblock_seqlen, here we use kBlockN = 64
+      // as a conservative estimation (reduce allocation size)
+      flashmask_maxmin_shape[2] =
+          ((flashmask_maxmin_shape[2] + 63) / 64 + 3) / 4 * 4;
+      // make sure this is the same with FlashMaskV3 fwd main loop
+      static constexpr int flashmask_buffer_length = 16 * 1024;
+      // estimate the upper bound of the possible chunk size
+      static constexpr int chunk_padded_length =
+          ((flashmask_buffer_length + 63) / 64 + 31) & 0xffffffe0;
+      static constexpr int chunk_valid_length =
+          ((flashmask_buffer_length + 63) / 64 + 3) & 0xfffffffc;
+      const int num_chunk =
+          (flashmask_maxmin_shape[2] + chunk_valid_length - 1) /
+          chunk_valid_length;
+      flashmask_maxmin_shape[2] = num_chunk * chunk_padded_length;
+    } else {
+      // seqlen_k to nblock_seqlen
+      flashmask_maxmin_shape[2] =
+          ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+    }
     flashmask_maxmin_shape[3] = 8;
 
     flashmask_maxmin.set_type(phi::DataType::INT32);

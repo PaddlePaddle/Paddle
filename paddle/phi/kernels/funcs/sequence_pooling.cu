@@ -33,14 +33,14 @@ struct MaxPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       T max_val = static_cast<T>(-FLT_MAX);
       int max_index = -1;
       if (start == end) {
         output[tid] = pad_value;
         index[tid] = -1;
       } else {
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           if (max_val < input[item_dim * i + tid]) {
             max_val = input[item_dim * i + tid];
             max_index = i;
@@ -62,12 +62,12 @@ struct AvgPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
         T val = static_cast<T>(0);
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           val += input[item_dim * i + tid];
         }
         // end, start is lod, so end - start != 0
@@ -86,12 +86,12 @@ struct SumPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
         T val = static_cast<T>(0);
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           val += input[item_dim * i + tid];
         }
         output[tid] = val;
@@ -109,12 +109,12 @@ struct SqrtPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
         T val = static_cast<T>(0);
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           val += input[item_dim * i + tid];
         }
         // end, start is lod, so end - start != 0
@@ -133,7 +133,7 @@ struct LastPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
@@ -152,7 +152,7 @@ struct FirstPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
@@ -287,8 +287,8 @@ struct MaxPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         if (i == index[tid]) {
           in_grad[item_dim * i + tid] = out_grad[tid];
         } else {
@@ -307,8 +307,8 @@ struct AvgPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] = out_grad[tid] / (end - start);
       }
     }
@@ -323,8 +323,8 @@ struct SumPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] = out_grad[tid];
       }
     }
@@ -339,8 +339,8 @@ struct SqrtPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] =
             out_grad[tid] / (sqrt(static_cast<T>(end - start)));
       }
@@ -356,8 +356,8 @@ struct LastPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         if (i == end - 1) {
           in_grad[item_dim * i + tid] = out_grad[tid];
         } else {
@@ -376,8 +376,8 @@ struct FirstPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         if (i == start) {
           in_grad[item_dim * i + tid] = out_grad[tid];
         } else {

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/correlation_kernel.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -112,7 +113,9 @@ void CorrelationCUDAKernel(const Context &dev_ctx,
                            int stride2,
                            int corr_type_multiply,
                            DenseTensor *out) {
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  bool is_gpu_place =
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM;
   PADDLE_ENFORCE_EQ(
       is_gpu_place,
       true,
@@ -138,9 +141,6 @@ void CorrelationCUDAKernel(const Context &dev_ctx,
   rinput2.Resize({N, padded_input_height, padded_input_width, C});
   dev_ctx.template Alloc<T>(&rinput2);
 
-  auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  auto *ctx =
-      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
   auto max_grid_dim = static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
 
   int64_t grid_size = (rinput1.numel() + 512 - 1) / 512;

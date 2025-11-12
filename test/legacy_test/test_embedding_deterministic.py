@@ -121,7 +121,7 @@ def get_all_dtypes():
         paddle.complex64,
         paddle.complex128,
     ]
-    if 'A100' in paddle.device.cuda.get_device_properties().name:
+    if 'A100' in paddle.device.get_device_properties().name:
         dtypes.append(paddle.bfloat16)
     return dtypes
 

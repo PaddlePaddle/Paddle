@@ -24,6 +24,9 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
+COMMON_DECLARE_string(dump_api_python_stack_path);
 
 paddle::Tensor conv2d_ad_func(
     const paddle::Tensor& input,
@@ -111,9 +114,20 @@ paddle::Tensor conv2d_ad_func(
   egr::AutogradMeta* filter_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name = egr::GenerateUniqueApiName("conv2d", call_count);
+  }
+  // Save forward call stack to file for debug
+  if (FLAGS_call_stack_level == 3 &&
+      !FLAGS_dump_api_python_stack_path.empty()) {
+    egr::SavePythonCallStackToFile(FLAGS_dump_api_python_stack_path,
+                                   unique_api_name);
+  }
   VLOG(3) << "\n"
-          << SEPARATOR << "Running_C++_API: "
-          << "conv2d" << SEPARATOR;
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   auto api_result = paddle::experimental::conv2d(input,
                                                  filter,
                                                  strides,
@@ -123,8 +137,7 @@ paddle::Tensor conv2d_ad_func(
                                                  groups,
                                                  data_format);
   VLOG(3) << "\n"
-          << SEPARATOR << "Finshi_C++_API: "
-          << "conv2d" << SEPARATOR;
+          << SEPARATOR << "Finshi_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
@@ -132,6 +145,14 @@ paddle::Tensor conv2d_ad_func(
 
   // Get Outputs
   auto& out = api_result;
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+  }
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     out);
+  }
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
@@ -151,12 +172,23 @@ paddle::Tensor conv2d_ad_func(
     // Node Construction
     auto grad_node = std::shared_ptr<Conv2dGradNodeFinal>(  // NOLINT
         new Conv2dGradNodeFinal(1, 2));
-
+    // Set GradNodeName
+    if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
-
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
+    }
     // SetAttributes if needed
     grad_node->SetAttribute_strides(strides);
     grad_node->SetAttribute_paddings(paddings);
@@ -179,6 +211,27 @@ paddle::Tensor conv2d_ad_func(
     }
     grad_node->SetGradInMeta(out, 0);
     // Set TensorWrappers for Forward Outputs if needed
+  }
+  if (VLOG_IS_ON(6)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_INPUT_TEMPLATE = " \n( input , %s), ";
+    std::string input_input_str = paddle::string::Sprintf(
+        TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_input_str;
+    const char* TENSOR_FILTER_TEMPLATE = " \n( filter , %s), ";
+    std::string input_filter_str = paddle::string::Sprintf(
+        TENSOR_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(filter));
+    input_str += input_filter_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , %s), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(6) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
 
   if (FLAGS_check_cuda_error) [[unlikely]] {

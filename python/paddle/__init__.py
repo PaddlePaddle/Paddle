@@ -79,15 +79,20 @@ from .framework import (
 from .framework.dtype import (
     bfloat16,
     bool,
+    cdouble,
+    cfloat,
     complex64,
     complex128,
+    double,
     dtype,
     finfo,
+    float,
     float8_e4m3fn,
     float8_e5m2,
     float16,
     float32,
     float64,
+    half,
     iinfo,
     int8,
     int16,
@@ -96,6 +101,9 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint16,
+    uint32,
+    uint64,
 )
 
 if typing.TYPE_CHECKING:
@@ -169,6 +177,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    compat as compat,
     cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
@@ -200,7 +209,6 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
-    compat as compat,
     fft as fft,
     functional as functional,
     hub as hub,
@@ -219,6 +227,7 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .amp.auto_cast import autocast
 from .autograd import (
     enable_grad,
     grad,
@@ -227,9 +236,11 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
-    PaddleStream as Stream,
+    Event,
+    Stream,
     device_guard,
     get_cudnn_version,
+    get_default_device,
     get_device,
     get_device_module,
     is_compiled_with_cinn,
@@ -239,6 +250,7 @@ from .device import (  # noqa: F401
     is_compiled_with_ipu,
     is_compiled_with_rocm,
     is_compiled_with_xpu,
+    set_default_device,
     set_device,
 )
 from .distributed import DataParallel
@@ -271,6 +283,7 @@ from .hapi import (
     summary,
 )
 from .nn.functional import (
+    adaptive_avg_pool1d,
     conv1d,
     conv2d,
     conv3d,
@@ -925,6 +938,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                         raise err
             kernel32.SetErrorMode(prev_error_mode)
 
+
 disable_static()
 
 from .pir_utils import IrGuard
@@ -959,7 +973,6 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
-get_default_device = get_device
 
 __all__ = [
     'block_diag',
@@ -969,17 +982,25 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint16',
+    'uint32',
+    'uint64',
     'int8',
     'int16',
     'int32',
     'int64',
     'float8_e4m3fn',
     'float8_e5m2',
+    'half',
     'float16',
+    'float',
     'float32',
     'float64',
+    'double',
     'bfloat16',
     'bool',
+    'cfloat',
+    'cdouble',
     'complex64',
     'complex128',
     'pstring',
@@ -1463,6 +1484,8 @@ __all__ = [
     'conv3d',
     'manual_seed',
     'softmax',
+    'adaptive_avg_pool1d',
+    'autocast',
 ]
 import os
 

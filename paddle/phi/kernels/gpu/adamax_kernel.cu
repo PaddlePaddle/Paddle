@@ -31,19 +31,21 @@ __global__ void AdamaxGPUKernel(const T* param,
                                 MT d_beta1,
                                 MT d_beta2,
                                 MT d_epsilon,
-                                int num,
+                                int64_t num,
                                 T* param_out,
                                 MT* moment_out,
                                 MT* inf_norm_out,
                                 MT* master_param_out) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   MT lr = static_cast<MT>(learning_rate[0]);
   MT d_pow = static_cast<MT>(beta1_pow[0]);
   MT one = static_cast<MT>(1.0f);
   auto l_r = lr / (one - d_pow);
 
-  for (int index = idx; index < num; index += gridDim.x * blockDim.x) {
+  for (int64_t index = idx; index < num; index += gridDim.x * blockDim.x) {
     // load and cast input to MT
     MT d_param =
         master_param ? master_param[index] : static_cast<MT>(param[index]);
@@ -102,7 +104,7 @@ void AdamaxKernel(const Context& dev_ctx,
   MPDType beta2_ = static_cast<MPDType>(beta2);
   MPDType epsilon_ = static_cast<MPDType>(epsilon);
 
-  int numel = param.numel();
+  int64_t numel = param.numel();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid = config.block_per_grid.x;
   int block = config.thread_per_block.x;

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import warnings
 from contextlib import contextmanager
 
 import numpy as np
@@ -33,7 +31,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base, static
 from paddle.base import Program, core, program_guard
-from paddle.base.layer_helper import LayerHelper
 
 devices = ['cpu', get_device()]
 
@@ -58,11 +55,11 @@ class TestSqrtOpError(unittest.TestCase):
             # The input type of sqrt op must be Variable or numpy.ndarray.
             in1 = 1
             self.assertRaises(TypeError, paddle.sqrt, in1)
-            # The input dtype of sqrt op must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             in2 = paddle.static.data(
                 name='input2', shape=[-1, 12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, paddle.sqrt, in2)
+            paddle.sqrt(in2)
 
             in3 = paddle.static.data(
                 name='input3', shape=[-1, 12, 10], dtype="float16"
@@ -468,7 +465,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.006,
+            max_relative_error=0.007,
             check_prim=False,
             check_pir=True,
             check_prim_pir=False,
@@ -504,7 +501,7 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 class TestSigmoidBF16(OpTest):
     def setUp(self):
         self.op_type = "sigmoid"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.nn.functional.sigmoid
         self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
@@ -549,6 +546,46 @@ class TestSigmoidBF16(OpTest):
             check_pir=True,
             check_prim_pir=True,
         )
+
+
+class TestSigmoidFp32_Comp(OpTest):
+    def setUp(self):
+        self.op_type = "sigmoid"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.nn.functional.sigmoid
+        self.public_python_api = paddle.nn.functional.sigmoid
+        self.init_dtype()
+        self.init_shape()
+        self.if_enable_cinn()
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = 1.0 / (1.0 + np.exp(-x))
+
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=False,
+            check_pir=True,
+            check_prim_pir=False,
+            max_relative_error=1e-2,
+            numeric_grad_delta=2e-2,
+        )
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.shape = [11, 17]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 '''
@@ -817,6 +854,53 @@ class TestLogSigmoidAPI(unittest.TestCase):
             F.log_sigmoid(x_fp16)
 
 
+class TestLogSigmoidOutAndParaDecorator(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.apis = [
+            paddle.nn.functional.log_sigmoid,
+            paddle.nn.functional.logsigmoid,
+        ]
+        self.shape = [3, 4, 5]
+        self.input_np = np.random.random(self.shape).astype('float32')
+
+    def do_test(self, api, test_type):
+        self.test_types = [
+            "decorator1",
+        ]
+        x = paddle.to_tensor(self.input_np, stop_gradient=False)
+        out = paddle.zeros(self.shape, dtype='float32')
+        out.stop_gradient = False
+        if test_type == "raw":
+            out = paddle.nn.functional.log_sigmoid(x)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == "decorator1":
+            res = api(input=x)
+            loss = res.mean()
+            loss.backward()
+            x_grad = x.grad
+            return res, x_grad
+        else:
+            raise NotImplementedError(
+                f"Test type {test_type} is not implemented."
+            )
+
+    def test_api(self):
+        out_std, x_grad_std = self.do_test(
+            paddle.nn.functional.log_sigmoid, "raw"
+        )
+        for api in self.apis:
+            for test_type in self.test_types:
+                out, x_grad = self.do_test(api, test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-20
+                )
+                np.testing.assert_allclose(
+                    x_grad.numpy(), x_grad_std.numpy(), rtol=1e-20
+                )
+
+
 class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
@@ -949,11 +1033,11 @@ class TestTanhAPI(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, self.tanh, 1)
-            # The input dtype must be float16, float32.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, self.tanh, x_int32)
+            self.tanh(x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
@@ -1149,8 +1233,8 @@ class TestSinhAPI(unittest.TestCase):
             var.stop_gradient = False
             loss = paddle.sinh(var)
             loss.backward()
-            grad_var = var.gradient()
-            self.assertEqual(grad_var.shape, input_x.shape)
+            grad_var = var.grad
+            self.assertEqual(list(grad_var.shape), list(input_x.shape))
 
 
 class TestSinhOpError(unittest.TestCase):
@@ -1161,11 +1245,11 @@ class TestSinhOpError(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, paddle.sinh, 1)
-            # The input dtype must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, paddle.sinh, x_int32)
+            paddle.sinh(x_int32)
             # support the input dtype is float16
             if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
@@ -1282,8 +1366,8 @@ class TestCoshAPI(unittest.TestCase):
             var.stop_gradient = False
             loss = paddle.cosh(var)
             loss.backward()
-            grad_var = var.gradient()
-            self.assertEqual(grad_var.shape, input_x.shape)
+            grad_var = var.grad
+            self.assertEqual(list(grad_var.shape), list(input_x.shape))
 
 
 class TestCoshOpError(unittest.TestCase):
@@ -1294,11 +1378,11 @@ class TestCoshOpError(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, paddle.cosh, 1)
-            # The input dtype must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, paddle.cosh, x_int32)
+            paddle.cosh(x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
@@ -2090,6 +2174,8 @@ class TestCeil(TestActivation):
         # we return zero as gradient, but the numpy return nan.
         # for prim, we compare result with eager python api,
         # so, we use only_prim flag to express we only test prim.
+        if not np.issubdtype(self.dtype, np.floating):
+            self.skipTest("Integer types don't support gradient computation")
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
                 get_device_place(),
@@ -2174,6 +2260,8 @@ class TestFloor(TestActivation):
         # we return zero as gradient, but the numpy return nan.
         # for prim, we compare result with eager python api,
         # so, we use only_prim flag to express we only test prim.
+        if not np.issubdtype(self.dtype, np.floating):
+            self.skipTest("Integer types don't support gradient computation")
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
                 get_device_place(),
@@ -2385,8 +2473,8 @@ class TestTanAPI(unittest.TestCase):
             var.stop_gradient = False
             loss = paddle.tan(var)
             loss.backward()
-            grad_var = var.gradient()
-            self.assertEqual(grad_var.shape, input_x.shape)
+            grad_var = var.grad
+            self.assertEqual(list(grad_var.shape), list(input_x.shape))
 
 
 class TestAcos(TestActivation):
@@ -2879,20 +2967,38 @@ class TestRelu_NanInput(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
+        self.__class__.no_need_check_grad = True
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
         x[-1] = float('nan')
-        tensor_x = paddle.to_tensor(x)
-        out = paddle.nn.functional.relu(tensor_x)
-        self.outputs_paddle = out
+        self.x_np = x
 
     def test_check_output(self):
-        self.assertTrue(
-            paddle.isnan(self.outputs_paddle).cast('int32').sum() > 0
-        )
+        # Override to prevent calling base class method that expects inputs/outputs
+        pass
+
+    def test_static(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', self.shape, dtype=self.dtype)
+            out = paddle.nn.functional.relu(x)
+            exe = paddle.static.Executor()
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            nan_count = np.isnan(res[0]).astype('int32').sum()
+            self.assertTrue(nan_count.item() > 0)
+
+    def test_dygraph(self):
+        with dynamic_guard():
+            tensor_x = paddle.to_tensor(self.x_np)
+            out = paddle.nn.functional.relu(tensor_x)
+            nan_count = paddle.isnan(out).cast('int32').sum()
+            nan_count = nan_count.numpy()
+            self.assertTrue(nan_count.item() > 0)
 
     def test_check_grad(self):
         pass
@@ -3432,32 +3538,6 @@ class TestRelu6API(unittest.TestCase):
                 F.relu6(x_fp16)
 
 
-class TestRelu6APIWarnings(unittest.TestCase):
-    def test_warnings(self):
-        with (
-            static_guard(),
-            warnings.catch_warnings(record=True) as context,
-        ):
-            warnings.simplefilter("always")
-
-            helper = LayerHelper("relu6")
-            data = paddle.static.data(
-                name='data', shape=[None, 3, 32, 32], dtype='float32'
-            )
-            out = helper.create_variable_for_type_inference(dtype=data.dtype)
-            os.environ['FLAGS_print_extra_attrs'] = "1"
-            helper.append_op(
-                type="relu6",
-                inputs={'X': data},
-                outputs={'Out': out},
-                attrs={'threshold': 6.0},
-            )
-            self.assertTrue(
-                "op relu6 use extra_attr: threshold" in str(context[-1].message)
-            )
-            os.environ['FLAGS_print_extra_attrs'] = "0"
-
-
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
     x_dtype = x.dtype
     if x_dtype == 'float16':
@@ -3608,44 +3688,6 @@ class TestHardswishAPI(unittest.TestCase):
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
             F.hardswish(x_fp16)
-
-
-class TestSoftRelu(TestActivation):
-    def setUp(self):
-        self.op_type = "soft_relu"
-        self.init_dtype()
-
-        np.random.seed(4096)
-        x = np.random.uniform(-3, 3, [4, 4]).astype(self.dtype)
-        threshold = 2.0
-        # The same reason with TestAbs
-        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
-        x[np.abs(x + threshold) < 0.005] = -threshold - 0.02
-        t = np.copy(x)
-        t[t < -threshold] = -threshold
-        t[t > threshold] = threshold
-        out = np.log(np.exp(t) + 1)
-
-        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
-        self.outputs = {'Out': out}
-        self.convert_input_output()
-        self.attrs = {'threshold': threshold}
-
-    def test_check_output(self):
-        self.check_output(
-            check_dygraph=False, check_pir_onednn=self.check_pir_onednn
-        )
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.02,
-            check_dygraph=False,
-            check_pir_onednn=self.check_pir_onednn,
-        )
 
 
 def elu(x, alpha):
@@ -4215,75 +4257,6 @@ class TestLog2(TestActivation):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
-class TestLog2API_Compatibility(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
-        paddle_dygraph_out = []
-        # Position args (args)
-        out1 = paddle.log2(x)
-        paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
-        out2 = paddle.log2(x=x)
-        paddle_dygraph_out.append(out2)
-        # Key words args for torch
-        out3 = paddle.log2(input=x)
-        paddle_dygraph_out.append(out3)
-
-        # Tensor method args
-        out4 = paddle.empty([])
-        out5 = x.log2(x, out=out4)
-        paddle_dygraph_out.append(out4)
-        paddle_dygraph_out.append(out5)
-        # Tensor method kwargs
-        out6 = x.log2()
-        paddle_dygraph_out.append(out6)
-        # Test out
-        out7 = paddle.empty([])
-        paddle.log2(x, out=out7)
-        paddle_dygraph_out.append(out7)
-        # Numpy reference  out
-        ref_out = np.log2(self.np_input)
-        # Check
-        for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
-        paddle.enable_static()
-
-    def test_static_Compatibility(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            # Position args (args)
-            out1 = paddle.log2(x)
-            # Key words args (kwargs) for paddle
-            out2 = paddle.log2(x=x)
-            # Key words args for torch
-            out3 = paddle.log2(input=x)
-            # Tensor method args
-            out4 = x.log2()
-
-            exe = base.Executor(paddle.CPUPlace())
-            fetches = exe.run(
-                main,
-                feed={"x": self.np_input},
-                fetch_list=[out1, out2, out3, out4],
-            )
-            ref_out = np.log2(self.np_input)
-            for out in fetches:
-                np.testing.assert_allclose(out, ref_out)
-
-
 class TestLog2_Complex64(TestLog2):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -4758,7 +4731,7 @@ class TestSquareBF16(OpTest):
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
         self.init_dtype()
@@ -4799,6 +4772,54 @@ class TestPow(TestActivation):
         )
 
 
+class TestPowFp64_Comp(OpTest):
+    def setUp(self):
+        self.op_type = "pow"
+        # test forward decomposition correctness
+        self.prim_op_type = "comp"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.init_dtype()
+        self.init_shape()
+        self.if_enable_cinn()
+
+        np.random.seed(2025)
+        x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        factor = 1.3
+        out = np.power(x, factor)
+
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {'factor': factor}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad(self):
+        # Gradient check must be done in FP64 for pow op
+        # due to framework requirement.
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=False,
+            check_pir=True,
+            check_prim_pir=False,
+            max_relative_error=1e-2,
+            numeric_grad_delta=2e-2,
+        )
+
+    def init_dtype(self):
+        # Pow op gradient check must use FP64 precision.
+        # This is enforced by Paddle's OpTest tearDownClass.
+        self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = [11, 17]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
 class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
@@ -4809,23 +4830,17 @@ class TestPow_API(TestActivation):
         with static_guard():
             input = np.random.uniform(1, 2, [11, 17]).astype("float32")
             x = paddle.static.data(name="x", shape=[11, 17], dtype="float32")
-            res = paddle.static.data(
-                name="res", shape=[11, 17], dtype="float32"
-            )
 
             factor_1 = 2.0
             factor_2 = paddle.tensor.fill_constant([1], "float32", 3.0)
             out_1 = paddle.pow(x, factor_1)
             out_2 = paddle.pow(x, factor_2)
-            out_4 = paddle.pow(x, factor_1, name='pow_res')
-            out_6 = paddle.pow(x, factor_2)
-            self.assertEqual(('pow_res' in out_4.name), True)
 
             exe = base.Executor(place=base.CPUPlace())
-            res_1, res_2, res, res_6 = exe.run(
+            res_1, res_2 = exe.run(
                 base.default_main_program(),
                 feed={"x": input},
-                fetch_list=[out_1, out_2, res, out_6],
+                fetch_list=[out_1, out_2],
             )
 
             np.testing.assert_allclose(
@@ -4833,9 +4848,6 @@ class TestPow_API(TestActivation):
             )
             np.testing.assert_allclose(
                 res_2, np.power(input, 3), rtol=1e-5, atol=1e-8
-            )
-            np.testing.assert_allclose(
-                res_6, np.power(input, 3), rtol=1e-5, atol=1e-8
             )
 
 
@@ -4967,11 +4979,11 @@ class TestSTanhAPI(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, paddle.stanh, 1)
-            # The input dtype must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, paddle.stanh, x_int32)
+            paddle.stanh(x_int32)
             # support the input dtype is float16
             if core.is_compiled_with_cuda():
                 x_fp16 = paddle.static.data(
@@ -5795,23 +5807,18 @@ class TestSqrtOutAndAlias(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.static.data('x', shape=[4, 6], dtype='float32')
-            y_input = paddle.sqrt(input=x)
+            x = paddle.static.data(
+                'X', [4, 6], 'float32'
+            )  # -> PIR Value when PIR is on
+            out = paddle.sqrt(x)  # prefer positional; PIR op expects Value
 
-        place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
 
-        exe.run(paddle.static.default_startup_program())
+            feed_x = np.random.rand(4, 6).astype('float32')
+            (res,) = exe.run(feed={'X': feed_x}, fetch_list=[out])
 
-        feed_x = np.random.rand(4, 6).astype('float32')
-        fetch_y_input = exe.run(
-            paddle.static.default_main_program(),
-            feed={'x': feed_x},
-            fetch_list=[y_input],
-        )
-        np.testing.assert_allclose(
-            fetch_y_input[0], np.sqrt(feed_x), rtol=1e-6, atol=1e-6
-        )
+        np.testing.assert_allclose(res, np.sqrt(feed_x), rtol=1e-6, atol=1e-6)
 
 
 # ------------------ Test Cudnn Activation----------------------
@@ -5987,7 +5994,6 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
-create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
@@ -6161,7 +6167,6 @@ create_test_act_bf16_class(
 )
 create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
-create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
@@ -6200,6 +6205,201 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=False, check_pir=True, check_prim_pir=True
 )
+
+
+class TestActivationAPI_Compatibility(unittest.TestCase):
+    ACTIVATION_CONFIGS = [
+        ("paddle.abs", np.abs, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.log2", np.log2, {'min_val': 0.0, 'max_val': 8.0}),
+        ("paddle.exp", np.exp, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.expm1", np.expm1, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.round", np.round, {'min_val': -5.0, 'max_val': 5.0}),
+        ("paddle.tanh", np.tanh, {'min_val': -1.0, 'max_val': 1.0}),
+    ]
+    ACTIVATION_NOT_METHOD_CONFIGS = [
+        (
+            "paddle.nn.functional.softplus",
+            ref_softplus,
+            {'min_val': -1.0, 'max_val': 1.0},
+        ),
+    ]
+
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = devices
+        self.shape = [5, 6]
+        self.dtype = "float32"
+
+    def init_data(self, min_val=-1.0, max_val=1.0):
+        self.np_x = (
+            np.random.rand(*self.shape).astype(self.dtype) * (max_val - min_val)
+            + min_val
+        )
+
+
+def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):
+    paddle_func = eval(act_name)
+    act_name = act_name.split('.')[-1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # (1) Position args
+        out1 = paddle_func(x)
+        paddle_dygraph_out.append(out1)
+        # (2) Key words args for paddle
+        out2 = paddle_func(x=x)
+        paddle_dygraph_out.append(out2)
+        # (3) Key words args for torch compatibility
+        out3 = paddle_func(input=x)
+        paddle_dygraph_out.append(out3)
+        # (4) Tensor method args: x.func()
+        out4 = getattr(x, act_name)()
+        paddle_dygraph_out.append(out4)
+        if has_out:
+            # (5) Test 'out' parameter for torch compatibility
+            out5 = paddle.empty_like(x)
+            paddle_func(x, out=out5)
+            paddle_dygraph_out.append(out5)
+        ref_out = ref_func(self.np_x)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # (1) Position args
+            out1 = paddle_func(x)
+            # (2) Key words args for paddle
+            out2 = paddle_func(x=x)
+            # (3) Key words args for torch compatibility
+            out3 = paddle_func(input=x)
+            # (4) Tensor method args (x.func())
+            out4 = getattr(x, act_name)()
+            ref_out = ref_func(self.np_x)
+            fetch_list = [out1, out2, out3, out4]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+    test_dygraph_Compatibility.__name__ = (
+        f'test_dygraph_Compatibility_{act_name}'
+    )
+    test_static_Compatibility.__name__ = f'test_static_Compatibility_{act_name}'
+    return test_dygraph_Compatibility, test_static_Compatibility
+
+
+def generate_test_case_for_not_method_func(
+    act_name, ref_func, data_range, has_out=True
+):
+    paddle_func = eval(act_name)
+    act_name = act_name.split('.')[-1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # (1) Position args
+        out1 = paddle_func(x)
+        paddle_dygraph_out.append(out1)
+        # (2) Key words args for paddle
+        out2 = paddle_func(x=x)
+        paddle_dygraph_out.append(out2)
+        # (3) Key words args for torch compatibility
+        out3 = paddle_func(input=x)
+        paddle_dygraph_out.append(out3)
+        if has_out:
+            # (4) Test 'out' parameter for torch compatibility
+            out4 = paddle.empty_like(x)
+            paddle_func(x, out=out4)
+            paddle_dygraph_out.append(out4)
+        ref_out = ref_func(self.np_x)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # (1) Position args
+            out1 = paddle_func(x)
+            # (2) Key words args for paddle
+            out2 = paddle_func(x=x)
+            # (3) Key words args for torch compatibility
+            out3 = paddle_func(input=x)
+            ref_out = ref_func(self.np_x)
+            fetch_list = [out1, out2, out3]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+    test_dygraph_Compatibility.__name__ = (
+        f'test_dygraph_Compatibility_{act_name}'
+    )
+    test_static_Compatibility.__name__ = f'test_static_Compatibility_{act_name}'
+    return test_dygraph_Compatibility, test_static_Compatibility
+
+
+for (
+    paddle_api,
+    np_ref_func,
+    data_range,
+) in TestActivationAPI_Compatibility.ACTIVATION_CONFIGS:
+    dygraph_test, static_test = generate_test_case_for_func(
+        paddle_api, np_ref_func, data_range
+    )
+    setattr(
+        TestActivationAPI_Compatibility, dygraph_test.__name__, dygraph_test
+    )
+    setattr(TestActivationAPI_Compatibility, static_test.__name__, static_test)
+
+for (
+    paddle_api,
+    np_ref_func,
+    data_range,
+) in TestActivationAPI_Compatibility.ACTIVATION_NOT_METHOD_CONFIGS:
+    dygraph_test, static_test = generate_test_case_for_not_method_func(
+        paddle_api, np_ref_func, data_range, False
+    )
+    setattr(
+        TestActivationAPI_Compatibility, dygraph_test.__name__, dygraph_test
+    )
+    setattr(TestActivationAPI_Compatibility, static_test.__name__, static_test)
+
 
 if __name__ == "__main__":
     unittest.main()

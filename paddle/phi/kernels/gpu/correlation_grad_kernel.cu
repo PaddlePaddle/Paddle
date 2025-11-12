@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/correlation_grad_kernel.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -35,7 +36,9 @@ __global__ void correlation_backward_input1(int64_t n,
                                             const int max_displacement,
                                             const int stride1,
                                             const int stride2) {
-  int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t thread_index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t total_hw_c = input_channel * input_height * input_width;
   if (thread_index >= total_hw_c) return;
 
@@ -116,7 +119,9 @@ __global__ void correlation_backward_input2(int64_t n,
                                             const int max_displacement,
                                             const int stride1,
                                             const int stride2) {
-  int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t thread_index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t total_hw_c = input_channel * input_height * input_width;
   if (thread_index >= total_hw_c) return;
 
@@ -218,9 +223,6 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
   rinput2.Resize({N, padded_input_height, padded_input_width, C});
   dev_ctx.template Alloc<T>(&rinput2);
 
-  auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  auto *ctx =
-      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
   auto max_grid_dim = static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
 
   int64_t grid_size = (rinput1.numel() + 512 - 1) / 512;

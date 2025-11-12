@@ -381,13 +381,8 @@ nvinfer1::Dims GroupNormPlugin::getOutputDimensions(
 
 int GroupNormPlugin::enqueue(int batch_size,
                              const void *const *inputs,
-#if IS_TRT_VERSION_LT(8000)
-                             void **outputs,
-                             void *workspace,
-#else
                              void *const *outputs,
                              void *workspace,
-#endif
                              cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
   int groups = groups_;

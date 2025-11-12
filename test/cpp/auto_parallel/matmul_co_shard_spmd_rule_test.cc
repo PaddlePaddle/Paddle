@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <set>
+#include "paddle/phi/infermeta/spmd_rules/bmm.h"
 #include "test/cpp/auto_parallel/spmd_rule_test_util.h"
 
 namespace paddle {
@@ -411,6 +412,94 @@ TEST(MatmulGradInferSpmd, Ctor) {
   }
 }
 
+TEST(BmmInferSpmd, CoShard) {
+  std::vector<int64_t> mesh_shape = {2, 2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> dim_names = {"x", "y", "z"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<int64_t> x_shape = {4, 16, 8};
+  std::vector<std::vector<int64_t>> x_dims_mapping = {{0, 1}, {2}, {}};
+  TensorDistAttr x_dist_attr;
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(x_dims_mapping);
+  x_dist_attr.set_dynamic_dims(std::vector<bool>(x_shape.size(), false));
+  phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
+
+  std::vector<int64_t> y_shape = {4, 8, 32};
+  std::vector<std::vector<int64_t>> y_dims_mapping = {{0, 1}, {}, {}};
+  TensorDistAttr y_dist_attr;
+  y_dist_attr.set_process_mesh(process_mesh);
+  y_dist_attr.set_dims_mapping(y_dims_mapping);
+  y_dist_attr.set_dynamic_dims(std::vector<bool>(y_shape.size(), false));
+  phi::distributed::DistMetaTensor y(common::make_ddim(y_shape), y_dist_attr);
+
+  auto bmm_spmd_info = phi::distributed::BmmInferSpmd(x, y);
+
+  ASSERT_EQ(bmm_spmd_info.first.size(), static_cast<size_t>(2));
+  ASSERT_EQ(bmm_spmd_info.second.size(), static_cast<size_t>(1));
+
+  check_multi_dims_mapping(bmm_spmd_info.first[0], x_dims_mapping);
+  EXPECT_FALSE(is_partial(bmm_spmd_info.first[0]));
+  check_multi_dims_mapping(bmm_spmd_info.first[1], y_dims_mapping);
+  EXPECT_FALSE(is_partial(bmm_spmd_info.first[1]));
+
+  const std::vector<std::vector<int64_t>> expected_out_dims_mapping = {
+      {0, 1}, {2}, {}};
+  check_multi_dims_mapping(bmm_spmd_info.second[0], expected_out_dims_mapping);
+  EXPECT_FALSE(is_partial(bmm_spmd_info.second[0]));
+}
+
+TEST(BmmGradInferSpmd, CoShard) {
+  std::vector<int64_t> mesh_shape = {2, 2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::vector<std::string> dim_names = {"x", "y", "z"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<int64_t> x_shape = {4, 16, 8};
+  std::vector<std::vector<int64_t>> x_dims_mapping = {{0, 1}, {2}, {}};
+  TensorDistAttr x_dist_attr;
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(x_dims_mapping);
+  x_dist_attr.set_dynamic_dims(std::vector<bool>(x_shape.size(), false));
+  phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
+
+  std::vector<int64_t> y_shape = {4, 8, 32};
+  std::vector<std::vector<int64_t>> y_dims_mapping = {{0, 1}, {}, {}};
+  TensorDistAttr y_dist_attr;
+  y_dist_attr.set_process_mesh(process_mesh);
+  y_dist_attr.set_dims_mapping(y_dims_mapping);
+  y_dist_attr.set_dynamic_dims(std::vector<bool>(y_shape.size(), false));
+  phi::distributed::DistMetaTensor y(common::make_ddim(y_shape), y_dist_attr);
+
+  std::vector<int64_t> out_grad_shape = {4, 16, 32};
+  std::vector<std::vector<int64_t>> out_grad_dims_mapping = {{0, 1}, {2}, {}};
+  TensorDistAttr out_grad_dist_attr;
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping);
+  out_grad_dist_attr.set_dynamic_dims(
+      std::vector<bool>(out_grad_shape.size(), false));
+  phi::distributed::DistMetaTensor out_grad(common::make_ddim(out_grad_shape),
+                                            out_grad_dist_attr);
+
+  auto bmm_grad_spmd_info = phi::distributed::BmmGradInferSpmd(x, y, out_grad);
+
+  ASSERT_EQ(bmm_grad_spmd_info.first.size(), static_cast<size_t>(3));
+  ASSERT_EQ(bmm_grad_spmd_info.second.size(), static_cast<size_t>(2));
+
+  check_multi_dims_mapping(bmm_grad_spmd_info.first[0], x_dims_mapping);
+  EXPECT_FALSE(is_partial(bmm_grad_spmd_info.first[0]));
+  check_multi_dims_mapping(bmm_grad_spmd_info.first[1], y_dims_mapping);
+  EXPECT_FALSE(is_partial(bmm_grad_spmd_info.first[1]));
+  check_multi_dims_mapping(bmm_grad_spmd_info.first[2], out_grad_dims_mapping);
+  EXPECT_FALSE(is_partial(bmm_grad_spmd_info.first[2]));
+
+  check_multi_dims_mapping(bmm_grad_spmd_info.second[0], x_dims_mapping);
+  EXPECT_FALSE(is_partial(bmm_grad_spmd_info.second[0]));
+  check_multi_dims_mapping(bmm_grad_spmd_info.second[1], y_dims_mapping);
+  EXPECT_TRUE(is_partial(bmm_grad_spmd_info.second[1]));
+  check_partial_dims(bmm_grad_spmd_info.second[1], {2});
+}
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle

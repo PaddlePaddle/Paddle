@@ -127,7 +127,7 @@ class TestOneDNNMultiGruFusePass(PassAutoScanTest):
         yield config, ['multi_gru'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False, passes=['multi_gru_fuse_pass'])
+        self.run_and_statistics(quant=False, passes=['multi_gru_fuse_pass'])
 
 
 if __name__ == '__main__':

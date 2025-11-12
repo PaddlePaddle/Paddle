@@ -19,9 +19,9 @@
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaximumNumBlocks = 4096;
+static constexpr int64_t kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
+static inline int NumBlocks(const int64_t N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaximumNumBlocks);
 }
@@ -34,7 +34,9 @@ __global__ void ShuffleChannel(const int nthreads,
                                int group_row,
                                int group_column,
                                int len) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = blockDim.x * gridDim.x;
   for (size_t ii = index; ii < nthreads; ii += offset) {
     const int n = index / group_row / group_column / len;

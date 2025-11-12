@@ -65,15 +65,9 @@ class SplitPlugin : public PluginTensorRTV2Ext {
 
   int initialize() TRT_NOEXCEPT override;
   void terminate() TRT_NOEXCEPT override;
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batch_size,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 
@@ -148,7 +142,6 @@ class SplitPluginCreator : public nvinfer1::IPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(SplitPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class SplitPluginDynamic : public DynamicPluginTensorRT {
  public:
   SplitPluginDynamic(int axis,
@@ -179,10 +172,11 @@ class SplitPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nbInputs,
-                                          nvinfer1::IExprBuilder& exprBuilder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
+      nvinfer1::IExprBuilder& exprBuilder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -263,7 +257,6 @@ class SplitPluginDynamicCreator : public nvinfer1::IPluginCreator {
 };
 
 REGISTER_TRT_PLUGIN_V2(SplitPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

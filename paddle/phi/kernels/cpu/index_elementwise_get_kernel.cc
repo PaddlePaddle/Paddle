@@ -23,11 +23,11 @@ namespace phi {
 template <typename T, typename IndexT = int>
 void CPUIndexElementwiseGetKernel(const phi::CPUContext& dev_ctx,
                                   const DenseTensor& input,
-                                  const std::vector<const DenseTensor*> index,
+                                  const std::vector<const DenseTensor*>& index,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
-                                  const std::vector<int64_t>& index_stride,
+                                  const std::vector<int64_t>& index_strides,
                                   const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
@@ -41,7 +41,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& dev_ctx,
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
-    strides[i] = index_stride[i];
+    strides[i] = index_strides[i];
   }
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -96,7 +96,7 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
                                const std::vector<int64_t>& input_dims,
                                const std::vector<int64_t>& input_strides,
                                const std::vector<int64_t>& index_dims,
-                               const std::vector<int64_t>& index_stride,
+                               const std::vector<int64_t>& index_strides,
                                const int64_t slice_offset,
                                const bool accumulate,
                                const bool is_combined,
@@ -123,7 +123,7 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
                                            input_dims,
                                            input_strides,
                                            index_dims,
-                                           index_stride,
+                                           index_strides,
                                            slice_offset,
                                            out);
 }

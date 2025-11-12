@@ -29,8 +29,8 @@ __global__ void RReluOpGradKernel(const T* x_ptr,
                                   const T* noise_ptr,
                                   const T* out_grad_ptr,
                                   T* x_grad_ptr,
-                                  int numel) {
-  CUDA_KERNEL_LOOP(index, numel) {
+                                  int64_t numel) {
+  CUDA_KERNEL_LOOP_TYPE(index, numel, int64_t) {
     T scale = noise_ptr[index];
     T x = x_ptr[index];
     T out_grad = out_grad_ptr[index];
@@ -47,7 +47,7 @@ class RReluOpGradFunctor {
                   const T* noise,
                   const T* out_grad,
                   T* x_grad,
-                  int numel) {
+                  int64_t numel) {
     RReluOpGradKernel<T>
         <<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
             x, noise, out_grad, x_grad, numel);
@@ -69,7 +69,7 @@ void RReluGradKernel(const Context& dev_ctx,
   const T* out_grad_ptr = out_grad.data<T>();
   T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
 
-  int numel = x.numel();
+  int64_t numel = x.numel();
   auto stream = dev_ctx.stream();
 
   RReluOpGradFunctor<T> rrelu_grad;

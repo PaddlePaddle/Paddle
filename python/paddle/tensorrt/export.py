@@ -120,7 +120,7 @@ class Input:
             if input_data_type is not None or input_range is not None:
                 _logger.warning(
                     "When warmup_data is provided,input_data_type and input_range are ignored."
-                    "These parameters only apply whtn generate random data using min/opt/max shapes."
+                    "These parameters only apply when generate random data using min/opt/max shapes."
                 )
         else:
             if None in (min_input_shape, max_input_shape, optim_input_shape):
@@ -224,7 +224,7 @@ class PrecisionMode(Enum):
     - PrecisionMode.FP32: 32-bit floating point precision (default).
     - PrecisionMode.FP16: 16-bit floating point precision.
     - PrecisionMode.INT8: 8-bit integer precision.
-    - PrecisionMode.BFP16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
+    - PrecisionMode.BF16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
     """
 
 
@@ -242,7 +242,7 @@ class TensorRTConfig:
         workspace_size: int | None = 1 << 30,
         use_cuda_graph: bool | None = False,
         refit_params_path: str | None = None,
-        disable_loggling: bool | None = True,
+        disable_logging: bool | None = True,
     ) -> None:
         """
         A class for configuring TensorRT optimizations.
@@ -261,7 +261,7 @@ class TensorRTConfig:
                 - PrecisionMode.FP32: 32-bit floating point precision (default).
                 - PrecisionMode.FP16: 16-bit floating point precision.
                 - PrecisionMode.INT8: 8-bit integer precision.
-                - PrecisionMode.BFP16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
+                - PrecisionMode.BF16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
             ops_run_float (str|list, optional):
                 A set of operation names that should be executed using FP32 precision regardless of the `tensorrt_precision_mode` setting.
             optimization_level (int, optional):
@@ -274,7 +274,7 @@ class TensorRTConfig:
                 Specify whether TensorRT enables cuda_graph during the optimization process (default is false).
             refit_params_path(str, optional):
                 The path to the weights that need to be refitted.
-            disable_loggling (bool, optional):
+            disable_logging (bool, optional):
                 Specifies whether to enable GLOG info output during the optimization process (default is true).
         Returns:
             None
@@ -333,7 +333,7 @@ class TensorRTConfig:
         self.workspace_size = workspace_size
         self.use_cuda_graph = use_cuda_graph
         self.refit_params_path = refit_params_path
-        self.disable_loggling = disable_loggling
+        self.disable_logging = disable_logging
         if self.refit_params_path:
             self.disable_passes.append("constant_folding_pass")
         paddle.framework.set_flags(
@@ -605,8 +605,8 @@ def _convert_(function=None, input_spec=None, config=None, **kwargs):
             # we only record the state_dict variable's structured name
             state_names_dict = {}
             state_var_dict = {}
-            for strcutured_name, var in dygraph_state_dict.items():
-                state_names_dict[var.name] = strcutured_name
+            for structured_name, var in dygraph_state_dict.items():
+                state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
         #  share parameters from Layer to scope & record var info
         with dygraph.guard():

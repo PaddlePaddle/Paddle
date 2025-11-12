@@ -55,11 +55,11 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void KeBNBackwardScaleBias(
     const double epsilon,
     const int N,
     const int C,
-    const int HxW,
+    const int64_t HxW,
     BatchNormParamType<T> *dscale,
     BatchNormParamType<T> *dbias) {
   const int outer_size = C;
-  const int inner_size = N * HxW;
+  const int64_t inner_size = static_cast<int64_t>(N) * HxW;
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ds_storage;
   __shared__ typename BlockReduce::TempStorage db_storage;
@@ -70,10 +70,10 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void KeBNBackwardScaleBias(
 
     BatchNormParamType<T> inv_var_i = 1.0 / sqrt(variance[i] + epsilon);
     BatchNormParamType<T> mean_i = mean[i];
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == phi::DataLayout::kNCHW
-                            ? (j / HxW * C + i) * HxW + j % HxW
-                            : j * outer_size + i;
+    for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int64_t index = layout == phi::DataLayout::kNCHW
+                                ? (j / HxW * C + i) * HxW + j % HxW
+                                : j * outer_size + i;
       ds_sum += static_cast<BatchNormParamType<T>>(dy[index]) *
                 (static_cast<BatchNormParamType<T>>(x[index]) - mean_i);
       db_sum += static_cast<BatchNormParamType<T>>(dy[index]);
@@ -94,12 +94,14 @@ static __global__ void KeBNBackwardData(const T *dy,
                                         const BatchNormParamType<T> *variance,
                                         const double epsilon,
                                         const int C,
-                                        const int HxW,
-                                        const int num,
+                                        const int64_t HxW,
+                                        const int64_t num,
                                         T *dx) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
-  for (int i = gid; i < num; i += stride) {
+  for (int64_t i = gid; i < num; i += stride) {
     const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
     BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
     dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
@@ -117,11 +119,13 @@ static __global__ void KeBNRestoreData(const phi::DataLayout layout,
                                        double epsilon,
                                        int C,
                                        int M,
-                                       const int num,
+                                       const int64_t num,
                                        const T *y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
-  for (int i = gid; i < num; i += stride) {
+  for (int64_t i = gid; i < num; i += stride) {
     const int c = layout == phi::DataLayout::kNCHW ? (i / M) % C : i % C;
     auto y_i = static_cast<BatchNormParamType<T>>(y[i]);
     auto x_i = (y_i - bias[c]) / scale[c] / variance[c] + mean[c];
@@ -141,7 +145,7 @@ class InplaceHelper {
                   double epsilon,
                   int C,
                   int M,
-                  const int num,
+                  const int64_t num,
                   const T *y,
                   int grid2,
                   const int block,
@@ -164,13 +168,13 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
     const BatchNormParamType<T> *saved_inv_variance,
     const int C,
     const int N,
-    const int HxW,
+    const int64_t HxW,
     const double epsilon,
     T *dx,
     BatchNormParamType<T> *dscale,
     BatchNormParamType<T> *dbias) {
   const int outer_size = C;
-  const int inner_size = N * HxW;
+  const int64_t inner_size = static_cast<int64_t>(N) * HxW;
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ds_storage;
   __shared__ typename BlockReduce::TempStorage db_storage;
@@ -195,10 +199,10 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
       BatchNormParamType<T> x_square_sum =
           static_cast<BatchNormParamType<T>>(0);
 
-      for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-        const int index = layout == phi::DataLayout::kNCHW
-                              ? (j / HxW * C + i) * HxW + j % HxW
-                              : j * outer_size + i;
+      for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
+        const int64_t index = layout == phi::DataLayout::kNCHW
+                                  ? (j / HxW * C + i) * HxW + j % HxW
+                                  : j * outer_size + i;
         BatchNormParamType<T> x_i =
             static_cast<BatchNormParamType<T>>(x[index]);
         x_sum += x_i;
@@ -216,10 +220,10 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
     }
     __syncthreads();
 
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == phi::DataLayout::kNCHW
-                            ? (j / HxW * C + i) * HxW + j % HxW
-                            : j * outer_size + i;
+    for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int64_t index = layout == phi::DataLayout::kNCHW
+                                ? (j / HxW * C + i) * HxW + j % HxW
+                                : j * outer_size + i;
       BatchNormParamType<T> dy_i =
           static_cast<BatchNormParamType<T>>(dy[index]);
       ds_sum +=
@@ -237,10 +241,10 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
     }
     __syncthreads();
 
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == phi::DataLayout::kNCHW
-                            ? (j / HxW * C + i) * HxW + j % HxW
-                            : j * outer_size + i;
+    for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int64_t index = layout == phi::DataLayout::kNCHW
+                                ? (j / HxW * C + i) * HxW + j % HxW
+                                : j * outer_size + i;
       dx[index] = scale[i] * inv_var_val *
                   (static_cast<BatchNormParamType<T>>(dy[index]) -
                    dbias_val / static_cast<BatchNormParamType<T>>(inner_size) -
@@ -255,14 +259,14 @@ static __global__ void BNBackward2DChannelLastStage1(
     const T *x,
     const int C,
     const int N,
-    const int HxW,
+    const int64_t HxW,
     const double epsilon,
     BatchNormParamType<T> *block_data_ptr,
     BatchNormParamType<T> *compute_mean,
     BatchNormParamType<T> *compute_inv_var,
     int *flag_ptr) {
   int outer_size = C;
-  int inner_size = N * HxW;
+  int64_t inner_size = static_cast<int64_t>(N) * HxW;
 
   __shared__ BatchNormParamType<T> smem_sum[BlockDim];
   __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
@@ -272,14 +276,17 @@ static __global__ void BNBackward2DChannelLastStage1(
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
          j += inner_loop_stride) {
-      const int index = j * outer_size + i;
+      const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
       x_sum += x_i;
       x_square_sum += x_i * x_i;
@@ -329,7 +336,7 @@ static __global__ void BNBackward2DChannelLastStage2(
     const BatchNormParamType<T> *variances,
     const int C,
     const int N,
-    const int HxW,
+    const int64_t HxW,
     const double epsilon,
     const bool is_test,
     BatchNormParamType<T> *block_data_ptr,
@@ -337,7 +344,7 @@ static __global__ void BNBackward2DChannelLastStage2(
     BatchNormParamType<T> *dbias,
     int *flag_ptr) {
   int outer_size = C;
-  int inner_size = N * HxW;
+  int64_t inner_size = static_cast<int64_t>(N) * HxW;
 
   __shared__ BatchNormParamType<T> smem_ds_sum[BlockDim];
   __shared__ BatchNormParamType<T> smem_db_sum[BlockDim];
@@ -347,7 +354,10 @@ static __global__ void BNBackward2DChannelLastStage2(
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> ds_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> db_sum = static_cast<BatchNormParamType<T>>(0);
@@ -355,9 +365,9 @@ static __global__ void BNBackward2DChannelLastStage2(
     BatchNormParamType<T> inv_var_val =
         is_test ? 1.0 / sqrt(variances[i] + epsilon) : variances[i];
 
-    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
          j += inner_loop_stride) {
-      const int index = j * outer_size + i;
+      const int64_t index = j * outer_size + i;
       BatchNormParamType<T> dy_i =
           static_cast<BatchNormParamType<T>>(dy[index]);
       ds_sum +=
@@ -402,24 +412,27 @@ static __global__ void BNBackward2DChannelLastStage3(
     const BatchNormParamType<T> *variances,
     const int C,
     const int N,
-    const int HxW,
+    const int64_t HxW,
     const double epsilon,
     T *dx) {
   const int outer_size = C;
-  const int inner_size = N * HxW;
+  const int64_t inner_size = static_cast<int64_t>(N) * HxW;
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> mean_val = means[i];
     BatchNormParamType<T> inv_var_val = variances[i];
     BatchNormParamType<T> dscale_val = dscales[i];
     BatchNormParamType<T> dbias_val = dbias[i];
 
-    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
          j += inner_loop_stride) {
-      const int index = j * outer_size + i;
+      const int64_t index = j * outer_size + i;
       dx[index] = scale[i] * inv_var_val *
                   (static_cast<BatchNormParamType<T>>(dy[index]) -
                    dbias_val / static_cast<BatchNormParamType<T>>(inner_size) -
@@ -438,10 +451,10 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
     const BatchNormParamType<T> *variance,
     const int C,
     const int N,
-    const int HxW,
+    const int64_t HxW,
     T *dx) {
   const int outer_size = C;
-  const int inner_size = N * HxW;
+  const int64_t inner_size = static_cast<int64_t>(N) * HxW;
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage dy_storage;
   __shared__ typename BlockReduce::TempStorage dy_x_sub_mean_storage;
@@ -454,10 +467,10 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
     BatchNormParamType<T> dy_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> dy_x_sub_mean_sum =
         static_cast<BatchNormParamType<T>>(0);
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == phi::DataLayout::kNCHW
-                            ? (j / HxW * C + i) * HxW + j % HxW
-                            : j * outer_size + i;
+    for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int64_t index = layout == phi::DataLayout::kNCHW
+                                ? (j / HxW * C + i) * HxW + j % HxW
+                                : j * outer_size + i;
       BatchNormParamType<T> dy_i =
           static_cast<BatchNormParamType<T>>(dy[index]);
       dy_sum += dy_i;
@@ -474,10 +487,10 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
       dy_x_sub_mean_sum_val = dy_x_sub_mean_sum;
     }
     __syncthreads();
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == phi::DataLayout::kNCHW
-                            ? (j / HxW * C + i) * HxW + j % HxW
-                            : j * outer_size + i;
+    for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int64_t index = layout == phi::DataLayout::kNCHW
+                                ? (j / HxW * C + i) * HxW + j % HxW
+                                : j * outer_size + i;
       dx[index] =
           (static_cast<BatchNormParamType<T>>(dy[index]) -
            dy_sum_val / static_cast<BatchNormParamType<T>>(inner_size) -
@@ -640,7 +653,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
     strides = {H * W * C * D, 1, W * D * C, D * C, C};
   }
 
-  const int num = transformed_x.numel();
+  const int64_t num = transformed_x.numel();
 #ifdef HIPCC
   const int block = 256;
 #else
@@ -751,7 +764,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                       saved_var_data,
                       epsilon,
                       C,
-                      H * W * D,
+                      static_cast<int64_t>(H) * W * D,
                       num,
                       transformed_x.data<T>(),
                       grid2,
@@ -795,7 +808,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   saved_var_data,
                   C,
                   N,
-                  H * W * D,
+                  static_cast<int64_t>(H) * W * D,
                   epsilon,
                   transformed_d_x.template data<T>(),
                   dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
@@ -811,7 +824,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                 saved_var_data,
                 C,
                 N,
-                H * W * D,
+                static_cast<int64_t>(H) * W * D,
                 epsilon,
                 transformed_d_x.template data<T>(),
                 dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
@@ -877,7 +890,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                     transformed_x.template data<T>(),
                     C,
                     N,
-                    H * W * D,
+                    static_cast<int64_t>(H) * W * D,
                     epsilon,
                     block_data_ptr,
                     compute_mean_tensor.data<BatchNormParamType<T>>(),
@@ -908,7 +921,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   variance_ptr,
                   C,
                   N,
-                  H * W * D,
+                  static_cast<int64_t>(H) * W * D,
                   epsilon,
                   false,
                   block_data_ptr,
@@ -928,7 +941,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   variance_ptr,
                   C,
                   N,
-                  H * W * D,
+                  static_cast<int64_t>(H) * W * D,
                   epsilon,
                   transformed_d_x.template data<T>());
 
@@ -943,7 +956,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                     saved_var_data,
                     C,
                     N,
-                    H * W * D,
+                    static_cast<int64_t>(H) * W * D,
                     epsilon,
                     transformed_d_x.template data<T>(),
                     dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
@@ -958,7 +971,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                     saved_var_data,
                     C,
                     N,
-                    H * W * D,
+                    static_cast<int64_t>(H) * W * D,
                     epsilon,
                     transformed_d_x.template data<T>(),
                     dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
@@ -1077,7 +1090,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                     saved_var_data,
                     C,
                     N,
-                    H * W * D,
+                    static_cast<int64_t>(H) * W * D,
                     d_x->data<T>());
           }
           if (d_scale && d_bias) {
@@ -1090,7 +1103,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                     epsilon,
                     N,
                     C,
-                    H * W * D,
+                    static_cast<int64_t>(H) * W * D,
                     d_scale->data<BatchNormParamType<T>>(),
                     d_bias->data<BatchNormParamType<T>>());
           }
@@ -1105,7 +1118,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                     saved_var_data,
                     C,
                     N,
-                    H * W * D,
+                    static_cast<int64_t>(H) * W * D,
                     d_x->data<T>());
           }
           if (d_scale && d_bias) {
@@ -1118,7 +1131,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                     epsilon,
                     N,
                     C,
-                    H * W * D,
+                    static_cast<int64_t>(H) * W * D,
                     d_scale->data<BatchNormParamType<T>>(),
                     d_bias->data<BatchNormParamType<T>>());
           }
@@ -1134,7 +1147,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   saved_var_data,
                   C,
                   N,
-                  H * W * D,
+                  static_cast<int64_t>(H) * W * D,
                   d_x->data<T>());
         }
         if (d_scale && d_bias) {
@@ -1147,7 +1160,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   epsilon,
                   N,
                   C,
-                  H * W * D,
+                  static_cast<int64_t>(H) * W * D,
                   d_scale->data<BatchNormParamType<T>>(),
                   d_bias->data<BatchNormParamType<T>>());
         }
@@ -1188,7 +1201,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                       running_var_data,
                       epsilon,
                       C,
-                      H * W * D,
+                      static_cast<int64_t>(H) * W * D,
                       num,
                       x.data<T>(),
                       grid2,
@@ -1206,7 +1219,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   running_var_data,
                   epsilon,
                   C,
-                  H * W,
+                  static_cast<int64_t>(H) * W,
                   num,
                   d_x->data<T>());
         }
@@ -1220,7 +1233,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   epsilon,
                   N,
                   C,
-                  H * W * D,
+                  static_cast<int64_t>(H) * W * D,
                   d_scale->data<BatchNormParamType<T>>(),
                   d_bias->data<BatchNormParamType<T>>());
         }
@@ -1233,7 +1246,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   running_var_data,
                   epsilon,
                   C,
-                  H * W,
+                  static_cast<int64_t>(H) * W,
                   num,
                   d_x->data<T>());
         }
@@ -1247,7 +1260,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                   epsilon,
                   N,
                   C,
-                  H * W * D,
+                  static_cast<int64_t>(H) * W * D,
                   d_scale->data<BatchNormParamType<T>>(),
                   d_bias->data<BatchNormParamType<T>>());
         }
@@ -1261,7 +1274,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                 running_var_data,
                 epsilon,
                 C,
-                H * W,
+                static_cast<int64_t>(H) * W,
                 num,
                 d_x->data<T>());
       }
@@ -1298,7 +1311,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                 running_var_data,
                 C,
                 N,
-                H * W * D,
+                static_cast<int64_t>(H) * W * D,
                 epsilon,
                 true,
                 block_data_ptr,

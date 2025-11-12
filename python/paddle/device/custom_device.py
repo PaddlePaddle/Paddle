@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
 
+import paddle
 from paddle.base import core
 
 from .custom_streams import (  # noqa: F401
@@ -511,3 +512,93 @@ def synchronize(device: _CustomPlaceLike | None = None) -> None:
         )
 
     core._synchronize_custom_device(dev_type, device_id)
+
+
+def get_rng_state(
+    device: _CustomPlaceLike | None = None,
+) -> core.GeneratorState:
+    r'''
+    Get the random state for the default generator.
+
+    Returns:
+        Tensor: The random state tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+            >>> paddle.device.get_rng_state()
+
+    '''
+    place = paddle.device.device_to_place(device)
+    if isinstance(place, core.CPUPlace):
+        return core.default_cpu_generator().get_state()
+    return core.default_custom_device_generator(place).get_state()
+
+
+def set_rng_state(
+    new_state: core.GeneratorState, device: _CustomPlaceLike | None = None
+) -> None:
+    """
+    Set the random number generator state of the specified device.
+
+    Args:
+        new_state (core.GeneratorState): The desired RNG state to set.
+            This should be a state object previously obtained from ``get_rng_state()``.
+        device (DeviceLike, optional): The device to set the RNG state for.
+            If not specified, uses the current default device (as returned by ``paddle.framework._current_expected_place_()``).
+            Can be a device object, integer device ID, or device string.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # Save RNG state
+            >>> state = paddle.device.get_rng_state()
+            >>> # Do some random operations
+            >>> x = paddle.randn([2, 3])
+            >>> # Restore RNG state
+            >>> paddle.device.set_rng_state(state)
+    """
+    place = paddle.device.device_to_place(device)
+    if isinstance(place, core.CPUPlace):
+        core.default_cpu_generator().set_state(new_state)
+    else:
+        core.default_custom_device_generator(place).set_state(new_state)
+
+
+def manual_seed(seed: int) -> None:
+    r"""Set the seed for generating random numbers for the current Device.
+
+    .. warning::
+        If you are working with a multi-Device model, this function is insufficient
+        to get determinism.  To seed all Devices, use :func:`manual_seed_all`.
+        If current Device is CPU, this function will set the seed of the default CPU generator.
+
+    Sets the seed for global default generator, which manages the random number generation.
+
+    Args:
+        seed(int): The random seed to set.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+            >>> paddle.device.manual_seed(102)
+            >>> # paddle.cuda.manual_seed(102) is equivalent to paddle.device.manual_seed(102)
+
+    """
+    seed = int(seed)
+    place = paddle.framework._current_expected_place()
+    if isinstance(place, core.CPUPlace):
+        core.default_cpu_generator().manual_seed(seed)
+    else:
+        core.default_custom_device_generator(place).manual_seed(seed)

@@ -18,9 +18,9 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/small_vector.h"
 
 namespace phi {
-
 struct DenseTensorIteratorConfig;
 struct DenseTensorIterator;
 
@@ -73,10 +73,15 @@ struct DenseTensorIteratorBase {
   int64_t numel() const;
   int ntensors() const { return static_cast<int>(operands_.size()); }
   bool is_contiguous() const;
+  int64_t num_output_elements() const;
+  int noutputs() const { return num_outputs_; }
+  int num_reduce_dims() const;
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
   const void* data_ptr(int64_t arg) const;
+  bool should_accumulate() const { return accumulate_; }
+  bool is_final_output() const { return final_output_; }
 
  protected:
   void populate_operands(DenseTensorIteratorConfig&);
@@ -93,7 +98,7 @@ struct DenseTensorIteratorBase {
   std::vector<int64_t> shape_;
   std::vector<int64_t> perm_;
   bool has_coalesced_dimensions_ = false;
-  int num_outputs_ = 0;
+  size_t num_outputs_ = 0;
   bool all_ops_same_shape_ = false;
   bool all_ops_are_scalars_ = false;
 
@@ -105,6 +110,9 @@ struct DenseTensorIteratorBase {
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
   bool is_reduction_ = false;
+  bool is_alloc_out_ = false;
+  bool accumulate_ = false;
+  bool final_output_ = true;
 };
 
 /**
@@ -177,21 +185,42 @@ struct DenseTensorIteratorConfig final {
     return *this;
   }
 
+  DenseTensorIteratorConfig& is_reduction(const bool _is_reduction) {
+    is_reduction_ = _is_reduction;
+    return *this;
+  }
+
   DenseTensorIterator build() {
     DenseTensorIterator iter;
     iter.build(*this);
     return iter;
   }
 
+  bool is_alloc_out_ = false;
+
  private:
   std::vector<const DenseTensor*> tensors_;
   std::vector<size_t> const_tensor_indices_;
-  int num_outputs_ = 0;
-  int num_inputs_ = 0;
+  size_t num_outputs_ = 0;
+  size_t num_inputs_ = 0;
 
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
   bool is_reduction_ = false;
-  bool resize_outputs_ = true;
+  bool resize_outputs_ = false;
+};
+
+struct DimIter {
+  DimIter(std::vector<int64_t> shape, int64_t start, int64_t end);
+
+  void iter_to_next(const std::array<int64_t, 2>& step);
+  bool iter_to_end() const;
+  std::array<int64_t, 2> iter_for_step() const;
+
+  std::vector<int64_t> shape;
+  int64_t start;
+  int64_t end;
+  paddle::small_vector<int64_t, 4> values;
+  int64_t offset;
 };
 
 }  // namespace phi

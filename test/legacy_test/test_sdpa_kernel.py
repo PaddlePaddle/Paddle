@@ -15,27 +15,16 @@
 import unittest
 
 import numpy as np
-from op_test import is_custom_device
+from op_test import get_cuda_version, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
-from paddle.nn.attention import SDPBackend, sdpa_kernel
+from paddle.nn.attention import (
+    SDPBackend,
+    _cur_sdpa_kernel_backends,
+    sdpa_kernel,
+)
 from paddle.nn.functional import scaled_dot_product_attention
-
-
-def get_cuda_version():
-    import os
-    import re
-
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def is_flashattn_supported():
@@ -167,6 +156,10 @@ class TestSDPAKernelBasic(unittest.TestCase):
     def setUp(self):
         self.shape = (2, 128, 8, 16)
         self.dtype = 'float32'
+
+    def test_cur_sdpa_kernel_backends(self):
+        result = _cur_sdpa_kernel_backends()
+        self.assertIsInstance(result, list)
 
     def test_single_backend(self):
         """Test with single backend."""

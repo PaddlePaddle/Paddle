@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from pathlib import Path
 
 from utils import paddle_includes
 
@@ -24,7 +24,7 @@ setup(
         sources=["mix_relu_and_extension.cc"],
         include_dirs=[
             *paddle_includes,
-            os.path.dirname(os.path.abspath(__file__)),
+            Path(__file__).parent.resolve(),
         ],
         extra_compile_args={'cc': ['-w', '-g']},
         verbose=True,

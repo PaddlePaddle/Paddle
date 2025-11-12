@@ -245,6 +245,12 @@ class IValue {
     return std::get<std::string>(value_);
   }
 
+  const std::string_view to_string_view() const {
+    if (!is_string()) throw std::runtime_error("Not a string");
+    const auto& str = std::get<std::string>(value_);
+    return std::string_view(str.data(), str.size());
+  }
+
   const GenericList& to_list() const {
     if (!is_list()) throw std::runtime_error("Not a list");
     return std::get<GenericList>(value_);
@@ -455,6 +461,8 @@ class IValue {
         return "Tensor";
       case TypeTag::GenericList:
         return "List";
+      case TypeTag::Tuple:
+        return "Tuple";
       case TypeTag::CustomClass:
         return "CustomClass(" + get_custom_class_name() + ")";
       default:
@@ -486,6 +494,17 @@ class IValue {
           result += list[i].to_repr();
         }
         result += "]";
+        return result;
+      }
+      case TypeTag::Tuple: {
+        const auto& tuple = std::get<GenericTuple>(value_);
+        std::string result = "(";
+        for (size_t i = 0; i < tuple.size(); ++i) {
+          if (i > 0) result += ", ";
+          result += tuple[i].to_repr();
+        }
+        if (tuple.size() == 1) result += ",";  // Single element tuple
+        result += ")";
         return result;
       }
       case TypeTag::CustomClass: {
@@ -543,6 +562,12 @@ inline std::string generic_to(const IValue& ivalue, _fake_type<std::string>) {
 }
 
 template <>
+inline std::string_view generic_to(const IValue& ivalue,
+                                   _fake_type<std::string_view>) {
+  return ivalue.to_string_view();
+}
+
+template <>
 inline at::Tensor generic_to(const IValue& ivalue, _fake_type<at::Tensor>) {
   return ivalue.to_tensor();
 }
@@ -556,6 +581,28 @@ std::vector<T> generic_to(const IValue& ivalue, _fake_type<std::vector<T>>) {
     result.push_back(item.to<T>());
   }
   return result;
+}
+
+// Helper for converting IValue tuple to std::tuple using index sequence
+template <typename Tuple, std::size_t... I>
+Tuple ivalue_to_tuple_impl(const IValue& ivalue, std::index_sequence<I...>) {
+  const auto& generic_tuple = ivalue.to_tuple();
+  if (generic_tuple.size() != sizeof...(I)) {
+    throw std::runtime_error("Tuple size mismatch: expected " +
+                             std::to_string(sizeof...(I)) + " but got " +
+                             std::to_string(generic_tuple.size()));
+  }
+  // Use std::get<I> with index instead of type to avoid ambiguity
+  // when tuple contains multiple elements of the same type
+  return Tuple{generic_tuple[I].to<std::tuple_element_t<I, Tuple>>()...};
+}
+
+// Generic conversion from IValue to std::tuple
+template <typename... Args>
+std::tuple<Args...> generic_to(const IValue& ivalue,
+                               _fake_type<std::tuple<Args...>>) {
+  return ivalue_to_tuple_impl<std::tuple<Args...>>(
+      ivalue, std::index_sequence_for<Args...>{});
 }
 
 template <typename T>

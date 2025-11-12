@@ -457,7 +457,8 @@ void MomentumDenseImpl(const Context& dev_ctx,
             regularization_coeff,
             param_out,
             velocity_out);
-  } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+  } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+             dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
     funcs::ForRange<Context> for_range(dev_ctx, param.numel());
     const auto grad_type = grad.dtype();
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type)     \

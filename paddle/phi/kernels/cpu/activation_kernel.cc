@@ -56,6 +56,19 @@ namespace phi {
         dev_ctx, x, out, functor);                                      \
   }
 
+#define DEFINE_CPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(name, functor_class, attr) \
+  template <typename T, typename Context>                                      \
+  void name##Kernel(const Context& dev_ctx,                                    \
+                    const DenseTensor& x,                                      \
+                    double attr,                                               \
+                    DenseTensor* out) {                                        \
+    funcs::functor_class<T> functor;                                           \
+    auto attrs = functor.GetAttrs();                                           \
+    *(attrs[0].second) = attr;                                                 \
+    ActivationImpl<T, T, Context, funcs::functor_class<T>>(                    \
+        dev_ctx, x, out, functor);                                             \
+  }
+
 #define DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(               \
     name, functor_class, attr1, attr2)                      \
   template <typename T, typename Context>                   \
@@ -63,6 +76,22 @@ namespace phi {
                     const DenseTensor& x,                   \
                     float attr1,                            \
                     float attr2,                            \
+                    DenseTensor* out) {                     \
+    funcs::functor_class<T> functor;                        \
+    auto attrs = functor.GetAttrs();                        \
+    *(attrs[0].second) = attr1;                             \
+    *(attrs[1].second) = attr2;                             \
+    ActivationImpl<T, T, Context, funcs::functor_class<T>>( \
+        dev_ctx, x, out, functor);                          \
+  }
+
+#define DEFINE_CPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(        \
+    name, functor_class, attr1, attr2)                      \
+  template <typename T, typename Context>                   \
+  void name##Kernel(const Context& dev_ctx,                 \
+                    const DenseTensor& x,                   \
+                    double attr1,                           \
+                    double attr2,                           \
                     DenseTensor* out) {                     \
     funcs::functor_class<T> functor;                        \
     auto attrs = functor.GetAttrs();                        \
@@ -106,7 +135,7 @@ DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, Log1pFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, ExpFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, Expm1Functor)
 
-DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
@@ -115,7 +144,10 @@ DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CELUFunctor, alpha)
 
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh, HardTanhFunctor, t_min, t_max)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus, SoftplusFunctor, beta, threshold)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(Softplus,
+                                            SoftplusFunctor,
+                                            beta,
+                                            threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      HardSigmoidFunctor,
                                      slope,

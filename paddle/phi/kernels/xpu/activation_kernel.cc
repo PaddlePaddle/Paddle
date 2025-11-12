@@ -55,6 +55,19 @@ void ActivationXPUImpl(const Context& dev_ctx,
     ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
   }
 
+#define DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_DOUBLE_ATTRS(                    \
+    name, functor_class, attr)                                                 \
+  template <typename T, typename Context>                                      \
+  void name##Kernel(const Context& dev_ctx,                                    \
+                    const DenseTensor& x,                                      \
+                    double attr,                                               \
+                    DenseTensor* out) {                                        \
+    functor_class<T> functor;                                                  \
+    auto attrs = functor.GetAttrs();                                           \
+    *(attrs[0].second) = static_cast<float>(attr);                             \
+    ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
+  }
+
 #define DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(                           \
     name, functor_class, attr1, attr2)                                         \
   template <typename T, typename Context>                                      \
@@ -343,7 +356,7 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
 
     auto xpu_context = dev_ctx.x_context();
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      if (!std::is_same<T, ::phi::bfloat16>::value) {
+      if (!std::is_same<T, phi::bfloat16>::value) {
         // use fast_swish if NOT bf16
         int r = xpu::fast_silu(
             xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
@@ -592,17 +605,27 @@ DEFINE_XPU_ACTIVATION_KERNEL(Tan, XPUTanFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Acos, XPUAcosFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
-                                            XPULeakyReluFunctor,
-                                            alpha)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
-                                            XPUSoftplusFunctor,
-                                            beta,
-                                            threshold)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
+                                                   XPULeakyReluFunctor,
+                                                   alpha)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                             XPUHardSigmoidFunctor,
                                             slope,
                                             offset)
+
+template <typename T, typename Context>
+void SoftplusKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    double beta,
+                    double threshold,
+                    DenseTensor* out) {
+  XPUSoftplusFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = static_cast<float>(beta);
+  *(attrs[1].second) = static_cast<float>(threshold);
+  ActivationXPUImpl<T, Context, XPUSoftplusFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,

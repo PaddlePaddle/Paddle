@@ -29,14 +29,12 @@ namespace paddle::framework::ir {
 
 void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 4, 1)
   // forward
   std::unordered_set<std::string> act_types = {"relu"};
   graph = FuseBatchNormAct(graph, act_types);
   // backward
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
   graph = FuseBatchNormActGrad(graph, act_grad_types);  // NOLINT
-#endif
 #endif
 }
 
