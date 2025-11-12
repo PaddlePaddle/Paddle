@@ -75,7 +75,7 @@ gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
 
-std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& places,
+std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
                                          int32_t n) {
   FreeMemoryMetricsVisitor free_memory_metrics_visitor(n);
   allocation::AllocatorFacade::Instance().Accept(place,
