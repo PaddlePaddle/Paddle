@@ -15,7 +15,6 @@
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
