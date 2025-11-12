@@ -800,8 +800,13 @@ PD_REGISTER_KERNEL(exp_grad,
                    phi::float16,
                    phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    square_grad, XPU, ALL_LAYOUT, phi::SquareGradKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(square_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SquareGradKernel,
+                   float,
+                   double,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(swish_grad,
                    XPU,

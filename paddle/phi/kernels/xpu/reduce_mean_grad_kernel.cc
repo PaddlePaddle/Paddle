@@ -94,5 +94,6 @@ PD_REGISTER_KERNEL(mean_grad,
                    ALL_LAYOUT,
                    phi::ReduceMeanGradKernel,
                    float,
+                   double,
                    phi::float16,
                    phi::bfloat16) {}

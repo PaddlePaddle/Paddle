@@ -91,6 +91,7 @@ PD_REGISTER_KERNEL(multiply,
                    phi::complex64,
 #endif
                    float,
+                   double,
                    int,
                    int64_t) {
 }

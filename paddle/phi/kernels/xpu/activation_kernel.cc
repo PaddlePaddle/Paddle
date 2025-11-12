@@ -697,6 +697,7 @@ PD_REGISTER_KERNEL(sqrt,
                    ALL_LAYOUT,
                    phi::SqrtKernel,
                    float,
+                   double,
                    phi::float16,
                    phi::bfloat16) {}
 
@@ -713,6 +714,7 @@ PD_REGISTER_KERNEL(square,
                    ALL_LAYOUT,
                    phi::SquareKernel,
                    float,
+                   double,
                    phi::float16,
                    phi::bfloat16) {}
 
