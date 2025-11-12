@@ -145,8 +145,8 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DWITH_FA_BUILD_WITH_CACHE=ON
-          make -j20
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON
+          make -j10
           python setup.py bdist_wheel
           '
 
