@@ -85,15 +85,6 @@ def equal(
             >>> print(result1)
             False
     """
-    has_zero_dim = False
-    for x, y in zip(input.shape, other.shape):
-        if x != y:
-            return False
-        if x == 0:
-            has_zero_dim = True
-
-    if has_zero_dim:
-        return True
 
     return paddle.equal_all(input, other).item()
 

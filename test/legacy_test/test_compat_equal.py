@@ -117,10 +117,10 @@ class TestCompatEqualDygraph(unittest.TestCase):
 
     def test_error_cases(self):
         """Test error handling"""
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(ValueError):
             equal([1, 2, 3], paddle.to_tensor([1, 2, 3]))
 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(ValueError):
             equal(paddle.to_tensor([1, 2, 3]), [1, 2, 3])
 
         with self.assertRaises(TypeError):
