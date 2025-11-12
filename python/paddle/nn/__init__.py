@@ -198,6 +198,18 @@ from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
 SiLU = Silu
+AdaptiveAvgPool1d = AdaptiveAvgPool1D
+AdaptiveAvgPool2d = AdaptiveAvgPool2D
+AdaptiveAvgPool3d = AdaptiveAvgPool3D
+HuberLoss = SmoothL1Loss
+MaxUnpool1d = MaxUnPool1D
+MaxUnpool2d = MaxUnPool2D
+MaxUnpool3d = MaxUnPool3D
+UpsamplingBilinear2d = UpsamplingBilinear2D
+UpsamplingNearest2d = UpsamplingNearest2D
+ZeroPad1d = ZeroPad1D
+ZeroPad2d = ZeroPad2D
+ZeroPad3d = ZeroPad3D
 ReflectionPad1d = ReflectionPad1D
 ReflectionPad2d = ReflectionPad2D
 ReflectionPad3d = ReflectionPad3D

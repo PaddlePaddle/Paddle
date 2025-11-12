@@ -172,6 +172,7 @@ from .vision import (
     pixel_unshuffle,
 )
 
+logsigmoid = log_sigmoid
 __all__ = [
     'celu',
     'conv1d',
@@ -192,6 +193,7 @@ __all__ = [
     'leaky_relu',
     'leaky_relu_',
     'log_sigmoid',
+    'logsigmoid',
     'maxout',
     'prelu',
     'relu',

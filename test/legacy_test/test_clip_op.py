@@ -1033,5 +1033,37 @@ class TestClampAliasForClip(unittest.TestCase):
                         np.testing.assert_array_equal(self.np_out, fetches[0])
 
 
+class TestClamp_AndClip_(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.shape = [3, 4, 5]
+        self.input_np = np.random.random(self.shape).astype('float32')
+        self.a = np.random.random(self.shape).astype('float32')
+        self.b = np.random.random(self.shape).astype('float32')
+        self.min, self.max = -0.5, 0.5
+
+    def test_clip_and_clamp(self):
+        clip_a = paddle.to_tensor(self.a, stop_gradient=False)
+        clip_b = paddle.to_tensor(self.b, stop_gradient=False)
+
+        clamp_a = paddle.to_tensor(self.a, stop_gradient=False)
+        clamp_b = paddle.to_tensor(self.b, stop_gradient=False)
+
+        clip_x = clip_a + clip_b
+        clip_x.clip_(min=self.min, max=self.max)
+        clip_x.retain_grads()
+        clip_x.mean().backward()
+
+        clamp_x = clamp_a + clamp_b
+        clamp_x.clamp_(min=self.min, max=self.max)
+        clamp_x.retain_grads()
+        clamp_x.mean().backward()
+
+        np.testing.assert_allclose(clip_x.numpy(), clamp_x.numpy(), rtol=1e-20)
+        np.testing.assert_allclose(
+            clip_x.grad.numpy(), clamp_x.grad.numpy(), rtol=1e-20
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

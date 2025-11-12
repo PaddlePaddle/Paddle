@@ -18,7 +18,7 @@ from op_test import is_custom_device
 
 import paddle
 from paddle import to_tensor
-from paddle.nn import ZeroPad3D
+from paddle.nn import ZeroPad3D, ZeroPad3d
 
 
 class TestZeroPad3DAPI(unittest.TestCase):
@@ -114,6 +114,39 @@ class TestZeroPad3DAPI(unittest.TestCase):
             name_str
             == 'padding=[1, 2, 3, 4, 5, 6], mode=constant, value=0.0, data_format=NCDHW'
         )
+
+    def test_compatibility(self):
+        pad = [1, 2, 3, 4, 5, 6]
+        x = np.random.randint(-255, 255, size=self.shape)
+        expect_res = np.pad(
+            x,
+            [
+                [0, 0],
+                [0, 0],
+                [pad[4], pad[5]],
+                [pad[2], pad[3]],
+                [pad[0], pad[1]],
+            ],
+        )
+
+        x_tensor = to_tensor(x)
+        pad_tensor = to_tensor(pad, dtype='int32')
+        # test func alias
+        zeropad3d = ZeroPad3d(padding=pad_tensor)
+        ret_res = zeropad3d(x_tensor).numpy()
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+
+        # test @param_one_alias(["x", "input"])
+        ret_res = zeropad3d(input=x_tensor).numpy()
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
+
+        # test padding attribute
+        zeropad3d = ZeroPad3D(
+            padding=to_tensor([1, 1, 1, 1, 1, 1], dtype='int32')
+        )
+        zeropad3d.padding = pad_tensor
+        ret_res = zeropad3d(x_tensor).numpy()
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
 
 if __name__ == '__main__':

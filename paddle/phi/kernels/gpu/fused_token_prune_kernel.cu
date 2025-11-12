@@ -79,7 +79,9 @@ __global__ void TakeAlongAxis(const T* src,
 template <typename T>
 __global__ void MaximumFirst(T* mat, int num_raws, int num_cols, T max_value) {
   int num_threads = num_raws;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {
