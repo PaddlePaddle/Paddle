@@ -94,7 +94,6 @@ void InitGpuProperties(Place place,
           {89, "Ada Lovelace"},
           {90, "Hopper"},
           {100, "Blackwell"},
-          {103, "Blackwell Ultra"},
           {120, "Blackwell"},
       };
       if (!arch_computing_mapping_table.count(*compute_capability)) {
