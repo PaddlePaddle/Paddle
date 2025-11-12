@@ -4624,7 +4624,7 @@ class TestLog10APICompatibility(unittest.TestCase):
 
         # Tensor method args
         out4 = paddle.empty([])
-        out5 = x.log10(x, out=out4)
+        out5 = x.log10(out=out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
         # Tensor method kwargs
