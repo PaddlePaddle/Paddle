@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#include "paddle/fluid/framework/tensor_util.h"
+
 namespace phi {
 
 template <typename T, typename IndexT = int>
@@ -321,19 +321,6 @@ void IndexElementwisePutGradKernel(
                                                   x_grad);
 }
 
-std::string vector_to_string(const std::vector<int64_t>& vec_) {
-    std::ostringstream oss;
-    oss << "[";
-    for (size_t i = 0; i < vec_.size(); ++i) {
-        oss << vec_[i];
-        if (i + 1 < vec_.size()) {
-            oss << ", ";
-        }
-    }
-    oss << "]";
-    return oss.str();
-}
-
 template <typename T, typename Context>
 void IndexElementwisePutWithTensorGradKernel(
     const Context& dev_ctx,
@@ -348,7 +335,6 @@ void IndexElementwisePutWithTensorGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
-  VLOG(3) << "========== IndexElementwisePutWithTensorGradKernel start ==========";
   const auto& index_type = indices[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
                     true,
@@ -359,31 +345,6 @@ void IndexElementwisePutWithTensorGradKernel(
                         phi::DataType::INT64));
 
   std::vector<DenseTensor> tmp_args;
-
-  VLOG(5) << "----- x = " << x;
-
-  VLOG(5) << "----- indices.empty() ? " << indices.empty();
-  VLOG(5) << "----- indices: ";
-    for (size_t i = 0; i < indices.size(); ++i) {
-        if (const auto* t = indices[i]) {
-            VLOG(5) << "  ----- indices[" << i << "] = " << *t; // or std::endl
-        } else {
-            VLOG(5) << "  ----- indices[" << i << "] = nullptr";
-        }
-    }
-  VLOG(5) << "----- value = " << value;
-  VLOG(5) << "----- out_grad = " << out_grad;
-
-  VLOG(5) << "----- input_dims: " << vector_to_string(input_dims);
-  VLOG(5) << "----- input_strides: " << vector_to_string(input_strides);
-  VLOG(5) << "----- index_dims: " << vector_to_string(index_dims);
-  VLOG(5) << "----- index_strides: " << vector_to_string(index_strides);
-  VLOG(5) << "----- slice_offset: " << slice_offset;
-
-  VLOG(5) << "x_grad = nullptr ? " << ((x_grad) ? true : false);
-  VLOG(5) << "value_grad = nullptr ? " << ((value_grad) ? true : false);
-
-
   if (indices.empty()) {
     if (x_grad) {
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
@@ -407,20 +368,6 @@ void IndexElementwisePutWithTensorGradKernel(
                                                             slice_offset,
                                                             value_grad,
                                                             x_grad);
-  
-  if (x_grad) {
-    VLOG(5) << "----- x_grad = " << *x_grad;
-  } else {
-    VLOG(5) << "----- x_grad = nullptr";
-  }
-
-  if (value_grad) {
-    VLOG(5) << "----- value_grad = " << *value_grad;
-  } else {
-    VLOG(5) << "----- value_grad = nullptr";
-  }
-
-  VLOG(3) <<  "========== IndexElementwisePutWithTensorGradKernel end ==========";
 }
 
 }  // namespace phi
