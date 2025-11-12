@@ -44,6 +44,13 @@ class StreamSafeCUDAAllocation : public Allocation {
   void EraseStream(gpuStream_t stream);
   bool CanBeFreed();
   gpuStream_t GetOwningStream() const;
+  void *ptr() const noexcept override { return underlying_allocation_->ptr(); }
+  size_t size() const noexcept override {
+    return underlying_allocation_->size();
+  }
+  const Place &place() const noexcept override {
+    return underlying_allocation_->place();
+  }
 
  private:
   thread_local static std::once_flag once_flag_;
