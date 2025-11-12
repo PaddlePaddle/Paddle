@@ -195,9 +195,6 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
         X_row,
         rhs_cols));  // X_row ldc = rhs_cols (row-major leading dimension)
   }
-  phi::CPUPlace cpu_place;
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
   std::vector<int> h_info(batch_count, 0);
   phi::memory_utils::Copy(phi::CPUPlace(),
@@ -379,9 +376,6 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
         X_row,
         rhs_cols));  // X_row ldc = rhs_cols (row-major leading dimension)
   }
-  phi::CPUPlace cpu_place;
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
   std::vector<int> h_info(batch_count, 0);
   phi::memory_utils::Copy(phi::CPUPlace(),
