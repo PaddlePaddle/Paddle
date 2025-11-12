@@ -1337,6 +1337,34 @@ class TestEagerTensor(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
 
+    def test_tensor_str_complex64(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor(
+            [[1.5 + 1j, 1.0 - 2j], [0 - 3j, 0]], dtype="complex64"
+        ).cpu()
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = """Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+       [[(1.5000+1.0000j), (1.0000-2.0000j)],
+        [(0.0000-3.0000j), (0.0000+0.0000j)]])"""
+
+        self.assertEqual(a_str, expected)
+
+    def test_tensor_str_complex128(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor(
+            [[1.5 + 1j, 1.0 - 2j], [0 - 3j, 0]], dtype="complex128"
+        ).cpu()
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = """Tensor(shape=[2, 2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+       [[(1.5000+1.0000j), (1.0000-2.0000j)],
+        [(0.0000-3.0000j), (0.0000+0.0000j)]])"""
+
+        self.assertEqual(a_str, expected)
+
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.rand([1])
