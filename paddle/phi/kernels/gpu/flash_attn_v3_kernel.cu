@@ -1396,7 +1396,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = std::min(flashmaskv2_get_max_headdim(), 128);
+  int const max_headdim = flashmaskv2_get_max_headdim();
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,

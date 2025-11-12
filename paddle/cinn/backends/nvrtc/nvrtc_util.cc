@@ -291,9 +291,6 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
   return prefix_name_ + ".cubin";
 }
 
-// std::string Compiler::GetPtx() { return ReadFile(prefix_name_ + ".ptx",
-// std::ios::in); }
-
 void Compiler::CompileToPtx() {
   auto include_dir = cinn::common::Context::Global().runtime_include_dir();
   std::string include_dir_str = "";

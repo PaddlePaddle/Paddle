@@ -87,7 +87,9 @@ __global__ void KeSyncAndMovingStats(BatchNormParamType<T> *means,
                                      BatchNormParamType<T> *moving_means,
                                      BatchNormParamType<T> *moving_variances) {
   // sync stats across multi-devices
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < C; i += stride) {
     auto mean = means[i] / (*num_dev);
@@ -117,7 +119,9 @@ static __global__ void KeNormAffine(const T *x,
                                     const int M,
                                     const int64_t num,
                                     T *y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
     const int c = layout == DataLayout::kNCHW ? (i / M) % C : i % C;
@@ -180,12 +184,18 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
                                        BatchNormParamType<T> *sum_dy_prod) {
   __shared__ BatchNormParamType<T> smem_sum[BlockDim];
   __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
-  for (int k = blockIdx.x * blockDim.x + threadIdx.x; k < C;
+  for (int64_t k =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       k < C;
        k += gridDim.x * blockDim.x) {
     BatchNormParamType<T> sum1 = 0.;
     BatchNormParamType<T> sum2 = 0.;
     auto mean = means[k];
-    for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < N * M;
+    for (int64_t i = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         i < N * M;
          i += gridDim.y * blockDim.y) {
       int id = layout == DataLayout::kNCHW ? (i / M) * C * M + k * M + i % M
                                            : i * C + k;
@@ -287,7 +297,10 @@ static __global__ void KeBNBackwardScaleBias2D(
   __shared__ BatchNormParamType<T> smem_sum[BlockDim];
   __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += gridDim.x * blockDim.x) {
     BatchNormParamType<T> ds_sum = 0.;
     BatchNormParamType<T> db_sum = 0.;
@@ -341,7 +354,9 @@ static __global__ void KeBNRestoreData(T *x,
                                        int M,
                                        int64_t num,
                                        const T *y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
     const int64_t c = layout == DataLayout::kNCHW ? (i / M) % C : i % C;
@@ -366,7 +381,9 @@ static __global__ void KeBNBackwardData(
     const int64_t HxW,
     const int64_t num,
     T *dx) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   auto scale = static_cast<BatchNormParamType<T>>(C) / num;
   auto dev_num = num_dev[0];

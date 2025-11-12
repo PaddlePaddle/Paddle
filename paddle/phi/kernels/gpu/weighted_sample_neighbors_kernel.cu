@@ -63,7 +63,9 @@ __global__ void GetSampleCountAndNeighborCountKernel(const T* col_ptr,
                                                      int* neighbor_count,
                                                      int sample_size,
                                                      int n) {
-  int i = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t i =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (i >= n) return;
   T nid = input_nodes[i];
   int neighbor_size = static_cast<int>(col_ptr[nid + 1] - col_ptr[nid]);

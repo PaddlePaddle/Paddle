@@ -1687,7 +1687,7 @@ class HingeEmbeddingLoss(Layer):
 
     Shape:
 
-        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64. The sum operationoperates over all the elements.
+        input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64. The sum operation operates over all the elements.
 
         label: N-D Tensor, same shape as the input.
 

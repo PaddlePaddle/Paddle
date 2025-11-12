@@ -710,7 +710,7 @@ class Bilinear(Layer):
 
     .. math::
 
-      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,outfeatures-1
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,out_features-1
 
       out = out + b
 
@@ -2509,7 +2509,7 @@ class Unfold(Layer):
         kernel_sizes(int|list|tuple): The size of convolution kernel, should be [k_h, k_w]
             or an integer k treated as [k, k].
         strides(int|list|tuple, optional): The strides, should be [stride_h, stride_w]
-            or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
+            or an integer stride treated as [stride, stride]. For default, strides will be [1, 1].
         paddings(int|list|tuple, optional): The paddings of each dimension, should be
             [padding_top, padding_left, padding_bottom, padding_right] or [padding_h, padding_w]
             or an integer padding. If [padding_h, padding_w] was given, it will expanded to
@@ -2622,7 +2622,7 @@ class Fold(Layer):
 
     Returns:
         The tensor formed by combining a group of sliding local blocks
-        The output shape is [N, Cout, H, W] as decriabled above.
+        The output shape is [N, Cout, H, W] as described above.
 
     Examples:
 
@@ -2681,7 +2681,7 @@ class Fold(Layer):
 
 class Flatten(Layer):
     """
-    This interface is used to construct a callable object of the ``FLatten`` class.
+    This interface is used to construct a callable object of the ``Flatten`` class.
     For more details, refer to code examples.
     It implements flatten a contiguous range of dims into a tensor.
 
