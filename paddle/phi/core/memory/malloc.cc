@@ -33,15 +33,6 @@ uint64_t Release(const phi::Place& place) {
   return allocation::AllocatorFacade::Instance().Release(place);
 }
 
-std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
-                                         int32_t n) {
-  FreeMemoryMetricsVisitor free_memory_metrics_visitor(n);
-  allocation::AllocatorFacade::Instance().Accept(place,
-                                                 &free_memory_metrics_visitor);
-  return std::make_pair(free_memory_metrics_visitor.GetLargeSize(),
-                        free_memory_metrics_visitor.GetSumSize());
-}
-
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                         size_t size,
                                         const phi::Stream& stream) {
@@ -82,6 +73,15 @@ void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream) {
 
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
+}
+
+std::pair<size_t, size_t> VmmMaxFreeSize(
+    const phi::GPUPlace& places int32_t n) {
+  FreeMemoryMetricsVisitor free_memory_metrics_visitor(n);
+  allocation::AllocatorFacade::Instance().Accept(place,
+                                                 &free_memory_metrics_visitor);
+  return std::make_pair(free_memory_metrics_visitor.GetLargeSize(),
+                        free_memory_metrics_visitor.GetSumSize());
 }
 
 #endif
