@@ -47,7 +47,6 @@ jobs:
 
     steps:
       - name: Check docker image and run container
-        if: false
         env:
           CACHE_DIR: "/root/.cache/coverage"
           CCACHE_DIR: "/root/.ccache/h-coverage"
@@ -108,7 +107,6 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
-        if: false
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           rm -rf * .[^.]*
@@ -131,14 +129,14 @@ jobs:
           '
 
       - name: Check bypass
-        if: false
+        id: check-bypass
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: coverage
 
       - name: Build
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
@@ -153,7 +151,7 @@ jobs:
           '
 
       - name: Check added unittests
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -161,7 +159,7 @@ jobs:
           '
 
       - name: Clean up env
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -177,7 +175,7 @@ jobs:
           '
 
       - name: Upload coverage product
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -205,7 +203,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: false
+        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
@@ -294,8 +292,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz from cfs"
-          #wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/test/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
