@@ -205,7 +205,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
+        if: false
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
