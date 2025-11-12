@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #pragma once
-
+#include <cstdint>
 #include <vector>
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace memory {
