@@ -79,10 +79,8 @@ cc_test(
   SRCS allocator_facade_abs_flags_test.cc
   DEPS phi common)
 
-cc_test(
-  vmm_allocator_tail_test
-  SRCS vmm_allocator_tail_test.cc
-  DEPS phi common)
+paddle_test(vmm_allocator_tail_test SRCS vmm_allocator_tail_test.cc DEPS phi
+            common)
 
 cc_test(
   allocator_facade_frac_flags_test
