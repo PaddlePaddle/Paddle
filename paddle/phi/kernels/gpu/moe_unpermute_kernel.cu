@@ -39,8 +39,8 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
     const float *__restrict__ unzipped_token_probs,
     phi::bfloat16 *__restrict__ zipped_tokens_out,
     float *__restrict__ zipped_probs_topk,
-    const int64_t total_zipped_tokens_num,
-    const int64_t token_length,
+    const int total_zipped_tokens_num,
+    const int token_length,
     const int num_experts,
     const int topk) {
   const int this_row = blockIdx.x;
@@ -51,11 +51,11 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   __nv_bfloat16 *zipped_tokens =
       reinterpret_cast<__nv_bfloat16 *>(zipped_tokens_out);
 
-  int64_t local_row_fetchlist[MAX_NUM_EXPERTS];
+  int local_row_fetchlist[MAX_NUM_EXPERTS];
 
 #pragma unroll
   for (int expert = 0; expert < num_experts; ++expert) {
-    const int64_t fetch_row =
+    const int fetch_row =
         zipped_expertwise_rowmap[this_row * num_experts + expert];
     local_row_fetchlist[expert] = fetch_row;
   }
@@ -71,12 +71,12 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   }
 
   constexpr int vecSize = 4;
-  const int64_t num_full_vec = token_length / vecSize;
-  const int64_t remaining_elems = token_length % vecSize;
-  const int64_t thread_stride = blockDim.x * vecSize;
+  const int num_full_vec = token_length / vecSize;
+  const int remaining_elems = token_length % vecSize;
+  const int thread_stride = blockDim.x * vecSize;
 
   if constexpr (MP) {
-    for (int64_t x_offset = threadIdx.x * vecSize;
+    for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
       float4 sum = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -86,7 +86,7 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
-        const int64_t fetch_row = local_row_fetchlist[expert];
+        const int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
         aggreg_cnt++;
         raw = *reinterpret_cast<const __custom_bfloat164 *>(
@@ -112,14 +112,14 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
       }
     }
 
-    for (int64_t i = num_full_vec * vecSize + threadIdx.x; i < token_length;
+    for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
       float sum = 0.0f;
       __nv_bfloat16 raw = 0.0f;
       int aggreg_cnt = 0;
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
-        int64_t fetch_row = local_row_fetchlist[expert];
+        int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
         aggreg_cnt++;
         raw = unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
@@ -130,7 +130,7 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
           (aggreg_cnt > 1) ? static_cast<__nv_bfloat16>(sum) : raw;
     }
   } else {
-    for (int64_t x_offset = threadIdx.x * vecSize;
+    for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
       __custom_bfloat164 sum = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -138,7 +138,7 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
-        const int64_t fetch_row = local_row_fetchlist[expert];
+        const int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
         __custom_bfloat164 token_vec =
             *reinterpret_cast<const __custom_bfloat164 *>(
@@ -152,12 +152,12 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
       *out_ptr = sum;
     }
 
-    for (int64_t i = num_full_vec * vecSize + threadIdx.x; i < token_length;
+    for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
       __nv_bfloat16 sum = (__nv_bfloat16)0.0f;
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
-        int64_t fetch_row = local_row_fetchlist[expert];
+        int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
         __nv_bfloat16 token_val =
             unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
@@ -176,9 +176,9 @@ void dispatch_tokens_zip(const Context &dev_ctx,
                          const DenseTensor &unzipped_token_probs,
                          DenseTensor *zipped_tokens,
                          DenseTensor *zipped_probs_topk,
-                         const int64_t total_zipped_tokens_num,
+                         const int total_zipped_tokens_num,
                          const int num_experts,
-                         const int64_t token_length,
+                         const int token_length,
                          const int topk,
                          const bool MP) {
   dim3 grid, block;
@@ -226,8 +226,13 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const bool MP,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk) {
-  const int64_t rows = unzipped_tokens.dims()[0];
   const int64_t cols = unzipped_tokens.dims()[1];
+  PADDLE_ENFORCE_LE(cols,
+                    std::numeric_limits<int32_t>::max(),
+                    common::errors::InvalidArgument(
+                        "unzipped_tokens.dims()[1] should be less than "
+                        "INT_MAX, received unzipped_tokens.dims()[1]: (%ld)",
+                        cols));
   PADDLE_ENFORCE_LE(
       num_experts,
       MAX_NUM_EXPERTS,
@@ -237,7 +242,12 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
-  const int topk = expert_routemap_topk.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
+  PADDLE_ENFORCE_LE(
+      topk,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument(
+          "topk should be less than INT_MAX, received topk: (%ld)", topk));
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
   if (unzipped_tokens.numel() == 0) return;  // 0-size tensor
