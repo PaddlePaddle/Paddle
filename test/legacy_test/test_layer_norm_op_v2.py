@@ -302,37 +302,22 @@ class TestLayerNormParamDygraph(unittest.TestCase):
         """test for errors."""
 
         def run_test(p):
-            try:
+            with self.assertRaises(ValueError):
                 layer_norm = paddle.nn.LayerNorm(self.normalized_shape)
                 x1 = np.random.random([3, *self.normalized_shape]).astype(
                     'float32'
                 )
                 layer_norm(x1)
-                self.fail(
-                    "Expected ValueError for wrong input type in dygraph mode"
-                )
-            except ValueError:
-                pass
 
-            try:
+            with self.assertRaises(TypeError):
                 paddle.nn.LayerNorm(
                     self.normalized_shape, 1e-5, None, None, "name"
                 )
-                self.fail(
-                    "Expected TypeError for positional args mismatch in dygraph mode"
-                )
-            except TypeError:
-                pass
 
-            try:
+            with self.assertRaises(TypeError):
                 paddle.nn.LayerNorm(
                     self.normalized_shape, 1e-5, False, "cpu", paddle.float32
                 )
-                self.fail(
-                    "Expected TypeError for positional args mismatch in dygraph mode"
-                )
-            except TypeError:
-                pass
 
         self._run_test_on_places(run_test)
 
@@ -365,7 +350,7 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize(p)
+                paddle.device.synchronize()
                 input_np = np.random.randn(*self.x_shape).astype('float32')
                 result = exe.run(main, feed={'x': input_np}, fetch_list=[out])[
                     0
@@ -390,7 +375,7 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize(p)
+                paddle.device.synchronize()
                 weight_np, bias_np = exe.run(
                     main, fetch_list=[layer.weight, layer.bias]
                 )
@@ -423,7 +408,7 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize(p)
+                paddle.device.synchronize()
                 weight_np = exe.run(main, fetch_list=[layer.weight])[0]
                 assert weight_np is not None
                 assert weight_np.shape == tuple(self.normalized_shape)
@@ -475,7 +460,7 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize(p)
+                paddle.device.synchronize()
                 weight_np, bias_np = exe.run(
                     main, fetch_list=[layer.weight, layer.bias]
                 )
@@ -515,7 +500,7 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize(p)
+                paddle.device.synchronize()
                 input_np = np.random.randn(*self.x_shape).astype('float32')
                 out_eps_val, out_epsilon_val = exe.run(
                     main,
@@ -535,17 +520,12 @@ class TestLayerNormParamStatic(unittest.TestCase):
                     base.unique_name.guard(),
                     base.program_guard(main, start),
                 ):
-                    try:
+                    with self.assertRaises(TypeError):
                         paddle.nn.LayerNorm(
                             self.normalized_shape, 1e-5, None, None, "name"
                         )
-                        self.fail(
-                            "Expected TypeError for positional args mismatch in static mode"
-                        )
-                    except TypeError:
-                        pass
 
-                    try:
+                    with self.assertRaises(TypeError):
                         paddle.nn.LayerNorm(
                             self.normalized_shape,
                             1e-5,
@@ -553,11 +533,6 @@ class TestLayerNormParamStatic(unittest.TestCase):
                             "cpu",
                             paddle.float32,
                         )
-                        self.fail(
-                            "Expected TypeError for positional args mismatch in static mode"
-                        )
-                    except TypeError:
-                        pass
 
 
 if __name__ == '__main__':
