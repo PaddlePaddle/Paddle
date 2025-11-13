@@ -78,19 +78,15 @@ class TestFastNorm(unittest.TestCase):
         """
         paddle.seed(114514)
 
-        # Parameter list: (B, C, H, dtype, rtol)
-        # float32 rtol increased to 1.0 to pass the unstable near-zero gradient check (99% relative error)
-        # while its absolute error is negligibly small (1e-7).
         params = [
-            (1, 8192, 1024, "float32", 1.0),
-            (1, 8192, 1024, "float16", 1.0),
-            (1, 8192, 1024, "bfloat16", 1.0),
+            (1, 8192, 1024, "float32", 1e-4),
+            (1, 8192, 1024, "float16", 1e-2),
+            (1, 8192, 1024, "bfloat16", 1e-1),
         ]
 
-        # Fixed atol to 1.0 as requested by user
-        fixed_atol = 1.0
+        fixed_rtol = 1.0
 
-        for B, C, H, dtype, rtol in params:
+        for B, C, H, dtype, atol in params:
             with self.subTest(shape=(B, C, H), dtype=dtype):
                 # 1. Initialize inputs
                 shape = [B, C, H]
@@ -130,8 +126,8 @@ class TestFastNorm(unittest.TestCase):
                 self._assert_allclose(
                     y_ref,
                     y_proposed,
-                    atol=fixed_atol,
-                    rtol=rtol,
+                    atol=atol,
+                    rtol=fixed_rtol,
                     msg=f"fast_ln forward failed, dtype={dtype}",
                 )
 
@@ -139,22 +135,22 @@ class TestFastNorm(unittest.TestCase):
                 self._assert_allclose(
                     x_ref.grad,
                     x_proposed.grad,
-                    atol=fixed_atol,
-                    rtol=rtol,
+                    atol=atol,
+                    rtol=fixed_rtol,
                     msg=f"fast_ln input gradient failed, dtype={dtype}",
                 )
                 self._assert_allclose(
                     scale_ref.grad,
                     scale_proposed.grad,
-                    atol=fixed_atol,
-                    rtol=rtol,
+                    atol=atol,
+                    rtol=fixed_rtol,
                     msg=f"fast_ln Scale gradient failed, dtype={dtype}",
                 )
                 self._assert_allclose(
                     bias_ref.grad,
                     bias_proposed.grad,
-                    atol=fixed_atol,
-                    rtol=rtol,
+                    atol=atol,
+                    rtol=fixed_rtol,
                     msg=f"fast_ln Bias gradient failed, dtype={dtype}",
                 )
 
@@ -165,13 +161,11 @@ class TestFastNorm(unittest.TestCase):
         paddle.seed(114514)
 
         # Parameter list: (B, C, H, dtype, rtol)
-        # Tight rtol maintained as fast_rms_norm has not shown the near-zero gradient instability observed in fast_ln.
         params = [
             (1, 8192, 1024, "float32", 2e-4),
             (1, 8192, 1024, "bfloat16", 1.5e-2),
         ]
 
-        # Fixed atol to 1.0 as requested by user
         fixed_atol = 1.0
 
         for B, C, H, dtype, rtol in params:
