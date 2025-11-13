@@ -68,8 +68,7 @@ std::shared_ptr<void> GetIpcBasePtr(std::string handle) {
 void IpcCollect() {
   std::lock_guard<std::mutex> lock(ipc_mutex_);
   size_t before = ipc_handle_to_baseptr_.size();
-  VLOG(6) << "The number of IPC handles before "
-          << "collection:" << before;
+  VLOG(6) << "The number of IPC handles before collection:" << before;
 
   for (auto it = ipc_handle_to_baseptr_.begin();
        it != ipc_handle_to_baseptr_.end();
