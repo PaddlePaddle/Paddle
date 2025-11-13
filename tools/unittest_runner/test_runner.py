@@ -535,7 +535,9 @@ def main():
     # === Parallel execution part ===
     device_list, num_gpus = detect_gpu(device_list_arg)
     if num_gpus <= 0:
-        print("⚠️ No GPU detected, will fall back to single-threaded execution.")
+        print(
+            "[Warning] No GPU detected, will fall back to single-threaded execution."
+        )
         num_gpus = 1
         device_list = [0]
     else:
@@ -608,7 +610,7 @@ def main():
                     pass
     # === End of parallel part ===
 
-    print("\n✅ All tests executed.")
+    print("\n[Fininsed] All tests executed.")
     print(f"Result file: {os.path.join(conf_dir, TESTS_RESULT_FILE)}")
     print(f"Failed log directory: {os.path.join(conf_dir, FAILED_LOG_DIR)}")
 
