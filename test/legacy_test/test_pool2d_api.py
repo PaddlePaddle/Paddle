@@ -443,6 +443,15 @@ class TestPool2D_API(unittest.TestCase):
             result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+            lp_pool2d_dg = paddle.nn.LPPool2d(
+                norm_type,
+                2,
+                1,
+                False,
+            )
+            result = lp_pool2d_dg(input=input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
     def check_lp_dygraph_results_norm_type_is_inf(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
