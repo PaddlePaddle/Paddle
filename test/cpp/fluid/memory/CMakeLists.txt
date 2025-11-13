@@ -80,6 +80,11 @@ cc_test(
   DEPS phi common)
 
 cc_test(
+  vmm_allocator_tail_test
+  SRCS vmm_allocator_tail_test.cc
+  DEPS phi common)
+
+cc_test(
   allocator_facade_frac_flags_test
   SRCS allocator_facade_frac_flags_test.cc
   DEPS phi common)
