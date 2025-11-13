@@ -2246,7 +2246,7 @@ void MoeGateDispatchAutoGradInferMeta(const MetaTensor& combine_weights,
 void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const MetaTensor& invvar,
-                               const MetaTensor& y_grad,
+                               const MetaTensor& dy,
                                float epsilon,
                                MetaTensor* x_grad,
                                MetaTensor* scale_grad) {
