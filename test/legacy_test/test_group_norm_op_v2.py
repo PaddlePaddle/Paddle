@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import get_device_place, get_places, is_custom_device
-from utils import dygraph_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -743,12 +743,22 @@ class TestGroupNormParam(unittest.TestCase):
             )
 
 
-class TestGroupNormAPIV2_Param(unittest.TestCase):
+class TestGroupNormAPIV2_Param_Dygraph(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.num_groups = 8
         self.num_channels = 16
         self.x_shape = [2, self.num_channels, 4, 4]
+        self.param_shape = [self.num_channels]
         self.places = get_places()
+
+    def check_params(self, weight, bias, expected_weight, expected_bias):
+        self.assertIsNotNone(weight)
+        self.assertIsNotNone(bias)
+        self.assertEqual(weight.shape, self.param_shape)
+        self.assertEqual(bias.shape, self.param_shape)
+        self.assertTrue(paddle.allclose(weight, expected_weight).item())
+        self.assertTrue(paddle.allclose(bias, expected_bias).item())
 
     def test_affine_true(self):
         """test that when affine=True, weight and bias parameters are created."""
@@ -757,24 +767,8 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
                 layer = paddle.nn.GroupNorm(
                     num_groups=self.num_groups,
                     num_channels=self.num_channels,
+                    epsilon=1e-05,
                     affine=True,
-                )
-
-                self.assertIsNotNone(layer.weight)
-                self.assertIsNotNone(layer.bias)
-
-                self.assertEqual(layer.weight.shape, [self.num_channels])
-                self.assertEqual(layer.bias.shape, [self.num_channels])
-
-                self.assertTrue(
-                    paddle.allclose(
-                        layer.weight, paddle.ones([self.num_channels])
-                    )
-                )
-                self.assertTrue(
-                    paddle.allclose(
-                        layer.bias, paddle.zeros([self.num_channels])
-                    )
                 )
 
                 layer_old = paddle.nn.GroupNorm(
@@ -783,50 +777,61 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
                     epsilon=1e-05,
                 )
 
-                self.assertIsNotNone(layer_old.weight)
-                self.assertIsNotNone(layer_old.bias)
+                expected_weight = paddle.ones(self.param_shape)
+                expected_bias = paddle.zeros(self.param_shape)
 
-                self.assertEqual(layer_old.weight.shape, [self.num_channels])
-                self.assertEqual(layer_old.bias.shape, [self.num_channels])
+                self.check_params(
+                    layer.weight, layer.bias, expected_weight, expected_bias
+                )
+                self.check_params(
+                    layer_old.weight,
+                    layer_old.bias,
+                    expected_weight,
+                    expected_bias,
+                )
 
-                self.assertTrue(
-                    paddle.allclose(
-                        layer_old.weight, paddle.ones([self.num_channels])
-                    )
-                )
-                self.assertTrue(
-                    paddle.allclose(
-                        layer_old.bias, paddle.zeros([self.num_channels])
-                    )
-                )
+                x_tensor = paddle.randn(self.x_shape)
+                out = layer(x_tensor)
+                out_old = layer_old(x_tensor)
+                self.assertTrue(paddle.allclose(out, out_old).item())
 
     def test_affine_false(self):
         """test that when affine=False, no learnable parameters are created."""
-        layer = paddle.nn.GroupNorm(
-            num_groups=self.num_groups,
-            num_channels=self.num_channels,
-            affine=False,
-        )
+        for p in self.places:
+            with base.dygraph.guard(p):
+                layer = paddle.nn.GroupNorm(
+                    num_groups=self.num_groups,
+                    num_channels=self.num_channels,
+                    affine=False,
+                )
 
-        self.assertIsNone(layer.weight)
-        self.assertIsNone(layer.bias)
+                self.assertIsNone(layer.weight)
+                self.assertIsNone(layer.bias)
 
-        layer_old = paddle.nn.GroupNorm(
-            num_groups=self.num_groups,
-            num_channels=self.num_channels,
-            weight_attr=False,
-            bias_attr=False,
-        )
+                layer_old = paddle.nn.GroupNorm(
+                    num_groups=self.num_groups,
+                    num_channels=self.num_channels,
+                    weight_attr=False,
+                    bias_attr=False,
+                )
 
-        self.assertIsNone(layer_old.weight)
-        self.assertIsNone(layer_old.bias)
+                self.assertIsNone(layer_old.weight)
+                self.assertIsNone(layer_old.bias)
+
+                x_tensor = paddle.randn(self.x_shape)
+                out = layer(x_tensor)
+                out_old = layer_old(x_tensor)
+                self.assertTrue(paddle.allclose(out, out_old).item())
 
     def test_overrides_with_affine(self):
         """test that weight_attr and bias_attr can override the default initialization when affine=True."""
         for p in self.places:
             with base.dygraph.guard(p):
-                weight_attr = paddle.nn.initializer.Constant(value=2.0)
-                bias_attr = paddle.nn.initializer.Constant(value=3.0)
+                weight_val = 2.0
+                bias_val = 3.0
+                weight_attr = paddle.nn.initializer.Constant(value=weight_val)
+                bias_attr = paddle.nn.initializer.Constant(value=bias_val)
+
                 layer = paddle.nn.GroupNorm(
                     num_groups=self.num_groups,
                     num_channels=self.num_channels,
@@ -835,35 +840,16 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
                     bias_attr=bias_attr,
                 )
 
-                expected_weight = paddle.full([self.num_channels], 2.0)
-                expected_bias = paddle.full([self.num_channels], 3.0)
-                self.assertTrue(paddle.allclose(layer.weight, expected_weight))
-                self.assertTrue(paddle.allclose(layer.bias, expected_bias))
-
-    def test_shape_with_affine(self):
-        """test the forward pass when affine."""
-        x_tensor = paddle.randn(self.x_shape)
-        layer = paddle.nn.GroupNorm(
-            num_groups=self.num_groups,
-            num_channels=self.num_channels,
-            affine=True,
-        )
-        out = layer(x_tensor)
-        self.assertEqual(out.shape, self.x_shape)
-
-        layer = paddle.nn.GroupNorm(
-            num_groups=self.num_groups,
-            num_channels=self.num_channels,
-            affine=False,
-        )
-        out = layer(x_tensor)
-        self.assertEqual(out.shape, self.x_shape)
+                expected_weight = paddle.full(self.param_shape, weight_val)
+                expected_bias = paddle.full(self.param_shape, bias_val)
+                self.check_params(
+                    layer.weight, layer.bias, expected_weight, expected_bias
+                )
 
     def test_alias(self):
         """test parameter alias epsilon/eps"""
         for p in self.places:
             with base.dygraph.guard(p):
-                x_tensor = paddle.randn(self.x_shape)
                 layer_epsilon = paddle.nn.GroupNorm(
                     num_groups=self.num_groups,
                     num_channels=self.num_channels,
@@ -875,24 +861,207 @@ class TestGroupNormAPIV2_Param(unittest.TestCase):
                     eps=1e-5,
                 )
 
+                x_tensor = paddle.randn(self.x_shape)
                 out_epsilon = layer_epsilon(x_tensor)
                 out_eps = layer_eps(x_tensor)
-
-                np.testing.assert_array_equal(
-                    out_epsilon.numpy(), out_eps.numpy()
-                )
+                self.assertTrue(paddle.allclose(out_epsilon, out_eps).item())
 
     def test_errors(self):
         """test parameters with errors"""
-        with self.assertRaises(TypeError):
-            layer = paddle.nn.GroupNorm(
-                self.num_groups,
-                self.num_channels,
-                1e-05,
-                True,
-                "cpu",
-                paddle.float32,
+        for p in self.places:
+            with base.dygraph.guard(p), self.assertRaises(TypeError):
+                layer = paddle.nn.GroupNorm(
+                    self.num_groups,
+                    self.num_channels,
+                    1e-05,
+                    True,
+                    "cpu",
+                    paddle.float32,
+                )
+
+
+class TestGroupNormAPIV2_Param_Static(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.num_groups = 8
+        self.num_channels = 16
+        self.x_shape = [2, self.num_channels, 4, 4]
+        self.param_shape = [self.num_channels]
+        self.places = get_places()
+
+    def _run_group_norm_static(self, device, **kwargs):
+        expected_w = kwargs.pop('expected_w', True)
+        expected_b = kwargs.pop('expected_b', True)
+        expected_out = kwargs.pop('expected_out', True)
+        x_np = kwargs.pop('x_np', None)
+
+        with static_guard():
+            main = base.Program()
+            start = base.Program()
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, start),
+            ):
+                layer = paddle.nn.GroupNorm(
+                    num_groups=self.num_groups,
+                    num_channels=self.num_channels,
+                    **kwargs,
+                )
+                if expected_w:
+                    assert layer.weight is not None
+                else:
+                    assert layer.weight is None
+                if expected_b:
+                    assert layer.bias is not None
+                else:
+                    assert layer.bias is None
+
+                y_var = None
+                if expected_out:
+                    x_var = paddle.static.data("input", self.x_shape)
+                    y_var = layer(x_var)
+
+            exe = base.Executor(device)
+            exe.run(start)
+
+            fetch_list = []
+            if expected_w:
+                fetch_list.append(layer.weight)
+            if expected_b:
+                fetch_list.append(layer.bias)
+            if expected_out:
+                fetch_list.append(y_var)
+            fetched_arrays = exe.run(
+                main,
+                feed={'input': x_np} if expected_out else {},
+                fetch_list=fetch_list,
             )
+            return fetched_arrays
+
+    def _check_params(self, weight_np, bias_np, expected_weight, expected_bias):
+        assert weight_np.shape == tuple(self.param_shape)
+        assert bias_np.shape == tuple(self.param_shape)
+        np.testing.assert_allclose(weight_np, expected_weight)
+        np.testing.assert_allclose(bias_np, expected_bias)
+
+    def _check_outs(self, out1_np, out2_np):
+        assert out1_np.shape == tuple(self.x_shape)
+        assert out2_np.shape == tuple(self.x_shape)
+        np.testing.assert_allclose(out1_np, out2_np)
+
+    def test_static_affine_true(self):
+        """test that when affine=True, weight and bias parameters are created."""
+        for p in self.places:
+            x_np = np.random.randn(*self.x_shape).astype("float32")
+            w_new, b_new, out_new = self._run_group_norm_static(
+                device=p,
+                epsilon=1e-05,
+                affine=True,
+                x_np=x_np,
+            )
+            w_old, b_old, out_old = self._run_group_norm_static(
+                device=p,
+                epsilon=1e-05,
+                x_np=x_np,
+            )
+            expected_weight = np.ones(self.param_shape)
+            expected_bias = np.zeros(self.param_shape)
+            self._check_params(w_new, b_new, expected_weight, expected_bias)
+            self._check_params(w_old, b_old, expected_weight, expected_bias)
+            self._check_outs(out_new, out_old)
+
+    def test_static_affine_false(self):
+        """test that when affine=False, no learnable parameters are created."""
+        for p in self.places:
+            x_np = np.random.randn(*self.x_shape).astype("float32")
+            (out_new,) = self._run_group_norm_static(
+                device=p,
+                affine=False,
+                expected_w=False,
+                expected_b=False,
+                x_np=x_np,
+            )
+            (out_old,) = self._run_group_norm_static(
+                device=p,
+                weight_attr=False,
+                bias_attr=False,
+                expected_w=False,
+                expected_b=False,
+                x_np=x_np,
+            )
+            self._check_outs(out_new, out_old)
+
+    def test_static_overrides_with_affine(self):
+        """test that weight_attr and bias_attr can override the default initialization when affine=True."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    weight_val = 2.0
+                    bias_val = 3.0
+                    weight_attr = paddle.nn.initializer.Constant(
+                        value=weight_val
+                    )
+                    bias_attr = paddle.nn.initializer.Constant(value=bias_val)
+                    layer = paddle.nn.GroupNorm(
+                        num_groups=self.num_groups,
+                        num_channels=self.num_channels,
+                        affine=True,
+                        weight_attr=weight_attr,
+                        bias_attr=bias_attr,
+                    )
+                exe = base.Executor(p)
+                exe.run(start)
+                paddle.device.synchronize()
+                weight_np, bias_np = exe.run(
+                    main, fetch_list=[layer.weight, layer.bias]
+                )
+
+                expected_weight = np.full(self.param_shape, weight_val)
+                expected_bias = np.full(self.param_shape, bias_val)
+                self._check_params(
+                    weight_np, bias_np, expected_weight, expected_bias
+                )
+
+    def test_static_alias(self):
+        """test parameter alias epsilon/eps"""
+        for p in self.places:
+            x_np = np.random.randn(*self.x_shape).astype("float32")
+            w_new, b_new, out_new = self._run_group_norm_static(
+                device=p,
+                eps=1e-05,
+                x_np=x_np,
+            )
+            w_old, b_old, out_old = self._run_group_norm_static(
+                device=p,
+                epsilon=1e-05,
+                x_np=x_np,
+            )
+            self._check_outs(out_new, out_old)
+
+    def test_static_errors(self):
+        """test parameters with errors"""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                    self.assertRaises(TypeError),
+                ):
+                    paddle.nn.GroupNorm(
+                        self.num_groups,
+                        self.num_channels,
+                        1e-05,
+                        True,
+                        "cpu",
+                        paddle.float32,
+                    )
 
 
 if __name__ == '__main__':
