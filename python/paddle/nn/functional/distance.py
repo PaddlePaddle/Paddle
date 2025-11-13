@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+from decorator_utils import ParamAliasDecorator
+
 import paddle
 from paddle import _C_ops
 from paddle.framework import in_dynamic_or_pir_mode
@@ -23,6 +25,13 @@ from ...base.layer_helper import LayerHelper
 __all__ = []
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["x1"],
+        "y": ["x2"],
+        "epsilon": ["eps"],
+    }
+)
 def pairwise_distance(
     x: paddle.Tensor,
     y: paddle.Tensor,
