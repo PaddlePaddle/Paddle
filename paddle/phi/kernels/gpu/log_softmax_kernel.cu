@@ -28,6 +28,8 @@ void LogSoftmaxKernel(const Context &dev_ctx,
                       DenseTensor *out) {
   const int rank = x.dims().size();
 
+  printf("--[paddle]----gpu----LogSoftmaxKernel----------\n");
+
   dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0) return;
   // For 0D Tensor
