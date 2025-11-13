@@ -179,7 +179,6 @@ class TestTensorShapeBehavior(unittest.TestCase):
         self.assertEqual(len(s), 3)
 
     def test_02_edge_cases_0d_and_1d(self):
-        # 0 维 (Scalar)
         scalar = paddle.to_tensor(100)
         s_scalar = scalar.shape
 
@@ -187,7 +186,6 @@ class TestTensorShapeBehavior(unittest.TestCase):
         self.assertEqual(s_scalar, [])
         self.assertEqual(len(s_scalar), 0)
 
-        # 1 维 (Vector)
         vector = paddle.to_tensor([1, 2, 3])
         s_vector = vector.shape
 
