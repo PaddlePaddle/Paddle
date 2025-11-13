@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 from collections import OrderedDict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from itertools import chain
 from typing import Any
 
 from typing_extensions import Self
@@ -29,6 +30,17 @@ from ...base.framework import Parameter
 from .layers import Layer
 
 __all__ = []
+
+
+def _addindent(s_, numSpaces):
+    s = s_.split("\n")
+    if len(s) == 1:
+        return s_
+    first = s.pop(0)
+    s = [(numSpaces * " ") + line for line in s]
+    s = "\n".join(s)
+    s = first + "\n" + s
+    return s
 
 
 class LayerDict(Layer):
@@ -556,6 +568,9 @@ class LayerList(Layer):
                 idx += len(self)
         return idx
 
+    def _get_abs_string_index(self, idx):
+        return str(self._get_abs_idx(idx))
+
     def __getitem__(self, idx: int) -> Layer:
         if isinstance(idx, slice):
             return self.__class__(list(self._sub_layers.values())[idx])
@@ -584,6 +599,51 @@ class LayerList(Layer):
 
     def __iter__(self) -> Iterator[Layer]:
         return iter(self._sub_layers.values())
+
+    def __iadd__(self, modules: Iterable[Layer]) -> Self:
+        return self.extend(modules)
+
+    def __add__(self, other: Iterable[Layer]) -> LayerList:
+        combined = LayerList()
+        for i, module in enumerate(chain(self, other)):
+            combined.add_module(str(i), module)
+        return combined
+
+    def __repr__(self) -> str:
+        list_of_reprs = [repr(item) for item in self]
+        if len(list_of_reprs) == 0:
+            return self._get_name() + "()"
+
+        start_end_indices = [[0, 0]]
+        repeated_blocks = [list_of_reprs[0]]
+        for i, r in enumerate(list_of_reprs[1:], 1):
+            if r == repeated_blocks[-1]:
+                start_end_indices[-1][1] += 1
+                continue
+
+            start_end_indices.append([i, i])
+            repeated_blocks.append(r)
+
+        lines = []
+        main_str = self._get_name() + "("
+        for (start_id, end_id), b in zip(start_end_indices, repeated_blocks):
+            local_repr = f"({start_id}): {b}"
+
+            if start_id != end_id:
+                n = end_id - start_id + 1
+                local_repr = f"({start_id}-{end_id}): {n} x {b}"
+
+            local_repr = _addindent(local_repr, 2)
+            lines.append(local_repr)
+
+        main_str += "\n  " + "\n  ".join(lines) + "\n"
+        main_str += ")"
+        return main_str
+
+    def __dir__(self) -> list[str]:
+        keys = super().__dir__()
+        keys = [key for key in keys if not key.isdigit()]
+        return keys
 
     def append(self, sublayer: Layer) -> Self:
         """
@@ -669,6 +729,11 @@ class LayerList(Layer):
             idx = str(offset + i)
             self.add_sublayer(idx, sublayer)
         return self
+
+    def pop(self, key: int | slice) -> Layer:
+        v = self[key]
+        del self[key]
+        return v
 
 
 class Sequential(Layer):

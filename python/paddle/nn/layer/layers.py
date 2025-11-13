@@ -19,7 +19,7 @@ import re
 import typing
 import warnings
 import weakref
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
@@ -68,7 +68,7 @@ from paddle.utils.decorator_utils import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
     from paddle.nn.initializer import Initializer
@@ -165,6 +165,19 @@ def _layer_trans_dtype(layer, dtype, excluded_layers):
         return
 
     layer._to_impl(dtype=dtype, floating_only=True, include_sublayers=False)
+
+
+class _IncompatibleKeys(
+    namedtuple("IncompatibleKeys", ["missing_keys", "unexpected_keys"]),
+):
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        if not self.missing_keys and not self.unexpected_keys:
+            return "<All keys matched successfully>"
+        return super().__repr__()
+
+    __str__ = __repr__
 
 
 class LayerObjectHelper(LayerHelperBase):
@@ -488,6 +501,30 @@ class Layer:
         )
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
+
+    @property
+    def _modules(self):
+        return self._sub_layers
+
+    @_modules.setter
+    def _modules(self, value):
+        if not isinstance(value, dict):
+            raise TypeError(f"_modules must be dict-like, got {type(value)}")
+        self._sub_layers.clear()
+        self._sub_layers.update(value)
+
+    @property
+    def _non_persistent_buffers_set(self):
+        return self._non_persistable_buffer_names_set
+
+    @_non_persistent_buffers_set.setter
+    def _non_persistent_buffers_set(self, value):
+        if not isinstance(value, set):
+            raise TypeError(
+                f"_non_persistent_buffers_set must be a set, got {type(value)}"
+            )
+        self._non_persistable_buffer_names_set.clear()
+        self._non_persistable_buffer_names_set.update(value)
 
     def train(self, mode: bool = True) -> Self:
         """
@@ -1424,6 +1461,45 @@ class Layer:
                 remove_duplicate=remove_duplicate,
             )
 
+    def modules(self) -> Iterator[Layer]:
+        """
+        Return an iterator over all modules in the network.
+
+        Yields:
+            Module: a module in the network.
+
+        """
+        for _, module in self.named_modules():
+            yield module
+
+    def named_modules(
+        self,
+        memo: set[Layer] | None = None,
+        prefix: str = "",
+        remove_duplicate: bool = True,
+    ):
+        """
+        Returns an iterator over all submodules in the Module, yielding tuple of name and submodule.
+        The duplicate submodule will only be yielded once.
+
+        Parameters:
+            memo(set, optional): The set to record duplicate submodules. Default: None.
+            prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
+            remove_duplicate(bool, optional): Whether to remove duplicated submodules in the result.
+                Default: True.
+
+        Yields:
+            (string, Module): Tuple of name and Module
+        """
+        include_self = True
+        layers_set = memo
+        return self.named_sublayers(
+            prefix=prefix,
+            include_self=include_self,
+            layers_set=layers_set,
+            remove_duplicate=remove_duplicate,
+        )
+
     @param_one_alias(["persistable", "persistent"])
     def register_buffer(
         self, name: str, tensor: Tensor, persistable: bool = True
@@ -1494,6 +1570,7 @@ class Layer:
             else:
                 self._non_persistable_buffer_names_set.add(name)
 
+    @param_one_alias(["include_sublayers", "recurse"])
     def buffers(self, include_sublayers: bool = True) -> list[Tensor]:
         """
 
@@ -1888,6 +1965,25 @@ class Layer:
             if not isinstance(mod, paddle.nn.Layer):
                 raise AttributeError("`" + atoms[-1] + "` is not an nn.Layer")
         setattr(parent, atoms[-1], layer)
+
+    get_submodule = get_sublayer
+    set_submodule = set_sublayer
+
+    def add_module(self, name: str, module: Layer | None) -> None:
+        """
+        Adds a sub module instance. Added module can be accessed by self.name
+
+        Parameters:
+            name(str): name of this submodule.
+            module(Module): an instance of Module.
+        Returns:
+            None
+        """
+        self.add_sublayer(name, module)
+
+    def register_module(self, name: str, module: Layer | None) -> None:
+        """Alias for :func:`add_module`."""
+        self.add_module(name, module)
 
     def add_parameter(self, name: str, parameter: Tensor) -> Tensor:
         """Adds a Parameter instance.
@@ -2386,8 +2482,10 @@ class Layer:
             keep_vars=keep_vars,
         )
 
+    @param_one_alias(["structured_name_prefix", "prefix"])
     def state_dict(
         self,
+        *args,
         destination: _StateDict | None = None,
         include_sublayers: bool = True,
         structured_name_prefix: str = "",
@@ -2417,6 +2515,27 @@ class Layer:
                 >>> paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
+        if len(args) > 0:
+            destination = args[0] if len(args) >= 1 else destination
+            arg2 = args[1] if len(args) >= 2 else None
+            arg3 = args[2] if len(args) >= 3 else None
+            arg4 = args[3] if len(args) >= 4 else None
+            arg5 = args[4] if len(args) >= 5 else None
+
+            if isinstance(arg2, bool):
+                include_sublayers = arg2
+                if isinstance(arg3, str):
+                    structured_name_prefix = arg3
+                if isinstance(arg4, bool):
+                    use_hook = arg4
+                if isinstance(arg5, bool):
+                    keep_vars = arg5
+            elif isinstance(arg2, str):
+                structured_name_prefix = arg2
+                keep_vars = False
+                if isinstance(arg3, bool):
+                    keep_vars = arg3
+
         return self._state_dict_impl(
             destination=destination,
             include_sublayers=include_sublayers,
@@ -2627,6 +2746,68 @@ class Layer:
                 )
 
         return missing_keys, unexpected_keys
+
+    def load_state_dict(
+        self,
+        state_dict: Mapping[str, Any],
+        strict: bool = True,
+        assign: bool = False,
+    ):
+        """
+        Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
+
+        If :attr:`strict` is ``True``, then
+        the keys of :attr:`state_dict` must exactly match the keys returned
+        by this module's :meth:`~torch.nn.Module.state_dict` function.
+
+
+        Parameters:
+            state_dict (dict): a dict containing parameters and persistent buffers.
+            strict (bool, optional): whether to strictly enforce that the keys
+                in :attr:`state_dict` match the keys returned by this module's
+                :meth:`~torch.nn.Module.state_dict` function. Default: ``True``
+            assign (bool, optional): When set to ``False``, the properties of the tensors
+                in the current module are preserved whereas setting it to ``True`` preserves
+                properties of the Tensors in the state dict. The only
+                exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`
+                for which the value from the module is preserved. Default: ``False``
+
+        Returns:
+            ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:
+                * ``missing_keys`` is a list of str containing any keys that are expected
+                    by this module but missing from the provided ``state_dict``.
+                * ``unexpected_keys`` is a list of str containing the keys that are not
+                    expected by this module but present in the provided ``state_dict``.
+        """
+        error_msgs: list[str] = []
+
+        missing_keys, unexpected_keys = self.set_state_dict(
+            state_dict, use_structured_name=True
+        )
+
+        if strict:
+            if len(unexpected_keys) > 0:
+                error_msgs.insert(
+                    0,
+                    "Unexpected key(s) in state_dict: {}. ".format(
+                        ", ".join(f'"{k}"' for k in unexpected_keys)
+                    ),
+                )
+            if len(missing_keys) > 0:
+                error_msgs.insert(
+                    0,
+                    "Missing key(s) in state_dict: {}. ".format(
+                        ", ".join(f'"{k}"' for k in missing_keys)
+                    ),
+                )
+
+        if len(error_msgs) > 0:
+            raise RuntimeError(
+                "Error(s) in loading state_dict for {}:\n\t{}".format(
+                    self.__class__.__name__, "\n\t".join(error_msgs)
+                )
+            )
+        return _IncompatibleKeys(missing_keys, unexpected_keys)
 
     def to(
         self,
