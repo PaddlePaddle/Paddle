@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Union
 from typing_extensions import TypeAlias
 
 import paddle
+from paddle.amp import autocast as _autocast
 from paddle.base import core, framework
 from paddle.base.framework import (
     is_compiled_with_cinn,
@@ -52,6 +53,7 @@ from . import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
     from types import TracebackType
 
     from paddle import IPUPlace as _IPUPlace, XPUPlace as _XPUPlace
@@ -1016,15 +1018,28 @@ class Event:
     A device event wrapper around StreamBase.
 
     Args:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
-            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         enable_timing (bool, optional): indicates if the event should measure time, default is False
         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
         interprocess (bool): if True, the event can be shared between processes, default is False
 
     Returns:
         Event: The event.
+
+    Note:
+        The `device` parameter has been removed in the latest version. The event will always use the current device context.
+        Previously, you could specify the device like:
+        ```python
+        # Old usage (no longer supported)
+        e = paddle.device.Event(device="gpu:0")
+        ```
+        Now it will automatically use the current device:
+        ```python
+        # New usage
+        paddle.set_device("gpu:0")  # Set device first
+        e = paddle.device.Event()   # Will use gpu:0
+        ```
+
+        paddle.device.Event is equivalent to paddle.cuda.Event.
 
     Examples:
         .. code-block:: python
@@ -1033,10 +1048,16 @@ class Event:
             >>> import paddle
 
             >>> paddle.set_device('custom_cpu')
-            >>> e1 = paddle.device.Event()
-            >>> e2 = paddle.device.Event('custom_cpu')
-            >>> e3 = paddle.device.Event('custom_cpu:0')
-            >>> e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
+            >>> e1 = paddle.device.Event()  # Uses current device (custom_cpu)
+            >>>
+            >>> # Old usage (no longer supported):
+            >>> # e2 = paddle.device.Event('custom_cpu')
+            >>> # e3 = paddle.device.Event('custom_cpu:0')
+            >>> # e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
+            >>>
+            >>> # New equivalent usage:
+            >>> paddle.set_device('custom_cpu:0')
+            >>> e5 = paddle.device.Event()  # Uses custom_cpu:0
 
     '''
 
@@ -1046,17 +1067,11 @@ class Event:
 
     def __init__(
         self,
-        device: PlaceLike | None = None,
         enable_timing: bool = False,
         blocking: bool = False,
         interprocess: bool = False,
     ) -> None:
-        if device is None:
-            self.device = paddle.framework._current_expected_place_()
-        elif isinstance(device, str):
-            self.device = paddle.device._convert_to_place(device)
-        else:
-            self.device = device
+        self.device = paddle.framework._current_expected_place_()
 
         device_id = (
             self.device.get_device_id()
@@ -1338,7 +1353,7 @@ class Stream:
 
         '''
         if event is None:
-            event = Event(self.device)
+            event = Event()
         event.record(self)
         return event
 
@@ -1784,6 +1799,63 @@ def manual_seed_all(seed: int) -> None:
 
     """
     paddle.seed(seed)
+
+
+class _AutocastMode:
+    @staticmethod
+    def autocast(
+        enabled=True, dtype=paddle.float16, cache_enabled=True
+    ) -> AbstractContextManager:
+        """
+        Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
+        If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided
+        by autocast algorithm for better performance.
+
+        Commonly, it is used together with `GradScaler` and `decorator` to achieve Auto-Mixed-Precision in
+        imperative mode.
+
+        Args:
+            device_type(str, optional): Device type. But because the paddle does not distinguish between devices, this parameter does not work.
+            enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
+            dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+            cache_enabled(bool, optional): whether to enable cache or not. Default is True. But this parameter is not used
+
+        Note:
+            paddle.cuda.amp.
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+
+                >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+                >>> data = paddle.rand([10, 3, 32, 32])
+
+                >>> with paddle.device.amp.auto_cast():
+                ...     conv = conv2d(data)
+                ...     print(conv.dtype)
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
+                paddle.float16
+                >>> # doctest: -SKIP
+
+                >>> with paddle.device.amp.auto_cast(enable=False):
+                ...     conv = conv2d(data)
+                ...     print(conv.dtype)
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
+                paddle.float32
+                >>> # doctest: -SKIP
+
+        """
+        return _autocast(device_type='cuda', enabled=enabled, dtype=dtype)
+
+
+class amp:
+    """Namespace for amp marker operations."""
+
+    autocast = staticmethod(_AutocastMode.autocast)
+    autocast_mode = _AutocastMode()
 
 
 class nvtx:

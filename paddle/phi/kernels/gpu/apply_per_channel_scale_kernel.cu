@@ -93,7 +93,9 @@ __global__ void apply_per_channel_scale(
   using HALF_2_TYPE = typename CUDA_HALF_2_TYPE_TARIS<T>::type;
   static constexpr int kElems = sizeof(AccessType) / sizeof(T);
   T scale[kElems], act_vec[kElems];
-  int col_offset = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t col_offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int row_offset = blockIdx.y;
   if (col_offset * kElems >= cols || row_offset * kProcessRows >= rows) return;
   act += row_offset * kProcessRows * cols;

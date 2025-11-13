@@ -167,7 +167,6 @@ static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
 static constexpr char* win_cublas_lib =
     "cublas64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cublas64_" CUDA_VERSION_MAJOR ".dll";
-#if CUDA_VERSION >= 11000
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll;curand64_10.dll";
@@ -184,23 +183,6 @@ static constexpr char* win_cusparse_lib =
 static constexpr char* win_cufft_lib =
     "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_11.dll;cufft64_10.dll";
-#else
-static constexpr char* win_curand_lib =
-    "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;curand64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_nvjpeg_lib =
-    "nvjpeg64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_cusolver_lib =
-    "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_cusparse_lib =
-    "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_cufft_lib =
-    "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll";
-#endif  // CUDA_VERSION
 #endif
 
 static inline std::string join(const std::string& part1,
@@ -551,13 +533,13 @@ void* GetCublasLtDsoHandle() {
         "temporarily no longer supports");
     return nullptr;
   }
-#elif !defined(__linux__) && defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
+#elif !defined(__linux__) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipblaslt.so");
 #else
   std::string warning_msg(
-      "Your CUDA_VERSION less 10.1, not support CublasLt. "
+      "Your CUDA_VERSION less 11, not support CublasLt. "
       "If you want to use CublasLt, please upgrade CUDA and rebuild "
       "PaddlePaddle.");
   return nullptr;
@@ -720,13 +702,23 @@ void* GetCusolverDsoHandle() {
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, SOLVER_LIB_NAME);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  if (CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
-  return GetDsoHandleFromSearchPath(
-      FLAGS_cuda_dir, "cusolver64_11.dll", true, {cuda_lib_path});
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, "cusolver64_11.dll", true, {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(
-      FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
 #endif
+  } else {
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, "cusolver64_12.dll", true, {cuda_lib_path});
+#else
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
+#endif
+  }
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsolver.so");
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
@@ -762,6 +754,13 @@ void* GetCusparseDsoHandle() {
         FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #endif
   } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+    return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cusparse64_12.dll");
+#else
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
+#endif
+  } else if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cusparse64_12.dll");
 #else
@@ -1005,6 +1004,9 @@ void* GetNvtxDsoHandle() {
   PADDLE_THROW(
       common::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
+  if (CUDA_VERSION >= 12090) {
+    return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvtx3interop.so.1");
+  }
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif
 }
@@ -1046,6 +1048,13 @@ void* GetCUFFTDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cufft_lib, true, {cuda_lib_path});
 #endif
+  } else if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+    return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cufft64_12.dll");
+#else
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cuda_dir, win_cufft_lib, true, {cuda_lib_path});
+#endif
   } else {
     std::string warning_msg(
         "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
@@ -1070,8 +1079,7 @@ void* GetMKLRTDsoHandle() {
 void* GetCusparseLtDsoHandle() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, SPARSELT_LIB_NAME);
-// APIs available after CUDA 11.2
-#elif defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#elif defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
 #else
   std::string warning_msg(

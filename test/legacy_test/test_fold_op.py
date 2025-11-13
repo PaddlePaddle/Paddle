@@ -200,6 +200,82 @@ class TestFoldAPI(TestFoldOp):
         str(paddle.nn.Fold(**self.attrs))
 
 
+class TestFoldAPI_Compatibility(TestFoldOp):
+    # This is for test on paddle.nn.Fold
+    def set_data(self):
+        self.init_dtype()
+        self.init_data()
+        self.calc_fold()
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
+        self.outputs = {'Y': self.outputs}
+
+    def setUp(self):
+        self.op_type = 'fold'
+        self.python_api = paddle.nn.functional.fold
+        self.set_data()
+        self.places = get_places()
+
+    def test_check_output(self):
+        # self.attrs in OpTest needs original parameters
+        self.attrs = {
+            'kernel_sizes': self.kernel_sizes,
+            'paddings': self.paddings,
+            'dilations': self.dilations,
+            'strides': self.strides,
+            'output_sizes': self.output_sizes,
+        }
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.attrs = {
+            'kernel_sizes': self.kernel_sizes,
+            'paddings': self.paddings,
+            'dilations': self.dilations,
+            'strides': self.strides,
+            'output_sizes': self.output_sizes,
+        }
+        self.check_grad(['X'], 'Y', check_pir=True)
+
+    def test_api(self):
+        # self.attrs in nn.Fold can be alias
+        self.attrs = {
+            'kernel_size': self.kernel_sizes,
+            'padding': self.paddings,
+            'dilation': self.dilations,
+            'stride': self.strides,
+            'output_size': self.output_sizes,
+        }
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input = paddle.to_tensor(self.x)
+                m = paddle.nn.Fold(**self.attrs)
+                self.assertEqual(m.kernel_size, self.kernel_sizes)
+                self.assertEqual(m.padding, self.paddings)
+                self.assertEqual(m.dilation, self.dilations)
+                self.assertEqual(m.stride, self.strides)
+                self.assertEqual(m.output_size, self.output_sizes)
+                m.kernel_size = self.kernel_sizes
+                m.padding = self.paddings
+                m.dilation = self.dilations
+                m.stride = self.strides
+                m.output_size = self.output_sizes
+                m.eval()
+                result = m(input)
+                np.testing.assert_allclose(
+                    result.numpy(), self.outputs['Y'], rtol=1e-05
+                )
+
+    def test_info(self):
+        self.attrs = {
+            'kernel_size': self.kernel_sizes,
+            'padding': self.paddings,
+            'dilation': self.dilations,
+            'stride': self.strides,
+            'output_size': self.output_sizes,
+        }
+        str(paddle.nn.Fold(**self.attrs))
+
+
 class TestFoldOpError(unittest.TestCase):
     def test_errors(self):
         from paddle.base.framework import Program, program_guard

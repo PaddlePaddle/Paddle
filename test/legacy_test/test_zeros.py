@@ -35,15 +35,15 @@ class TestTensorCreation(unittest.TestCase):
 
         self.requires_grads = [True, False]
         self.dtypes = [None, paddle.float32]
-        self.pin_memorys = [False]
+        self.pin_memories = [False]
         if (
             paddle.device.is_compiled_with_cuda() or is_custom_device()
         ) and not paddle.device.is_compiled_with_rocm():
-            self.pin_memorys.append(True)
+            self.pin_memories.append(True)
 
     def test_zeros(self):
         for device, requires_grad, dtype, pin_memory in product(
-            self.devices, self.requires_grads, self.dtypes, self.pin_memorys
+            self.devices, self.requires_grads, self.dtypes, self.pin_memories
         ):
             if (
                 device
@@ -123,7 +123,7 @@ class TestTensorCreation(unittest.TestCase):
 
     def test_zeros_like(self):
         for device, requires_grad, dtype, pin_memory in product(
-            self.devices, self.requires_grads, self.dtypes, self.pin_memorys
+            self.devices, self.requires_grads, self.dtypes, self.pin_memories
         ):
             if (
                 device
@@ -199,11 +199,11 @@ class TestTensorPatchMethod(unittest.TestCase):
             [4, 4],
         ]
         self.dtypes = ["float32", paddle.float32, "int32", paddle.int32]
-        self.pin_memorys = [False]
+        self.pin_memories = [False]
         if (
             paddle.device.is_compiled_with_cuda() or is_custom_device()
         ) and not paddle.device.is_compiled_with_rocm():
-            self.pin_memorys.append(True)
+            self.pin_memories.append(True)
 
     def test_Tensor_new_zeros(self):
         for shape, device, requires_grad, dtype, pin_memory in product(
@@ -211,7 +211,7 @@ class TestTensorPatchMethod(unittest.TestCase):
             self.devices,
             self.requires_grads,
             self.dtypes,
-            self.pin_memorys,
+            self.pin_memories,
         ):
             if (
                 device

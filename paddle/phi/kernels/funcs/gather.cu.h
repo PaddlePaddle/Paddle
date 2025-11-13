@@ -16,10 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/common/memory_utils.h"
-// TODO(paddle-dev): move gpu_primitives.h to phi
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -81,9 +80,6 @@ void GPUGatherNd(const phi::GPUContext& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
-  const auto gplace = dev_ctx.GetPlace();
-  auto cplace = phi::CPUPlace();
-
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
   auto input_dims = input.dims();
@@ -155,9 +151,11 @@ __global__ void GatherGPUKernel(const T* input,
                                 int64_t input_index_dim_size,
                                 int64_t size) {
   int64_t block_size = blockDim.x;
-  int64_t idx = (blockIdx.x * block_size + threadIdx.x) * VecSize;
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * block_size + threadIdx.x) * VecSize;
   int64_t outer_size = outer_dim_size * out_index_dim_size;
-  for (; idx < size; idx += gridDim.x * block_size * VecSize) {
+  for (; idx < size;
+       idx += static_cast<int64_t>(gridDim.x) * block_size * VecSize) {
     int64_t inner_dim_index = idx / outer_size;
     int64_t next_idx = idx % outer_size;
     int64_t index_dim_index = next_idx / outer_dim_size;

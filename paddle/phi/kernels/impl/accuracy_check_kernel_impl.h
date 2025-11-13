@@ -142,12 +142,12 @@ __global__ void AccuracyCheckCUDAKernel(const T* in_data,
                                         const double rtol,
                                         const double atol,
                                         bool equal_nan,
-                                        int num,
+                                        int64_t num,
                                         bool* out_data) {
-  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     const double a = static_cast<MPType>(in_data[i]);
     const double b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
@@ -172,11 +172,11 @@ __global__ void AccuracyCheckCUDAKernel<phi::complex64>(
     const double rtol,
     const double atol,
     bool equal_nan,
-    int num,
+    int64_t num,
     bool* out_data) {
-  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     const phi::complex64 a = in_data[i];
     const phi::complex64 b = other_data[i];
     if (isnan(a) || isnan(b)) {
@@ -202,11 +202,11 @@ __global__ void AccuracyCheckCUDAKernel<phi::complex128>(
     const double rtol,
     const double atol,
     bool equal_nan,
-    int num,
+    int64_t num,
     bool* out_data) {
-  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     const phi::complex128 a = in_data[i];
     const phi::complex128 b = other_data[i];
     if (isnan(a) || isnan(b)) {
@@ -235,12 +235,12 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
                   const double atol,
                   bool equal_nan,
                   DenseTensor* output) {
-    int num = in.numel();
+    int64_t num = in.numel();
     const T* in_data = in.data<T>();
     const T* other_data = other.data<T>();
     bool* out_data = dev_ctx.template Alloc<bool>(output);
     int block = 1024;
-    int grid = (block - 1 + num) / block;
+    int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
 #ifdef PADDLE_WITH_HIP
     hipMemset(out_data, true, num * sizeof(bool));

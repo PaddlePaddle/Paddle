@@ -113,40 +113,19 @@ extern void *cublas_dso_handle;
   __macro(cublasZdotc_v2);                \
   __macro(cublasCdotu_v2);                \
   __macro(cublasZdotu_v2);                \
-  __macro(cublasDotEx);
-
-CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
-
-// APIs available after CUDA 8.0
-#if CUDA_VERSION >= 8000
-#define CUBLAS_BLAS_ROUTINE_EACH_R2(__macro) \
-  __macro(cublasGemmEx);                     \
-  __macro(cublasSgemmStridedBatched);        \
-  __macro(cublasDgemmStridedBatched);        \
-  __macro(cublasCgemmStridedBatched);        \
-  __macro(cublasZgemmStridedBatched);        \
-  __macro(cublasHgemmStridedBatched);
-
-CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
-#endif
-
-// APIs available after CUDA 9.0
-#if CUDA_VERSION >= 9000
-#define CUBLAS_BLAS_ROUTINE_EACH_R3(__macro) \
-  __macro(cublasSetMathMode);                \
-  __macro(cublasGetMathMode);
-
-CUBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
-#endif
-
-// APIs available after CUDA 9.1
-#if CUDA_VERSION >= 9010
-#define CUBLAS_BLAS_ROUTINE_EACH_R4(__macro) \
-  __macro(cublasGemmBatchedEx);              \
+  __macro(cublasDotEx);                   \
+  __macro(cublasGemmEx);                  \
+  __macro(cublasSgemmStridedBatched);     \
+  __macro(cublasDgemmStridedBatched);     \
+  __macro(cublasCgemmStridedBatched);     \
+  __macro(cublasZgemmStridedBatched);     \
+  __macro(cublasHgemmStridedBatched);     \
+  __macro(cublasSetMathMode);             \
+  __macro(cublasGetMathMode);             \
+  __macro(cublasGemmBatchedEx);           \
   __macro(cublasGemmStridedBatchedEx);
 
-CUBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
-#endif
+CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 #if CUDA_VERSION >= 12030 && defined(__linux__)
 #define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \

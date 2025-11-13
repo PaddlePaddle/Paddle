@@ -194,6 +194,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
   SetPythonStack();
   std::string classname =
       std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
+  std::string forward_stack;
+  if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
+    // record the forward stack
+    forward_stack = egr::Controller::Instance().GetPythonStack();
+  }
   VLOG(3) << classname << ":Running PyLayer Apply ";
   VLOG(4) << classname << ":"
           << "Construct PyLayerContext";
@@ -551,7 +556,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
             << grad_node;
     // For dump call stack
     if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
-      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+      grad_node->SetForwardTrace(forward_stack);
     }
 
 #ifdef PADDLE_WITH_CUDA
@@ -897,9 +902,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
-#if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
-#endif
   p_pylayer_type = type;
 
   if (PyType_Ready(type) < 0) {

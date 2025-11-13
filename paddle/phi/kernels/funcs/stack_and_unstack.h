@@ -265,7 +265,7 @@ void UnStackRawKernel(const Context& dev_ctx,
 
   // zero sized tensor case
   if (x.numel() == 0) {
-    for (int i = 0; i < split_dim; i++) {
+    for (int64_t i = 0; i < split_dim; i++) {
       dev_ctx.template Alloc<T>((*outs)[i]);
       auto x_grad_dim = (*outs)[i]->dims();
       (*outs)[i]->Resize(x_grad_dim);

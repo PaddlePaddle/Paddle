@@ -45,7 +45,9 @@ __global__ void GPUPSROIPoolForward(const int nthreads,
                                     const int pooled_width,
                                     const int* rois_batch_id_data,
                                     T* output_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = blockDim.x * gridDim.x;
   for (size_t i = index; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)

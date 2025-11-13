@@ -98,15 +98,17 @@ class FlagRegistry {
   void RegisterFlag(Flag* flag);
 
   bool SetFlagValue(const std::string& name, const std::string& value);
-
+  bool UpdateLinkedFlags(const std::string& name, const std::string& value);
+  void InitLinkedFlags();
   bool HasFlag(const std::string& name) const;
 
   void PrintAllFlagHelp(std::ostream& os) const;
 
  private:
-  FlagRegistry() = default;
+  FlagRegistry() { InitLinkedFlags(); }
 
   std::map<std::string, Flag*> flags_;
+  std::map<std::string, std::map<std::string, std::string>> linked_flags_;
 
   struct FlagCompare {
     bool operator()(const Flag* flag1, const Flag* flag2) const {
@@ -312,17 +314,73 @@ void FlagRegistry::RegisterFlag(Flag* flag) {
   }
 }
 
+/**
+ * @brief Initializes linked_flags_
+ *
+ * The keys of linked_flags_ represent Flags, and the corresponding values
+ * indicate which other flags should be linked when the key Flag is set to a
+ * non-default value.
+ */
+void FlagRegistry::InitLinkedFlags() {
+  // Set the related flags map
+  linked_flags_["dump_api_python_stack_path"] = {{"enable_unique_name", "true"},
+                                                 {"call_stack_level", "3"}};
+  linked_flags_["tensor_md5_checksum_output_path"] = {
+      {"enable_unique_name", "true"}};
+  linked_flags_["dump_grad_node_forward_stack_path"] = {
+      {"enable_unique_name", "true"}, {"call_stack_level", "3"}};
+}
+
 bool FlagRegistry::SetFlagValue(const std::string& name,
                                 const std::string& value) {
   if (HasFlag(name)) {
     std::lock_guard<std::mutex> lock(mutex_);
     flags_[name]->SetValueFromString(value);
+
+    UpdateLinkedFlags(name, value);
     return true;
   } else {
     LOG_FLAG_ERROR("illegal SetFlagValue, flag \"" + name +
                    "\" is not defined.");
     return false;
   }
+}
+/**
+ * Sets the value of linked variables
+ *
+ * @param name Name of the variable currently being modified
+ * @param value New value of the variable being modified
+ *
+ * This function updates the values of variables linked to the current modified
+ * variable.
+ */
+bool FlagRegistry::UpdateLinkedFlags(const std::string& name,
+                                     const std::string& value) {
+  if (HasFlag(name)) {
+    // Flags_name does not has linked flags
+    if (!linked_flags_.count(name)) {
+      return true;
+    }
+    Flag* f = flags_[name];
+    std::string default_value = Value2String(f->default_value_, f->type_);
+    // If the value equals to default_value we will not set the linked flags
+    if (value == default_value) {
+      return true;
+    }
+    // Update the related flags
+    for (auto iter : linked_flags_[name]) {
+      std::string linked_flag_name = iter.first;
+      std::string linked_flag_value = iter.second;
+      if (HasFlag(linked_flag_name)) {
+        flags_[linked_flag_name]->SetValueFromString(linked_flag_value);
+      } else {
+        return false;
+      }
+    }
+  } else {
+    return false;
+  }
+  return true;
 }
 
 bool FlagRegistry::HasFlag(const std::string& name) const {
@@ -350,6 +408,10 @@ void PrintAllFlagHelp(bool to_file, const std::string& file_path) {
 
 bool SetFlagValue(const std::string& name, const std::string& value) {
   return FlagRegistry::Instance()->SetFlagValue(name, value);
+}
+PADDLE_API bool UpdateLinkedFlags(const std::string& name,
+                                  const std::string& value) {
+  return FlagRegistry::Instance()->UpdateLinkedFlags(name, value);
 }
 
 bool FindFlag(const std::string& name) {

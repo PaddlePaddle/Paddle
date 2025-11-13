@@ -280,6 +280,56 @@ TEST(dense_tensor, shallow_copy) {
                         "tensor_1 to have the same meta"));
 }
 
+TEST(dense_tensor, dim_indexing) {
+  const DDim dims({4, 3, 2, 0});
+  const DataType dtype{DataType::INT8};
+  const DataLayout layout{DataLayout::NHWC};
+  const LegacyLoD lod{};
+  DenseTensorMeta meta(dtype, dims, layout, lod);
+
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  auto* alloc = fancy_allocator.get();
+  DenseTensor tensor_0(alloc, meta);
+  int ndim = tensor_0.dims().size();
+  auto tensor_0_dims = tensor_0.dims();
+  for (int i = -ndim; i < ndim; ++i) {
+    PADDLE_ENFORCE_EQ(
+        tensor_0_dims[(i + ndim) % ndim],
+        tensor_0.dims(i),
+        common::errors::InvalidArgument(
+            "Dimension mismatch at index %d. Expected: %d, but got: %d",
+            i,
+            tensor_0_dims[i],
+            tensor_0.dims(i)));
+  }
+
+  // throw exception for index >= ndim
+  bool caught_exception = false;
+  try {
+    tensor_0.dims(ndim);
+  } catch (const common::enforce::EnforceNotMet& error) {
+    caught_exception = true;
+  }
+  PADDLE_ENFORCE_EQ(
+      caught_exception,
+      true,
+      common::errors::InvalidArgument(
+          "Expected an exception to be thrown for index >= ndim"));
+
+  // throw exception for index < -ndim
+  caught_exception = false;
+  try {
+    tensor_0.dims(-ndim - 1);
+  } catch (const common::enforce::EnforceNotMet& error) {
+    caught_exception = true;
+  }
+  PADDLE_ENFORCE_EQ(
+      caught_exception,
+      true,
+      common::errors::InvalidArgument(
+          "Expected an exception to be thrown for index < -ndim"));
+}
+
 TEST(dense_tensor, storage_properties) {
   const DataType dtype{DataType::FLOAT32};
   const DDim dims({1, 2});

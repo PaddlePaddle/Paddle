@@ -672,7 +672,8 @@ __launch_bounds__(nthds_per_cta) __global__
                                 bool clip_boxes,
                                 const T_SCORE score_shift) {
   if (keep_top_k > top_k) return;
-  for (int i = blockIdx.x * nthds_per_cta + threadIdx.x;
+  for (int64_t i = static_cast<int64_t>(blockIdx.x) * nthds_per_cta +
+                   static_cast<int64_t>(threadIdx.x);
        i < num_images * keep_top_k;
        i += gridDim.x * nthds_per_cta) {
     const int imgId = i / keep_top_k;
