@@ -492,7 +492,17 @@ def test_native_code_function():
 
 @check_no_breakgraph
 def test_native_code_function_gpu_only():
-    return (paddle.device.cuda.get_device_properties(),)
+    # Directly returning device_properties causes BreakGraph due to FallbackError:
+    # "ObjectVariable does not implement '_reconstruct' method"
+    # Therefore, we return individual properties as primitive types instead
+    device_properties = paddle.device.cuda.get_device_properties()
+    return (
+        device_properties.name,
+        device_properties.major,
+        device_properties.minor,
+        device_properties.total_memory,
+        device_properties.multi_processor_count,
+    )
 
 
 class TestNativeCodeFunction(TestCaseBase):
