@@ -1,1 +1,1 @@
-paddle_test(compact_test SRCS compact_test.cc DEPS)
+paddle_test(compact_allocator_test SRCS compact_allocator_test.cc DEPS)
