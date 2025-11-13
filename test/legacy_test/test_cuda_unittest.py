@@ -58,7 +58,7 @@ class TestDevice(unittest.TestCase):
             xpu_device = xpu_tensor.device
             with xpu_device:
                 new_tensor = paddle.tensor([1])
-                assert new_tensor.device is xpu_device
+                assert new_tensor.device == xpu_device
 
     def test_static_device(self):
         paddle.enable_static()
