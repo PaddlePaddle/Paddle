@@ -117,8 +117,7 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
                "use_varseqlen, preln_embedding_eltwise_layernorm_fuse_pass, "
                "trt_multihead_matmul_fuse_pass, "
                "set pos_id, set mask_id, with_dynamic_shape. Stop this pass, "
-               "please "
-               "reconfig.";
+               "please reconfig.";
     return;
   }
   int found_subgraph_count = 0;

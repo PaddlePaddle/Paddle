@@ -902,9 +902,7 @@ void BindEagerPyLayer(PyObject* module) {
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
-#if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
-#endif
   p_pylayer_type = type;
 
   if (PyType_Ready(type) < 0) {

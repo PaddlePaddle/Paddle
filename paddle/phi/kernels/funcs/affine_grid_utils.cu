@@ -25,7 +25,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-__global__ void CreateBaseGridKernel_4D(
+__global__ void CreateBaseGridKernel_4D_Kernel(
     T* base_grid_data, int64_t n, int64_t h, int64_t w, bool align_corners) {
   int64_t total_elements = n * h * w;
   CUDA_KERNEL_LOOP(idx, total_elements) {
@@ -78,12 +78,12 @@ __global__ void CreateBaseGridKernel_4D(
 }
 
 template <typename T>
-__global__ void CreateBaseGridKernel_5D(T* base_grid_data,
-                                        int64_t n,
-                                        int64_t d,
-                                        int64_t h,
-                                        int64_t w,
-                                        bool align_corners) {
+__global__ void CreateBaseGridKernel_5D_Kernel(T* base_grid_data,
+                                               int64_t n,
+                                               int64_t d,
+                                               int64_t h,
+                                               int64_t w,
+                                               bool align_corners) {
   int64_t total_elements = n * d * h * w;
   CUDA_KERNEL_LOOP(idx, total_elements) {
     int64_t w_idx = idx % w;
@@ -155,14 +155,46 @@ __global__ void CreateBaseGridKernel_5D(T* base_grid_data,
   }
 }
 
-template __global__ void CreateBaseGridKernel_4D<float>(
-    float*, int64_t, int64_t, int64_t, bool);
-template __global__ void CreateBaseGridKernel_4D<double>(
-    double*, int64_t, int64_t, int64_t, bool);
+template <typename T, typename Context>
+void CreateBaseGridKernel_4D(const Context& dev_ctx,
+                             T* base_grid_data,
+                             int64_t n,
+                             int64_t h,
+                             int64_t w,
+                             bool align_corners) {
+  int64_t total_elements = n * h * w;
+  auto stream = dev_ctx.stream();
+  int64_t block_size = 512;
+  int64_t grid_size = (total_elements + block_size - 1) / block_size;
+  CreateBaseGridKernel_4D_Kernel<T><<<grid_size, block_size, 0, stream>>>(
+      base_grid_data, n, h, w, align_corners);
+}
 
-template __global__ void CreateBaseGridKernel_5D<float>(
-    float*, int64_t, int64_t, int64_t, int64_t, bool);
-template __global__ void CreateBaseGridKernel_5D<double>(
-    double*, int64_t, int64_t, int64_t, int64_t, bool);
+template <typename T, typename Context>
+void CreateBaseGridKernel_5D(const Context& dev_ctx,
+                             T* base_grid_data,
+                             int64_t n,
+                             int64_t d,
+                             int64_t h,
+                             int64_t w,
+                             bool align_corners) {
+  int64_t total_elements = n * d * h * w;
+  auto stream = dev_ctx.stream();
+  int64_t block_size = 512;
+  int64_t grid_size = (total_elements + block_size - 1) / block_size;
+  CreateBaseGridKernel_5D_Kernel<T><<<grid_size, block_size, 0, stream>>>(
+      base_grid_data, n, d, h, w, align_corners);
+}
+
+template void CreateBaseGridKernel_4D<float, phi::GPUContext>(
+    const phi::GPUContext&, float*, int64_t, int64_t, int64_t, bool);
+template void CreateBaseGridKernel_4D<double, phi::GPUContext>(
+    const phi::GPUContext&, double*, int64_t, int64_t, int64_t, bool);
+
+template void CreateBaseGridKernel_5D<float, phi::GPUContext>(
+    const phi::GPUContext&, float*, int64_t, int64_t, int64_t, int64_t, bool);
+template void CreateBaseGridKernel_5D<double, phi::GPUContext>(
+    const phi::GPUContext&, double*, int64_t, int64_t, int64_t, int64_t, bool);
+
 }  // namespace funcs
 }  // namespace phi
