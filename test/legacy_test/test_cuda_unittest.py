@@ -16,6 +16,7 @@ import ctypes
 import platform
 import types
 import unittest
+import warnings
 
 import numpy as np
 from op_test import get_device, is_custom_device
@@ -57,7 +58,24 @@ class TestDevice(unittest.TestCase):
             xpu_device = xpu_tensor.device
             with xpu_device:
                 new_tensor = paddle.tensor([1])
-                assert new_tensor.device == xpu_device
+                assert new_tensor.device is xpu_device
+
+    def test_static_device(self):
+        paddle.enable_static()
+
+        x = paddle.static.data(name="x", shape=[2, 3], dtype='float32')
+        assert x.device is None
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            # 触发警告
+            _ = x.device
+
+            # 检查是否捕获到了 warning
+            self.assertTrue(
+                any("device" in str(warning.message).lower() for warning in w),
+                msg=f"Expected a warning related to 'device', but got {[str(w.message) for w in w]}",
+            )
 
 
 class TestCudaCompat(unittest.TestCase):
