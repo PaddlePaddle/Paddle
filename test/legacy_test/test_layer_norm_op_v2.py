@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import get_places
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -159,164 +160,404 @@ class TestLayerNormFunction(unittest.TestCase):
             )
 
 
-class TestLayerNormParam(unittest.TestCase):
+class TestLayerNormParamDygraph(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.normalized_shape = [6]
         self.x_shape = [2, 4, 4, 6]
-        self.epsilon = 1e-5
         self.places = get_places()
+
+    def _run_test_on_places(self, test_func):
+        """Helper to run the test function on all places."""
+        for p in self.places:
+            with base.dygraph.guard(p):
+                test_func(p)
 
     def test_elementwise_affine_false(self):
         """test that when elementwise_affine=False, weight and bias parameters are not created."""
-        for p in self.places:
-            with base.dygraph.guard(p):
-                layer = paddle.nn.LayerNorm(
-                    normalized_shape=self.normalized_shape,
-                    elementwise_affine=False,
-                )
-                self.assertIsNone(
-                    layer.weight,
-                    "Weight should be None when elementwise_affine=False",
-                )
-                self.assertIsNone(
-                    layer.bias,
-                    "Bias should be None when elementwise_affine=False",
-                )
 
-                x_tensor = paddle.randn(self.x_shape)
-                out = layer(x_tensor)
-                self.assertEqual(out.shape, x_tensor.shape)
+        def run_test(p):
+            layer = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape, elementwise_affine=False
+            )
+            assert layer.weight is None
+            assert layer.bias is None
+
+            x_tensor = paddle.randn(self.x_shape)
+            out = layer(x_tensor)
+            assert out.shape == self.x_shape
+
+        self._run_test_on_places(run_test)
 
     def test_elementwise_affine_true(self):
         """test that when elementwise_affine=True and attr=None, parameters are created with default initialization."""
-        for place in self.places:
-            with paddle.base.dygraph.guard(place):
-                layer = paddle.nn.LayerNorm(
-                    normalized_shape=self.normalized_shape,
-                    elementwise_affine=True,
-                )
-                self.assertIsNotNone(
-                    layer.weight,
-                    "Weight should not be None when elementwise_affine=True",
-                )
-                self.assertIsNotNone(
-                    layer.bias,
-                    "Weight should not be None when elementwise_affine=True",
-                )
 
-                expected_weight = paddle.ones(self.normalized_shape)
-                expected_bias = paddle.zeros(self.normalized_shape)
+        def run_test(p):
+            layer = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                elementwise_affine=True,
+            )
+            assert layer.weight is not None
+            assert layer.bias is not None
 
-                self.assertTrue(paddle.allclose(layer.weight, expected_weight))
-                self.assertTrue(paddle.allclose(layer.bias, expected_bias))
+            expected_weight = paddle.ones(self.normalized_shape)
+            expected_bias = paddle.zeros(self.normalized_shape)
+
+            np.testing.assert_allclose(
+                layer.weight.numpy(), expected_weight.numpy()
+            )
+            np.testing.assert_allclose(
+                layer.bias.numpy(), expected_bias.numpy()
+            )
+
+        self._run_test_on_places(run_test)
 
     def test_bias_false(self):
         """test that when bias=False, the bias parameter is disabled even if elementwise_affine=True."""
-        for p in self.places:
-            with base.dygraph.guard(p):
-                layer = paddle.nn.LayerNorm(
-                    normalized_shape=self.normalized_shape,
-                    elementwise_affine=True,
-                    bias=False,
-                )
-                self.assertIsNotNone(
-                    layer.weight,
-                    "Weight should exist when elementwise_affine=True",
-                )
-                self.assertIsNone(
-                    layer.bias, "Bias should be None when bias_attr=False"
-                )
+
+        def run_test(p):
+            layer = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                elementwise_affine=True,
+                bias=False,
+            )
+            assert layer.weight is not None
+            assert layer.bias is None
+
+        self._run_test_on_places(run_test)
 
     def test_weight_and_bias_false(self):
         """test that when weight_attr=False and bias_attr=False, both parameters are disabled."""
-        for p in self.places:
-            with base.dygraph.guard(p):
-                layer = paddle.nn.LayerNorm(
-                    normalized_shape=self.normalized_shape,
-                    elementwise_affine=True,
-                    weight_attr=False,
-                    bias_attr=False,
-                )
-                self.assertIsNotNone(
-                    layer.weight,
-                    "Weight should not be None when elementwise_affine=True although weight_attr=False",
-                )
-                self.assertIsNotNone(
-                    layer.bias,
-                    "Bias should not be None when elementwise_affine=True although bias_attr=False",
-                )
+
+        def run_test(p):
+            layer = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                elementwise_affine=True,
+                weight_attr=False,
+                bias_attr=False,
+            )
+            assert layer.weight is None
+            assert layer.bias is None
+
+        self._run_test_on_places(run_test)
 
     def test_custom_initialization(self):
         """test custom initialization using weight_attr and bias_attr."""
-        for p in self.places:
-            with base.dygraph.guard(p):
-                weight_val = 2.5
-                bias_val = -1.0
-                weight_initializer = paddle.nn.initializer.Constant(
-                    value=weight_val
-                )
-                bias_initializer = paddle.nn.initializer.Constant(
-                    value=bias_val
-                )
 
-                layer = paddle.nn.LayerNorm(
-                    normalized_shape=self.normalized_shape,
-                    elementwise_affine=True,
-                    weight_attr=weight_initializer,
-                    bias_attr=bias_initializer,
-                )
+        def run_test(p):
+            weight_val = 2.5
+            bias_val = -1.0
+            weight_initializer = paddle.nn.initializer.Constant(
+                value=weight_val
+            )
+            bias_initializer = paddle.nn.initializer.Constant(value=bias_val)
 
-                expected_weight = paddle.full(
-                    self.normalized_shape, weight_val, dtype=layer.weight.dtype
-                )
-                expected_bias = paddle.full(
-                    self.normalized_shape, bias_val, dtype=layer.bias.dtype
-                )
+            layer = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                elementwise_affine=True,
+                weight_attr=weight_initializer,
+                bias_attr=bias_initializer,
+            )
 
-                self.assertTrue(
-                    paddle.allclose(layer.weight, expected_weight),
-                    f"Weight initialization failed. Got {layer.weight.numpy()}, expected {expected_weight.numpy()}",
-                )
-                self.assertTrue(
-                    paddle.allclose(layer.bias, expected_bias),
-                    f"Bias initialization failed. Got {layer.bias.numpy()}, expected {expected_bias.numpy()}",
-                )
+            expected_weight = paddle.full(
+                self.normalized_shape, weight_val, dtype=layer.weight.dtype
+            )
+            expected_bias = paddle.full(
+                self.normalized_shape, bias_val, dtype=layer.bias.dtype
+            )
+
+            np.testing.assert_allclose(
+                layer.weight.numpy(), expected_weight.numpy()
+            )
+            np.testing.assert_allclose(
+                layer.bias.numpy(), expected_bias.numpy()
+            )
+
+        self._run_test_on_places(run_test)
 
     def test_alias(self):
         """test parameter alias epsilon/eps"""
-        for place in self.places:
-            with paddle.base.dygraph.guard(place):
-                layer_epsilon = paddle.nn.LayerNorm(
-                    normalized_shape=self.normalized_shape,
-                    elementwise_affine=True,
-                    epsilon=1e-5,
-                )
-                layer_eps = paddle.nn.LayerNorm(
-                    normalized_shape=self.normalized_shape,
-                    elementwise_affine=True,
-                    eps=1e-5,
-                )
 
-                x_tensor = paddle.randn(self.x_shape)
-                out_epsilon = layer_epsilon(x_tensor)
-                out_eps = layer_eps(x_tensor)
+        def run_test(p):
+            layer_epsilon = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                elementwise_affine=True,
+                epsilon=1e-5,
+            )
+            layer_eps = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                elementwise_affine=True,
+                eps=1e-5,
+            )
 
-                np.testing.assert_array_equal(
-                    out_epsilon.numpy(), out_eps.numpy()
-                )
+            x_tensor = paddle.randn(self.x_shape)
+            out_epsilon = layer_epsilon(x_tensor)
+            out_eps = layer_eps(x_tensor)
+
+            np.testing.assert_array_equal(out_epsilon.numpy(), out_eps.numpy())
+
+        self._run_test_on_places(run_test)
 
     def test_errors(self):
         """test for errors."""
-        layer_norm = paddle.nn.LayerNorm(self.normalized_shape)
-        x1 = np.random.random([3, *self.normalized_shape]).astype('float32')
-        with self.assertRaises(TypeError):
-            layer_norm(x1)
-        with self.assertRaises(TypeError):
-            paddle.nn.LayerNorm(self.normalized_shape, 1e-5, None, None, "name")
-        with self.assertRaises(TypeError):
-            paddle.nn.LayerNorm(
-                self.normalized_shape, 1e-5, False, "cpu", paddle.float32
-            )
+
+        def run_test(p):
+            try:
+                layer_norm = paddle.nn.LayerNorm(self.normalized_shape)
+                x1 = np.random.random([3, *self.normalized_shape]).astype(
+                    'float32'
+                )
+                layer_norm(x1)
+                self.fail(
+                    "Expected ValueError for wrong input type in dygraph mode"
+                )
+            except ValueError:
+                pass
+
+            try:
+                paddle.nn.LayerNorm(
+                    self.normalized_shape, 1e-5, None, None, "name"
+                )
+                self.fail(
+                    "Expected TypeError for positional args mismatch in dygraph mode"
+                )
+            except TypeError:
+                pass
+
+            try:
+                paddle.nn.LayerNorm(
+                    self.normalized_shape, 1e-5, False, "cpu", paddle.float32
+                )
+                self.fail(
+                    "Expected TypeError for positional args mismatch in dygraph mode"
+                )
+            except TypeError:
+                pass
+
+        self._run_test_on_places(run_test)
+
+
+class TestLayerNormParamStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.normalized_shape = [6]
+        self.x_shape = [2, 4, 4, 6]
+        self.places = get_places()
+
+    def test_static_elementwise_affine_false(self):
+        """test elementwise_affine=False in static graph mode."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    layer = paddle.nn.LayerNorm(
+                        normalized_shape=self.normalized_shape,
+                        elementwise_affine=False,
+                    )
+                    x = paddle.static.data(
+                        name='x', shape=self.x_shape, dtype='float32'
+                    )
+                    out = layer(x)
+
+                exe = base.Executor(p)
+                exe.run(start)
+                paddle.device.synchronize(p)
+                input_np = np.random.randn(*self.x_shape).astype('float32')
+                result = exe.run(main, feed={'x': input_np}, fetch_list=[out])[
+                    0
+                ]
+
+                assert result.shape == tuple(self.x_shape)
+
+    def test_static_elementwise_affine_true(self):
+        """test elementwise_affine=True with default init in static graph mode."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    layer = paddle.nn.LayerNorm(
+                        normalized_shape=self.normalized_shape,
+                        elementwise_affine=True,
+                    )
+
+                exe = base.Executor(p)
+                exe.run(start)
+                paddle.device.synchronize(p)
+                weight_np, bias_np = exe.run(
+                    main, fetch_list=[layer.weight, layer.bias]
+                )
+
+                assert weight_np is not None
+                assert bias_np is not None
+
+                expected_weight = np.ones(self.normalized_shape)
+                expected_bias = np.zeros(self.normalized_shape)
+
+                np.testing.assert_allclose(weight_np, expected_weight)
+                np.testing.assert_allclose(bias_np, expected_bias)
+
+    def test_static_bias_false(self):
+        """test bias=False in static graph mode."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    layer = paddle.nn.LayerNorm(
+                        normalized_shape=self.normalized_shape,
+                        elementwise_affine=True,
+                        bias=False,
+                    )
+                    assert layer.bias is None
+
+                exe = base.Executor(p)
+                exe.run(start)
+                paddle.device.synchronize(p)
+                weight_np = exe.run(main, fetch_list=[layer.weight])[0]
+                assert weight_np is not None
+                assert weight_np.shape == tuple(self.normalized_shape)
+
+    def test_static_weight_and_bias_false(self):
+        """test weight_attr=False and bias_attr=False in static graph mode."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    layer = paddle.nn.LayerNorm(
+                        normalized_shape=self.normalized_shape,
+                        elementwise_affine=True,
+                        weight_attr=False,
+                        bias_attr=False,
+                    )
+                    assert layer.weight is None
+                    assert layer.bias is None
+
+    def test_static_custom_initialization(self):
+        """test custom initialization in static graph mode."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    weight_val = 2.5
+                    bias_val = -1.0
+                    weight_initializer = paddle.nn.initializer.Constant(
+                        value=weight_val
+                    )
+                    bias_initializer = paddle.nn.initializer.Constant(
+                        value=bias_val
+                    )
+
+                    layer = paddle.nn.LayerNorm(
+                        normalized_shape=self.normalized_shape,
+                        elementwise_affine=True,
+                        weight_attr=weight_initializer,
+                        bias_attr=bias_initializer,
+                    )
+
+                exe = base.Executor(p)
+                exe.run(start)
+                paddle.device.synchronize(p)
+                weight_np, bias_np = exe.run(
+                    main, fetch_list=[layer.weight, layer.bias]
+                )
+
+                expected_weight = np.full(self.normalized_shape, weight_val)
+                expected_bias = np.full(self.normalized_shape, bias_val)
+
+                np.testing.assert_allclose(weight_np, expected_weight)
+                np.testing.assert_allclose(bias_np, expected_bias)
+
+    def test_static_alias(self):
+        """test parameter alias epsilon/eps in static graph mode."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    layer_epsilon = paddle.nn.LayerNorm(
+                        normalized_shape=self.normalized_shape,
+                        elementwise_affine=True,
+                        epsilon=1e-5,
+                    )
+                    layer_eps = paddle.nn.LayerNorm(
+                        normalized_shape=self.normalized_shape,
+                        elementwise_affine=True,
+                        eps=1e-5,
+                    )
+
+                    x = paddle.static.data(
+                        name='x', shape=self.x_shape, dtype='float32'
+                    )
+                    out_epsilon = layer_epsilon(x)
+                    out_eps = layer_eps(x)
+
+                exe = base.Executor(p)
+                exe.run(start)
+                paddle.device.synchronize(p)
+                input_np = np.random.randn(*self.x_shape).astype('float32')
+                out_eps_val, out_epsilon_val = exe.run(
+                    main,
+                    feed={'x': input_np},
+                    fetch_list=[out_eps, out_epsilon],
+                )
+
+                np.testing.assert_array_equal(out_epsilon_val, out_eps_val)
+
+    def test_static_errors(self):
+        """test errors in static graph mode."""
+        for p in self.places:
+            with static_guard():
+                main = base.Program()
+                start = base.Program()
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, start),
+                ):
+                    try:
+                        paddle.nn.LayerNorm(
+                            self.normalized_shape, 1e-5, None, None, "name"
+                        )
+                        self.fail(
+                            "Expected TypeError for positional args mismatch in static mode"
+                        )
+                    except TypeError:
+                        pass
+
+                    try:
+                        paddle.nn.LayerNorm(
+                            self.normalized_shape,
+                            1e-5,
+                            False,
+                            "cpu",
+                            paddle.float32,
+                        )
+                        self.fail(
+                            "Expected TypeError for positional args mismatch in static mode"
+                        )
+                    except TypeError:
+                        pass
 
 
 if __name__ == '__main__':

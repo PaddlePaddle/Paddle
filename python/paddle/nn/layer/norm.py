@@ -680,12 +680,8 @@ class LayerNorm(Layer):
         if not elementwise_affine:
             weight_attr = False
             bias_attr = False
-        else:
-            weight_attr = weight_attr if weight_attr is not False else None
-            if not bias:
-                bias_attr = False
-            else:
-                bias_attr = bias_attr if bias_attr is not False else None
+        elif not bias:
+            bias_attr = False
 
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
