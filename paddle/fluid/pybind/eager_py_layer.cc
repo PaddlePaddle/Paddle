@@ -383,6 +383,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
     }
   }
 
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(inputs_tensor);
+
   VLOG(6)
       << classname << ":"
       << "PyLayer forward args is ready, begin call user's forward function...";
