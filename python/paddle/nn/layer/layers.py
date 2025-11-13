@@ -1466,7 +1466,7 @@ class Layer:
         Return an iterator over all modules in the network.
 
         Yields:
-            Module: a module in the network.
+            Layer: a layer in the network.
 
         """
         for _, module in self.named_modules():
@@ -1479,17 +1479,17 @@ class Layer:
         remove_duplicate: bool = True,
     ):
         """
-        Returns an iterator over all submodules in the Module, yielding tuple of name and submodule.
-        The duplicate submodule will only be yielded once.
+        Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
+        The duplicate sublayer will only be yielded once.
 
         Parameters:
-            memo(set, optional): The set to record duplicate submodules. Default: None.
+            memo(set, optional): The set to record duplicate sublayers. Default: None.
             prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
-            remove_duplicate(bool, optional): Whether to remove duplicated submodules in the result.
+            remove_duplicate(bool, optional): Whether to remove duplicated sublayers in the result.
                 Default: True.
 
         Yields:
-            (string, Module): Tuple of name and Module
+            (string, Layer): Tuple of name and Layer
         """
         include_self = True
         layers_set = memo
@@ -1971,11 +1971,11 @@ class Layer:
 
     def add_module(self, name: str, module: Layer | None) -> None:
         """
-        Adds a sub module instance. Added module can be accessed by self.name
+        Adds a sub layer instance. Added layer can be accessed by self.name
 
         Parameters:
-            name(str): name of this submodule.
-            module(Module): an instance of Module.
+            name(str): name of this sublayer.
+            layer(Layer): an instance of Layer.
         Returns:
             None
         """

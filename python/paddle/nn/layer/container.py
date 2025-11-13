@@ -31,6 +31,10 @@ from .layers import Layer
 
 __all__ = []
 
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
+
 
 def _addindent(s_, numSpaces):
     s = s_.split("\n")
@@ -88,6 +92,7 @@ class LayerDict(Layer):
 
     """
 
+    @param_one_alias(["sublayers", "modules"])
     def __init__(
         self,
         sublayers: (
@@ -552,6 +557,7 @@ class LayerList(Layer):
             ...         return x
     """
 
+    @param_one_alias(["sublayers", "modules"])
     def __init__(self, sublayers: Iterable[Layer] | None = None) -> None:
         super().__init__()
         if sublayers is not None:
@@ -608,37 +614,6 @@ class LayerList(Layer):
         for i, module in enumerate(chain(self, other)):
             combined.add_module(str(i), module)
         return combined
-
-    def __repr__(self) -> str:
-        list_of_reprs = [repr(item) for item in self]
-        if len(list_of_reprs) == 0:
-            return self._get_name() + "()"
-
-        start_end_indices = [[0, 0]]
-        repeated_blocks = [list_of_reprs[0]]
-        for i, r in enumerate(list_of_reprs[1:], 1):
-            if r == repeated_blocks[-1]:
-                start_end_indices[-1][1] += 1
-                continue
-
-            start_end_indices.append([i, i])
-            repeated_blocks.append(r)
-
-        lines = []
-        main_str = self._get_name() + "("
-        for (start_id, end_id), b in zip(start_end_indices, repeated_blocks):
-            local_repr = f"({start_id}): {b}"
-
-            if start_id != end_id:
-                n = end_id - start_id + 1
-                local_repr = f"({start_id}-{end_id}): {n} x {b}"
-
-            local_repr = _addindent(local_repr, 2)
-            lines.append(local_repr)
-
-        main_str += "\n  " + "\n  ".join(lines) + "\n"
-        main_str += ")"
-        return main_str
 
     def __dir__(self) -> list[str]:
         keys = super().__dir__()
