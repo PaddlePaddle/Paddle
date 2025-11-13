@@ -68,10 +68,8 @@ class TestDevice(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            # 触发警告
             _ = x.device
 
-            # 检查是否捕获到了 warning
             self.assertTrue(
                 any("device" in str(warning.message).lower() for warning in w),
                 msg=f"Expected a warning related to 'device', but got {[str(w.message) for w in w]}",
