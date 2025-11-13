@@ -11,7 +11,7 @@ if(NOT PADDLE_VERSION)
   string(REPLACE "-" "" DATE_ONLY "${DATE_ONLY}")
   # Print the last commit date
   message(STATUS "Last commit date: ${DATE_ONLY}")
-  set(PADDLE_VERSION "dev${DATE_ONLY}")
+  set(PADDLE_VERSION "v0.dev${DATE_ONLY}")
 endif()
 
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+$" IS_VERSION_FORMAT
