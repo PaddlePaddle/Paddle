@@ -54,3 +54,8 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
 #define getDefaultCUDAStream getCurrentCUDAStream;
 
 }  // namespace at::cuda
+
+namespace c10::cuda {
+using at::cuda::CUDAStream;
+using at::cuda::getCurrentCUDAStream;
+}  // namespace c10::cuda

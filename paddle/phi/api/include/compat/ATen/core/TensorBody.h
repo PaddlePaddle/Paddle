@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ATen/core/TensorBase.h>
+#include <ATen/indexing.h>
 #include "paddle/phi/api/include/tensor.h"
 
 namespace at {
@@ -198,6 +199,66 @@ class Tensor : public TensorBase {
   at::Tensor view(at::ScalarType dtype) const {
     return Tensor(paddle::experimental::view_dtype(
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
+  }
+
+  at::Tensor squeeze(at::IntArrayRef axis) const {
+    return Tensor(
+        paddle::experimental::squeeze(tensor_, axis._PD_ToPaddleIntArray()));
+  }
+
+  at::Tensor unsqueeze(at::IntArrayRef axis) const {
+    return Tensor(
+        paddle::experimental::unsqueeze(tensor_, axis._PD_ToPaddleIntArray()));
+  }
+
+  at::Tensor index_select(int64_t dim, const at::Tensor& index) const {
+    return Tensor(
+        paddle::experimental::index_select(tensor_, index._PD_GetInner(), dim));
+  }
+
+  at::Tensor bitwise_right_shift(const Scalar other) {
+    return Tensor(paddle::experimental::bitwise_right_shift(
+        tensor_,
+        paddle::experimental::full({}, other, paddle::DataType::INT64)));
+  }
+
+  at::Tensor slice(int64_t dim = 0,
+                   std::optional<int64_t> start = ::std::nullopt,
+                   std::optional<int64_t> end = ::std::nullopt) {
+    return Tensor(paddle::experimental::slice(
+        tensor_,
+        {dim},
+        start.has_value() ? IntArrayRef(start.value())._PD_ToPaddleIntArray()
+                          : IntArrayRef()._PD_ToPaddleIntArray(),
+        end.has_value() ? IntArrayRef(end.value())._PD_ToPaddleIntArray()
+                        : IntArrayRef()._PD_ToPaddleIntArray(),
+        {1},
+        {}));
+  }
+
+  at::Tensor index(const std::vector<at::indexing::Slice>& indices) {
+    auto slice01 = indices[0];
+    auto slice02 = indices[1];
+    return Tensor(
+        paddle::experimental::slice(tensor_,
+                                    {0, 1},
+                                    {slice01.start(), slice02.start()},
+                                    {slice01.stop(), slice02.stop()},
+                                    {1},
+                                    {})
+            .contiguous());
+  }
+
+  at::Tensor to(at::ScalarType dtype) {
+    return Tensor(paddle::experimental::cast(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
+  }
+
+  at::Tensor& floor_divide_(const at::Scalar& other) {
+    paddle::experimental::floor_divide_(
+        const_cast<PaddleTensor&>(tensor_),
+        paddle::experimental::full({}, other, other.dtype()));
+    return *this;
   }
 
   // Paddle Tensor has no storage_offset, so we add it here, and it is always
