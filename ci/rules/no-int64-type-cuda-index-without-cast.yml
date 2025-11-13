@@ -1,0 +1,38 @@
+id: no-int64-type-cuda-index-without-cast
+language: cpp
+files:
+  - paddle/phi/kernels/**
+ignores:
+  - paddle/phi/kernels/legacy/**
+  - paddle/phi/kernels/xpu/**
+  - paddle/phi/kernels/custom/**
+  - paddle/phi/kernels/sparse/**
+severity: warning
+message: Prefer int64_t for CUDA indexing (threadIdx/blockDim/blockIdx) to avoid overflow on large problems
+rule:
+  any:
+    # int/int32_t/auto x = <expr with threadIdx|blockDim|blockIdx>;
+    - all:
+        - pattern: $T $VAR = $RIGHT
+    # direct-initializer: T x(<RIGHT>);
+    - all:
+        - pattern: $T $VAR($RIGHT)
+constraints:
+  T:
+    regex: ^(int64_t)$
+  RIGHT:
+    all:
+      - regex: \b(threadIdx|blockDim|blockIdx.*){2,}\b
+      - not:
+          regex: "static_cast"
+rewriters:
+  - id: add-static-cast
+    rule:
+      pattern: $IDENT.$ATTR
+    fix: static_cast<int64_t>($IDENT.$ATTR)
+transform:
+  NEW_RIGHT:
+    rewrite:
+      rewriters: [add-static-cast]
+      source: $RIGHT
+fix: int64_t $VAR = $NEW_RIGHT;
