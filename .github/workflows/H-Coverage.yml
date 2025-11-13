@@ -146,8 +146,7 @@ jobs:
           pip install -r python/requirements.txt
           mkdir build && cd build
           cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON
-          cd ..
-          python setup.py bdist_wheel
+          make -j10
           '
 
       - name: Check added unittests
@@ -196,8 +195,8 @@ jobs:
           echo "Uploading coverage build"
           mv /Paddle.tar.gz .
           python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          echo "Uploading coverage wheel"
-          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          #echo "Uploading coverage wheel"
+          #python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
           '
