@@ -225,6 +225,7 @@ PADDLE_API bool is_gpu_place(const Place&);
 PADDLE_API bool is_xpu_place(const Place&);
 PADDLE_API bool is_ipu_place(const Place&);
 PADDLE_API bool is_cpu_place(const Place&);
+PADDLE_API bool is_pinned_place(const Place&);
 PADDLE_API bool is_cuda_pinned_place(const Place&);
 PADDLE_API bool is_xpu_pinned_place(const Place&);
 PADDLE_API bool is_custom_place(const Place& p);
