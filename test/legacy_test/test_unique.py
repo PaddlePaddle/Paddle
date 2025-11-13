@@ -502,7 +502,7 @@ class TestUniqueAPI_ZeroSize(unittest.TestCase):
 
 class TestUniqueAPI_Compatibility(unittest.TestCase):
     def setUp(self):
-        self.x_np = np.random.random(size=[5]).astype("float32")
+        self.x_np = np.random.random(size=[3, 5]).astype("float32")
         self.place = (
             core.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -523,7 +523,7 @@ class TestUniqueAPI_Compatibility(unittest.TestCase):
         exe = paddle.static.Executor(self.place)
         res = exe.run(
             feed={
-                'x': self.x_np.reshape(1, 5),
+                'x': self.x_np.reshape(3, 5),
             },
             fetch_list=[out1, out2],
         )
@@ -536,6 +536,12 @@ class TestUniqueAPI_Compatibility(unittest.TestCase):
         paddle.disable_static()
         out = paddle.unique(paddle.to_tensor(self.x_np), sorted=True)
         expected_out = np.unique(self.x_np)
+        np.testing.assert_allclose(out.numpy(), expected_out)
+
+    def test_dygraph_axis(self):
+        paddle.disable_static()
+        out = paddle.unique(paddle.to_tensor(self.x_np), sorted=True, dim=1)
+        expected_out = np.unique(self.x_np, axis=1)
         np.testing.assert_allclose(out.numpy(), expected_out)
 
 
