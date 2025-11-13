@@ -1,0 +1,72 @@
+id: no-deeply-nested-loops
+language: python
+valid:
+  # 1 level - OK
+  - |
+    for i in range(10):
+        print(i)
+
+  # 2 levels - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            print(i, j)
+
+  # 3 levels - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                print(i, j, k)
+
+  # 4 levels - OK (threshold not reached)
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    print(i, j, k, m)
+
+  # Using itertools.product - OK
+  - |
+    import itertools
+    for i, j, k, m, n in itertools.product(range(10), range(10), range(10), range(10), range(10)):
+        print(i, j, k, m, n)
+
+invalid:
+  # 5 levels - should be caught
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        print(i, j, k, m, n)
+
+  # 6 levels - should be caught
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        for p in range(10):
+                            print(i, j, k, m, n, p)
+
+  # 5 levels with different iterables - should be caught
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels with complex loop variables - should be caught
+  - |
+    for batch in [1, 2]:
+        for size in [[32, 32]]:
+            for kernel in [[3, 3]]:
+                for stride in [[1, 1], [2, 2]]:
+                    for padding in [[1, 1]]:
+                        config = create_config(batch, size, kernel, stride, padding)

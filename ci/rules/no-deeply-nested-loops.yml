@@ -1,0 +1,33 @@
+id: no-deeply-nested-loops
+language: python
+severity: warning
+message: |
+  Detected deeply nested loops (5 or more levels). Consider refactoring using `itertools.product`.
+  For example:
+    # Before:
+    for i in range_a:
+        for j in range_b:
+            for k in range_c:
+                for m in range_d:
+                    for n in range_e:
+                        process(i, j, k, m, n)
+
+    # After:
+    import itertools
+    for i, j, k, m, n in itertools.product(range_a, range_b, range_c, range_d, range_e):
+        process(i, j, k, m, n)
+
+  If it is a false positive, please contact SigureMo for more information.
+note: Refactor deeply nested loops using itertools.product for better readability
+files:
+  - test/**
+  - python/**
+
+rule:
+  pattern: |
+    for $IA in $LA:
+        for $IB in $LB:
+            for $IC in $LC:
+                for $ID in $LD:
+                    for $IE in $LE:
+                        $$$BODY
