@@ -1228,8 +1228,7 @@ class AdaptiveMaxPool1D(Layer):
         Output(i) &= max(Input[lstart:lend])
 
     Parameters:
-        output_size(int): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain one int.
+        output_size(int|list|tuple): The pool kernel size. It can be an integer, or a list or tuple containing a single integer.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
