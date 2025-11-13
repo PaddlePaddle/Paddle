@@ -534,7 +534,7 @@ class TestUniqueAPI_Compatibility(unittest.TestCase):
 
     def test_dygraph_sorted(self):
         paddle.disable_static()
-        out = paddle.unique(paddle.to_tensor(self.x_np))
+        out = paddle.unique(paddle.to_tensor(self.x_np), sorted=True)
         expected_out = np.unique(self.x_np)
         np.testing.assert_allclose(out.numpy(), expected_out)
 
