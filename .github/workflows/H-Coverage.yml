@@ -147,7 +147,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF
           make -j20
           '
 
@@ -201,6 +201,19 @@ jobs:
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading Paddle.tar.gz"
+
+          # check flashattn cache
+          flashattn_version=$(git submodule status|grep flashattn|awk "{print \$1}"|sed "s#-##g")
+          url="https://xly-devops.bj.bcebos.com/gpups/flash-attention/cu90/flashattn_libs_${flashattn_version}.tar"
+          url_return=`curl -s -m 5 -IL $url|awk "NR==1{print $2}"`
+          if [ "$url_return" != '200' ];then
+            cd /paddle/build/third_party/install/flashattn/lib
+            mkdir flashattn_libs_${flashattn_version} && cd flashattn_libs_${flashattn_version}
+            mkdir fa_libs && cp ../lib*.so fa_libs && tar -zcf fa_libs.tar ./fa_libs && rm -rf ./fa_libs
+            md5sum fa_libs.tar |awk "{print \$1}" >MD5.txt
+            cd .. && tar -zcf flashattn_libs_${flashattn_version}.tar ./flashattn_libs_${flashattn_version}
+            python BosClient.py flashattn_libs_${flashattn_version}.tar xly-devops/gpups/flash-attention/${FA_CU_ARCH_DIR}/
+          fi
           '
 
       - name: Terminate and delete the container
