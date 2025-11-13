@@ -16,7 +16,6 @@
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
-#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #include "gtest/gtest.h"
