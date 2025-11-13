@@ -6486,7 +6486,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
-       (arch == 89) || (arch == 90)|| (arch == 100)),
+       (arch == 89) || (arch == 90) || (arch == 100)),
       true,
       common::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90, 100."));

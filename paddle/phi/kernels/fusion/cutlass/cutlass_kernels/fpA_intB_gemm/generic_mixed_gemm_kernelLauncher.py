@@ -112,7 +112,13 @@ WarpShapes_sm70 = [
     "cutlass::gemm::GemmShape<32, 32, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
 ]
-StagesList = {70: [2], 75: [2], 80: [2, 3, 4, 5], 90: [2, 3, 4, 5], 100: [2, 3, 4, 5]}
+StagesList = {
+    70: [2],
+    75: [2],
+    80: [2, 3, 4, 5],
+    90: [2, 3, 4, 5],
+    100: [2, 3, 4, 5],
+}
 
 ElementTypes = {"fp16": "half", "bf16": "__nv_bfloat16"}
 Archs = {

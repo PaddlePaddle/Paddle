@@ -586,21 +586,21 @@ struct GemmFpAIntB {
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 700) && (__CUDA_ARCH__ < 750)
     static constexpr bool compile_needed =
         platform::is_same<KernelArch, arch::Sm70>::value;
-        // printf("[Debug] Entered Sm700-750 branch, returning early.\n");
-        // return;
+    // printf("[Debug] Entered Sm700-750 branch, returning early.\n");
+    // return;
     KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 750) && (__CUDA_ARCH__ < 800)
     static constexpr bool compile_needed =
         platform::is_same<KernelArch, arch::Sm75>::value;
-        // printf("[Debug] Entered Sm750-800 branch, returning early.\n");
-        // return;
+    // printf("[Debug] Entered Sm750-800 branch, returning early.\n");
+    // return;
     KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 1010)
     static constexpr bool compile_needed =
         platform::is_same<KernelArch, arch::Sm80>::value;
-        // printf("[Debug] Entered Sm800-1010 branch, returning early.\n");
-        // return;
+    // printf("[Debug] Entered Sm800-1010 branch, returning early.\n");
+    // return;
     KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 #else
     CUTLASS_NOT_IMPLEMENTED();
