@@ -145,8 +145,8 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON
-          make -j10
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DWITH_FA_BUILD_WITH_CACHE
+          make -j20
           '
 
       - name: Check added unittests
@@ -194,10 +194,10 @@ jobs:
           cd /paddle
           echo "Uploading coverage build"
           mv /Paddle.tar.gz .
+          cp ./python/dist/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl .
           python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          #echo "Uploading coverage wheel"
-          #python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          cd /
+          echo "Uploading coverage wheel"
+          python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading Paddle.tar.gz"
           '
 
@@ -301,8 +301,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          pip install safetensors
-          pip install dist/*.whl --no-deps
+          pip install ./python/dist/*.whl --no-deps
           bash $ci_scripts/h-test.sh
           '
 
