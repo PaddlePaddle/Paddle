@@ -102,7 +102,9 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
   T1* row_buf = vbuf[threadIdx.y];
   T2* row_idx_buf = ibuf[threadIdx.y];
 
-  for (int64_t block_row = blockIdx.x * blockDim.y; block_row < num_rows;
+  for (int64_t block_row =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.y);
+       block_row < num_rows;
        block_row += blockDim.y * gridDim.x) {
     int64_t row = block_row + threadIdx.y;
     const T1* row_self = x_data + row * row_size;

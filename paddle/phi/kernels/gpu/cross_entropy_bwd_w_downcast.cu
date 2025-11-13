@@ -56,7 +56,9 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelVectorized(
   using VecT = typename phi::AlignedVector<LogitT, VEC_SIZE>;
   using SoftmaxVecT = typename phi::AlignedVector<T, VEC_SIZE>;
 
-  int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t vec_id = tid * VEC_SIZE;
 
   // Ensure we don't exceed bounds

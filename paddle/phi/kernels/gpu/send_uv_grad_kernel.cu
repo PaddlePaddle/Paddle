@@ -40,7 +40,9 @@ __global__ void GraphSendUVGradCUDAKernel(const T* out_grad,
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
     int64_t stride_x = blockDim.x * gridDim.x;
 
     const T* out_grad_off = out_grad + ty * slice_size;

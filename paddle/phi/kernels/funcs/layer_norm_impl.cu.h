@@ -1750,7 +1750,8 @@ __global__ void LayerNormBackwardPostProcessToCalculateDX(
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ U d_x_reduce_tmp[2];
 
-  int64_t beg_idx = blockIdx.x * feature_size + threadIdx.x;
+  int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * feature_size +
+                    static_cast<int64_t>(threadIdx.x);
   int64_t end_idx = (blockIdx.x + 1) * feature_size;
 
   U block_mean = mean[blockIdx.x];
@@ -1800,7 +1801,8 @@ __global__ void LayerNormBackwardGradientOnlyDX(
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ U d_x_reduce_tmp[2];
 
-  int64_t beg_idx = blockIdx.x * feature_size + threadIdx.x;
+  int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * feature_size +
+                    static_cast<int64_t>(threadIdx.x);
   int64_t end_idx = (blockIdx.x + 1) * feature_size;
 
   U block_mean = mean[blockIdx.x], block_var = var[blockIdx.x];
@@ -1854,7 +1856,9 @@ __global__ void LayerNormBackwardWhenBatchSizeIsOne(
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     float epsilon,
     int64_t feature_size) {
-  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
   if (idx < feature_size) {
     auto var_val = static_cast<U>(rsqrt_(static_cast<float>(var[0]) + epsilon));
