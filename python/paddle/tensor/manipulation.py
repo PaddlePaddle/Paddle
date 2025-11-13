@@ -3770,6 +3770,7 @@ def unique(
 ) -> Tensor | tuple[Tensor, ...]: ...
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique(
     x,
     return_index=False,
@@ -3777,6 +3778,7 @@ def unique(
     return_counts=False,
     axis=None,
     dtype="int64",
+    sorted=True,
     name=None,
 ):
     r"""
@@ -3915,7 +3917,7 @@ def unique(
             "return_inverse": return_inverse,
             "return_counts": return_counts,
             "axis": axis,
-            "is_sorted": True,
+            "is_sorted": sorted,
         }
         out = helper.create_variable_for_type_inference(
             dtype=x.dtype, stop_gradient=True

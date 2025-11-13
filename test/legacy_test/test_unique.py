@@ -500,5 +500,44 @@ class TestUniqueAPI_ZeroSize(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), expected_out)
 
 
+class TestUniqueAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.random(size=[5]).astype("float32")
+        self.place = (
+            core.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else core.CPUPlace()
+        )
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        out = paddle.unique(paddle.to_tensor(self.x_np))
+        expected_out = np.unique(self.x_np)
+        np.testing.assert_allclose(out.numpy(), expected_out)
+
+    def test_static(self):
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[-1, 5], dtype='float32')
+        out1 = paddle.unique(x)
+        out2 = paddle.unique(input=x)
+        exe = paddle.static.Executor(self.place)
+        res = exe.run(
+            feed={
+                'x': self.x_np.reshape(1, 5),
+            },
+            fetch_list=[out1, out2],
+        )
+        expected_out = np.unique(self.x_np)
+        for result in res:
+            np.testing.assert_array_equal(result, expected_out)
+        paddle.disable_static()
+
+    def test_dygraph_sorted(self):
+        paddle.disable_static()
+        out = paddle.unique(paddle.to_tensor(self.x_np))
+        expected_out = np.unique(self.x_np)
+        np.testing.assert_allclose(out.numpy(), expected_out)
+
+
 if __name__ == "__main__":
     unittest.main()
