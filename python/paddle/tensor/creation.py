@@ -2556,13 +2556,15 @@ def triu_(
 
 @overload
 def meshgrid(
-    args: Sequence[paddle.Tensor], name: str | None = None
+    args: Sequence[paddle.Tensor],
+    name: str | None = None,
+    indexing: str | None = None,
 ) -> list[paddle.Tensor]: ...
 
 
 @overload
 def meshgrid(
-    *args: paddle.Tensor, name: str | None = None
+    *args: paddle.Tensor, name: str | None = None, indexing: str | None = None
 ) -> list[paddle.Tensor]: ...
 
 
@@ -2577,7 +2579,9 @@ def meshgrid(*args, **kwargs):
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
+        indexing (Optional[str]) : the indexing mode, either “xy” or “ij”, defaults to “ij”.If “xy” is selected, the first dimension corresponds to the cardinality
+            of the second input and the second dimension corresponds to the cardinality of the first input. If “ij” is selected, the dimensions are in the
+            same order as the cardinality of the inputs.
     Returns:
          Tensor: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
 
@@ -2597,13 +2601,26 @@ def meshgrid(*args, **kwargs):
             [100, 200]
 
     """
+    name = kwargs.get("name", None)
+    indexing = kwargs.pop("indexing", None)
+    if indexing is None:
+        indexing = "ij"
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
+
+    if indexing not in ("ij", "xy"):
+        raise ValueError(
+            f"meshgrid: indexing must be 'ij' or 'xy', but got {indexing}"
+        )
+
+    swap_xy = indexing == "xy" and len(args) >= 2
+    if swap_xy:
+        args = (args[1], args[0], *args[2:])
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.meshgrid(list(args))
+        out = _C_ops.meshgrid(list(args))
     else:
-        name = kwargs.get("name", None)
         helper = LayerHelper('meshgrid', **locals())
 
         if not isinstance(args, (list, tuple)):
@@ -2637,7 +2654,59 @@ def meshgrid(*args, **kwargs):
             type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out}
         )
 
-        return out
+    if swap_xy:
+        out[0], out[1] = out[1], out[0]
+    return out
+
+
+def split_with_sizes(
+    self: paddle.Tensor, split_sizes: list[int], dim: int = 0
+) -> list[paddle.Tensor]:
+    """
+    Splits the input tensor into multiple sub tensors according to given split sizes.
+
+    Args:
+        self (Tensor): The input tensor to be split.
+        split_sizes (list[int]): A list of non negative integers specifying
+            the sizes of each split along dimension ``dim``. The sum of all
+            elements in this list must equal the size of ``self`` along ``dim``.
+        dim (int, optional): The dimension along which to split the tensor.
+            Defaults to 0.
+
+    Returns:
+        list[Tensor]: A list of sub tensors resulting from splitting ``self``
+        along the specified dimension.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
+            >>> # Split into two parts along the first dimension, of sizes 1 and 2
+            >>> splits = paddle.Tensor.split_with_sizes(x, [1, 2], dim=0)
+            >>> print(splits)
+    """
+    for size in split_sizes:
+        if size < 0:
+            raise ValueError(
+                "split_with_sizes expects split_sizes have only non-negative entries"
+            )
+
+    total = sum(split_sizes)
+    if total != self.shape[dim]:
+        raise ValueError(
+            f"Split sizes add up to {total} but got the tensor's size of {self.shape[dim]}"
+        )
+
+    outs = []
+    start = 0
+    for size in split_sizes:
+        end = start + size
+        out = paddle.slice(self, axes=[dim], starts=[start], ends=[end])
+        outs.append(out)
+        start = end
+
+    return outs
 
 
 def diag_embed(

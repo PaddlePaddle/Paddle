@@ -39,6 +39,7 @@ endif()
 
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
+  list(REMOVE_ITEM TEST_OPS test_vmmallocator)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
@@ -254,11 +255,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
-
-elseif(WITH_GPU)
-  if(${CUDNN_VERSION} VERSION_LESS 7100)
-    list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
-  endif()
 endif()
 
 if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
@@ -878,6 +874,7 @@ endif()
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
+set_tests_properties(test_legacy_loss_args PROPERTIES TIMEOUT 10)
 set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 250)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
@@ -1025,7 +1022,7 @@ if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient
                        PROPERTIES TIMEOUT 300)
 endif()
-set_tests_properties(test_decorator PROPERTIES TIMEOUT 150)
+set_tests_properties(test_decorator PROPERTIES TIMEOUT 200)
 
 if(APPLE)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)

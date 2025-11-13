@@ -286,17 +286,19 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
   T* dim_value_data = dev_ctx.template Alloc<T>(&dim_value);
   auto stream = dev_ctx.stream();
   int block = std::min(numel, static_cast<int64_t>(256));
-  int grid = (numel + block - 1) / block;
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t grid = std::min((numel + block - 1) / block, max_grid_dimx);
   RenormElementwisePow<T>
       <<<grid, block, 0, stream>>>(x_data, pow_value_data, numel, p);
   int block2 = std::min(dimension_each, static_cast<int64_t>(256));
-  int grid2 = (dimension_each + block2 - 1) / block2;
+  int64_t grid2 =
+      std::min((dimension_each + block2 - 1) / block2, max_grid_dimx);
   std::vector<int> reduce_axis = {0, 2};
   phi::SumKernel<T>(
       dev_ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
 
-  RenormKernelFunc3<T>
-      <<<grid2, block2, 0, stream>>>(numel, dim_value_data, p, max_norm);
+  RenormKernelFunc3<T><<<grid2, block2, 0, stream>>>(
+      dimension_each, dim_value_data, p, max_norm);
   RenormKernelFunc4<T><<<grid, block, 0, stream>>>(
       x_data, out_data, numel, dim_value_data, dimension_each, dim_divisor);
 }
@@ -322,14 +324,16 @@ void RenormGradFunc(const phi::GPUContext& dev_ctx,
   dim_value.Resize(common::make_ddim({dimension_each}));
   dim_power_sum.Resize(common::make_ddim({dimension_each}));
   weight_derivative.Resize(common::make_ddim({dimension_each}));
-  auto stream = dev_ctx.stream();
-  int block = std::min(numel, static_cast<int64_t>(256));
-  int grid = (numel + block - 1) / block;
   T* pow_value_data = dev_ctx.template Alloc<T>(&pow_value);
   T* mul_value_data = dev_ctx.template Alloc<T>(&mul_value);
   T* dim_value_data = dev_ctx.template Alloc<T>(&dim_value);
   T* dim_power_sum_data = dev_ctx.template Alloc<T>(&dim_power_sum);
   T* weight_derivative_data = dev_ctx.template Alloc<T>(&weight_derivative);
+  auto stream = dev_ctx.stream();
+  int block = std::min(numel, static_cast<int64_t>(256));
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t grid_tmp = (numel + block - 1) / block;
+  int64_t grid = std::min(grid_tmp, max_grid_dimx);
   RenormGradKernelFunc1<T><<<grid, block, 0, stream>>>(x_data,
                                                        dout_data,
                                                        pow_value_data,

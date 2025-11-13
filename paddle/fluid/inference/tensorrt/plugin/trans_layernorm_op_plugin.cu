@@ -35,7 +35,6 @@ inline int getSMVersion() {
   return prop.major * 10 + prop.minor;
 }
 
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
 #define FINAL_MASK 0xffffffff
 
 template <int UNROLL_FACTOR>
@@ -104,8 +103,6 @@ __global__ void GeneralResidualLayerNormOpt2(half2 *normed_output,
                                    rows,                                     \
                                    half_n,                                   \
                                    eps);
-
-#endif
 
 int TransLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
   if (!with_fp16_) {

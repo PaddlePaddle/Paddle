@@ -248,5 +248,42 @@ class TestUnpool1DOpAPI_ZeroSize(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestUnpool1DOpAPI_Compatibility(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        input_np = np.random.rand(1, 3, 16)
+        input_x = paddle.to_tensor(input_np)
+        Pool1d = paddle.nn.MaxPool1D(kernel_size=2, stride=2, return_mask=True)
+        self.output, self.indices = Pool1d(input_x)
+        self.expected_output_unpool = unpool1dmax_forward_naive(
+            self.output.numpy(), self.indices.numpy(), [2], [2], [0], [16]
+        )
+
+    def test_MaxPool1D_API(self):
+        # test class alias paddle.nn.MaxUnpool1d
+        max_unpool_1d = paddle.nn.MaxUnpool1d(
+            kernel_size=2, stride=2, output_size=(1, 3, 16)
+        )
+        output_unpool = max_unpool_1d(x=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test func alias
+        output_unpool = max_unpool_1d(input=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test output_size argument
+        max_unpool_1d = paddle.nn.MaxUnpool1d(kernel_size=2, stride=2)
+        output_unpool = max_unpool_1d(
+            input=self.output, indices=self.indices, output_size=(1, 3, 16)
+        )
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -38,7 +38,9 @@ __global__ void EmbeddingGradAddTo(T* main_grad_out,
                                    const int64_t num_tokens,
                                    const int64_t token_length) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * gridDim.x;
+  int64_t idy =
+      static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(gridDim.x);
 
   while (idy < num_tokens) {
     auto id = static_cast<int64_t>(token_indices[idy]);

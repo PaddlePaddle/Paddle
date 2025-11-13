@@ -150,7 +150,7 @@ class CUDAGraphNodeLauncher {
   //  With the callbacks defined and the CUDA function obtained, the kernel can
   //  be launched using the `KernelNodeLaunch` method.
   void KernelNodeLaunch(parameterSetter_t parameterSetter,
-                        gpuKernelCallback_t cudakernelCallback);
+                        gpuKernelCallback_t cudaKernelCallback);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
       cudaGraph_t graph);

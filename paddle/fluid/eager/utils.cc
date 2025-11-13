@@ -17,6 +17,11 @@
 #include <ctime>
 #include <iomanip>
 #include <ostream>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -31,12 +36,20 @@
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_int32(tensor_md5_checksum_precision);
+
+#ifdef _WIN32
+#define getprocessid GetCurrentProcessId
+typedef int pid_t;
+#else
+#define getprocessid getpid
+#endif
 namespace egr {
 using paddle::inference::analysis::Dot;
 
@@ -1642,4 +1655,30 @@ const std::string FormatTensor(const paddle::Tensor& t) {
   return formatter.Format(dense_tensor, t.name());
 }
 
+void SaveStringToFileWithPID(const std::string& filename,
+                             const std::string& content,
+                             const std::string& mode = "trunc") {
+  pid_t pid = getprocessid();
+  // Create the new filename with PID suffix
+  std::string newFilename = filename + "." + std::to_string(pid);
+  SaveStringToFile(newFilename, content, mode);
+}
+void SavePythonCallStackToFile(const std::string& file_name,
+                               const std::string& api_name) {
+  SaveStringToFileWithPID(
+      file_name,
+      api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
+      "append");
+}
+#define SEPARATOR "============================"
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg) {
+  std::ostringstream oss;
+  oss << SEPARATOR << " Error message in backward of " << node->name() << "("
+      << node << ")" << SEPARATOR << std::endl;
+  oss << error_mesg << std::endl;
+  oss << SEPARATOR << SEPARATOR << SEPARATOR << SEPARATOR << std::endl;
+  return "\n{\n" + paddle::framework::InsertIndentationIntoEachLine(oss.str()) +
+         "\n}\n";
+}
 }  // namespace egr
