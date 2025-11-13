@@ -16,10 +16,10 @@
 #include <set>
 #include <vector>
 
-#include "paddle/phi/kernels/class_center_sample_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/class_center_sample_kernel.h"
 
 namespace phi {
 
