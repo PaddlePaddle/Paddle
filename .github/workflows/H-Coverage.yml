@@ -60,6 +60,7 @@ jobs:
           WITH_DISTRIBUTE: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
+          WITH_FA_BUILD_WITH_CACHE: "ON"
           PY_VERSION: "3.10"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
           CCACHE_MAXSIZE: 200G
@@ -96,6 +97,7 @@ jobs:
             -e WITH_DISTRIBUTE \
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
+            -e WITH_FA_BUILD_WITH_CACHE \
             -e PY_VERSION \
             -e INFERENCE_DEMO_INSTALL_DIR \
             -e CCACHE_MAXSIZE \
@@ -145,7 +147,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           pip install -r python/requirements.txt
           mkdir build && cd build
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DWITH_FA_BUILD_WITH_CACHE
+          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Hopper -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON
           make -j20
           '
 
