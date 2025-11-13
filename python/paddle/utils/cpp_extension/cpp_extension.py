@@ -346,8 +346,6 @@ def CUDAExtension(
         setuptools.Extension: An instance of setuptools.Extension.
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
-    extra_compile_args = kwargs.pop('extra_compile_args', None)
-    kwargs["extra_compile_args"] = extra_compile_args["cxx"]
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
     # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
