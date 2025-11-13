@@ -152,35 +152,46 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
 std::optional<AllocationPtr>
 VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
   AllocationPtr allocateptr = nullptr;
-  if (!FLAGS_native_compact) return underlying_allocator_->Allocate(size);
-  try {
-    allocateptr = std::move(underlying_allocator_->Allocate(size));
-  } catch (const paddle::memory::allocation::BadAlloc &e) {
-    VLOG(4) << "Do Memory Compact allocate size and compact " << size;
-    size_t compact_free_size = memory_compactor_->Compact(
-        all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
-    if (compact_free_size < 0) throw;
-    VLOG(4) << "Memory Compacted Size: " << compact_free_size;
+  if (!FLAGS_native_compact) {
     auto free_block = std::prev(all_blocks_.end());
-    if (free_block->is_free_ && free_block->size_ < size) {
-      auto realloc_size = size - free_block->size_;
-      VLOG(4) << "Free block size {" << free_block->size_
-              << "} is smaller than allocate size {" << size
-              << "} after compact, re-alloc {" << realloc_size << "}";
-      try {
-        auto realloc_ptr =
-            underlying_allocator_->Allocate(size - free_block->size_);
-        VLOG(4) << "Re-alloc size {" << realloc_ptr->size() << "} success";
-        free_block->size_ += realloc_ptr->size();
-        allocations_.push_back(std::move(realloc_ptr));  // hold allocation
-      } catch (const paddle::memory::allocation::BadAlloc &e) {
-        VLOG(4) << "Re-alloc size {" << realloc_size << "} failed";
-        throw;
-      }
+    if (free_block->is_free_) {
+      assert(free_block->size_ < size);
+      auto remain_size = size - free_block->size_;
+      allocateptr = std::move(underlying_allocator_->Allocate(remain_size));
+    } else {
+      allocateptr = std::move(underlying_allocator_->Allocate(size));
     }
-    return std::nullopt;
+    return allocateptr;
+  } else {
+    try {
+      allocateptr = std::move(underlying_allocator_->Allocate(size));
+    } catch (const paddle::memory::allocation::BadAlloc &e) {
+      VLOG(4) << "Do Memory Compact allocate size and compact " << size;
+      size_t compact_free_size = memory_compactor_->Compact(
+          all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
+      if (compact_free_size < 0) throw;
+      VLOG(4) << "Memory Compacted Size: " << compact_free_size;
+      auto free_block = std::prev(all_blocks_.end());
+      if (free_block->is_free_ && free_block->size_ < size) {
+        auto realloc_size = size - free_block->size_;
+        VLOG(4) << "Free block size {" << free_block->size_
+                << "} is smaller than allocate size {" << size
+                << "} after compact, re-alloc {" << realloc_size << "}";
+        try {
+          auto realloc_ptr =
+              underlying_allocator_->Allocate(size - free_block->size_);
+          VLOG(4) << "Re-alloc size {" << realloc_ptr->size() << "} success";
+          free_block->size_ += realloc_ptr->size();
+          allocations_.push_back(std::move(realloc_ptr));  // hold allocation
+        } catch (const paddle::memory::allocation::BadAlloc &e) {
+          VLOG(4) << "Re-alloc size {" << realloc_size << "} failed";
+          throw;
+        }
+      }
+      return std::nullopt;
+    }
+    return allocateptr;
   }
-  return allocateptr;
 }
 
 void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
