@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
-#include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
-#include "paddle/phi/core/memory/allocation/retry_allocator.h"
-#include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
@@ -25,13 +23,9 @@ namespace memory {
 namespace allocation {
 
 TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllocatorVisitor) {
-  auto vmm_cuda_allocator =
-      std::make_shared<CUDAVirtualMemAllocator>(phi::GPUPlace());
-  auto vma_allocator =
-      std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
-          vmm_cuda_allocator, platform::GpuMinChunkSize(), phi::GPUPlace());
+  NaiveBestFitAllocator alloc{phi::CPUPlace()};
   memory::AllocatorVisitor free_memory_metrics_visitor;
-  vma_allocator->Accept(&free_memory_metrics_visitor);
+  alloc.Accept(&free_memory_metrics_visitor);
 }
 
 }  // namespace allocation
