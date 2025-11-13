@@ -811,8 +811,12 @@ void DispatchWithDtype(
   // VLOGMatrix(
   //     fmha_buf.data<T>(), fmha_buf.numel(), "fmha_buf", fmha_buf.numel());
   if (out_scale > 0) {
-    int m = fmha_out->dims()[0];
-    int n = fmha_out->dims()[1];
+    int m = static_cast<int>(fmha_out->dims()[0]);
+    // TODO(large-tensor): use static_cast<int> for some test
+
+    int n = static_cast<int>(fmha_out->dims()[1]);
+    // TODO(large-tensor): use static_cast<int> for some test
+
 #ifdef PADDLE_WITH_HIP
     dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
     dim3 block(64, 8);
