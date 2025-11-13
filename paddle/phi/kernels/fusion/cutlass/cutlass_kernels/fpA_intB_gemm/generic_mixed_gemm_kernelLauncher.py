@@ -81,7 +81,7 @@ DefineHeader = """
 
 """
 
-DefaultArch = [70, 75, 80, 90]
+DefaultArch = [70, 75, 80, 90, 100]
 epilogue_tags = ["bias", "biasFtGelu", "biasReLU", "noBias"]
 
 WeightTypes = ["uint8_t", "cutlass::uint4b_t"]
@@ -112,7 +112,7 @@ WarpShapes_sm70 = [
     "cutlass::gemm::GemmShape<32, 32, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
 ]
-StagesList = {70: [2], 75: [2], 80: [2, 3, 4, 5], 90: [2, 3, 4, 5]}
+StagesList = {70: [2], 75: [2], 80: [2, 3, 4, 5], 90: [2, 3, 4, 5], 100: [2, 3, 4, 5]}
 
 ElementTypes = {"fp16": "half", "bf16": "__nv_bfloat16"}
 Archs = {
@@ -120,6 +120,7 @@ Archs = {
     75: "cutlass::arch::Sm75",
     80: "cutlass::arch::Sm80",
     90: "cutlass::arch::Sm80",
+    100: "cutlass::arch::Sm80",
 }
 EpilogueTags = {
     "bias": "EpilogueOpBias",
@@ -155,7 +156,9 @@ def find_arch_range(archs):
             compile_archs.append(75)
         elif arch >= 80 and arch < 90:
             compile_archs.append(80)
-        elif arch >= 90 and arch < 91:
+        elif arch >= 90 and arch < 100:
+            compile_archs.append(80)
+        elif arch >= 100 and arch < 110:
             compile_archs.append(80)
     compile_archs = list(set(compile_archs))
     compile_archs.sort()

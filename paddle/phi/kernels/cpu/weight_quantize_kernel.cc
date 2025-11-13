@@ -37,10 +37,10 @@ void quant_compute(const DeviceContext& dev_ctx,
 #ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
-       (arch == 89) || (arch == 90)),
+       (arch == 89) || (arch == 90) || (arch == 100)),
       true,
       common::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90, 100."));
 
 #endif
   const auto x_dims = x.dims();
@@ -63,7 +63,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
 #else
   if ((arch == 80) || (arch == 75) || (arch == 86) || (arch == 89) ||
-      (arch == 90)) {
+      (arch == 90) || (arch == 100)) {
     x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   } else {
     // phi::Copy may change tensor meta info, here we transpose the quanted
