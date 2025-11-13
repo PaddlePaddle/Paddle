@@ -1,3 +1,8 @@
+- op : acos
+  name : [paddle.acos,paddle.Tensor.acos]
+  args_alias :
+    use_default_mapping : True
+
 - op : amin
   name : [paddle.amin,paddle.Tensor.amin]
   args_alias :
