@@ -337,12 +337,10 @@ void LaunchNormBwd(const Context& dev_ctx,
   launcher(launch_params, true);
 
   DenseTensor dscale_part, dbias_part;
-  std::cout << "before dscale_part " << std::endl;
   dscale_part = phi::Empty<float, Context>(
       dev_ctx,
       phi::IntArray({static_cast<int64_t>(launch_params.params.ctas_per_col),
                      static_cast<int64_t>(hidden_size)}));
-  std::cout << "before dbias_part" << std::endl;
   if (dbias_ptr) {
     dbias_part = phi::Empty<float, Context>(
         dev_ctx,
