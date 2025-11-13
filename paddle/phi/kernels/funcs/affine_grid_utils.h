@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -184,16 +185,23 @@ inline void GetIdxMap5D(int n,
 
 namespace funcs {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T>
-__global__ void CreateBaseGridKernel_4D(
-    T* base_grid_data, int64_t n, int64_t h, int64_t w, bool align_corners);
-template <typename T>
-__global__ void CreateBaseGridKernel_5D(T* base_grid_data,
-                                        int64_t n,
-                                        int64_t d,
-                                        int64_t h,
-                                        int64_t w,
-                                        bool align_corners);
+
+template <typename T, typename Context>
+void CreateBaseGridKernel_4D(const Context& dev_ctx,
+                             T* base_grid_data,
+                             int64_t n,
+                             int64_t h,
+                             int64_t w,
+                             bool align_corners);
+
+template <typename T, typename Context>
+void CreateBaseGridKernel_5D(const Context& dev_ctx,
+                             T* base_grid_data,
+                             int64_t n,
+                             int64_t d,
+                             int64_t h,
+                             int64_t w,
+                             bool align_corners);
 #endif
 }  // namespace funcs
 

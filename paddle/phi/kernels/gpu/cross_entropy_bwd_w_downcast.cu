@@ -136,7 +136,8 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelWarp(
   const int threads_per_warp = 32;
   const int threads_per_block = warps_per_block * threads_per_warp;
 
-  int tid = blockIdx.x * threads_per_block + threadIdx.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * threads_per_block +
+                static_cast<int64_t>(threadIdx.x);
   int warp_id = threadIdx.x / threads_per_warp;
   int lane_id = threadIdx.x % threads_per_warp;
 

@@ -309,7 +309,9 @@ __global__ void MergedMomentumLarsKernel(LarsParamWrapper<T, MT> lars_wrapper,
                                          const MT rescale_grad,
                                          const bool is_amp) {
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   for (int i = 0; i < op_num; ++i) {
     int numel = lars_wrapper.numel_arr[i];
@@ -369,7 +371,9 @@ __global__ void MomentumLarsKernel(const T* param,
                                    const int thresh,
                                    const int64_t numel,
                                    const bool is_amp) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 11000
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();

@@ -76,7 +76,9 @@ __global__ void RowConvGradInput(const T *dout,
                                  int future_context,
                                  const size_t *batch_indices,
                                  T *din) {
-  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int64_t d =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
 

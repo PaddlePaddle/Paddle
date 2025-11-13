@@ -311,7 +311,9 @@ __global__ void fill_cu_seqlen_with_constant(scalar_t *cu_seqlens_q,
                                              scalar_t q_seqlen,
                                              scalar_t kv_seqlen,
                                              size_t n) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (tid < n) {
     cu_seqlens_q[tid] = q_seqlen;
     cu_seqlens_kv[tid] = kv_seqlen;
