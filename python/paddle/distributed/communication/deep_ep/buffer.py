@@ -907,7 +907,7 @@ class Buffer:
             return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
                 but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
                 If you not set this flag, the kernel will ensure the data's arrival.
-            num_per_channel: the number of tokens per channel used in dynamic quantization to fp8. 
+            num_per_channel: the number of tokens per channel used in dynamic quantization to fp8.
                 Now we support 128 for per group quantization and -1 for per token quantization.
 
         Returns:
@@ -941,7 +941,7 @@ class Buffer:
             use_fp8,
             async_finish,
             return_recv_hook,
-            num_per_channel
+            num_per_channel,
         )
         handle = (
             packed_recv_src_info,

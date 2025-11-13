@@ -1769,7 +1769,8 @@ Buffer::low_latency_dispatch(
 
   auto num_tokens = static_cast<int>(x.size(0)),
        hidden = static_cast<int>(x.size(1));
-  auto num_scales = num_per_channel == -1 ? 1 : hidden / 128, num_topk = static_cast<int>(topk_idx.size(1));
+  auto num_scales = num_per_channel == -1 ? 1 : hidden / 128,
+       num_topk = static_cast<int>(topk_idx.size(1));
   int num_local_experts = num_experts / num_ranks;
 
   // Buffer control
