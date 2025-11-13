@@ -2526,7 +2526,7 @@ __global__ void InitOutValueKernel(T *output_data,
                                    const T init_value) {
   const int tid = threadIdx.x;
   const int bid = blockIdx.x;
-  int64_t global_thread_idx = bid * blockDim.x + tid;
+  int64_t global_thread_idx = bid * static_cast<int64_t>(blockDim.x) + tid;
 
   for (int linear_index = global_thread_idx * VecSize,
            step = gridDim.x * blockDim.x * VecSize;

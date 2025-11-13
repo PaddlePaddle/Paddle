@@ -1222,7 +1222,8 @@ __global__ void LayerNormBackwardPartGradGammaBeta(const T *__restrict__ dout,
   }
   __syncthreads();
 
-  for (int64_t i1_block = blockIdx.y * BDIMY * VPTX; i1_block < n1;
+  for (int64_t i1_block = static_cast<int64_t>(blockIdx.y) * BDIMY * VPTX;
+       i1_block < n1;
        i1_block += VPTX_MUL_BDIMY * gridDim.y) {
     cuLoadAddStridedInputs<T, U, VPTX>(i1_block,
                                        thr_load_row_off,
@@ -1640,8 +1641,10 @@ __global__ void LayerNormBackwardGradientAll(
     int64_t feature_size,
     int64_t col_offset) {
   using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
-  int64_t beg_idx = threadIdx.x * feature_size + (blockIdx.x + col_offset);
-  int64_t end_idx = batch_size * feature_size + (blockIdx.x + col_offset);
+  int64_t beg_idx = static_cast<int64_t>(threadIdx.x) * feature_size +
+                    (static_cast<int64_t>(blockIdx.x) + col_offset);
+  int64_t end_idx = batch_size * feature_size +
+                    (static_cast<int64_t>(blockIdx.x) + col_offset);
   int64_t stride = BlockDim * feature_size;
 
   U d_scale_partial = static_cast<U>(0), d_bias_partial = static_cast<U>(0);
@@ -1696,8 +1699,10 @@ __global__ void LayerNormBackwardGradientScaleOrBias(
   using ScaleBiasT = LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>;
   using BlockReduce = cub::BlockReduce<U, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
-  int64_t beg_idx = threadIdx.x * feature_size + blockIdx.x + col_offset;
-  int64_t end_idx = batch_size * feature_size + blockIdx.x + col_offset;
+  int64_t beg_idx = static_cast<int64_t>(threadIdx.x) * feature_size +
+                    static_cast<int64_t>(blockIdx.x) + col_offset;
+  int64_t end_idx =
+      batch_size * feature_size + static_cast<int64_t>(blockIdx.x) + col_offset;
   int64_t stride = BlockDim * feature_size;
   U d_scale_or_d_bias_partial = static_cast<U>(0);
 
@@ -1752,7 +1757,7 @@ __global__ void LayerNormBackwardPostProcessToCalculateDX(
 
   int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * feature_size +
                     static_cast<int64_t>(threadIdx.x);
-  int64_t end_idx = (blockIdx.x + 1) * feature_size;
+  int64_t end_idx = (static_cast<int64_t>(blockIdx.x) + 1) * feature_size;
 
   U block_mean = mean[blockIdx.x];
   U block_var = var[blockIdx.x];
@@ -1803,7 +1808,7 @@ __global__ void LayerNormBackwardGradientOnlyDX(
 
   int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * feature_size +
                     static_cast<int64_t>(threadIdx.x);
-  int64_t end_idx = (blockIdx.x + 1) * feature_size;
+  int64_t end_idx = (static_cast<int64_t>(blockIdx.x) + 1) * feature_size;
 
   U block_mean = mean[blockIdx.x], block_var = var[blockIdx.x];
   U d_x_mean_partial = static_cast<U>(0), d_x_var_partial = static_cast<U>(0);

@@ -36,7 +36,7 @@ static __global__ void GradComputeDX(const T *dy,
                                      T *dx) {
   int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * sample_size +
                     static_cast<int64_t>(threadIdx.x);
-  int64_t end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t end_idx = (static_cast<int64_t>(blockIdx.x) + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
   BatchNormParamType<T> mean_val = mean[ncid];
@@ -95,7 +95,7 @@ __global__ void DoubleGradComputeDX(const T *x,
                                     T *dx) {
   int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * sample_size +
                     static_cast<int64_t>(threadIdx.x);
-  int64_t end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t end_idx = (static_cast<int64_t>(blockIdx.x) + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
 
@@ -196,7 +196,7 @@ __global__ void DoubleGradComputeDDY(const T *x,
                                      T *ddy) {
   int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * sample_size +
                     static_cast<int64_t>(threadIdx.x);
-  int64_t end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t end_idx = (static_cast<int64_t>(blockIdx.x) + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
   AccT mean_val = mean[ncid];
@@ -260,7 +260,7 @@ __global__ void DoubleGradComputeDScale(const T *x,
                                         AccT *dscale) {
   int64_t beg_idx = static_cast<int64_t>(blockIdx.x) * sample_size +
                     static_cast<int64_t>(threadIdx.x);
-  int64_t end_idx = (blockIdx.x + 1) * sample_size;
+  int64_t end_idx = (static_cast<int64_t>(blockIdx.x) + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
   AccT mean_val = mean[ncid];
