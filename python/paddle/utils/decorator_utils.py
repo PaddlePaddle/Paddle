@@ -248,7 +248,7 @@ def lp_pool_function_decorator(
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        if kwargs and ("x" not in kwargs) and ("input" in kwargs):
+        if "input" in kwargs:
             kwargs["x"] = kwargs.pop("input")
         if len(args) == 5 and isinstance(args[4], bool):
             warnings.warn(
