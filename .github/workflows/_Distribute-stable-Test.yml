@@ -122,6 +122,13 @@ jobs:
           git checkout test
           '
 
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: distribute
+
       - name: Test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
