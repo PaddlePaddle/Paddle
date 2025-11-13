@@ -128,7 +128,9 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
 }
 
 __global__ void ARangeKernel(int64_t* data, int num, int64_t scale) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int start = idx; idx < num; idx += gridDim.x) {
     data[idx] = idx * scale;
   }

@@ -634,6 +634,36 @@ class TestPool1D_API(unittest.TestCase):
             result = lp_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    def check_lp_dygraph_compatibility(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            result = F.lp_pool1d(
+                input, norm_type=5, kernel_size=5, stride=3, padding=[0]
+            )
+
+            result_np = lp_pool1D_forward_naive(
+                input_np, ksize=[5], strides=[3], paddings=[0], norm_type=5
+            )
+
+            np.testing.assert_allclose(
+                result.numpy(), result_np.astype(np.float32), rtol=1e-05
+            )
+
+            lp_pool1d_dg = paddle.nn.layer.LPPool1D(
+                norm_type=5, kernel_size=5, stride=3, padding=0
+            )
+            result = lp_pool1d_dg(input)
+            np.testing.assert_allclose(
+                result.numpy(), result_np.astype(np.float32), rtol=1e-05
+            )
+
+            lp_pool1d_dg = paddle.nn.LPPool1d(5, 5, 3, False)
+            result = lp_pool1d_dg(input=input)
+            np.testing.assert_allclose(
+                result.numpy(), result_np.astype(np.float32), rtol=1e-05
+            )
+
     def test_pool1d(self):
         for place in self.places:
             self.check_max_dygraph_results(place)
@@ -654,6 +684,7 @@ class TestPool1D_API(unittest.TestCase):
             self.check_lp_dygraph_float64_results(place)
             self.check_lp_dygraph_ceil_mode_results(place)
             self.check_lp_dygraph_data_format_results(place)
+            self.check_lp_dygraph_compatibility(place)
 
 
 class TestPool1DError_API(unittest.TestCase):

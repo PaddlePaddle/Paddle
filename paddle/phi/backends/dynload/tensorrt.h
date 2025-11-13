@@ -90,17 +90,11 @@ extern void* tensorrt_plugin_dso_handle;
 
 #ifdef NV_TENSORRT_MAJOR
 
-#if (NV_TENSORRT_MAJOR >= 6)
 #define TENSORRT_RAND_ROUTINE_EACH_POINTER(__macro) \
   __macro(createInferBuilder_INTERNAL);             \
   __macro(createInferRefitter_INTERNAL);            \
   __macro(createInferRuntime_INTERNAL);             \
   __macro(getPluginRegistry);
-#else
-#define TENSORRT_RAND_ROUTINE_EACH_POINTER(__macro) \
-  __macro(createInferBuilder_INTERNAL);             \
-  __macro(createInferRuntime_INTERNAL);
-#endif
 
 #define TENSORRT_RAND_ROUTINE_EACH_NON_POINTER(__macro) \
   __macro(getInferLibVersion);

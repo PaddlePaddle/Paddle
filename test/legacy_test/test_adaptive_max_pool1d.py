@@ -91,6 +91,15 @@ class TestPool1D_API(unittest.TestCase):
             result = ada_max_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+            ada_max_pool1d_dg = paddle.nn.AdaptiveMaxPool1d(
+                output_size=16,
+                return_indices=True,
+            )
+            self.assertEqual(ada_max_pool1d_dg.return_indices, True)
+            ada_max_pool1d_dg.return_indices = False
+            result = ada_max_pool1d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
     def check_adaptive_max_static_results(self, place):
         with (
             paddle_static_guard(),
