@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Note:
-# This section primarily addresses compatibility issues involving differing paths, API aliases, or parameter aliases.
-# Avoid adding unnecessary code here. Only introduce new module-related aliases and paths.
-# New class methods should be added to `paddle.nn.Layer`.
 
 from paddle.nn import Layer
 

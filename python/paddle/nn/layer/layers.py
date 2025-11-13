@@ -23,7 +23,7 @@ from collections import OrderedDict, namedtuple
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
-from typing_extensions import Self
+from typing_extensions import Self, overload
 
 import paddle
 from paddle import Tensor, nn, profiler
@@ -1981,9 +1981,7 @@ class Layer:
         """
         self.add_sublayer(name, module)
 
-    def register_module(self, name: str, module: Layer | None) -> None:
-        """Alias for :func:`add_module`."""
-        self.add_module(name, module)
+    register_module = add_module
 
     def add_parameter(self, name: str, parameter: Tensor) -> Tensor:
         """Adds a Parameter instance.
@@ -2482,16 +2480,39 @@ class Layer:
             keep_vars=keep_vars,
         )
 
-    @param_one_alias(["structured_name_prefix", "prefix"])
+    @overload
     def state_dict(
         self,
-        *args,
         destination: _StateDict | None = None,
         include_sublayers: bool = True,
         structured_name_prefix: str = "",
         use_hook: bool = True,
         keep_vars: bool = True,
-    ) -> _StateDict:
+    ) -> _StateDict: ...
+
+    @overload
+    def state_dict(
+        self,
+        *,
+        destination: _StateDict,
+        prefix: str = ...,
+        keep_vars: bool = ...,
+    ) -> _StateDict: ...
+
+    @overload
+    def state_dict(
+        self,
+        *,
+        prefix: str = ...,
+        keep_vars: bool = ...,
+    ) -> _StateDict: ...
+
+    @overload
+    def state_dict(
+        self, *args, destination=None, prefix="", keep_vars=False
+    ) -> _StateDict: ...
+
+    def state_dict(self, *args: Any, **kwargs: Any) -> _StateDict:
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -2515,35 +2536,30 @@ class Layer:
                 >>> paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
-        if len(args) > 0:
-            destination = args[0] if len(args) >= 1 else destination
-            arg2 = args[1] if len(args) >= 2 else None
-            arg3 = args[2] if len(args) >= 3 else None
-            arg4 = args[3] if len(args) >= 4 else None
-            arg5 = args[4] if len(args) >= 5 else None
+        len_args = len(args)
 
-            if isinstance(arg2, bool):
-                include_sublayers = arg2
-                if isinstance(arg3, str):
-                    structured_name_prefix = arg3
-                if isinstance(arg4, bool):
-                    use_hook = arg4
-                if isinstance(arg5, bool):
-                    keep_vars = arg5
-            elif isinstance(arg2, str):
-                structured_name_prefix = arg2
-                keep_vars = False
-                if isinstance(arg3, bool):
-                    keep_vars = arg3
+        def safe_set_param(key: str, value: Any):
+            if key in kwargs:
+                raise TypeError(f"got multiple values for argument '{key}'")
+            kwargs[key] = value
 
-        return self._state_dict_impl(
-            destination=destination,
-            include_sublayers=include_sublayers,
-            structured_name_prefix=structured_name_prefix,
-            include_non_persistable_buffer=False,
-            use_hook=use_hook,
-            keep_vars=keep_vars,
-        )
+        if (
+            len_args >= 2 and isinstance(args[1], str)
+        ) or 'prefix' in kwargs:  # Torch API
+            base_param_keys = ["destination", "prefix", "keep_vars"]
+            for idx in range(min(len_args, len(base_param_keys))):
+                safe_set_param(base_param_keys[idx], args[idx])
+
+            return self._state_dict_impl(
+                destination=kwargs.get('destination', None),
+                include_sublayers=True,
+                structured_name_prefix=kwargs.get('prefix', ""),
+                include_non_persistable_buffer=False,
+                use_hook=True,
+                keep_vars=kwargs.get('keep_vars', False),
+            )
+
+        return self._state_dict_impl(*args, **kwargs)
 
     def sharded_state_dict(
         self,
