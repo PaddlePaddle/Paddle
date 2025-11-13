@@ -58,10 +58,8 @@ cc_test(
   SRCS test_aligned_allocator.cc
   DEPS phi common)
 
-cc_test(
-  allocator_visitor_test
-  SRCS allocator_visitor_test.cc
-  DEPS phi common)
+paddle_test(allocator_visitor_test SRCS allocator_visitor_test.cc DEPS phi
+            common)
 
 if(WIN32)
   cc_test(
