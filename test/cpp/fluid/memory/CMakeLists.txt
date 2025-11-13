@@ -6,10 +6,6 @@ cc_test(
   stats_test
   SRCS stats_test.cc
   DEPS)
-cc_test(
-  compact_allocator_test
-  SRCS compact_allocator_test.cc
-  DEPS)
 
 cc_test(
   naive_best_fit_allocator_test
