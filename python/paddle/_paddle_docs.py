@@ -95,10 +95,10 @@ add_doc_and_signature(
 """,
     """
 def acos(
-    x: Tensor, 
-    name: str | None = None, 
-    *, 
-    out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
     ) -> Tensor
 """,
 )
