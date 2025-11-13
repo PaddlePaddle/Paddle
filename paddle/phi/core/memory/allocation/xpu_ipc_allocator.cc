@@ -83,14 +83,18 @@ void IpcCollect() {
   VLOG(6) << "The number of IPC handles before collection:" << before;
 
   for (auto it = ipc_handle_to_baseptr_.begin();
-       it != ipc_handle_to_baseptr_.end();
-       ++it) {
-    if (it->second.expired()) it = ipc_handle_to_baseptr_.erase(it);
+       it != ipc_handle_to_baseptr_.end();) {
+    if (it->second.expired()) {
+      it = ipc_handle_to_baseptr_.erase(it);
+    } else {
+      VLOG(6) << " Valid ipc handle is not expired";
+      ++it;
+    }
   }
 
   size_t after = ipc_handle_to_baseptr_.size();
   size_t collected = before - after;
-  VLOG(6) << "IpcCollect: collected " << collected << " expired IPC handles"
+  VLOG(1) << "IpcCollect: collected " << collected << " expired IPC handles"
           << "out of " << before << " total handles";
 }
 
@@ -100,7 +104,6 @@ XpuIpcAllocation::~XpuIpcAllocation() {
   VLOG(6) << "tensor deleted cudaIpcCloseMemHandle for ptr:"
           << "\t" << this->ptr();
 }
-
 }  // namespace paddle::memory::allocation
 
 #endif  // _WIN32
