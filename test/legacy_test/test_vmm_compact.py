@@ -20,7 +20,7 @@ import paddle
 
 
 @unittest.skipIf(
-    (not paddle.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm,
+    (not paddle.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm(),
     'should compile with cuda.',
 )
 class TestVmmCompact(unittest.TestCase):

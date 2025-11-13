@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,33 +13,27 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
-
-#include <thread>  // NOLINT
+#include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #include "gtest/gtest.h"
-#include "paddle/phi/core/memory/allocation/best_fit_allocator.h"
-#include "paddle/phi/core/memory/allocation/cpu_allocator.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/core/memory/allocation/cuda_allocator.h"
-#endif
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-TEST(RetryAllocator, TestRetryComopact) {
-  CPUAllocator cpu_allocator;
-
-  size_t size = (1 << 20);
-  auto cpu_allocation = cpu_allocator.Allocate(size);
-
-  // Reserve to perform more tests in the future
-  std::unique_ptr<BestFitAllocator> best_fit_allocator(
-      new BestFitAllocator(cpu_allocation.get()));
-  std::shared_ptr<Allocator> allocator = std::make_shared<RetryAllocator>(
-      std::move(best_fit_allocator), phi::CPUPlace(), 1);
-
-  allocator->Compact(phi::CPUPlace());
+TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestCompact) {
+  auto vmm_cuda_allocator =
+      std::make_shared<CUDAVirtualMemAllocator>(phi::GPUPlace());
+  auto vma_allocator =
+      std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+          vmm_cuda_allocator, platform::GpuMinChunkSize(), phi::GPUPlace());
+  size_t mb = (1 << 20);
+  vma_allocator->Allocate(1 * mb - 257);
+  vma_allocator->Allocate(2 * mb - 257);
+  vma_allocator->Compact(phi::GPUPlace());
 }
 
 }  // namespace allocation
