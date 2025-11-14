@@ -202,6 +202,7 @@ __all__ = [
     'manual_seed',
     'reset_peak_memory_stats',
     'ipc_collect',
+    'get_stream_from_external',
 ]
 
 _cudnn_version = None
