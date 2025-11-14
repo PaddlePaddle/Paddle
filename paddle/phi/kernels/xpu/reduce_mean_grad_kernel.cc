@@ -18,8 +18,8 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/kernels/xpu/reduce.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/xpu/reduce.h"
 
 namespace phi {
 
@@ -97,13 +97,19 @@ void ReduceMeanGradKernel<double, XPUContext>(const XPUContext& dev_ctx,
                                               bool reduce_all,
                                               DenseTensor* x_grad) {
   auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
-  auto out_grad_float = phi::Cast<double>(dev_ctx, out_grad, phi::DataType::FLOAT32);
+  auto out_grad_float =
+      phi::Cast<double>(dev_ctx, out_grad, phi::DataType::FLOAT32);
   DenseTensor x_grad_float;
   x_grad_float.Resize(x_grad->dims());
-  ReduceMeanGradKernel<float>(dev_ctx, x_float, out_grad_float, dims, keep_dim, reduce_all, &x_grad_float);
+  ReduceMeanGradKernel<float>(dev_ctx,
+                              x_float,
+                              out_grad_float,
+                              dims,
+                              keep_dim,
+                              reduce_all,
+                              &x_grad_float);
   CastKernel<float>(dev_ctx, x_grad_float, phi::DataType::FLOAT64, x_grad);
 }
-
 
 }  // namespace phi
 

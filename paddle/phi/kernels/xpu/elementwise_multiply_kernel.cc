@@ -19,12 +19,12 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 

@@ -17,8 +17,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/xpu/reduce.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/xpu/reduce.h"
 
 namespace phi {
 
@@ -71,7 +71,6 @@ void MinRawKernel<double, XPUContext>(const XPUContext& dev_ctx,
   MinRawKernel<float>(dev_ctx, x_float, dims, keep_dim, reduce_all, &out_float);
   CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
 }
-
 
 }  // namespace phi
 
