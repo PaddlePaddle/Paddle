@@ -177,8 +177,7 @@ NUM_PROC=4
 EXIT_CODE=0
 pids=()
 for (( i = 0; i < $NUM_PROC; i++ )); do
-    cuda_list="$((i*2)),$((i*2+1))"
-    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($concurrency_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
+    (ctest -I $i,,$NUM_PROC --output-on-failure -R "($concurrency_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0)&
     pids+=($!)
 done
 
@@ -193,8 +192,7 @@ done
 NUM_PROC=1
 pids=()
 for (( i = 0; i < $NUM_PROC; i++ )); do
-    cuda_list="$((i*2)),$((i*2+1))"
-    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile1; test ${PIPESTATUS[0]} -eq 0)&
+    (ctest -I $i,,$NUM_PROC --output-on-failure -R "($serial_list)" -E "($disable_ut_quickly)" --timeout 120 -j1 | tee -a $tmpfile1; test ${PIPESTATUS[0]} -eq 0)&
     pids+=($!)
 done
 
