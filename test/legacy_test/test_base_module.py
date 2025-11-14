@@ -897,6 +897,8 @@ class TestGrad(unittest.TestCase):
             self.assertIsNotNone(p.grad)
             self.assertTrue(paddle.allclose(p.grad, paddle.zeros_like(p.grad)))
 
+        self.model.zero_grad()
+
 
 # test ModuleList
 class TestModuleListBasic(unittest.TestCase):

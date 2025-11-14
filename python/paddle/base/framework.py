@@ -7772,11 +7772,11 @@ class EagerParamBase(core.eager.Tensor):
     @dygraph_only
     def __init__(self, *args, **kwargs):
         if (len(args) > 0 and isinstance(args[0], list)) or 'shape' in kwargs:
-            self.__init_by_paddle__(*args, **kwargs)
+            self.__init_by_shape__(*args, **kwargs)
         else:
-            self.__init_by_torch__(*args, **kwargs)
+            self.__init_by_tensor__(*args, **kwargs)
 
-    def __init_by_paddle__(self, shape, dtype, **kwargs):
+    def __init_by_shape__(self, shape, dtype, **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
@@ -7823,7 +7823,7 @@ class EagerParamBase(core.eager.Tensor):
         self._init_func = None
         self._init_op_creator = None
 
-    def __init_by_torch__(
+    def __init_by_tensor__(
         self, data: paddle.Tensor | None = None, requires_grad: bool = True
     ):
         if data is None:
@@ -7831,26 +7831,14 @@ class EagerParamBase(core.eager.Tensor):
         shape = data.shape
         dtype = data.dtype
 
-        if shape is None:
-            raise ValueError("The shape of Parameter should not be None")
-        if dtype is None:
-            raise ValueError("The dtype of Parameter should not be None")
-
         for each in shape:
             if each < 0:
                 raise ValueError(
                     f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
                 )
 
-        if dtype is not None:
-            dtype = convert_to_proto_type(dtype)
-        else:
-            dtype = core.VarDesc.VarType.FP32
-
+        dtype = convert_to_proto_type(dtype)
         name = unique_name.generate("_eager_param_base")
-
-        if isinstance(shape, core.eager.Tensor):
-            shape = shape.numpy()
 
         super().__init__(
             dtype,

@@ -3440,14 +3440,6 @@ class Layer:
             set_to_none (bool): instead of setting to zero, set the grads to None. Currently, set_to_none=True
             is not fully supported.
         """
-        if getattr(self, "_is_replica", False):
-            warnings.warn(
-                "Calling .zero_grad() from a module created with nn.DataParallel() has no effect. "
-                "The parameters are copied (in a differentiable manner) from the original module. "
-                "This means they are not leaf nodes in autograd and so don't accumulate gradients. "
-                "If you need gradients in your forward method, consider using autograd.grad instead.",
-                stacklevel=2,
-            )
         for p in self.parameters():
             if p.grad is not None:
                 if set_to_none:
