@@ -133,7 +133,10 @@ void PsroiPoolKernel(const Context& dev_ctx,
           pooled_height,
           pooled_width));
 
-  int rois_num_t = rois.dims()[0];
+  int64_t rois_num_t = rois.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   if (rois_num_t == 0) return;
   int rois_batch_size;
   DenseTensor rois_batch_id_list;
@@ -210,7 +213,10 @@ void PsroiPoolKernel(const Context& dev_ctx,
        false,
        &rois_batch_id_list_gpu);
 
-  int output_size = out->numel();
+  int64_t output_size = out->numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int blocks = NumBlocks(output_size);
   int threads = kNumCUDAThreads;
 

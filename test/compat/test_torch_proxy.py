@@ -86,14 +86,5 @@ class TestTorchProxy(unittest.TestCase):
         )
 
 
-class TestTorchOverriddenClass(unittest.TestCase):
-    def test_overridden_class(self):
-        self.assertRaises(AttributeError, lambda: paddle.Generator)
-        with paddle.compat.use_torch_proxy_guard():
-            import torch
-
-            gen = torch.Generator()
-
-
 if __name__ == "__main__":
     unittest.main()

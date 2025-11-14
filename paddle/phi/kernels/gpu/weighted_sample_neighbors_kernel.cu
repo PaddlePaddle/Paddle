@@ -331,7 +331,9 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* eids_data =
       (eids.get_ptr() == nullptr ? nullptr : eids.get_ptr()->data<T>());
-  int bs = x.dims()[0];
+  int64_t bs = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   thread_local std::random_device rd;
   thread_local std::mt19937 gen(rd());
