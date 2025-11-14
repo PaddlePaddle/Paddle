@@ -30,8 +30,8 @@ TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestCompact) {
       std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
           vmm_cuda_allocator, platform::GpuMinChunkSize(), phi::GPUPlace());
   size_t mb = (1 << 20);
-  vma_allocator->Allocate(1 * mb - 257);
-  vma_allocator->Allocate(2 * mb - 257);
+  vma_allocator->Allocate(1 * mb);
+  vma_allocator->Allocate(2 * mb);
   vma_allocator->Compact(phi::GPUPlace());
 }
 
