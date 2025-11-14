@@ -12,11 +12,11 @@ string(REPLACE "-" "" DATE_ONLY "${DATE_ONLY}")
 message(STATUS "Last commit date: ${DATE_ONLY}")
 
 if(WITH_NIGHTLY_BUILD)
-  set(PADDLE_VERSION "${PADDLE_VERSION}.dev.${DATE_ONLY}")
+  set(PADDLE_VERSION "${PADDLE_VERSION}.dev${DATE_ONLY}")
 endif()
 
 if(NOT PADDLE_VERSION)
-  set(PADDLE_VERSION "v0.dev.${DATE_ONLY}")
+  set(PADDLE_VERSION "v0.dev${DATE_ONLY}")
 endif()
 
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+$" IS_VERSION_FORMAT
