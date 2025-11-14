@@ -29,15 +29,6 @@ defaults:
 
 jobs:
   formers-test:
-    - name: Check bypass
-      id: check-bypass
-      if: ${{ inputs.clone-can-skip != 'true' }}
-      uses: ./.github/workflows/check-bypass.yml
-      with:
-        workflow-name: 'Distribute-formers'
-      secrets:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Check docker image and run container
       if: steps.check-bypass.outputs.can-skip != 'true'
       env:
@@ -133,7 +124,16 @@ jobs:
         git config --global --add safe.directory /workspace
         git checkout test
         '
+    - name: Check bypass
+      id: check-bypass
+      uses: ./.github/workflows/check-bypass.yml
+      with:
+        workflow-name: 'distribute-formers'
+      secrets:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Test
+      if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         source ${{ github.workspace }}/../../../proxy

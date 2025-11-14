@@ -33,17 +33,7 @@ jobs:
     runs-on:
       group: Distribute
     steps:
-      - name: Check bypass
-        id: check-bypass
-        if: ${{ inputs.clone-can-skip != 'true' }}
-        uses: ./.github/workflows/check-bypass.yml
-        with:
-          workflow-name: 'Distribute-test'
-        secrets:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Check docker image and run container
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_OUTPUT_ON_FAILURE: 1
@@ -131,7 +121,16 @@ jobs:
           git checkout test
           '
 
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/workflows/check-bypass.yml
+        with:
+          workflow-name: 'distribute-test'
+        secrets:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Test
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
