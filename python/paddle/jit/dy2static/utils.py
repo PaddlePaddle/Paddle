@@ -901,7 +901,7 @@ def use_specialized_device():
     ]
 
 
-def maybe_dynamic_shape_tensor(tensor: paddle.Tensor):
+def maybe_dynamic_shape_tensor(tensor: paddle.Tensor) -> bool:
     if not tensor.place.is_cpu_place():
         return False
     if tensor.dtype not in [
