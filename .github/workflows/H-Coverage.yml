@@ -132,6 +132,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           pip install build//python/dist/*.whl --no-deps
           pip install -r python/unittest_py/requirements.txt
+          sleep 2m
           bash $ci_scripts/h-test.sh
           '
 
