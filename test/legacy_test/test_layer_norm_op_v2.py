@@ -350,7 +350,6 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize()
                 input_np = np.random.randn(*self.x_shape).astype('float32')
                 result = exe.run(main, feed={'x': input_np}, fetch_list=[out])[
                     0
@@ -375,7 +374,6 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize()
                 weight_np, bias_np = exe.run(
                     main, fetch_list=[layer.weight, layer.bias]
                 )
@@ -408,7 +406,6 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize()
                 weight_np = exe.run(main, fetch_list=[layer.weight])[0]
                 assert weight_np is not None
                 assert weight_np.shape == tuple(self.normalized_shape)
@@ -460,7 +457,6 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize()
                 weight_np, bias_np = exe.run(
                     main, fetch_list=[layer.weight, layer.bias]
                 )
@@ -500,7 +496,6 @@ class TestLayerNormParamStatic(unittest.TestCase):
 
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize()
                 input_np = np.random.randn(*self.x_shape).astype('float32')
                 out_eps_val, out_epsilon_val = exe.run(
                     main,
