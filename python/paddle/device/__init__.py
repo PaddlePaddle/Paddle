@@ -973,9 +973,9 @@ def get_device_capability(
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> # import paddle
-            >>> # cap = paddle.device.get_device_capability()
-            >>> # print(cap)
+            >>> import paddle
+            >>> cap = paddle.device.get_device_capability()
+            >>> print(cap)
     """
     prop = get_device_properties(device)
     return prop.major, prop.minor
@@ -1828,6 +1828,7 @@ def ipc_collect() -> None:
         None
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> # Force collect expired IPC memory
@@ -1972,6 +1973,7 @@ class nvtx:
             msg (str): The name of the NVTX range.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_push("test") is equivalent to paddle.cuda.nvtx.range_push("test")
@@ -1986,6 +1988,7 @@ class nvtx:
         Pop the most recent NVTX range marker.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
@@ -2003,6 +2006,7 @@ def reset_peak_memory_stats(device: PlaceLike | int | None = None) -> None:
 
     Example:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
