@@ -63,7 +63,8 @@ void ScaleKernel<double, XPUContext>(const XPUContext& dev_ctx,
   auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
   DenseTensor out_float;
   out_float.Resize(out->dims());
-  ScaleKernel<float>(dev_ctx, x_float, scale, bias, bias_after_scale, &out_float);
+  ScaleKernel<float>(
+      dev_ctx, x_float, scale, bias, bias_after_scale, &out_float);
   CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
 }
 
