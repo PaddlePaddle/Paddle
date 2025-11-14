@@ -6265,10 +6265,10 @@ def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):
         # (1) Position args
         out1 = paddle_func(x)
         paddle_dygraph_out.append(out1)
-        # (2) Key words args for paddle
+        # (2) Keywords args for paddle
         out2 = paddle_func(x=x)
         paddle_dygraph_out.append(out2)
-        # (3) Key words args for torch compatibility
+        # (3) Keywords args for torch compatibility
         out3 = paddle_func(input=x)
         paddle_dygraph_out.append(out3)
         # (4) Tensor method args: x.func()
@@ -6296,9 +6296,9 @@ def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # (1) Position args
             out1 = paddle_func(x)
-            # (2) Key words args for paddle
+            # (2) Keywords args for paddle
             out2 = paddle_func(x=x)
-            # (3) Key words args for torch compatibility
+            # (3) Keywords args for torch compatibility
             out3 = paddle_func(input=x)
             # (4) Tensor method args (x.func())
             out4 = getattr(x, act_name)()
@@ -6337,10 +6337,10 @@ def generate_test_case_for_not_method_func(
         # (1) Position args
         out1 = paddle_func(x)
         paddle_dygraph_out.append(out1)
-        # (2) Key words args for paddle
+        # (2) Keywords args for paddle
         out2 = paddle_func(x=x)
         paddle_dygraph_out.append(out2)
-        # (3) Key words args for torch compatibility
+        # (3) Keywords args for torch compatibility
         out3 = paddle_func(input=x)
         paddle_dygraph_out.append(out3)
         if has_out:
@@ -6365,9 +6365,9 @@ def generate_test_case_for_not_method_func(
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # (1) Position args
             out1 = paddle_func(x)
-            # (2) Key words args for paddle
+            # (2) Keywords args for paddle
             out2 = paddle_func(x=x)
-            # (3) Key words args for torch compatibility
+            # (3) Keywords args for torch compatibility
             out3 = paddle_func(input=x)
             ref_out = ref_func(self.np_x)
             fetch_list = [out1, out2, out3]
