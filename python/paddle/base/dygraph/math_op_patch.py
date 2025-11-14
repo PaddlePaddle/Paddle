@@ -28,6 +28,10 @@ from .. import core
 from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
+    from typing import Any
+
+    from numpy.typing import NDArray
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 
@@ -97,6 +101,35 @@ _supported_dtype_conversions = {
     'cfloat': 'complex64',
     'cdouble': 'complex128',
 }
+
+
+def _rebuild_tensor(
+    data: NDArray[Any],
+    dtype: DTypeLike,
+    device: PlaceLike,
+    requires_grad,
+) -> Tensor:
+    return paddle.tensor(
+        data,
+        dtype,
+        device,
+        requires_grad,
+    )
+
+
+class TensorSize(int):
+    as_shape: list[int]
+
+    def __new__(cls, shape):
+        instance = super().__new__(cls, int(np.prod(shape)))
+        instance.as_shape = shape
+        return instance
+
+    def __call__(self, dim=None):
+        shape = paddle.Size(self.as_shape)
+        if dim is None:
+            return shape
+        return shape[dim]
 
 
 def monkey_patch_math_tensor():
@@ -270,7 +303,7 @@ def monkey_patch_math_tensor():
 
     @property
     def _size_(var: Tensor) -> int:
-        return int(np.prod(var.shape))
+        return TensorSize(var.shape)
 
     @property
     def _T_(var: Tensor) -> Tensor:
@@ -389,7 +422,7 @@ def monkey_patch_math_tensor():
 
                 >>> import paddle
                 >>> x = paddle.ones([2, 2])
-                >>> y = x.new_empty(3, 3)
+                >>> y = x.new_empty(3, 3)  # type: ignore
                 >>> y.shape
                 [3, 3]
         """
@@ -436,7 +469,7 @@ def monkey_patch_math_tensor():
 
                 >>> import paddle
                 >>> x = paddle.zeros([2, 2])
-                >>> y = x.new_ones(3, 3)
+                >>> y = x.new_ones(3, 3)  # type: ignore
                 >>> y.numpy()
                 array([[1., 1., 1.],
                        [1., 1., 1.],
@@ -486,7 +519,7 @@ def monkey_patch_math_tensor():
 
             >>> import paddle
             >>> x = paddle.ones([2, 2])
-            >>> y = x.new_zeros(3, 3)
+            >>> y = x.new_zeros(3, 3)  # type: ignore
             >>> y.numpy()
             array([[0., 0., 0.],
                    [0., 0., 0.],
@@ -556,6 +589,18 @@ def monkey_patch_math_tensor():
         """
         return self.element_size()
 
+    def _reduce_ex_(self: Tensor, proto):
+        data_numpy = self.numpy()
+        place = str(self.place)[6:-1]  # Place(gpu:1) -> gpu:1
+        dtype = str(self.dtype)[7:]  # paddle.int32 -> int32
+        requires_grad = self.requires_grad
+        return _rebuild_tensor, (
+            data_numpy,
+            dtype,
+            place,
+            requires_grad,
+        )
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
@@ -583,6 +628,7 @@ def monkey_patch_math_tensor():
         # for logical compare
         ('__array_ufunc__', None),
         ('itemsize', itemsize),
+        ('__reduce_ex__', _reduce_ex_),
     ]
 
     dtype_conversion_methods = _create_dtype_conversion_methods()

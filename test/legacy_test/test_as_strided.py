@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device, get_places
 
 import paddle
 from paddle import base
@@ -34,7 +34,7 @@ class TestAsStrided(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -46,7 +46,7 @@ class TestAsStrided(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 x_np = np.random.random(self.shape).astype(dtype)
                 x = paddle.to_tensor(x_np, place=p)
@@ -57,6 +57,36 @@ class TestAsStrided(unittest.TestCase):
                 loss = b.sum()
                 loss.backward()
                 self.assertEqual((b.grad.numpy() == 1).all().item(), True)
+
+
+class TestAsStrided_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_as_strided_forward(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                a = paddle.to_tensor(
+                    np.random.random([0, 32]).astype('float32')
+                )
+                a.stop_gradient = False
+                b = paddle.as_strided(a, shape=(0, 4), stride=(32, 1))
+                np.testing.assert_equal(b.shape, [0, 4])
+                b.backward(paddle.ones_like(b))
+                np.testing.assert_equal(a.grad.shape, [0, 32])
+
+    def test_as_strided_error(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=paddle.to_tensor(
+                        np.random.random([0, 32]).astype('float32')
+                    ),
+                    shape=[3, 4],
+                    stride=[32, 1],
+                )
 
 
 if __name__ == '__main__':

@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -88,11 +87,14 @@ PD_REGISTER_KERNEL(transpose,
                    int32_t,
                    int64_t,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    phi::float16,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

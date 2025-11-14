@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -117,8 +122,8 @@ class TestMeshgridOp2Complex128(TestMeshgridOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestMeshgridOpBFP16OP(TestMeshgridOp):
@@ -155,12 +160,12 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=paddle.CUDAPlace(0), check_pir=True, check_prim_pir=True
+            place=get_device_place(), check_pir=True, check_prim_pir=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+            get_device_place(),
             ['x0'],
             ['out0', 'out1'],
             check_prim=True,
@@ -304,6 +309,74 @@ class TestMeshgridOp6(unittest.TestCase):
 
             np.testing.assert_array_equal(res_3.shape, [100, 200])
             np.testing.assert_array_equal(res_4.shape, [100, 200])
+
+
+class TestMeshgridOpIndexing(unittest.TestCase):
+    def setUp(self):
+        self.input_3 = np.random.randint(0, 100, [100]).astype('int32')
+        self.input_4 = np.random.randint(0, 100, [200]).astype('int32')
+
+    def test_api_with_dygraph_indexing_xy(self):
+        np_res_3, np_res_4 = np.meshgrid(
+            self.input_3, self.input_4, indexing='xy'
+        )
+
+        with base.dygraph.guard():
+            tensor_3 = paddle.to_tensor(self.input_3)
+            tensor_4 = paddle.to_tensor(self.input_4)
+            res_3, res_4 = paddle.tensor.meshgrid(
+                tensor_3, tensor_4, indexing='xy'
+            )
+
+            np.testing.assert_array_equal(res_3.shape, np_res_3.shape)
+            np.testing.assert_array_equal(res_4.shape, np_res_4.shape)
+            np.testing.assert_array_equal(res_3.numpy(), np_res_3)
+            np.testing.assert_array_equal(res_3.numpy(), np_res_3)
+            np.testing.assert_array_equal(res_4.numpy(), np_res_4)
+
+    def test_api_with_dygraph_indexing_ij(self):
+        np_res_3, np_res_4 = np.meshgrid(
+            self.input_3, self.input_4, indexing='ij'
+        )
+
+        with base.dygraph.guard():
+            tensor_3 = paddle.to_tensor(self.input_3)
+            tensor_4 = paddle.to_tensor(self.input_4)
+            res_3, res_4 = paddle.tensor.meshgrid(
+                tensor_3, tensor_4, indexing='ij'
+            )
+
+            np.testing.assert_array_equal(res_3.shape, np_res_3.shape)
+            np.testing.assert_array_equal(res_4.shape, np_res_4.shape)
+            np.testing.assert_array_equal(res_3.numpy(), np_res_3)
+            np.testing.assert_array_equal(res_4.numpy(), np_res_4)
+
+    def test_indexing_default(self):
+        np_res_3, np_res_4 = np.meshgrid(
+            self.input_3, self.input_4, indexing='ij'
+        )
+
+        with base.dygraph.guard():
+            tensor_3 = paddle.to_tensor(self.input_3)
+            tensor_4 = paddle.to_tensor(self.input_4)
+            res_3, res_4 = paddle.tensor.meshgrid(tensor_3, tensor_4)
+            res_3_n, res_4_n = paddle.tensor.meshgrid(
+                tensor_3, tensor_4, indexing=None
+            )
+            np.testing.assert_array_equal(res_3.numpy(), np_res_3)
+            np.testing.assert_array_equal(res_4.numpy(), np_res_4)
+            np.testing.assert_array_equal(res_3_n.numpy(), np_res_3)
+            np.testing.assert_array_equal(res_4_n.numpy(), np_res_4)
+
+    def test_indexing_invalid_value(self):
+        with base.dygraph.guard():
+            tensor_3 = paddle.to_tensor(self.input_3)
+            tensor_4 = paddle.to_tensor(self.input_4)
+            invalid_indexing = "ab"
+            with self.assertRaises(ValueError) as cm:
+                res_3, res_4 = paddle.tensor.meshgrid(
+                    tensor_3, tensor_4, indexing=invalid_indexing
+                )
 
 
 class TestMeshgridOp7(unittest.TestCase):
@@ -491,8 +564,8 @@ class TestMeshgridEager(unittest.TestCase):
 class TestMeshgridEmptyTensor(unittest.TestCase):
     def _get_places(self):
         places = [base.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def _generate_inputs(self, shapes):

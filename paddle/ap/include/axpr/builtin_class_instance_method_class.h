@@ -88,14 +88,14 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
     if (opt_val.has_value()) {
       return opt_val.value();
     }
-    const auto& opt_gettattr = GetClassAttr(self, "__getattr__");
+    const auto& opt_getattr = GetClassAttr(self, "__getattr__");
     const auto& class_attrs = self.type.class_attrs();
-    ADT_CHECK(opt_gettattr.has_value())
+    ADT_CHECK(opt_getattr.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
                                        " class has no attribute '__getattr__'"};
     std::vector<ValueT> args{attr_name_val};
     ADT_LET_CONST_REF(ret,
-                      interpreter->InterpretCall(opt_gettattr.value(), args));
+                      interpreter->InterpretCall(opt_getattr.value(), args));
     return ret;
   }
 

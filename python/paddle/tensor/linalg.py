@@ -21,7 +21,7 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bmm, dot, matmul  # noqa: F401
+from paddle._C_ops import bmm, diagonal, dot, matmul  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
@@ -365,12 +365,16 @@ def fp8_fp8_half_gemm_fused(
             return out
 
 
+@ParamAliasDecorator({"p": ["ord"], "axis": ["dim"]})
 def vector_norm(
     x: Tensor,
     p: float = 2.0,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    dtype: paddle._typing.DTypeLike | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
@@ -384,6 +388,8 @@ def vector_norm(
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        dtype (paddle._typing.DTypeLike, optional): It may be used to perform the computation in a more precise dtype. It is semantically equivalent to calling linalg.vector_norm(x.to(dtype)) but it is faster in some cases. Default None.
+        out (Tensor| None, optional): output tensor. Ignored if None. Default: None.
 
     Returns:
         Tensor: results of vector_norm operation on the specified axis of input tensor,
@@ -568,6 +574,9 @@ def vector_norm(
     if not isinstance(p, (int, float)):
         raise ValueError(f"only valid p type is int and float, found {type(p)}")
 
+    if dtype is not None:
+        x = x.astype(dtype)
+
     asvector = False
     if axis is None:
         axis = -1
@@ -585,7 +594,7 @@ def vector_norm(
 
     # when len(axis) == 1, use the original op to calculate
     if isinstance(axis, int):
-        return vector_norm_axis_int(
+        tensor = vector_norm_axis_int(
             abs_x,
             axis=axis,
             porder=p,
@@ -597,17 +606,20 @@ def vector_norm(
     # when len(axis) >= 1, calculate by combining other Python apis
     elif isinstance(axis, list):
         if p == np.inf or p == -np.inf:
-            return inf_norm(
+            tensor = inf_norm(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
         elif p == 0:
-            return zero_norm(
+            tensor = zero_norm(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
         else:
-            return vector_norm_axis_tuple(
+            tensor = vector_norm_axis_tuple(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
+    if out is not None:
+        paddle.assign(tensor, output=out)
+    return tensor
 
 
 def matrix_norm(
@@ -1999,6 +2011,7 @@ def t_(input, name=None):
         return out
 
 
+@ParamAliasDecorator({"axis": ["dim"]})
 def cross(
     x: Tensor,
     y: Tensor,
@@ -2724,7 +2737,11 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
 
 
 def svd(
-    x: Tensor, full_matrices: bool = False, name: str | None = None
+    x: Tensor,
+    full_matrices: bool = False,
+    name: str | None = None,
+    *,
+    out: tuple[Tensor, Tensor, Tensor] | None = None,
 ) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Computes the singular value decomposition of one matrix or a batch of regular matrices.
@@ -2784,7 +2801,7 @@ def svd(
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.svd(x, full_matrices)
+        return _C_ops.svd(x, full_matrices, out=out)
     else:
         check_variable_and_dtype(
             x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'svd'
@@ -3412,19 +3429,21 @@ def lu_solve(
         Tensor, the same data type as the `b` and `lu`.
 
     Examples:
-        >>> import paddle
-        >>> import numpy as np
+        .. code-block:: python
 
-        >>> A = paddle.to_tensor([[3, 1], [1, 2]], dtype="float64")
-        >>> b = paddle.to_tensor([[9, 8], [9, 8]], dtype="float64")
-        >>> lu, p = paddle.linalg.lu(A)
-        >>> x = paddle.lu_solve(b, lu, p)
-        >>> paddle.allclose(A @ x, b)
+            >>> import paddle
+            >>> import numpy as np
 
-        >>> print(x)
-        Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
-        [[1.80000000, 1.60000000],
-        [3.60000000, 3.20000000]])
+            >>> A = paddle.to_tensor([[3, 1], [1, 2]], dtype="float64")
+            >>> b = paddle.to_tensor([[9, 8], [9, 8]], dtype="float64")
+            >>> lu, p = paddle.linalg.lu(A)
+            >>> x = paddle.linalg.lu_solve(b, lu, p)
+            >>> paddle.allclose(A @ x, b)
+
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[1.80000000, 1.60000000],
+            [3.60000000, 3.20000000]])
     """
     if b.ndim < 2:
         raise ValueError(
@@ -4539,7 +4558,7 @@ def lstsq(
                 f"Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {driver}"
             )
         driver = "gelsy" if driver is None else driver
-    elif "gpu" in device:
+    elif device.startswith('gpu'):
         if driver not in (None, "gels"):
             raise ValueError(
                 f"Only support valid driver is 'gels' or None for CUDA inputs. But got {driver}"
@@ -5755,131 +5774,3 @@ def cholesky_inverse(
     else:
         A = x @ x.T
     return paddle.linalg.inv(A)
-
-
-def diagonal(
-    x: Tensor,
-    offset: int = 0,
-    axis1: int = 0,
-    axis2: int = 1,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the diagonals of the input tensor x.
-
-    If ``x`` is 2D, returns the diagonal.
-    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
-    By default, the 2D planes formed by the first and second axis of the input tensor x.
-
-    The argument ``offset`` determines where diagonals are taken from input tensor x:
-
-    - If offset = 0, it is the main diagonal.
-    - If offset > 0, it is above the main diagonal.
-    - If offset < 0, it is below the main diagonal.
-
-    Args:
-        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32,
-            int64, bfloat16, float16, float32, float64.
-        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
-        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
-        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> paddle.seed(2023)
-            >>> x = paddle.rand([2, 2, 3],'float32')
-            >>> print(x)
-            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[0.86583614, 0.52014720, 0.25960937],
-              [0.90525323, 0.42400089, 0.40641287]],
-             [[0.97020894, 0.74437362, 0.51785129],
-              [0.73292869, 0.97786582, 0.04315904]]])
-
-            >>> out1 = paddle.diagonal(x)
-            >>> print(out1)
-            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.86583614, 0.73292869],
-             [0.52014720, 0.97786582],
-             [0.25960937, 0.04315904]])
-
-            >>> out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
-            >>> print(out2)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.86583614, 0.42400089],
-             [0.97020894, 0.97786582]])
-
-            >>> out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
-            >>> print(out3)
-            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.90525323],
-             [0.42400089],
-             [0.40641287]])
-
-            >>> out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
-            >>> print(out4)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.86583614, 0.42400089],
-             [0.97020894, 0.97786582]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.diagonal(x, offset, axis1, axis2)
-    else:
-
-        def __check_input(x, offset, axis1, axis2):
-            check_dtype(
-                x.dtype,
-                'Input',
-                [
-                    'bool',
-                    'int32',
-                    'int64',
-                    'float16',
-                    'uint16',
-                    'float32',
-                    'float64',
-                ],
-                'diagonal',
-            )
-
-            input_shape = list(x.shape)
-            assert len(input_shape) >= 2, (
-                "The x must be at least 2-dimensional, "
-                f"But received Input x's dimensional: {len(input_shape)}.\n"
-            )
-
-            axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
-            axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
-
-            assert axis1_ < len(input_shape), (
-                f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
-            )
-
-            assert axis2_ < len(input_shape), (
-                f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
-            )
-
-            assert axis1_ != axis2_, (
-                "axis1 and axis2 cannot be the same axis."
-                f"But received axis1 = {axis1}, axis2 = {axis2}\n"
-            )
-
-        __check_input(x, offset, axis1, axis2)
-        helper = LayerHelper('diagonal', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        helper.append_op(
-            type='diagonal',
-            inputs={'Input': [x]},
-            attrs={'offset': offset, 'axis1': axis1, 'axis2': axis2},
-            outputs={'Out': [out]},
-        )
-
-        return out

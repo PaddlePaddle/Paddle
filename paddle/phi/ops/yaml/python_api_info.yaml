@@ -12,10 +12,12 @@
   name : [paddle.matmul,paddle.Tensor.matmul]
   args_alias :
     use_default_mapping : True
+
 - op : multiply
   name : [paddle.multiply,paddle.Tensor.multiply]
   args_alias :
     use_default_mapping : True
+
 - op : log2
   name : [paddle.log2,paddle.Tensor.log2]
   args_alias :
@@ -63,7 +65,6 @@
   args_alias:
    use_default_mapping : True
 
-
 - op : argmax
   name : [paddle.argmax, paddle.Tensor.argmax]
   args_mapper :
@@ -74,8 +75,179 @@
   args_mapper :
     func : ArgMaxMinMapper
 
+- op : ceil
+  name : [paddle.ceil, paddle.Tensor.ceil]
+  args_alias:
+    use_default_mapping : True
+
 - op : dot
   name : [paddle.dot, paddle.Tensor.dot]
   args_alias:
     x : [input]
     y : [tensor]
+
+- op : all
+  name : [paddle.all,paddle.Tensor.all]
+  args_alias:
+    use_default_mapping : True
+
+- op : bmm
+  name : [paddle.bmm, paddle.Tensor.bmm]
+  args_alias:
+    x : [input]
+    y : [mat2]
+- op : cos
+  name: [paddle.cos, paddle.Tensor.cos]
+  args_alias:
+    use_default_mapping : True
+
+- op : floor
+  name: [paddle.floor, paddle.Tensor.floor]
+  args_alias:
+    use_default_mapping : True
+
+- op : isfinite
+  name : [paddle.isfinite, paddle.Tensor.isfinite]
+  args_alias:
+    use_default_mapping : True
+
+- op : isinf
+  name : [paddle.isinf, paddle.Tensor.isinf]
+  args_alias:
+    use_default_mapping : True
+
+- op : isnan
+  name : [paddle.isnan, paddle.Tensor.isnan]
+  args_alias:
+    use_default_mapping : True
+
+- op : log
+  name: [paddle.log, paddle.Tensor.log]
+  args_alias:
+    use_default_mapping : True
+
+- op : logsumexp
+  name : [paddle.logsumexp,paddle.Tensor.logsumexp]
+  args_alias:
+    use_default_mapping : True
+  pre_process:
+    func: LogsumexpPreProcess(x, axis, reduce_all)
+
+- op : roll
+  name : [paddle.roll, paddle.Tensor.roll]
+  args_alias:
+    axis : [dims]
+    use_default_mapping : True
+  pre_process:
+    func : RollPreProcess(x, shifts, axis)
+
+- op : rsqrt
+  name: [paddle.rsqrt, paddle.Tensor.rsqrt]
+  args_alias:
+    use_default_mapping : True
+
+- op : sigmoid
+  name : [paddle.sigmoid,paddle.Tensor.sigmoid,paddle.nn.functional.sigmoid]
+  args_alias:
+    use_default_mapping : True
+
+- op : sign
+  name: [paddle.sign, paddle.Tensor.sign]
+  args_alias:
+    use_default_mapping : True
+
+- op : sin
+  name: [paddle.sin, paddle.Tensor.sin]
+  args_alias:
+    use_default_mapping : True
+
+- op : any
+  name : [paddle.any, paddle.Tensor.any]
+  args_alias:
+    use_default_mapping : True
+
+- op : sqrt
+  name : [paddle.sqrt,paddle.Tensor.sqrt]
+  args_alias:
+    x : [input]
+
+- op : tril
+  name : [paddle.tril, paddle.Tensor.tril]
+  args_alias:
+    x : [input]
+
+- op : triu
+  name : [paddle.triu, paddle.Tensor.triu]
+  args_alias:
+    x : [input]
+
+- op : gelu
+  name : [paddle.nn.functional.gelu]
+  args_alias:
+    x : [input]
+  args_mapper :
+    func : GeluMapper
+
+- op : sum
+  name : [paddle.sum, paddle.Tensor.sum]
+  args_alias:
+    use_default_mapping : True
+  pre_process:
+    static_func : SumPreProcess(x, axis)
+  args_mapper :
+    func : ArgSumMapper
+
+- op : tanh
+  name : [paddle.tanh, paddle.Tensor.tanh, paddle.nn.functional.tanh]
+  args_alias:
+    use_default_mapping : True
+
+- op : exp
+  name : [paddle.exp, paddle.Tensor.exp]
+  args_alias:
+    use_default_mapping : True
+
+- op : expm1
+  name : [paddle.expm1, paddle.Tensor.expm1]
+  args_alias:
+    use_default_mapping : True
+
+- op : diagonal
+  name : [paddle.diagonal, paddle.Tensor.diagonal]
+  args_alias:
+    x : [input]
+    axis1 : [dim1]
+    axis2 : [dim2]
+
+- op : round
+  name : [paddle.round, paddle.Tensor.round]
+  args_alias:
+    use_default_mapping : True
+
+- op : abs
+  name : [paddle.abs, paddle.Tensor.abs]
+  args_alias:
+    use_default_mapping : True
+
+- op : index_put
+  name : [paddle.index_put,paddle.Tensor.index_put]
+  args_alias :
+    value : [values]
+    use_default_mapping : True
+
+- op : index_put_
+  name : [paddle.index_put_,paddle.Tensor.index_put_]
+  args_alias :
+    value : [values]
+    use_default_mapping : True
+
+- op : softplus
+  name : [paddle.nn.functional.softplus]
+  args_alias :
+    use_default_mapping : True
+- op : isclose
+  name : [paddle.isclose, paddle.Tensor.isclose]
+  args_alias :
+    use_default_mapping : True
+  pre_process:
+    static_func: IsClosePreProcess(x, y, rtol,atol)

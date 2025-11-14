@@ -20,10 +20,10 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/affine_channel_grad_kernel.h"
 
 namespace phi {
 
@@ -32,12 +32,14 @@ __global__ static inline void KeAffineChannelCUDA(const T* x,
                                                   const T* scale,
                                                   const T* bias,
                                                   const int C,
-                                                  const int HxW,
-                                                  const int num,
+                                                  const int64_t HxW,
+                                                  const int64_t num,
                                                   T* y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
-  for (int i = gid; i < num; i += stride) {
+  for (int64_t i = gid; i < num; i += stride) {
     const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
     if (HasBias) {
       y[i] = scale[c] * x[i] + bias[c];
@@ -52,11 +54,11 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(const T* dy,
                                                          const T* x,
                                                          const int N,
                                                          const int C,
-                                                         const int HxW,
+                                                         const int64_t HxW,
                                                          T* dscale,
                                                          T* dbias) {
   const int outer_size = C;
-  const int inner_size = N * HxW;
+  const int64_t inner_size = HxW * N;
   typedef cub::BlockReduce<double, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ds_storage;
   __shared__ typename BlockReduce::TempStorage db_storage;
@@ -64,7 +66,7 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(const T* dy,
   for (int i = blockIdx.x; i < outer_size; i += gridDim.x) {
     T ds_sum = 0;
     T db_sum = 0;
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
+    for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
@@ -106,10 +108,13 @@ void AffineChannelGradCUDAKernel(const Context& dev_ctx,
   const phi::DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = dy->dims();
-  const int num = dy->numel();
-  int N = dims[0];
+  const int64_t num = dy->numel();
+  int64_t N = dims[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int HxW = num / N / C;
+  int64_t HxW = num / N / C;
 
   const T* dy_d = dy->data<T>();
   const T* s_d = scale->data<T>();

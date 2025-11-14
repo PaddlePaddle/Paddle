@@ -18,13 +18,6 @@
 
 #ifdef PADDLE_WITH_CUDA
 
-#if CUDA_VERSION < 11000
-cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
-                                const void *symbolPtr) {
-  return cudaSuccess;
-}
-#endif
-
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
@@ -42,11 +35,19 @@ static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
       cudaGraphGetNodes(graph, nodes.data(), &num_nodes));
 
   size_t num_edges;
+#if CUDA_VERSION < 13000
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaGraphGetEdges(graph, nullptr, nullptr, &num_edges));
   std::vector<cudaGraphNode_t> from(num_edges), to(num_edges);
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaGraphGetEdges(graph, from.data(), to.data(), &num_edges));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaGraphGetEdges(graph, nullptr, nullptr, nullptr, &num_edges));
+  std::vector<cudaGraphNode_t> from(num_edges), to(num_edges);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaGraphGetEdges(graph, from.data(), to.data(), nullptr, &num_edges));
+#endif
 
   std::unordered_map<cudaGraphNode_t, std::unordered_set<cudaGraphNode_t>>
       in_edges, out_edges;
@@ -100,7 +101,6 @@ int64_t CUDAGraph::UniqueMemoryPoolID() {
 
 void CUDAGraph::Reset() {
   if (is_reset_) return;
-#if CUDA_VERSION >= 10010
   for (auto graph : graphs_) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(graph));
   }
@@ -109,7 +109,6 @@ void CUDAGraph::Reset() {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphExecDestroy(exec_graph));
   }
   exec_graphs_.clear();
-#endif
   // callback should be called in reverse order because the latter added
   // callback may rely on the former added callback.
   for (auto iter = cudagraph_post_reset_callbacks_.rbegin();
@@ -123,7 +122,6 @@ void CUDAGraph::Reset() {
 
 void CUDAGraph::Replay() {
   is_replayed_ = true;
-#if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(is_reset_,
                     false,
                     common::errors::PermissionDenied(
@@ -138,12 +136,10 @@ void CUDAGraph::Replay() {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphLaunch(exec_graphs_[i], stream_));
   }
   is_first_run_ = false;
-#endif
 }
 
 void CUDAGraph::BeginSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
-#if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     true,
                     common::errors::PermissionDenied(
@@ -171,14 +167,12 @@ void CUDAGraph::BeginSegmentCapture() {
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
-#endif
 }
 
 void CUDAGraph::BeginCapture(phi::GPUPlace place,
                              cudaStream_t stream,
                              cudaStreamCaptureMode mode) {
   ThrowErrorIfNotSupportCUDAGraph();
-#if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
                     common::errors::PermissionDenied(
@@ -197,7 +191,6 @@ void CUDAGraph::BeginCapture(phi::GPUPlace place,
              << capturing_thread_id_;
   }
   BeginSegmentCapture();
-#endif
 }
 
 inline void sync_streams(gpuStream_t to_record, gpuStream_t to_wait) {
@@ -212,7 +205,6 @@ inline void sync_streams(gpuStream_t to_record, gpuStream_t to_wait) {
 
 void CUDAGraph::EndSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
-#if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(
       IsCapturing(),
       true,
@@ -268,7 +260,6 @@ void CUDAGraph::EndSegmentCapture() {
            << ", memory pool id " << capturing_graph_->pool_id_;
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
-#endif
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
@@ -278,16 +269,12 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
 }
 
 bool CUDAGraph::IsValidCapturing() {
-#if CUDA_VERSION >= 10010
   if (!IsCapturing()) return false;
   cudaStreamCaptureStatus status;
   CUDAGraphID id;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamGetCaptureInfo(capturing_graph_->stream_, &status, &id));
   return status == cudaStreamCaptureStatusActive;
-#else
-  return false;
-#endif
 }
 
 static std::string ConcatPath(const std::string &dirname,
@@ -323,18 +310,17 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 #endif
 }
 
-#if CUDA_VERSION >= 11000
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    parameterSetter_t parameterSetter, gpuKernelCallback_t cudakernelCallback) {
+    parameterSetter_t parameterSetter, gpuKernelCallback_t cudaKernelCallback) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     unsigned int id = GenerateIdentifier();
-    auto cudaFunc = cudakernelCallback(id);
+    auto cudaFunc = cudaKernelCallback(id);
 
     parameterSetters[cudaFunc][id] = parameterSetter;
     VLOG(10) << "[KernelNodeLaunch] Launch kernel with cudaFunc = " << cudaFunc
              << " id = " << id;
   } else {
-    cudakernelCallback(0);
+    cudaKernelCallback(0);
   }
 }
 
@@ -388,20 +374,6 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 
   return hooks;
 }
-#else
-void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    cudaFunction_t cudaFunc,
-    parameterSetter_t parameterSetter,
-    gpuKernelCallback_t cudakernelCallback) {
-  cudakernelCallback(0);
-}
-
-std::vector<cudaGraphExecuterSetter_t>
-CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "CUDAGraphNodeLauncher is only supported when CUDA version >= 11.0"));
-}
-#endif
 
 }  // namespace phi::backends::gpu
 

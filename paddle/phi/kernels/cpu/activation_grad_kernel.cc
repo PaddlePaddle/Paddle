@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
@@ -48,6 +47,21 @@ namespace phi {
         dev_ctx, &x, nullptr, &dout, dx, functor);           \
   }
 
+#define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr)                                 \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr,                           \
+                        DenseTensor* dx) {                     \
+    funcs::functor_class<T> functor;                           \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = attr;                                 \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>(   \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
+  }
+
 #define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(      \
     name, functor_class, attr1, attr2)                       \
   template <typename T, typename Context>                    \
@@ -63,6 +77,23 @@ namespace phi {
     *(attrs[1].second) = attr2;                              \
     ActivationGradImpl<T, Context, funcs::functor_class<T>>( \
         dev_ctx, &x, nullptr, &dout, dx, functor);           \
+  }
+
+#define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr1, attr2)                         \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr1,                          \
+                        double attr2,                          \
+                        DenseTensor* dx) {                     \
+    funcs::functor_class<T> functor;                           \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = attr1;                                \
+    *(attrs[1].second) = attr2;                                \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>(   \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
   }
 
 #define DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(name, functor_class) \
@@ -155,9 +186,9 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, ZeroGradFunctor);
 
-DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                               LeakyReluGradFunctor,
-                                               alpha);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                      LeakyReluGradFunctor,
+                                                      alpha);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
                                                SoftShrinkGradFunctor,
                                                lambda);
@@ -179,11 +210,10 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
                                                STanhGradFunctor,
                                                scale_a,
                                                scale_b);
-
-DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               SoftplusGradFunctor,
-                                               beta,
-                                               threshold);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_DOUBLE_ATTRS_DEPX(Softplus,
+                                                      SoftplusGradFunctor,
+                                                      beta,
+                                                      threshold);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  HardSigmoidGradFunctor,
                                                  slope,

@@ -151,7 +151,7 @@ class OpConverter {
         it = Registry<OpConverter>::Global().Lookup("generic_plugin_creator");
         break;
 
-      case OpConverterType::CustomPluginCreater:  // typos: disable-line
+      case OpConverterType::CustomPluginCreator:
         LOG(INFO) << "There is no OpConverter for type " << op_desc.Type()
                   << ", now use custom_plugin_creater!";  // typos: disable-line
         it = Registry<OpConverter>::Global().Lookup(
@@ -339,7 +339,6 @@ class OpConverter {
 
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
         if (!(engine->min_input_shape().count(input) &&
               engine->max_input_shape().count(input) &&
               engine->optim_input_shape().count(input))) {
@@ -368,7 +367,6 @@ class OpConverter {
         }
         engine->DeclareInput(
             input, in_dtype, Vec2TRT_Dims(input_shape, input, true));
-#endif
       } else {
         auto input_dims = Vec2TRT_Dims(var_shape, input);
         if (input_dims.d[0] == -1) {

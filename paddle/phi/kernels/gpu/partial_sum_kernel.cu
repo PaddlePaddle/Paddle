@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/partial_sum_kernel.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/partial_sum_kernel_impl.h"
@@ -30,7 +29,9 @@ __global__ void SumArrayPartialCUDAKernel(T **in,
                                           int64_t start_index,
                                           int64_t length,
                                           int64_t row_length) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   while (id < lod_length) {
     T total = static_cast<T>(0);
     int b_id = id / length;
@@ -55,7 +56,9 @@ __global__ void PartialSumGradCUDAKernel(T **res_grad,
                                          int64_t start_index,
                                          int64_t length,
                                          int64_t row_length) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   while (id < lod_length) {
     T total = static_cast<T>(0);
     int b_id = id / length;

@@ -37,6 +37,11 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 endif()
 
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
+  list(REMOVE_ITEM TEST_OPS test_vmmallocator)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 list(REMOVE_ITEM TEST_OPS test_householder_product)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op_depthwise_conv)
@@ -122,7 +127,6 @@ list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
-list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -250,11 +254,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
-
-elseif(WITH_GPU)
-  if(${CUDNN_VERSION} VERSION_LESS 7100)
-    list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
-  endif()
 endif()
 
 if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
@@ -482,7 +481,9 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_fast_h2d_copy)
 list(REMOVE_ITEM TEST_OPS test_index_put_op)
+list(REMOVE_ITEM TEST_OPS test_reduce_stride_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
@@ -546,7 +547,6 @@ if(NOT WITH_GPU
     test_incubate_cal_aux_loss
     test_incubate_expand_modality_expert_id
     test_incubate_fused_loss
-    test_incubate_fused_rmsnorm_ext
     test_incubate_int_bincount
     test_incubate_moe_combine
     test_incubate_moe_combine_no_weight
@@ -564,6 +564,15 @@ if(NOT WITH_GPU
     test_fused_transpose_spilt_quant_op
     test_fused_transpose_wlch_split_quant_op
     test_fused_weighted_swiglu_act_quant_op)
+endif()
+
+if(NOT WITH_GPU
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_incubate_fused_rmsnorm_ext)
 endif()
 
 set(has_arch_ge80 FALSE)
@@ -630,7 +639,6 @@ list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_weight_decay)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
-  list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
@@ -648,6 +656,12 @@ if(WITH_GPU
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
 endif()
 py_test_modules(test_index_put_op MODULES test_index_put_op ENVS
+                FLAGS_use_stride_compute_kernel=1)
+if((NOT WIN32) AND (NOT WITH_ROCM))
+  py_test_modules(test_fast_h2d_copy MODULES test_fast_h2d_copy ENVS
+                  FLAGS_use_stride_compute_kernel=1)
+endif()
+py_test_modules(test_reduce_stride_op MODULES test_reduce_stride_op ENVS
                 FLAGS_use_stride_compute_kernel=1)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
                 FLAGS_cudnn_deterministic=1)
@@ -859,6 +873,7 @@ endif()
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
+set_tests_properties(test_legacy_loss_args PROPERTIES TIMEOUT 10)
 set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 250)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
@@ -1006,7 +1021,7 @@ if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient
                        PROPERTIES TIMEOUT 300)
 endif()
-set_tests_properties(test_decorator PROPERTIES TIMEOUT 150)
+set_tests_properties(test_decorator PROPERTIES TIMEOUT 200)
 
 if(APPLE)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)

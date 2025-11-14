@@ -101,20 +101,14 @@ void FFTC2RGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fft_c2c_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::FFTC2CGradKernel,
-                   phi::dtype::complex<float>) {}
+PD_REGISTER_KERNEL(
+    fft_c2c_grad, XPU, ALL_LAYOUT, phi::FFTC2CGradKernel, phi::complex64) {}
 PD_REGISTER_KERNEL(
     fft_c2r_grad, XPU, ALL_LAYOUT, phi::FFTC2RGradKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
-PD_REGISTER_KERNEL(fft_r2c_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::FFTR2CGradKernel,
-                   phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(
+    fft_r2c_grad, XPU, ALL_LAYOUT, phi::FFTR2CGradKernel, phi::complex64) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif

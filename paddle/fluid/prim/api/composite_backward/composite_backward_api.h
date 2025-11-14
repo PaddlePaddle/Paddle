@@ -68,7 +68,7 @@ void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void leaky_relu_grad(const Tensor& out,
                      const Tensor& out_grad,
-                     float negative_slope,
+                     double negative_slope,
                      Tensor* x_grad) {
   if (x_grad) {
     auto condition = greater_than<T>(
@@ -659,8 +659,8 @@ void expand_grad(const Tensor& x,
 template <typename T>
 void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    // dx = dout / x
-    set_output<T>(out_grad / x, x_grad);
+    // dx = dout / conj(x) for complex; equals dout / x for real
+    set_output<T>(out_grad / conj<T>(x), x_grad);
   }
 }
 

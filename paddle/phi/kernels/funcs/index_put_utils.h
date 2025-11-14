@@ -310,7 +310,7 @@ static void CalCompressedDimsWith1AndWithout1(
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 __global__ void range_cuda_kernel(int64_t N, T* out) {
-  int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int64_t idx = threadIdx.x + static_cast<int64_t>(blockDim.x) * blockIdx.x;
 
   if (idx >= N) {
     return;

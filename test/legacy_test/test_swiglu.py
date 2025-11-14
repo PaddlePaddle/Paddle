@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    check_cudnn_version_and_compute_capability,
+    get_device,
+    is_custom_device,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -47,7 +52,7 @@ def swiglu(x, y, out_grad):
     need_convert = False
     assert dtype == y.dtype
     output_dtype = dtype
-    if paddle.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda() or is_custom_device():
         if dtype in [paddle.float16, paddle.bfloat16]:
             output_dtype = paddle.float32
             x = x.astype(output_dtype)
@@ -76,7 +81,7 @@ def fused_swiglu(x, y, out_grad):
     out.backward(out_grad)
 
     output_dtype = x.dtype
-    if paddle.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda() or is_custom_device():
         if x.dtype in [paddle.float16, paddle.bfloat16]:
             output_dtype = paddle.float32
     ret = [
@@ -123,13 +128,14 @@ class TestSwiGLUDygraph(unittest.TestCase):
 
     def check_dygraph(self, shape):
         metas = [('cpu', paddle.float32), ('cpu', paddle.float64)]
-        if paddle.is_compiled_with_cuda():
-            metas.append(('gpu', paddle.float32))
-            metas.append(('gpu', paddle.float64))
-            metas.append(('gpu', paddle.float16))
-            prop = paddle.device.cuda.get_device_properties()
-            if prop.major >= 8:
-                metas.append(('gpu', paddle.bfloat16))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            metas.append((get_device(), paddle.float32))
+            metas.append((get_device(), paddle.float64))
+            metas.append((get_device(), paddle.float16))
+            if check_cudnn_version_and_compute_capability(
+                min_device_capability=8
+            ):
+                metas.append((get_device(), paddle.bfloat16))
 
         for device, dtype in metas:
             origin_device = paddle.get_device()
@@ -232,7 +238,7 @@ class TestSwigluOp2(TestSwigluOp):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_dist(),
+    not (paddle.base.core.is_compiled_with_dist() or is_custom_device()),
     "The spmd rule is should be tested with distributed=ON",
 )
 class TestSwigluSpmd(unittest.TestCase):
@@ -279,7 +285,8 @@ class TestSwigluSpmd(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "mamtul 0 size only with in cuda"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "mamtul 0 size only with in cuda",
 )
 class TestSwiglu0SizeDygraph(unittest.TestCase):
     def test_swiglu(self):

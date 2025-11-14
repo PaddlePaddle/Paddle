@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -80,9 +85,9 @@ class TestSqueezeOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOpBF16OP(TestSqueezeOp):
     def init_dtype(self):
@@ -98,9 +103,9 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOp1BF16Op(TestSqueezeOp):
     def init_dtype(self):
@@ -159,9 +164,9 @@ class TestSqueezeOp2(TestSqueezeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOp2BF16Op(TestSqueezeOp):
     def init_dtype(self):
@@ -185,9 +190,9 @@ class TestSqueezeOp4(TestSqueezeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOp3BF16Op(TestSqueezeOp):
     def init_dtype(self):
@@ -256,7 +261,7 @@ class TestSqueezeCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+            self.places.append(get_device_place())
         self.func = paddle.squeeze
         self.init_data()
         self.init_case()

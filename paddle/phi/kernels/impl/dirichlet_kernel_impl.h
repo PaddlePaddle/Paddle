@@ -327,7 +327,7 @@ struct DirichletSampler<GPUContext, T> {
 #endif
 
 template <typename T, typename Context>
-void Dirichletkernel(const Context& dev_ctx,
+void DirichletKernel(const Context& dev_ctx,
                      const DenseTensor& alpha,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);

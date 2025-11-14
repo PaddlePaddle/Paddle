@@ -19,8 +19,11 @@ from op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
     skip_check_grad_ci,
 )
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -143,7 +146,8 @@ class TestReshapeOp_ZeroSize(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestReshapeBF16Op(OpTest):
@@ -509,7 +513,9 @@ class TestReshapeAPI(unittest.TestCase):
 
     def _test_static_dtype(self):
         places = [paddle.CPUPlace()] + (
-            [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
+            [get_device_place()]
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
+            else []
         )
 
         dtypes = [
@@ -529,9 +535,8 @@ class TestReshapeAPI(unittest.TestCase):
         for place in places:
             for dtype in dtypes:
                 # core is not compiled with CUDA and not support the bfloat16
-                if (
-                    dtype == 'bfloat16'
-                    and not base.core.is_compiled_with_cuda()
+                if dtype == 'bfloat16' and not (
+                    base.core.is_compiled_with_cuda() or is_custom_device()
                 ):
                     continue
 
@@ -614,7 +619,6 @@ class TestReshapeOpError(unittest.TestCase):
         self.reshape = paddle.reshape
 
     def _test_errors(self):
-        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.
             def test_x_type():
@@ -658,7 +662,6 @@ class TestReshapeOpError(unittest.TestCase):
                 self.reshape(x3, [-1, -2, 5])
 
             self.assertRaises(AssertionError, test_shape_3)
-        paddle.disable_static()
 
     def test_paddle_api_error(self):
         self._set_paddle_api()
@@ -721,34 +724,32 @@ class TestReshapeZeroTensor(unittest.TestCase):
 
 class TestReshapeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
-        paddle.disable_static()
-        x = paddle.rand([])
-        x.stop_gradient = False
+        with paddle.base.dygraph.guard():
+            x = paddle.rand([])
+            x.stop_gradient = False
 
-        out = paddle.reshape(x, [1])
-        out.retain_grads()
-        out.backward()
-        self.assertEqual(x.grad.shape, [])
-        self.assertEqual(out.shape, [1])
-        self.assertEqual(out.grad.shape, [1])
+            out = paddle.reshape(x, [1])
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(x.grad.shape, [])
+            self.assertEqual(out.shape, [1])
+            self.assertEqual(out.grad.shape, [1])
 
-        out = paddle.reshape(x, [-1, 1])
-        out.retain_grads()
-        out.backward()
-        self.assertEqual(x.grad.shape, [])
-        self.assertEqual(out.shape, [1, 1])
-        self.assertEqual(out.grad.shape, [1, 1])
+            out = paddle.reshape(x, [-1, 1])
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(x.grad.shape, [])
+            self.assertEqual(out.shape, [1, 1])
+            self.assertEqual(out.grad.shape, [1, 1])
 
-        x = paddle.rand([1])
-        x.stop_gradient = False
-        out = paddle.reshape(x, [])
-        out.retain_grads()
-        out.backward()
-        self.assertEqual(x.grad.shape, [1])
-        self.assertEqual(out.shape, [])
-        self.assertEqual(out.grad.shape, [])
-
-        paddle.enable_static()
+            x = paddle.rand([1])
+            x.stop_gradient = False
+            out = paddle.reshape(x, [])
+            out.retain_grads()
+            out.backward()
+            self.assertEqual(x.grad.shape, [1])
+            self.assertEqual(out.shape, [])
+            self.assertEqual(out.grad.shape, [])
 
     def test_static(self):
         main_prog = base.Program()
@@ -842,7 +843,9 @@ class TestReshapeAliasAPI(unittest.TestCase):
 
     def _test_static_dtype(self):
         places = [paddle.CPUPlace()] + (
-            [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
+            [get_device_place()]
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
+            else []
         )
 
         dtypes = [
@@ -862,9 +865,8 @@ class TestReshapeAliasAPI(unittest.TestCase):
         for place in places:
             for dtype in dtypes:
                 # core is not compiled with CUDA and not support the bfloat16
-                if (
-                    dtype == 'bfloat16'
-                    and not base.core.is_compiled_with_cuda()
+                if dtype == 'bfloat16' and not (
+                    base.core.is_compiled_with_cuda() or is_custom_device()
                 ):
                     continue
 
@@ -937,8 +939,136 @@ class TestReshapeAliasAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             run_test_cases(paddle.CPUPlace())
-            if paddle.base.core.is_compiled_with_cuda():
-                run_test_cases(paddle.CUDAPlace(0))
+            if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+                run_test_cases(get_device_place())
+
+
+class TestReshapeWithTensorShape(unittest.TestCase):
+    """
+    reshape supports shape like:
+    paddle.reshape(x, shape=[1, 2, 3])
+    paddle.reshape(x, shape=[1, Tensor(2), 3])
+    paddle.reshape(x, shape=Tensor([1, 2, 3]))
+    paddle.reshape(x, 1, 2, 3)  # Compatible usage
+    paddle.reshape(x, 1, Tensor(2), 3)  # Compatible usage
+    """
+
+    @static_guard()
+    def check_reshape_static(
+        self, fn, x_shape, expected_out_shape, dynamic_dims=[]
+    ):
+        main_program = Program()
+        with program_guard(main_program):
+            x = paddle.static.data('x', shape=x_shape, dtype='float32')
+            out = fn(x)
+            if dynamic_dims:
+                expected_out_shape_with_dynamic = list(expected_out_shape)
+                for dim in dynamic_dims:
+                    expected_out_shape_with_dynamic[dim] = -1
+                self.assertEqual(out.shape, expected_out_shape_with_dynamic)
+            else:
+                self.assertEqual(out.shape, expected_out_shape)
+
+        exe = paddle.static.Executor()
+        (out_np,) = exe.run(
+            main_program,
+            feed={'x': np.random.random(x_shape)},
+            fetch_list=[out],
+        )
+        self.assertEqual(list(out_np.shape), expected_out_shape)
+
+    @dygraph_guard()
+    def check_reshape_dygraph(self, fn, x_shape, expected_out_shape):
+        x = paddle.to_tensor(np.random.random(x_shape).astype('float32'))
+        out = fn(x)
+        self.assertEqual(list(out.shape), expected_out_shape)
+
+    def check_reshape(self, fn, x_shape, expected_out_shape):
+        self.check_reshape_static(fn, x_shape, expected_out_shape)
+        self.check_reshape_dygraph(fn, x_shape, expected_out_shape)
+
+    def test_reshape_with_list_int(self):
+        def reshape_fn(x):
+            return paddle.reshape(x, shape=[2, 3, 4])
+
+        self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
+
+    def test_reshape_with_list_scalar_tensor(self):
+        def reshape_fn(x):
+            dim0 = paddle.full([], 2, dtype='int64')
+            dim1 = paddle.full([], 3, dtype='int64')
+            dim2 = paddle.full([], 4, dtype='int64')
+            return paddle.reshape(x, shape=[dim0, dim1, dim2])
+
+        self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
+
+    def test_reshape_with_list_scalar_tensor_dynamic_dim(self):
+        def reshape_fn(x):
+            dim0 = paddle.full([], 1, dtype='int64') + 1  # dynamic dim
+            dim1 = paddle.full([], 3, dtype='int64')
+            dim2 = paddle.full([], 4, dtype='int64')
+            return paddle.reshape(x, shape=[dim0, dim1, dim2])
+
+        self.check_reshape_static(
+            reshape_fn,
+            x_shape=[2, 12],
+            expected_out_shape=[2, 3, 4],
+            dynamic_dims=[0],
+        )
+
+    def test_reshape_with_list_mix_int_tensor(self):
+        def reshape_fn(x):
+            dim1 = paddle.full([], 3, dtype='int64')
+            return paddle.reshape(x, shape=[2, dim1, 4])
+
+        self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
+
+    def test_reshape_with_tensor_dynamic_dim(self):
+        def reshape_fn(x):
+            shape_tensor = paddle.to_tensor([1, 2, 3]) + 1  # all dynamic dims
+            return paddle.reshape(x, shape=shape_tensor)
+
+        self.check_reshape_static(
+            reshape_fn,
+            x_shape=[2, 12],
+            expected_out_shape=[2, 3, 4],
+            dynamic_dims=[0, 1, 2],
+        )
+
+    def test_reshape_with_tensor(self):
+        def reshape_fn(x):
+            shape_tensor = paddle.stack(
+                [
+                    paddle.full([], 2, dtype='int64'),
+                    paddle.full([], 3, dtype='int64'),
+                    paddle.full([], 4, dtype='int64'),
+                ]
+            )
+            return paddle.reshape(x, shape=shape_tensor)
+
+        self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
+
+    def test_reshape_with_list_int_compatible(self):
+        def reshape_fn(x):
+            return paddle.reshape(x, 2, 3, 4)
+
+        self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
+
+    def test_reshape_with_list_scalar_tensor_compatible(self):
+        def reshape_fn(x):
+            dim0 = paddle.full([], 2, dtype='int64')
+            dim1 = paddle.full([], 3, dtype='int64')
+            dim2 = paddle.full([], 4, dtype='int64')
+            return paddle.reshape(x, dim0, dim1, dim2)
+
+        self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
+
+    def test_reshape_with_list_mix_int_tensor_compatible(self):
+        def reshape_fn(x):
+            dim1 = paddle.full([], 3, dtype='int64')
+            return paddle.reshape(x, 2, dim1, 4)
+
+        self.check_reshape(reshape_fn, [2, 12], [2, 3, 4])
 
 
 if __name__ == "__main__":

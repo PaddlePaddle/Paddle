@@ -183,10 +183,6 @@
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  python_api:
-    name : [paddle.all,paddle.Tensor.all]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -274,10 +270,6 @@
 
 - op : any
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  python_api:
-    name : [paddle.any, paddle.Tensor.any]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -778,14 +770,10 @@
 
 - op : bmm
   args : (Tensor x, Tensor y)
-  python_api :
-    name : [paddle.bmm, paddle.Tensor.bmm]
-    args_alias:
-      x : [input]
-      y : [mat2]
   output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
+    spmd_rule: BmmInferSpmd
   kernel :
     func : bmm
   backward : bmm_grad
@@ -945,10 +933,6 @@
 
 - op : ceil
   args : (Tensor x)
-  python_api:
-    name : [paddle.ceil, paddle.Tensor.ceil]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -1214,10 +1198,6 @@
 
 - op : cos
   args : (Tensor x)
-  python_api:
-    name: [paddle.cos, paddle.Tensor.cos]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2133,7 +2113,7 @@
   backward : flash_attn_v3_grad
 
 - op : flash_attn_v3_varlen
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, int max_seqlen_q, int max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin)
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, Scalar max_seqlen_q, Scalar max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin)
   output : Tensor(out), Tensor(softmax_lse)
   optional : seqused_q, seqused_k, qv, q_descale, k_descale, v_descale
   infer_meta :
@@ -2209,10 +2189,6 @@
 
 - op : floor
   args : (Tensor x)
-  python_api:
-    name: [paddle.floor, paddle.Tensor.floor]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2993,10 +2969,6 @@
 
 - op : isfinite
   args : (Tensor x)
-  python_api:
-    name : [paddle.isfinite, paddle.Tensor.isfinite]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -3008,10 +2980,6 @@
 
 - op : isinf
   args : (Tensor x)
-  python_api:
-    name : [paddle.isinf, paddle.Tensor.isinf]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -3023,10 +2991,6 @@
 
 - op : isnan
   args : (Tensor x)
-  python_api:
-    name : [paddle.isnan, paddle.Tensor.isnan]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -3121,7 +3085,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : leaky_relu
-  args : (Tensor x, float negative_slope = 0.02f)
+  args : (Tensor x, double negative_slope = 0.02)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3209,10 +3173,6 @@
 
 - op : log
   args : (Tensor x)
-  python_api:
-    name: [paddle.log, paddle.Tensor.log]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3352,7 +3312,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logit
-  args : (Tensor x, float eps = 1e-6f)
+  args : (Tensor x, double eps = 1e-6)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3393,12 +3353,6 @@
 
 - op : logsumexp
   args : (Tensor x, int[] axis={},  bool keepdim=false,  bool reduce_all=false)
-  python_api:
-    name : [paddle.logsumexp,paddle.Tensor.logsumexp]
-    args_alias:
-      use_default_mapping : True
-    pre_process:
-      func : LogsumexpPreProcess(x, axis, reduce_all)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
@@ -4156,7 +4110,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pad3d
-  args : (Tensor x, IntArray paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCDHW")
+  args : (Tensor x, IntArray paddings, str mode = "constant", double pad_value = 0.0, str data_format = "NCDHW")
   output : Tensor(out)
   infer_meta :
     func : Pad3dInferMeta
@@ -4398,6 +4352,19 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
+
+- op : random
+  args : (Tensor x, int64_t from, int64_t to)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomInferMeta
+    param : [x]
+  kernel :
+    func : random
+  inplace : (x -> out)
+  backward: random_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
@@ -4697,13 +4664,6 @@
 
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
-  python_api:
-    name : [paddle.roll, paddle.Tensor.roll]
-    args_alias:
-      axis : [dims]
-      use_default_mapping : True
-    pre_process:
-      func : RollPreProcess(x, shifts, axis)
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
@@ -4755,10 +4715,6 @@
 
 - op : rsqrt
   args : (Tensor x)
-  python_api:
-    name: [paddle.sqrt, paddle.Tensor.rsqrt]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5026,10 +4982,6 @@
 
 - op : sigmoid
   args : (Tensor x)
-  python_api:
-    name : [paddle.sigmoid,paddle.Tensor.sigmoid,paddle.nn.functional.sigmoid]
-    args_alias:
-      use_default_mapping : True
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -5055,10 +5007,6 @@
 
 - op : sign
   args : (Tensor x)
-  python_api :
-    name: [paddle.sign, paddle.Tensor.sign]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5084,10 +5032,6 @@
 
 - op : sin
   args : (Tensor x)
-  python_api :
-    name: [paddle.sin, paddle.Tensor.sin]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5133,8 +5077,18 @@
   backward : slogdet_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : slogdet_v2
+  args : (Tensor x)
+  output : Tensor(sign), Tensor(logdet)
+  infer_meta :
+    func : SlogdetV2InferMeta
+  kernel :
+    func : slogdet_v2
+  backward : slogdet_v2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : softplus
-  args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
+  args : (Tensor x, double beta = 1.0, double threshold = 20.0)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -5232,10 +5186,6 @@
 
 - op : sqrt
   args : (Tensor x)
-  python_api :
-    name : [paddle.sqrt,paddle.Tensor.sqrt]
-    args_alias:
-      x : [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5591,10 +5541,6 @@
 
 - op : tril
   args : (Tensor x, int diagonal=0)
-  python_api :
-    name : [paddle.tril, paddle.Tensor.tril]
-    args_alias:
-      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -5634,10 +5580,6 @@
 
 - op : triu
   args : (Tensor x, int diagonal=0)
-  python_api :
-    name : [paddle.triu, paddle.Tensor.triu]
-    args_alias:
-      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta
@@ -5673,6 +5615,18 @@
   inplace: (input -> out)
   backward : trunc_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : trunc_divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : trunc_divide
+  inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits : paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - op : truncated_gaussian_random

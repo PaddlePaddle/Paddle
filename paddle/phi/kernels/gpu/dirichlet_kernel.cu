@@ -19,7 +19,7 @@
 PD_REGISTER_KERNEL(dirichlet,
                    GPU,
                    ALL_LAYOUT,
-                   phi::Dirichletkernel,
+                   phi::DirichletKernel,
                    float,
                    double,
                    phi::float16,

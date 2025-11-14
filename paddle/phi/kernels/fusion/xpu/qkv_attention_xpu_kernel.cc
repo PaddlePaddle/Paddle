@@ -14,7 +14,6 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
@@ -62,8 +61,14 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
   auto* qkv_data =
       reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_QKV>(qkv));
   float* tmp_mask = nullptr;
-  int batch = q.dims()[0];
-  int max_seq_len = q.dims()[1];
+  int64_t batch = q.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t max_seq_len = q.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int qkv_shape = 0;  // B x L x H x D
   int hidden_dim = head_num * head_dim;
   // no mask input, construct a fake LOD to compute via vsl

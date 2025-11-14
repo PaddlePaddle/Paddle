@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../deprecated/legacy_test")
 from op_test import get_places
 from test_pool2d_op import (
     avg_pool2D_forward_naive,
@@ -436,6 +433,24 @@ class TestPool2D_API(unittest.TestCase):
                 pool_type='lp',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            # test input alias
+            result = lp_pool2d(
+                input=input,
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=1,
+                ceil_mode=False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            # test 5th positional argument with bool
+            result = lp_pool2d(
+                input,
+                norm_type,
+                2,
+                1,
+                False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
                 norm_type=norm_type,
@@ -444,6 +459,15 @@ class TestPool2D_API(unittest.TestCase):
                 ceil_mode=False,
             )
             result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.LPPool2d(
+                norm_type,
+                2,
+                1,
+                False,
+            )
+            result = lp_pool2d_dg(input=input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_lp_dygraph_results_norm_type_is_inf(self, place):
@@ -621,7 +645,7 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_lp_float16_static(self, place):
-        if isinstance(place, base.CUDAPlace):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -692,7 +716,7 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_lp_dygraph_float16(self, place):
-        if isinstance(place, base.CUDAPlace):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 32, 32]).astype("float16")
                 input = paddle.to_tensor(input_np)
@@ -770,6 +794,13 @@ class TestPool2D_API(unittest.TestCase):
             self.check_lp_static_results(place)
             self.check_lp_float64_static(place)
             self.check_lp_float16_static(place)
+        paddle.disable_static()
+
+    def test_torch_compatible(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        paddle.enable_static()
+        for place in self.places:
+            self.check_max_static_results(place)
         paddle.disable_static()
 
     def test_pool2d(self):

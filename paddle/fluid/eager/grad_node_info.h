@@ -76,10 +76,7 @@ class Edge {
     return grad_node_;
   }
 
-  void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
-    VLOG(7) << "Resetting Edge's Grad Node";
-    grad_node_ = node;
-  }
+  void SetGradNode(const std::shared_ptr<GradNodeBase>& node);
 
   std::pair<size_t, size_t> GetEdgeRankInfo() const {
     return std::make_pair(in_slot_id_, in_rank_);
@@ -142,12 +139,11 @@ class GradSlotMeta {
     if (!HasTensorMeta()) {
       PADDLE_THROW(common::errors::Fatal(
           "meta_ of GradSlotMeta has not been initialized yet."
-          "You're expected to check Edge availability with HasTensorMeta()"
+          "You're expected to check Edge availability with HasTensorMeta() "
           "before calling GetTensorMeta() interface."));
     }
     return *meta_.get();
   }
-
   void SetPlace(const phi::Place& place) { place_ = place; }
   const phi::Place& GetPlace() const { return place_; }
 
@@ -180,6 +176,12 @@ class GradSlotMeta {
   }
 
   bool IsDistMeta() const { return is_dist_meta_; }
+  void SetForwardTensorName(const std::string& name) {
+    forward_tensor_name_ = name;
+  }
+  const std::string& GetForwardTensorName() const {
+    return forward_tensor_name_;
+  }
 
  private:
   bool stop_gradient_{false};
@@ -192,14 +194,15 @@ class GradSlotMeta {
   phi::distributed::TensorDistAttr dist_attr_;
   phi::DDim dist_tensor_global_dims_;
   bool is_dist_meta_{false};
+  std::string forward_tensor_name_;
 };
 
 class GradNodeBase {
  public:
-  GradNodeBase() { VLOG(7) << "Construct GradNodeBase"; }
+  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   TEST_API GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
-  virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
+  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
 
   /**
    * operator() designed to contain the real backward execution logic, it should

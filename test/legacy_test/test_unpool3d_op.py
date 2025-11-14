@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_places, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -273,7 +273,7 @@ class TestUnpool3DOpException(unittest.TestCase):
             r"The indices should have \[N, C, D, H, W\] format",
             indices_rank_error,
         )
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.assertRaisesRegex(
                 ValueError,
                 r"index should less than output",
@@ -407,6 +407,48 @@ class TestUnpool3DOpAPI_dygraph4(unittest.TestCase):
             )
 
         paddle.enable_static()
+
+
+class TestUnpool3DOpAPI_Compatibility(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        input_np = np.random.rand(1, 3, 4, 4, 6)
+        self.input_x = paddle.to_tensor(input_np)
+        Pool3d = paddle.nn.MaxPool3D(kernel_size=2, stride=2, return_mask=True)
+        self.output, self.indices = Pool3d(self.input_x)
+        self.expected_output_unpool = unpool3dmax_forward_naive(
+            self.output.numpy(),
+            self.indices.numpy(),
+            [2, 2, 2],
+            [2, 2, 2],
+            [0, 0, 0],
+            [4, 4, 6],
+        )
+
+    def test_MaxPool3D_API(self):
+        # test class alias paddle.nn.MaxUnpool3d
+        max_unpool_3d = paddle.nn.MaxUnpool3d(
+            kernel_size=2, stride=2, output_size=(1, 3, 4, 4, 6)
+        )
+        output_unpool = max_unpool_3d(x=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test func alias
+        output_unpool = max_unpool_3d(input=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test output_size argument
+        max_unpool_3d = paddle.nn.MaxUnpool3d(kernel_size=2, stride=2)
+        output_unpool = max_unpool_3d(
+            input=self.output, indices=self.indices, output_size=(1, 3, 4, 4, 6)
+        )
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
 
 
 class TestUnpool3DOpAPI_static(unittest.TestCase):

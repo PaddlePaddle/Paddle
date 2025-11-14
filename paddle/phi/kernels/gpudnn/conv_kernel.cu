@@ -29,8 +29,6 @@
 #endif
 
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/padding.h"
@@ -94,7 +92,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn());
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_CUDA)
   // cudnn 7 can support groups, no need to do it manually
   // FIXME(typhoonzero): find a better way to disable groups
   // rather than setting it to 1.
@@ -163,7 +161,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   workspace_size = fwd_result.workspace_size;
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_CUDA)
   // when groups > 1, SearchAlgorithm find algo is CUDNN_CONVOLUTION_\
     // FWD_ALGO_WINOGRAD_NONFUSED, but this kind of algorithm is unstable
   // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
@@ -614,7 +612,7 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::float16,
                    phi::bfloat16) {}
 #else

@@ -63,7 +63,9 @@ struct FcTypeTraits<float16> {
 
 template <typename T, bool DoRelu>
 __global__ void bias_relu_v4(const int num, const T* bias, T* data, int K) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (tid < num) {
     int bias_idx = tid % K;
     const T bias_ptr = bias[bias_idx];

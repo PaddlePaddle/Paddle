@@ -135,9 +135,21 @@ class TestErrors(unittest.TestCase):
             base_version.rc,
         ] = ['1', '4', '1', '0']
 
-        self.assertRaises(Exception, test_version)
-        self.assertRaises(Exception, test_version_1)
-        self.assertRaises(Exception, test_version_2)
+        self.assertRaisesRegex(
+            Exception,
+            "VersionError: PaddlePaddle version 100 or higher is required, but 0.0.0 installed",
+            test_version,
+        )
+        self.assertRaisesRegex(
+            Exception,
+            r"VersionError: PaddlePaddle version in \[0.0.0, 1.4\] required, but 0.0.0 installed",
+            test_version_1,
+        )
+        self.assertRaisesRegex(
+            Exception,
+            r"VersionError: PaddlePaddle version in \[1.4.0, 1.2\] required, but 0.0.0 installed.",
+            test_version_2,
+        )
 
         base_version.full_version = ori_full_version
         [

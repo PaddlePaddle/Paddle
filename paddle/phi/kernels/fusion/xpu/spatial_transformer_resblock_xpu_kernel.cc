@@ -113,10 +113,22 @@ void SpatialTransformerResblockXPUKernel(
   std::vector<std::vector<int>> kernel_dims_2d;
   // prepare conv params
   for (size_t i = 0; i < conv_filter.size(); i++) {
-    int xn = conv_filter[i]->dims()[0];
-    int nc = conv_filter[i]->dims()[1];
-    int nh = conv_filter[i]->dims()[2];
-    int nw = conv_filter[i]->dims()[3];
+    int64_t xn = conv_filter[i]->dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t nc = conv_filter[i]->dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t nh = conv_filter[i]->dims()[2];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t nw = conv_filter[i]->dims()[3];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     xft_conv_weights_.emplace_back(
         const_cast<int16_t*>(
             reinterpret_cast<const int16_t*>(conv_filter[i]->data<int16_t>())),

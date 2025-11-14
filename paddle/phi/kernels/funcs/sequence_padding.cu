@@ -86,7 +86,7 @@ class PaddingDenseTensorFunctor<phi::GPUContext, T> {
             max_seq_len,
             pad_seq_len,
             max_seq_len));
-    int step_width = seq_tensor.numel() / seq_tensor_dims[0];
+    int64_t step_width = seq_tensor.numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
 
     CheckDims(seq_tensor_dims,
@@ -105,7 +105,7 @@ class PaddingDenseTensorFunctor<phi::GPUContext, T> {
             pad_value.numel(),
             step_width));
 
-    const int kBlockSize = 512;
+    const int64_t kBlockSize = 512;
 
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
@@ -155,7 +155,7 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = max_seq_len;
     }
-    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    int64_t step_width = seq_tensor->numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
 
     CheckDims(seq_tensor_dims,
@@ -165,7 +165,7 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
               step_width,
               layout);
 
-    const int kBlockSize = 512;
+    const int64_t kBlockSize = 512;
 
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
@@ -199,12 +199,12 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
 
 template class PaddingDenseTensorFunctor<phi::GPUContext, int>;
 template class PaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class PaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::GPUContext, float>;
 template class PaddingDenseTensorFunctor<phi::GPUContext, double>;
 
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, int>;
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs

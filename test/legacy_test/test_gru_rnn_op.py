@@ -17,15 +17,13 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 from paddle.base import core
 
-sys.path.append("../deprecated/rnn")
-from convert import get_params_for_net
-
 sys.path.append("../rnn")
+from convert import get_params_for_net
 from rnn_numpy import GRU
 
 random.seed(2)
@@ -129,7 +127,7 @@ class TestGRUOp(OpTest):
         if core.is_compiled_with_rocm():
 
             def rocm_rnn_get_place():
-                places = [core.CUDAPlace(0)]
+                places = [get_device_place()]
                 return places
 
             self._get_places = rocm_rnn_get_place

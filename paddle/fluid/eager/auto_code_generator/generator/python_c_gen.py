@@ -20,6 +20,7 @@ from codegen_utils import (
     GeneratorBase,
     GetForwardFunctionName,
     GetInplacedFunctionName,
+    IsUsePredefinedOut,
     IsVectorTensorType,
     ParsePythonAPIInfoFromYAML,
 )
@@ -91,6 +92,7 @@ PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
     '    auto& {} = {}("{}", "{}", args, {}, {});\n'
 )
 PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto& {} = GetTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
+PARSE_PYTHON_C_TENSORS_LIST_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetTensorListFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
 PARSE_PYTHON_C_OPTIONAL_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetOptionalTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
 CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     '    {} = {}("{}", "{}", args, {}, {}, mesh);\n'
@@ -450,16 +452,27 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         )
                     )
                 else:
-                    get_eager_tensor_str += (
-                        PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                    if not need_parse_python_api_args:
+                        get_eager_tensor_str += (
+                            PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                                name,
+                                "GetTensorListFromArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                "false",
+                            )
+                        )
+                    else:
+                        keywords = _get_keywords(name, args_alias_map)
+                        get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_LIST_FROM_ARGS_OR_KWARGS_TEMPLATE.format(
                             name,
-                            "GetTensorListFromArgs",
                             forward_api_name,
                             name,
                             pos,
+                            keywords,
                             "false",
                         )
-                    )
             else:
                 if is_optional:
                     if need_parse_python_api_args:
@@ -700,19 +713,20 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
         get_predefined_out_str = ""
-        if (
-            not no_predefined_out_tensor
-            and len(self.forward_outputs_position_map) == 1
-            and next(iter(self.forward_outputs_position_map.values()))[0]
-            == "Tensor"
-            and forward_api_name != "empty_like"
-        ):
-            dygraph_function_call_str = (
-                dygraph_function_call_str + ", predefined_out"
+        if not no_predefined_out_tensor and forward_api_name != "empty_like":
+            forward_outputs_position_list = list(
+                self.forward_outputs_position_map.values()
             )
-            get_predefined_out_str = (
-                "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
-            )
+            if IsUsePredefinedOut(forward_outputs_position_list):
+                length = len(forward_outputs_position_list)
+                if length == 1:
+                    get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
+                else:
+                    get_predefined_out_str = f"    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_{length}(kwargs);"
+
+                dygraph_function_call_str = (
+                    dygraph_function_call_str + ", predefined_out"
+                )
 
         # Generate Python-C Function Definitions
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(

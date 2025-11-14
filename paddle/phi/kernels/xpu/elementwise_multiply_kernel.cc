@@ -51,12 +51,11 @@ void MultiplyKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void MultiplyKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void MultiplyKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                const DenseTensor& x,
+                                                const DenseTensor& y,
+                                                DenseTensor* out) {
+  using T = phi::complex64;
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -89,7 +88,7 @@ PD_REGISTER_KERNEL(multiply,
                    phi::float16,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    float,
                    int,

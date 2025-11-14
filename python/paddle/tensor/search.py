@@ -465,7 +465,7 @@ def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     illegal_keys={'input', 'dim'},
     func_name='paddle.sort',
     correct_name='paddle.compat.sort',
-    url_suffix="torch/torch.sort",
+    url_suffix="torch.sort",
 )
 def sort(
     x: Tensor,
@@ -977,7 +977,14 @@ def index_sample(x: Tensor, index: Tensor) -> Tensor:
         return out
 
 
-def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def masked_select(
+    x: Tensor,
+    mask: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
@@ -989,8 +996,10 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
+            alias: ``input``.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A 1-D Tensor which is the same data type  as ``x``.
@@ -1022,7 +1031,7 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
             check_variable_and_dtype(
                 mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
             )
-        return _C_ops.masked_select(x, mask)
+        return _C_ops.masked_select(x, mask, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -1129,12 +1138,9 @@ def topk(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        values, indices = _C_ops.topk(x, k, axis, largest, sorted)
+        values, indices = _C_ops.topk(x, k, axis, largest, sorted, out=out)
         if out is not None:
-            out_values, out_indices = out
-            out_values = paddle.assign(values, output=out_values)
-            out_indices = paddle.assign(indices, output=out_indices)
-            return TopKRetType(values=out_values, indices=out_indices)
+            return TopKRetType(values=out[0], indices=out[1])
         return TopKRetType(values=values, indices=indices)
     else:
         helper = LayerHelper("top_k_v2", **locals())
@@ -1162,23 +1168,29 @@ def topk(
         return values, indices
 
 
+@param_two_alias(["x", "input"], ["sorted_sequence", "boundaries"])
 def bucketize(
     x: Tensor,
     sorted_sequence: Tensor,
     out_int32: bool = False,
     right: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     This API is used to find the index of the corresponding 1D tensor `sorted_sequence` in the innermost dimension based on the given `x`.
 
     Args:
         x (Tensor): An input N-D tensor value with type int32, int64, float32, float64.
+            alias: ``input``.
         sorted_sequence (Tensor): An input 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
+            alias: ``boundaries``.
         out_int32 (bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
         right (bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `x`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
                                The default value is False and it shows the lower bounds.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor (the same sizes of the `x`), return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
@@ -1223,15 +1235,20 @@ def bucketize(
         raise ValueError(
             f"sorted_sequence tensor must be 1 dimension, but got dim {sorted_sequence.dim()}"
         )
-    return searchsorted(sorted_sequence, x, out_int32, right, name)
+    return searchsorted(sorted_sequence, x, out_int32, right, name, out=out)
 
 
+@param_one_alias(["values", "input"])
 def searchsorted(
     sorted_sequence: Tensor,
     values: Tensor,
     out_int32: bool = False,
     right: bool = False,
     name: str | None = None,
+    *,
+    side: str | None = None,
+    out: Tensor | None = None,
+    sorter: Tensor | None = None,
 ) -> Tensor:
     """
     Find the index of the corresponding `sorted_sequence` in the innermost dimension based on the given `values`.
@@ -1239,10 +1256,14 @@ def searchsorted(
     Args:
         sorted_sequence (Tensor): An input N-D or 1-D tensor with type int32, int64, float16, float32, float64, bfloat16. The value of the tensor monotonically increases in the innermost dimension.
         values (Tensor): An input N-D tensor value with type int32, int64, float16, float32, float64, bfloat16.
+            alias: ``input``.
         out_int32 (bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
         right (bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
                                The default value is False and it shows the lower bounds.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        side (str|None, optional): The same as right but preferred. `left` corresponds to False for right and `right` corresponds to True for right. It will error if this is set to `left` while right is True. Default value is None.
+        sorter (Tensor|None, optional): if provided, a tensor matching the shape of the unsorted `sorted_sequence` containing a sequence of indices that sort it in the ascending order on the innermost dimension
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor (the same sizes of the `values`), return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
@@ -1274,8 +1295,18 @@ def searchsorted(
              [1, 3, 4, 5]])
 
     """
+    # If side is present, override the value of right if needed.
+    if side is not None and side == "right":
+        right = True
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
+        if sorter is not None:
+            sorted_sequence = sorted_sequence.take_along_axis(
+                axis=-1, indices=sorter
+            )
+        return _C_ops.searchsorted(
+            sorted_sequence, values, out_int32, right, out=out
+        )
     else:
         check_variable_and_dtype(
             sorted_sequence,

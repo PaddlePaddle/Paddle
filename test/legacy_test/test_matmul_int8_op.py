@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
-from test_sparse_attention_op import get_cuda_version
+from op_test import get_cuda_version, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -25,7 +24,8 @@ paddle.disable_static()
 
 # TODO: verify the requirements of CUDA ARCH
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11060,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11060,
     "MatmulInt8 requires CUDA >= 11.6",
 )
 class TestMatmulInt8(unittest.TestCase):

@@ -22,13 +22,14 @@ namespace phi {
 template <typename T, typename Context>
 void SoftplusKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    float beta,
-                    float threshold UNUSED,
+                    double beta,
+                    double threshold UNUSED,
                     DenseTensor* out) {
-  funcs::SoftplusOneDNNHandler<T> handler(dev_ctx, &x, beta);
+  float beta_f = static_cast<float>(beta);
+  funcs::SoftplusOneDNNHandler<T> handler(dev_ctx, &x, beta_f);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
-  auto beta_memory_p = handler.AcquireBetaMemory(&beta);
+  auto beta_memory_p = handler.AcquireBetaMemory(&beta_f);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
   if (x.IsSharedBufferWith(*out)) {
     dst_memory_p = src_memory_p;
@@ -53,9 +54,5 @@ void SoftplusKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(softplus,
-                   OneDNN,
-                   ONEDNN,
-                   phi::SoftplusKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    softplus, OneDNN, ONEDNN, phi::SoftplusKernel, float, phi::bfloat16) {}

@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
+from paddle import base
 from paddle.base import core
 
 
@@ -187,12 +188,18 @@ class TestIscloseError(unittest.TestCase):
         y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')
 
         def test_rtol():
-            result = paddle.isclose(x, y, rtol=True)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                result = paddle.isclose(x, y, rtol="True")
 
         self.assertRaises(TypeError, test_rtol)
 
         def test_atol():
-            result = paddle.isclose(x, y, rtol=True)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                result = paddle.isclose(x, y, atol="True")
 
         self.assertRaises(TypeError, test_atol)
 
@@ -204,7 +211,7 @@ class TestIscloseError(unittest.TestCase):
 
 class TestIscloseOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x_data = np.random.rand(10, 10).astype('float16')
             y_data = np.random.rand(10, 10).astype('float16')
             main = paddle.static.Program()
@@ -218,7 +225,7 @@ class TestIscloseOpFp16(unittest.TestCase):
                 )
                 out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
 
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(startup)
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
@@ -233,8 +240,8 @@ class TestIscloseOpFloat16(TestIscloseOp):
         self.equal_nan = False
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, check_pir=True)
 
@@ -274,8 +281,8 @@ class TestIscloseOpCp64(unittest.TestCase):
             x = paddle.static.data(shape=[10, 10], name='x', dtype=np.complex64)
             y = paddle.static.data(shape=[10, 10], name='y', dtype=np.complex64)
             out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(startup)
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
@@ -299,8 +306,8 @@ class TestIscloseOpCp128(unittest.TestCase):
                 shape=[10, 10], name='y', dtype=np.complex128
             )
             out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(startup)
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
@@ -353,6 +360,92 @@ class TestIscloseZeroSize(TestIscloseOp):
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
+
+
+class TestIscloseCompatibility:
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        y = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.isclose(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.isclose(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.isclose(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method args
+        out5 = x.isclose(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.isclose(other=y)
+        paddle_dygraph_out.append(out6)
+
+        # Numpy reference  out
+        ref_out = np.isclose(self.np_input, self.np_input)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.isclose(x, y)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.isclose(x=x, y=y)
+            # Key words args for torch
+            out3 = paddle.isclose(input=x, other=y)
+            # Tensor method args
+            out4 = x.isclose(y)
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input, "y": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.isclose(self.np_input, self.np_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+    def test_rol_dtype_error(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            rol = paddle.static.data(name="rol", shape=[1], dtype="float32")
+            # Position args (args)
+            out1 = paddle.isclose(x, y, rol=rol)
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input, "y": self.np_input, "rol": 0.1},
+                fetch_list=[out1],
+            )
+            ref_out = np.isclose(self.np_input, self.np_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
 
 
 if __name__ == "__main__":

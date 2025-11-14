@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-import re
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.base.framework import in_pir_mode
@@ -24,21 +22,10 @@ from paddle.base.framework import in_pir_mode
 paddle.seed(100)
 
 
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
-
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
-    "paddle is not compiled with CUDA and cuda version need to >= 11.0",
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
+    "paddle is not compiled with CUDA",
 )
 class TestCsrMv(unittest.TestCase):
     # x: csr-matrix, y: dense-vec, out: dense-vec
@@ -77,8 +64,9 @@ class TestCsrMv(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
-    "paddle is not compiled with CUDA and cuda version need to >= 11.0",
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
+    "paddle is not compiled with CUDA",
 )
 class TestCooMv(unittest.TestCase):
     # x: csr-matrix, y: dense-vec, out: dense-vec
@@ -117,8 +105,9 @@ class TestCooMv(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
-    "paddle is not compiled with CUDA and cuda version need to >= 11.0",
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
+    "paddle is not compiled with CUDA",
 )
 class TestCooMvStatic(unittest.TestCase):
     # x: csr-matrix, y: dense-vec, out: dense-vec

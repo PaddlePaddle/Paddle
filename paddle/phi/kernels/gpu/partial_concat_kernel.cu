@@ -14,7 +14,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -34,7 +33,9 @@ __global__ void ConcatPartialCUDAKernel(T **in,
                                         int64_t start_index,
                                         int64_t out_batch_len,
                                         int64_t part_length) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   while (id < all_length) {
     int64_t bs_id = id / out_batch_len;
     int64_t bs_index = id % out_batch_len;

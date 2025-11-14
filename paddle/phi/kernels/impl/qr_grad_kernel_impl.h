@@ -13,7 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -77,8 +76,8 @@ void QrGradKernel(const Context& dev_ctx,
 
   auto a_dims = A.dims();
   int a_rank = a_dims.size();
-  int m = a_dims[a_rank - 2];
-  int n = a_dims[a_rank - 1];
+  int64_t m = a_dims[a_rank - 2];
+  int64_t n = a_dims[a_rank - 1];
 
   if ((m > n) && (!reduced)) {
     PADDLE_THROW(errors::InvalidArgument(

@@ -18,7 +18,13 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    is_custom_device,
+)
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -173,8 +179,8 @@ class TestMultinomialFP16Op3(TestMultinomialFP16Op):
 
 # BF16 OP
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestMultinomialBF16OP(OpTest):
@@ -193,7 +199,7 @@ class TestMultinomialBF16OP(OpTest):
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place_customized(
             self.verify_output, place, check_pir=True
         )
@@ -215,8 +221,8 @@ class TestMultinomialBF16OP(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestMultinomialBF16OP2(TestMultinomialBF16OP):
@@ -231,8 +237,8 @@ class TestMultinomialBF16OP2(TestMultinomialBF16OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestMultinomialBF16OP3(TestMultinomialBF16OP):
@@ -321,8 +327,8 @@ class TestMultinomialApi(unittest.TestCase):
             out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
 
         exe.run(startup_program)
@@ -494,7 +500,7 @@ class TestMultinomialAlias(unittest.TestCase):
             return
 
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(100)
 
         x = paddle.randint(0, 100, [1024, 10000]).astype('float32')
@@ -582,7 +588,7 @@ class TestRandomValue(unittest.TestCase):
 
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(100)
 
         x = paddle.randint(0, 100, [1024, 10000]).astype('float32')

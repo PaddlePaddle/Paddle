@@ -18,6 +18,8 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_uint16_to_float,
+    get_device,
+    get_device_place,
     is_custom_device,
     paddle_static_guard,
 )
@@ -361,8 +363,8 @@ class TestGaussianRandomAPI(unittest.TestCase):
             out = paddle.tensor.random.gaussian([2, 3])
             self.assertEqual(out.dtype, paddle.float64)
 
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.set_device(get_device())
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
@@ -385,8 +387,8 @@ class TestStandardNormalDtype(unittest.TestCase):
             out = paddle.tensor.random.standard_normal([2, 3])
             self.assertEqual(out.dtype, paddle.float64)
 
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.set_device(get_device())
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
@@ -411,7 +413,7 @@ class TestStandardNormalDtype(unittest.TestCase):
 class TestComplexRandnAPI(unittest.TestCase):
     def test_dygraph(self):
         place = (
-            paddle.CUDAPlace(0)
+            get_device_place()
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
@@ -431,7 +433,7 @@ class TestComplexRandnAPI(unittest.TestCase):
 
     def test_static(self):
         place = (
-            paddle.CUDAPlace(0)
+            get_device_place()
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
@@ -476,7 +478,7 @@ class TestRandomValue(unittest.TestCase):
 
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(2021)
         expect = [
             -0.79037829,

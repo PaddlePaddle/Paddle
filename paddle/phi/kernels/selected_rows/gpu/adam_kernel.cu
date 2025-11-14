@@ -18,7 +18,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
@@ -63,7 +62,9 @@ __global__ void SparseAdamCUDAKernelREG(MT beta1,
                                         bool lazy_mode,
                                         int ndim,
                                         bool amsgrad) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr = *lr_;
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
@@ -237,7 +238,10 @@ void AdamDenseParamSparseGradKernel(
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     int threads = 512;
-    int ndim = param.numel();
+    int64_t ndim = param.numel();
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     int blocks = (ndim + threads - 1) / threads;
 
     SparseAdamCUDAKernelREG<T, MPDType>

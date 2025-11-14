@@ -775,9 +775,15 @@ class AdamW(Optimizer):
         optimizer_sharded_state_dict = {}
         optimizer_state_dict = self.state_dict()
         # Build name mapping and remove non-tensor entries from optimizer state
-        static_to_struct_mapping = {
-            v.local_tensor.name: k for k, v in model_sharded_state_dict.items()
-        }
+        static_to_struct_mapping = {}
+        model_sharded_state_dict = dict(
+            sorted(model_sharded_state_dict.items())
+        )
+        for k, v in model_sharded_state_dict.items():
+            # When shared weights exist, the v.local_tensor.name of shared parameters are identical, but only the first parameter has optimizer states. Therefore, only the key-value pairs of the first occurrence in the shared parameter group need to be retained.
+            if v.local_tensor.name not in static_to_struct_mapping:
+                static_to_struct_mapping[v.local_tensor.name] = k
+
         master_weights = optimizer_state_dict.pop("master_weights", None)
         optimizer_state_dict.pop("LR_Scheduler", None)
 
@@ -791,11 +797,20 @@ class AdamW(Optimizer):
 
             # Determine tensor partitioning scheme
             if _MOMENT_NAME in optim_state_type:
-                optimizer_sharded_state_dict[unified_name] = (
-                    create_sharded_weight_with_new_local(
-                        unified_name, tensor, sharded_weight
+                if tensor.is_dist():
+                    optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                        key=unified_name,
+                        local_tensor=tensor,
+                        local_shape=tensor.shape,
+                        global_shape=tensor.shape,
+                        global_offset=sharded_weight.global_offset,
                     )
-                )
+                else:
+                    optimizer_sharded_state_dict[unified_name] = (
+                        create_sharded_weight_with_new_local(
+                            unified_name, tensor, sharded_weight
+                        )
+                    )
             else:  # Non-momentum parameters
                 optimizer_sharded_state_dict[unified_name] = ShardedWeight(
                     key=unified_name,
@@ -811,10 +826,19 @@ class AdamW(Optimizer):
                 struct_name = static_to_struct_mapping[key]
                 sharded_weight = model_sharded_state_dict[struct_name]
                 unified_name = f"{struct_name}.w_0"
-                optimizer_sharded_state_dict[unified_name] = (
-                    create_sharded_weight_with_new_local(
-                        unified_name, tensor, sharded_weight
+                if tensor.is_dist():
+                    optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                        key=unified_name,
+                        local_tensor=tensor,
+                        local_shape=tensor.shape,
+                        global_shape=tensor.shape,
+                        global_offset=sharded_weight.global_offset,
                     )
-                )
+                else:
+                    optimizer_sharded_state_dict[unified_name] = (
+                        create_sharded_weight_with_new_local(
+                            unified_name, tensor, sharded_weight
+                        )
+                    )
 
         return optimizer_sharded_state_dict

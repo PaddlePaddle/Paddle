@@ -109,7 +109,7 @@ PD_REGISTER_KERNEL(split,
                    ONEDNN,
                    phi::SplitKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->check_if_onednn_kernel_support_ = phi::SplitCheckIfOneDNNSupport;
@@ -120,7 +120,7 @@ PD_REGISTER_KERNEL(split_with_num,
                    ONEDNN,
                    phi::SplitWithNumKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->check_if_onednn_kernel_support_ = phi::SplitCheckIfOneDNNSupport;

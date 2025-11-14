@@ -938,6 +938,9 @@ void StridedCopyKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_STRIDEDCOPY_KERNEL(bool, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint16_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint32_t, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint64_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, GPUContext)
@@ -959,15 +962,18 @@ PD_REGISTER_KERNEL(strided_copy,
                    phi::StridedCopyKernel,
                    bool,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    int32_t,
                    int64_t,
                    float,
                    double,
-                   ::phi::float16,
-                   ::phi::bfloat16,
-                   ::phi::complex64,
-                   ::phi::complex128,
-                   ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

@@ -14,9 +14,10 @@
 
 #pragma once
 
-#include <ATen/ATen.h>
+#include <ATen/core/TensorAccessor.h>
 #include <c10/core/Device.h>
 #include <c10/core/MemoryFormat.h>
+#include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
@@ -33,6 +34,26 @@ class PADDLE_API TensorBase {
  public:
   TensorBase() = default;
   TensorBase(const PaddleTensor& tensor) : tensor_(tensor){};  // NOLINT
+  TensorBase(const TensorBase&) = default;
+  TensorBase(TensorBase&&) noexcept = default;
+  ~TensorBase() noexcept = default;
+
+#if defined(_MSC_VER)
+  TensorBase& operator=(const TensorBase& x) & {
+    tensor_ = x.tensor_;
+    return *this;
+  }
+  TensorBase& operator=(TensorBase&& x) & noexcept {
+    tensor_ = std::move(x.tensor_);
+    return *this;
+  }
+#else
+  TensorBase& operator=(const TensorBase& x) & = default;
+  TensorBase& operator=(TensorBase&& x) & noexcept = default;
+#endif
+
+  TensorBase& operator=(const TensorBase&) && = delete;
+  TensorBase& operator=(TensorBase&&) && noexcept = delete;
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
@@ -66,6 +87,9 @@ class PADDLE_API TensorBase {
   }
 
   int64_t size(int64_t dim) const {
+    if (dim < 0) {
+      dim += tensor_.dims().size();
+    }
     return tensor_.dims()[static_cast<int>(dim)];
   }
 
@@ -122,6 +146,23 @@ class PADDLE_API TensorBase {
     return *this;
   }
 
+  at::TensorBase to(
+      at::TensorOptions options = {},
+      bool non_blocking = false,
+      bool copy = false,
+      std::optional<at::MemoryFormat> memory_format = std::nullopt) const {
+    if (options.device_opt().has_value()) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "The `to` method with device option is not supported yet."));
+    }
+    if (memory_format.has_value()) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "The `to` method with memory_format option is not supported yet."));
+    }
+    return paddle::experimental::cast(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()));
+  }
+
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
@@ -166,8 +207,33 @@ class PADDLE_API TensorBase {
 
   bool defined() const { return tensor_.defined(); }
 
-  PaddleTensor _PD_GetInner() const { return tensor_; }
-  PaddleTensor& _PD_GetInner() { return tensor_; }
+  // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
+  // type and
+  // dimension.
+  template <typename T, size_t N>
+  TensorAccessor<T, N> accessor() const& {
+    static_assert(
+        N > 0,
+        "accessor is used for indexing tensor, for scalars use *data_ptr<T>()");
+    TORCH_CHECK(dim() == N,
+                "TensorAccessor expected ",
+                N,
+                " dims but tensor has ",
+                dim());
+    T* ptr = nullptr;
+    if constexpr (std::is_const_v<T>) {
+      ptr = const_data_ptr<T>();
+    } else {
+      ptr = mutable_data_ptr<T>();
+    }
+    return TensorAccessor<T, N>(ptr, sizes().data(), strides().data());
+  }
+  template <typename T, size_t N>
+  TensorAccessor<T, N> accessor() && = delete;
+
+  const PaddleTensor& _PD_GetInner() const& { return tensor_; }
+  PaddleTensor& _PD_GetInner() & { return tensor_; }
+  PaddleTensor&& _PD_GetInner() && { return std::move(tensor_); }
 
  protected:
   PaddleTensor tensor_;

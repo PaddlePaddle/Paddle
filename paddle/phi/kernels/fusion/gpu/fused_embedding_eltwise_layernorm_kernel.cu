@@ -16,13 +16,13 @@
 #include <type_traits>
 
 #include "paddle/common/errors.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/emb_eltwise_layer_norm_functor.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_embedding_eltwise_layernorm_kernel.h"
 
 namespace phi {
 namespace fusion {
@@ -126,7 +126,7 @@ void EmbeddingEltWiseLayerNormKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(fused_embedding_eltwise_layernorm,
                    GPU,
                    ALL_LAYOUT,

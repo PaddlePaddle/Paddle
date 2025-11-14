@@ -24,6 +24,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -32,6 +33,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -40,6 +42,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "False",
         },
         {
@@ -48,6 +51,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "False",
         },
         {
@@ -56,6 +60,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "False",
         },
         {
@@ -64,6 +69,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -72,10 +78,69 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
-        # {"test_type": "optimizer", "layer_type": "DygraphShardingOptimizer", "world_size": 2, "tp": 1, "dp": 2},
-        # {"test_type": "optimizer", "layer_type": "DygraphShardingOptimizerV2", "world_size": 2, "tp": 1, "dp": 2},
+        {
+            "test_type": "optimizer",
+            "layer_type": "AdamW",
+            "world_size": 2,
+            "tp": 2,
+            "sharding_degree": 1,
+            "has_bias": "False",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizer",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "False",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizerV2",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "False",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "AdamW",
+            "world_size": 2,
+            "tp": 2,
+            "sharding_degree": 1,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizer",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizerV2",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "GroupShardedOptimizerStage2",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
     ],
     "4_card_tests": [
         {
@@ -84,6 +149,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 4,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -92,6 +158,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 4,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -100,6 +167,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 2,
             "dp": 2,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -108,6 +176,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 2,
             "dp": 2,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
     ],
@@ -138,6 +207,19 @@ class TestParallelLayersWith4Devices(test_base.CommunicationTestDistBase):
                 "sharded_state_dict_logic.py",
                 user_defined_envs=envs,
             )
+
+
+class TestMergeShardedAOA(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=2, timeout=120)
+
+    def test_merge_sharded(self):
+        config = TEST_CONFIGS["2_card_tests"][0]
+        envs = {k: str(v) for k, v in config.items()}
+        self.run_test_case(
+            "merge_sharded_state_dict.py",
+            user_defined_envs=envs,
+        )
 
 
 if __name__ == "__main__":

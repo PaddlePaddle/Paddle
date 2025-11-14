@@ -104,12 +104,12 @@ SpmdInfo StanhGradInfoSpmd(const DistMetaTensor& x,
                            const float scale_b);
 
 SpmdInfo SoftplusInfoSpmd(const DistMetaTensor& x,
-                          const float beta,
-                          const float threshold);
+                          const double beta,
+                          const double threshold);
 SpmdInfo SoftplusGradInfoSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad,
-                              const float beta,
-                              const float threshold);
+                              const double beta,
+                              const double threshold);
 
 SpmdInfo SoftshrinkInfoSpmd(const DistMetaTensor& x, const float threshold);
 SpmdInfo SoftshrinkGradInfoSpmd(const DistMetaTensor& x,
@@ -124,9 +124,9 @@ SpmdInfo ThresholdedReluGradInfoSpmd(const DistMetaTensor& x,
                                      const float threshold,
                                      const float value);
 
-SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const float eps);
+SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, const double eps);
 SpmdInfo LogitGradInfoSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
-                           const float eps);
+                           const double eps);
 }  // namespace distributed
 }  // namespace phi

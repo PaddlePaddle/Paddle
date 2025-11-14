@@ -38,20 +38,20 @@ void UnfoldGradKernel(const Context& dev_ctx,
   }
 
   const auto& x_dims = x_grad->dims();
-  const int batch_size = static_cast<int>(x_dims[0]);
+  const int64_t batch_size = x_dims[0];
 
-  int out_height = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[2]),
-                                              kernel_sizes[0],
-                                              dilations[0],
-                                              paddings[0],
-                                              paddings[2],
-                                              strides[0]);
-  int out_width = phi::funcs::CalcOutputSize(static_cast<int>(x_dims[3]),
-                                             kernel_sizes[1],
-                                             dilations[1],
-                                             paddings[1],
-                                             paddings[3],
-                                             strides[1]);
+  int64_t out_height = phi::funcs::CalcOutputSize(x_dims[2],
+                                                  kernel_sizes[0],
+                                                  dilations[0],
+                                                  paddings[0],
+                                                  paddings[2],
+                                                  strides[0]);
+  int64_t out_width = phi::funcs::CalcOutputSize(x_dims[3],
+                                                 kernel_sizes[1],
+                                                 dilations[1],
+                                                 paddings[1],
+                                                 paddings[3],
+                                                 strides[1]);
 
   DDim x_shape = common::make_ddim({x_dims[1], x_dims[2], x_dims[3]});
   DDim out_matrix_shape = common::make_ddim(
@@ -61,7 +61,7 @@ void UnfoldGradKernel(const Context& dev_ctx,
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
-  for (int i = 0; i < batch_size; i++) {
+  for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor out_grad_batch =
         out_grad.Slice(i, i + 1).Resize(out_matrix_shape);
     DenseTensor x_grad_batch = x_grad->Slice(i, i + 1).Resize(x_shape);

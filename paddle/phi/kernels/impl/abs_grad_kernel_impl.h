@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"

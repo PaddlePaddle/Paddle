@@ -19,16 +19,13 @@ WORKDIR /usr/local/Ascend
 RUN apt-get update -y && apt-get install -y zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev libbz2-dev \
     libxslt1-dev unzip pciutils net-tools libblas-dev gfortran libblas3 liblapack-dev liblapack3 libopenblas-dev zstd
 
-RUN pip3.8 install --upgrade pip setuptools wheel && \
-    pip3.9 install --upgrade pip setuptools wheel && \
+RUN pip3.9 install --upgrade pip setuptools wheel && \
     pip3.10 install --upgrade pip setuptools wheel
 
-RUN pip3.8 install 'numpy>=1.19.2' 'decorator>=4.4.0' 'sympy>=1.5.1' 'cffi>=1.12.3' 'protobuf>=3.13.0' && \
-    pip3.9 install 'numpy>=1.19.2' 'decorator>=4.4.0' 'sympy>=1.5.1' 'cffi>=1.12.3' 'protobuf>=3.13.0' && \
+RUN pip3.9 install 'numpy>=1.19.2' 'decorator>=4.4.0' 'sympy>=1.5.1' 'cffi>=1.12.3' 'protobuf>=3.13.0' && \
     pip3.10 install 'numpy>=1.19.2' 'decorator>=4.4.0' 'sympy>=1.5.1' 'cffi>=1.12.3' 'protobuf>=3.13.0'
 
-RUN pip3.8 install attrs pyyaml pathlib2 scipy requests psutil absl-py && \
-    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil absl-py && \
+RUN pip3.9 install attrs pyyaml pathlib2 scipy requests psutil absl-py && \
     pip3.10 install attrs pyyaml pathlib2 scipy requests psutil absl-py
 
 # update envs for driver

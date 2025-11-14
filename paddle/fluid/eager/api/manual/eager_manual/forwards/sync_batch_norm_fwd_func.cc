@@ -20,11 +20,14 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
-
+#define SEPARATOR "=========================="
 #pragma GCC diagnostic ignored "-Wunused-variable"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
+COMMON_DECLARE_string(dump_api_python_stack_path);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
@@ -44,8 +47,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                          bool use_global_stats,
                          bool trainable_statistics) {
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << "Running AD API: "
-          << "sync_batch_norm_";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API: "
+          << "sync_batch_norm_" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sync_batch_norm__ad_func begin");
   }
@@ -127,9 +131,14 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
       egr::EagerUtils::nullable_autograd_meta(scale);
   egr::AutogradMeta* bias_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(bias);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(x);
+  egr::CheckGradNodeAccumulation(mean);
+  egr::CheckGradNodeAccumulation(variance);
+  egr::CheckGradNodeAccumulation(scale);
+  egr::CheckGradNodeAccumulation(bias);
 
-  VLOG(5) << "Running C++ API: "
-          << "sync_batch_norm_";
   // Before log info
 
   if (VLOG_IS_ON(3)) {
@@ -160,6 +169,21 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
 
+  std::string unique_api_name;
+  if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
+    static int64_t call_count = 0;
+    call_count++;
+    unique_api_name =
+        egr::GenerateUniqueApiName("sync_batch_norm_", call_count);
+  }
+  // Save forward call stack to file for debug
+  if (FLAGS_call_stack_level == 3 &&
+      !FLAGS_dump_api_python_stack_path.empty()) {
+    egr::SavePythonCallStackToFile(FLAGS_dump_api_python_stack_path,
+                                   unique_api_name);
+  }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
   // Forward API Call
   auto api_result =
       paddle::experimental::sync_batch_norm_(x,
@@ -173,6 +197,8 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                              data_layout,
                                              use_global_stats,
                                              trainable_statistics);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finishi_C++_API: " << unique_api_name << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("sync_batch_norm_", api_result);
@@ -185,7 +211,29 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   auto& saved_mean = std::get<3>(api_result);
   auto& saved_variance = std::get<4>(api_result);
   auto& reserve_space = std::get<5>(api_result);
-
+  if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+    egr::SetTensorName(unique_api_name, "out", &out);
+    egr::SetTensorName(unique_api_name, "mean_out", &mean_out);
+    egr::SetTensorName(unique_api_name, "variance_out", &variance_out);
+    egr::SetTensorName(unique_api_name, "saved_mean", &saved_mean);
+    egr::SetTensorName(unique_api_name, "saved_variance", &saved_variance);
+    egr::SetTensorName(unique_api_name, "reserve_space", &reserve_space);
+  }
+  // Save the tensors checksum to file_path
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     out);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     mean_out);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     variance_out);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     saved_mean);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     saved_variance);
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     reserve_space);
+  }
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
   egr::AutogradMeta* mean_out_autograd_meta =
@@ -227,10 +275,22 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     // Node Construction
     auto grad_node = std::shared_ptr<SyncBatchNormGradNode>(  // NOLINT
         new SyncBatchNormGradNode(6, 5));
-
+    // Set GradNodeName
+    if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
+      grad_node->SetNameFromAPI(unique_api_name);
+    }
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
     }
 
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());
@@ -298,11 +358,11 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     grad_node->SetTensorWrapper_reserve_space(reserve_space);
   }
 
-  VLOG(4) << "Finish AD API: sync_batch_norm_";
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(4)) {
-    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+  if (VLOG_IS_ON(6)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
@@ -354,11 +414,14 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                 egr::EagerUtils::TensorStr(reserve_space));
     output_str += output_reserve_space_str;
     VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sync_batch_norm__ad_func finish");
   }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API: "
+          << "sync_batch_norm_" << SEPARATOR;
   // Returns
   return std::tuple<paddle::Tensor,
                     paddle::Tensor&,

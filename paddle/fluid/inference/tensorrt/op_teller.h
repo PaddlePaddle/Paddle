@@ -60,7 +60,7 @@ struct Teller {
 enum class OpConverterType {
   Default = 0,
   GenericPluginCreator,
-  CustomPluginCreater,  // typos: disable-line
+  CustomPluginCreator,
   CustomGenericPluginCreator
 };
 /*

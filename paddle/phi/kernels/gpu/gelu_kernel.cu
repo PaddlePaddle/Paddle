@@ -37,10 +37,10 @@ struct GeluWithApproximateFunctor {
     MPType x = static_cast<MPType>(arg_x);
     MPType one = static_cast<MPType>(1);
     MPType half = static_cast<MPType>(0.5);
-    MPType kAlpha = static_cast<MPType>(M_2_SQRTPI * M_SQRT1_2);
+    MPType kAlpha = M_SQRT2 * M_2_SQRTPI * MPType(0.5);
     auto tanh_out =
-        tanh(kAlpha * x * (one + static_cast<MPType>(GELU_CONSTANT) * x * x));
-    MPType out = x * half * (one + tanh_out);
+        tanh(kAlpha * (x + static_cast<MPType>(GELU_CONSTANT) * (x * x * x)));
+    MPType out = half * x * (one + tanh_out);
     return static_cast<T>(out);
   }
 };
@@ -51,7 +51,9 @@ struct GeluWithoutApproximateFunctor {
   inline HOSTDEVICE T operator()(T arg_x) {
     // actual gelu with approximation = false
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(x * normcdf(x));
+    // return static_cast<T>(x * normcdf(x));
+    constexpr MPType kAlpha = M_SQRT1_2;
+    return static_cast<T>(x * MPType(0.5) * (MPType(1) + std::erf(x * kAlpha)));
   }
 };
 

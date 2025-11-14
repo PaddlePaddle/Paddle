@@ -157,6 +157,18 @@ class ArrayRef {
 };
 
 template <typename T>
+std::ostream& operator<<(std::ostream& out, ArrayRef<T> list) {
+  int i = 0;
+  out << "[";
+  for (const auto& e : list) {
+    if (i++ > 0) out << ", ";
+    out << e;
+  }
+  out << "]";
+  return out;
+}
+
+template <typename T>
 bool operator==(c10::ArrayRef<T> a1, c10::ArrayRef<T> a2) {
   return a1.equals(a2);
 }

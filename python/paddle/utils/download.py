@@ -366,3 +366,17 @@ def _is_a_single_dir(file_list):
         if file_name != new_file_list[i].split(os.sep)[0]:
             return False
     return True
+
+
+def check_and_create_dir(path):
+    if path is None:
+        return
+    assert isinstance(path, str), "path must be string type"
+    if os.path.exists(path):
+        if not os.path.isdir(path):
+            raise NotADirectoryError(f" path:'{path}' must be directory ")
+    else:
+        try:
+            os.makedirs(path)
+        except Exception as e:
+            raise OSError(f"Create '{path}' failed : {e}")

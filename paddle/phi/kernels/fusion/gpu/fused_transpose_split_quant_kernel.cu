@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fused_transpose_split_quant_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -35,7 +36,7 @@ __device__ void BlockLoad(const InT* input,
                           __nv_bfloat16 x[8][4],
                           size_t K,
                           size_t k_scaled) {
-  constexpr bool need_dequant = std::is_same_v<InT, phi::dtype::float8_e4m3fn>;
+  constexpr bool need_dequant = std::is_same_v<InT, phi::float8_e4m3fn>;
 
 #pragma unroll
   for (uint32_t i = 0; i < 8; i++) {
@@ -251,7 +252,7 @@ void FusedTransposeSplitQuantKernel(
 
   for (size_t i = 0; i < num_experts; i++) {
     if (outs[i] != nullptr) {
-      dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(outs[i]);
+      dev_ctx.template Alloc<phi::float8_e4m3fn>(outs[i]);
     }
     if (output_scales[i] != nullptr) {
       dev_ctx.template Alloc<float>(output_scales[i]);
@@ -270,9 +271,9 @@ void FusedTransposeSplitQuantKernel(
 
   for (size_t i = 0; i < num_experts; i++) {
     meta_ptr[num_experts + i] =
-        outs[i] != nullptr ? reinterpret_cast<int64_t>(
-                                 outs[i]->data<phi::dtype::float8_e4m3fn>())
-                           : 0;
+        outs[i] != nullptr
+            ? reinterpret_cast<int64_t>(outs[i]->data<phi::float8_e4m3fn>())
+            : 0;
   }
 
   for (size_t i = 0; i < num_experts; i++) {
@@ -295,7 +296,7 @@ void FusedTransposeSplitQuantKernel(
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define LAUNCH_KERNEL(T, POW_2_SCALES, VEC_SIZE)                        \
   FusedTransposeSplitQuantKernel<T,                                     \
-                                 phi::dtype::float8_e4m3fn,             \
+                                 phi::float8_e4m3fn,                    \
                                  POW_2_SCALES,                          \
                                  VEC_SIZE><<<grid, block, 0, stream>>>( \
       x.data<T>(),                                                      \
@@ -341,7 +342,7 @@ PD_REGISTER_KERNEL(fused_transpose_split_quant,
                    int,
                    int64_t,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn) {
+                   phi::float8_e4m3fn) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }

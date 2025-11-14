@@ -18,6 +18,7 @@
  *     https://github.com/NVIDIA/apex
  *     with minor changes. */
 
+#include "paddle/phi/kernels/legacy/gpu/moe_ops_partial_nosoftmaxtopk_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -602,5 +603,5 @@ PD_REGISTER_KERNEL(moe_gate_dispatch_partial_nosoftmaxtopk,
                    phi::MoeGateDispatchPartialNoSoftMaxTopkKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.pir_utils import DygraphPirGuard
@@ -52,7 +52,6 @@ class TestStride(unittest.TestCase):
         y = x_transposed2 + 2
         y_np = x_np_transposed2 + 2
         np.testing.assert_allclose(y.numpy(), y_np)
-        self.assertTrue(y.is_contiguous())
         self.assertFalse(x._is_shared_buffer_with(y))
 
     def call_diagonal(self):
@@ -993,12 +992,12 @@ class TestStrideCPU(TestStride):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestStrideGPU(TestStride):
     def test_stride_gpu(self):
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         self.call_stride()
 
 

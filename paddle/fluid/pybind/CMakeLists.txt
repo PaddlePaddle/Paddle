@@ -132,6 +132,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    cudart_py.cc
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
@@ -152,6 +153,14 @@ if(WITH_DISTRIBUTE)
   string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
   if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
     set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
+    set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
+    add_definitions(-DPADDLE_WITH_DEEP_EP)
+    if(WITH_NVSHMEM)
+      set(PYBIND_DEPS ${PYBIND_DEPS} nvshmem)
+    endif()
+  endif()
+  if(WITH_XPU AND WITH_XPU_XRE5)
+    set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep_xpu)
     set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
     add_definitions(-DPADDLE_WITH_DEEP_EP)
     if(WITH_NVSHMEM)

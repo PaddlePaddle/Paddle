@@ -608,7 +608,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
             np.testing.assert_array_equal(res1.numpy(), res3.numpy())
 
-    def test_conpare_op_broadcast(self):
+    def test_compare_op_broadcast(self):
         a_np = np.random.uniform(-1, 1, [10, 1, 10]).astype(self.dtype)
         b_np = np.random.uniform(-1, 1, [1, 1, 10]).astype(self.dtype)
         with base.dygraph.guard():

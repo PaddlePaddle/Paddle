@@ -21,7 +21,6 @@
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
@@ -217,7 +216,9 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
   // The instance in the batch.
   __shared__ float2 smem[THREADS_PER_BLOCK];
   int32_t ni = blockIdx.z;
-  int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x);
   if (ci >= params.c) {
     return;
   }
@@ -266,8 +267,9 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci =
-      blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x) * THREADS_PER_CHANNEL;
   if (ci >= params.c || threadIdx.x * THREADS_PER_CHANNEL >= params.cPerBlock) {
     return;
   }
@@ -617,8 +619,9 @@ __global__ void groupNormNDHWCScaleKernel(
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci =
-      blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x) * THREADS_PER_CHANNEL;
 
   // The group that thread works on and the channel in the group (modulus).
   int32_t gi = ci / params.cPerGroup;
@@ -1250,6 +1253,7 @@ void GroupNormKernel(const Context& dev_ctx,
   if (is_same<T, phi::float16>::value && data_layout_str == "NHWC") {
     const paddle::optional<DenseTensor>& residual =
         paddle::optional<DenseTensor>(paddle::none);
+    phi::DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::float16, Context>(dev_ctx,
                                                 x,
                                                 residual,
@@ -1260,7 +1264,7 @@ void GroupNormKernel(const Context& dev_ctx,
                                                 data_layout_str,
                                                 "",
                                                 y,
-                                                new DenseTensor(),
+                                                &empty_tensor,
                                                 mean,
                                                 var);
     return;
@@ -1270,6 +1274,7 @@ void GroupNormKernel(const Context& dev_ctx,
   if (is_same<T, phi::bfloat16>::value && data_layout_str == "NHWC") {
     const paddle::optional<DenseTensor>& residual =
         paddle::optional<DenseTensor>(paddle::none);
+    phi::DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::bfloat16, Context>(dev_ctx,
                                                  x,
                                                  residual,
@@ -1280,7 +1285,7 @@ void GroupNormKernel(const Context& dev_ctx,
                                                  data_layout_str,
                                                  "",
                                                  y,
-                                                 new DenseTensor(),
+                                                 &empty_tensor,
                                                  mean,
                                                  var);
     return;
