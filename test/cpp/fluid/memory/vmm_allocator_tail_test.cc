@@ -18,7 +18,10 @@
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 #include "paddle/phi/core/memory/memory.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
-
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
 #include "gtest/gtest.h"
 namespace paddle {
 namespace memory {
