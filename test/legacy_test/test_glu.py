@@ -43,8 +43,10 @@ class TestGLUV2(unittest.TestCase):
             x_var = paddle.to_tensor(self.x)
             y_var = F.glu(x_var, self.dim)
             y_np = y_var.numpy()
+            np.testing.assert_allclose(y_np, self.out)
 
-        np.testing.assert_allclose(y_np, self.out)
+            y_np = F.glu(input=x_var, axis=self.dim).numpy()
+            np.testing.assert_allclose(y_np, self.out)
 
     def test_case(self):
         self.check_identity(base.CPUPlace())
@@ -71,11 +73,17 @@ class TestnnGLU(unittest.TestCase):
         with dg.guard(place):
             x_var = paddle.to_tensor(self.x)
             for dim in self.dim:
-                act = nn.GLU(dim)
-                y_var = act(x_var)
-                y_np = y_var.numpy()
+                act1 = nn.GLU(dim)
+                y_np1 = act1(x_var).numpy()
+                y_np2 = act1(input=x_var).numpy()
+                act2 = nn.GLU(dim=1000)
+                self.assertEqual(act2.dim, 1000)
+                act2.dim = dim
+                y_np3 = act2(x_var).numpy()
                 out = glu(self.x, dim)
-                np.testing.assert_allclose(y_np, out)
+                np.testing.assert_allclose(y_np1, out)
+                np.testing.assert_allclose(y_np2, out)
+                np.testing.assert_allclose(y_np3, out)
 
     def test_case(self):
         self.check_identity(base.CPUPlace())

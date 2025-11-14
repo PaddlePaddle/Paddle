@@ -209,7 +209,10 @@ DEFINE_GPU_TRANS(6);
 
 template <typename T>
 __global__ void FillConstantKernel(const int N, T* a, const T val) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < N;
        i += blockDim.x * gridDim.x) {
     a[i] = val;
   }

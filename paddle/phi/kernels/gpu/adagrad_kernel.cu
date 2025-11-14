@@ -36,7 +36,9 @@ __global__ void AdagradGPUKernel(const T* param,
                                  MT* moment_out,
                                  MT* master_param_out,
                                  int64_t num) {
-  auto idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr_data = static_cast<MT>(lr[0]);
 
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {

@@ -271,3 +271,32 @@ def set_random_seed_generator(name: str, seed: int) -> None:
 
 def get_random_seed_generator(name: str) -> paddle.base.core.Generator:
     return core.get_random_seed_generator(name)
+
+
+class Generator:
+    def __new__(
+        cls, device: str | int | paddle.core.Place = None
+    ) -> core.Generator:
+        """
+        Generator is a random number generator.
+
+        Args:
+            device(str|int|paddle.core.Place): The device type to create the generator on.
+                It can be ``cpu``, ``gpu``, ``xpu``, or a paddle.core.Place instance.
+                default is None, which means using current device.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> g_cpu = paddle.Generator()
+        """
+        place = paddle.device.device_to_place(device)
+        if isinstance(place, core.CPUPlace):
+            return core.default_cpu_generator()
+        elif isinstance(place, core.CUDAPlace):
+            return core.default_cuda_generator(place.gpu_device_id())
+        elif isinstance(place, core.XPUPlace):
+            return core.default_xpu_generator(place.gpu_device_id())
+        elif isinstance(place, core.CustomPlace):
+            return core.default_custom_device_generator(place)

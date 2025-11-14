@@ -311,11 +311,11 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
     int hidden_out = wq_tensor->dims()[1];
     int head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
-      VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
+      VLOG(3) << "scale of multihead matmul do not fit the requirement of "
                  "flash attention plugin, Stop fusing.";
       return;
     }
-    VLOG(5) << "trt cross attention get wq_tensor name = " << mul0_w->Name()
+    VLOG(5) << "trt cross attention wq_tensor name = " << mul0_w->Name()
             << "trt cross attention wk_tensor name = " << mul1_w->Name()
             << "trt cross attention wv_tensor name = " << mul2_w->Name();
 

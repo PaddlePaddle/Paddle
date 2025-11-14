@@ -298,7 +298,9 @@ ir::IndexExpr ConstructIndexExprByNodeType(const ir::IrNodeTy &ty,
     case ir::IrNodeTy::Add:
       return simplify_flag ? lhs + rhs : ir::Add::Make(lhs, rhs);
     case ir::IrNodeTy::Sub:
-      return simplify_flag ? lhs - rhs : ir::Sub::Make(lhs, rhs);
+      return simplify_flag
+                 ? lhs - rhs
+                 : ir::Add::Make(lhs, ir::Mul::Make(rhs, ir::IndexExpr(-1)));
     case ir::IrNodeTy::Mul:
       return simplify_flag ? lhs * rhs : ir::Mul::Make(lhs, rhs);
     case ir::IrNodeTy::Div:

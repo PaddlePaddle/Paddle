@@ -16,6 +16,7 @@ from __future__ import annotations
 import paddle
 from paddle import _C_ops
 from paddle.framework import in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -23,6 +24,13 @@ from ...base.layer_helper import LayerHelper
 __all__ = []
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["x1"],
+        "y": ["x2"],
+        "epsilon": ["eps"],
+    }
+)
 def pairwise_distance(
     x: paddle.Tensor,
     y: paddle.Tensor,

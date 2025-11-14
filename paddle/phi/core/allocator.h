@@ -56,11 +56,12 @@ class Allocation {
   }
 
   // Returns the holding pointer.
-  // NOTE: For performance consideration, it is better not to make this method
-  // as a virtual method. If we want to implement a `defragmentation` later,
-  // we might need to make `ptr_` field as a protected field, and add a virtual
-  // method like `defragmentation` to change `ptr_`.
-  void* ptr() const noexcept { return ptr_; }
+  // NOTE(liujinnan): Make this method as a virtual method. Because we add
+  // memory compact func for VirtualMemoryAutoGrowthBestFitAllocator. it will
+  // change ptr_ for defragmentation.
+  virtual void* ptr() const noexcept { return ptr_; }
+
+  void set_ptr(void* new_ptr) noexcept { ptr_ = new_ptr; }
 
   // Returns the size of this memory buffer, i.e., ptr() + size() - 1 is the
   // last valid element.
@@ -71,11 +72,11 @@ class Allocation {
   //    The raw pointer might not aligned, so an offset might be added to raw
   //    the pointer. The size of this allocation will be
   //    `size + kAlignment - offset`.
-  size_t size() const noexcept { return size_; }
+  virtual size_t size() const noexcept { return size_; }
 
   void* operator->() const noexcept { return ptr_; }
   operator bool() const noexcept { return ptr_; }
-  const Place& place() const noexcept { return place_; }
+  virtual const Place& place() const noexcept { return place_; }
   DeleterFnPtr deleter() const noexcept { return deleter_; }
 
  protected:

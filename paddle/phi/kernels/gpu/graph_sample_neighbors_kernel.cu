@@ -371,7 +371,10 @@ void GraphSampleNeighborsKernel(
   auto* row_data = row.data<T>();
   auto* col_ptr_data = col_ptr.data<T>();
   auto* x_data = x.data<T>();
-  int bs = x.dims()[0];
+  int64_t bs = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int64_t len_col_ptr = col_ptr.dims()[0];
 
   const thrust::device_ptr<const T> input(x_data);
