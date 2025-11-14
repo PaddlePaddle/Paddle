@@ -712,12 +712,11 @@ void ConvInferMeta(const MetaTensor& input,
         (in_data_dims[i] < 0 || filter_dims[i + 2] < 0)) {
       output_shape.push_back(-1);
     } else {
-      const int dkernel =
-          static_cast<int>(dilations[i] * (filter_data_dims[i] - 1) + 1);
-      int output_size = static_cast<int>(
+      const int64_t dkernel = dilations[i] * (filter_data_dims[i] - 1) + 1;
+      int64_t output_size =
           (in_data_dims[i] + paddings[2 * i] + paddings[2 * i + 1] - dkernel) /
               strides[i] +
-          1);
+          1;
       output_shape.push_back(output_size);
     }
   }
@@ -1001,15 +1000,14 @@ void CorrelationInferMeta(const MetaTensor& input1,
                         "Input(Y) of CorrelationOp must be 4 dims."
                         "But received dims is %d.",
                         in2_dims.size()));
-  std::vector<int64_t> output_shape =
-      CorrelationOutputSize(static_cast<int>(in_dims[0]),
-                            static_cast<int>(in_dims[2]),
-                            static_cast<int>(in_dims[3]),
-                            stride1,
-                            stride2,
-                            kernel_size,
-                            pad_size,
-                            max_displacement);
+  std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
+                                                            in_dims[2],
+                                                            in_dims[3],
+                                                            stride1,
+                                                            stride2,
+                                                            kernel_size,
+                                                            pad_size,
+                                                            max_displacement);
   out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(input1.dtype());
 }
@@ -2153,9 +2151,7 @@ void GatherNdInferMeta(const MetaTensor& x,
   for (int i = 0; i < index_dims_size - 1; ++i) {
     result_dims.emplace_back(index_dims[i]);
   }
-  for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
-       i < x_dims_size;
-       ++i) {
+  for (int64_t i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
     result_dims.emplace_back(x_dims[i]);
   }
 
@@ -2852,9 +2848,9 @@ void LUUnpackInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The rank of input must greater than 2."));
 
-  int m = static_cast<int>(x_dims[x_rank - 2]);
-  int n = static_cast<int>(x_dims[x_rank - 1]);
-  int min_mn = std::min(m, n);
+  int64_t m = x_dims[x_rank - 2];
+  int64_t n = x_dims[x_rank - 1];
+  int64_t min_mn = std::min(m, n);
   if (unpack_ludata) {
     auto ldims = x_dims;
     auto udims = x_dims;
@@ -3496,7 +3492,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
   std::vector<phi::DDim> outs_dims;
   outs_dims.resize(n_ids);
   for (size_t i = 0; i < n_ids; ++i) {
-    int embedding_size = size[i];
+    int64_t embedding_size = size[i];
     const auto ids_dims = ids[i]->dims();
     int ids_rank = ids_dims.size();
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
@@ -4028,7 +4024,7 @@ void StftInferMeta(const MetaTensor& x,
   const auto& x_dims = x.dims();
   const int x_rank = x_dims.size();
   const auto& window_dims = window.dims();
-  const int window_size = static_cast<int>(window_dims[0]);
+  const int64_t window_size = window_dims[0];
 
   PADDLE_ENFORCE_EQ(
       x_rank,
@@ -4052,8 +4048,8 @@ void StftInferMeta(const MetaTensor& x,
           n_fft,
           window_size));
 
-  int seq_length = static_cast<int>(x_dims[x_rank - 1]);
-  int n_frames = 1 + (seq_length - n_fft) / hop_length;
+  int64_t seq_length = x_dims[x_rank - 1];
+  int64_t n_frames = 1 + (seq_length - n_fft) / hop_length;
 
   PADDLE_ENFORCE_LE(n_fft,
                     seq_length,
@@ -4212,9 +4208,9 @@ void LstsqInferMeta(const MetaTensor& x,
   int x_rank = x_dims.size();
   int y_rank = y_dims.size();
 
-  int m = static_cast<int>(x_dims[x_rank - 2]);
-  int n = static_cast<int>(x_dims[x_rank - 1]);
-  int nrhs = static_cast<int>(y_dims[x_rank - 1]);
+  int64_t m = x_dims[x_rank - 2];
+  int64_t n = x_dims[x_rank - 1];
+  int64_t nrhs = y_dims[x_rank - 1];
 
   PADDLE_ENFORCE_GE(x_rank,
                     2,
@@ -4393,9 +4389,9 @@ void YoloBoxInferMeta(const MetaTensor& x,
                         "But received class_num (%s)",
                         class_num));
 
-  int box_num = 0;
+  int64_t box_num = 0;
   if ((dim_x[2] > 0 && dim_x[3] > 0) || config.is_runtime) {
-    box_num = static_cast<int>(dim_x[2] * dim_x[3] * anchor_num);
+    box_num = dim_x[2] * dim_x[3] * anchor_num;
   } else {
     box_num = -1;
   }
@@ -4701,8 +4697,8 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                           scale.dims()[0],
                           real_channel_shape));
   }
-  int n = static_cast<int>(x.dims()[1]);
-  int k = static_cast<int>(real_channel_shape);
+  int64_t n = x.dims()[1];
+  int64_t k = real_channel_shape;
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(scale.dtype());
 }

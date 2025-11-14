@@ -34,7 +34,7 @@ set(XPU_FFT_LIB_NAME "libcufft.so")
 add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "dev/20251103")
+  set(XPU_XHPC_BASE_DATE "dev/20251106")
 endif()
 if(WITH_ARM)
   set(XPU_XCCL_BASE_VERSION "20251104") # For XRE5
@@ -47,7 +47,7 @@ endif()
 
 if(NOT DEFINED XPU_XRE_BASE_VERSION)
   if(WITH_XPU_XRE5)
-    set(XPU_XRE_BASE_VERSION "5.0.21.26")
+    set(XPU_XRE_BASE_VERSION "5.7.0.0")
   else()
     set(XPU_XRE_BASE_VERSION "4.32.0.1")
   endif()

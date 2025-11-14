@@ -101,6 +101,7 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint16,
     uint32,
     uint64,
 )
@@ -277,6 +278,7 @@ from .framework import (  # noqa: F401
     set_default_dtype,
 )
 from .framework.random import (
+    Generator,
     get_cuda_rng_state,
     get_rng_state,
     seed,
@@ -289,6 +291,7 @@ from .hapi import (
     summary,
 )
 from .nn.functional import (
+    adaptive_avg_pool1d,
     conv1d,
     conv2d,
     conv3d,
@@ -987,6 +990,7 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint16',
     'uint32',
     'uint64',
     'int8',
@@ -1488,6 +1492,8 @@ __all__ = [
     'conv3d',
     'manual_seed',
     'softmax',
+    'Generator',
+    'adaptive_avg_pool1d',
     'autocast',
 ]
 import os

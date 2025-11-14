@@ -45,8 +45,11 @@ __global__ void NormalizeProbability(MT* norm_probs,
                                      MT* sum_rows,
                                      int64_t num_distributions,
                                      int64_t num_categories) {
-  int id = threadIdx.x + blockIdx.x * blockDim.x +
-           blockIdx.y * gridDim.x * blockDim.x;
+  int64_t id =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(gridDim.x) *
+          static_cast<int64_t>(blockDim.x);
   if (id < num_distributions * num_categories) {
     PADDLE_ENFORCE(
         static_cast<MT>(in_data[id]) >= 0.0,
@@ -112,7 +115,9 @@ __global__ void sampleMultinomialWithReplacement(
   hiprand_init(seed, idx, offset, &state);
 #endif
 
-  int sample = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t sample =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int64_t dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
     if (sample < num_samples) {
 #if defined(__NVCC__)
