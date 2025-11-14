@@ -47,8 +47,7 @@ TEST(GradTensorHolder, Constructor) {
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       inputs;
   inputs.push_back({et});
-
-  GradTensorHolder grad_tensor_holder4 = GradTensorHolder(std::move(inputs));
+  grad_tensor_holder2.SetBuffers(std::move(inputs));
 }
 
 TEST(GradTensorHolder, Interfaces) {

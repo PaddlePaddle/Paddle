@@ -189,7 +189,7 @@ class PADDLE_API Allocator : public phi::Allocator {
   // in each Allocator. So we handle size == 0 inside AllocatorFacade
   // in our design.
   AllocationPtr Allocate(size_t size) override {
-    auto ptr = AllocateImpl(size);
+    auto* ptr = AllocateImpl(size);
     static_cast<Allocation*>(ptr)->RegisterDecoratedAllocator(this);
     return FillValue(AllocationPtr(ptr, AllocationDeleter));
   }

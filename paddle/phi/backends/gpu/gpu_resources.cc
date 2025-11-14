@@ -93,6 +93,8 @@ void InitGpuProperties(Place place,
           {86, "Ampere"},
           {89, "Ada Lovelace"},
           {90, "Hopper"},
+          {100, "Blackwell"},
+          {120, "Blackwell"},
       };
       if (!arch_computing_mapping_table.count(*compute_capability)) {
         LOG(ERROR) << "Mismatched GPU Architecture: "

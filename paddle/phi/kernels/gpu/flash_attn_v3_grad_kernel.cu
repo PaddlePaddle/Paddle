@@ -1111,20 +1111,15 @@ void FlashMaskV2GradBaseKernel(
           return {64, 64};
         }
       }
-    } else if (head_size_rounded <= 192) {
-      // umiswing: head dim > 128 is not supported now
-      PADDLE_THROW(
-          common::errors::Unimplemented("head dim is rounded to %d, which is "
-                                        "not supported in FlashMask V3 now.",
-                                        head_size_rounded));
-      return {0, 0};
     } else if (head_size_rounded <= 256) {
-      // umiswing: head dim > 128 is not supported now
-      PADDLE_THROW(
-          common::errors::Unimplemented("head dim is rounded to %d, which is "
-                                        "not supported in FlashMask V3 now.",
-                                        head_size_rounded));
-      return {0, 0};
+      // umiswing: by now, we reuse template instantiation of head dim 256 for
+      // head dim in range (128, 256], and therefore no separate dispatch for
+      // head dim in range (128, 192]
+      if (has_lt_end && has_ut_start) {
+        return {64, 32};
+      } else {
+        return {64, 64};
+      }
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("head dim is rounded to %d, which is "

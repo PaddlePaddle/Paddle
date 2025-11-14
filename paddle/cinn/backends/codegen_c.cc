@@ -870,8 +870,8 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
   std::vector<Expr> new_body;
 
   std::vector<Expr> create_temp_buffers = op->PrepareCreateTempBufferExprs();
-  std::vector<Expr> alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
-  std::vector<Expr> dealloca_temp_buffers = op->PrepareDeallocTempBufferExprs();
+  std::vector<Expr> alloc_temp_buffers = op->PrepareAllocTempBufferExprs();
+  std::vector<Expr> dealloc_temp_buffers = op->PrepareDeallocTempBufferExprs();
 #define APPEND_TO_NEW_BODY(field__) \
   new_body.insert(                  \
       std::end(new_body), std::begin(op->field__), std::end(op->field__));
@@ -881,13 +881,13 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
                   std::end(create_temp_buffers));
   APPEND_TO_NEW_BODY(alloc_output_buffer_exprs)
   new_body.insert(std::end(new_body),
-                  std::begin(alloca_temp_buffers),
-                  std::end(alloca_temp_buffers));
+                  std::begin(alloc_temp_buffers),
+                  std::end(alloc_temp_buffers));
   APPEND_TO_NEW_BODY(buffer_data_cast_exprs)
   new_body.push_back(op->body);
   new_body.insert(std::end(new_body),
-                  std::begin(dealloca_temp_buffers),
-                  std::end(dealloca_temp_buffers));
+                  std::begin(dealloc_temp_buffers),
+                  std::end(dealloc_temp_buffers));
   APPEND_TO_NEW_BODY(dealloc_output_buffer_exprs)
 
   Expr func_body = ir::Block::Make(new_body);

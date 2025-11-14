@@ -162,6 +162,11 @@ class TestCosineSimilarityAPI(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
+        cos_sim_func = nn.CosineSimilarity(dim=axis + 1, eps=eps)
+        cos_sim_func.dim = axis
+        y = cos_sim_func(tensor_x1, tensor_x2)
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
+
 
 class TestCosineSimilarityAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
