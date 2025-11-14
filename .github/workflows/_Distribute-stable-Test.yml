@@ -123,7 +123,7 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
-        uses: ./.github/workflows/check-bypass.yml
+        uses: ./.github/actions/check-bypass.yml
         with:
           workflow-name: 'distribute-test'
           github-token: ${{ secrets.GITHUB_TOKEN }}
