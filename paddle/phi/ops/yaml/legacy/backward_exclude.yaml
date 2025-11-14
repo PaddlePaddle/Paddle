@@ -65,3 +65,5 @@
 - unpool_grad
 - unsqueeze_grad
 - logit_grad
+- pad3d_grad
+- pad3d_double_grad

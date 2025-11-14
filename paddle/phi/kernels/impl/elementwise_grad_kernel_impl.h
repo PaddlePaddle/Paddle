@@ -257,7 +257,7 @@ void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
   auto* y_data = y.data<T>();
   auto* out_data = out.data<T>();
   auto* ddout_data = ddout->data<T>();
-  for (int i = 0; i < out_numel; i++) {
+  for (int64_t i = 0; i < out_numel; i++) {
     ddout_data[i] = dout_op(ddx_data[i], ddy_data[i], y_data[i], out_data[i]);
   }
 }
@@ -281,7 +281,7 @@ void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
   auto* out_data = out.data<T>();
   auto* ddout_data = ddout->data<T>();
   std::vector<int> index_array(max_dim, 0);
-  for (int i = 0; i < out_numel; i++) {
+  for (int64_t i = 0; i < out_numel; i++) {
     int x_index = phi::funcs::GetElementwiseIndex(
         x_dims_array, max_dim, index_array.data());
     int y_index = phi::funcs::GetElementwiseIndex(
@@ -379,9 +379,9 @@ __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
                                                       const T* y_data,
                                                       const T* out_data,
                                                       T* ddout_data,
-                                                      int numel,
+                                                      int64_t numel,
                                                       DDout_OP dout_op) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (tid >= numel) return;
   ddout_data[tid] =
       dout_op(ddx_data[tid], ddy_data[tid], y_data[tid], out_data[tid]);
@@ -416,16 +416,16 @@ __global__ void ComputeDDoutWithBroadcastGPUKernel(
     const T* y_data,
     const T* out_data,
     T* ddout_data,
-    int numel,
+    int64_t numel,
     const CudaIntArray x_dims_array,
     const CudaIntArray y_dims_array,
     const CudaIntArray out_dims_array,
     const int max_dim,
     DDout_OP dout_op) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (tid >= numel) return;
-  int x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
-      out_index = tid, dim_index;
+  int64_t x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
+          out_index = tid, dim_index;
   for (int64_t i = max_dim - 1; i >= 0; i--) {
     if (out_index == 0) break;
     dim_index = out_index % out_dims_array[i];
@@ -1564,7 +1564,12 @@ struct RemainderGradDx {
 template <typename T, typename Enable = void>
 struct RemainderGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return -dout * (std::floor(static_cast<double>(x / y)));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    auto x_ = static_cast<MPType>(x);
+    auto y_ = static_cast<MPType>(y);
+    auto dout_ = static_cast<MPType>(dout);
+    return static_cast<T>(
+        -dout_ * static_cast<MPType>(std::floor(static_cast<double>(x_ / y_))));
   }
 };
 template <typename T>
@@ -1575,7 +1580,8 @@ struct RemainderGradDy<
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
-    return static_cast<T>(-static_cast<MPType>(dout) * (std::floor((x_ / y_))));
+    auto dout_ = static_cast<MPType>(dout);
+    return static_cast<T>(-dout_ * static_cast<MPType>(std::floor((x_ / y_))));
   }
 };
 template <typename T>
@@ -1591,9 +1597,9 @@ struct RemainderGradDy<
       const auto quot = x / y;
       const auto rem = x % y;
       auto ret = rem ? quot - 1 : quot;
-      return -dout * ret;
+      return static_cast<T>(-dout * static_cast<T>(ret));
     }
-    return -dout * (x / y);
+    return static_cast<T>(-dout * static_cast<T>(x / y));
   }
 };
 /*

@@ -28,9 +28,10 @@ if TYPE_CHECKING:
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
+_SENTINEL = object()
 
 
-def _is_in_or_scalar_tensor(x):
+def _is_int_or_scalar_tensor(x):
     if isinstance(x, int):
         return True
     if isinstance(x, (paddle.Tensor, paddle.pir.Value)):
@@ -221,6 +222,25 @@ def param_two_alias(
         return wrapper
 
     return decorator
+
+
+def lp_pool_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) == 5 and isinstance(args[4], bool):
+            warnings.warn(
+                "The 4th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
+                category=Warning,
+                stacklevel=2,
+            )
+            kwargs["ceil_mode"] = args[4]
+            args = args[:4]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
 
 
 def tensor_split_decorator(
@@ -420,8 +440,8 @@ def view_decorator() -> Callable[
                 kwargs["shape_or_dtype"] = kwargs.pop("dtype")
             elif ("size" in kwargs) and ("shape_or_dtype" not in kwargs):
                 kwargs["shape_or_dtype"] = kwargs.pop("size")
-            elif len(args) >= 2 and _is_in_or_scalar_tensor(args[1]):
-                if all(_is_in_or_scalar_tensor(arg) for arg in args[1:]):
+            elif len(args) >= 2 and _is_int_or_scalar_tensor(args[1]):
+                if all(_is_int_or_scalar_tensor(arg) for arg in args[1:]):
                     kwargs["x"] = args[0]
                     kwargs['shape_or_dtype'] = list(args[1:])
                     args = ()
@@ -452,7 +472,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
                 will emit a warning upon the first call, warning the users about the API difference and points to Docs.
                 Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
 
-                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/invok_only_diff/**torch.nn.Unfold**.html
 
                 In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
         """
@@ -464,9 +484,9 @@ class ForbidKeywordsDecorator(DecoratorBase):
         if url_suffix:
             self.warn_msg = (
                 f"The API '{func_name}' may behave differently from its PyTorch counterpart. "
-                f"Refer to the compatibility guide for details:\n"
-                f"https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/"
-                f"convert_from_pytorch/api_difference/{url_suffix}.html"
+                "Refer to the compatibility guide for details:\n"
+                "https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/"
+                f"convert_from_pytorch/api_difference/invok_only_diff/{url_suffix}.html"
             )
 
     def process(
@@ -479,17 +499,19 @@ class ForbidKeywordsDecorator(DecoratorBase):
             keys_str = ", ".join(f"'{key}'" for key in found_keys)
             plural = "s" if len(found_keys) > 1 else ""
 
+            if (
+                self.warn_msg is not None
+            ):  # warn the users only when the API is mis-used
+                warnings.warn(
+                    self.warn_msg,
+                    category=UserWarning,
+                    stacklevel=3,
+                )
+                self.warn_msg = None
             raise TypeError(
                 f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
                 f"\nDid you mean to use {self.correct_name}() instead?"
             )
-        if self.warn_msg is not None:
-            warnings.warn(
-                self.warn_msg,
-                category=UserWarning,
-                stacklevel=3,
-            )
-            self.warn_msg = None
         return args, kwargs
 
 
@@ -514,7 +536,7 @@ class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
                 will emit a warning upon the first call, warning the users about the API difference and points to Docs.
                 Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
 
-                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/invok_only_diff/**torch.nn.Unfold**.html
 
                 In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
         """
@@ -552,8 +574,8 @@ def reshape_decorator() -> Callable[
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if ("input" in kwargs) and ("x" not in kwargs):
                 kwargs["x"] = kwargs.pop("input")
-            elif len(args) >= 2 and _is_in_or_scalar_tensor(args[1]):
-                if all(_is_in_or_scalar_tensor(arg) for arg in args[1:]):
+            elif len(args) >= 2 and _is_int_or_scalar_tensor(args[1]):
+                if all(_is_int_or_scalar_tensor(arg) for arg in args[1:]):
                     kwargs["x"] = args[0]
                     kwargs['shape'] = list(args[1:])
                     args = ()
@@ -624,8 +646,8 @@ def expand_decorator() -> Callable[
                 kwargs["x"] = kwargs.pop("input")
             if ("size" in kwargs) and ("shape" not in kwargs):
                 kwargs["shape"] = kwargs.pop("size")
-            elif len(args) >= 2 and _is_in_or_scalar_tensor(args[1]):
-                if all(_is_in_or_scalar_tensor(arg) for arg in args[1:]):
+            elif len(args) >= 2 and _is_int_or_scalar_tensor(args[1]):
+                if all(_is_int_or_scalar_tensor(arg) for arg in args[1:]):
                     kwargs["x"] = args[0]
                     kwargs['shape'] = list(args[1:])
                     args = ()
@@ -736,62 +758,137 @@ def floor_divide_decorator():
     return decorator
 
 
-def index_add_decorator() -> Callable[
-    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
-]:
+_SA0_RD1 = {'size_average': 0, 'reduce': 1}
+_SA1_RD2 = {'size_average': 1, 'reduce': 2}
+_SA1_RD3 = {'size_average': 1, 'reduce': 3}
+_SA3_RD4 = {'size_average': 3, 'reduce': 4}
+_SA4_RD5 = {'size_average': 4, 'reduce': 5}
+_SA2_RD4 = {'size_average': 2, 'reduce': 4}
+
+LEGACY_POS: dict[str, dict[str, int]] = {
+    **dict.fromkeys(
+        (
+            'L1Loss',
+            'MSELoss',
+            'KLDivLoss',
+            'SmoothL1Loss',
+            'SoftMarginLoss',
+            'MultiLabelMarginLoss',
+        ),
+        _SA0_RD1,
+    ),
+    **dict.fromkeys(
+        (
+            'BCELoss',
+            'BCEWithLogitsLoss',
+            'MultiLabelSoftMarginLoss',
+            'HingeEmbeddingLoss',
+            'CosineEmbeddingLoss',
+            'MarginRankingLoss',
+        ),
+        _SA1_RD2,
+    ),
+    'CrossEntropyLoss': _SA1_RD3,
+    'NLLLoss': _SA1_RD3,
+    'PoissonNLLLoss': _SA2_RD4,
+    'MultiMarginLoss': _SA3_RD4,
+    'TripletMarginLoss': _SA4_RD5,
+}
+
+
+def compute_legacy_reduction(reduce_val, size_average_val):
+    if reduce_val is False:
+        return 'none'
+    if reduce_val is True:
+        return 'sum' if size_average_val is False else 'mean'
+    return 'sum' if size_average_val is False else 'mean'
+
+
+def get_legacy_reduce_and_size_average(cls_name, args, kwargs):
+    reduce_val = ''
+    size_avg_val = ''
+    pos = LEGACY_POS.get(cls_name)
+    idx = pos.get('size_average')
+    if 'size_average' in kwargs:
+        size_avg_val = kwargs.pop('size_average')
+    elif len(args) > idx:
+        v = args[idx]
+        if type(v) is bool:
+            size_avg_val = v
+    idx = pos.get('reduce')
+    if 'reduce' in kwargs:
+        reduce_val = kwargs.pop('reduce')
+    elif len(args) > idx:
+        v = args[idx]
+        if type(v) is bool:
+            reduce_val = v
+    return reduce_val, size_avg_val
+
+
+def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
+    suggested = compute_legacy_reduction(reduce_val, size_avg_val)
+    reduce_val = None if reduce_val == '' else reduce_val
+    size_avg_val = None if size_avg_val == '' else size_avg_val
+    raise ValueError(
+        f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
+        f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
+        f"\nPlease use: reduction='{suggested}' instead."
+    )
+
+
+def legacy_reduction_decorator(
+    init_func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
     """
-    Usage Example:
-    PyTorch: index_add(input, dim, index, source, *, alpha=1)
-        torch.index_add(input_tensor, 1, indices, source_tensor)
-
-    Paddle: index_add(x, index, axis, value, alpha=1)
-        paddle.index_add(x=input_tensor, index=indices, axis=1, value=source_tensor)
-        paddle.index_add(input_tensor, indices, 1, source_tensor)
+    Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
     """
 
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if "input" in kwargs and "x" not in kwargs:
-                kwargs["x"] = kwargs.pop("input")
-            if "dim" in kwargs and "axis" not in kwargs:
-                kwargs["axis"] = kwargs.pop("dim")
-            if "source" in kwargs and "value" not in kwargs:
-                kwargs["value"] = kwargs.pop("source")
+    @functools.wraps(init_func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        # avoid subclass calling parent class init, causing cls_name to be inaccurate
+        cls_name = init_func.__qualname__.split(".")[0]
+        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
+            cls_name, args[1:], kwargs
+        )
+        if reduce_val != '' or size_avg_val != '':
+            raise_deprecated_error(cls_name, reduce_val, size_avg_val)
 
-            if len(args) >= 2 and isinstance(args[1], int):
-                if len(args) < 3 and "index" not in kwargs:
-                    raise TypeError(
-                        "index_add() missing 1 required positional argument: 'index'"
-                    )
-                if (
-                    len(args) < 4
-                    and "source" not in kwargs
-                    and "value" not in kwargs
-                ):
-                    raise TypeError(
-                        "index_add() missing 1 required positional argument: 'source'"
-                    )
-                if "x" not in kwargs:
-                    kwargs["x"] = args[0]
-                if "axis" not in kwargs:
-                    kwargs["axis"] = args[1]
-                if len(args) == 3:
-                    if "index" not in kwargs:
-                        kwargs["index"] = args[2]
-                    args = args[3:]
-                elif len(args) >= 4:
-                    if "index" not in kwargs:
-                        kwargs["index"] = args[2]
-                    if "value" not in kwargs:
-                        kwargs["value"] = args[3]
-                    args = args[4:]
-                else:
-                    args = args[2:]
+        return init_func(*args, **kwargs)
 
-            return func(*args, **kwargs)
+    wrapper.__signature__ = inspect.signature(init_func)
+    return wrapper
 
-        wrapper.__signature__ = inspect.signature(func)
-        return wrapper
 
-    return decorator
+def legacy_reduction_special_decorator(
+    init_func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """
+    Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment
+    based on the general legacy_reduction_decorator logic.
+    """
+
+    @functools.wraps(init_func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        cls_name = init_func.__qualname__.split(".")[0]
+        use_args = args[1:]
+        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
+            cls_name, use_args, kwargs
+        )
+        if reduce_val != '' or size_avg_val != '':
+            if not (
+                (
+                    cls_name == 'CrossEntropyLoss'
+                    and len(use_args) > 2
+                    and use_args[2] in {'mean', 'sum', 'none'}
+                )
+                or (
+                    cls_name == 'KLDivLoss'
+                    and len(use_args) > 0
+                    and use_args[0] in {'mean', 'sum', 'none', 'batchmean'}
+                )
+            ):
+                raise_deprecated_error(cls_name, reduce_val, size_avg_val)
+        return init_func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(init_func)
+    return wrapper

@@ -451,6 +451,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     e = x != y
                     f = x.not_equal(y)
                     g = x.__ne__(y)
+                    self.assertFalse(x == None)  # noqa: E711
+                    self.assertTrue(x != None)  # noqa: E711
                     (e_np, f_np, g_np) = exe.run(
                         main_program,
                         feed={"x": x_np, "y": y_np},

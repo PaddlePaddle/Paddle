@@ -41,10 +41,14 @@ import numpy as np
 import paddle
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
+from paddle.base.dygraph.base import (
+    to_static_mode_guard,
+)
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import CUDAPinnedPlace
 from paddle.jit.utils import OrderedSet
+from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -1095,3 +1099,40 @@ def extract_tensor_dynamic_dims(
             f"Expected {DYNAMIC_DIMS_ATTR_NAME} to be a tuple, but got {type(dynamic_dims).__name__}"
         )
     return dynamic_dims
+
+
+class GraphTracingContext:
+    params_with_values: tuple[list[paddle.Tensor], list[paddle.Tensor]] | None
+
+    def __init__(self):
+        self.params_with_values = None
+
+    def set_params_with_values(
+        self,
+        params_with_values: tuple[list[paddle.Tensor], list[paddle.Tensor]],
+    ):
+        self.params_with_values = params_with_values
+
+    def get_params_with_values(
+        self,
+    ) -> tuple[list[paddle.Tensor], list[paddle.Tensor]]:
+        assert self.params_with_values is not None
+        return self.params_with_values
+
+
+@contextmanager
+def graph_tracing_guard(main_program: paddle.static.Program):
+    ctx = GraphTracingContext()
+    with (
+        to_static_mode_guard(is_to_static=True),
+        static_op_arg_cast_guard(_convert_into_value),
+    ):
+        yield ctx
+
+        from ..dy2static.parameter_recorder import (
+            _global_inplace_map,
+            _global_parameter_recorder,
+        )
+
+        ctx.set_params_with_values(_global_parameter_recorder.pop(main_program))
+        _global_inplace_map.pop(main_program)

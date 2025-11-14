@@ -881,8 +881,9 @@ static PyObject* tensor_retain_grads(TensorObject* self,
     auto meta = egr::EagerUtils::autograd_meta(&(self->tensor));
     if (!meta->GetMutableGradNode()) {
       VLOG(6) << "Make grad node of tensor: " << self->tensor.name()
-              << "become accumulation node";
-      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+              << " become accumulation node";
+      meta->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(self->tensor));
     }
     egr::egr_utils_api::RetainGradForTensor(self->tensor);
   }
@@ -2123,7 +2124,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
         VLOG(6) << "Detected nullptr grad_node, Leaf tensor should have had "
                    "grad_node with type: GradNodeAccumulation.";
         autograd_meta->SetGradNode(
-            std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+            std::make_shared<egr::GradNodeAccumulation>(self->tensor));
       }
     }
 
@@ -2883,6 +2884,7 @@ Note:
 Convert input Tensor to SparseCsrTensor.
 
 When input is SparseCooTensor, will convert `COO` to `CSR` . When input is DenseTensor, will convert `Dense` to `CSR` .
+When input is SparseCsrTensor, the function will directly return the input itself without performing any conversion.
 
 Returns:
     SparseCsrTensor
@@ -2909,6 +2911,10 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
+  if (self->tensor.is_sparse_csr_tensor()) {
+    Py_INCREF(self);
+    return reinterpret_cast<PyObject*>(self);
+  }
   auto csr_tensor = self->tensor.to_sparse_csr();
   egr::EagerUtils::autograd_meta(&csr_tensor)
       ->SetStopGradient(

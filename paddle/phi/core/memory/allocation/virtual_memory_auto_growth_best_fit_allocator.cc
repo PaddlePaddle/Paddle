@@ -15,8 +15,18 @@
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 
 #include <mutex>
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
+
+PHI_DEFINE_EXPORTED_bool(
+    dump_vmm_allocation_info,
+    false,
+    "dump VirtualMemoryAutoGrowthBestFitAllocator's allocation info");
+PHI_DEFINE_EXPORTED_bool(native_compact,
+                         false,
+                         "native_compact means compact memory after OOM, The "
+                         "algorithm still needs to be upgraded.");
 
 namespace paddle {
 namespace memory {
@@ -34,7 +44,10 @@ VirtualMemoryAutoGrowthBestFitAllocator::
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
-      place_(place) {}
+      place_(place) {
+  // NOTE(liujinnan): Only support TotalMemoryCompactor strategy for now.
+  memory_compactor_ = std::make_unique<TotalMemoryCompactor>();
+}
 
 phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(
     size_t size) {
@@ -43,7 +56,7 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(
   auto result = AllocFromFreeBlocks(size);
 
   if (!result) {
-    ExtendAndMerge(size);
+    ExtendOrCompact(size);
     result = AllocFromFreeBlocks(size);
   }
 
@@ -136,10 +149,64 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
   }
 }
 
-void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
-  void *ptr = nullptr;
+std::optional<AllocationPtr>
+VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
+  AllocationPtr allocateptr = nullptr;
+  if (!FLAGS_native_compact) return underlying_allocator_->Allocate(size);
+  try {
+    allocateptr = std::move(underlying_allocator_->Allocate(size));
+  } catch (const paddle::memory::allocation::BadAlloc &e) {
+    VLOG(4) << "Do Memory Compact allocate size and compact " << size;
+    size_t compact_free_size = memory_compactor_->Compact(
+        all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
+    if (compact_free_size < 0) throw;
+    VLOG(4) << "Memory Compacted Size: " << compact_free_size;
+    auto free_block = std::prev(all_blocks_.end());
+    if (free_block->is_free_ && free_block->size_ < size) {
+      auto realloc_size = size - free_block->size_;
+      VLOG(4) << "Free block size {" << free_block->size_
+              << "} is smaller than allocate size {" << size
+              << "} after compact, re-alloc {" << realloc_size << "}";
+      try {
+        auto realloc_ptr =
+            underlying_allocator_->Allocate(size - free_block->size_);
+        VLOG(4) << "Re-alloc size {" << realloc_ptr->size() << "} success";
+        free_block->size_ += realloc_ptr->size();
+        allocations_.push_back(std::move(realloc_ptr));  // hold allocation
+      } catch (const paddle::memory::allocation::BadAlloc &e) {
+        VLOG(4) << "Re-alloc size {" << realloc_size << "} failed";
+        throw;
+      }
+    }
+    return std::nullopt;
+  }
+  return allocateptr;
+}
 
-  auto allocateptr = underlying_allocator_->Allocate(size);
+void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
+  void *ptr = nullptr;
+  if (FLAGS_dump_vmm_allocation_info) {
+    DumpInfo("===== Before ExtendOrCompact =====");
+  }
+
+  auto allocateptr = AllocateOrCompact(size).value_or(nullptr);
+  if (!allocateptr) {
+    // Allocate failed and Compact success branch.
+    free_blocks_.clear();
+    auto free_block = std::prev(all_blocks_.end());
+    if (free_block->is_free_) {
+      free_blocks_.emplace(std::make_pair(free_block->size_, free_block->ptr_),
+                           free_block);
+    } else {
+      LOG(INFO) << "Dont have free block after memory compact";
+    }
+    if (FLAGS_dump_vmm_allocation_info) {
+      DumpInfo("===== After ExtendOrCompact do compact =====");
+    }
+    // After compact, Merge is not needed. just return.
+    return;
+  }
+
   ptr = allocateptr->ptr();
   size = allocateptr->size();
   allocations_.push_back(std::move(allocateptr));  // hold allocation
@@ -148,65 +215,6 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
     all_blocks_.emplace_back(ptr, size, true);
     free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
     return;
-  }
-  for (auto block_it = all_blocks_.begin(); block_it != all_blocks_.end();
-       ++block_it) {
-    if (block_it->ptr_ > ptr) {
-      if (block_it == all_blocks_.begin()) {
-        // insert to front
-        if (block_it->is_free_ &&
-            reinterpret_cast<uint8_t *>(ptr) + size == block_it->ptr_) {
-          // merge with next
-          free_blocks_.erase(std::make_pair(block_it->size_, block_it->ptr_));
-          block_it->ptr_ = ptr;
-          block_it->size_ += size;
-          free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
-                               block_it);
-        } else {
-          // do not merge
-          all_blocks_.emplace_back(ptr, size, true);
-          free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
-        }
-      } else {
-        // insert to middle
-        auto next = block_it;
-        auto pre = std::prev(block_it);
-        if (pre->is_free_ &&
-            reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == ptr &&
-            !(next->is_free_ &&
-              reinterpret_cast<uint8_t *>(ptr) + size == next->ptr_)) {
-          // merge with pre
-          free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
-          pre->size_ += size;
-          free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
-        } else if (next->is_free_ &&
-                   reinterpret_cast<uint8_t *>(ptr) + size == next->ptr_ &&
-                   !(pre->is_free_ &&
-                     reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ ==
-                         ptr)) {
-          // merge with next
-          free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
-          next->ptr_ = ptr;
-          next->size_ += size;
-          free_blocks_.emplace(std::make_pair(next->size_, next->ptr_), next);
-        } else if (pre->is_free_ &&
-                   reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == ptr &&
-                   next->is_free_ &&
-                   reinterpret_cast<uint8_t *>(ptr) + size == next->ptr_) {
-          // merge with pre and next
-          free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
-          free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
-          pre->size_ += (size + next->size_);
-          free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
-          all_blocks_.erase(next);
-        } else {
-          // do not merge
-          auto iter = all_blocks_.insert(next, Block(ptr, size, true));
-          free_blocks_.emplace(std::make_pair(size, ptr), iter);
-        }
-      }
-      return;
-    }
   }
 
   // insert to back
@@ -226,6 +234,9 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
     block_it--;
     free_blocks_.emplace(std::make_pair(size, ptr), block_it);
   }
+  if (FLAGS_dump_vmm_allocation_info) {
+    DumpInfo("===== After ExtendOrCompact =====");
+  }
 }
 
 phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
@@ -235,21 +246,52 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
     std::list<Block>::iterator block_it = iter->second;
     free_blocks_.erase(iter);
     if (NeedSplit(block_it->size_, alignment_, size)) {
+      void *remaining_ptr = reinterpret_cast<uint8_t *>(block_it->ptr_) + size;
       size_t remaining_size = block_it->size_ - size;
-      auto remaining_free_block = all_blocks_.insert(
-          block_it, Block(block_it->ptr_, remaining_size, true));
-      free_blocks_.emplace(std::make_pair(remaining_size, block_it->ptr_),
-                           remaining_free_block);
-      block_it->ptr_ =
-          reinterpret_cast<uint8_t *>(block_it->ptr_) + remaining_size;
-      block_it->size_ = size;
-    }
 
-    block_it->is_free_ = false;
+      block_it->size_ = size;
+      block_it->is_free_ = false;
+
+      auto remaining_free_block = all_blocks_.insert(
+          std::next(block_it), Block(remaining_ptr, remaining_size, true));
+      free_blocks_.emplace(std::make_pair(remaining_size, remaining_ptr),
+                           remaining_free_block);
+    } else {
+      block_it->is_free_ = false;
+    }
     return new BlockAllocation(block_it, place_);
   }
-
   return nullptr;
+}
+
+void VirtualMemoryAutoGrowthBestFitAllocator::DumpInfo(
+    std::string phase) const {
+  size_t total = 0, free = 0, used = 0;
+  std::cout << phase << std::endl;
+  std::cout << "All_blocks_:" << std::endl;
+  for (auto block = all_blocks_.begin(); block != all_blocks_.end(); ++block) {
+    std::ostringstream oss_used;
+    std::ostringstream oss_free;
+
+    if (block->is_free_) {
+      free += block->size_;
+      oss_free << "(" << block->size_ << "," << block->ptr_ << ")";
+    } else {
+      used += block->size_;
+      oss_used << "(" << block->size_ << "," << block->ptr_ << ","
+               << block->allocation_->ptr() << ")";
+    }
+
+    std::cout << "is_free? " << block->is_free_ << "[" << oss_used.str()
+              << "]\t[" << oss_free.str() << "]" << std::endl;
+  }
+  std::cout << total << "\t" << used << "\t" << free << std::endl;
+  std::cout << "Free_blocks_:" << std::endl;
+  for (const auto &[key, list_iter] : free_blocks_) {
+    auto [size, ptr] = key;
+    std::cout << "Size: " << size << ", Ptr: " << ptr << "\t" << list_iter->ptr_
+              << std::endl;
+  }
 }
 
 }  // namespace allocation

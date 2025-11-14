@@ -205,9 +205,9 @@ void BlockMultiheadAttentionXPUKernel(
           << " dim_head: " << dim_head
           << " max_block_per_seq: " << max_block_per_seq;
   VLOG(3) << "fmha_out_dims: " << fmha_out->dims();
-  bool causual = true;
+  bool causal = true;
   if (mask) {
-    causual = false;
+    causal = false;
   }
   bool use_pre_cache = false;
   int pre_cache_length = 0;
@@ -324,7 +324,7 @@ void BlockMultiheadAttentionXPUKernel(
                                       &unpadding_v);
 
     VLOG(3) << "rope end";
-    VLOG(3) << "causual: " << causual;
+    VLOG(3) << "causal: " << causal;
     if (!use_pre_cache) {
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
@@ -333,12 +333,12 @@ void BlockMultiheadAttentionXPUKernel(
                                       cu_seqlens_q,
                                       cu_seqlens_k,
                                       paddle::none /*fixed_seed_offset*/,
-                                      causual ? paddle::none : mask,
+                                      causal ? paddle::none : mask,
                                       max_enc_len_this_time_data,
                                       max_enc_len_this_time_data,
                                       1.0f / sqrt(static_cast<float>(dim_head)),
                                       0.0,
-                                      causual,
+                                      causal,
                                       false,
                                       true /* is_test*/,
                                       "" /*rng_name*/,

@@ -136,7 +136,8 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelWarp(
   const int threads_per_warp = 32;
   const int threads_per_block = warps_per_block * threads_per_warp;
 
-  int tid = blockIdx.x * threads_per_block + threadIdx.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * threads_per_block +
+                static_cast<int64_t>(threadIdx.x);
   int warp_id = threadIdx.x / threads_per_warp;
   int lane_id = threadIdx.x % threads_per_warp;
 
@@ -240,7 +241,9 @@ void CrossEntropyWithSoftmaxBwdWithDowncastGPUKernel(
 
   const int rank = logit_grad->dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logit_grad->dims()[axis_v];
+  int64_t axis_dim = logit_grad->dims()[axis_v];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   const int64_t n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());

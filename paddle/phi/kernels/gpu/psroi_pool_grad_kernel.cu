@@ -47,7 +47,9 @@ __global__ void GPUPSROIPoolBackward(const int64_t nthreads,
                                      const int pooled_width,
                                      const int* rois_batch_id_data,
                                      T* dx_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = blockDim.x * gridDim.x;
   for (int64_t i = index; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
@@ -115,10 +117,21 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
                          int output_channels,
                          float spatial_scale,
                          DenseTensor* dx) {
-  int rois_num_t = rois.dims()[0];
-  int input_channels = x.dims()[1];
-  int height = x.dims()[2];
-  int width = x.dims()[3];
+  int64_t rois_num_t = rois.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t input_channels = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t height = x.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t width = x.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   if (dx) {
     // set roi batch id
