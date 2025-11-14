@@ -19,6 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -64,6 +65,20 @@ void MeanRawKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_mean");
 }
 
+template <>
+void MeanRawKernel<double, XPUContext>(const XPUContext& dev_ctx,
+                                       const DenseTensor& x,
+                                       const IntArray& dims,
+                                       bool keep_dim,
+                                       bool reduce_all,
+                                       DenseTensor* out) {
+  auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
+  DenseTensor out_float;
+  out_float.Resize(out->dims());
+  MeanRawKernel<float>(dev_ctx, x_float, dims, keep_dim, reduce_all, &out_float);
+  CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(mean_raw,
@@ -71,5 +86,6 @@ PD_REGISTER_KERNEL(mean_raw,
                    ALL_LAYOUT,
                    phi::MeanRawKernel,
                    float,
+                   double,
                    phi::float16,
                    phi::bfloat16) {}

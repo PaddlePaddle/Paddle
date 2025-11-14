@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -41,6 +42,15 @@ void ActivationXPUImpl(const Context& dev_ctx,
       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {        \
     functor_class<T> functor;                                                  \
     ActivationXPUImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
+  }                                                                            \
+  template <>                                                                  \
+  void name##Kernel<double, XPUContext>(                                       \
+      const XPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {     \
+    auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);      \
+    DenseTensor out_float;                                                     \
+    out_float.Resize(out->dims());                                             \
+    name##Kernel<float>(dev_ctx, x_float, &out_float);                         \
+    CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);        \
   }
 
 #define DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(name, functor_class, attr) \

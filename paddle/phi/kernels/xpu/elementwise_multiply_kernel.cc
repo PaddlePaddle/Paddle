@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -79,6 +80,19 @@ void MultiplyKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
 }
 #endif
 
+template <>
+void MultiplyKernel<double, XPUContext>(const XPUContext& dev_ctx,
+                                        const DenseTensor& x,
+                                        const DenseTensor& y,
+                                        DenseTensor* out) {
+  auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
+  auto y_float = phi::Cast<double>(dev_ctx, y, phi::DataType::FLOAT32);
+  DenseTensor out_float;
+  out_float.Resize(out->dims());
+  MultiplyKernel<float>(dev_ctx, x_float, y_float, &out_float);
+  CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(multiply,
@@ -91,6 +105,7 @@ PD_REGISTER_KERNEL(multiply,
                    phi::complex64,
 #endif
                    float,
+                   double,
                    int,
                    int64_t) {
 }

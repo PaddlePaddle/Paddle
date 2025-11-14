@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -40,6 +42,20 @@ void SubtractKernel(const Context& dev_ctx,
 
   phi::XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
 }
+
+template <>
+void SubtractKernel<double, XPUContext>(const XPUContext& dev_ctx,
+                                        const DenseTensor& x,
+                                        const DenseTensor& y,
+                                        DenseTensor* out) {
+  auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
+  auto y_float = phi::Cast<double>(dev_ctx, y, phi::DataType::FLOAT32);
+  DenseTensor out_float;
+  out_float.Resize(out->dims());
+  SubtractKernel<float>(dev_ctx, x_float, y_float, &out_float);
+  CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
+}
+
 
 }  // namespace phi
 PD_REGISTER_KERNEL(subtract,

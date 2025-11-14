@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -52,6 +53,20 @@ void ScaleKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }
 
+template <>
+void ScaleKernel<double, XPUContext>(const XPUContext& dev_ctx,
+                                     const DenseTensor& x,
+                                     const Scalar& scale,
+                                     const Scalar& bias,
+                                     bool bias_after_scale,
+                                     DenseTensor* out) {
+  auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
+  DenseTensor out_float;
+  out_float.Resize(out->dims());
+  ScaleKernel<float>(dev_ctx, x_float, scale, bias, bias_after_scale, &out_float);
+  CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(scale,
@@ -59,6 +74,7 @@ PD_REGISTER_KERNEL(scale,
                    ALL_LAYOUT,
                    phi::ScaleKernel,
                    float,
+                   double,
                    phi::float16,
                    phi::bfloat16,
                    uint8_t,

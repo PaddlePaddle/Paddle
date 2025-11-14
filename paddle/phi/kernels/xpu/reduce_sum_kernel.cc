@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -54,6 +55,21 @@ void SumRawKernel(const Context& dev_ctx,
       dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out_dtype, out);
 }
 
+template <>
+void SumRawKernel<double, XPUContext>(const XPUContext& dev_ctx,
+                                      const DenseTensor& x,
+                                      const IntArray& dims,
+                                      bool keep_dim,
+                                      bool reduce_all,
+                                      DataType out_dtype,
+                                      DenseTensor* out) {
+  auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
+  DenseTensor out_float;
+  out_float.Resize(out->dims());
+  SumRawKernel<float>(dev_ctx, x_float, dims, keep_dim, reduce_all, out_dtype, &out_float);
+  CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(sum_raw,
@@ -61,6 +77,7 @@ PD_REGISTER_KERNEL(sum_raw,
                    ALL_LAYOUT,
                    phi::SumRawKernel,
                    float,
+                   double,
                    phi::float16,
                    phi::bfloat16,
                    int8_t,

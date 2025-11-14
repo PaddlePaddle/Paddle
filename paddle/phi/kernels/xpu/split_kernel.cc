@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -65,6 +66,25 @@ void SplitKernel(const Context& dev_ctx,
                                 non_zero_split_lists,
                                 axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "split");
+  }
+}
+
+template <>
+void SplitKernel<double, XPUContext>(const XPUContext& dev_ctx,
+                                     const DenseTensor& x,
+                                     const IntArray& sections,
+                                     const Scalar& axis_scalar,
+                                     std::vector<DenseTensor*> outs) {
+  auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);
+  std::vector<DenseTensor> outs_float(outs.size());
+  std::vector<DenseTensor*> outs_float_ptr(outs.size());
+  for (int i = 0; i < outs.size(); ++i) {
+    outs_float[i].Resize(outs[i]->dims());
+    outs_float_ptr[i] = &outs_float[i];
+  }
+  SplitKernel<float>(dev_ctx, x_float, sections, axis_scalar, outs_float_ptr);
+  for (int i = 0; i < outs.size(); ++i) {
+    CastKernel<float>(dev_ctx, outs_float[i], phi::DataType::FLOAT64, outs[i]);
   }
 }
 
