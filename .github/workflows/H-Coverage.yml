@@ -214,7 +214,7 @@ jobs:
     name: Coverage test
     needs: [build]
     runs-on:
-      group: CI-H
+      group: H-Coverage
     steps:
       - name: Determine the runner
         run: |
