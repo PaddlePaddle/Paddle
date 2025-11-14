@@ -28,12 +28,12 @@ namespace phi {
 
 template <typename probs_T>
 struct expert_infos {
-  int64_t expert_row_idx;
+  int expert_row_idx;
   probs_T expert_probs;
 
   __device__ __host__ expert_infos()
       : expert_row_idx(-1), expert_probs(probs_T(0)) {}
-  __device__ __host__ expert_infos(int64_t idx, probs_T prob)
+  __device__ __host__ expert_infos(int idx, probs_T prob)
       : expert_row_idx(idx), expert_probs(prob) {}
 
   __device__ __host__ expert_infos &operator=(const expert_infos &other) {
@@ -66,10 +66,9 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     const int topk) {
   using expert_infos_t = expert_infos<probs_T>;
   int local_cumsum = 0;
-  int64_t local_expert_offsets;
-  const int64_t block_row_base =
-      static_cast<int64_t>(blockIdx.x) * CUMSUM_BLOCK_SIZE;
-  int64_t cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
+  int local_expert_offsets;
+  const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
+  int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
   __shared__ expert_infos_t
       shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
@@ -77,10 +76,10 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
   if (threadIdx.x < num_experts) {
     local_expert_offsets = expert_base_offset[threadIdx.x];
     expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
-    for (int64_t row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
+    for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
          row++) {
       if (row >= total_zipped_tokens_num) break;
-      const int64_t internal_row = row - block_row_base;
+      const int internal_row = row - block_row_base;
 #pragma unroll
       for (int k = 0; k < topk; k++) {
         expert_infos_t proposed = {routemap_topk[row * topk + k],
@@ -94,10 +93,8 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       }
     }
     // Inter-block communication
-    const int64_t anticipate_signal_idx =
-        static_cast<int64_t>(blockIdx.x) * num_experts + threadIdx.x;
-    const int64_t push_signal_idx =
-        (static_cast<int64_t>(blockIdx.x) + 1) * num_experts + threadIdx.x;
+    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
     if (blockIdx.x != 0) {
       // signal receive from previous block, using light-weight atomicAdd(check)
       // this will not change any data, only do fetch in low-cost
@@ -107,7 +104,7 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       }
     }
     // signal send for next block, with current cumsum
-    const int64_t proposed_offset = cumsum_offset + local_cumsum;
+    const int proposed_offset = cumsum_offset + local_cumsum;
     global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
     // Intra-block communication;
 #pragma unroll
@@ -122,16 +119,16 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
 
   // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
-  for (int64_t row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
+  for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
        row++) {
     // OOB check
     if (row >= total_zipped_tokens_num) return;
-    const int64_t internal_row = row - block_row_base;
+    const int internal_row = row - block_row_base;
 #pragma unroll
     for (int expert = 0; expert < num_experts; expert++) {
       const expert_infos_t this_expert_token_info =
           shared_expert_infos[internal_row][expert];
-      const int64_t proposed_row_idx = this_expert_token_info.expert_row_idx;
+      const int proposed_row_idx = this_expert_token_info.expert_row_idx;
       if (threadIdx.x == 0)
         zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
       if (proposed_row_idx == -1) continue;  // no memcpy
@@ -173,8 +170,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const bool do_gather) {
   dim3 grid, block;
   grid.x =
-      (static_cast<int64_t>(total_zipped_tokens_num) + CUMSUM_BLOCK_SIZE - 1) /
-      CUMSUM_BLOCK_SIZE;
+      (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   block.x = 512;
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
@@ -281,8 +277,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                                       quanted_cols));
 
   // Expert base offset initialization, tensor numeric range [0, max_token_num]
-  int64_t expert_offset[MAX_NUM_EXPERTS];
-  int64_t tokens_cumulated = 0;
+  int expert_offset[MAX_NUM_EXPERTS];
+  int tokens_cumulated = 0;
   for (int i = 0; i < MAX_NUM_EXPERTS; i++) {
     if (i < num_experts) {
       expert_offset[i] = tokens_cumulated;
@@ -302,7 +298,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
   // ------------------- resource allocate -------------------------
-  const int64_t output_rows = tokens_cumulated;
+  const int output_rows = tokens_cumulated;
   const int64_t topk = expert_routemap_topk.dims()[1];
   PADDLE_ENFORCE_LE(
       topk,
@@ -313,7 +309,7 @@ void MoePermuteKernel(const Context &dev_ctx,
   if (do_gather) {  // no gather, no resize.
     X_unzipped->Resize({output_rows, cols});
     if (XScale) {
-      const int64_t quanted_cols = XScale.get_ptr()->dims()[1];
+      const int quanted_cols = XScale.get_ptr()->dims()[1];
       XScale_unzipped->Resize({output_rows, quanted_cols});
     }
   }
@@ -356,7 +352,7 @@ void MoePermuteKernel(const Context &dev_ctx,
   if (X.numel() == 0) return;
 
   // -------- Initialize semaphore for cumsum ---------------
-  const int64_t cumsum_blocknum =
+  const int cumsum_blocknum =
       (rows + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   DenseTensor global_expertwise_block_cumsum =
       phi::Full<int, Context>(dev_ctx,
@@ -373,11 +369,11 @@ void MoePermuteKernel(const Context &dev_ctx,
                                            token_prob_unzipped,
                                            XScale_unzipped,
                                            &global_expertwise_block_cumsum,
-                                           rows,
-                                           cols,
-                                           topk,
+                                           static_cast<int>(rows),
+                                           static_cast<int>(cols),
+                                           static_cast<int>(topk),
                                            num_experts,
-                                           quanted_cols,
+                                           static_cast<int>(quanted_cols),
                                            do_gather);
 }
 #undef CUMSUM_BLOCK_SIZE

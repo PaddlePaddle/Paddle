@@ -268,8 +268,8 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                                   zipped_probs_topk,
                                   total_zipped_tokens_num,
                                   num_experts,
-                                  cols,
-                                  topk,
+                                  static_cast<int>(cols),
+                                  static_cast<int>(topk),
                                   MP);
 }
 }  // namespace phi
