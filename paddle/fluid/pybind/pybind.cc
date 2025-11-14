@@ -3605,6 +3605,7 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
+  m.def("vmm_compact", [] { platform::VmmCompact(); });
   m.def(
       "get_device_properties",
       [](int id) -> const gpuDeviceProp & {
