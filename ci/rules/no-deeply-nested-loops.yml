@@ -31,3 +31,56 @@ rule:
                 for $ID in $LD:
                     for $IE in $LE:
                         $$$BODY
+constraints:
+  LB:
+    not:
+      any:
+        - pattern: $IA
+        - has:
+            pattern: $IA
+            stopBy: end
+  LC:
+    not:
+      any:
+        - pattern: $IA
+        - pattern: $IB
+        - has:
+            pattern: $IA
+            stopBy: end
+        - has:
+            pattern: $IB
+            stopBy: end
+  LD:
+    not:
+      any:
+        - pattern: $IA
+        - pattern: $IB
+        - pattern: $IC
+        - has:
+            pattern: $IA
+            stopBy: end
+        - has:
+            pattern: $IB
+            stopBy: end
+        - has:
+            pattern: $IC
+            stopBy: end
+  LE:
+    not:
+      any:
+        - pattern: $IA
+        - pattern: $IB
+        - pattern: $IC
+        - pattern: $ID
+        - has:
+            pattern: $IA
+            stopBy: end
+        - has:
+            pattern: $IB
+            stopBy: end
+        - has:
+            pattern: $IC
+            stopBy: end
+        - has:
+            pattern: $ID
+            stopBy: end

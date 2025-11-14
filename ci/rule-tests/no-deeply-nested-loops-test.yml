@@ -33,6 +33,96 @@ valid:
     for i, j, k, m, n in itertools.product(range(10), range(10), range(10), range(10), range(10)):
         print(i, j, k, m, n)
 
+  # 5 levels but inner loop depends on outer variable - OK (not suitable for itertools.product)
+  - |
+    for i in range(10):
+        for j in i:
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        print(i, j, k, m, n)
+
+  # 5 levels but second level depends on first - OK
+  - |
+    for a in list_a:
+        for b in a:
+            for c in list_c:
+                for d in list_d:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but third level depends on second - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in b:
+                for d in list_d:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fourth level depends on third - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in c:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fifth level depends on fourth - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in d:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fifth level depends on first - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in a:
+                        process(a, b, c, d, e)
+
+  # 5 levels but second level uses indexing on first - OK
+  - |
+    for i in a:
+        for j in i[x]:
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but third level uses multi-dimensional indexing on first - OK
+  - |
+    for i in a:
+        for j in range(10):
+            for k in i[x][y]:
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but fourth level accesses attribute of second - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in b.items:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fifth level uses method call on third - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in c.get_items():
+                        process(a, b, c, d, e)
+
 invalid:
   # 5 levels - should be caught
   - |
