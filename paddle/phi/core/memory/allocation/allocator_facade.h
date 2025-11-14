@@ -71,6 +71,8 @@ class AllocatorFacade {
   PADDLE_API AllocationPtr Alloc(const phi::Place& place, size_t size);
   // Release unused memory pool.
   uint64_t Release(const phi::Place& place);
+  // Compact memory of free blocks held by the VmmAllocator.
+  size_t Compact(const phi::Place& place);
 
   /**
    * @brief Accepts an AllocatorVisitor and iterates over all nested Allocator

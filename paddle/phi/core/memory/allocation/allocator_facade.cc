@@ -1670,6 +1670,12 @@ void AllocatorFacade::Accept(const phi::Place& place,
       ->Accept(visitor);
 }
 
+size_t AllocatorFacade::Compact(const phi::Place& place) {
+  return GetPrivate()
+      ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
+      ->Compact(place);
+}
+
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
     const phi::Place& place, size_t size, const phi::Stream& stream) {
   return std::shared_ptr<phi::Allocation>(Alloc(place, size, stream));

@@ -19,7 +19,11 @@ from typing import TYPE_CHECKING, Callable
 import paddle
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    legacy_reduction_decorator,
+    legacy_reduction_special_decorator,
+)
 
 from .. import functional as F
 from .layers import Layer
@@ -121,6 +125,7 @@ class BCEWithLogitsLoss(Layer):
     pos_weight: Tensor | None
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -418,6 +423,7 @@ class CrossEntropyLoss(Layer):
     label_smoothing: float
     name: str | None
 
+    @legacy_reduction_special_decorator
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -656,6 +662,7 @@ class MSELoss(Layer):
 
     reduction: _ReduceMode
 
+    @legacy_reduction_decorator
     def __init__(self, reduction: _ReduceMode = 'mean'):
         super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
@@ -759,6 +766,7 @@ class L1Loss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
@@ -849,6 +857,7 @@ class BCELoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -961,6 +970,7 @@ class NLLLoss(Layer):
 
     """
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1049,6 +1059,7 @@ class PoissonNLLLoss(Layer):
 
     """
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         log_input: bool = True,
@@ -1180,6 +1191,7 @@ class KLDivLoss(Layer):
     reduction: _ReduceMode
     log_target: bool
 
+    @legacy_reduction_special_decorator
     def __init__(
         self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:
@@ -1252,6 +1264,7 @@ class MarginRankingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         margin: float = 0.0,
@@ -1525,6 +1538,7 @@ class SmoothL1Loss(Layer):
     delta: float
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -1614,6 +1628,7 @@ class MultiLabelSoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1726,6 +1741,7 @@ class HingeEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         margin: float = 1.0,
@@ -1824,6 +1840,7 @@ class CosineEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         margin: float = 0,
@@ -2061,6 +2078,7 @@ class TripletMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         margin: float = 1.0,
@@ -2177,6 +2195,7 @@ class MultiMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         p: int = 1,
@@ -2272,6 +2291,7 @@ class MultiLabelMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -2360,6 +2380,7 @@ class SoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:

@@ -797,11 +797,20 @@ class AdamW(Optimizer):
 
             # Determine tensor partitioning scheme
             if _MOMENT_NAME in optim_state_type:
-                optimizer_sharded_state_dict[unified_name] = (
-                    create_sharded_weight_with_new_local(
-                        unified_name, tensor, sharded_weight
+                if tensor.is_dist():
+                    optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                        key=unified_name,
+                        local_tensor=tensor,
+                        local_shape=tensor.shape,
+                        global_shape=tensor.shape,
+                        global_offset=sharded_weight.global_offset,
                     )
-                )
+                else:
+                    optimizer_sharded_state_dict[unified_name] = (
+                        create_sharded_weight_with_new_local(
+                            unified_name, tensor, sharded_weight
+                        )
+                    )
             else:  # Non-momentum parameters
                 optimizer_sharded_state_dict[unified_name] = ShardedWeight(
                     key=unified_name,
@@ -817,10 +826,19 @@ class AdamW(Optimizer):
                 struct_name = static_to_struct_mapping[key]
                 sharded_weight = model_sharded_state_dict[struct_name]
                 unified_name = f"{struct_name}.w_0"
-                optimizer_sharded_state_dict[unified_name] = (
-                    create_sharded_weight_with_new_local(
-                        unified_name, tensor, sharded_weight
+                if tensor.is_dist():
+                    optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                        key=unified_name,
+                        local_tensor=tensor,
+                        local_shape=tensor.shape,
+                        global_shape=tensor.shape,
+                        global_offset=sharded_weight.global_offset,
                     )
-                )
+                else:
+                    optimizer_sharded_state_dict[unified_name] = (
+                        create_sharded_weight_with_new_local(
+                            unified_name, tensor, sharded_weight
+                        )
+                    )
 
         return optimizer_sharded_state_dict
