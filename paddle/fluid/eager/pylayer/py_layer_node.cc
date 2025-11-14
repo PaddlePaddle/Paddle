@@ -46,6 +46,9 @@ GradNodePyLayer::operator()(
   }
   pybind11::gil_scoped_acquire gil;
   VLOG(3) << "Running Eager Backward Node: " << name();
+  if (FLAGS_call_stack_level == 3) {
+    VLOG(3) << "PyLayer forward call stack: " << this->GetForwardTrace();
+  }
 
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       hooked_grads = GradNodePyLayer::ApplyGradientHooks(grads);
@@ -168,12 +171,9 @@ GradNodePyLayer::operator()(
   auto outputs = PyObject_CallObject(backward_fn, backward_args);
   egr::Controller::Instance().SetHasGrad(need_grad_tmp);
   if (!outputs) {
-    PADDLE_THROW(
-        common::errors::External(pybind11::detail::error_string().c_str()));
-  }
-
-  if (FLAGS_call_stack_level == 3) {
-    this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    std::string err_msg =
+        FormatPyLayerBackwardErrorMsg(this, pybind11::detail::error_string());
+    PADDLE_THROW(common::errors::External(err_msg.c_str()));
   }
 
   VLOG(6) << "PyLayer backward function finish...";

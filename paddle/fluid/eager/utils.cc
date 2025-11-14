@@ -17,6 +17,11 @@
 #include <ctime>
 #include <iomanip>
 #include <ostream>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -31,13 +36,22 @@
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 #include "paddle/utils/md5.h"
 COMMON_DECLARE_bool(enable_unique_name);
 COMMON_DECLARE_int32(tensor_md5_checksum_precision);
+
+#ifdef _WIN32
+#define getprocessid GetCurrentProcessId
+typedef int pid_t;
+#else
+#define getprocessid getpid
+#endif
 namespace egr {
+using paddle::inference::analysis::Dot;
 
 void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
                                               const GradSlotMeta& meta) {
@@ -551,7 +565,7 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
       autograd_ptr->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;
@@ -1405,7 +1419,8 @@ TEST_API void SaveTensorMD5CheckSumToFile(
 void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,
                    const std::string& call_stack,
-                   const std::string& serialized_backward_graph) {
+                   const std::string& serialized_backward_graph,
+                   const std::string& debug_grad_tensors) {
   // Use timestamps to distinguish multiple logs
   auto now = std::chrono::system_clock::now();
   auto now_time_t = std::chrono::system_clock::to_time_t(now);
@@ -1448,6 +1463,13 @@ void SaveDebugInfo(std::string dir_path,
     VLOG(4) << "Save backward graph to file : " << backward_graph_file_path;
     SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
   }
+  if (debug_grad_tensors.empty() == false) {
+    std::string grad_tensors_file_path =
+        file_path_prefix + "_grad_tensors" + ".log";
+    VLOG(4) << "Save grad tensors for debug to file : "
+            << grad_tensors_file_path;
+    SaveStringToFile(grad_tensors_file_path, debug_grad_tensors);
+  }
 }
 const std::string GenerateUniqueTensorName(const std::string& unique_api_name,
                                            const std::string& var_name,
@@ -1483,7 +1505,7 @@ TEST_API void SetTensorName(const std::string& unique_api_name,
 TEST_API void SetTensorName(const std::string& unique_api_name,
                             const std::string& var_name,
                             std::vector<paddle::Tensor>* tensors) {
-  for (int i = 0; i < tensors->size(); i++) {
+  for (size_t i = 0; i < tensors->size(); i++) {
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       t.set_name(egr::GenerateUniqueTensorName(
@@ -1520,11 +1542,200 @@ TEST_API void SetGradTensorName(
     const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
         bwd_out_meta) {
   const auto& metas = bwd_out_meta[slot];
-  for (int i = 0; i < tensors->size(); i++) {
+  for (size_t i = 0; i < tensors->size(); i++) {
     auto& t = (*tensors)[i];
     if (t.defined() && t.has_allocation()) {
       std::string name = GenerateGradTensorName(metas[i]);
       t.set_name(name);
+    }
+  }
+}
+std::string AddNodeToDebugBackwardGraph(Dot* dot,
+                                        GradNodeBase* node,
+                                        bool need_dump_backward_subgraph) {
+  std::string dot_node_label = "";
+  // If need_dump_backward_subgraph is true,it means that we should capture
+  // gradnode in subgraph which to be stored in
+  // EagerBackwardSubGraphNodeRecorder. If we need capture subgraph, the
+  // gradnode not related subgraph will not be captured
+  if (need_dump_backward_subgraph &&
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+          node)) {
+    // no need to add node to dot graph
+  } else {
+    dot_node_label = CreateNodeLabelInDot(node);
+    if (!dot->ContainsNode(dot_node_label)) {
+      dot->AddNode(dot_node_label,
+                   paddle::inference::analysis::grey_box_attrs,
+                   dot_node_label,
+                   false);
+    }
+  }
+  return dot_node_label;
+}
+void AddEdgeToDebugBackwardGraph(Dot* dot,
+                                 GradNodeBase* node,
+                                 GradNodeBase* next_node,
+                                 const paddle::Tensor& t,
+                                 const std::string& node_label,
+                                 bool need_dump_backward_subgraph) {
+  std::string dot_node_label = node_label;
+  if (need_dump_backward_subgraph &&
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+          node) &&
+      !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+          next_node)) {
+    // if we need capture subgraph, the gradnode not related subgraph
+    // will not be captured
+  } else {
+    std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
+    if (!dot->ContainsNode(dot_next_node_label)) {
+      if (next_node->name() == "GradNodeAccumulation") {
+        dot->AddNode(dot_next_node_label,
+                     paddle::inference::analysis::teal_box_attrs,
+                     dot_next_node_label,
+                     false);
+      } else {
+        if (need_dump_backward_subgraph == false ||
+            egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+                next_node)) {
+          dot->AddNode(dot_next_node_label,
+                       paddle::inference::analysis::grey_box_attrs,
+                       dot_next_node_label,
+                       false);
+        } else {
+          // The next node is not in subgraph but the node is in subgraph,
+          // we use orange_box to mark it
+          dot->AddNode(dot_next_node_label,
+                       paddle::inference::analysis::orange_box_attrs,
+                       dot_next_node_label,
+                       false);
+        }
+      }
+    }
+    // if need_dump_backward_subgraph but next_node is in subgraph and node is
+    // not in subgraph we will add node in subgraph and add edge
+    if (need_dump_backward_subgraph &&
+        egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+            next_node) &&
+        !egr::EagerBackwardSubGraphNodeRecorder::Instance().ContainsGradNode(
+            node)) {
+      dot_node_label = CreateNodeLabelInDot(node);
+      // The node is not in subgraph but the node_next node is in subgraph
+      // we use orange_box to mark it too
+      if (!dot->ContainsNode(dot_node_label)) {
+        dot->AddNode(dot_node_label,
+                     paddle::inference::analysis::orange_box_attrs,
+                     dot_node_label,
+                     false);
+      }
+    }
+
+    std::string tensor_label = CreateEdgeLabelInDot(t);
+    dot->AddEdge(dot_node_label, dot_next_node_label, {}, tensor_label);
+  }
+}
+const std::string FormatTensor(const paddle::Tensor& t) {
+  if (!t.defined() || !t.has_allocation()) {
+    return "None";
+  }
+  // only data
+  phi::funcs::TensorFormatter formatter;
+
+  phi::DenseTensor* dense_tensor_ptr = nullptr;
+  if (t.is_dist_tensor()) {
+    auto dist_t =
+        std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+    dense_tensor_ptr = dist_t->unsafe_mutable_value();
+  } else {
+    dense_tensor_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+  }
+  auto& dense_tensor = *(dense_tensor_ptr);
+
+  return formatter.Format(dense_tensor, t.name());
+}
+
+void SaveStringToFileWithPID(const std::string& filename,
+                             const std::string& content,
+                             const std::string& mode = "trunc") {
+  pid_t pid = getprocessid();
+  // Create the new filename with PID suffix
+  std::string newFilename = filename + "." + std::to_string(pid);
+  SaveStringToFile(newFilename, content, mode);
+}
+
+void SavePythonCallStackToFile(const std::string& file_name,
+                               const std::string& api_name) {
+  SaveStringToFileWithPID(
+      file_name,
+      api_name + " : \n" + egr::Controller::Instance().GetPythonStack(),
+      "append");
+}
+#define SEPARATOR "============================"
+std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
+                                          std::string error_mesg) {
+  std::ostringstream oss;
+  oss << SEPARATOR << " Error message in backward of " << node->name() << "("
+      << node << ")" << SEPARATOR << std::endl;
+  oss << error_mesg << std::endl;
+  oss << SEPARATOR << SEPARATOR << SEPARATOR << SEPARATOR << std::endl;
+  return "\n{\n" + paddle::framework::InsertIndentationIntoEachLine(oss.str()) +
+         "\n}\n";
+}
+
+void CheckGradNodeAccumulation(const paddle::Tensor& tensor) {
+  auto* autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+  if (!autograd_meta) return;
+
+  auto grad_node = autograd_meta->GetMutableGradNode();
+  if (!grad_node || !grad_node.get()) return;
+
+  auto accumulation_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+  if (!accumulation_node) return;
+
+  phi::DataType tensor_dtype = tensor.dtype();
+  const auto& input_metas = accumulation_node->InputMeta();
+  if (input_metas.empty() || input_metas[0].empty()) return;
+
+  const auto& slot_meta = input_metas[0][0];
+  if (slot_meta.HasTensorMeta()) {
+    const auto& tensor_meta = slot_meta.GetTensorMeta();
+    phi::DataType meta_dtype = tensor_meta.dtype;
+
+    if (tensor_dtype != meta_dtype) {
+      VLOG(7) << "Updating GradNodeAccumulation(" << accumulation_node.get()
+              << ") meta dtype from " << phi::DataTypeToString(meta_dtype)
+              << " to " << phi::DataTypeToString(tensor_dtype);
+      accumulation_node->SetGradInMeta(tensor, 0);
+    }
+  }
+}
+
+void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor) {
+  if (!tensor) return;
+  CheckGradNodeAccumulation(*tensor);
+}
+
+void CheckGradNodeAccumulation(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  if (!tensors) return;
+  for (const auto& tensor : *tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
+void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors) {
+  for (const auto& tensor : tensors) {
+    CheckGradNodeAccumulation(tensor);
+  }
+}
+
+void CheckGradNodeAccumulation(
+    const std::vector<std::vector<paddle::Tensor*>>& tensors) {
+  for (const auto& sub_tensors : tensors) {
+    for (const auto& tensor : sub_tensors) {
+      CheckGradNodeAccumulation(*tensor);
     }
   }
 }

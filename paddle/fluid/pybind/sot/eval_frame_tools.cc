@@ -24,6 +24,9 @@
 
 #if SOT_IS_SUPPORTED
 #define END_OF_STRING '\0'
+#if PY_3_14_PLUS
+#include <internal/pycore_interpframe.h>
+#endif
 
 /*============================ Dict Tree ================================*/
 

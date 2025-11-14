@@ -382,7 +382,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             f"Multi-process DataLoader invalid num_workers({self._num_workers})"
         )
 
-        # subprocess wrokers' result queue
+        # subprocess workers' result queue
         self._data_queue = None
 
         # data get from _data_queue will be reordered by _rcvd_idx

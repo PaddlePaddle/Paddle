@@ -288,10 +288,6 @@ elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 13.0) # CUDA 12.0+
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
 endif()
 
-if(NOT ${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0)
-  add_definitions("-DTRT_PLUGIN_FP16_AVAILABLE")
-endif()
-
 add_definitions("-DCUDA_VERSION_MAJOR=\"${CUDA_VERSION_MAJOR}\"")
 add_definitions("-DCUDA_VERSION_MINOR=\"${CUDA_VERSION_MINOR}\"")
 add_definitions("-DCUDA_TOOLKIT_ROOT_DIR=\"${CUDA_TOOLKIT_ROOT_DIR}\"")

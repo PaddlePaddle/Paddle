@@ -1,0 +1,39 @@
+id: no-int32-type-dims
+snapshots:
+  int class_num = prob->dims()[1];:
+    fixed: |
+      int64_t class_num = prob->dims()[1];
+      // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+    labels:
+      - source: int class_num = prob->dims()[1];
+        style: primary
+        start: 0
+        end: 32
+  int input_ids_num = input.numel();:
+    fixed: |
+      int64_t input_ids_num = input.numel();
+      // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+      PADDLE_ENFORCE_LE_INT_MAX(input_ids_num, "input_ids_num");
+    labels:
+      - source: int input_ids_num = input.numel();
+        style: primary
+        start: 0
+        end: 34
+  int row_size = x.dims()[ndim - 1];:
+    fixed: |
+      int64_t row_size = x.dims()[ndim - 1];
+      // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+    labels:
+      - source: int row_size = x.dims()[ndim - 1];
+        style: primary
+        start: 0
+        end: 34
+  int32_t input_ids_num = input.numel();:
+    fixed: |
+      int64_t input_ids_num = input.numel();
+      // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+    labels:
+      - source: int32_t input_ids_num = input.numel();
+        style: primary
+        start: 0
+        end: 38

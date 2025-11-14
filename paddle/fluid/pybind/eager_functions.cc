@@ -533,7 +533,7 @@ static Tensor InitializedEmptyTensor() {
       allocation_ptr, phi::DenseTensorMeta(phi::DataType::FLOAT32, ddims));
   tensor.set_impl(dense_tensor);
   autograd_meta->SetGradNode(
-      std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+      std::make_shared<egr::GradNodeAccumulation>(tensor));
   return tensor;
 }
 
@@ -684,6 +684,11 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
+
+    // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent
+    // with its TensorMeta
+    egr::CheckGradNodeAccumulation(*ctx.AllMutableInput());
+
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
     const auto& inplace_reverse_idx_map = ctx.GetInplaceReverseIndexMap();
     for (size_t out_idx = 0; out_idx < outputs.size(); ++out_idx) {
@@ -914,7 +919,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
       VLOG(3) << "Tensor(" << name
               << ") doesn't have GradNode, add GradNodeAccumulation to it.";
       autograd_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
     }
   }
   return ToPyObject(tensor);
@@ -965,7 +970,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
       VLOG(3) << "Tensor(" << name
               << ") have not GradNode, add GradNodeAccumulation for it.";
       autograd_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
     }
   }
   return ToPyObject(tensor);
@@ -1459,6 +1464,41 @@ PyObject* eager__for_test_check_cuda_error(PyObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+PyObject* eager__start_capture_debug_backward_subgraph(PyObject* self,
+                                                       PyObject* args,
+                                                       PyObject* kwargs) {
+  EAGER_TRY
+
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().StartCaptureSubGraph();
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager__end_capture_debug_backward_subgraph(PyObject* self,
+                                                     PyObject* args,
+                                                     PyObject* kwargs) {
+  EAGER_TRY
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().EndCaptureSubGraph();
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+PyObject* eager__init_backward_subgraph_recorder(PyObject* self,
+                                                 PyObject* args,
+                                                 PyObject* kwargs) {
+  EAGER_TRY
+  std::string dump_dir_path =
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+  bool need_dump_grad_tensors =
+      CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().SetDumpDirPath(
+      dump_dir_path);
+  egr::EagerBackwardSubGraphNodeRecorder::Instance().SetNeedDumpGradTensors(
+      need_dump_grad_tensors);
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
@@ -1544,6 +1584,18 @@ PyMethodDef variable_functions[] = {  // NOLINT
 
     {"_add_docstr",
      (PyCFunction)(void (*)())eager__add_doc_str,
+     METH_VARARGS,
+     nullptr},
+    {"_start_capture_debug_backward_subgraph",
+     (PyCFunction)(void (*)())eager__start_capture_debug_backward_subgraph,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_end_capture_debug_backward_subgraph",
+     (PyCFunction)(void (*)())eager__end_capture_debug_backward_subgraph,
+     METH_VARARGS,
+     nullptr},
+    {"_init_backward_subgraph_recorder",
+     (PyCFunction)(void (*)())eager__init_backward_subgraph_recorder,
      METH_VARARGS,
      nullptr},
 /**sparse functions**/

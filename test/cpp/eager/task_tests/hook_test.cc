@@ -109,7 +109,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     auto tmp_tensor0 = paddle::Tensor();
     auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
 
-    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
+    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(tmp_tensor0);
 
     auto_grad_meta->SetStopGradient(false);
     auto_grad_meta->SetGradNode(acc_node_ptr);
@@ -180,7 +180,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
     // AccumulationNode Hook: +3
     auto tmp_tensor0 = paddle::Tensor();
     auto auto_grad_meta = EagerUtils::autograd_meta(&tmp_tensor0);
-    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(auto_grad_meta);
+    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(tmp_tensor0);
     auto_grad_meta->SetGradNode(acc_node_ptr);
     auto_grad_meta->SetStopGradient(false);
     scale_node_ptr->SetGradOutMeta(tmp_tensor0, 0);

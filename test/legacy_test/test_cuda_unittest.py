@@ -120,6 +120,16 @@ class TestCudaCompat(unittest.TestCase):
                 current = current_stream()
                 self.assertEqual(current.stream_base, s.stream_base)
 
+            s = paddle.device.Stream()
+            data1 = paddle.ones(shape=[20])
+            data2 = paddle.ones(shape=[20])
+            data3 = data1 + data2
+            with paddle.device.StreamContext(s):
+                s.wait_stream(paddle.device.current_stream())
+                data4 = data1 + data3
+                ctx = stream(s)
+                self.assertIsInstance(ctx, paddle.device.StreamContext)
+
     def test_nested_streams(self):
         if paddle.is_compiled_with_cuda():
             s1 = Stream()
@@ -158,6 +168,11 @@ class TestCudaCompat(unittest.TestCase):
         if paddle.device.is_compiled_with_cuda():
             x_gpu = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
             self.assertEqual(paddle.get_device(x_gpu), 0)
+
+    def test_version_hip(self):
+        version = paddle.version.hip
+        if not paddle.is_compiled_with_rocm():
+            self.assertEqual(version, None)
 
     def test_set_default_device(self):
         if paddle.is_compiled_with_cuda():
@@ -356,11 +371,18 @@ class TestExternalStream(unittest.TestCase):
 
         # Test case 4: Verify original stream remains valid after external stream deletion
         del external_stream
-        with paddle.cuda.stream(original_stream):
+        with paddle.cuda.stream(stream=original_stream):
             current_stream = paddle.cuda.current_stream(device_none)
 
         self.assertEqual(
             current_stream.stream_base.raw_stream, original_raw_ptr
+        )
+
+        with paddle.device.stream(stream=original_stream):
+            current_device_stream = paddle.cuda.current_stream(device_none)
+
+        self.assertEqual(
+            current_device_stream.stream_base.raw_stream, original_raw_ptr
         )
 
 

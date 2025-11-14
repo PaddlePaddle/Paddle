@@ -332,7 +332,10 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   auto place = dev_ctx.GetPlace();
 
-  int batch_size = label.numel();
+  int64_t batch_size = label.numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   PADDLE_ENFORCE_LE(
       label.numel(),
       std::numeric_limits<int>::max(),
@@ -377,7 +380,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 #endif
 
   // step 2: Determine temporary device storage requirements
-  int num_buffer_ele = std::max(batch_size, num_classes);
+  int num_buffer_ele = std::max(static_cast<int>(batch_size), num_classes);
   size_t cub_sort_temp_store_size = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(
       (cub::DeviceRadixSort::SortPairs<T, T>(nullptr,

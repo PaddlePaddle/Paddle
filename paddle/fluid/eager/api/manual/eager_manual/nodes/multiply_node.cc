@@ -37,7 +37,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(enable_unique_name);
-COMMON_DECLARE_string(tensor_md5_checksum_output_dir);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
 
 #define SEPARATOR "=========================="
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
@@ -200,10 +200,10 @@ MultiplyGradNode::operator()(
   }
 
   // Save the tensors checksum to file_path
-  if (!FLAGS_tensor_md5_checksum_output_dir.empty()) {
-    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
                                      grad_x);
-    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_dir,
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
                                      grad_y);
   }
 

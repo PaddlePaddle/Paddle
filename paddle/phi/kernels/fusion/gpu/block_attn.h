@@ -111,7 +111,7 @@ template <typename T,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const int bi = blockIdx.y;
   int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
@@ -620,7 +620,7 @@ template <typename T,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const int bi = blockIdx.y;
   const int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
@@ -3788,7 +3788,9 @@ __global__ void ShiftSmoothQuant(const T *input,
   phi::AlignedVector<T, VecSize> smooth_vec;
   phi::AlignedVector<int8_t, VecSize> out_vec;
 
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_id =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_id * VecSize < num;
        linear_id += gridDim.x * blockDim.x) {
     int idx = linear_id * VecSize;
@@ -3826,7 +3828,9 @@ __global__ void ShiftSmooth(const T *input,
   phi::AlignedVector<T, VecSize> smooth_vec;
   phi::AlignedVector<T, VecSize> out_vec;
 
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_id =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_id * VecSize < num;
        linear_id += gridDim.x * blockDim.x) {
     int idx = linear_id * VecSize;

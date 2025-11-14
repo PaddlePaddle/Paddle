@@ -40,87 +40,76 @@ extern void *cusolver_dso_handle;
   };                                                                 \
   extern DynLoad__##__name __name
 
-#define CUSOLVER_ROUTINE_EACH(__macro)  \
-  __macro(cusolverDnCreate);            \
-  __macro(cusolverDnDestroy);           \
-  __macro(cusolverDnSetStream);         \
-  __macro(cusolverDnSpotrf_bufferSize); \
-  __macro(cusolverDnDpotrf_bufferSize); \
-  __macro(cusolverDnXpotrf_bufferSize); \
-  __macro(cusolverDnSpotrf);            \
-  __macro(cusolverDnDpotrf);            \
-  __macro(cusolverDnXpotrf);            \
-  __macro(cusolverDnSpotrs);            \
-  __macro(cusolverDnDpotrs);            \
-  __macro(cusolverDnCpotrs);            \
-  __macro(cusolverDnZpotrs);            \
-  __macro(cusolverDnSsyevd_bufferSize); \
-  __macro(cusolverDnDsyevd_bufferSize); \
-  __macro(cusolverDnCheevd_bufferSize); \
-  __macro(cusolverDnZheevd_bufferSize); \
-  __macro(cusolverDnSsyevd);            \
-  __macro(cusolverDnDsyevd);            \
-  __macro(cusolverDnCheevd);            \
-  __macro(cusolverDnZheevd);
-
-CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
-
-#if CUDA_VERSION >= 9020
-#define CUSOLVER_ROUTINE_EACH_R1(__macro) \
-  __macro(cusolverDnSpotrfBatched);       \
-  __macro(cusolverDnDpotrfBatched);       \
-  __macro(cusolverDnSpotrsBatched);       \
-  __macro(cusolverDnDpotrsBatched);       \
-  __macro(cusolverDnSgetrf_bufferSize);   \
-  __macro(cusolverDnDgetrf_bufferSize);   \
-  __macro(cusolverDnCgetrf_bufferSize);   \
-  __macro(cusolverDnZgetrf_bufferSize);   \
-  __macro(cusolverDnSgeqrf_bufferSize);   \
-  __macro(cusolverDnDgeqrf_bufferSize);   \
-  __macro(cusolverDnCgeqrf_bufferSize);   \
-  __macro(cusolverDnZgeqrf_bufferSize);   \
-  __macro(cusolverDnXgeqrf_bufferSize);   \
-  __macro(cusolverDnSorgqr_bufferSize);   \
-  __macro(cusolverDnDorgqr_bufferSize);   \
-  __macro(cusolverDnSormqr_bufferSize);   \
-  __macro(cusolverDnDormqr_bufferSize);   \
-  __macro(cusolverDnCungqr_bufferSize);   \
-  __macro(cusolverDnZungqr_bufferSize);   \
-  __macro(cusolverDnDestroyGesvdjInfo);   \
-  __macro(cusolverDnCreateGesvdjInfo);    \
-  __macro(cusolverDnSgesvdj_bufferSize);  \
-  __macro(cusolverDnDgesvdj_bufferSize);  \
-  __macro(cusolverDnCgesvdj_bufferSize);  \
-  __macro(cusolverDnZgesvdj_bufferSize);  \
-  __macro(cusolverDnSgesvdj);             \
-  __macro(cusolverDnDgesvdj);             \
-  __macro(cusolverDnCgesvdj);             \
-  __macro(cusolverDnZgesvdj);             \
-  __macro(cusolverDnSgetrf);              \
-  __macro(cusolverDnSgetrs);              \
-  __macro(cusolverDnDgetrs);              \
-  __macro(cusolverDnCgetrs);              \
-  __macro(cusolverDnZgetrs);              \
-  __macro(cusolverDnDgetrf);              \
-  __macro(cusolverDnCgetrf);              \
-  __macro(cusolverDnZgetrf);              \
-  __macro(cusolverDnSgeqrf);              \
-  __macro(cusolverDnDgeqrf);              \
-  __macro(cusolverDnCgeqrf);              \
-  __macro(cusolverDnZgeqrf);              \
-  __macro(cusolverDnXgeqrf);              \
-  __macro(cusolverDnSorgqr);              \
-  __macro(cusolverDnDorgqr);              \
-  __macro(cusolverDnSormqr);              \
-  __macro(cusolverDnDormqr);              \
-  __macro(cusolverDnCungqr);              \
-  __macro(cusolverDnZungqr);
-
-CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
-#endif
-
-#if CUDA_VERSION >= 9020
-#define CUSOLVER_ROUTINE_EACH_R2(__macro)      \
+#define CUSOLVER_ROUTINE_EACH(__macro)         \
+  __macro(cusolverDnCreate);                   \
+  __macro(cusolverDnDestroy);                  \
+  __macro(cusolverDnSetStream);                \
+  __macro(cusolverDnSpotrf_bufferSize);        \
+  __macro(cusolverDnDpotrf_bufferSize);        \
+  __macro(cusolverDnXpotrf_bufferSize);        \
+  __macro(cusolverDnSpotrf);                   \
+  __macro(cusolverDnDpotrf);                   \
+  __macro(cusolverDnXpotrf);                   \
+  __macro(cusolverDnSpotrs);                   \
+  __macro(cusolverDnDpotrs);                   \
+  __macro(cusolverDnCpotrs);                   \
+  __macro(cusolverDnZpotrs);                   \
+  __macro(cusolverDnSsyevd_bufferSize);        \
+  __macro(cusolverDnDsyevd_bufferSize);        \
+  __macro(cusolverDnCheevd_bufferSize);        \
+  __macro(cusolverDnZheevd_bufferSize);        \
+  __macro(cusolverDnSsyevd);                   \
+  __macro(cusolverDnDsyevd);                   \
+  __macro(cusolverDnCheevd);                   \
+  __macro(cusolverDnZheevd);                   \
+  __macro(cusolverDnSpotrfBatched);            \
+  __macro(cusolverDnDpotrfBatched);            \
+  __macro(cusolverDnSpotrsBatched);            \
+  __macro(cusolverDnDpotrsBatched);            \
+  __macro(cusolverDnSgetrf_bufferSize);        \
+  __macro(cusolverDnDgetrf_bufferSize);        \
+  __macro(cusolverDnCgetrf_bufferSize);        \
+  __macro(cusolverDnZgetrf_bufferSize);        \
+  __macro(cusolverDnSgeqrf_bufferSize);        \
+  __macro(cusolverDnDgeqrf_bufferSize);        \
+  __macro(cusolverDnCgeqrf_bufferSize);        \
+  __macro(cusolverDnZgeqrf_bufferSize);        \
+  __macro(cusolverDnXgeqrf_bufferSize);        \
+  __macro(cusolverDnSorgqr_bufferSize);        \
+  __macro(cusolverDnDorgqr_bufferSize);        \
+  __macro(cusolverDnSormqr_bufferSize);        \
+  __macro(cusolverDnDormqr_bufferSize);        \
+  __macro(cusolverDnCungqr_bufferSize);        \
+  __macro(cusolverDnZungqr_bufferSize);        \
+  __macro(cusolverDnDestroyGesvdjInfo);        \
+  __macro(cusolverDnCreateGesvdjInfo);         \
+  __macro(cusolverDnSgesvdj_bufferSize);       \
+  __macro(cusolverDnDgesvdj_bufferSize);       \
+  __macro(cusolverDnCgesvdj_bufferSize);       \
+  __macro(cusolverDnZgesvdj_bufferSize);       \
+  __macro(cusolverDnSgesvdj);                  \
+  __macro(cusolverDnDgesvdj);                  \
+  __macro(cusolverDnCgesvdj);                  \
+  __macro(cusolverDnZgesvdj);                  \
+  __macro(cusolverDnSgetrf);                   \
+  __macro(cusolverDnSgetrs);                   \
+  __macro(cusolverDnDgetrs);                   \
+  __macro(cusolverDnCgetrs);                   \
+  __macro(cusolverDnZgetrs);                   \
+  __macro(cusolverDnDgetrf);                   \
+  __macro(cusolverDnCgetrf);                   \
+  __macro(cusolverDnZgetrf);                   \
+  __macro(cusolverDnSgeqrf);                   \
+  __macro(cusolverDnDgeqrf);                   \
+  __macro(cusolverDnCgeqrf);                   \
+  __macro(cusolverDnZgeqrf);                   \
+  __macro(cusolverDnXgeqrf);                   \
+  __macro(cusolverDnSorgqr);                   \
+  __macro(cusolverDnDorgqr);                   \
+  __macro(cusolverDnSormqr);                   \
+  __macro(cusolverDnDormqr);                   \
+  __macro(cusolverDnCungqr);                   \
+  __macro(cusolverDnZungqr);                   \
   __macro(cusolverDnCreateSyevjInfo);          \
   __macro(cusolverDnCreateParams);             \
   __macro(cusolverDnDestroyParams);            \
@@ -143,8 +132,7 @@ CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
   __macro(cusolverDnCheevjBatched);            \
   __macro(cusolverDnZheevjBatched);
 
-CUSOLVER_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
-#endif
+CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP
 }  // namespace dynload

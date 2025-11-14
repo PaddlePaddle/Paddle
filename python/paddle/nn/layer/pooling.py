@@ -15,7 +15,13 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
+
+from paddle.utils.decorator_utils import (
+    lp_pool_decorator,
+    param_one_alias,
+)
 
 from .. import functional as F
 from .layers import Layer
@@ -439,6 +445,7 @@ class LPPool1D(Layer):
     data_format: DataLayout1D
     name: str | None
 
+    @lp_pool_decorator
     def __init__(
         self,
         norm_type: float,
@@ -458,6 +465,7 @@ class LPPool1D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         out = F.lp_pool1d(
             x,
@@ -554,6 +562,7 @@ class LPPool2D(Layer):
     data_format: DataLayout2D
     name: str | None
 
+    @lp_pool_decorator
     def __init__(
         self,
         norm_type: float,
@@ -573,6 +582,7 @@ class LPPool2D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.lp_pool2d(
             x,
@@ -1070,6 +1080,7 @@ class AdaptiveAvgPool2D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool2d(
             x,
@@ -1080,6 +1091,14 @@ class AdaptiveAvgPool2D(Layer):
 
     def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
+
+    @property
+    def output_size(self) -> Size2:
+        return self._output_size
+
+    @output_size.setter
+    def output_size(self, value: Size2) -> None:
+        self._output_size = value
 
 
 class AdaptiveAvgPool3D(Layer):
@@ -1168,6 +1187,7 @@ class AdaptiveAvgPool3D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool3d(
             x,
@@ -1178,6 +1198,14 @@ class AdaptiveAvgPool3D(Layer):
 
     def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
+
+    @property
+    def output_size(self) -> Size3:
+        return self._output_size
+
+    @output_size.setter
+    def output_size(self, value: Size3) -> None:
+        self._output_size = value
 
 
 class AdaptiveMaxPool1D(Layer):
@@ -1253,6 +1281,7 @@ class AdaptiveMaxPool1D(Layer):
     return_mask: bool
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: int,
@@ -1271,6 +1300,14 @@ class AdaptiveMaxPool1D(Layer):
 
     def extra_repr(self) -> str:
         return f'output_size={self.output_size}, return_mask={self.return_mask}'
+
+    @property
+    def return_indices(self) -> bool:
+        return self.return_mask
+
+    @return_indices.setter
+    def return_indices(self, value: bool) -> None:
+        self.return_mask = value
 
 
 class AdaptiveMaxPool2D(Layer):
@@ -1339,6 +1376,7 @@ class AdaptiveMaxPool2D(Layer):
             [2, 3, 3, 3]
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size2,
@@ -1350,6 +1388,7 @@ class AdaptiveMaxPool2D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_max_pool2d(
             x,
@@ -1362,6 +1401,14 @@ class AdaptiveMaxPool2D(Layer):
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
+
+    @property
+    def return_indices(self) -> bool:
+        return self._return_mask
+
+    @return_indices.setter
+    def return_indices(self, value: bool) -> None:
+        self._return_mask = value
 
 
 class AdaptiveMaxPool3D(Layer):
@@ -1441,6 +1488,7 @@ class AdaptiveMaxPool3D(Layer):
 
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size3,
@@ -1452,6 +1500,7 @@ class AdaptiveMaxPool3D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_max_pool3d(
             x,
@@ -1464,6 +1513,14 @@ class AdaptiveMaxPool3D(Layer):
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
+
+    @property
+    def return_indices(self) -> bool:
+        return self._return_mask
+
+    @return_indices.setter
+    def return_indices(self, value: bool) -> None:
+        self._return_mask = value
 
 
 class MaxUnPool1D(Layer):
@@ -1545,7 +1602,22 @@ class MaxUnPool1D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            warnings.warn(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
         return F.max_unpool1d(
             x,
             indices,
@@ -1553,7 +1625,7 @@ class MaxUnPool1D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
@@ -1647,7 +1719,23 @@ class MaxUnPool2D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            warnings.warn(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
+
         return F.max_unpool2d(
             x,
             indices,
@@ -1655,7 +1743,7 @@ class MaxUnPool2D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
@@ -1749,7 +1837,22 @@ class MaxUnPool3D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            warnings.warn(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
         return F.max_unpool3d(
             x,
             indices,
@@ -1757,7 +1860,7 @@ class MaxUnPool3D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 

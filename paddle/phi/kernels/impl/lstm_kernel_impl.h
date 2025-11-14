@@ -60,7 +60,7 @@ void LSTMKernel(const Context& dev_ctx,
   to_batch(dev_ctx, input, batch_gate_new, true, is_reverse);
 
   auto in_dims = input.dims();
-  int frame_size = static_cast<int>(in_dims[1] / 4);
+  int64_t frame_size = in_dims[1] / 4;
   phi::DDim dims({in_dims[0], frame_size});
 
   if (bias.initialized()) {
@@ -254,7 +254,7 @@ void LSTMGradKernel(const Context& dev_ctx,
 
   auto in_dims = input->dims();
   auto out_dims = hidden_g->dims();
-  int frame_size = static_cast<int>(in_dims[1] / 4);
+  int64_t frame_size = in_dims[1] / 4;
   PADDLE_ENFORCE_EQ(frame_size,
                     out_dims[1],
                     common::errors::InvalidArgument(
