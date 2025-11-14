@@ -126,7 +126,6 @@ jobs:
         uses: ./.github/workflows/check-bypass.yml
         with:
           workflow-name: 'distribute-test'
-        secrets:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test
