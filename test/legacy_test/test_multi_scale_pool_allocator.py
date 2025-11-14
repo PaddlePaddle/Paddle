@@ -18,11 +18,14 @@ import paddle
 
 
 @unittest.skipIf(
-    (not paddle.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm,
+    (not paddle.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm(),
     'should compile with cuda.',
 )
 class TestMultiScaleAllocator(unittest.TestCase):
     def setUp(self):
+        paddle.set_flags(
+            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
+        )
         self.GB = 1000**3
         self.MB = 1000**2
         self.cmds = [
@@ -63,26 +66,6 @@ class TestMultiScaleAllocator(unittest.TestCase):
         return params
 
     def test_multi_scale_alloc_free(self):
-        paddle.set_flags(
-            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
-        )
-        params = self.allocate_cmds(self.cmds)
-
-    def test_multi_scale_pre_alloc(self):
-        paddle.set_flags(
-            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': True}
-        )
-        paddle.set_flags({'FLAGS_vmm_small_pool_size_in_mb': 1536})
-        paddle.set_flags({'FLAGS_vmm_small_pool_pre_alloc_in_mb': 512})
-        paddle.set_flags({'FLAGS_vmm_large_pool_pre_alloc_in_mb': 2048})
-        params = self.allocate_cmds(self.cmds)
-
-    def test_single_scale_pre_alloc(self):
-        paddle.set_flags(
-            {'FLAGS_use_multi_scale_virtual_memory_auto_growth': False}
-        )
-        paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
-        paddle.set_flags({'FLAGS_vmm_pre_alloc_in_mb': 2048})
         params = self.allocate_cmds(self.cmds)
 
 

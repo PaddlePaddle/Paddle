@@ -189,3 +189,14 @@ if(WITH_GPU)
     endif()
   endif()
 endif()
+
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip multi_scale_allocator_test on Windows")
+  else()
+    nv_test(
+      multi_scale_allocator_test
+      SRCS multi_scale_allocator_test.cc
+      DEPS phi common)
+  endif()
+endif()
