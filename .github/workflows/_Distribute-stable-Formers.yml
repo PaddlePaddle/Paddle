@@ -32,7 +32,7 @@ jobs:
     name: formers test
     runs-on:
       group: Distribute
-    setps:
+    steps:
       - name: Check docker image and run container
         if: steps.check-bypass.outputs.can-skip != 'true'
         env:
