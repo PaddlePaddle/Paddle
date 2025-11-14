@@ -120,7 +120,7 @@ jobs:
           set -e
           echo "Downloading Paddle.tar.gz from cfs"
           #wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/76321/119e7113b3cbc10bf9e492e8137f52bd058eed3d/Paddle.tar.gz --no-check-certificate/
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/76321/119e7113b3cbc10bf9e492e8137f52bd058eed3d/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
