@@ -375,6 +375,8 @@ class Test_Expm1_Op_Int(unittest.TestCase):
 
 
 class TestParameter:
+    __test__ = False
+
     def test_out_name(self):
         with (
             static_guard(),
