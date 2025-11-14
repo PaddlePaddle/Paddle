@@ -1016,7 +1016,6 @@ class TestGroupNormAPIV2_Param_Static(unittest.TestCase):
                     )
                 exe = base.Executor(p)
                 exe.run(start)
-                paddle.device.synchronize()
                 weight_np, bias_np = exe.run(
                     main, fetch_list=[layer.weight, layer.bias]
                 )
