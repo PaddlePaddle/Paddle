@@ -46,6 +46,8 @@ serial_list="^test_parallel_dygraph_control_flow$|\
 ^test_parallel_dygraph_unused_variables$|\
 ^test_static_model_parallel$|\
 ^test_dygraph_sharding_stage2$|\
+^test_parallel_dygraph_no_sync$|\
+^test_parallel_dygraph_mnist$|\
 ^test_dygraph_group_sharded_api_for_eager$|\
 ^test_new_api_per_op_and_group_intranode$"
 
@@ -131,7 +133,6 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_parallel_dygraph_pipeline_parallel_with_virtual_stage$|\
 ^test_parallel_dygraph_pp_adaptor$|\
 ^test_parallel_class_center_sample$|\
-^test_parallel_dygraph_no_sync$|\
 ^test_dygraph_dataparallel_bf16$|\
 ^test_dygraph_sharding_stage2_bf16$|\
 ^test_dygraph_sharding_stage1_fp16$|\
@@ -143,7 +144,6 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_parallel_dygraph_sparse_embedding_over_height$|\
 ^test_new_group$|\
 ^test_c_comm_init_op$|\
-^test_parallel_dygraph_mnist$|\
 ^test_parallel_dygraph_se_resnext$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_imperative_auto_mixed_precision_for_eager$|\
