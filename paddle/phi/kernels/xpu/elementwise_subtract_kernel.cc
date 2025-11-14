@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/xpu/elementwise.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/xpu/elementwise.h"
 
 namespace phi {
 
@@ -55,7 +55,6 @@ void SubtractKernel<double, XPUContext>(const XPUContext& dev_ctx,
   SubtractKernel<float>(dev_ctx, x_float, y_float, &out_float);
   CastKernel<float>(dev_ctx, out_float, phi::DataType::FLOAT64, out);
 }
-
 
 }  // namespace phi
 PD_REGISTER_KERNEL(subtract,

@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace phi {
 
@@ -42,28 +42,28 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
   functor(dev_ctx, x, out, d_out, d_x);
 }
 
-#define DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(name, functor_class) \
-  template <typename T, typename Context>                           \
-  void name##GradKernel(const Context& dev_ctx,                     \
-                        const DenseTensor& x,                       \
-                        const DenseTensor& dout,                    \
-                        DenseTensor* dx) {                          \
-    functor_class<T> functor;                                       \
-    ActivationGradXPUImpl<T, Context, functor_class<T>>(            \
-        dev_ctx, &x, nullptr, &dout, dx, functor);                  \
-  }                                                                 \
-  template <>                                                       \
-  void name##GradKernel<double, XPUContext>(                        \
-      const XPUContext& dev_ctx,                                                  \
-      const DenseTensor& x,                                                       \
-      const DenseTensor& dout,                                                    \
-      DenseTensor* dx) {                                                          \
-      auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32);       \
-      auto dout_float = phi::Cast<double>(dev_ctx, dout, phi::DataType::FLOAT32); \
-      DenseTensor dx_float;                                                       \
-      dx_float.Resize(dx->dims());                                               \
-      name##GradKernel<float>(dev_ctx, x_float, dout_float, &dx_float);           \
-      CastKernel<float>(dev_ctx, dx_float, phi::DataType::FLOAT64, dx);           \
+#define DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(name, functor_class)       \
+  template <typename T, typename Context>                                 \
+  void name##GradKernel(const Context& dev_ctx,                           \
+                        const DenseTensor& x,                             \
+                        const DenseTensor& dout,                          \
+                        DenseTensor* dx) {                                \
+    functor_class<T> functor;                                             \
+    ActivationGradXPUImpl<T, Context, functor_class<T>>(                  \
+        dev_ctx, &x, nullptr, &dout, dx, functor);                        \
+  }                                                                       \
+  template <>                                                             \
+  void name##GradKernel<double, XPUContext>(const XPUContext& dev_ctx,    \
+                                            const DenseTensor& x,         \
+                                            const DenseTensor& dout,      \
+                                            DenseTensor* dx) {            \
+    auto x_float = phi::Cast<double>(dev_ctx, x, phi::DataType::FLOAT32); \
+    auto dout_float =                                                     \
+        phi::Cast<double>(dev_ctx, dout, phi::DataType::FLOAT32);         \
+    DenseTensor dx_float;                                                 \
+    dx_float.Resize(dx->dims());                                          \
+    name##GradKernel<float>(dev_ctx, x_float, dout_float, &dx_float);     \
+    CastKernel<float>(dev_ctx, dx_float, phi::DataType::FLOAT64, dx);     \
   }
 
 #define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(  \
@@ -814,8 +814,13 @@ PD_REGISTER_KERNEL(exp_grad,
                    phi::float16,
                    phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    square_grad, XPU, ALL_LAYOUT, phi::SquareGradKernel, float, double, phi::float16) {}
+PD_REGISTER_KERNEL(square_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SquareGradKernel,
+                   float,
+                   double,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(swish_grad,
                    XPU,
