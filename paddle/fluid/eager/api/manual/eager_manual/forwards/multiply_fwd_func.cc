@@ -259,26 +259,26 @@ paddle::Tensor multiply_ad_func(
   VLOG(4) << "\n" << SEPARATOR << "Finish_AD_API: multiply" << SEPARATOR;
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(3)) {
     const char* INPUT_PRINT_TEMPLATE =
-        "\nForward Debug Info {\nAPI_Name: [%s] : \n Input: [%s]  \n Output: "
+        "\nForward Debug Info {\nAPI_Name: %s : \n Input: [%s]  \n Output: "
         "[%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , %s), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_Y_TEMPLATE = " \n( y , [%s]), ";
+    const char* TENSOR_Y_TEMPLATE = " \n( y , %s), ";
     std::string input_y_str = paddle::string::Sprintf(
         TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(y));
     input_str += input_y_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , %s), ";
     std::string output_out_str = paddle::string::Sprintf(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
+    VLOG(3) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   if (FLAGS_check_cuda_error) [[unlikely]] {
@@ -474,26 +474,26 @@ paddle::Tensor& multiply__ad_func(
 
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(3)) {
     const char* INPUT_PRINT_TEMPLATE =
-        "\nForward Debug Info {\nAPI_Name: [%s] : \n Input: [%s]  \n Output: "
+        "\nForward Debug Info {\nAPI_Name: %s : \n Input: [%s]  \n Output: "
         "[%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , %s), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_Y_TEMPLATE = " \n( y , [%s]), ";
+    const char* TENSOR_Y_TEMPLATE = " \n( y , %s), ";
     std::string input_y_str = paddle::string::Sprintf(
         TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(y));
     input_str += input_y_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , %s), ";
     std::string output_out_str = paddle::string::Sprintf(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     output_str += output_out_str;
-    VLOG(4) << paddle::string::Sprintf(
+    VLOG(3) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
 

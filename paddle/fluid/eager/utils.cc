@@ -1043,9 +1043,12 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                    t.has_allocation(),
                                    &t,
                                    t.impl());
-  } else {
-    return "[ Not specified tensor log level ]";
+  } else if (VLOG_IS_ON(3)) {
+    const char* TENSOR_PRINT_TEMPLATE = "{\n\tName: %s, %s}";
+    return paddle::string::Sprintf(
+        TENSOR_PRINT_TEMPLATE, tensor_name_str, tensor_info_str);
   }
+  { return "[ Not specified tensor log level ]"; }
 }
 
 std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor>& tensors) {

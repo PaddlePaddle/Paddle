@@ -360,60 +360,59 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(3)) {
     const char* INPUT_PRINT_TEMPLATE =
         "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
 
     std::string input_str = "";
     std::string output_str = "";
-    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    const char* TENSOR_X_TEMPLATE = " \n( x , %s), ";
     std::string input_x_str = paddle::string::Sprintf(
         TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
-    const char* TENSOR_MEAN_TEMPLATE = " \n( mean , [%s]), ";
+    const char* TENSOR_MEAN_TEMPLATE = " \n( mean , %s), ";
     std::string input_mean_str = paddle::string::Sprintf(
         TENSOR_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(mean));
     input_str += input_mean_str;
-    const char* TENSOR_VARIANCE_TEMPLATE = " \n( variance , [%s]), ";
+    const char* TENSOR_VARIANCE_TEMPLATE = " \n( variance , %s), ";
     std::string input_variance_str = paddle::string::Sprintf(
         TENSOR_VARIANCE_TEMPLATE, egr::EagerUtils::TensorStr(variance));
     input_str += input_variance_str;
-    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , [%s]), ";
+    const char* TENSOR_SCALE_TEMPLATE = " \n( scale , %s), ";
     std::string input_scale_str = paddle::string::Sprintf(
         TENSOR_SCALE_TEMPLATE, egr::EagerUtils::TensorStr(scale));
     input_str += input_scale_str;
-    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , [%s]), ";
+    const char* TENSOR_BIAS_TEMPLATE = " \n( bias , %s), ";
     std::string input_bias_str = paddle::string::Sprintf(
         TENSOR_BIAS_TEMPLATE, egr::EagerUtils::TensorStr(bias));
     input_str += input_bias_str;
-    const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , %s), ";
     std::string output_out_str = paddle::string::Sprintf(
         TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
     output_str += output_out_str;
-    const char* TENSOR_MEAN_OUT_TEMPLATE = " \n( mean_out , [%s]), ";
+    const char* TENSOR_MEAN_OUT_TEMPLATE = " \n( mean_out , %s), ";
     std::string output_mean_out_str = paddle::string::Sprintf(
         TENSOR_MEAN_OUT_TEMPLATE, egr::EagerUtils::TensorStr(mean_out));
     output_str += output_mean_out_str;
-    const char* TENSOR_VARIANCE_OUT_TEMPLATE = " \n( variance_out , [%s]), ";
+    const char* TENSOR_VARIANCE_OUT_TEMPLATE = " \n( variance_out , %s), ";
     std::string output_variance_out_str = paddle::string::Sprintf(
         TENSOR_VARIANCE_OUT_TEMPLATE, egr::EagerUtils::TensorStr(variance_out));
     output_str += output_variance_out_str;
-    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , [%s]), ";
+    const char* TENSOR_SAVED_MEAN_TEMPLATE = " \n( saved_mean , %s), ";
     std::string output_saved_mean_str = paddle::string::Sprintf(
         TENSOR_SAVED_MEAN_TEMPLATE, egr::EagerUtils::TensorStr(saved_mean));
     output_str += output_saved_mean_str;
-    const char* TENSOR_SAVED_VARIANCE_TEMPLATE =
-        " \n( saved_variance , [%s]), ";
+    const char* TENSOR_SAVED_VARIANCE_TEMPLATE = " \n( saved_variance , %s), ";
     std::string output_saved_variance_str =
         paddle::string::Sprintf(TENSOR_SAVED_VARIANCE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(saved_variance));
     output_str += output_saved_variance_str;
-    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , [%s]), ";
+    const char* TENSOR_RESERVE_SPACE_TEMPLATE = " \n( reserve_space , %s), ";
     std::string output_reserve_space_str =
         paddle::string::Sprintf(TENSOR_RESERVE_SPACE_TEMPLATE,
                                 egr::EagerUtils::TensorStr(reserve_space));
     output_str += output_reserve_space_str;
-    VLOG(4) << paddle::string::Sprintf(
+    VLOG(3) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
   if (FLAGS_check_cuda_error) [[unlikely]] {
