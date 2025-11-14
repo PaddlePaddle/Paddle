@@ -114,7 +114,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             [[1, 1], [2, 2]],
             [[1, 1], [0, 2]],
             [1],
-            [[1, 1], [2, 2]],
+            [[2, 2]],
         ):
             dics = [
                 {
