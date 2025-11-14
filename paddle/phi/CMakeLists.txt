@@ -184,6 +184,14 @@ elseif(WITH_ROCM)
     phi_gpu ${PHI_BUILD_TYPE}
     SRCS ${PHI_GPU_SRCS}
     DEPS ${PHI_DEPS} phi_core)
+  if(EXISTS "${ROCM_PATH}/lib/librocsolver.so"
+     AND EXISTS "${ROCM_PATH}/lib/librocblas.so")
+    target_link_libraries(
+      phi_gpu ${ROCM_PATH}/lib/librocsolver.so ${ROCM_PATH}/lib/librocblas.so
+      -Wl,--exclude-libs,libomp.so)
+  else()
+    message(WARNING "rocsolver.so or rocblas.so not found, skipping linking.")
+  endif()
 elseif(WITH_XPU_KP)
   xpu_library(
     phi_core ${PHI_BUILD_TYPE}

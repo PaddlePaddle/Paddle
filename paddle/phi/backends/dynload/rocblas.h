@@ -81,7 +81,9 @@ extern void *rocblas_dso_handle;
   __macro(rocblas_set_stream);             \
   __macro(rocblas_get_stream);             \
   __macro(rocblas_set_pointer_mode);       \
-  __macro(rocblas_get_pointer_mode);
+  __macro(rocblas_get_pointer_mode);       \
+  __macro(rocblas_cgeam);                  \
+  __macro(rocblas_zgeam);
 
 ROCBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCBLAS_WRAP)
 
