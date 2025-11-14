@@ -135,7 +135,7 @@ jobs:
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: coverage
+          workflow-name: h-ci
 
       - name: Build
         if: steps.check-bypass.outputs.can-skip != 'true'
@@ -243,7 +243,7 @@ jobs:
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.10
+          PY_VERSION: "3.10"
           WITH_SHARED_PHI: "ON"
           GPU_DEVICES: ${{ env.GPU_DEVICES }}
           WITH_CINN: "ON"
@@ -259,7 +259,7 @@ jobs:
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test
-          docker run -d -t --gpus $GPU_DEVICES --name ${container_name} \
+          docker run -d -t --gpus '$GPU_DEVICES' --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
             -v "/home/data/cfs/.ccache:/root/.ccache" \
