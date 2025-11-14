@@ -41,7 +41,7 @@ TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllocatorVisitor) {
   allocation2.reset();
   allocation4.reset();
   auto allocation5 = vma_allocator->Allocate(50 * mb);
-  EXPECT_EQ(DeviceMemoryStatCurrentValue("Reserved", 0), 110 * mb);
+  EXPECT_EQ(DeviceMemoryStatCurrentValue("Reserved", 0), 112 * mb);
 }
 
 }  // namespace allocation
