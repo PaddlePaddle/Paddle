@@ -379,9 +379,11 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
 class TestEigMagma(unittest.TestCase):
     @unittest.skipIf(
         not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_cuda()
-        or paddle.device.is_compiled_with_rocm(),
-        reason="enable only in linux+cuda now",
+        or (
+            not paddle.device.is_compiled_with_cuda()
+            and not paddle.device.is_compiled_with_rocm()
+        ),
+        reason="enable only in linux+cuda/hip now",
     )
     def test_eager(self):
         with dygraph_guard(), paddle.device.device_guard("cuda"):
@@ -407,9 +409,11 @@ class TestEigMagma(unittest.TestCase):
 
     @unittest.skipIf(
         not platform.system().lower().startswith("linux")
-        or not paddle.device.is_compiled_with_cuda()
-        or paddle.device.is_compiled_with_rocm(),
-        reason="enable only in linux+cuda now",
+        or (
+            not paddle.device.is_compiled_with_cuda()
+            and not paddle.device.is_compiled_with_rocm()
+        ),
+        reason="enable only in linux+cuda/hip now",
     )
     def test_dy2st(self):
         with dygraph_guard(), paddle.device.device_guard("cuda"):
