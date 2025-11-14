@@ -123,6 +123,85 @@ valid:
                     for e in c.get_items():
                         process(a, b, c, d, e)
 
+  # 5 levels but has break in inner loop - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        if some_condition(i, j, k, m, n):
+                            break
+                        process(i, j, k, m, n)
+
+  # 5 levels but has continue in inner loop - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        if some_condition(i, j, k, m, n):
+                            continue
+                        process(i, j, k, m, n)
+
+  # 5 levels but has return in inner loop - OK
+  - |
+    def func():
+        for i in range(10):
+            for j in range(10):
+                for k in range(10):
+                    for m in range(10):
+                        for n in range(10):
+                            if some_condition(i, j, k, m, n):
+                                return
+                            process(i, j, k, m, n)
+
+  # 5 levels but break happens before entering third loop - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            if should_stop(i, j):
+                break
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but continue happens at third level - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                if should_skip(i, j, k):
+                    continue
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but returns before the last two loops - OK
+  - |
+    def do_work(data):
+        for a in data:
+            for b in range(10):
+                if not validate(a, b):
+                    return None
+                for c in range(10):
+                    for d in range(10):
+                        for e in range(10):
+                            consume(a, b, c, d, e)
+
+  # 5 levels breaked by extra code - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            # some processing
+            process(i, j)
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        print(i, j, k, m, n)
+
 invalid:
   # 5 levels - should be caught
   - |
@@ -150,6 +229,15 @@ invalid:
             for c in list_c:
                 for d in list_d:
                     for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels with fifth level variable name containing outer variable - should be caught
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in some_var_name_has_b:
                         process(a, b, c, d, e)
 
   # 5 levels with complex loop variables - should be caught

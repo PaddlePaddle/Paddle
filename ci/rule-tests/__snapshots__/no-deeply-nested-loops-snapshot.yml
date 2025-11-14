@@ -19,6 +19,60 @@ snapshots:
         start: 0
         end: 167
   ? |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in not_b:
+                        process(a, b, c, d, e)
+  : labels:
+      - source: |-
+          for a in list_a:
+              for b in list_b:
+                  for c in list_c:
+                      for d in list_d:
+                          for e in not_b:
+                              process(a, b, c, d, e)
+        style: primary
+        start: 0
+        end: 166
+  ? |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in not_b:  # not b, but `not_b` contains `b` in string level
+                        process(a, b, c, d, e)
+  : labels:
+      - source: |-
+          for a in list_a:
+              for b in list_b:
+                  for c in list_c:
+                      for d in list_d:
+                          for e in not_b:  # not b, but `not_b` contains `b` in string level
+                              process(a, b, c, d, e)
+        style: primary
+        start: 0
+        end: 217
+  ? |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in some_var_name_has_b:
+                        process(a, b, c, d, e)
+  : labels:
+      - source: |-
+          for a in list_a:
+              for b in list_b:
+                  for c in list_c:
+                      for d in list_d:
+                          for e in some_var_name_has_b:
+                              process(a, b, c, d, e)
+        style: primary
+        start: 0
+        end: 180
+  ? |
     for batch in [1, 2]:
         for size in [[32, 32]]:
             for kernel in [[3, 3]]:
