@@ -23,8 +23,10 @@ from paddle import base, core, device as paddle_device, framework
 from paddle.device import (
     Event,
     Stream,
+    StreamContext,
     _device_to_paddle as _device_to_paddle,
     amp,  # noqa: F401
+    current_device,
     device,
     is_available as _device_is_available,
     is_bf16_supported,
@@ -33,7 +35,7 @@ from paddle.device import (
     manual_seed_all as device_manual_seed_all,
     reset_peak_memory_stats,
     set_stream,
-    stream_guard as _PaddleStreamGuard,
+    stream,
 )
 from paddle.tensor.creation import (
     BFloat16Tensor,
@@ -284,39 +286,6 @@ def manual_seed_all(seed: int) -> None:
     device_manual_seed_all(seed)
 
 
-class StreamContext(_PaddleStreamGuard):
-    """
-    Notes:
-        This API only supports dynamic graph mode currently.
-    A context manager that specifies the current stream context by the given stream.
-
-    Args:
-        stream(Stream, optional): the selected stream. If stream is None, just yield.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('cuda')
-            >>> s = paddle.cuda.Stream()
-            >>> data1 = paddle.ones(shape=[20])
-            >>> data2 = paddle.ones(shape=[20])
-            >>> data3 = data1 + data2
-            >>> with paddle.cuda.StreamContext(s):
-            ...     s.wait_stream(paddle.cuda.current_stream()) # type: ignore[attr-defined]
-            ...     data4 = data1 + data3
-
-    """
-
-    def __init__(self, stream: paddle_device.Stream):
-        super().__init__(stream)
-
-
 def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
     """
     Return the random number generator state of the specified device.
@@ -367,40 +336,6 @@ def set_rng_state(
             >>> paddle.cuda.set_rng_state(state)
     """
     paddle_device.set_rng_state(new_state, device)
-
-
-def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
-    '''
-
-    Notes:
-        This API only supports dynamic graph mode currently.
-    A context manager that specifies the current stream context by the given stream.
-
-    Args:
-        stream(Stream, optional): the selected stream. If stream is None, just yield.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('cuda')
-            >>> s = paddle.cuda.Stream()
-            >>> data1 = paddle.ones(shape=[20])
-            >>> data2 = paddle.ones(shape=[20])
-            >>> data3 = data1 + data2
-
-            >>> with paddle.cuda.stream(s):
-            ...     s.wait_stream(paddle.cuda.current_stream())
-            ...     data4 = data1 + data3
-            >>> print(data4)
-
-    '''
-    return StreamContext(stream_obj)
 
 
 class nvtx:
@@ -557,35 +492,6 @@ def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
             else device.gpu_device_id()
         )
     return cudart().cudaMemGetInfo(device_id)
-
-
-def current_device() -> int:
-    """
-    Return the index of a currently selected device.
-
-    Returns:
-        int: The index of the currently selected device.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> device_id = paddle.cuda.current_device()
-            >>> print(f"Current device index: {device_id}")
-    """
-    # Use paddle.device.get_device() to get the current device string
-    device_str = paddle_device.get_device()
-
-    # Parse the device string to extract the device index
-    # Format examples: 'gpu:0', 'xpu:0', 'custom_device:0'
-    if ':' in device_str:
-        device_id = int(device_str.split(':')[1])
-    else:
-        # If no device index is specified, default to 0
-        device_id = 0
-
-    return device_id
 
 
 def device_count() -> int:
@@ -972,4 +878,5 @@ __all__ = [
     "max_memory_allocated",
     "reset_peak_memory_stats",
     "Event",
+    "StreamContext",
 ]

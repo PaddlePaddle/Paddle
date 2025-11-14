@@ -645,7 +645,18 @@ class TestPool1D_API(unittest.TestCase):
             result_np = lp_pool1D_forward_naive(
                 input_np, ksize=[5], strides=[3], paddings=[0], norm_type=5
             )
-
+            np.testing.assert_allclose(
+                result.numpy(), result_np.astype(np.float32), rtol=1e-05
+            )
+            # test input alias
+            result = F.lp_pool1d(
+                input=input, norm_type=5, kernel_size=5, stride=3, padding=[0]
+            )
+            np.testing.assert_allclose(
+                result.numpy(), result_np.astype(np.float32), rtol=1e-05
+            )
+            # test 5th positional argument with bool
+            result = F.lp_pool1d(input, 5, 5, 3, False)
             np.testing.assert_allclose(
                 result.numpy(), result_np.astype(np.float32), rtol=1e-05
             )

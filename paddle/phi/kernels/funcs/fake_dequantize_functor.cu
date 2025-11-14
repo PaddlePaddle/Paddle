@@ -142,7 +142,10 @@ void ChannelDequantizeFunctor<Context, T>::operator()(
     // quantized on. `x_num_col_dims` is -1 for operator in ['matmul',
     // 'matmul_v2', 'mul'] and is 1 for other operators.
     int64_t num = in->numel();
-    int n_scales = in->dims()[x_num_col_dims];
+    int64_t n_scales = in->dims()[x_num_col_dims];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     const T* scale_one = scales[0]->data<T>();
     const T* scale_two = scales[1]->data<T>();
 

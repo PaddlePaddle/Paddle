@@ -59,6 +59,15 @@ def call_pairwise_distance_functional(
     return distance
 
 
+def call_pairwise_distance_functional_compatibility(
+    x, y, p=2.0, epsilon=1e-6, keepdim='False'
+):
+    distance = paddle.nn.functional.pairwise_distance(
+        x1=x, x2=y, p=p, eps=epsilon, keepdim=keepdim
+    )
+    return distance.numpy()
+
+
 def test_static(
     place, x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False, functional=False
 ):
@@ -349,6 +358,28 @@ class TestPairwiseDistance(unittest.TestCase):
         y_np = np.random.random(shape).astype('float32')
 
         dygraph_ret = call_pairwise_distance_layer_compatibility(
+            x=paddle.to_tensor(x_np),
+            y=paddle.to_tensor(y_np),
+            epsilon=epsilon,
+            keepdim=keepdim,
+        )
+        excepted_value = np_pairwise_distance(
+            x_np, y_np, epsilon=epsilon, keepdim=keepdim
+        )
+
+        self.assertEqual(dygraph_ret.shape, excepted_value.shape)
+
+        np.testing.assert_allclose(dygraph_ret, excepted_value, rtol=1e-05)
+
+    def test_pairwise_distance_function_compatibility(self):
+        shape = [10, 10]
+        epsilon = 1e-6
+        keepdim = False
+        place = paddle.CPUPlace()
+        x_np = np.random.random(shape).astype('float32')
+        y_np = np.random.random(shape).astype('float32')
+
+        dygraph_ret = call_pairwise_distance_functional_compatibility(
             x=paddle.to_tensor(x_np),
             y=paddle.to_tensor(y_np),
             epsilon=epsilon,
