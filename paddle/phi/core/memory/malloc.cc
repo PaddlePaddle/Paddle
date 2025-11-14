@@ -75,6 +75,9 @@ gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
 
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
 std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
                                          int32_t n) {
   FreeMemoryMetricsVisitor free_memory_metrics_visitor(n);
@@ -83,7 +86,6 @@ std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
   return std::make_pair(free_memory_metrics_visitor.GetLargeSize(),
                         free_memory_metrics_visitor.GetSumSize());
 }
-
 #endif
 
 #ifdef PADDLE_WITH_XPU
