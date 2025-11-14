@@ -16,6 +16,7 @@
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+#include "paddle/phi/core/memory/memory.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #include "gtest/gtest.h"
@@ -30,8 +31,14 @@ TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllocatorVisitor) {
       std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
           vmm_cuda_allocator, platform::GpuMinChunkSize(), phi::GPUPlace());
   size_t mb = (1 << 20);
-  vma_allocator->Allocate(1 * mb - 257);
-  vma_allocator->Allocate(2 * mb - 257);
+  auto allocation1 = vma_allocator->Allocate(10 * mb);
+  auto allocation2 = vma_allocator->Allocate(20 * mb);
+  auto allocation3 = vma_allocator->Allocate(30 * mb);
+  auto allocation4 = vma_allocator->Allocate(40 * mb);
+  allocation2.reset();
+  allocation4.reset();
+  auto allocation5 = vma_allocator->Allocate(50 * mb);
+  EXPECT_GT(DeviceMemoryStatCurrentValue("Reserved", 0), 110 * mb);
 }
 
 }  // namespace allocation
