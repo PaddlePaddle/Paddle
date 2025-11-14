@@ -494,4 +494,11 @@ void SavePythonCallStackToFile(const std::string& file_name,
                                const std::string& api_name);
 std::string FormatPyLayerBackwardErrorMsg(GradNodeBase* node,
                                           std::string error_mesg);
+void CheckGradNodeAccumulation(const paddle::Tensor& tensor);
+void CheckGradNodeAccumulation(const paddle::optional<paddle::Tensor>& tensor);
+void CheckGradNodeAccumulation(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors);
+void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors);
+void CheckGradNodeAccumulation(
+    const std::vector<std::vector<paddle::Tensor*>>& tensors);
 }  // namespace egr

@@ -54,7 +54,10 @@ void FcXPUKernelImpl(const Context& dev_ctx,
   auto in_mat_dims = flatten_to_2d(x.dims(), in_num_col_dims);
   int m = in_mat_dims[0];
   int k = in_mat_dims[1];
-  int n = w.dims()[0];
+  int64_t n = w.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   auto* x_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
   const float* x_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();

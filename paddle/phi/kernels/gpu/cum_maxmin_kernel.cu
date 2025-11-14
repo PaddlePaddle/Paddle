@@ -266,7 +266,10 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   T2* indices_data = indices->data<T2>();
   if (axis == out_dims.size() - 1) {
     int ndim = x.dims().size();
-    int row_size = x.dims()[ndim - 1];
+    int64_t row_size = x.dims()[ndim - 1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     int num_rows = x.numel() / row_size;
 
     dim3 threads(16, 32);

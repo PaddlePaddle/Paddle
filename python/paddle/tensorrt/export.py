@@ -390,6 +390,8 @@ def convert_to_trt(program, trt_config, scope):
             scope=scope,
         )
 
+        paddle.device.empty_cache()
+
         # specify certain operators to be excluded from entering TensorRT
         if trt_config.disable_ops:
             forbid_op_lower_trt(program, trt_config.disable_ops)

@@ -112,19 +112,19 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
 ******************************
 */
 
-template <typename T>
+template <typename T, typename IndexT = int>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
-    const T *__restrict__ dout, int size, int vec_size, T *dx, T *dy) {
-  int tid = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
-  int stride = GRID_NUM_X * BLOCK_NUM_X;
-  int loop = size / vec_size;
-  int remainder = size % vec_size;
+    const T *__restrict__ dout, IndexT size, int vec_size, T *dx, T *dy) {
+  IndexT tid = static_cast<IndexT>(BLOCK_ID_X) * BLOCK_NUM_X + THREAD_ID_X;
+  IndexT stride = static_cast<IndexT>(GRID_NUM_X) * BLOCK_NUM_X;
+  IndexT loop = size / vec_size;
+  IndexT remainder = size % vec_size;
   const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
   float4 *dx_vec = reinterpret_cast<float4 *>(dx);
   float4 *dy_vec = reinterpret_cast<float4 *>(dy);
   float4 tmp_loop;
 
-  for (int i = tid; i < loop; i += stride) {
+  for (IndexT i = tid; i < loop; i += stride) {
     tmp_loop = dout_vec[i];
     dx_vec[i] = tmp_loop;
     dy_vec[i] = tmp_loop;
@@ -133,7 +133,7 @@ static __global__ void SimpleElemwiseAddGradCUDAKernel(
   if (tid == loop && remainder != 0) {
     T tmp_rem;
     while (remainder) {
-      int idx = size - remainder;
+      IndexT idx = size - remainder;
       remainder--;
       tmp_rem = dout[idx];
       dx[idx] = tmp_rem;
@@ -219,13 +219,24 @@ void ElementwiseAddGrad(const GPUContext &dev_ctx,
         dim3(((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
                  PREDEFINED_BLOCK_SIZE,
              1);
-    SimpleElemwiseAddGradCUDAKernel<T>
-        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-            dout.data<T>(),
-            size,
-            vec_size,
-            dev_ctx.template Alloc<T>(dx),
-            dev_ctx.template Alloc<T>(dy));
+    if (size < std::numeric_limits<int>::max()) {
+      SimpleElemwiseAddGradCUDAKernel<T>
+          <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+              dout.data<T>(),
+              size,
+              vec_size,
+              dev_ctx.template Alloc<T>(dx),
+              dev_ctx.template Alloc<T>(dy));
+    } else {
+      SimpleElemwiseAddGradCUDAKernel<T, int64_t>
+          <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+              dout.data<T>(),
+              size,
+              vec_size,
+              dev_ctx.template Alloc<T>(dx),
+              dev_ctx.template Alloc<T>(dy));
+    }
+
   } else {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "and dx_data is the same as dout_data, do not need "
