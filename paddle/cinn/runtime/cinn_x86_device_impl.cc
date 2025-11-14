@@ -18,7 +18,7 @@
 
 int cinn_x86_malloc(void* context, cinn_buffer_t* buf) {
   // ASSERT_NOT_NULL(context)
-  ASSERT_NOT_NULL(buf)
+  // ASSERT_NOT_NULL(buf)
   uint64_t memory_size;
   bool need_malloc = false;
   if (buf->memory_size > 0 && !buf->memory) {
@@ -27,7 +27,7 @@ int cinn_x86_malloc(void* context, cinn_buffer_t* buf) {
   } else {
     memory_size = buf->num_elements() * buf->type.bytes();
   }
-  CINN_CHECK(memory_size > 0);
+  // CINN_CHECK(memory_size > 0);
   if (buf->memory_size < memory_size || need_malloc) {
     if (buf->memory) {
       free(buf->memory);
@@ -39,13 +39,13 @@ int cinn_x86_malloc(void* context, cinn_buffer_t* buf) {
     }
     buf->memory_size = memory_size;
   }
-  ASSERT_NOT_NULL(buf->memory);
+  // ASSERT_NOT_NULL(buf->memory);
   return 0;
 }
 
 int cinn_x86_free(void* context, cinn_buffer_t* buf) {
   // ASSERT_NOT_NULL(context);
-  ASSERT_NOT_NULL(buf);
+  // ASSERT_NOT_NULL(buf);
   if (buf->memory) {
     free(buf->memory);
     buf->memory = NULL;

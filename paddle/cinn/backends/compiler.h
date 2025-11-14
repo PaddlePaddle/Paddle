@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <dlfcn.h>
 
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
@@ -151,6 +152,23 @@ class Compiler final {
    */
   size_t GetFusionHash() const { return fusion_hash_; }
 
+  ~Compiler() {
+    // 检查是否有动态库句柄需要释放
+    if (dynamic_library_handle_) {
+      VLOG(3) << "Closing dynamic library handle for: " << dynamic_library_path_;
+      
+      // 调用 dlclose 来释放共享库资源
+      int result = dlclose(dynamic_library_handle_);
+      if (result != 0) {
+          // 使用 LOG(WARNING) 或 VLOG(0) 记录错误，但不终止程序
+          LOG(WARNING) << "Error closing dynamic library handle for " 
+                        << dynamic_library_path_ << ". Error: " << dlerror();
+      }
+      // 清除句柄指针
+      dynamic_library_handle_ = nullptr;
+    }
+  }
+
  private:
   // do not register device symbol until end=true for build function
   void RegisterDeviceModuleSymbol();
@@ -203,9 +221,12 @@ class Compiler final {
 
   // Dynamic library helper methods
 #ifdef CINN_WITH_CUDA
-  std::string ComputeSourceHash(const std::string& source_code);
+  std::string ComputeSourceHash();
   std::string ExtractKernelName(const std::string& source_code);
+  std::string GenerateObjectWithoutCache(const std::string& source_code);
   std::string GenerateFatbinWithoutCache(const std::string& source_code);
+  void SaveKernelNamesToMeta();
+  void LoadKernelNamesFromMeta();
   std::pair<bool, std::string> FindKernelInCache(const std::string& so_path, 
                                                const std::string& kernel_name);
   std::string UpdateKernelInCache(const std::string& so_path,

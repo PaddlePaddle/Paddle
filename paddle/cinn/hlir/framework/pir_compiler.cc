@@ -93,6 +93,10 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
           shape_analysis_manager.constraints_manager());
       runtime::SetArchDevice(target_, device_id);
       VLOG(5) << "YUHAN!!! Before Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
+      // auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
+      // std::string source_hash = std::to_string(fusion_info_hash);
+      // std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+      // if (std::ifstream(cache_so_path).good()) {}
       compilation_results[index] = Compile(&group_compilation_contexts[index]); //
       VLOG(5) << "YUHAN!!! After Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
     };
@@ -170,6 +174,12 @@ void CompilationContextMapper::Construct(
   for (size_t i = 0; i < groups.size(); ++i) {
     cinn::dialect::ir::details::UpdateGroupShapeOrDataExprs(groups[i]);
     fusion_infos_.emplace_back(*groups[i]);
+    //
+    // auto fusion_info_hash = fusion_infos_[i].hash();
+    // std::string source_hash = std::to_string(fusion_info_hash);
+    // std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+    // if (std::ifstream(cache_so_path).good()) continue;
+    //
     VLOG(4) << "Construct FusionInfo: " << fusion_infos_[i]
             << " for group: " << *groups[i];
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
