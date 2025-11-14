@@ -909,7 +909,7 @@ def maybe_dynamic_shape_tensor(tensor: paddle.Tensor):
         paddle.int64,
     ]:
         return False  # Only int tensor can be shape tensor
-    if not tensor.shape:
+    if len(tensor.shape) == 0:
         return True  # For full generated scalar tensor
     if len(tensor.shape) > 1:
         return False
