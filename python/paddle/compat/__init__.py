@@ -955,11 +955,7 @@ class ProxyModule(types.ModuleType):
         return getattr(self._original_module, name)
 
 
-GLOBAL_OVERRIDES = {
-    "torch.Generator": create_fake_class(
-        "Generator", {"manual_seed": create_fake_function("manual_seed")}
-    ),
-}
+GLOBAL_OVERRIDES = {}
 
 
 def _is_torch_module(name: str) -> bool:
