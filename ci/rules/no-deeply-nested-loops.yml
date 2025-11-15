@@ -1,6 +1,6 @@
 id: no-deeply-nested-loops
 language: python
-severity: warning
+severity: error
 message: |
   Detected deeply nested loops (5 or more levels). Consider refactoring using `itertools.product`.
   For example:
