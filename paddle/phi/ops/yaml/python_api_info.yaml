@@ -161,6 +161,11 @@
   args_alias:
     use_default_mapping : True
 
+- op : asin
+  name : [paddle.asin, paddle.Tensor.asin]
+  args_alias:
+    use_default_mapping : True
+
 - op : any
   name : [paddle.any, paddle.Tensor.any]
   args_alias:

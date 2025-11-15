@@ -2709,3 +2709,48 @@ def abs(
 # zhanrongrun
 
 # other
+add_doc_and_signature(
+    "asin",
+    f"""
+    Arcsine Operator.
+
+    .. math::
+        out = sin^{-1}(x)
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``asin(input=tensor_x)`` is equal to ``asin(x=tensor_x)``.
+
+    Args:
+        x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Same shape and data type as input (integer types are autocasted into float32)
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.asin(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
+
+            >>> # Using Pytorch-compatible parameter names
+            >>> out = paddle.asin(input=x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
+    """,
+    """
+def asin(
+    x: Tensor,
+    name: str | None = None
+) -> Tensor
+""",
+)
