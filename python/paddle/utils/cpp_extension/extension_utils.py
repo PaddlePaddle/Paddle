@@ -226,6 +226,8 @@ def custom_write_stub(resource, pyfile):
         # Parse registering op information
         _, op_info = CustomOpInfo.instance().last()
         so_path = op_info.so_path
+        if not os.path.exists(so_path):
+            so_path = resource
 
         new_custom_ops = load_op_meta_info_and_register_op(so_path)
         for op_name in new_custom_ops:
