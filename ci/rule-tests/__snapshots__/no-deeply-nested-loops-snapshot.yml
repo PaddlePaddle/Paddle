@@ -1,6 +1,29 @@
 id: no-deeply-nested-loops
 snapshots:
   ? |
+    def func():
+        for i in range(10):
+            for j in range(10):
+                for k in range(10):
+                    for m in range(10):
+                        for n in range(10):
+                            if some_condition(i, j, k, m, n):
+                                return
+                            process(i, j, k, m, n)
+  : labels:
+      - source: |-
+          for i in range(10):
+                  for j in range(10):
+                      for k in range(10):
+                          for m in range(10):
+                              for n in range(10):
+                                  if some_condition(i, j, k, m, n):
+                                      return
+                                  process(i, j, k, m, n)
+        style: primary
+        start: 16
+        end: 311
+  ? |
     for a in list_a:
         for b in list_b:
             for c in list_c:
@@ -74,6 +97,28 @@ snapshots:
         style: primary
         start: 0
         end: 227
+  ? |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        if some_condition(i, j, k, m, n):
+                            continue
+                        process(i, j, k, m, n)
+  : labels:
+      - source: |-
+          for i in range(10):
+              for j in range(10):
+                  for k in range(10):
+                      for m in range(10):
+                          for n in range(10):
+                              if some_condition(i, j, k, m, n):
+                                  continue
+                              process(i, j, k, m, n)
+        style: primary
+        start: 0
+        end: 269
   ? |
     for i in range(10):
         for j in range(10):

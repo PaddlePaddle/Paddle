@@ -32,16 +32,9 @@ rule:
                     for $IE in $LE:
                         $$$BODY
   not:
-    any:
-      - has:
-          pattern: break
-          stopBy: end
-      - has:
-          pattern: continue
-          stopBy: end
-      - has:
-          pattern: return
-          stopBy: end
+    has:
+      pattern: break
+      stopBy: end
 constraints:
   LB:
     not:

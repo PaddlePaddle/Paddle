@@ -134,28 +134,6 @@ valid:
                             break
                         process(i, j, k, m, n)
 
-  # 5 levels but has continue in inner loop - OK
-  - |
-    for i in range(10):
-        for j in range(10):
-            for k in range(10):
-                for m in range(10):
-                    for n in range(10):
-                        if some_condition(i, j, k, m, n):
-                            continue
-                        process(i, j, k, m, n)
-
-  # 5 levels but has return in inner loop - OK
-  - |
-    def func():
-        for i in range(10):
-            for j in range(10):
-                for k in range(10):
-                    for m in range(10):
-                        for n in range(10):
-                            if some_condition(i, j, k, m, n):
-                                return
-                            process(i, j, k, m, n)
 
   # 5 levels but break happens before entering third loop - OK
   - |
@@ -248,3 +226,26 @@ invalid:
                 for stride in [[1, 1], [2, 2]]:
                     for padding in [[1, 1]]:
                         config = create_config(batch, size, kernel, stride, padding)
+
+  # 5 levels but has continue in inner loop - should be caught
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        if some_condition(i, j, k, m, n):
+                            continue
+                        process(i, j, k, m, n)
+
+  # 5 levels but has return in inner loop - should be caught
+  - |
+    def func():
+        for i in range(10):
+            for j in range(10):
+                for k in range(10):
+                    for m in range(10):
+                        for n in range(10):
+                            if some_condition(i, j, k, m, n):
+                                return
+                            process(i, j, k, m, n)
