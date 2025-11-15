@@ -204,9 +204,11 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
 }
 
 void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
-  void *ptr = nullptr;
+  void *alloc_ptr = nullptr;
+  size_t alloc_size = 0;
   if (FLAGS_dump_vmm_allocation_info) {
-    DumpInfo("===== Before ExtendOrCompact =====");
+    DumpInfo("===== Before ExtendOrCompact ===== request size: " +
+             std::to_string(size));
   }
 
   auto allocateptr = AllocateOrCompact(size).value_or(nullptr);
@@ -227,13 +229,14 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
     return;
   }
 
-  ptr = allocateptr->ptr();
-  size = allocateptr->size();
+  alloc_ptr = allocateptr->ptr();
+  alloc_size = allocateptr->size();
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
   if (all_blocks_.empty()) {
-    all_blocks_.emplace_back(ptr, size, true);
-    free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
+    all_blocks_.emplace_back(alloc_ptr, alloc_size, true);
+    free_blocks_.emplace(std::make_pair(alloc_size, alloc_ptr),
+                         all_blocks_.begin());
     return;
   }
 
@@ -241,21 +244,24 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
   auto block_it = all_blocks_.end();
   block_it--;
   if (block_it->is_free_ &&
-      reinterpret_cast<uint8_t *>(block_it->ptr_) + block_it->size_ == ptr) {
+      reinterpret_cast<uint8_t *>(block_it->ptr_) + block_it->size_ ==
+          alloc_ptr) {
     // merge with pre
     free_blocks_.erase(std::make_pair(block_it->size_, block_it->ptr_));
-    block_it->size_ += size;
+    block_it->size_ += alloc_size;
     free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
                          block_it);
   } else {
     // do not merge
-    all_blocks_.emplace_back(ptr, size, true);
+    all_blocks_.emplace_back(alloc_ptr, alloc_size, true);
     auto block_it = all_blocks_.end();
     block_it--;
-    free_blocks_.emplace(std::make_pair(size, ptr), block_it);
+    free_blocks_.emplace(std::make_pair(alloc_size, alloc_ptr), block_it);
   }
   if (FLAGS_dump_vmm_allocation_info) {
-    DumpInfo("===== After ExtendOrCompact =====");
+    DumpInfo("===== After ExtendOrCompact =====  request size: " +
+             std::to_string(size) +
+             " alloc size: " + std::to_string(alloc_size));
   }
 }
 

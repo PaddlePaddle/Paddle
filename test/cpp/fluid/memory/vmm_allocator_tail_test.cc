@@ -22,12 +22,17 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #endif
+#include "glog/logging.h"
 #include "gtest/gtest.h"
+
+PD_DECLARE_bool(dump_vmm_allocation_info);
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllocatorVisitor) {
+  FLAGS_v = 4;
+  FLAGS_dump_vmm_allocation_info = true;
   auto vmm_cuda_allocator =
       std::make_shared<CUDAVirtualMemAllocator>(phi::GPUPlace());
   auto vma_allocator =
@@ -36,12 +41,13 @@ TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllocatorVisitor) {
   size_t mb = (1 << 20);
   auto allocation1 = vma_allocator->Allocate(10 * mb);
   auto allocation2 = vma_allocator->Allocate(20 * mb);
+  auto allocation_tiny = vma_allocator->Allocate(2 * mb - 1);
   auto allocation3 = vma_allocator->Allocate(30 * mb);
   auto allocation4 = vma_allocator->Allocate(40 * mb);
   allocation2.reset();
   allocation4.reset();
   auto allocation5 = vma_allocator->Allocate(50 * mb);
-  EXPECT_EQ(DeviceMemoryStatCurrentValue("Reserved", 0), 112 * mb);
+  EXPECT_EQ(DeviceMemoryStatCurrentValue("Reserved", 0), 114 * mb);
 }
 
 }  // namespace allocation
