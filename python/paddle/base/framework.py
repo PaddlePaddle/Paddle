@@ -7770,7 +7770,13 @@ class EagerParamBase(core.eager.Tensor):
     """
 
     @dygraph_only
-    def __init__(self, shape, dtype, **kwargs):
+    def __init__(self, *args, **kwargs):
+        if (len(args) > 0 and isinstance(args[0], list)) or 'shape' in kwargs:
+            self.__init_by_shape__(*args, **kwargs)
+        else:
+            self.__init_by_tensor__(*args, **kwargs)
+
+    def __init_by_shape__(self, shape, dtype, **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
@@ -7816,6 +7822,43 @@ class EagerParamBase(core.eager.Tensor):
         # hook functions for lazy initialization
         self._init_func = None
         self._init_op_creator = None
+
+    def __init_by_tensor__(
+        self, data: paddle.Tensor | None = None, requires_grad: bool = True
+    ):
+        if data is None:
+            data = paddle.to_tensor([])
+        shape = data.shape
+        dtype = data.dtype
+
+        for each in shape:
+            if each < 0:
+                raise ValueError(
+                    f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
+                )
+
+        dtype = convert_to_proto_type(dtype)
+        name = unique_name.generate("_eager_param_base")
+
+        super().__init__(
+            dtype,
+            list(shape) if shape else [],
+            name,
+            core.VarDesc.VarType.DENSE_TENSOR,
+            True,
+        )
+        self.retain_grads()
+        self._is_param = True
+        self.stop_gradient = not requires_grad
+        self.optimize_attr = 1.0
+        self.regularizer = None
+        self.do_model_average = None
+        self.need_clip = True
+        self.is_distributed = False
+        # hook functions for lazy initialization
+        self._init_func = None
+        self._init_op_creator = None
+        self._set_impl(data)
 
     @classmethod
     def from_tensor(cls, tensor, **kwargs):

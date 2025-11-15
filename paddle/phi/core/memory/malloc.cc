@@ -32,6 +32,10 @@ uint64_t Release(const phi::Place& place) {
   return allocation::AllocatorFacade::Instance().Release(place);
 }
 
+size_t Compact(const phi::GPUPlace& place) {
+  return allocation::AllocatorFacade::Instance().Compact(place);
+}
+
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                         size_t size,
                                         const phi::Stream& stream) {

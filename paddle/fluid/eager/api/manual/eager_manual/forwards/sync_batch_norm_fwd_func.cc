@@ -131,6 +131,13 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
       egr::EagerUtils::nullable_autograd_meta(scale);
   egr::AutogradMeta* bias_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(bias);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(x);
+  egr::CheckGradNodeAccumulation(mean);
+  egr::CheckGradNodeAccumulation(variance);
+  egr::CheckGradNodeAccumulation(scale);
+  egr::CheckGradNodeAccumulation(bias);
 
   // Before log info
 
