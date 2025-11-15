@@ -38,7 +38,7 @@ from .extension_utils import (
     find_rocm_home,
     normalize_extension_kwargs,
     define_paddle_extension_name,
-    custom_write_stub
+    custom_write_stub,
 )
 from .extension_utils import (
     is_cuda_file,
@@ -1213,12 +1213,13 @@ def _get_num_workers(verbose: bool) -> int | None:
         )
     return None
 
+
 class CustomBDistWheel(_bdist_wheel):
     def run(self):
         self.run_command('build')
 
         build_ext_cmd = self.get_finalized_command('build_ext')
-        
+
         pyfile_path_list = []
         for ext in build_ext_cmd.extensions:
             original_so_path = build_ext_cmd.get_ext_fullpath(ext.name)
@@ -1231,6 +1232,7 @@ class CustomBDistWheel(_bdist_wheel):
         for pyfile_path in pyfile_path_list:
             os.remove(pyfile_path)
 
+
 class CustomBuildExtension(BuildExtension):
     def run(self):
         super().run()
@@ -1239,7 +1241,7 @@ class CustomBuildExtension(BuildExtension):
             original_so_path = self.get_ext_fullpath(ext.name)
 
             filename, ext_name = os.path.splitext(original_so_path)
-            
+
             will_rename = False
             if OS_NAME.startswith('linux') and ext_name == '.so':
                 will_rename = True
@@ -1247,21 +1249,22 @@ class CustomBuildExtension(BuildExtension):
                 will_rename = True
             elif IS_WINDOWS and ext_name == '.pyd':
                 will_rename = True
-                
+
             if will_rename:
                 new_so_path = filename + "_pd_" + ext_name
                 os.rename(original_so_path, new_so_path)
 
-def setup_with_wheel_support(**attr):    
+
+def setup_with_wheel_support(**attr):
     cmdclass = attr.get('cmdclass', {})
     assert isinstance(cmdclass, dict)
-    
+
     if 'build_ext' not in cmdclass:
         cmdclass['build_ext'] = CustomBuildExtension.with_options(
             no_python_abi_suffix=True
         )
         attr['cmdclass'] = cmdclass
-    
+
     ext_modules = attr.get('ext_modules', [])
     if not isinstance(ext_modules, list):
         ext_modules = [ext_modules]
@@ -1272,11 +1275,11 @@ def setup_with_wheel_support(**attr):
     for ext_module in ext_modules:
         ext_module.name = attr['name']
     attr['ext_modules'] = ext_modules
-    
+
     assert 'bdist_wheel' not in cmdclass
     cmdclass['bdist_wheel'] = CustomBDistWheel
 
     attr['cmdclass'] = cmdclass
-    
+
     with bootstrap_context():
         setuptools.setup(**attr)
