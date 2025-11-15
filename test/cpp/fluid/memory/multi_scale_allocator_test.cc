@@ -22,6 +22,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #endif
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 PD_DECLARE_uint64(vmm_small_pool_pre_alloc_in_mb);
 PD_DECLARE_uint64(vmm_large_pool_pre_alloc_in_mb);
@@ -94,6 +95,7 @@ TEST_F(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocatorTest,
 TEST_F(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocatorTest,
        PreAllocBothPools) {
   // Set flags for both pools pre-allocation
+  FLAGS_v = 4;
   FLAGS_vmm_small_pool_pre_alloc_in_mb = 5;   // 5 MB
   FLAGS_vmm_large_pool_pre_alloc_in_mb = 15;  // 15 MB
 
@@ -114,6 +116,7 @@ TEST_F(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocatorTest,
 
 TEST_F(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocatorTest,
        PreAllocWithZeroSize) {
+  FLAGS_v = 4;
   FLAGS_vmm_pre_alloc_in_mb = 0;
   small_allocator_->PreAlloc();
   EXPECT_EQ(DeviceMemoryStatCurrentValue("Reserved", 0), 0 * mb);
