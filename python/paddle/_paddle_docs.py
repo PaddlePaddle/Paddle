@@ -1743,6 +1743,40 @@ def cos(
 )
 
 add_doc_and_signature(
+    "cosh",
+    """
+    Cosh Activation Operator.
+
+    Input range `(-inf, inf)`, output range `(1, inf)`.
+
+    .. math::
+       out = \\frac{exp(x)+exp(-x)}{2}
+
+    Args:
+        x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. Output of Cosh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.cosh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.08107233, 1.02006674, 1.00500417, 1.04533851])
+    """,
+    "def cosh(x: Tensor, name: str | None = None, *, out: Tensor | None = None) -> Tensor",
+)
+
+add_doc_and_signature(
     "floor",
     """
     Floor Activation Operator. Computes floor of x element-wise.

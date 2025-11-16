@@ -101,6 +101,11 @@
   args_alias:
     use_default_mapping : True
 
+- op : cosh
+  name: [paddle.cosh, paddle.Tensor.cosh]
+  args_alias:
+    use_default_mapping : True
+
 - op : floor
   name: [paddle.floor, paddle.Tensor.floor]
   args_alias:
