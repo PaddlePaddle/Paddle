@@ -316,6 +316,14 @@ jobs:
           bash $ci_scripts/h-test.sh
           '
 
+      - name: FA Test
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          cd test/test_flashmask_ci
+          bash run.sh
+          '
+
       - name: Terminate and delete the container
         if: always()
         run: |
