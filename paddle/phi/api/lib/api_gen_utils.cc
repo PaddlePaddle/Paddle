@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
 PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(enable_compact_mem);
 
 #include "glog/logging.h"
 
@@ -817,6 +818,13 @@ void SetReplicatedDistAttrForOutput(
     dist_attr.set_process_mesh(process_mesh);
     out->unsafe_set_dist_attr(dist_attr);
   }
+}
+
+/* ------------------ for Allocator ----------------------- */
+void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
+                       std::string api) {
+  if (!FLAGS_enable_compact_mem) return;
+  // TODO(liujinnan): Add compct branch.
 }
 
 }  // namespace paddle::experimental

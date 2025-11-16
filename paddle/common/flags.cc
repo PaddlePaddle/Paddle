@@ -2314,3 +2314,15 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_enable_compact_mem
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether start compact memory.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_compact_mem,
+                         false,
+                         "whether start compact memory or not.");

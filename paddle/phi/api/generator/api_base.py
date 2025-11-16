@@ -858,8 +858,14 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             else:
                 param_code = param_code + str(param) + ", "
 
+        # --- New logic for collecting all output MetaTensors for 'compact' ---
+
+        # C++ variable to hold the list of all output MetaTensors for compact()
+        compact_meta_tensor_list = f"{code_indent}  std::vector<phi::MetaTensor*> output_metas_for_compact;"
+
         for i, out_name in enumerate(kernel_output_names):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
+                # Case 1: Output is std::vector<Tensor>
                 meta_tensor_code = (
                     meta_tensor_code
                     + f"""
@@ -869,33 +875,45 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    {out_name}_metas[i] = {out_name}[i] ? &{out_name}_{PREFIX_META_TENSOR_NAME}vec[i] : nullptr;
 {code_indent}  }}"""
                 )
+                # Add all elements of the vector output to the compact list
+                compact_meta_tensor_list += f"""
+{code_indent}  output_metas_for_compact.insert(output_metas_for_compact.end(), {out_name}_metas.begin(), {out_name}_metas.end());"""
 
                 param_code = param_code + out_name + '_metas, '
             else:
+                # Case 2: Output is a single Tensor
+                out_meta_var_name = out_name.replace(
+                    'kernel_', PREFIX_META_TENSOR_NAME
+                )
                 meta_tensor_code = (
                     meta_tensor_code
                     + code_indent
                     + "  phi::MetaTensor "
-                    + out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)
+                    + out_meta_var_name
                     + "("
                     + out_name
                     + ", kernel_result.is_stride_kernel"
                     + ");\n"
                 )
+
+                # Add the single output pointer to the compact list if it's not nullptr
+                compact_meta_tensor_list += f"""
+{code_indent}  if ({out_name}) {{ output_metas_for_compact.push_back(&{out_meta_var_name}); }}"""
+
                 if len(kernel_output_names) == 1:
-                    param_code = (
-                        param_code
-                        + f"&{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)}, "
-                    )
+                    param_code = param_code + f"&{out_meta_var_name}, "
                 else:
                     param_code = (
                         param_code
-                        + f"{out_name} ? &{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)} : nullptr, "
+                        + f"{out_name} ? &{out_meta_var_name} : nullptr, "
                     )
 
         param_code = param_code[:-2]
+
         return f"""{meta_tensor_code}
+{compact_meta_tensor_list}
 {code_indent}  phi::{infer_meta['func']}({param_code});
+{code_indent}  CheckAndDoCompact(output_metas_for_compact, "{self.api}");
 """
 
     def gene_trans_flag(self, input_name):
