@@ -2053,6 +2053,20 @@ class Device(str):
     _SUPPORTED_TYPES = {"cpu", "gpu", "cuda", "xpu"}
 
     def __new__(cls, type: str | int | None = None, index: int | None = None):
+        if isinstance(type, core.Place):
+            if type.is_cpu_place():
+                dev_type = 'cpu'
+                dev_index = None
+            elif type.is_gpu_place():
+                dev_type = 'cuda'
+                dev_index = type.gpu_device_id()
+            elif type.is_xpu_place():
+                dev_type = 'xpu'
+                dev_index = type.gpu_device_id()
+            elif type.is_custom_device():
+                dev_index = type.get_device_id()
+                dev_type = type.get_device_type()
+
         if isinstance(type, str):
             t = type.lower()
             if t not in cls._SUPPORTED_TYPES and ":" not in t:

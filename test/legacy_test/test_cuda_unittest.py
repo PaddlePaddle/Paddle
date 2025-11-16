@@ -16,6 +16,7 @@ import ctypes
 import platform
 import types
 import unittest
+import warnings
 
 import numpy as np
 from op_test import get_device, is_custom_device
@@ -35,6 +36,44 @@ from paddle.cuda import (
     stream,
     synchronize,
 )
+
+
+class TestDevice(unittest.TestCase):
+    def test_device(self):
+        cpu_tensor = paddle.tensor([1]).to("cpu")
+        cpu_device = cpu_tensor.device
+        with cpu_device:
+            new_tensor = paddle.tensor([1])
+            assert new_tensor.device == cpu_device
+
+        if paddle.device.is_compiled_with_cuda():
+            gpu_tensor = paddle.tensor([1]).to("gpu:0")
+            gpu_device = gpu_tensor.device
+            with gpu_device:
+                new_tensor = paddle.tensor([1])
+                assert new_tensor.device == gpu_device
+
+        if paddle.device.is_compiled_with_xpu():
+            xpu_tensor = paddle.tensor([1]).to("xpu:0")
+            xpu_device = xpu_tensor.device
+            with xpu_device:
+                new_tensor = paddle.tensor([1])
+                assert new_tensor.device == xpu_device
+
+    def test_static_device(self):
+        paddle.enable_static()
+
+        x = paddle.static.data(name="x", shape=[2, 3], dtype='float32')
+        assert x.device is None
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            _ = x.device
+
+            self.assertTrue(
+                any("device" in str(warning.message).lower() for warning in w),
+                msg=f"Expected a warning related to 'device', but got {[str(w.message) for w in w]}",
+            )
 
 
 class TestCudaCompat(unittest.TestCase):
