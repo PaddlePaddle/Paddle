@@ -2717,14 +2717,9 @@ add_doc_and_signature(
     .. math::
         out = sin^{-1}(x)
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``asin(input=tensor_x)`` is equal to ``asin(x=tensor_x)``.
-
     Args:
         x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64, complex64 or complex128.
-            alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
