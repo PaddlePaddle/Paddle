@@ -252,10 +252,10 @@ class TestDiagonalAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.diagonal(x)
         paddle_dygraph_out.append(out1)
-        # Key words args for paddle
+        # Keywords args for paddle
         out2 = paddle.diagonal(x=x, offset=1, axis1=0, axis2=2)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.diagonal(input=x, offset=-1, dim1=1, dim2=2)
         paddle_dygraph_out.append(out3)
         # Mixed args - paddle parameters prioritized
@@ -298,9 +298,9 @@ class TestDiagonalAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.diagonal(x)
-            # Key words args for paddle
+            # Keywords args for paddle
             out2 = paddle.diagonal(x=x, offset=1, axis1=0, axis2=2)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.diagonal(input=x, offset=-1, dim1=1, dim2=2)
             # Mixed args - paddle parameters prioritized
             out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
