@@ -2740,12 +2740,6 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
-
-            >>> # Using Pytorch-compatible parameter names
-            >>> out = paddle.asin(input=x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
     """,
     """
 def asin(

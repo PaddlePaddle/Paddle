@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 
 from paddle._C_ops import (  # noqa: F401
     abs,
@@ -42,15 +42,6 @@ from .layer_function_generator import (
 if TYPE_CHECKING:
     from paddle import Tensor
 
-    @overload
-    def asin(x: Tensor, name: str | None = None) -> Tensor: ...
-
-    @overload
-    def asin(*, input: Tensor, name: str | None = None) -> Tensor: ...
-
-
-# Runtime: use cpp generated API directly
-asin = _C_ops.asin
 
 __inplace_unary_func__ = [
     'exp_',
