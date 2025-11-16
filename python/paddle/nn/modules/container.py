@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.nn import LayerDict, LayerList
 
-from paddle.base.framework import EagerParamBase
-
-Parameter = EagerParamBase
+ModuleList = LayerList
+ModuleDict = LayerDict

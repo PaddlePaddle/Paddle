@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import itertools
 import unittest
 
 import numpy as np
@@ -106,14 +108,14 @@ def create_test_class(parent, dtype, mode, training, p, seed):
     globals()[cls_name] = TestFusedDropoutAddCase
 
 
-for dtype in ["float64", "float32", "float16"]:
-    for mode in ["upscale_in_train", "downscale_in_infer"]:
-        for p in [0.0, 0.5, 0.9, 1.0]:
-            for training in [True, False]:
-                for seed in [0, 1024]:
-                    create_test_class(
-                        TestFusedDropoutAdd, dtype, mode, training, p, seed
-                    )
+for dtype, mode, p, training, seed in itertools.product(
+    ["float64", "float32", "float16"],
+    ["upscale_in_train", "downscale_in_infer"],
+    [0.0, 0.5, 0.9, 1.0],
+    [True, False],
+    [0, 1024],
+):
+    create_test_class(TestFusedDropoutAdd, dtype, mode, training, p, seed)
 
 
 @unittest.skipIf(

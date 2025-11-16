@@ -13,6 +13,6 @@
 # limitations under the License.
 
 
-from paddle.base.framework import EagerParamBase
+from paddle.nn import Layer
 
-Parameter = EagerParamBase
+Module = Layer

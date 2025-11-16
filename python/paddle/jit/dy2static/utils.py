@@ -901,6 +901,23 @@ def use_specialized_device():
     ]
 
 
+def maybe_dynamic_shape_tensor(tensor: paddle.Tensor) -> bool:
+    if not tensor.place.is_cpu_place():
+        return False
+    if tensor.dtype not in [
+        paddle.int32,
+        paddle.int64,
+    ]:
+        return False  # Only int tensor can be shape tensor
+    if len(tensor.shape) == 0:
+        return True  # For full generated scalar tensor
+    if len(tensor.shape) > 1:
+        return False
+    if tensor.shape[0] < 10:
+        return True  # For full_int_array generated small 1-D tensor
+    return False
+
+
 def parameters_persistent_mode_is_enabled():
     return paddle.get_flags(["FLAGS_parameters_persistent_mode_in_dy2st"])[
         "FLAGS_parameters_persistent_mode_in_dy2st"
