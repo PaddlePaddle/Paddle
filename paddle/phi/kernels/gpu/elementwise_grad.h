@@ -124,39 +124,22 @@ static __global__ void MixedPrecisionElemwiseAddGradCUDAKernel(
     int64_t size,
     float *__restrict__ dx,
     T_dy *__restrict__ dy) {
-  constexpr int UNROLL = 4;
-  constexpr int VEC_SIZE = 4;
-  const int64_t tid =
-      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const int64_t stride = static_cast<int64_t>(gridDim.x) * blockDim.x;
-  const int64_t loop_limit = size / VEC_SIZE;
-  const int64_t main_stride = stride * UNROLL;
+  const int64_t i = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (i >= size) return;
 
   const float4 *__restrict__ dout_vec = reinterpret_cast<const float4 *>(dout);
   float4 *__restrict__ dx_vec = reinterpret_cast<float4 *>(dx);
   Pack4<T_dy> *__restrict__ dy_vec = reinterpret_cast<Pack4<T_dy> *>(dy);
 
-  const int64_t main_end = (loop_limit / main_stride) * main_stride;
-  for (int64_t i = tid; i < main_end; i += main_stride) {
-    float4 val[UNROLL];
-#pragma unroll
-    for (int u = 0; u < UNROLL; ++u) {
-      int64_t idx = i + u * stride;
-      val[u] = __ldg(dout_vec + idx);
-    }
-#pragma unroll
-    for (int u = 0; u < UNROLL; ++u) {
-      int64_t idx = i + u * stride;
-      dx_vec[idx] = val[u];
+  float4 val = __ldg(dout_vec + i);
+  dx_vec[i] = val;
 
-      Pack4<T_dy> dy_pack;
-      dy_pack.val[0] = static_cast<T_dy>(val[u].x);
-      dy_pack.val[1] = static_cast<T_dy>(val[u].y);
-      dy_pack.val[2] = static_cast<T_dy>(val[u].z);
-      dy_pack.val[3] = static_cast<T_dy>(val[u].w);
-      dy_vec[idx] = dy_pack;
-    }
-  }
+  Pack4<T_dy> dy_pack;
+  dy_pack.val[0] = static_cast<T_dy>(val.x);
+  dy_pack.val[1] = static_cast<T_dy>(val.y);
+  dy_pack.val[2] = static_cast<T_dy>(val.z);
+  dy_pack.val[3] = static_cast<T_dy>(val.w);
+  dy_vec[i] = dy_pack;
 }
 
 template <typename T_dy>
@@ -199,12 +182,8 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   auto size = dout.numel();
   if (size == 0) return;
 
-  constexpr int UNROLL = 4;
   constexpr int VEC_SIZE = 4;
-  const int64_t vec_chunk_size = UNROLL * VEC_SIZE;
-
-  const int64_t main_size = (size / vec_chunk_size) * vec_chunk_size;
-  const int64_t tail_start_index = main_size;
+  const int64_t main_size = (size / VEC_SIZE) * VEC_SIZE;
   const int64_t tail_size = size - main_size;
 
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
@@ -225,7 +204,7 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
         (tail_size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
     MixedPrecisionElemwiseAddGradCUDATailKernel<T_dy>
         <<<grid_size_tail, block_size, 0, dev_ctx.stream()>>>(
-            dout_data, size, tail_start_index, dx_data, dy_data);
+            dout_data, size, main_size, dx_data, dy_data);
   }
 }
 
