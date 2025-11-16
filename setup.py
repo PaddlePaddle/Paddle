@@ -2470,6 +2470,7 @@ def get_setup_parameters():
         'paddle.nn.attention',
         'paddle.nn.functional',
         'paddle.nn.layer',
+        'paddle.nn.modules',
         'paddle.nn.quant',
         'paddle.nn.quant.qat',
         'paddle.nn.initializer',

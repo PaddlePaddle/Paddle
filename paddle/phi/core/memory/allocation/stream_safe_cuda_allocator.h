@@ -84,6 +84,7 @@ class StreamSafeCUDAAllocator
   phi::Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation *allocation) override;
   uint64_t ReleaseImpl(const phi::Place &place) override;
+  size_t CompactImpl(const phi::Place &place) override;
 
  private:
   void ProcessUnfreedAllocations();
