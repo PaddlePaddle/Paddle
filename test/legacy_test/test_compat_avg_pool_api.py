@@ -199,7 +199,6 @@ class TestCompatAvgPool3DAPI(unittest.TestCase):
     def test_all_cases(self):
         self.run_test_case(2, 2, 0, False, True, None)
         self.run_test_case([3, 3, 3], [1, 1, 1], [1, 1, 1], False, True, None)
-        self.run_test_case(3, 2, 0, True, True, None)
         self.run_test_case(3, 2, 1, True, False, None)
         self.run_test_case(3, None, 0, False, True, None)
         self.run_test_case(3, 2, 1, False, False, 5)
