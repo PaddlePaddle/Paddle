@@ -26,28 +26,21 @@ jobs:
       - name: Get all job names from workflow files
         id: get_jobs
         run: |
-          job_names=$(ajp --repo-root . --only-names)
-          if [ -z "$job_names" ]; then
+          # 将 job 名称输出到一个临时文件中
+          ajp --repo-root . > all_jobs.txt
+
+          echo "All job names found:"
+          cat all_jobs.txt
+
+          # 检查文件是否为空
+          if [ ! -s all_jobs.txt ]; then
             echo "::error::No job names found in workflow files."
             exit 1
           fi
-          echo "All job names:"
-          echo "$job_names"
-          {
-            echo 'all_jobs<<EOF'
-            echo "$job_names"
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
 
       - name: Verify rerun-mapping.json
         run: |
           echo "Workflow files changed. Verifying .github/rerun-mapping.json..."
-
-          actual_jobs="${{ steps.get_jobs.outputs.all_jobs }}"
-          if [ -z "$actual_jobs" ]; then
-            echo "::error::Could not retrieve actual job list. Cannot verify mapping."
-            exit 1
-          fi
 
           mapping_file=".github/rerun-mapping.json"
           if [ ! -f "$mapping_file" ]; then
@@ -56,15 +49,14 @@ jobs:
           fi
 
           error_found=false
-          # 使用 while read 循环来逐行处理，避免词语分割问题
+          # 从 mapping 文件中读取 job
           jq -r 'del(.["all-failed"]) | .[]' "$mapping_file" | while IFS= read -r job; do
-            # 跳过空行
             if [ -z "$job" ]; then
               continue
             fi
 
-            # 使用 grep -qx 来精确匹配整行
-            if ! echo -e "$actual_jobs" | grep -qx -- "$job"; then
+            # 在 all_jobs.txt 文件中精确匹配 job 名称
+            if ! grep -qx -- "$job" all_jobs.txt; then
               echo "::error::Stale job name in $mapping_file: '$job' is no longer a valid job name."
               error_found=true
             fi
