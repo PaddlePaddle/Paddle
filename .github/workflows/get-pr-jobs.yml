@@ -3,6 +3,10 @@ name: Get PR Jobs and Verify Mapping
 on:
   pull_request:
     types: [opened, synchronize]
+    branches: develop
+    paths:
+      - '.github/workflows/*.yml'
+      - '.github/workflows/*.yaml'
 
 jobs:
   get-jobs-and-verify-mapping:
@@ -11,77 +15,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get changed workflow files
-        id: changed_workflows
-        uses: tj-actions/changed-files@v44
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          files: .github/workflows/**
+          python-version: '3.10'
 
-      - name: Get all job names for the PR
+      - name: Install python dependencies
+        run: pip install git+https://github.com/ooooo-create/actions-job-parser.git
+
+      - name: Get all job names from workflow files
         id: get_jobs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_ID: ${{ github.event.number }}
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
         run: |
-          echo "Fetching jobs for PR #${PR_ID} with commit SHA ${COMMIT_SHA}"
-
-          # The GitHub API can be slow to update.
-          # We'll add a short delay and retry loop to ensure we get the workflow runs.
-          echo "Waiting for workflow runs to be created..."
-          sleep 30 # Initial delay
-
-          all_job_names=""
-          max_retries=5
-          retry_count=0
-
-          while [ $retry_count -lt $max_retries ]; do
-            runs_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/$OWNER/$REPO/actions/runs?head_sha=$COMMIT_SHA&per_page=100")
-
-            run_ids=$(echo "$runs_response" | jq -r '.workflow_runs[].id')
-
-            if [ -n "$run_ids" ]; then
-              for run_id in $run_ids; do
-                jobs_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                  "https://api.github.com/repos/$OWNER/$REPO/actions/runs/$run_id/jobs?per_page=100")
-                job_names=$(echo "$jobs_response" | jq -r '.jobs[].name')
-                if [ -n "$job_names" ]; then
-                  all_job_names="${all_job_names}${job_names}\n"
-                fi
-              done
-              if [ -n "$all_job_names" ]; then
-                break
-              fi
-            fi
-
-            retry_count=$((retry_count + 1))
-            if [ $retry_count -lt $max_retries ]; then
-              echo "No runs found yet. Retrying in 30 seconds... (Attempt ${retry_count}/${max_retries})"
-              sleep 30
-            fi
-          done
-
-          echo "----------------------------------------"
-          echo "           JOB NAMES FOUND"
-          echo "----------------------------------------"
-          if [ -z "$all_job_names" ]; then
-            echo "::warning::No jobs found for commit $COMMIT_SHA after multiple retries."
-            echo "all_jobs=''" >> $GITHUB_OUTPUT
-          else
-            unique_jobs=$(echo -e "$all_job_names" | sort -u)
-            echo -e "$unique_jobs"
-            # Store jobs for the next step
-            echo "all_jobs<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$unique_jobs" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          job_names=$(ajp --repo-root . --only-names)
+          if [ -z "$job_names" ]; then
+            echo "::error::No job names found in workflow files."
+            exit 1
           fi
-          echo "----------------------------------------"
+          echo "All job names:"
+          echo "$job_names"
+          echo "all_jobs=$job_names" >> $GITHUB_OUTPUT
 
       - name: Verify rerun-mapping.json
-        if: steps.changed_workflows.outputs.any_changed == 'true'
         run: |
           echo "Workflow files changed. Verifying .github/rerun-mapping.json..."
 
@@ -97,13 +51,16 @@ jobs:
             exit 1
           fi
 
-          # Get all values from the JSON mapping, excluding "all-failed"
-          mapped_jobs=$(jq -r 'del(.["all-failed"]) | .[]' "$mapping_file")
-
           error_found=false
-          for job in $mapped_jobs; do
-            # Use grep with -x for exact line match
-            if ! echo -e "$actual_jobs" | grep -qx "$job"; then
+          # 使用 while read 循环来逐行处理，避免词语分割问题
+          jq -r 'del(.["all-failed"]) | .[]' "$mapping_file" | while IFS= read -r job; do
+            # 跳过空行
+            if [ -z "$job" ]; then
+              continue
+            fi
+
+            # 使用 grep -qx 来精确匹配整行
+            if ! echo -e "$actual_jobs" | grep -qx -- "$job"; then
               echo "::error::Stale job name in $mapping_file: '$job' is no longer a valid job name."
               error_found=true
             fi
