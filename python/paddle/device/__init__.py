@@ -1868,7 +1868,7 @@ def get_stream_from_external(
 
             >>> import paddle
             >>> # Suppose external_stream_ptr is from another CUDA library
-            >>> s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+            >>> # s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
     '''
     if device is None:
         place = paddle.framework._current_expected_place_()
