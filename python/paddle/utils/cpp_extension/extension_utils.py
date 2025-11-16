@@ -239,7 +239,8 @@ def custom_write_stub(resource, pyfile):
     with open(pyfile, 'w') as f:
         f.write(
             _stub_template.format(
-                resource=resource, custom_api='\n\n'.join(api_content)
+                resource=os.path.basename(resource),
+                custom_api='\n\n'.join(api_content),
             )
         )
 

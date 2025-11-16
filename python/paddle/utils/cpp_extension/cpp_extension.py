@@ -1255,7 +1255,7 @@ class CustomBuildExtension(BuildExtension):
                 os.rename(original_so_path, new_so_path)
 
 
-def setup_with_wheel_support(**attr):
+def setup_bdist_whl(**attr):
     cmdclass = attr.get('cmdclass', {})
     assert isinstance(cmdclass, dict)
 
