@@ -27,7 +27,7 @@ jobs:
         id: get_jobs
         run: |
           # 将 job 名称输出到一个临时文件中
-          ajp --repo-root . > all_jobs.txt
+          ajp --repo-root . --only-names > all_jobs.txt
 
           echo "All job names found:"
           cat all_jobs.txt
