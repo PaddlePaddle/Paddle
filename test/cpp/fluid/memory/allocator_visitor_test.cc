@@ -20,12 +20,14 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #endif
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllocatorVisitor) {
+  FLAGS_v = 1;
   auto vmm_cuda_allocator =
       std::make_shared<CUDAVirtualMemAllocator>(phi::GPUPlace());
   auto vma_allocator =
