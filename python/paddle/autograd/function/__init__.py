@@ -20,6 +20,7 @@ It is an alias/compatibility layer over paddle.autograd.PyLayer.
 from paddle.autograd.py_layer import (
     PyLayer as _PyLayer,
     PyLayerContext as _PyLayerContext,
+    PyLayerMeta as _PyLayerMeta,
 )
 
 __all__ = [
@@ -89,7 +90,9 @@ class FunctionCtx(_PyLayerContext):
 
 
 # Create a custom metaclass to inject FunctionCtx instead of PyLayerContext
-class FunctionMeta(type):
+class FunctionMeta(_PyLayerMeta):
+    """Metaclass for Function that uses FunctionCtx instead of PyLayerContext."""
+
     def __init__(cls, name, bases, attrs):
         # Create backward function with FunctionCtx
         from paddle.base import core
@@ -102,6 +105,7 @@ class FunctionMeta(type):
             name + '_backward', (FunctionBackward,), {"_forward_cls": cls}
         )
 
+        # Call parent metaclass __init__
         super().__init__(name, bases, attrs)
 
 
