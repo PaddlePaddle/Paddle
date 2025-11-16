@@ -2055,20 +2055,23 @@ class Device(str):
     def __new__(
         cls, type: PlaceLike | int | None = None, index: int | None = None
     ):
-        if isinstance(type, paddle.CPUPlace):
-            dev_type = 'cpu'
-            dev_index = None
-        elif isinstance(type, paddle.CUDAPlace):
-            dev_type = 'cuda'
-            dev_index = type.gpu_device_id()
-        elif isinstance(type, paddle.XPUPlace):
-            dev_type = 'xpu'
-            dev_index = type.gpu_device_id()
-        elif isinstance(type, paddle.CustomPlace):
-            dev_index = type.get_device_id()
-            dev_type = type.get_device_type()
+        if isinstance(type, paddle.base.libpaddle.Place):
+            if type.is_cpu_place():
+                dev_type = 'cpu'
+                dev_index = None
+            elif type.is_gpu_place():
+                dev_type = 'cuda'
+                dev_index = type.gpu_device_id()
+            elif type.is_xpu_place():
+                dev_type = 'xpu'
+                dev_index = type.gpu_device_id()
+            elif type.is_custom_place():
+                dev_type = type.get_device_type()
+                dev_index = type.get_device_id()
+            else:
+                raise ValueError(f"Unknown place type: {type}")
 
-        if isinstance(type, str):
+        elif isinstance(type, str):
             t = type.lower()
             if t not in cls._SUPPORTED_TYPES and ":" not in t:
                 raise ValueError(f"Unsupported device type: {t}")
