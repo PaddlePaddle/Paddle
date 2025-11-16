@@ -34,7 +34,7 @@
 COMMON_DECLARE_bool(enable_unique_name);
 
 /**
- * Implementation of GradNodeBase, Edge and GradTensorHolder.
+ * Implementation of GradNodeBase and Edge.
  **/
 namespace egr {
 
@@ -147,6 +147,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   } else {
     VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
+    return;
   }
   PADDLE_ENFORCE_NE(
       dense_tensor->meta().dtype,
@@ -396,12 +397,12 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
     auto node = fwd_in_meta->GetMutableGradNode();
     if (!node || !node.get()) {
       fwd_in_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+          std::make_shared<egr::GradNodeAccumulation>(fwd_in));
     }
     VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-            << this->name() << " (addr: " << this << ") "
-            << " to " << fwd_in_meta->GetMutableGradNode()->name()
-            << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
+            << this->name() << "(" << this << ")"
+            << " to " << fwd_in_meta->GetMutableGradNode()->name() << "("
+            << fwd_in_meta->GetMutableGradNode().get() << ")";
 
     meta.SetEdge(fwd_in_meta->GetMutableGradNode(), fwd_in_meta->OutRankInfo());
   }
@@ -517,12 +518,12 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
     auto node = fwd_in_meta->GetMutableGradNode();
     if (!node || !node.get()) {
       fwd_in_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+          std::make_shared<egr::GradNodeAccumulation>(fwd_in));
     }
     VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-            << this->name() << " (addr: " << this << ") "
-            << " to " << fwd_in_meta->GetMutableGradNode()->name()
-            << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
+            << this->name() << "(" << this << ")"
+            << " to " << fwd_in_meta->GetMutableGradNode()->name() << "("
+            << fwd_in_meta->GetMutableGradNode().get() << ")";
 
     meta.SetEdge(fwd_in_meta->GetMutableGradNode(), fwd_in_meta->OutRankInfo());
   }
@@ -604,12 +605,12 @@ void GradNodeBase::SetGradOutMeta(
     auto node = fwd_in_meta->GetMutableGradNode();
     if (!node || !node.get()) {
       fwd_in_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+          std::make_shared<egr::GradNodeAccumulation>(fwd_in));
     }
     VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-            << this->name() << " (addr: " << this << ") "
-            << " to " << fwd_in_meta->GetMutableGradNode()->name()
-            << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
+            << this->name() << "(" << this << ")"
+            << " to " << fwd_in_meta->GetMutableGradNode()->name() << "("
+            << fwd_in_meta->GetMutableGradNode().get() << ")";
 
     meta.SetEdge(fwd_in_meta->GetMutableGradNode(), fwd_in_meta->OutRankInfo());
   }
@@ -681,12 +682,12 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
       auto node = fwd_in_meta->GetMutableGradNode();
       if (!node || !node.get()) {
         fwd_in_meta->SetGradNode(
-            std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+            std::make_shared<egr::GradNodeAccumulation>(fwd_in_tensor));
       }
       VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-              << this->name() << " (addr: " << this << ") "
-              << " to " << fwd_in_meta->GetMutableGradNode()->name()
-              << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
+              << this->name() << "(" << this << ")"
+              << " to " << fwd_in_meta->GetMutableGradNode()->name() << "("
+              << fwd_in_meta->GetMutableGradNode().get() << ")";
 
       meta.SetEdge(fwd_in_meta->GetMutableGradNode(),
                    fwd_in_meta->OutRankInfo());
@@ -764,12 +765,12 @@ void GradNodeBase::SetGradOutMeta(
       auto node = fwd_in_meta->GetMutableGradNode();
       if (!node || !node.get()) {
         fwd_in_meta->SetGradNode(
-            std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+            std::make_shared<egr::GradNodeAccumulation>(fwd_in_tensor));
       }
       VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
-              << this->name() << " (addr: " << this << ") "
-              << " to " << fwd_in_meta->GetMutableGradNode()->name()
-              << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
+              << this->name() << "(" << this << ")"
+              << " to " << fwd_in_meta->GetMutableGradNode()->name() << "("
+              << fwd_in_meta->GetMutableGradNode().get() << ")";
 
       meta.SetEdge(fwd_in_meta->GetMutableGradNode(),
                    fwd_in_meta->OutRankInfo());
@@ -1012,4 +1013,13 @@ GradNodeBase::ApplyNodePostHooks(
 
   return outs;
 }
+
+void Edge::SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
+  VLOG(7) << "Resetting Edge(" << this << ")'s Grad Node"
+          << " from " << (grad_node_ ? grad_node_->name() : "nullptr") << "("
+          << grad_node_.get() << ") to " << (node ? node->name() : "nullptr")
+          << "(" << node.get() << ")";
+  grad_node_ = node;
+}
+
 }  // namespace egr

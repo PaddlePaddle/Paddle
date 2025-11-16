@@ -402,7 +402,8 @@ inline DenseTensor restride_dim(const phi::DenseTensor& src,
 template <int nt, int vt, typename func_t>
 __global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
   constexpr int nv = nt * vt;
-  int idx = nv * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      nv * static_cast<int64_t>(blockIdx.x) + static_cast<int64_t>(threadIdx.x);
 
 #pragma unroll
   for (int i = 0; i < vt; ++i) {

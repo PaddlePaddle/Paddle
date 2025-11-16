@@ -151,6 +151,9 @@ paddle.base.core.set_vlog_level(4)
 import os
 os.environ['GLOG_v'] = '6'
 os.environ['FLAGS_dump_grad_node_forward_stack_path']="call_stack.log"
+os.environ['FLAGS_call_stack_level']='3'
+os.environ['FLAGS_dump_api_python_stack_path']="forward_call_stack"
+
 import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn

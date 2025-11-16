@@ -838,6 +838,9 @@ class DygraphShardingOptimizerV2:
                     # here group_size is parameter size (GB)
                     # optimizer states(float32) size is 6 times as much as parameter(bfloat16) size
                     offload_buffer_size -= sum(opt_states_sizes)
+                else:
+                    for param in parameters:
+                        self._slice_params[param.name].is_offload_opt = False
 
                 self._comm_buffer_list.append(buffer)
 

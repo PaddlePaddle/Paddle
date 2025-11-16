@@ -127,6 +127,9 @@ PADDLE_API void AllowUndefinedFlags();
  */
 bool SetFlagValue(const std::string& name, const std::string& value);
 
+PADDLE_API bool UpdateLinkedFlags(const std::string& name,
+                                  const std::string& value);
+
 /**
  * @brief Find flag by name, return true if found.
  */
@@ -170,6 +173,15 @@ inline bool SetFlagValue(const char* name, const char* value) {
 }
 #else
 using paddle::flags::SetFlagValue;
+#endif
+#ifdef PADDLE_WITH_GFLAGS
+inline bool UpdateLinkedFlags(const std::string& name,
+                              const std::string& value) {
+  // Gflags does not support this feature.
+  return false;
+}
+#else
+using paddle::flags::UpdateLinkedFlags;
 #endif
 
 #ifdef PADDLE_WITH_GFLAGS

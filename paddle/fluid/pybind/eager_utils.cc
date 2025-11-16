@@ -88,6 +88,12 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::npy_api::NPY_INT8_;
     case phi::DataType::UINT8:
       return pybind11::detail::npy_api::NPY_UINT8_;
+    case phi::DataType::UINT16:
+      return pybind11::detail::npy_api::NPY_UINT16_;
+    case phi::DataType::UINT32:
+      return pybind11::detail::npy_api::NPY_UINT32_;
+    case phi::DataType::UINT64:
+      return pybind11::detail::npy_api::NPY_UINT64_;
     case phi::DataType::INT16:
       return pybind11::detail::npy_api::NPY_INT16_;
     case phi::DataType::INT32:
@@ -1205,9 +1211,14 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
 }
 
 PyObject* ToPyObject(const phi::DataType& dtype) {
-  auto obj = ::pybind11::cast(dtype);
-  obj.inc_ref();
-  return obj.ptr();
+  static const std::vector<std::string> dtype_names = {
+      "UNDEFINED", "BOOL",     "UINT8",         "INT8",        "UINT16",
+      "INT16",     "UINT32",   "INT32",         "UINT64",      "INT64",
+      "FLOAT32",   "FLOAT64",  "COMPLEX64",     "COMPLEX128",  "PSTRING",
+      "FLOAT16",   "BFLOAT16", "FLOAT8_E4M3FN", "FLOAT8_E5M2",
+  };
+  return PyObject_GetAttrString(reinterpret_cast<PyObject*>(g_data_type_pytype),
+                                dtype_names[static_cast<int>(dtype)].c_str());
 }
 
 PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {
@@ -2158,7 +2169,7 @@ paddle::Tensor CreateTensorFromVarDesc(
 
   if (!autograd_meta->GetMutableGradNode()) {
     autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+        std::make_shared<egr::GradNodeAccumulation>(tensor));
   }
 
   return tensor;

@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     ignore_param=('_stacklevel', 2, int),
     func_name="paddle.compat.nn.functional.softmax",
     correct_name="paddle.nn.functional.softmax",
+    url_suffix="torch.nn.functional.softmax",
 )
 def softmax(
     input: Tensor,

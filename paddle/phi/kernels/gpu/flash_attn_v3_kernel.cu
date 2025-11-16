@@ -215,7 +215,10 @@ void FlashAttnV3BaseKernel(
   const int batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
   int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
-  int num_heads = q.dims()[q.dims().size() - 2];
+  int64_t num_heads = q.dims()[q.dims().size() - 2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
   int const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
@@ -1082,8 +1085,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const paddle::optional<DenseTensor> &q_descale,
                              const paddle::optional<DenseTensor> &k_descale,
                              const paddle::optional<DenseTensor> &v_descale,
-                             const int max_seqlen_q,
-                             const int max_seqlen_k,
+                             const Scalar &max_seqlen_q,
+                             const Scalar &max_seqlen_k,
                              const float softmax_scale,
                              const bool causal,
                              const int window_size_left,
@@ -1150,6 +1153,8 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
 
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
+  const int64_t max_seqlen_q_ = max_seqlen_q.to<int64_t>();
+  const int64_t max_seqlen_k_ = max_seqlen_k.to<int64_t>();
   FlashAttnV3BaseKernel<T, Context>(dev_ctx,
                                     q,
                                     k,
@@ -1171,9 +1176,9 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                                     q_descale,
                                     k_descale,
                                     v_descale,
-                                    paddle::none,  // scheduler_metadata
-                                    max_seqlen_q,  // max_seqlen_q_
-                                    max_seqlen_k,  // max_seqlen_k_
+                                    paddle::none,   // scheduler_metadata
+                                    max_seqlen_q_,  // max_seqlen_q_
+                                    max_seqlen_k_,  // max_seqlen_k_
                                     softmax_scale,
                                     causal,
                                     window_size_left,
@@ -1373,7 +1378,10 @@ void FlashMaskV2BaseKernel(
   const int batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
   int seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
   int total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
-  int num_heads = q.dims()[q.dims().size() - 2];
+  int64_t num_heads = q.dims()[q.dims().size() - 2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int const head_size = q.dims()[q.dims().size() - 1];
   int const head_size_v = v.dims()[v.dims().size() - 1];
   int const max_num_pages_per_seq = !paged_KV ? 0 : page_table.dims()[1];
@@ -1394,7 +1402,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = std::min(flashmaskv2_get_max_headdim(), 128);
+  int const max_headdim = flashmaskv2_get_max_headdim();
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,

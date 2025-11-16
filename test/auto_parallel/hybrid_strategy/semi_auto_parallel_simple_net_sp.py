@@ -121,7 +121,7 @@ class DemoNet(nn.Layer):
         if self.is_sp:
             out = dist.reshard(out, self.pp0_mesh, self.sp_reshard_placement0)
 
-        # out = out + tgt
+        out = out + tgt
         out = self.norm(out)
 
         out = dist.reshard(out, self.pp1_mesh, self.sp_reshard_placement1)
