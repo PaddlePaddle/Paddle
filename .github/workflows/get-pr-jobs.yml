@@ -33,7 +33,11 @@ jobs:
           fi
           echo "All job names:"
           echo "$job_names"
-          echo "all_jobs=$job_names" >> $GITHUB_OUTPUT
+          {
+            echo 'all_jobs<<EOF'
+            echo "$job_names"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Verify rerun-mapping.json
         run: |
