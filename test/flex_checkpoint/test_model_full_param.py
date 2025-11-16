@@ -214,7 +214,7 @@ class TestFullParamWithSingleDevices(unittest.TestCase):
         aoa_config = {
             "aoa_statements": [
                 "linear1.weight, linear2.weight -> fused_weight, axis=1"
-                "embedding.weight -> embedding.weight, dtype = 'float32'"
+                "embedding.weight -> embedding.weight, dtype = 'float16:float32'"
             ]
         }
 

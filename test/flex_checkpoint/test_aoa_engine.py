@@ -392,7 +392,7 @@ class TestAOAEngine(unittest.TestCase):
         }
 
         aoa_statements = [
-            's0 -> d0, dtype="float32" \n',
+            's0 -> d0, dtype="int32:float32" \n',
         ]
 
         aoa_engine = AOAEngine(

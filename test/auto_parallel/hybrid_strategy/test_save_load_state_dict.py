@@ -121,6 +121,19 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         ckpt_path.cleanup()
 
+    def test_save_load_state_dict_with_aoa_config_reverse(self):
+        """Test saving state dict and loading with flex checkpoint."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        super().setUp(num_of_devices=1, timeout=60, nnode=1)
+        self.run_test_case(
+            "save_load_state_dict_with_aoa_config_reverse.py",
+            user_defined_envs={
+                "device_num": "1",
+                "ckpt_path": ckpt_path.name,
+            },
+        )
+        ckpt_path.cleanup()
+
 
 if __name__ == '__main__':
     unittest.main()
