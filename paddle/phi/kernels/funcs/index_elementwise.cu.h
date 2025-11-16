@@ -192,15 +192,15 @@ struct OffsetCalculator {
   stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
-template <int N, bool signed_strides = false>
-static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator_put(
+template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
+static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator_put(
     std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
-  return OffsetCalculator<N, uint32_t, signed_strides>(
+  return OffsetCalculator<N, OffsetT, signed_strides>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
 }
 
-template <int N, bool signed_strides = false>
-static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
+template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
+static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
     int ndim,
     const int64_t* shape,
     const std::vector<std::vector<int64_t>>& strides) {
@@ -209,12 +209,12 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
     strides_array[i] = strides[i].data();
   }
 
-  return OffsetCalculator<N, uint32_t, signed_strides>(
+  return OffsetCalculator<N, OffsetT, signed_strides>(
       ndim, shape, strides_array.data());
 }
 
-template <int N, bool signed_strides = false>
-static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
+template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
+static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
     const phi::DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),
@@ -224,7 +224,7 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
   for (int i = 0; i < N; i++) {
     strides[i] = iter.operands_[i].stride_bytes.data();
   }
-  return OffsetCalculator<N, uint32_t, signed_strides>(
+  return OffsetCalculator<N, OffsetT, signed_strides>(
       iter.ndim(), iter.shape().data(), strides.data());
 }
 constexpr bool IsInUint32Range(int64_t value) {

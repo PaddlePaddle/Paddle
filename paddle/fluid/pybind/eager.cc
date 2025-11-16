@@ -121,13 +121,12 @@ void EmptyTensorInitializer(TensorObject* self,
       self->tensor.set_impl(tensor);
     }
   }
-
   if (!autograd_meta->GetMutableGradNode()) {
     autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+        std::make_shared<egr::GradNodeAccumulation>(self->tensor));
     VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation"
-            << autograd_meta->GradNode() << " for it.";
+            << ") have not GradNode, add GradNodeAccumulation("
+            << autograd_meta->GradNode() << ") for it.";
   }
 }
 
@@ -1505,9 +1504,7 @@ void BindEager(pybind11::module* module) {
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
   type->tp_dictoffset = offsetof(TensorObject, dict);
-#if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
-#endif
   p_tensor_type = type;
 
   if (PyType_Ready(type) < 0) {
@@ -1554,9 +1551,7 @@ void BindEagerStringTensor(pybind11::module* module) {
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
   type->tp_dictoffset = offsetof(TensorObject, dict);
-#if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
-#endif
   p_string_tensor_type = type;
 
   if (PyType_Ready(type) < 0) {

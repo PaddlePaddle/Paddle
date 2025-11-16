@@ -460,10 +460,10 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
           "SelectProperTileSize should return true, but return value is:%d.",
           ret));
 
-  int tile_long_edge = 0;
-  int tile_short_edge = 0;
+  IndexType tile_long_edge = 0;
+  IndexType tile_short_edge = 0;
   float lowest_cost = std::numeric_limits<float>::max();
-  int input_long_edge = std::max(input_dims[1], input_dims[2]);
+  IndexType input_long_edge = std::max(input_dims[1], input_dims[2]);
 
   // Find the tile size that best suit in  inputs.
   for (auto tile_size_pair : tile_sele) {
@@ -471,9 +471,9 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
     // data may not aligned to tile, so some threads wasted, we need
     // to find least wasted threads, which means we need to find tile
     // can split input properly, in another words: num_wasted_threads=0.
-    int num_full_tiles = input_long_edge / proposed_tile_long_edge;
+    IndexType num_full_tiles = input_long_edge / proposed_tile_long_edge;
 
-    int num_wasted_threads =
+    IndexType num_wasted_threads =
         input_long_edge - num_full_tiles * proposed_tile_long_edge;
 
     float cost = num_wasted_threads;
@@ -490,9 +490,9 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
   // The tile size we select should be match with input dim, long side to long
   // short side to short.
   // First set long side  as i if dim1 > Tile min size, then set dim2 as j.
-  int select_tile_size_i =
+  IndexType select_tile_size_i =
       input_dims[1] >= kMinTileSize ? tile_long_edge : input_dims[1];
-  int select_tile_size_j =
+  IndexType select_tile_size_j =
       input_dims[1] >= kMinTileSize ? input_dims[2] : tile_long_edge;
 
   // Check if i is long edge, if not set i as short.
@@ -584,9 +584,9 @@ __global__ void
 __launch_bounds__(BLOCK_DIM* BLOCK_DIM) inline fp8_fast_transpose_kernel(
     const phi::float8_e4m3fn* __restrict__ src,  // Source matrix (M x N)
     phi::float8_e4m3fn* __restrict__ dst,        // Destination matrix (N x M)
-    int B,
-    int M,
-    int N,                  // Batch size, M-dimension, N-dimension
+    uint32_t B,
+    uint32_t M,
+    uint32_t N,             // Batch size, M-dimension, N-dimension
     size_t batch_stride) {  // Stride between batches in global memory (M*N
                             // elements)
   // Shared memory tile with padding to avoid bank conflicts, padding instead of
@@ -951,8 +951,8 @@ struct PermTypeClassifier {
           type_ = PermuteType::kGeneralTranspose;
           num_rows_tile_ = GET_TILE_SIZE(dims[rank - 2], kTileSize);
           int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
-          int tile_size = channel * num_rows_tile_ *
-                          GET_TILE_SIZE(dims[last_idx], kTileSize);
+          int64_t tile_size = channel * num_rows_tile_ *
+                              GET_TILE_SIZE(dims[last_idx], kTileSize);
           vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
         } else {
           type_ = PermuteType::kGeneralPermute;
@@ -970,7 +970,7 @@ struct PermTypeClassifier {
           num_rows_tile_ = GET_TILE_SIZE(dims[0], kTileSize);
 
           int dim_vec_size = GetDimVecSize(dst_vec_size, dims[last_idx], src);
-          int tile_size =
+          int64_t tile_size =
               dims[1] * num_rows_tile_ * GET_TILE_SIZE(dims[2], kTileSize);
           vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
         } else {

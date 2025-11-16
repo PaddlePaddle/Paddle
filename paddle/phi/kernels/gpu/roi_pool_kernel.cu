@@ -138,7 +138,10 @@ void RoiPoolKernel(const Context& dev_ctx,
   auto gplace = dev_ctx.GetPlace();
 
   if (boxes_num) {
-    int boxes_batch_size = boxes_num->numel();
+    int64_t boxes_batch_size = boxes_num->numel();
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,

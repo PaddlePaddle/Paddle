@@ -1166,7 +1166,7 @@ phi::KernelKey GetKernelKey(
                   .dtype();
     } else {
       PADDLE_THROW(
-          "FeedOp, FetchOp, ArrayLengthOp can only output a densetensor or "
+          "FeedOp, FetchOp, ArrayLengthOp can only output a dense tensor or "
           "dense tensor array.");
     }
     return {phi::Backend::CPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};

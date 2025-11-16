@@ -63,7 +63,7 @@ __global__ void IndexEleGetGradAccKernel(
   }
 }
 
-template <typename T, typename IndexT>
+template <typename T, typename IndexT, typename OffsetT = uint32_t>
 void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
@@ -107,16 +107,10 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+      desired_shape, strides_array);
 
   const int64_t N = numel;
-
-  PADDLE_ENFORCE_EQ(true,
-                    funcs::IsInUint32Range(N, value.numel()),
-                    common::errors::PreconditionNotMet(
-                        "the numel of input or output should be in [0, "
-                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -425,18 +419,31 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
     return;
 #endif
   }
-
-  GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
-                                         x,
-                                         out_grad,
-                                         index,
-                                         input_dims,
-                                         input_strides,
-                                         index_dims,
-                                         index_strides,
-                                         slice_offset,
-                                         accumulate,
-                                         x_grad);
+  if (funcs::IsInUint32Range(x_grad->numel(), out_grad.numel())) {
+    GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
+                                           x,
+                                           out_grad,
+                                           index,
+                                           input_dims,
+                                           input_strides,
+                                           index_dims,
+                                           index_strides,
+                                           slice_offset,
+                                           accumulate,
+                                           x_grad);
+  } else {
+    GPUIndexElementwiseGetGrad<T, int64_t, uint64_t>(dev_ctx,
+                                                     x,
+                                                     out_grad,
+                                                     index,
+                                                     input_dims,
+                                                     input_strides,
+                                                     index_dims,
+                                                     index_strides,
+                                                     slice_offset,
+                                                     accumulate,
+                                                     x_grad);
+  }
 }
 
 }  // namespace phi
