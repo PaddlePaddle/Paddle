@@ -24,6 +24,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
+    abs_,
     all,
     amax,
     amin,
@@ -73,7 +74,6 @@ from .layer_function_generator import generate_layer_fn
 from .manipulation import cast, cast_
 from .ops import (  # noqa: F401
     abs,
-    abs_,
     acos,
     acos_,
     acosh,
