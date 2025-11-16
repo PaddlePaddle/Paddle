@@ -44,12 +44,13 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
       size_t alignment,
       const phi::GPUPlace &place);
 
-  bool IsAllocThreadSafe() const override { return true; }
-  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
   std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
     return underlying_allocator_;
   }
   std::pair<size_t, size_t> SumLargestFreeBlockSizes(int32_t n) const;
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
+
+  bool IsAllocThreadSafe() const override { return true; }
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;

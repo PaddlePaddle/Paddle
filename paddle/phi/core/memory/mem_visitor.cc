@@ -50,8 +50,10 @@ void AllocatorVisitor::Visit(
 
 void FreeMemoryMetricsVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
-  std::tie(large_size_, sum_size_) =
+  auto [large_size, sum_size] =
       allocator->SumLargestFreeBlockSizes(nums_blocks_);
+  large_size_ = std::max(large_size_, large_size);
+  sum_size_ = std::max(sum_size_, sum_size);
   VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator large_free_size:"
           << large_size_ << " sum_free_size:" << sum_size_;
 }
