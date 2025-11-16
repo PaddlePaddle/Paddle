@@ -23,6 +23,7 @@ from .cpp_extension import (
     _get_pybind11_abi_build_flags,  # noqa: F401
     load,
     setup,
+    setup_bdist_whl,
 )
 from .extension_utils import (
     get_build_directory,
@@ -36,4 +37,5 @@ __all__ = [
     'load',
     'setup',
     'get_build_directory',
+    'setup_bdist_whl',
 ]
