@@ -870,9 +870,20 @@ class BuildExtension(build_ext):
             so_path = os.path.abspath(outputs[0])
             so_name = os.path.basename(so_path)
             build_dir = os.path.dirname(so_path)
-            # The package name equals distribution name
-            pkg_name = self.distribution.get_name()
-            pyfile = os.path.join(build_dir, f"{pkg_name}.py")
+
+            # Get the extension name from the extension module, not the distribution name
+            # This ensures we use the correct package name from setup.py
+            ext_name = (
+                self.extensions[0].name
+                if self.extensions
+                else self.distribution.get_name()
+            )
+
+            # Extract the last part of the extension name for the Python file
+            # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
+            lib_name = ext_name.split('.')[-1] if '.' in ext_name else ext_name
+
+            pyfile = os.path.join(build_dir, f"{lib_name}.py")
             # Write stub; it will reference the _pd_ renamed resource at import time
             custom_write_stub(so_name, pyfile)
         except Exception as e:
@@ -970,6 +981,29 @@ class InstallCommand(install):
       3) rename the compiled library to *_pd_.so to avoid shadowing the python stub
     """
 
+    def _get_extension_name(self) -> str:
+        """
+        Get the extension name from the extension module, not the distribution name.
+        This ensures we use the correct package name from setup.py.
+
+        Note: This assumes there is only one extension module (len(ext_modules) == 1).
+
+        Returns:
+            str: The extension name
+        """
+        ext_name = None
+        if (
+            hasattr(self.distribution, 'ext_modules')
+            and self.distribution.ext_modules
+        ):
+            ext_name = self.distribution.ext_modules[0].name
+
+        # If no extension name is found, fall back to distribution name
+        if ext_name is None:
+            ext_name = self.distribution.get_name()
+
+        return ext_name
+
     def finalize_options(self) -> None:
         super().finalize_options()
 
@@ -980,10 +1014,17 @@ class InstallCommand(install):
         )
         if not install_dir or not os.path.isdir(install_dir):
             return
-        pkg = self.distribution.get_name()
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the first part of the extension name for the shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_setup_ops"
+        pkg_name = ext_name.split('.')[0] if '.' in ext_name else ext_name
+
         # Check if dist-info exists
         has_dist_info = any(
-            name.endswith('.dist-info') and name.startswith(pkg)
+            name.endswith('.dist-info') and name.startswith(pkg_name)
             for name in os.listdir(install_dir)
         )
         # If dist-info exists, we are installing a wheel, so we are done
@@ -1042,10 +1083,17 @@ class InstallCommand(install):
         )
         if not install_dir or not os.path.isdir(install_dir):
             return
-        pkg = self.distribution.get_name()
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the first part of the extension name for the shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_setup_ops"
+        pkg_name = ext_name.split('.')[0] if '.' in ext_name else ext_name
+
         # Check if dist-info exists
         has_egg_info = any(
-            name.endswith('.egg-info') and name.startswith(pkg)
+            name.endswith('.egg-info') and name.startswith(pkg_name)
             for name in os.listdir(install_dir)
         )
         # If egg-info exists, we are installing a source distribution, we need to
@@ -1064,14 +1112,27 @@ class InstallCommand(install):
         )
         if not install_dir or not os.path.isdir(install_dir):
             return
-        pkg = self.distribution.get_name()
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the last part of the extension name for the shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
+        names = ext_name.split('.') if '.' in ext_name else [ext_name]
+        lib_name = names[-1]
+
         suffix = (
             '.pyd'
             if IS_WINDOWS
             else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
         )
-        old = os.path.join(install_dir, f"{pkg}{suffix}")
-        new = os.path.join(install_dir, f"{pkg}_pd_{suffix}")
+
+        # Build the directory path for the shared library
+        # For single-level: names[:-1] is empty, so dir_path = install_dir
+        # For multi-level: names[:-1] contains the package path
+        dir_path = os.path.join(install_dir, *names[:-1])
+        old = os.path.join(dir_path, f"{lib_name}{suffix}")
+        new = os.path.join(dir_path, f"{lib_name}_pd_{suffix}")
         if os.path.exists(old):
             if os.path.exists(new):
                 os.remove(new)
@@ -1092,10 +1153,24 @@ class InstallCommand(install):
         )
         if not install_dir or not os.path.isdir(install_dir):
             return
-        pkg = self.distribution.get_name()
+
+        # Get the extension name
+        ext_name = self._get_extension_name()
+
+        # Extract the package path from the extension name
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_setup_ops/my_ops"
+        pkg_path_parts = (
+            ext_name.split('.')[:-1] if '.' in ext_name else [ext_name]
+        )
+        pkg_path = os.path.join(*pkg_path_parts)
+
+        # Extract the last part of the extension name for the Python file and shared library
+        # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
+        lib_name = ext_name.split('.')[-1] if '.' in ext_name else ext_name
+
         # Prepare paths
-        pkg_dir = os.path.join(install_dir, pkg)
-        py_src = os.path.join(install_dir, f"{pkg}.py")
+        pkg_dir = os.path.join(install_dir, pkg_path)
+        py_src = os.path.join(install_dir, f"{lib_name}.py")
         # Find compiled lib (renamed or not)
         suf_so = (
             '.pyd'
@@ -1103,8 +1178,8 @@ class InstallCommand(install):
             else ('.dylib' if OS_NAME.startswith('darwin') else '.so')
         )
         so_candidates = [
-            os.path.join(install_dir, f"{pkg}_pd_{suf_so}"),
-            os.path.join(install_dir, f"{pkg}{suf_so}"),
+            os.path.join(install_dir, f"{lib_name}_pd_{suf_so}"),
+            os.path.join(install_dir, f"{lib_name}{suf_so}"),
         ]
         so_src = next((p for p in so_candidates if os.path.exists(p)), None)
         # Create package dir
