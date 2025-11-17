@@ -12,9 +12,8 @@ on:
         default: "false"
     outputs:
       can-skip:
-        type: string
-        required: false
-        default: "false"
+        description: "Whether to skip the job"
+        value: ${{ jobs.build.outputs.can-skip }}
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -148,7 +147,7 @@ jobs:
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: distribute
+          workflow-name: 'distribute-build'
 
       - name: Download flashattn cache
         if: steps.check-bypass.outputs.can-skip != 'true'
