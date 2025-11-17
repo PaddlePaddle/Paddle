@@ -216,4 +216,52 @@ class EagerBackwardSubGraphNodeRecorder {
   bool need_capture_subgraph_ = false;
 };
 
+/**
+ * @class LogIndent
+ * @brief Singleton class for managing log indentation levels globally
+ *
+ * This class implements the singleton pattern to provide a centralized way
+ * to manage indentation levels for formatted log output. It ensures only
+ * one instance exists throughout the application lifecycle.
+ */
+class LogIndent {
+ public:
+  /**
+   * @brief Get the singleton instance of LogIndent
+   * @return Reference to the singleton instance
+   *
+   * Uses static local variable for thread-safe singleton initialization
+   * (C++11 guarantee). The instance is created on first call and destroyed
+   * automatically at program termination.
+   */
+  static LogIndent& Instance() {
+    static LogIndent instance;
+    return instance;
+  }
+  /**
+   * @brief Increase the current indentation level by 1
+   *
+   * Call this method when entering a nested scope to increase
+   * log indentation for better visual hierarchy.
+   */
+  void IncreaseIndentLevel() { FLAGS_indentlevel = FLAGS_indentlevel + 1; }
+  /**
+   * @brief Decrease the current indentation level by 1
+   *
+   * Reduces the indentation level, but never goes below 0.
+   * Call this when leaving a nested scope.
+   */
+  void DecreaseIndentLevel() {
+    if (FLAGS_indentlevel > 0) {
+      FLAGS_indentlevel = FLAGS_indentlevel - 1;
+    }
+  }
+  LogIndent(const LogIndent&) = delete;
+  LogIndent& operator=(const LogIndent&) = delete;
+
+ private:
+  LogIndent() = default;
+  ~LogIndent() = default;
+};
+
 }  // namespace egr

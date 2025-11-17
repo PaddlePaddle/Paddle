@@ -195,6 +195,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   std::string classname =
       std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
   std::string forward_stack;
+  if (VLOG_IS_ON(2)) egr::LogIndent::Instance().IncreaseIndentLevel();
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
     // record the forward stack
     forward_stack = egr::Controller::Instance().GetPythonStack();
@@ -636,6 +637,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
   VLOG(3) << classname << ":"
           << "Finish PyLayer Apply";
+  if (VLOG_IS_ON(2)) egr::LogIndent::Instance().DecreaseIndentLevel();
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
