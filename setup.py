@@ -2470,6 +2470,7 @@ def get_setup_parameters():
         'paddle.nn.attention',
         'paddle.nn.functional',
         'paddle.nn.layer',
+        'paddle.nn.modules',
         'paddle.nn.quant',
         'paddle.nn.quant.qat',
         'paddle.nn.initializer',
@@ -2508,6 +2509,11 @@ def get_setup_parameters():
         env_dict.get("WITH_GPU") == 'ON'
         and env_dict.get("COMPILED_CUDA_ARCHS")
         and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        packages.extend(['paddle.distributed.communication.deep_ep'])
+    if (
+        env_dict.get("WITH_XPU") == 'ON'
+        and env_dict.get("WITH_XPU_XRE5") == 'ON'
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
     if (

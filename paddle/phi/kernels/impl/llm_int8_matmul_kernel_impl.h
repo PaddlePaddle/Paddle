@@ -280,7 +280,10 @@ __global__ void QuantActKernel(const T* x,
   InVec in_vec;
   OutVec out_vec;
 
-  for (int linear_index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  for (int64_t linear_index = (static_cast<int64_t>(blockIdx.x) *
+                                   static_cast<int64_t>(blockDim.x) +
+                               static_cast<int64_t>(threadIdx.x)) *
+                              VecSize;
        linear_index < elem_cnt;
        linear_index += gridDim.x * blockDim.x * VecSize) {
     int row_idx = linear_index / cols;
@@ -339,7 +342,9 @@ __global__ void SplitKernel(const T* x,
 
   __syncthreads();
 
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_idx =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_idx < elem_cnt;
        linear_idx += blockDim.x * gridDim.x) {
     int32_t row_idx = linear_idx / kfp_num;  // n
@@ -395,7 +400,10 @@ __global__ void DequantActivationMergeKernel(const T* x,
   FpVec out_vec;
   FpVec x_vec;
 
-  for (int linear_idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  for (int64_t linear_idx = (static_cast<int64_t>(blockIdx.x) *
+                                 static_cast<int64_t>(blockDim.x) +
+                             static_cast<int64_t>(threadIdx.x)) *
+                            VecSize;
        linear_idx < elem_cnt;
        linear_idx += gridDim.x * blockDim.x * VecSize) {
     phi::Load(x_fp + linear_idx, &x_fp_vec);

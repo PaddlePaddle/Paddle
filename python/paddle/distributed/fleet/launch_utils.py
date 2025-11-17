@@ -564,8 +564,8 @@ def start_local_trainers(
                 )
             )
             logger.info(
-                "details about PADDLE_TRAINER_ENDPOINTS can be found in "
-                f"{log_dir}/endpoints.log, and detail running logs maybe found in "
+                "Details about PADDLE_TRAINER_ENDPOINTS can be found in "
+                f"{log_dir}/endpoints.log, and detail running logs may be found in "
                 f"{log_dir}/workerlog.0"
             )
         fn = None

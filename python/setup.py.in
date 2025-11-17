@@ -1014,6 +1014,7 @@ packages=['paddle',
           'paddle.nn.attention',
           'paddle.nn.functional',
           'paddle.nn.layer',
+          'paddle.nn.modules',
           'paddle.nn.quant',
           'paddle.nn.quant.qat',
           'paddle.nn.initializer',
@@ -1052,6 +1053,12 @@ if (
     '@WITH_GPU@' == 'ON'
     and '@CUDA_ARCH_BIN@'
     and '@CUDA_ARCH_BIN@'.find("90") != -1
+):
+    packages.extend(['paddle.distributed.communication.deep_ep'])
+
+if (
+    '@WITH_XPU@' == 'ON'
+    and '@WITH_XPU_XRE5@' == 'ON'
 ):
     packages.extend(['paddle.distributed.communication.deep_ep'])
 

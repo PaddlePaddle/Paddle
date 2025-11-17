@@ -1,0 +1,90 @@
+id: no-deeply-nested-loops
+language: python
+severity: error
+message: |
+  Detected deeply nested loops (5 or more levels). Consider refactoring using `itertools.product`.
+  For example:
+    # Before:
+    for i in range_a:
+        for j in range_b:
+            for k in range_c:
+                for m in range_d:
+                    for n in range_e:
+                        process(i, j, k, m, n)
+
+    # After:
+    import itertools
+    for i, j, k, m, n in itertools.product(range_a, range_b, range_c, range_d, range_e):
+        process(i, j, k, m, n)
+
+  If it is a false positive, please contact SigureMo or zrr1999 for more information.
+note: Refactor deeply nested loops using itertools.product for better readability
+files:
+  - test/**
+  - python/**
+
+rule:
+  pattern: |
+    for $IA in $LA:
+        for $IB in $LB:
+            for $IC in $LC:
+                for $ID in $LD:
+                    for $IE in $LE:
+                        $$$BODY
+  not:
+    has:
+      pattern: break
+      stopBy: end
+constraints:
+  LB:
+    not:
+      any:
+        - pattern: $IA
+        - has:
+            pattern: $IA
+            stopBy: end
+  LC:
+    not:
+      any:
+        - pattern: $IA
+        - pattern: $IB
+        - has:
+            pattern: $IA
+            stopBy: end
+        - has:
+            pattern: $IB
+            stopBy: end
+  LD:
+    not:
+      any:
+        - pattern: $IA
+        - pattern: $IB
+        - pattern: $IC
+        - has:
+            pattern: $IA
+            stopBy: end
+        - has:
+            pattern: $IB
+            stopBy: end
+        - has:
+            pattern: $IC
+            stopBy: end
+  LE:
+    not:
+      any:
+        - pattern: $IA
+        - pattern: $IB
+        - pattern: $IC
+        - pattern: $ID
+        - has:
+            pattern: $IA
+            stopBy: end
+        - has:
+            pattern: $IB
+            stopBy: end
+        - has:
+            pattern: $IC
+            stopBy: end
+        - has:
+            pattern: $ID
+            stopBy: end

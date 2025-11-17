@@ -99,6 +99,12 @@ if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] ||
     check_approval 1 tianshuo78520a swgu98
 fi
 
+HAS_MODIFIED_LINUX_NPU_YML=$(git diff --name-only upstream/$BRANCH | grep ".github/workflows/_Linux-NPU.yml" || true)
+if [ "${HAS_MODIFIED_LINUX_NPU_YML}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You must have one RD (yongqiangma, YqGe585) approval for .github/workflows/_Linux-NPU.yml changes, which manages the NPU CI workflow.\n"
+    check_approval 1 yongqiangma YqGe585
+fi
+
 DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/pir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
 echo "DEPS_PHI_IN_IR:${DEPS_PHI_IN_IR}"
 if [ "${DEPS_PHI_IN_IR}" ] && [ "${DEPS_PHI_IN_IR}" != "" ]; then
