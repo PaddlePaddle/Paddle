@@ -125,10 +125,10 @@ class TestNNFunctionalSigmoidAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.nn.functional.sigmoid(x)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.nn.functional.sigmoid(x=x)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.nn.functional.sigmoid(input=x)
         paddle_dygraph_out.append(out3)
         # Tensor method args
@@ -154,9 +154,9 @@ class TestNNFunctionalSigmoidAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.nn.functional.sigmoid(x)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.nn.functional.sigmoid(x=x)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.nn.functional.sigmoid(input=x)
             # Tensor method args
             out4 = x.sigmoid()

@@ -73,7 +73,8 @@ __global__ void SampleKernel(const uint64_t rand_seed,
                              bool return_eids) {
   assert(blockDim.x == CTA_SIZE);
 
-  int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
+  int64_t out_row = static_cast<int64_t>(blockIdx.x) * TILE_SIZE +
+                    static_cast<int64_t>(threadIdx.y);
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_nodes);
 #ifdef PADDLE_WITH_HIP
@@ -263,7 +264,8 @@ __global__ void GatherEdge(int k,
                            bool return_eids) {
   assert(blockDim.x == CTA_SIZE);
 
-  int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
+  int64_t out_row = static_cast<int64_t>(blockIdx.x) * TILE_SIZE +
+                    static_cast<int64_t>(threadIdx.y);
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
 
@@ -371,7 +373,10 @@ void GraphSampleNeighborsKernel(
   auto* row_data = row.data<T>();
   auto* col_ptr_data = col_ptr.data<T>();
   auto* x_data = x.data<T>();
-  int bs = x.dims()[0];
+  int64_t bs = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int64_t len_col_ptr = col_ptr.dims()[0];
 
   const thrust::device_ptr<const T> input(x_data);

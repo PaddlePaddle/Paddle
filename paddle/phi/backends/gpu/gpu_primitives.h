@@ -248,7 +248,6 @@ CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
                          CudaAtomicAdd(imag, val.imag));
 }
 
-#ifdef PADDLE_CUDA_FP16
 // NOTE(dzhwinter): cuda do not have atomicCAS for half.
 // Just use the half address as a unsigned value address and
 // do the atomicCAS. According to the value store at high 16 bits
@@ -393,7 +392,6 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr,
                                               T value) {
   CudaAtomicAdd(arr + index, value);
 }
-#endif
 
 // For atomicMul.
 CUDA_ATOMIC_WRAPPER(Mul, int) {
@@ -527,7 +525,6 @@ CUDA_ATOMIC_WRAPPER(Mul, double) {
   return __longlong_as_double(old);
 }
 
-#ifdef PADDLE_CUDA_FP16
 inline __device__ uint32_t mul_to_low_half(uint32_t val, float x) {
   phi::dtype::float16 low_half;
   // The float16 in lower 16bits
@@ -572,7 +569,6 @@ CUDA_ATOMIC_WRAPPER(Mul, phi::dtype::float16) {
     return ret;
   }
 }
-#endif
 
 inline __device__ uint32_t bf16_mul_to_low_half(uint32_t val, float x) {
   phi::dtype::bfloat16 low_half;
@@ -706,7 +702,6 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
   return __longlong_as_double(old);
 }
 
-#ifdef PADDLE_CUDA_FP16
 inline __device__ uint32_t max_to_low_half(uint32_t val, float x) {
   phi::dtype::float16 low_half;
   // The float16 in lower 16bits
@@ -755,7 +750,6 @@ CUDA_ATOMIC_WRAPPER(Max, phi::dtype::float16) {
     return ret;
   }
 }
-#endif
 
 inline __device__ uint32_t bf16_max_to_low_half(uint32_t val, float x) {
   phi::dtype::bfloat16 low_half;
@@ -892,7 +886,6 @@ CUDA_ATOMIC_WRAPPER(Min, double) {
   return __longlong_as_double(old);
 }
 
-#ifdef PADDLE_CUDA_FP16
 inline __device__ uint32_t min_to_low_half(uint32_t val, float x) {
   phi::dtype::float16 low_half;
   // The float16 in lower 16bits
@@ -941,7 +934,6 @@ CUDA_ATOMIC_WRAPPER(Min, phi::dtype::float16) {
     return ret;
   }
 }
-#endif
 
 inline __device__ uint32_t bf16_min_to_low_half(uint32_t val, float x) {
   phi::dtype::bfloat16 low_half;

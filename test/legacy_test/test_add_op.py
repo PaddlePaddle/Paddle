@@ -17,6 +17,94 @@ import numpy as np
 from op_test import get_device_place
 
 import paddle
+from paddle.base import core
+
+
+class TestPaddleAddBackward(unittest.TestCase):
+    def setUp(self):
+        self.place = get_device_place()
+        self.x_np_f32 = np.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32
+        )
+        self.y_np_f32 = np.array(
+            [[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]], dtype=np.float32
+        )
+        self.N = self.x_np_f32.size
+        self.expected_grad = np.full(
+            self.x_np_f32.shape, 1.0 / self.N, dtype=np.float32
+        )
+
+    def test_backward(self):
+        x = paddle.to_tensor(self.x_np_f32, stop_gradient=False)
+        y = paddle.to_tensor(self.y_np_f32, stop_gradient=False)
+
+        out = paddle.add(x, y)
+        out.mean().backward()
+
+        np.testing.assert_allclose(
+            x.grad.numpy(), self.expected_grad, rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            y.grad.numpy(), self.expected_grad, rtol=1e-6
+        )
+
+    def test_backward_broadcast(self):
+        x_np = self.x_np_f32
+        y_np = np.array([[0.1, 0.2, 0.3]], dtype=np.float32)
+        x = paddle.to_tensor(x_np, stop_gradient=False)
+        y = paddle.to_tensor(y_np, stop_gradient=False)
+
+        out = paddle.add(x, y)
+        loss = out.mean()
+        loss.backward()
+
+        N = out.numel()
+        expected_x_grad = np.full(x_np.shape, 1.0 / N, dtype=np.float32)
+        expected_y_grad = np.full(y_np.shape, 2.0 / N, dtype=np.float32)
+
+        np.testing.assert_allclose(x.grad.numpy(), expected_x_grad, rtol=1e-6)
+        np.testing.assert_allclose(y.grad.numpy(), expected_y_grad, rtol=1e-6)
+
+    @unittest.skipUnless(
+        core.is_float16_supported(get_device_place()), "Skip float16 test"
+    )
+    def test_backward_mixed_precision_f16(self):
+        # X: float32, Y: float16
+        x_np = self.x_np_f32
+        y_np = self.y_np_f32.astype(np.float16)
+        x = paddle.to_tensor(x_np, stop_gradient=False)
+        y = paddle.to_tensor(y_np, stop_gradient=False)
+
+        out = paddle.add(x, y)
+        out.mean().backward()
+
+        N = out.numel()
+        expected_x_grad = np.full(x_np.shape, 1.0 / N, dtype=np.float32)
+        expected_y_grad = np.full(y_np.shape, 1.0 / N, dtype=np.float16)
+
+        rtol, atol = 1e-3, 1e-3
+        np.testing.assert_allclose(
+            x.grad.numpy(), expected_x_grad, rtol=rtol, atol=atol, strict=True
+        )
+        np.testing.assert_allclose(
+            y.grad.numpy(), expected_y_grad, rtol=rtol, atol=atol, strict=True
+        )
+
+    def test_backward_with_grad(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np_f32, stop_gradient=False)
+        y = paddle.to_tensor(self.y_np_f32, stop_gradient=False)
+        out = paddle.add(x, y)
+
+        out_grad_np = np.array(
+            [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], dtype=np.float32
+        )
+        out_grad = paddle.to_tensor(out_grad_np)
+        out.backward(grad_tensor=out_grad)
+
+        expected_grad = out_grad_np
+        np.testing.assert_allclose(x.grad.numpy(), expected_grad, rtol=1e-6)
+        np.testing.assert_allclose(y.grad.numpy(), expected_grad, rtol=1e-6)
 
 
 class TestPaddleAddNewFeatures(unittest.TestCase):

@@ -158,7 +158,9 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                          MT* tensor_block_max_ptr,
                                          MT* tensor_block_min_ptr,
                                          MT* tensor_block_mean_ptr) {
-  int64_t i = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t i =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
 
   int64_t num_nan = 0;
   int64_t num_inf = 0;

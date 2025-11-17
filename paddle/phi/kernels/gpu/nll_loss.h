@@ -143,7 +143,8 @@ __device__ void reduceNValuesInBlock(T* smem,
       threadVals[i] = threadIdx.x < numVals ? threadVals[i] : init;
     }
 
-    for (int64_t i = warpSize + threadIdx.x; i < numVals; i += warpSize) {
+    for (int64_t i = warpSize + static_cast<int64_t>(threadIdx.x); i < numVals;
+         i += warpSize) {
 #pragma unroll
       for (int64_t j = 0; j < N; ++j) {
         threadVals[j] = reduceOp(threadVals[j], smem[j * numVals + i]);
@@ -246,10 +247,10 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
   *out_data = 0;
   *total_weight_data = 0;
 
-  int64_t sample = blockIdx.x / blocks_per_sample;
+  int64_t sample = static_cast<int64_t>(blockIdx.x) / blocks_per_sample;
   int64_t toffset = sample * map_nelem;
   int64_t ioffset = sample * map_nelem * n_classes;
-  int64_t step = blockDim.x * blocks_per_sample;
+  int64_t step = static_cast<int64_t>(blockDim.x) * blocks_per_sample;
   for (i = (blockIdx.x % blocks_per_sample) * blockDim.x + threadIdx.x;
        i < map_nelem;
        i += step) {
@@ -370,8 +371,8 @@ __global__ void GPUNLLLossBackward2D_with_reduce(
   }
   int64_t i;
   const T norm = size_average ? (T)(1 / *total_weight_data) : (T)1;
-  int64_t sample = blockIdx.x / blocks_per_sample;
-  int64_t step = blockDim.x * blocks_per_sample;
+  int64_t sample = static_cast<int64_t>(blockIdx.x) / blocks_per_sample;
+  int64_t step = static_cast<int64_t>(blockDim.x) * blocks_per_sample;
   int64_t toffset = sample * map_nelem;
   int64_t ioffset = sample * map_nelem * n_classes;
   for (i = (blockIdx.x % blocks_per_sample) * blockDim.x + threadIdx.x;

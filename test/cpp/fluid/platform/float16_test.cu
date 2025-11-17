@@ -193,7 +193,6 @@ limitations under the License. */
   }
 #endif
 
-#ifdef PADDLE_CUDA_FP16
 namespace paddle {
 namespace platform {
 
@@ -425,4 +424,3 @@ TEST(float16, cast) {
 
 }  // namespace platform
 }  // namespace paddle
-#endif  // PADDLE_CUDA_FP16

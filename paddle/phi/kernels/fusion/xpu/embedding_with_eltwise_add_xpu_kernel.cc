@@ -107,7 +107,10 @@ void MultiEmbeddingKernel(const Context& dev_ctx,
   std::vector<xpu::VectorParam<TID>> arg_ids;
   auto* mask_tensor = mask.get_ptr();
   if (mask_tensor != nullptr) {
-    int batch_size = mask_tensor->dims()[0];
+    int64_t batch_size = mask_tensor->dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     auto pad_seq_len = mask_tensor->dims()[1];
     max_seq_len->Resize({1});
     dev_ctx.template HostAlloc<int>(max_seq_len)[0] = pad_seq_len;

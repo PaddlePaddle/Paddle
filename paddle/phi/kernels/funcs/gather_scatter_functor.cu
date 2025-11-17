@@ -73,7 +73,9 @@ class ReduceMin {
 static ReduceMin reduce_min;
 
 __global__ void CudaMemsetAsync(int* dest, int value, size_t size) {
-  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (tid * sizeof(int) >= size) return;
   dest[tid] = value;
 }
@@ -82,7 +84,9 @@ template <typename SrcT, typename DstT>
 __global__ void CastMemcpy(const SrcT* __restrict__ src,
                            DstT* __restrict__ dst,
                            int64_t size) {
-  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (tid >= size) return;
   dst[tid] = static_cast<DstT>(src[tid]);
 }
@@ -732,7 +736,9 @@ __global__ void ScatterInputGradGPUKernel(
   // no more than 18 int64_t, different from forward kernels
   // the backward kernel does not require src, so src_strides are not needed
   extern __shared__ int64_t smem_shape_strides[];
-  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
 
   if (threadIdx.x < (2 * ndim)) {
     *(smem_shape_strides + threadIdx.x) = *(shape_strides + threadIdx.x);
