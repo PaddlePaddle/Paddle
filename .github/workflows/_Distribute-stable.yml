@@ -11,7 +11,10 @@ on:
         required: false
         default: "false"
     outputs:
-      can-skip: ${{ jobs.build.outputs.can-skip }}
+      can-skip:
+        type: string
+        required: false
+        default: "false"
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
