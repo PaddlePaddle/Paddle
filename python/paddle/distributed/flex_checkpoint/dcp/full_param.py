@@ -40,8 +40,7 @@ if TYPE_CHECKING:
     from paddle.distributed.collective import Group
     from paddle.nn import Layer
 
-
-SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
+from ..aoa.aoa_engine import SUPPORTED_DTYPES
 
 
 def infer_real_dtype(desc) -> str:

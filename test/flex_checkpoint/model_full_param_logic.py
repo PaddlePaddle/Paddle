@@ -118,7 +118,7 @@ class TestFullParamLogic:
         aoa_config = {
             "aoa_statements": [
                 "_layers.linear1.weight, _layers.linear2.weight -> _layers.fused_weight, axis=1"
-                "_layers.embedding.weight -> _layers.embedding.weight, dtype = 'float16:float32'"
+                "_layers.embedding.weight -> _layers.embedding.weight, dtype = 'float32'"
             ]
         }
 

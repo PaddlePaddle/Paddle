@@ -58,6 +58,8 @@ GLOBAL_ATTRIBUTE_KEYWORDS = [
     'permute',
     'dtype',
     'fused_qkv',
+    'src_dtype',
+    'dst_dtype',
 ]
 
 EXTRA_SUFFIX = [
@@ -268,14 +270,24 @@ def fused_qkv_old_macro(tokens, expression, context):
         else:
             dst_qkv_weight_name = tokens[2].value
 
-        src_state_shard_num = context.get_src_state_shard_num(
-            src_qkv_weight_name
-        )
-        dst_state_shard_num = (
-            context.get_dst_state_shard_num(dst_qkv_weight_name)
-            if dst_qkv_weight_name is not None
-            else 1
-        )
+        if context.aoa_config_reverse:
+            dst_state_shard_num = context.get_src_state_shard_num(
+                dst_qkv_weight_name
+            )
+            src_state_shard_num = (
+                context.get_dst_state_shard_num(src_qkv_weight_name)
+                if src_qkv_weight_name is not None
+                else 1
+            )
+        else:
+            src_state_shard_num = context.get_src_state_shard_num(
+                src_qkv_weight_name
+            )
+            dst_state_shard_num = (
+                context.get_dst_state_shard_num(dst_qkv_weight_name)
+                if dst_qkv_weight_name is not None
+                else 1
+            )
 
         configs = [
             (src_state_shard_num, src_qkv_weight_name),
@@ -409,14 +421,24 @@ def fused_ffn_macro(tokens, expression, context):
             dst_ffn_weight_name = tokens[2].value
         else:
             dst_ffn_weight_name = None
-        src_state_shard_num = context.get_src_state_shard_num(
-            src_ffn_weight_name
-        )
-        dst_state_shard_num = (
-            context.get_dst_state_shard_num(dst_ffn_weight_name)
-            if dst_ffn_weight_name is not None
-            else 1
-        )
+        if context.aoa_config_reverse:
+            dst_state_shard_num = context.get_src_state_shard_num(
+                dst_ffn_weight_name
+            )
+            src_state_shard_num = (
+                context.get_dst_state_shard_num(src_ffn_weight_name)
+                if src_ffn_weight_name is not None
+                else 1
+            )
+        else:
+            src_state_shard_num = context.get_src_state_shard_num(
+                src_ffn_weight_name
+            )
+            dst_state_shard_num = (
+                context.get_dst_state_shard_num(dst_ffn_weight_name)
+                if dst_ffn_weight_name is not None
+                else 1
+            )
         splited_num = math.lcm(src_state_shard_num, dst_state_shard_num)
 
         configs = [

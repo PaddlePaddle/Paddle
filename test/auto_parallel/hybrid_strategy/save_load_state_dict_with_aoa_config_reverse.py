@@ -69,8 +69,8 @@ def test_save_load_with_aoa_config_reverse():
         "huggingface.weight -> A,B ,axis = 1 \n",
         "A^T -> A  \n",
         "B^T -> B \n",
-        "A -> fc1.weight ,dtype = 'float16:float32' \n",
-        "B -> fc2.weight ,dtype = 'float16:float32' \n",
+        "A -> fc1.weight ,src_dtype = 'float16', dst_dtype = 'float32' \n",
+        "B -> fc2.weight ,src_dtype = 'float16', dst_dtype = 'float32' \n",
     ]
     aoa_config = {"aoa_statements": aoa_statements}
 

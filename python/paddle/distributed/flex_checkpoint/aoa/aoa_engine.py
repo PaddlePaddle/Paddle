@@ -31,6 +31,7 @@ _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
 # SliceRef := (key, src_slice, dst_slice, postprocess_list)
 SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], Optional[list[str]]]
+SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
 
 
 class TensorDesc:
@@ -545,7 +546,15 @@ class AOAEngine:
                     self.need_add_output_vars.add(rvar.name)
                 else:
                     if len(attrs) > 0:
-                        assert len(attrs) == 1, "Only support one operator!"
+                        assert len(attrs) == 1 or (
+                            len(attrs) == 2
+                            and {attr.key for attr in attrs}
+                            == {"src_dtype", "dst_dtype"}
+                        ), (
+                            "Only support:\n"
+                            " - One operator, OR\n"
+                            " - Two operators with keys {'src_dtype', 'dst_dtype'}."
+                        )
                         attr = attrs[0]
                         in_ref = _get_var_ref(lvar)
                         if attr.key == "permute":
@@ -562,17 +571,30 @@ class AOAEngine:
                                     )
                             result = self.transpose(in_ref, perm)
                         elif attr.key == "dtype":
-                            if not full_match_dtype(attr.value):
-                                raise ValueError(
-                                    f"Unsupported dtype style: {attr.value},must be src_dtype:dst_dtype like 'float32:bfloat16'"
-                                )
-                            src_dtype, dst_dtype = attr.value.split(":")
+                            assert not self.aoa_config_reverse, (
+                                "When `aoa_config_reverse=True`, the dtype must be specified as "
+                                "'src_dtype=...,dst_dtype=...'. Formats like 'dtype=xxx' are not supported."
+                            )
+                            assert attr.value in SUPPORTED_DTYPES, (
+                                f"Unsupported cast dtype: {attr.value}"
+                            )
+                            result = self.cast(in_ref, attr.value)
+                        elif (
+                            attrs[0].key == "src_dtype"
+                            and attrs[1].key == "dst_dtype"
+                        ):
+                            src_dtype, dst_dtype = (
+                                attrs[0].value,
+                                attrs[1].value,
+                            )
+                            assert src_dtype in SUPPORTED_DTYPES, (
+                                f"Unsupported cast dtype: {src_dtype}"
+                            )
+                            assert dst_dtype in SUPPORTED_DTYPES, (
+                                f"Unsupported cast dtype: {dst_dtype}"
+                            )
                             if self.aoa_config_reverse:
                                 src_dtype, dst_dtype = dst_dtype, src_dtype
-                            if in_ref.dtype:
-                                assert in_ref.dtype == src_dtype, (
-                                    f"The dtype of parameter '{in_ref.dtype}' loaded from checkpoint is {in_ref.dtype}, but the aoa_statement specifies src_dtype={src_dtype}."
-                                )
                             result = self.cast(in_ref, dst_dtype)
                         elif attr.key == "axis":
                             result = in_ref
@@ -838,13 +860,3 @@ def invert_permutation(p: list[int]) -> list[int]:
     for i, pi in enumerate(p):
         q[pi] = i
     return q
-
-
-def full_match_dtype(dtype: str) -> bool:
-    dtype_pattern = re.compile(
-        r'^(bool|int8|int16|int32|int64|uint8|uint16|uint32|uint64|'
-        r'float16|float32|float64|bfloat16|complex64|complex128):'
-        r'(bool|int8|int16|int32|int64|uint8|uint16|uint32|uint64|'
-        r'float16|float32|float64|bfloat16|complex64|complex128)$'
-    )
-    return re.fullmatch(dtype_pattern, dtype) is not None

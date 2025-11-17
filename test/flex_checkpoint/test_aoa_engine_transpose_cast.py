@@ -37,14 +37,12 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
             local_shape=(2, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float64",
         )
         s1 = ShardedWeightDesc(
             key="s1",
             local_shape=(2, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float64",
         )
 
         d0 = ShardedWeightDesc(
@@ -52,14 +50,12 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
             local_shape=(4, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
         d1 = ShardedWeightDesc(
             key="d1",
             local_shape=(4, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
 
         self.source_state_shard_info = {
@@ -73,7 +69,7 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
 
         self.aoa_statements = [
             "s0, s1 -> s, axis = 1 \n",
-            "s -> s, dtype = 'float64:float64'\n",
+            "s -> s, dtype = 'float32'\n",
             "s^T -> d\n",
             "d -> d0, d1, axis = 1",
         ]
@@ -89,19 +85,17 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(2, 0),
-            dtype="float64",
         )
         src_sharded_weight_desc = ShardedWeightDesc(
             key="s1",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float64",
         )
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         answer = [shard_mapping_entry]
         self.queries.append(query)
@@ -114,19 +108,17 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
         src_sharded_weight_desc = ShardedWeightDesc(
             key="s0",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),
-            dtype="float64",
         )
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         answer = [shard_mapping_entry]
         self.queries.append(query)
@@ -139,7 +131,6 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
             local_shape=(4, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
 
         # d1[0:2, :] <--- s0[1, :]^T
@@ -148,14 +139,12 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),
-            dtype="float64",
         )
         dst_sharded_weight_desc0 = ShardedWeightDesc(
             key="d1",
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
 
         # d1[2:4, :] <--- s1[1, :]^T
@@ -164,25 +153,23 @@ class TestAOAEngineTransposeCast(unittest.TestCase):
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),
-            dtype="float64",
         )
         dst_sharded_weight_desc1 = ShardedWeightDesc(
             key="d1",
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(2, 0),
-            dtype="float64",
         )
 
         shard_mapping_entry0 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc0,
             source_slice=src_sharded_weight_desc0,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         shard_mapping_entry1 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc1,
             source_slice=src_sharded_weight_desc1,
-            postprocess_list=["float64", "[1, 0]"],
+            postprocess_list=["float32", "[1, 0]"],
         )
         answer = [shard_mapping_entry0, shard_mapping_entry1]
         self.queries.append(query)
@@ -203,14 +190,12 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             local_shape=(4, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
         s1 = ShardedWeightDesc(
             key="s1",
             local_shape=(4, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
 
         d0 = ShardedWeightDesc(
@@ -218,14 +203,12 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             local_shape=(2, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float16",
         )
         d1 = ShardedWeightDesc(
             key="d1",
             local_shape=(2, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float16",
         )
 
         self.source_state_shard_info = {
@@ -241,7 +224,7 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             "s0^T -> s0\n",
             "s1^T -> s1\n",
             "s0, s1 -> s, axis = 0\n",
-            "s -> s, dtype = 'float64:float16'\n",
+            "s -> s, dtype = 'float16'\n",
             "s -> d0, d1, axis = 1",
         ]
 
@@ -256,14 +239,12 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),
-            dtype="float16",
         )
         src_sharded_weight_desc = ShardedWeightDesc(
             key="s1",
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(0, 0),
-            dtype="float64",
         )
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
@@ -281,14 +262,12 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float16",
         )
         src_sharded_weight_desc = ShardedWeightDesc(
             key="s0",
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(2, 0),
-            dtype="float64",
         )
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
@@ -306,7 +285,6 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             local_shape=(2, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float16",
         )
 
         # d1[0:1, :] <--- s0[2:4, :]^T
@@ -315,14 +293,12 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(2, 0),
-            dtype="float64",
         )
         dst_sharded_weight_desc0 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
-            dtype="float16",
         )
 
         # d1[1:2, :] <--- s1[2:4, :]^T
@@ -331,14 +307,12 @@ class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
             local_shape=(2, 1),
             global_shape=(4, 1),
             global_offset=(2, 0),
-            dtype="float64",
         )
         dst_sharded_weight_desc1 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),
-            dtype="float16",
         )
 
         shard_mapping_entry0 = ShardMappingEntry(
@@ -506,14 +480,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(4, 1, 3),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 0),
-            dtype="float64",
         )
         s1 = ShardedWeightDesc(
             key="s1",
             local_shape=(4, 1, 3),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 0),
-            dtype="float64",
         )
 
         d0 = ShardedWeightDesc(
@@ -521,14 +493,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(1, 4, 4),
             global_shape=(1, 4, 4),
             global_offset=(0, 0, 0),
-            dtype="bfloat16",
         )
         d1 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 4, 2),
             global_shape=(1, 4, 2),
             global_offset=(0, 0, 0),
-            dtype="float32",
         )
 
         self.source_state_shard_info = {
@@ -542,14 +512,14 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
 
         self.aoa_statements = [
             "s0, s1 -> s, axis = 1\n",
-            "s -> s, dtype = 'float64:bfloat16'\n",
+            "s -> s, dtype = 'bfloat16'\n",
             "s -> a, permute = '[2, 0, 1]'\n",
             "a -> b1, b2, b3, axis = 0\n",
             "b1 -> b1, permute = '[0, 2, 1]'\n",
             "b2 -> b2, permute = '[0, 2, 1]'\n",
             "b1, b2 -> d0, axis = 1\n",
             "b3 -> d1\n",
-            "d1 -> d1, dtype = 'float64:float32'",
+            "d1 -> d1, dtype = 'float32'",
         ]
 
     def generate_query_answer(self):
@@ -563,7 +533,6 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(1, 4, 4),
             global_shape=(1, 4, 4),
             global_offset=(0, 0, 0),
-            dtype="bfloat16",
         )
         # d0[:, 0:1, :] <--- s0[:, :, 0:1].transpose([2, 0, 1]).transpose([0, 2, 1])
         src_sharded_weight_desc0 = ShardedWeightDesc(
@@ -571,14 +540,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(4, 1, 1),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 0),
-            dtype="float64",
         )
         dst_sharded_weight_desc0 = ShardedWeightDesc(
             key="d0",
             local_shape=(1, 1, 4),
             global_shape=(1, 4, 4),
             global_offset=(0, 0, 0),
-            dtype="bfloat16",
         )
 
         # d0[:, 1:2, :] <--- s1[:, :, 0:1].transpose([2, 0, 1]).transpose([0, 2, 1])
@@ -587,14 +554,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(4, 1, 1),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 0),
-            dtype="float64",
         )
         dst_sharded_weight_desc1 = ShardedWeightDesc(
             key="d0",
             local_shape=(1, 1, 4),
             global_shape=(1, 4, 4),
             global_offset=(0, 1, 0),
-            dtype="bfloat16",
         )
 
         # d0[:, 2:3, :] <--- s0[:, :, 1:2].transpose([2, 0, 1]).transpose([0, 2, 1])
@@ -603,14 +568,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(4, 1, 1),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 1),
-            dtype="float64",
         )
         dst_sharded_weight_desc2 = ShardedWeightDesc(
             key="d0",
             local_shape=(1, 1, 4),
             global_shape=(1, 4, 4),
             global_offset=(0, 2, 0),
-            dtype="bfloat16",
         )
 
         # d0[:, 3:4, :] <--- s1[:, :, 1:2].transpose([2, 0, 1]).transpose([0, 2, 1])
@@ -619,14 +582,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(4, 1, 1),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 1),
-            dtype="float64",
         )
         dst_sharded_weight_desc3 = ShardedWeightDesc(
             key="d0",
             local_shape=(1, 1, 4),
             global_shape=(1, 4, 4),
             global_offset=(0, 3, 0),
-            dtype="bfloat16",
         )
 
         shard_mapping_entry0 = ShardMappingEntry(
@@ -665,7 +626,6 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(1, 4, 2),
             global_shape=(1, 4, 2),
             global_offset=(0, 0, 0),
-            dtype="float32",
         )
         # d1[:, :, 0:1] <--- s0[:, :, 2:3].transpose([2, 0, 1])
         src_sharded_weight_desc0 = ShardedWeightDesc(
@@ -673,14 +633,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(4, 1, 1),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 2),
-            dtype="float64",
         )
         dst_sharded_weight_desc0 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 4, 1),
             global_shape=(1, 4, 2),
             global_offset=(0, 0, 0),
-            dtype="float32",
         )
 
         # d1[:, :, 1:2] <--- s1[:, :, 2:3].transpose([2, 0, 1])
@@ -689,14 +647,12 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
             local_shape=(4, 1, 1),
             global_shape=(4, 1, 3),
             global_offset=(0, 0, 2),
-            dtype="float64",
         )
         dst_sharded_weight_desc1 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 4, 1),
             global_shape=(1, 4, 2),
             global_offset=(0, 0, 1),
-            dtype="float32",
         )
 
         shard_mapping_entry0 = ShardMappingEntry(
