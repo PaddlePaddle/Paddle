@@ -658,7 +658,9 @@ __global__ void cuComputePartGradGammaBeta(const T* __restrict__ dout,
                            mean,
                            invvar,
                            rms_only);
-  for (int64_t i1_block = i1_beg + blockDim.y * blockDim.y; i1_block < i1_end;
+  for (int64_t i1_block = i1_beg + static_cast<int64_t>(blockDim.y) *
+                                       static_cast<int64_t>(blockDim.y);
+       i1_block < i1_end;
        i1_block += blockDim.y * blockDim.y) {
     cuLoadAddStridedInputs(i1_block,
                            thr_load_row_off,
@@ -681,8 +683,9 @@ __global__ void cuComputePartGradGammaBeta(const T* __restrict__ dout,
   U acc1 = U(0);
   U acc2 = U(0);
   for (int64_t k = 0; k < blockDim.y; ++k) {
-    int64_t row1 = threadIdx.y + k * blockDim.y;
-    int64_t idx1 = row1 * row_stride + threadIdx.x;
+    int64_t row1 = static_cast<int64_t>(threadIdx.y) +
+                   k * static_cast<int64_t>(blockDim.y);
+    int64_t idx1 = row1 * row_stride + static_cast<int64_t>(threadIdx.x);
     if (!rms_only) {
       acc1 += warp_buf1[idx1];
     }
@@ -695,12 +698,13 @@ __global__ void cuComputePartGradGammaBeta(const T* __restrict__ dout,
   warp_buf2[threadIdx.y * row_stride + threadIdx.x] = acc2;
   __syncthreads();
   // sum all warps
-  for (int64_t offset = blockDim.y / 2; offset > 1; offset /= 2) {
+  for (int64_t offset = static_cast<int64_t>(blockDim.y) / 2; offset > 1;
+       offset /= 2) {
     if (threadIdx.y < offset) {
       int64_t row1 = threadIdx.y;
-      int64_t row2 = threadIdx.y + offset;
-      int64_t idx1 = row1 * row_stride + threadIdx.x;
-      int64_t idx2 = row2 * row_stride + threadIdx.x;
+      int64_t row2 = static_cast<int64_t>(threadIdx.y) + offset;
+      int64_t idx1 = row1 * row_stride + static_cast<int64_t>(threadIdx.x);
+      int64_t idx2 = row2 * row_stride + static_cast<int64_t>(threadIdx.x);
       if (!rms_only) {
         warp_buf1[idx1] += warp_buf1[idx2];
       }
@@ -711,9 +715,9 @@ __global__ void cuComputePartGradGammaBeta(const T* __restrict__ dout,
   int64_t i2 = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (threadIdx.y == 0 && i2 < n2) {
     int64_t row1 = threadIdx.y;
-    int64_t row2 = threadIdx.y + 1;
-    int64_t idx1 = row1 * row_stride + threadIdx.x;
-    int64_t idx2 = row2 * row_stride + threadIdx.x;
+    int64_t row2 = static_cast<int64_t>(threadIdx.y) + 1;
+    int64_t idx1 = row1 * row_stride + static_cast<int64_t>(threadIdx.x);
+    int64_t idx2 = row2 * row_stride + static_cast<int64_t>(threadIdx.x);
     if (!rms_only) {
       part_grad_beta[blockIdx.y * n2 + i2] = warp_buf1[idx1] + warp_buf1[idx2];
     }
@@ -753,7 +757,8 @@ __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
     }
     // inter-warp reductions
     const int64_t nbsize3 = blockDim.x * blockDim.y / 2;
-    for (int64_t offset = blockDim.y / 2; offset >= 1; offset /= 2) {
+    for (int64_t offset = static_cast<int64_t>(blockDim.y) / 2; offset >= 1;
+         offset /= 2) {
       // top half write to shared memory
       if (threadIdx.y >= offset && threadIdx.y < 2 * offset) {
         const int64_t write_idx =

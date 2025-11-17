@@ -102,9 +102,11 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
   T1* row_buf = vbuf[threadIdx.y];
   T2* row_idx_buf = ibuf[threadIdx.y];
 
-  for (int64_t block_row = blockIdx.x * blockDim.y; block_row < num_rows;
+  for (int64_t block_row =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.y);
+       block_row < num_rows;
        block_row += blockDim.y * gridDim.x) {
-    int64_t row = block_row + threadIdx.y;
+    int64_t row = block_row + static_cast<int64_t>(threadIdx.y);
     const T1* row_self = x_data + row * row_size;
     T1* row_values = values_data + row * row_size;
     T2* row_indices = indices_data + row * row_size;
@@ -115,8 +117,9 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
     for (int64_t block_col = 0; block_col < row_size;
          block_col += 2 * num_threads_x) {
       // Load data into shared memory (two values per thread).
-      int64_t col1 = block_col + threadIdx.x;
-      int64_t col2 = block_col + num_threads_x + threadIdx.x;
+      int64_t col1 = block_col + static_cast<int64_t>(threadIdx.x);
+      int64_t col2 =
+          block_col + num_threads_x + static_cast<int64_t>(threadIdx.x);
       if (row < num_rows) {
         if (col1 < row_size) {
           row_buf[threadIdx.x] = *reinterpret_cast<const T1*>(&row_self[col1]);
