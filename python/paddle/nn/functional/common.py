@@ -34,7 +34,7 @@ from paddle.framework import (
 )
 from paddle.tensor.creation import full
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.layers_utils import NotSupportedTensorArgumentError
 
 from ...base.data_feeder import (
@@ -2366,6 +2366,7 @@ def zeropad2d(
     )
 
 
+@param_one_alias(["axis", "dim"])
 def cosine_similarity(
     x1: Tensor, x2: Tensor, axis: int = 1, eps: float = 1e-8
 ) -> Tensor:
@@ -2826,6 +2827,16 @@ def class_center_sample(
     return remapped_label, sampled_class_center
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "output_sizes": ["output_size"],
+        "kernel_sizes": ["kernel_size"],
+        "strides": ["stride"],
+        "paddings": ["padding"],
+        "dilations": ["dilation"],
+    }
+)
 def fold(
     x: Tensor,
     output_sizes: Size2,
@@ -2940,7 +2951,7 @@ def fold(
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
-    elif isinstance(paddings, list):
+    elif isinstance(paddings, (list, tuple)):
         if len(paddings) == 2:
             paddings = paddings * 2
         elif len(paddings) == 4:

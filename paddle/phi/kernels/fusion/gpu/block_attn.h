@@ -152,7 +152,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
   using QK_Packed_Int8_t = typename Packed_Int8_<Qk_vec, CACHE_TYPE>::Type;
 
-  // 每个 block 有一个 head 的 q 值
+  // Each block has a head's q value
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
   const int tid = threadIdx.x;
@@ -1089,7 +1089,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   zero(v_bias);
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     V_vec v;
-    // 读取当前的 v 到 v cache 中
+    // Load the current v into the v cache
     load_func.template load<V_vec>(
         v,
         (params.q_num_head + params.kv_num_head) * Dh + qkv_base_offset +

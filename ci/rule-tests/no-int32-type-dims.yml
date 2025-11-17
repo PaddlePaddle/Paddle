@@ -1,0 +1,9 @@
+id: no-int32-type-dims
+valid:
+  - int64_t input_ids_num = input.numel();
+  - int64_t class_num = prob->dims()[1];
+  - int64_t row_size = x.dims()[ndim - 1];
+invalid:
+  - int32_t input_ids_num = input.numel();
+  - int class_num = prob->dims()[1];
+  - int row_size = x.dims()[ndim - 1];

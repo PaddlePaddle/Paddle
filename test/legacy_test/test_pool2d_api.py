@@ -433,6 +433,24 @@ class TestPool2D_API(unittest.TestCase):
                 pool_type='lp',
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            # test input alias
+            result = lp_pool2d(
+                input=input,
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=1,
+                ceil_mode=False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            # test 5th positional argument with bool
+            result = lp_pool2d(
+                input,
+                norm_type,
+                2,
+                1,
+                False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
                 norm_type=norm_type,

@@ -44,6 +44,8 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
       const phi::GPUPlace &place);
 
   bool IsAllocThreadSafe() const override { return true; }
+  void PreAlloc() override;
+  void PreAllocate(size_t size);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
@@ -68,6 +70,32 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::list<AllocationPtr> allocations_;
   phi::Place place_;
   SpinLock spinlock_;
+};
+
+/**
+ * VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator is a multi-scale
+ * allocator that combines the virtual memory management technology of
+ * VirtualMemoryAutoGrowthBestFitAllocator and the multi-scale pooling strategy
+ * of MultiScalePoolAllocator.
+ */
+class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
+    : public MultiScalePoolAllocator {
+ public:
+  VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator(
+      const std::shared_ptr<VirtualMemoryAutoGrowthBestFitAllocator>
+          &small_allocator,
+      const std::shared_ptr<VirtualMemoryAutoGrowthBestFitAllocator>
+          &large_allocator,
+      size_t alignment,
+      const phi::GPUPlace &place)
+      : MultiScalePoolAllocator(
+            small_allocator, large_allocator, alignment, place) {}
+  bool IsAllocThreadSafe() const override { return true; }
+  void PreAlloc() override;
+
+ private:
+  // Determine if the request size is a small request.
+  bool IsSmallRequest(size_t size) override;
 };
 
 }  // namespace allocation
