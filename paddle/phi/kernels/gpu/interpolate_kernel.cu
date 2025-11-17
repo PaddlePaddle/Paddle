@@ -168,8 +168,8 @@ __global__ void KeNearestNeighborInterpNCHWFw(const T* in,
                                               const size_t out_img_h,
                                               const size_t out_img_w,
                                               const size_t nc,
-                                              const double ratio_h,
-                                              const double ratio_w,
+                                              const float ratio_h,
+                                              const float ratio_w,
                                               const bool align_corners) {
   size_t out_img_idx =
       threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
@@ -217,8 +217,8 @@ __global__ void KeNearestNeighborInterpFw(
     const size_t output_h,
     const size_t output_w,
     const size_t num_channels,
-    const double ratio_h,
-    const double ratio_w,
+    const float ratio_h,
+    const float ratio_w,
     const bool align_corners,
     funcs::FastDivModForInterpolate divmods) {
   size_t nthreads = output_h * output_w;
@@ -713,9 +713,9 @@ __global__ void KeNearestNeighbor3DInterpFw(const T* in,
                                             const size_t output_h,
                                             const size_t output_w,
                                             const size_t num_channels,
-                                            const double ratio_d,
-                                            const double ratio_h,
-                                            const double ratio_w,
+                                            const float ratio_d,
+                                            const float ratio_h,
+                                            const float ratio_w,
                                             const bool align_corners,
                                             const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;  // ncdhw

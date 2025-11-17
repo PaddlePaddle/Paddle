@@ -598,6 +598,14 @@ static void Interpolate2DCPUBwd(
   double ratio_w =
       funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
+  // TODO(zrr1999): to align xpu
+  if (out_h <= 1) {
+    ratio_h = 0;
+  }
+  if (out_w <= 1) {
+    ratio_w = 0;
+  }
+
   if ("bilinear" == interp_method) {
     BilinearInterpolationGrad<T>(output_grad,
                                  input_grad,
