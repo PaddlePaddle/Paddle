@@ -40,7 +40,11 @@ __global__ void Contiguous2StridedCaseOneFunc(
     const int64_t x_max) {
   int64_t x = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (x < x_max) {
-    int64_t input_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
+    int64_t input_offset =
+        (static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(gridDim.y) +
+         static_cast<int64_t>(blockIdx.y)) *
+            x_max +
+        x;
     int64_t output_offset = 0;
 
     int64_t reg_dims[6] = {
@@ -384,11 +388,17 @@ __global__ void Contiguous2StridedCaseZeroFunc(
     const T* input_data,
     T* output_data,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride) {
-  int64_t input_offset = (blockIdx.z * gridDim.y * gridDim.x +
-                          blockIdx.y * gridDim.x + blockIdx.x) *
-                             blockDim.z * blockDim.y * blockDim.x +
-                         threadIdx.z * blockDim.y * blockDim.x +
-                         threadIdx.y * blockDim.x + threadIdx.x;
+  int64_t input_offset =
+      (static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(gridDim.y) *
+           static_cast<int64_t>(gridDim.x) +
+       static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(gridDim.x) +
+       static_cast<int64_t>(blockIdx.x)) *
+          static_cast<int64_t>(blockDim.z) * static_cast<int64_t>(blockDim.y) *
+          static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.z) * static_cast<int64_t>(blockDim.y) *
+          static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t output_offset = 0;
 
   int64_t coordinate[6] = {threadIdx.x,
@@ -522,7 +532,10 @@ __global__ void Contiguous2StridedDefaultDiffDimFunc(
     Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t output_numel) {
   int MAX_LOAD_BYTES = VecSize * sizeof(T);
-  int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t gid =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
   T set_value[VecSize];
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
@@ -559,7 +572,10 @@ __global__ void Contiguous2StridedDefaultFunc(
     Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t output_numel) {
   int MAX_LOAD_BYTES = VecSize * sizeof(T);
-  int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t gid =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
 #pragma unroll
   for (int64_t i = gid; i < output_numel;
        i += blockDim.x * gridDim.x * VecSize) {
@@ -591,7 +607,10 @@ __global__ void Contiguous2StridedExpandDefaultFunc(
     const int64_t input_numel,
     const int64_t output_numel) {
   int MAX_LOAD_BYTES = VecSize * sizeof(T);
-  int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t gid =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
 #pragma unroll
   for (int64_t i = gid; i < output_numel;
        i += blockDim.x * gridDim.x * VecSize) {

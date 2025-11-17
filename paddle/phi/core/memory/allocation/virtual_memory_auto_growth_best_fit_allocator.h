@@ -16,31 +16,16 @@
 
 #include <list>
 #include <map>
+#include <optional>
 #include <set>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-struct Block {
-  Block(void *ptr, size_t size, bool is_free)
-      : ptr_(ptr), size_(size), is_free_(is_free) {}
-
-  void *ptr_;
-  size_t size_;
-  bool is_free_;
-};
-
-struct BlockAllocation : public Allocation {
-  explicit BlockAllocation(const std::list<Block>::iterator &it,
-                           phi::Place place)
-      : Allocation(it->ptr_, it->size_, place), block_it_(it) {}
-
-  std::list<Block>::iterator block_it_;
-};
 
 /**
  * Like AutoGrowthBestFitAllocator, VirtualMemoryAutoGrowthBestFitAllocator will
@@ -59,6 +44,8 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
       const phi::GPUPlace &place);
 
   bool IsAllocThreadSafe() const override { return true; }
+  void PreAlloc() override;
+  void PreAllocate(size_t size);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
@@ -66,11 +53,16 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   void FreeImpl(phi::Allocation *allocation) override;
 
  private:
+  // AllocateOrCompact will try to allocate memory from free blocks first, if
+  // OOM happens, it will try to compact memory.
+  std::optional<AllocationPtr> AllocateOrCompact(size_t size);
   phi::Allocation *AllocFromFreeBlocks(size_t size);
-  void ExtendAndMerge(size_t size);
+  void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
+  void DumpInfo(std::string phase) const;
 
   std::shared_ptr<Allocator> underlying_allocator_;
+  std::unique_ptr<MemoryCompactionStrategy> memory_compactor_;
   size_t alignment_;
 
   std::map<std::pair<size_t, void *>, std::list<Block>::iterator> free_blocks_;
@@ -78,6 +70,32 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::list<AllocationPtr> allocations_;
   phi::Place place_;
   SpinLock spinlock_;
+};
+
+/**
+ * VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator is a multi-scale
+ * allocator that combines the virtual memory management technology of
+ * VirtualMemoryAutoGrowthBestFitAllocator and the multi-scale pooling strategy
+ * of MultiScalePoolAllocator.
+ */
+class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
+    : public MultiScalePoolAllocator {
+ public:
+  VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator(
+      const std::shared_ptr<VirtualMemoryAutoGrowthBestFitAllocator>
+          &small_allocator,
+      const std::shared_ptr<VirtualMemoryAutoGrowthBestFitAllocator>
+          &large_allocator,
+      size_t alignment,
+      const phi::GPUPlace &place)
+      : MultiScalePoolAllocator(
+            small_allocator, large_allocator, alignment, place) {}
+  bool IsAllocThreadSafe() const override { return true; }
+  void PreAlloc() override;
+
+ private:
+  // Determine if the request size is a small request.
+  bool IsSmallRequest(size_t size) override;
 };
 
 }  // namespace allocation

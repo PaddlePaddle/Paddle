@@ -5436,7 +5436,7 @@ PDNode *patterns::BNAddActConvGrad::operator()(
   return bn1_grad;
 }
 
-void patterns::SparseConvOptimPartern::operator()() {
+void patterns::SparseConvOptimPattern::operator()() {
   auto sp_conv3d_x = pattern->NewNode(sp_conv3d_x_repr())
                          ->AsInput()
                          ->assert_is_op_input("sparse_conv3d", "x");

@@ -2,3 +2,5 @@ ruleDirs:
   - ci/rules
 testConfigs:
   - testDir: ci/rule-tests
+languageGlobs:
+  cpp: ['*.c', '*.cc', '*.cpp', '*.cu', '*.h', '*.cuh']

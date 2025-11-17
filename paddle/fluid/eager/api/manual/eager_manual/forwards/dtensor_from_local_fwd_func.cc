@@ -46,6 +46,9 @@ paddle::Tensor dtensor_from_local_ad_function(
   // Get Input AutoGradMeta
   egr::AutogradMeta* input_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(input);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(input);
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad =
       egr::EagerUtils::ComputeRequireGrad(trace_backward, input_autograd_meta);

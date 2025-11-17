@@ -72,7 +72,7 @@ bool validateReduceOpAttrs(const Node* node,
     }
     for (size_t i = 1; i < dims.size(); ++i) {
       if (1 != dims[i] - dims[i - 1]) {
-        LOG(WARNING) << "The LayerNorm dim of mean must be  continuous";
+        LOG(WARNING) << "The LayerNorm dim of mean must be continuous";
         return false;
       }
     }

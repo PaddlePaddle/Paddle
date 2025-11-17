@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -27,6 +28,31 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 
 namespace phi {
+
+template <typename T, typename Context, typename GradFunc>
+void MixedPrecisionAddGradImpl(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad,
+                               GradFunc grad_func) {
+  phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  phi::funcs::ElementwiseGradPreProcess(out_grad, y_grad);
+  auto* out = &out_grad;
+  if (x_grad != nullptr && y_grad == nullptr &&
+      x_grad->dims() == out_grad.dims()) {
+    VLOG(4) << "Mixed precision: only x_grad needed, no reduce";
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  } else if (x_grad == nullptr && y_grad != nullptr &&
+             y_grad->dims() == out_grad.dims()) {
+    VLOG(4) << "Mixed precision: only y_grad needed, no reduce";
+    phi::CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
+  } else {
+    grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
+  }
+}
 
 template <typename T, typename Context, typename GradFunc>
 void AddGradImpl(const Context& dev_ctx,
@@ -38,6 +64,7 @@ void AddGradImpl(const Context& dev_ctx,
                  DenseTensor* y_grad,
                  GradFunc grad_func) {
   phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  phi::funcs::ElementwiseGradPreProcess(out_grad, y_grad);
   auto* out = &out_grad;
   // Special case when y_grad is not needed and x_grad doesn't reduce
   if (x_grad != nullptr && y_grad == nullptr &&
