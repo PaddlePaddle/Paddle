@@ -615,6 +615,7 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
             >>> print(x1.place)
             Place(cpu)
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> paddle.device.set_device("gpu:0" )
             >>> x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
             >>> print(x2.place)
