@@ -87,7 +87,6 @@ jobs:
     needs: [clone, build-docker, distribute]
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
       can-skip: ${{ needs.distribute.outputs.can-skip }}
 
   distribute-formers:
@@ -96,5 +95,4 @@ jobs:
     needs: [clone, build-docker, distribute]
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
       can-skip: ${{ needs.distribute.outputs.can-skip }}
