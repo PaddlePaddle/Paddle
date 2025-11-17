@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/init.h"
@@ -111,7 +111,7 @@ bool InitGflags(std::vector<std::string> args) {
   return succeeded;
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
@@ -133,7 +133,7 @@ void InitCupti() {
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 || defined(PADDLE_WITH_XPU)
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_PROFILING_SEMAPHORE_POOL_SIZE);
 #endif
 #undef MULTIPLY_ATTR_VALUE
@@ -168,7 +168,7 @@ void InitDevices() {
     phi::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
     InitCupti();
 #endif
     /*Init all available devices by default */

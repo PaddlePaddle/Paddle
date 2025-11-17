@@ -16,9 +16,14 @@
 
 #include <cstdio>
 
+#include <sstream>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/os_info.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#else
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 #include "paddle/phi/core/platform/profiler/utils.h"
 
 namespace paddle::platform::details {
@@ -96,6 +101,13 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   event.kernel_info.blocks_per_sm = blocks_per_sm;
   event.kernel_info.warps_per_sm = warps_per_sm;
   event.kernel_info.occupancy = occupancy;
+
+  VLOG(1) << "++++++++ AddKernelRecord ++++++++";
+  VLOG(1) << "event.name = " << event.name;
+  VLOG(1) << "device_id = " << event.device_id;
+  VLOG(1) << "context_id = " << event.context_id;
+  VLOG(1) << "stream_id = " << event.stream_id;
+  VLOG(1) << "correlation_id = " << event.correlation_id;
 
   collector->AddDeviceEvent(std::move(event));
 }
@@ -299,11 +311,25 @@ CuptiRuntimeCbidStr::CuptiRuntimeCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaSetupArgument_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaLaunch_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaDeviceGetPCIBusId_v4010);
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 || defined(PADDLE_WITH_XPU)
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernel_v9000);
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernelMultiDevice_v9000);
 #endif
 #undef REGISTER_RUNTIME_CBID_STR
+}
+
+std::string TidMappingToString(
+    const std::unordered_map<uint32_t, uint64_t>& tid_mapping) {
+  std::ostringstream oss;
+  oss << "{ ";
+  bool first = true;
+  for (auto& kv : tid_mapping) {
+    if (!first) oss << ", ";
+    first = false;
+    oss << kv.first << ": " << kv.second;
+  }
+  oss << " }";
+  return oss.str();
 }
 
 void AddApiRecord(const CUpti_ActivityAPI* api,
@@ -324,13 +350,20 @@ void AddApiRecord(const CUpti_ActivityAPI* api,
   } else {
     tid = iter->second;
   }
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
   event.thread_id = api->threadId;
 #else
   event.thread_id = tid;
 #endif
   event.correlation_id = api->correlationId;
   event.callback_id = api->cbid;
+  VLOG(1) << "++++++++ AddApiRecord ++++++++";
+  VLOG(1) << "event.name = " << event.name;
+  VLOG(1) << "tid = " << tid;
+  VLOG(1) << "api->threadId = " << api->threadId;
+  VLOG(1) << "tid_mapping = " << TidMappingToString(tid_mapping);
+  VLOG(1) << "correlation_id = " << event.correlation_id;
+  VLOG(1) << "callback_id = " << event.callback_id;
   collector->AddRuntimeEvent(std::move(event));
 }
 

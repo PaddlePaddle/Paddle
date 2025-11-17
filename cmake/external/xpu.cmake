@@ -26,6 +26,7 @@ set(XPU_ML_LIB_NAME "libxpuml.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XPUTX_LIB_NAME "libxpuToolsExt.so")
+set(CUPTI_LIB_NAME "libcupti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
@@ -366,6 +367,45 @@ if(WITH_XPTI)
   set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
 endif()
 
+if(WITH_XPU_XRE5)
+  set(CUPTI_ROOT
+      "/usr/local/"
+      CACHE PATH "CUPTI ROOT")
+endif()
+find_path(
+  CUPTI_INCLUDE_DIR cupti.h
+  PATHS ${CUPTI_ROOT} ${CUPTI_ROOT}/include ${CUPTI_ROOT}/include/cupti
+        $ENV{CUPTI_ROOT} $ENV{CUPTI_ROOT}/include $ENV{CUPTI_ROOT}/include/cupti
+  NO_DEFAULT_PATH)
+
+list(
+  APPEND
+  CUPTI_CHECK_LIBRARY_DIRS
+  ${CUPTI_ROOT}
+  ${CUPTI_ROOT}/lib64
+  ${CUPTI_ROOT}/lib
+  $ENV{CUPTI_ROOT}
+  $ENV{CUPTI_ROOT}/lib64
+  $ENV{CUPTI_ROOT}/lib
+  /usr/lib)
+find_library(
+  CUPTI_LIBRARY
+  NAMES libcupti.so libcupti.dylib # libcupti_static.a
+  PATHS ${CUPTI_CHECK_LIBRARY_DIRS} ${CUPTI_INCLUDE_DIR}
+  NO_DEFAULT_PATH
+  DOC "Path to cuPTI library.")
+
+get_filename_component(CUPTI_LIBRARY_PATH ${CUPTI_LIBRARY} DIRECTORY)
+if(CUPTI_INCLUDE_DIR AND CUPTI_LIBRARY)
+  set(CUPTI_FOUND ON)
+else()
+  set(CUPTI_FOUND OFF)
+endif()
+if(CUPTI_FOUND)
+  message(STATUS "Compile with XPU CUPTI!")
+endif()
+# message(STATUS "CUPTI_FOUND: ${CUPTI_FOUND}")
+
 if(WITH_XPU_PLUGIN)
   message(STATUS "Compile with XPU PLUGIN!")
   add_definitions(-DPADDLE_WITH_XPU_PLUGIN)
@@ -386,6 +426,7 @@ if(WITH_XPU_XRE5)
     ${XPU_XFA_LIB}
     ${XPU_XPUDNN_LIB}
     ${XPU_ML_LIB})
+  #     ${CUPTI_LIB})
 
   if(NOT WITH_MKL)
     target_link_libraries(xpulib ${XPU_XPUDNN_OMP_LIB})

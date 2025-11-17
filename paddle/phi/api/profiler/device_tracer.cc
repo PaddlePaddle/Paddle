@@ -204,7 +204,7 @@ void CUPTIAPI bufferCompleted(CUcontext ctx,
         switch (record->kind) {
           case CUPTI_ACTIVITY_KIND_KERNEL:
           case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL: {
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 || defined(PADDLE_WITH_XPU)
             auto *kernel =
                 reinterpret_cast<const CUpti_ActivityKernel4 *>(record);
 #else
@@ -525,7 +525,7 @@ class DeviceTracerImpl : public DeviceTracer {
           CUPTI_RUNTIME_TRACE_CBID_cudaMemsetAsync_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernel_v7000
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 || defined(PADDLE_WITH_XPU)
           ,
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernel_v9000,
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000
@@ -900,7 +900,7 @@ void initCuptiCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaSetupArgument_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaLaunch_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaDeviceGetPCIBusId_v4010);
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 || defined(PADDLE_WITH_XPU)
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernel_v9000);
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernelMultiDevice_v9000);
 #endif

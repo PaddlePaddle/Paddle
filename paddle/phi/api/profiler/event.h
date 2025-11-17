@@ -81,7 +81,8 @@ class PADDLE_API Event {
   uint64_t cpu_ns_;
   bool visited_status_{false};
   std::string attr_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;
 
