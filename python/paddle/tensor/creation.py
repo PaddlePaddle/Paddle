@@ -3510,7 +3510,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
             if output is None:
                 output = _C_ops.assign(input)
             else:
-                _C_ops.assign_out_(input, output)
+                output = _C_ops.assign_out_(input, output)
         else:
             check_dtype(
                 input.dtype,
