@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/core/platform/profiler/mem_tracing.h"
 
@@ -28,6 +29,10 @@ class StatAllocator : public Allocator {
       : underlying_allocator_(std::move(underlying_allocator)) {}
 
   bool IsAllocThreadSafe() const override { return true; }
+  void Accept(AllocatorVisitor* visitor) override { visitor->Visit(this); }
+  std::shared_ptr<Allocator>& GetUnderLyingAllocator() {
+    return underlying_allocator_;
+  }
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override {

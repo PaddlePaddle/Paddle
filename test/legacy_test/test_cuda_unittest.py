@@ -37,6 +37,23 @@ from paddle.cuda import (
 )
 
 
+class TestCudaIpcCollect(unittest.TestCase):
+    def test_ipc_collect(self):
+        if (
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.is_compiled_with_rocm():
+            reason = "Skip for ipc_collect function in dcu is not correct"
+            print(reason)
+            return
+        if platform.system().lower() == "windows":
+            print("Skip: ipc_collect function on Windows is not supported.")
+            return
+        device = paddle.device.get_device()
+        if device.startswith("gpu") or device.startswith("xpu"):
+            paddle.device.ipc_collect()
+            paddle.cuda.ipc_collect()
+
+
 class TestCudaCompat(unittest.TestCase):
     # ---------------------
     # _device_to_paddle test

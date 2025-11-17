@@ -322,6 +322,23 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
   return nullptr;
 }
 
+std::pair<size_t, size_t>
+VirtualMemoryAutoGrowthBestFitAllocator::SumLargestFreeBlockSizes(
+    int32_t n) const {
+  if (n <= 0 || free_blocks_.empty()) return std::make_pair(0, 0);
+
+  size_t large_size = free_blocks_.rbegin()->first.first;
+  size_t total_size = 0;
+  int32_t count = 0;
+
+  for (auto it = free_blocks_.rbegin(); it != free_blocks_.rend() && count < n;
+       ++it, ++count) {
+    total_size += it->first.first;
+  }
+
+  return std::make_pair(large_size, total_size);
+}
+
 void VirtualMemoryAutoGrowthBestFitAllocator::DumpInfo(
     std::string phase) const {
   size_t total = 0, free = 0, used = 0;
