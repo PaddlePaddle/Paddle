@@ -138,7 +138,7 @@ inline torch::IValue OperationInvoker::to_ivalue(py::handle obj) {
   } else if (py::isinstance<py::bool_>(obj)) {
     return torch::IValue(py::cast<bool>(obj));
   } else if (py::isinstance<py::int_>(obj)) {
-    return torch::IValue(py::cast<int>(obj));
+    return torch::IValue(py::cast<int64_t>(obj));
   } else if (py::isinstance<py::float_>(obj)) {
     return torch::IValue(py::cast<double>(obj));
   } else if (py::isinstance<py::str>(obj)) {

@@ -45,7 +45,9 @@ __global__ void GPUPSROIPoolForward(const int nthreads,
                                     const int pooled_width,
                                     const int* rois_batch_id_data,
                                     T* output_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = blockDim.x * gridDim.x;
   for (size_t i = index; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
@@ -131,7 +133,10 @@ void PsroiPoolKernel(const Context& dev_ctx,
           pooled_height,
           pooled_width));
 
-  int rois_num_t = rois.dims()[0];
+  int64_t rois_num_t = rois.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   if (rois_num_t == 0) return;
   int rois_batch_size;
   DenseTensor rois_batch_id_list;
@@ -208,7 +213,10 @@ void PsroiPoolKernel(const Context& dev_ctx,
        false,
        &rois_batch_id_list_gpu);
 
-  int output_size = out->numel();
+  int64_t output_size = out->numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int blocks = NumBlocks(output_size);
   int threads = kNumCUDAThreads;
 

@@ -19,11 +19,11 @@ import re
 import typing
 import warnings
 import weakref
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
-from typing_extensions import Self
+from typing_extensions import Self, overload
 
 import paddle
 from paddle import Tensor, nn, profiler
@@ -59,12 +59,16 @@ from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
 if TYPE_CHECKING:
     from paddle.distributed.communication.group import Group
 
+from paddle import dtype
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
     from paddle.nn.initializer import Initializer
@@ -161,6 +165,19 @@ def _layer_trans_dtype(layer, dtype, excluded_layers):
         return
 
     layer._to_impl(dtype=dtype, floating_only=True, include_sublayers=False)
+
+
+class _IncompatibleKeys(
+    namedtuple("IncompatibleKeys", ["missing_keys", "unexpected_keys"]),
+):
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        if not self.missing_keys and not self.unexpected_keys:
+            return "<All keys matched successfully>"
+        return super().__repr__()
+
+    __str__ = __repr__
 
 
 class LayerObjectHelper(LayerHelperBase):
@@ -485,7 +502,31 @@ class Layer:
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
-    def train(self) -> Self:
+    @property
+    def _modules(self):
+        return self._sub_layers
+
+    @_modules.setter
+    def _modules(self, value):
+        if not isinstance(value, dict):
+            raise TypeError(f"_modules must be dict-like, got {type(value)}")
+        self._sub_layers.clear()
+        self._sub_layers.update(value)
+
+    @property
+    def _non_persistent_buffers_set(self):
+        return self._non_persistable_buffer_names_set
+
+    @_non_persistent_buffers_set.setter
+    def _non_persistent_buffers_set(self, value):
+        if not isinstance(value, set):
+            raise TypeError(
+                f"_non_persistent_buffers_set must be a set, got {type(value)}"
+            )
+        self._non_persistable_buffer_names_set.clear()
+        self._non_persistable_buffer_names_set.update(value)
+
+    def train(self, mode: bool = True) -> Self:
         """
 
         Sets this Layer and all its sublayers to training mode.
@@ -531,15 +572,21 @@ class Layer:
                  [-0.68077987]])
 
         """
+        if not isinstance(mode, bool):
+            raise ValueError("training mode is expected to be boolean")
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
         if in_dygraph_mode():
-            framework._dygraph_tracer().train_mode()
+            if mode:
+                framework._dygraph_tracer().train_mode()
+            else:
+                framework._dygraph_tracer().eval_mode()
+
         # Layer-level setting
-        self.training = True
+        self.training = mode
         for layer in self.sublayers():
-            layer.training = True
+            layer.training = mode
 
         return self
 
@@ -915,6 +962,31 @@ class Layer:
             temp_attr, shape, dtype, is_bias, default_initializer, device=device
         )
 
+    def get_parameter(self, target: str) -> Parameter:
+        """
+        Return the parameter given by ``target`` if it exists, otherwise throw an error.
+        Parameters:
+            target(str): The fully-qualified string name of the Parameter to look for.
+
+        Returns:
+            Parameter: The Parameter referenced by ``target``.
+        """
+        module_path, _, param_name = target.rpartition(".")
+
+        mod: paddle.nn.Layer = self.get_sublayer(module_path)
+
+        if not hasattr(mod, param_name):
+            raise AttributeError(
+                mod._get_name() + " has no attribute `" + param_name + "`"
+            )
+
+        param: paddle.nn.Parameter = getattr(mod, param_name)
+
+        if not isinstance(param, (paddle.nn.Parameter, paddle.Tensor)):
+            raise AttributeError("`" + param_name + "` is not an nn.Parameter")
+
+        return param
+
     @deprecated(
         since="2.0.0",
         update_to="paddle.nn.Layer.create_tensor",
@@ -1032,6 +1104,7 @@ class Layer:
             type=core.VarDesc.VarType.DENSE_TENSOR,
         )
 
+    @param_one_alias(["include_sublayers", "recurse"])
     def parameters(self, include_sublayers: bool = True) -> list[Tensor]:
         """
 
@@ -1238,6 +1311,7 @@ class Layer:
         ]
         return ret
 
+    @param_one_alias(["include_sublayers", "recurse"])
     def named_parameters(
         self,
         prefix: str = '',
@@ -1387,6 +1461,46 @@ class Layer:
                 remove_duplicate=remove_duplicate,
             )
 
+    def modules(self) -> Iterator[Layer]:
+        """
+        Return an iterator over all modules in the network.
+
+        Yields:
+            Layer: a layer in the network.
+
+        """
+        for _, module in self.named_modules():
+            yield module
+
+    def named_modules(
+        self,
+        memo: set[Layer] | None = None,
+        prefix: str = "",
+        remove_duplicate: bool = True,
+    ):
+        """
+        Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
+        The duplicate sublayer will only be yielded once.
+
+        Parameters:
+            memo(set, optional): The set to record duplicate sublayers. Default: None.
+            prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
+            remove_duplicate(bool, optional): Whether to remove duplicated sublayers in the result.
+                Default: True.
+
+        Yields:
+            (string, Layer): Tuple of name and Layer
+        """
+        include_self = True
+        layers_set = memo
+        return self.named_sublayers(
+            prefix=prefix,
+            include_self=include_self,
+            layers_set=layers_set,
+            remove_duplicate=remove_duplicate,
+        )
+
+    @param_one_alias(["persistable", "persistent"])
     def register_buffer(
         self, name: str, tensor: Tensor, persistable: bool = True
     ) -> None:
@@ -1456,6 +1570,7 @@ class Layer:
             else:
                 self._non_persistable_buffer_names_set.add(name)
 
+    @param_one_alias(["include_sublayers", "recurse"])
     def buffers(self, include_sublayers: bool = True) -> list[Tensor]:
         """
 
@@ -1491,6 +1606,37 @@ class Layer:
         ]
         return ret
 
+    def get_buffer(self, target: str) -> Tensor:
+        """
+        Return the buffer given by ``target`` if it exists, otherwise throw an error.
+
+        See the docstring for ``get_sublayer`` for a more detailed
+        explanation of this method's functionality as well as how to
+        correctly specify ``target``.
+
+        Parameters:
+            target(str): The fully-qualified string name of the buffer to look for.
+
+        Returns:
+            Tensor: The buffer referenced by ``target``.
+        """
+        module_path, _, buffer_name = target.rpartition(".")
+
+        mod = self.get_sublayer(module_path)
+
+        if not hasattr(mod, buffer_name):
+            raise AttributeError(
+                mod._get_name() + " has no attribute `" + buffer_name + "`"
+            )
+
+        buffer = getattr(mod, buffer_name)
+
+        if buffer_name not in mod._buffers:
+            raise AttributeError("`" + buffer_name + "` is not a buffer")
+
+        return buffer
+
+    @param_one_alias(["include_sublayers", "recurse"])
     def named_buffers(
         self,
         prefix: str = '',
@@ -1752,6 +1898,91 @@ class Layer:
         self._sub_layers[name] = sublayer
         return sublayer
 
+    def get_sublayer(self, target: str) -> Layer:
+        """
+        Return the submodule given by ``target`` if it exists, otherwise throw an error.
+
+        Parameters:
+            target(str): The fully-qualified string name of the submodule to look for.
+
+        Returns:
+            Layer: The sublayer referenced by ``target``.
+        """
+        if target == "":
+            return self
+
+        atoms: list[str] = target.split(".")
+        mod: paddle.nn.Layer = self
+
+        for item in atoms:
+            if not hasattr(mod, item):
+                raise AttributeError(
+                    mod._get_name() + " has no attribute `" + item + "`"
+                )
+
+            mod = getattr(mod, item)
+
+            if not isinstance(mod, paddle.nn.Layer):
+                raise AttributeError("`" + item + "` is not an nn.Layer")
+
+        return mod
+
+    @param_one_alias(["layer", "module"])
+    def set_sublayer(
+        self, target: str, layer: Layer, strict: bool = False
+    ) -> None:
+        """
+        Set the sublayer given by ``target`` if it exists, otherwise throw an error.
+
+        Parameters:
+            target(str): The fully-qualified string name of the sublayer to look for.
+            layer(Layer): The layer to set the sublayer to.
+            strict(bool): If ``False``, the method will replace an existing sublayer
+                or create a new sublayer if the parent module exists. If ``True``,
+                the method will only attempt to replace an existing sublayer and throw an error
+                if the sublayer doesn't already exist.
+        """
+        if target == "":
+            raise ValueError("Cannot set the sublayer without a target name!")
+
+        atoms: list[str] = target.split(".")
+        if not isinstance(layer, paddle.nn.Layer):
+            raise ValueError(
+                "`" + "module" + f"` is not an nn.Layer, found {type(layer)}"
+            )
+        if len(atoms) == 1:
+            parent: paddle.nn.Layer = self
+        else:
+            parent_key = ".".join(atoms[:-1])
+            parent = self.get_sublayer(parent_key)
+
+        if strict and not hasattr(parent, atoms[-1]):
+            raise AttributeError(
+                parent._get_name() + " has no attribute `" + atoms[-1] + "`"
+            )
+        if hasattr(parent, atoms[-1]):
+            mod = getattr(parent, atoms[-1])
+            if not isinstance(mod, paddle.nn.Layer):
+                raise AttributeError("`" + atoms[-1] + "` is not an nn.Layer")
+        setattr(parent, atoms[-1], layer)
+
+    get_submodule = get_sublayer
+    set_submodule = set_sublayer
+
+    def add_module(self, name: str, module: Layer | None) -> None:
+        """
+        Adds a sub layer instance. Added layer can be accessed by self.name
+
+        Parameters:
+            name(str): name of this sublayer.
+            layer(Layer): an instance of Layer.
+        Returns:
+            None
+        """
+        self.add_sublayer(name, module)
+
+    register_module = add_module
+
     def add_parameter(self, name: str, parameter: Tensor) -> Tensor:
         """Adds a Parameter instance.
 
@@ -1826,6 +2057,18 @@ class Layer:
 
             self._parameters[name] = parameter
         return parameter
+
+    def register_parameter(self, name: str, param: Parameter | None) -> None:
+        """
+        Adds a Parameter instance. Added parameter can be accessed by self.name
+
+        Parameters:
+            name(str): name of this submodule.
+            parameter(Optional[Parameter]): an instance of Parameter.
+        Returns:
+            None
+        """
+        self.add_parameter(name, param)
 
     def _set_op_attrs(self, attrs):
         """
@@ -2237,6 +2480,7 @@ class Layer:
             keep_vars=keep_vars,
         )
 
+    @overload
     def state_dict(
         self,
         destination: _StateDict | None = None,
@@ -2244,7 +2488,31 @@ class Layer:
         structured_name_prefix: str = "",
         use_hook: bool = True,
         keep_vars: bool = True,
-    ) -> _StateDict:
+    ) -> _StateDict: ...
+
+    @overload
+    def state_dict(
+        self,
+        *,
+        destination: _StateDict,
+        prefix: str = ...,
+        keep_vars: bool = ...,
+    ) -> _StateDict: ...
+
+    @overload
+    def state_dict(
+        self,
+        *,
+        prefix: str = ...,
+        keep_vars: bool = ...,
+    ) -> _StateDict: ...
+
+    @overload
+    def state_dict(
+        self, *args, destination=None, prefix="", keep_vars=False
+    ) -> _StateDict: ...
+
+    def state_dict(self, *args: Any, **kwargs: Any) -> _StateDict:
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
@@ -2268,14 +2536,30 @@ class Layer:
                 >>> paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
-        return self._state_dict_impl(
-            destination=destination,
-            include_sublayers=include_sublayers,
-            structured_name_prefix=structured_name_prefix,
-            include_non_persistable_buffer=False,
-            use_hook=use_hook,
-            keep_vars=keep_vars,
-        )
+        len_args = len(args)
+
+        def safe_set_param(key: str, value: Any):
+            if key in kwargs:
+                raise TypeError(f"got multiple values for argument '{key}'")
+            kwargs[key] = value
+
+        if (
+            len_args >= 2 and isinstance(args[1], str)
+        ) or 'prefix' in kwargs:  # Torch API
+            base_param_keys = ["destination", "prefix", "keep_vars"]
+            for idx in range(min(len_args, len(base_param_keys))):
+                safe_set_param(base_param_keys[idx], args[idx])
+
+            return self._state_dict_impl(
+                destination=kwargs.get('destination', None),
+                include_sublayers=True,
+                structured_name_prefix=kwargs.get('prefix', ""),
+                include_non_persistable_buffer=False,
+                use_hook=True,
+                keep_vars=kwargs.get('keep_vars', False),
+            )
+
+        return self._state_dict_impl(*args, **kwargs)
 
     def sharded_state_dict(
         self,
@@ -2478,6 +2762,68 @@ class Layer:
                 )
 
         return missing_keys, unexpected_keys
+
+    def load_state_dict(
+        self,
+        state_dict: Mapping[str, Any],
+        strict: bool = True,
+        assign: bool = False,
+    ):
+        """
+        Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
+
+        If :attr:`strict` is ``True``, then
+        the keys of :attr:`state_dict` must exactly match the keys returned
+        by this module's :meth:`~torch.nn.Module.state_dict` function.
+
+
+        Parameters:
+            state_dict (dict): a dict containing parameters and persistent buffers.
+            strict (bool, optional): whether to strictly enforce that the keys
+                in :attr:`state_dict` match the keys returned by this module's
+                :meth:`~torch.nn.Module.state_dict` function. Default: ``True``
+            assign (bool, optional): When set to ``False``, the properties of the tensors
+                in the current module are preserved whereas setting it to ``True`` preserves
+                properties of the Tensors in the state dict. The only
+                exception is the ``requires_grad`` field of :class:`~torch.nn.Parameter`
+                for which the value from the module is preserved. Default: ``False``
+
+        Returns:
+            ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:
+                * ``missing_keys`` is a list of str containing any keys that are expected
+                    by this module but missing from the provided ``state_dict``.
+                * ``unexpected_keys`` is a list of str containing the keys that are not
+                    expected by this module but present in the provided ``state_dict``.
+        """
+        error_msgs: list[str] = []
+
+        missing_keys, unexpected_keys = self.set_state_dict(
+            state_dict, use_structured_name=True
+        )
+
+        if strict:
+            if len(unexpected_keys) > 0:
+                error_msgs.insert(
+                    0,
+                    "Unexpected key(s) in state_dict: {}. ".format(
+                        ", ".join(f'"{k}"' for k in unexpected_keys)
+                    ),
+                )
+            if len(missing_keys) > 0:
+                error_msgs.insert(
+                    0,
+                    "Missing key(s) in state_dict: {}. ".format(
+                        ", ".join(f'"{k}"' for k in missing_keys)
+                    ),
+                )
+
+        if len(error_msgs) > 0:
+            raise RuntimeError(
+                "Error(s) in loading state_dict for {}:\n\t{}".format(
+                    self.__class__.__name__, "\n\t".join(error_msgs)
+                )
+            )
+        return _IncompatibleKeys(missing_keys, unexpected_keys)
 
     def to(
         self,
@@ -2753,6 +3099,71 @@ class Layer:
     set_dict = set_state_dict
     load_dict = set_state_dict
 
+    def type(self, dst_type: dtype | str) -> Self:
+        """
+        Casts all parameters and buffers to :attr:`dst_type`.
+
+        Parameters:
+            dtype(str|paddle.dtype): target data type of layer.
+                If set str, it can be "bool", "bfloat16", "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
+                Default: None
+
+        Returns:
+            Layer: self
+        """
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        if (
+            isinstance(dst_type, (paddle.dtype, np.dtype))
+            or type(dst_type) is str
+            and dst_type in valid_dtypes
+        ):
+            if isinstance(dst_type, (str, np.dtype)):
+                dst_type = framework.convert_np_dtype_to_dtype_(dst_type)
+
+            def layer_trans(layer):
+                layer._to_impl(
+                    dtype=dst_type, floating_only=False, include_sublayers=True
+                )
+
+            return self.apply(layer_trans)
+        else:
+            raise ValueError(
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but receive "
+                + str(dtype)
+            )
+
+    def double(self) -> Self:
+        """
+        Casts all floating point parameters and buffers to ``double`` datatype.
+
+        Returns:
+            Module: self
+        """
+        return self.type(paddle.float64)
+
+    def half(self) -> Self:
+        """
+        Casts all floating point parameters and buffers to ``half`` datatype.
+
+        Returns:
+            Module: self
+        """
+        return self.type(paddle.float16)
+
     def float(
         self, excluded_layers: Layer | Sequence[Layer] | None = None
     ) -> Self:
@@ -2937,3 +3348,104 @@ class Layer:
             _layer_trans_dtype(layer, paddle.bfloat16, excluded_layers)
 
         return self.apply(layer_trans)
+
+    def cuda(self, device: int | PlaceLike | None = None) -> Self:
+        """
+        Move all model parameters and buffers to the GPU.
+
+        This also makes associated parameters and buffers different objects. So
+        it should be called before constructing the optimizer if the layer will
+        live on GPU while being optimized.
+
+        Parameters:
+            device(int, optional): if specified, all parameters will be copied to that device.
+
+        Returns:
+            Layer: self
+        """
+        if device is None:
+            device = paddle.CUDAPlace(paddle.cuda.current_device())
+        elif isinstance(device, int):
+            device = paddle.CUDAPlace(device)
+        elif isinstance(device, paddle.CUDAPlace):
+            pass
+        else:
+            raise TypeError(
+                f"device must be int, paddle.CUDAPlace or None, got {type(device)}"
+            )
+
+        return self._to_impl(device=device)
+
+    def xpu(self, device: int | PlaceLike | None = None) -> Self:
+        """
+        Move all model parameters and buffers to the XPU.
+
+        This also makes associated parameters and buffers different objects. So
+        it should be called before constructing optimizer if the layer will
+        live on XPU while being optimized.
+
+        Parameters:
+            device(int, optional): if specified, all parameters will be copied to that device.
+
+        Returns:
+            Layer: self
+        """
+        if device is None:
+            device = paddle.XPUPlace(0)
+        elif isinstance(device, int):
+            device = paddle.XPUPlace(device)
+        elif isinstance(device, paddle.XPUPlace):
+            pass
+        else:
+            raise TypeError(
+                f"device must be int, paddle.XPUPlace or None, got {type(device)}"
+            )
+
+        return self._to_impl(device=device)
+
+    def cpu(self) -> Self:
+        """
+        Move all model parameters and buffers to the CPU.
+
+        Returns:
+            Layer: self
+        """
+        return self._to_impl(device=paddle.CPUPlace())
+
+    def get_extra_state(self) -> Any:
+        raise RuntimeError(
+            "Reached a code path in Module.get_extra_state() that should never be called. "
+        )
+
+    def requires_grad_(self, requires_grad: bool = True) -> Self:
+        """
+        Change if autograd should record operations on parameters in this layer.
+
+        Parameters:
+            requires_grad (bool): whether autograd should record operations on
+                                  parameters in this layer. Default: ``True``.
+
+        Returns:
+            Layer: self
+        """
+        for p in self.parameters():
+            p.stop_gradient = not requires_grad
+        return self
+
+    def zero_grad(self, set_to_none: bool = True) -> None:
+        """
+        Reset gradients of all model parameters.
+
+        Parameters:
+            set_to_none (bool): instead of setting to zero, set the grads to None. Currently, set_to_none=True
+            is not fully supported.
+        """
+        for p in self.parameters():
+            if p.grad is not None:
+                if set_to_none:
+                    p.clear_gradient(set_to_zero=False)
+                else:
+                    p.clear_gradient(set_to_zero=True)
+
+    def _get_name(self):
+        return self.__class__.__name__

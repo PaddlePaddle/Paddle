@@ -50,7 +50,9 @@ __global__ void vol2col(int64_t num_kernels,
       num_kernels / output_detph / output_height / output_width;
   int64_t channels_col =
       input_channels * filter_depth * filter_height * filter_width;
-  for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t index =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
     int w_out = index % output_width;
@@ -135,12 +137,29 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
       (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
   int input_width =
       (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
-  int filter_depth = col->dims()[1];
-  int filter_height = col->dims()[2];
-  int filter_width = col->dims()[3];
-  int output_depth = col->dims()[4];
-  int output_height = col->dims()[5];
-  int output_width = col->dims()[6];
+  int64_t filter_depth = col->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t filter_height = col->dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t filter_width = col->dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t output_depth = col->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t output_height = col->dims()[5];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t output_width = col->dims()[6];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
@@ -247,7 +266,9 @@ __global__ void col2vol(int64_t num_kernels,
   const int d_filter_width = dilation_w * (filter_width - 1) + 1;
 
   int input_channels = num_kernels / depth / height / width;
-  for (int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t index =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        index < num_kernels;
        index += blockDim.x * gridDim.x) {
     T src_val = 0;
@@ -344,12 +365,29 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
       (data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
   int input_width =
       (data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
-  int filter_depth = col.dims()[1];
-  int filter_height = col.dims()[2];
-  int filter_width = col.dims()[3];
-  int output_depth = col.dims()[4];
-  int output_height = col.dims()[5];
-  int output_width = col.dims()[6];
+  int64_t filter_depth = col.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t filter_height = col.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t filter_width = col.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t output_depth = col.dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t output_height = col.dims()[5];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t output_width = col.dims()[6];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];

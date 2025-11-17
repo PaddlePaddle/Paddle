@@ -53,13 +53,8 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   base_grid.Resize(common::make_ddim({n, h, w, 3}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-  int64_t total_elements = n * h * w;
-  auto stream = dev_ctx.stream();
-  int64_t block_size = 512;
-  int64_t grid_size = (total_elements + block_size - 1) / block_size;
-
-  phi::funcs::CreateBaseGridKernel_4D<T><<<grid_size, block_size, 0, stream>>>(
-      base_grid_data, n, h, w, align_corners);
+  phi::funcs::CreateBaseGridKernel_4D<T, Context>(
+      dev_ctx, base_grid_data, n, h, w, align_corners);
 
   // Apply affine transformation
   DenseTensor base_grid_new;
@@ -107,13 +102,8 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
   base_grid.Resize(common::make_ddim({n, d, h, w, 4}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
-  int64_t total_elements = n * d * h * w;
-  auto stream = dev_ctx.stream();
-  int64_t block_size = 512;
-  int64_t grid_size = (total_elements + block_size - 1) / block_size;
-
-  phi::funcs::CreateBaseGridKernel_5D<T><<<grid_size, block_size, 0, stream>>>(
-      base_grid_data, n, d, h, w, align_corners);
+  phi::funcs::CreateBaseGridKernel_5D<T, Context>(
+      dev_ctx, base_grid_data, n, d, h, w, align_corners);
 
   // Apply affine transformation
   DenseTensor base_grid_new;

@@ -76,10 +76,7 @@ class Edge {
     return grad_node_;
   }
 
-  void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
-    VLOG(7) << "Resetting Edge's Grad Node";
-    grad_node_ = node;
-  }
+  void SetGradNode(const std::shared_ptr<GradNodeBase>& node);
 
   std::pair<size_t, size_t> GetEdgeRankInfo() const {
     return std::make_pair(in_slot_id_, in_rank_);
@@ -142,7 +139,7 @@ class GradSlotMeta {
     if (!HasTensorMeta()) {
       PADDLE_THROW(common::errors::Fatal(
           "meta_ of GradSlotMeta has not been initialized yet."
-          "You're expected to check Edge availability with HasTensorMeta()"
+          "You're expected to check Edge availability with HasTensorMeta() "
           "before calling GetTensorMeta() interface."));
     }
     return *meta_.get();

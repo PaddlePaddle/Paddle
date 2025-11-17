@@ -497,12 +497,16 @@ def get_tensorrt_version() -> str:
         return None
 
 
+def get_paddle_version() -> int:
+    return env_dict.get("PADDLE_VERSION")
+
+
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
 import inspect
 
-full_version     = '%(major)d.%(minor)d.%(patch)s'
+full_version     = '%(paddle_version)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
@@ -824,6 +828,7 @@ def cuda_archs():
         f.write(
             cnt
             % {
+                'paddle_version': get_paddle_version(),
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
@@ -2465,6 +2470,7 @@ def get_setup_parameters():
         'paddle.nn.attention',
         'paddle.nn.functional',
         'paddle.nn.layer',
+        'paddle.nn.modules',
         'paddle.nn.quant',
         'paddle.nn.quant.qat',
         'paddle.nn.initializer',
@@ -2503,6 +2509,11 @@ def get_setup_parameters():
         env_dict.get("WITH_GPU") == 'ON'
         and env_dict.get("COMPILED_CUDA_ARCHS")
         and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        packages.extend(['paddle.distributed.communication.deep_ep'])
+    if (
+        env_dict.get("WITH_XPU") == 'ON'
+        and env_dict.get("WITH_XPU_XRE5") == 'ON'
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
     if (

@@ -101,8 +101,8 @@ __global__ void __launch_bounds__(512)
       reinterpret_cast<__nv_fp8_e4m3**>(meta + num_experts);
   float** scale_ptrs = reinterpret_cast<float**>(meta + num_experts * 2);
 
-  const size_t block_off_x = blockIdx.x * size_t(128);
-  const size_t block_off_y = blockIdx.y * 128;
+  const size_t block_off_x = static_cast<size_t>(blockIdx.x) * 128;
+  const size_t block_off_y = static_cast<size_t>(blockIdx.y) * 128;
 
   // 1. Load 128x128 block from input.
   for (uint32_t i = 0; i < 8; i++) {
@@ -157,7 +157,7 @@ __global__ void __launch_bounds__(512)
       off = (off / 64) * 64 + (off % 2) * 32 + (off % 64) / 2;
     }
     float scale_out = 1.0f / col_scale[off];
-    size_t idx_y = blockIdx.x - expert_off / 128;
+    size_t idx_y = static_cast<size_t>(blockIdx.x) - expert_off / 128;
     size_t idx_x = block_off_y + threadIdx.y * 32 + threadIdx.x;
     size_t idx = idx_y * H + idx_x;
     if (idx_x < H) {

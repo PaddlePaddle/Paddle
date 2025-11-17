@@ -67,7 +67,9 @@ __global__ void ScatterCUDAKernel(const T* params,
                                   size_t slice_size) {
   int64_t num = index_size * slice_size;
   int64_t block_size = blockDim.x;
-  int64_t i = (blockIdx.x * block_size + threadIdx.x) * VecSize;
+  int64_t i = (static_cast<int64_t>(blockIdx.x) * block_size +
+               static_cast<int64_t>(threadIdx.x)) *
+              VecSize;
   for (; i < num; i += gridDim.x * block_size * VecSize) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i % slice_size;  // offset inside the slice
@@ -402,7 +404,8 @@ inline DenseTensor restride_dim(const phi::DenseTensor& src,
 template <int nt, int vt, typename func_t>
 __global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
   constexpr int nv = nt * vt;
-  int idx = nv * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      nv * static_cast<int64_t>(blockIdx.x) + static_cast<int64_t>(threadIdx.x);
 
 #pragma unroll
   for (int i = 0; i < vt; ++i) {

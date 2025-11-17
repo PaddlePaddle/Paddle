@@ -253,7 +253,7 @@ class TestAffineGridAPI_ZeroSize(unittest.TestCase):
 
 class TestAffineGridOpTorchCompatible1(TestAffineGridOp):
     def initTestCase(self):
-        paddle.set_flags({'FLAGS_torch_compatible_kernel': 1})
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
         self.dynamic_shape = True
@@ -263,7 +263,7 @@ class TestAffineGridOpTorchCompatible1(TestAffineGridOp):
 
 class TestAffineGridOpTorchCompatible2(TestAffineGridOp):
     def initTestCase(self):
-        paddle.set_flags({'FLAGS_torch_compatible_kernel': 1})
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         self.theta_shape = (20, 3, 4)
         self.output_shape = np.array([20, 1, 2, 5, 7]).astype("int32")
         self.dynamic_shape = True

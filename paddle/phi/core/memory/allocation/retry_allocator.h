@@ -58,6 +58,9 @@ class PADDLE_API RetryAllocator : public Allocator {
   uint64_t ReleaseImpl(const phi::Place& place) override {
     return underlying_allocator_->Release(place);
   }
+  size_t CompactImpl(const phi::Place& place) override {
+    return underlying_allocator_->Compact(place);
+  }
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;
