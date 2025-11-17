@@ -147,7 +147,7 @@ jobs:
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: 'distribute-build'
+          workflow-name: 'distribute'
 
       - name: Download flashattn cache
         if: steps.check-bypass.outputs.can-skip != 'true'
