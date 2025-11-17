@@ -135,7 +135,7 @@ jobs:
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: h-ci
+          workflow-name: 'h-ci'
 
       - name: Build
         if: steps.check-bypass.outputs.can-skip != 'true'
