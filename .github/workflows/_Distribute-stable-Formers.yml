@@ -132,9 +132,10 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
-        uses: ./.github/actions/check-bypass/action.yml
+        uses: ./.github/workflows/check-bypass.yml
         with:
           workflow-name: 'distribute-formers'
+        secrets:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test
