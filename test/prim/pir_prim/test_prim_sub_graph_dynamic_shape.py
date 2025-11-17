@@ -956,6 +956,9 @@ class TestPrimLerp1(TestPrimThree):
         self.necessary_ops = "pd_op.lerp"
         self.enable_cinn = False
         self.tol = 1e-5
+        if not (core.is_compiled_with_rocm() or core.is_compiled_with_cuda()):
+            # NOTE: Currently, the prim operator can only be aligned with GPU implementations
+            self.tol = 2e-5
 
 
 class TestPrimLerp2(TestPrimThree):
@@ -977,6 +980,9 @@ class TestPrimLerp2(TestPrimThree):
         self.necessary_ops = "pd_op.lerp"
         self.enable_cinn = False
         self.tol = 1e-6
+        if not (core.is_compiled_with_rocm() or core.is_compiled_with_cuda()):
+            # NOTE: Currently, the prim operator can only be aligned with GPU implementations
+            self.tol = 2e-6
 
 
 class TestPrimLerp3(TestPrimThree):
