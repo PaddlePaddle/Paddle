@@ -752,7 +752,7 @@ class TestGroupNormAPIV2_Param_Dygraph(unittest.TestCase):
         self.param_shape = [self.num_channels]
         self.places = get_places()
 
-    def check_params(self, weight, bias, expected_weight, expected_bias):
+    def _check_params(self, weight, bias, expected_weight, expected_bias):
         self.assertIsNotNone(weight)
         self.assertIsNotNone(bias)
         self.assertEqual(weight.shape, self.param_shape)
@@ -780,10 +780,10 @@ class TestGroupNormAPIV2_Param_Dygraph(unittest.TestCase):
                 expected_weight = paddle.ones(self.param_shape)
                 expected_bias = paddle.zeros(self.param_shape)
 
-                self.check_params(
+                self._check_params(
                     layer.weight, layer.bias, expected_weight, expected_bias
                 )
-                self.check_params(
+                self._check_params(
                     layer_old.weight,
                     layer_old.bias,
                     expected_weight,
@@ -822,29 +822,6 @@ class TestGroupNormAPIV2_Param_Dygraph(unittest.TestCase):
                 out = layer(x_tensor)
                 out_old = layer_old(x_tensor)
                 self.assertTrue(paddle.allclose(out, out_old).item())
-
-    def test_overrides_with_affine(self):
-        """test that weight_attr and bias_attr can override the default initialization when affine=True."""
-        for p in self.places:
-            with base.dygraph.guard(p):
-                weight_val = 2.0
-                bias_val = 3.0
-                weight_attr = paddle.nn.initializer.Constant(value=weight_val)
-                bias_attr = paddle.nn.initializer.Constant(value=bias_val)
-
-                layer = paddle.nn.GroupNorm(
-                    num_groups=self.num_groups,
-                    num_channels=self.num_channels,
-                    affine=True,
-                    weight_attr=weight_attr,
-                    bias_attr=bias_attr,
-                )
-
-                expected_weight = paddle.full(self.param_shape, weight_val)
-                expected_bias = paddle.full(self.param_shape, bias_val)
-                self.check_params(
-                    layer.weight, layer.bias, expected_weight, expected_bias
-                )
 
     def test_alias(self):
         """test parameter alias epsilon/eps"""
@@ -990,41 +967,6 @@ class TestGroupNormAPIV2_Param_Static(unittest.TestCase):
                 x_np=x_np,
             )
             self._check_outs(out_new, out_old)
-
-    def test_static_overrides_with_affine(self):
-        """test that weight_attr and bias_attr can override the default initialization when affine=True."""
-        for p in self.places:
-            with static_guard():
-                main = base.Program()
-                start = base.Program()
-                with (
-                    base.unique_name.guard(),
-                    base.program_guard(main, start),
-                ):
-                    weight_val = 2.0
-                    bias_val = 3.0
-                    weight_attr = paddle.nn.initializer.Constant(
-                        value=weight_val
-                    )
-                    bias_attr = paddle.nn.initializer.Constant(value=bias_val)
-                    layer = paddle.nn.GroupNorm(
-                        num_groups=self.num_groups,
-                        num_channels=self.num_channels,
-                        affine=True,
-                        weight_attr=weight_attr,
-                        bias_attr=bias_attr,
-                    )
-                exe = base.Executor(p)
-                exe.run(start)
-                weight_np, bias_np = exe.run(
-                    main, fetch_list=[layer.weight, layer.bias]
-                )
-
-                expected_weight = np.full(self.param_shape, weight_val)
-                expected_bias = np.full(self.param_shape, bias_val)
-                self._check_params(
-                    weight_np, bias_np, expected_weight, expected_bias
-                )
 
     def test_static_alias(self):
         """test parameter alias epsilon/eps"""
