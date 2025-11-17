@@ -102,9 +102,9 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   Py_INCREF(func);
 
 #if PY_3_14_PLUS
-  func->func_closure =
+  func->func_closure = Py_XNewRef(
       ((PyFunctionObject *)PyStackRef_AsPyObjectBorrow((frame)->f_funcobj))
-          ->func_closure;
+          ->func_closure);
   _PyStackRef func_stackref = PyStackRef_FromPyObjectSteal((PyObject *)func);
   _PyFrame_Initialize(
       tstate, shadow, func_stackref, NULL, code, 0, frame->previous);
@@ -151,7 +151,12 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
       continue;
     }
 #if PY_3_14_PLUS
-    fastlocals_new[PyLong_AsSize_t(index)] = PyStackRef_DUP(fastlocals_old[i]);
+    if (PyStackRef_IsNull(fastlocals_old[i])) {
+      fastlocals_new[PyLong_AsSize_t(index)] = PyStackRef_NULL;
+    } else {
+      fastlocals_new[PyLong_AsSize_t(index)] =
+          PyStackRef_DUP(fastlocals_old[i]);
+    }
 #else
     Py_XINCREF(fastlocals_old[i]);
     fastlocals_new[PyLong_AsSize_t(index)] = fastlocals_old[i];

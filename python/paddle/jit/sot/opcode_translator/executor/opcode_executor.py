@@ -75,6 +75,7 @@ from .instr_flag import (
     CALL_FUNCTION_EX_FLAG as CFE,
     CONVERT_VALUE_FLAG as CV,
     FORMAT_VALUE_FLAG as FV,
+    LOAD_COMMON_CONSTANT_FLAG as LCC,
     MAKE_FUNCTION_FLAG as MF,
     IntrinsicsUnaryFunctions,
 )
@@ -965,6 +966,11 @@ class OpcodeExecutorBase:
         var = self.vframe.consts[instr.arg]
         self.stack.push(var)
 
+    def LOAD_COMMON_CONSTANT(self, instr: Instruction):
+        assert isinstance(instr.arg, int)
+        const_var = self.vframe.builtins[LCC[instr.arg]]
+        self.stack.push(const_var)
+
     def MAKE_CELL(self, instr: Instruction):
         self.vframe.locals[instr.argval] = self.vframe.cells[instr.argval]
 
@@ -1395,8 +1401,12 @@ class OpcodeExecutorBase:
     @call_break_graph_decorator(push_n=1)
     def CALL_FUNCTION_EX(self, instr: Instruction):
         flag = instr.arg
-        if flag & CFE.CFE_HAS_KWARGS:
+        if sys.version_info >= (3, 14) or flag & CFE.CFE_HAS_KWARGS:
             kwargs_variable = self.stack.pop()
+            if isinstance(kwargs_variable, NullVariable):
+                kwargs_variable = DictVariable(
+                    {}, self._graph, DummyTracker([])
+                )
             assert isinstance(kwargs_variable, DictVariable)
             kwargs = kwargs_variable.get_wrapped_items()
         else:
@@ -1599,7 +1609,7 @@ class OpcodeExecutorBase:
         else:
             closure = ()
 
-        if flag & MF.MF_HAS_ANNOTATION:
+        if flag & MF.MF_HAS_ANNOTATION or flag & MF.MF_HAS_ANNOTATE:
             # can not set annotation in python env, skip it
             related_list.append(self.stack.pop())
 
