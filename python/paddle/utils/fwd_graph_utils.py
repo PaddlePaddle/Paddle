@@ -16,6 +16,7 @@ import io
 import os
 import re
 import sys
+import tempfile
 from contextlib import contextmanager
 
 import paddle
@@ -228,30 +229,32 @@ class GraphBuilder:
 
 @contextmanager
 def capture_stderr():
-    stderr_buffer = io.StringIO()
-    original_stderr_fd = sys.stderr.fileno()
-    original_stderr = os.dup(original_stderr_fd)
+    with tempfile.TemporaryFile(mode='w+b') as temp_file:
+        original_stderr_fd = sys.stderr.fileno()
+        saved_stderr_fd = os.dup(original_stderr_fd)
+        stderr_output = io.StringIO()
+        try:
+            os.dup2(temp_file.fileno(), original_stderr_fd)
+            sys.stderr.flush()
+            yield stderr_output
+        finally:
+            sys.stderr.flush()
+            os.dup2(saved_stderr_fd, original_stderr_fd)
+            os.close(saved_stderr_fd)
 
-    pipe_read, pipe_write = os.pipe()
-    os.dup2(pipe_write, original_stderr_fd)
-
-    try:
-        yield stderr_buffer
-    finally:
-        os.dup2(original_stderr, original_stderr_fd)
-        os.close(original_stderr)
-        os.close(pipe_write)
-
-        with os.fdopen(pipe_read, 'r') as pipe:
-            captured = pipe.read()
-        stderr_buffer.write(captured)
+            temp_file.seek(0)
+            stderr_output.write(temp_file.read().decode())
 
 
 @signature_safe_contextmanager
 def capture_fwd_graph_guard(file_path: str):
     log = ""
     stderr_buffer = io.StringIO()
+    origin_enable_unique_name_status = paddle.framework.get_flags(
+        "FLAGS_enable_unique_name"
+    )["FLAGS_enable_unique_name"]
     try:
+        paddle.set_flags({"FLAGS_enable_unique_name": True})
         # Redirect the stderr to the buffer,because the glog info will be printed to the stderr
         with (
             capture_stderr() as stderr_buffer,
@@ -259,6 +262,9 @@ def capture_fwd_graph_guard(file_path: str):
         ):
             yield
     finally:
+        paddle.set_flags(
+            {"FLAGS_enable_unique_name": origin_enable_unique_name_status}
+        )
         log = stderr_buffer.getvalue()
         builder = GraphBuilder()
         # Find the parts describing the input and output of the API in the massive logs
