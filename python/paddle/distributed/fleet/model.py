@@ -31,7 +31,7 @@ from .meta_parallel import (
 _grad_scalar = None
 
 
-def distributed_model(model):
+def distributed_model(model, forward_func):
     """
     Return distributed data parallel model (Only work in dygraph mode)
 
@@ -163,7 +163,12 @@ def distributed_model(model):
             model = DualPipeVParallel(model, fleet_env._hcg, strategy=strategy)
         elif model.get_num_virtual_stages() == 1:
             # 1f1b pipeline
-            model = PipelineParallel(model, fleet_env._hcg, strategy=strategy)
+            model = PipelineParallel(
+                model,
+                fleet_env._hcg,
+                strategy=strategy,
+                forward_func=forward_func,
+            )
         else:
             accumulate_steps = strategy.pipeline_configs['accumulate_steps']
             pp_degree = fleet_env._hcg.get_pipe_parallel_world_size()

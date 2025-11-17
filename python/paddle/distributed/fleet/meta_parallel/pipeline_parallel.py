@@ -290,12 +290,13 @@ def register_global_pipeline_parallel_hook(
 
 
 class PipelineParallel(MetaParallelBase):
-    def __init__(self, layers, hcg, strategy):
+    def __init__(self, layers, hcg, strategy, forward_func):
         if not isinstance(layers, PipelineLayer):
             raise TypeError(
                 "The Layer should be a derived class of PipelineLayer."
             )
         super().__init__(layers, hcg, strategy)
+        self.forward_func = forward_func
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
         self.use_sep_parallel = self._hcg.get_sep_parallel_world_size() > 1
@@ -1170,7 +1171,11 @@ class PipelineParallel(MetaParallelBase):
         return train_loss
 
     def _maybe_loss_compute(
-        self, output_tensor, micro_dataset, overlap_schedule_mode=False
+        self,
+        output_tensor,
+        micro_dataset,
+        loss_func,
+        overlap_schedule_mode=False,
     ):
         backward_loss_tensor = None
         backward_loss_fn_node = None
@@ -1184,43 +1189,14 @@ class PipelineParallel(MetaParallelBase):
                 )
                 labels = next(micro_dataset)[1]
                 self._check_micro_batch_data_valid(labels)
-                for idx, loss_fn in enumerate(self._layers._loss_fn):
-                    if overlap_schedule_mode:
-                        loss_fn_node = loss_fn.build_schedule_node()
-                        loss_fn_node.labels = labels
-                        if (
-                            self.accumulate_steps > 1
-                            and not self._delay_scale_loss
-                        ):
-                            loss_fn_node.scale_loss_factor = (
-                                self.accumulate_steps
-                            )
-                        loss_tensor = loss_fn_node.forward(output_tensor)
-                    else:
-                        loss_tensor = loss_fn(output_tensor, labels)
-                        assert isinstance(loss_tensor, paddle.Tensor), (
-                            "Currently, loss_fn should obtain Paddle.Tensor dtype"
-                        )
+                backward_loss_tensor, backward_loss_fn_node = loss_func(
+                    output_tensor, labels
+                )
 
-                        with paddle.amp.auto_cast(enable=False):
-                            if (
-                                self.accumulate_steps > 1
-                                and not self._delay_scale_loss
-                            ):
-                                loss_tensor = (
-                                    loss_tensor / self.accumulate_steps
-                                )
-
-                    if self.total_loss is None:
-                        self.total_loss = []
-                    # when self.total_loss length is less than idx, append a new tensor
-                    if len(self.total_loss) <= idx:
-                        self.total_loss.append([])
-                    self.total_loss[idx].append(loss_tensor.detach())
-
-                    if idx == self.loss_fn_idx:
-                        backward_loss_tensor = loss_tensor
-                        backward_loss_fn_node = loss_fn_node
+                self.total_loss = []
+                # when self.total_loss length is less than idx, append a new tensor
+                self.total_loss.append([])
+                self.total_loss[0].append(backward_loss_tensor.detach())
         return backward_loss_tensor, backward_loss_fn_node
 
     def _forward_step(
@@ -1256,8 +1232,8 @@ class PipelineParallel(MetaParallelBase):
             schedule_chunk = self._layers.get_schedule_chunk(chunk_id=chunk_id)
             output_tensor = schedule_chunk.forward(input_tensor)
         else:
-            output_tensor = self._layers.forward(
-                input_tensor, chunk_id=chunk_id
+            output_tensor, loss_func = self.forward_func(
+                self._layers, input_tensor
             )
 
         self.callbacks.on_location(
@@ -1268,7 +1244,7 @@ class PipelineParallel(MetaParallelBase):
         )
 
         backward_loss_tensor, backward_loss_fn_node = self._maybe_loss_compute(
-            output_tensor, micro_dataset, overlap_schedule_mode
+            output_tensor, micro_dataset, loss_func, overlap_schedule_mode
         )
 
         if self.is_pipeline_first_stage() or self.is_pipeline_last_stage():
