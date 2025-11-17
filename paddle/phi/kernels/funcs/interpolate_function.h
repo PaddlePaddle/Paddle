@@ -27,20 +27,23 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-HOSTDEVICE inline T AreaPixelComputeScale(int64_t input_size,
-                                          int64_t output_size,
-                                          bool align_corners,
-                                          const T scale) {
+inline T AreaPixelComputeScale(int64_t input_size,
+                               int64_t output_size,
+                               bool align_corners,
+                               const T scale) {
   if (align_corners) {
     if (output_size > 1) {
       return static_cast<T>(input_size - 1) / (output_size - 1);
-    } else {
-      return static_cast<T>(0);
     }
   } else {
-    return (scale > 0.) ? static_cast<T>(1.0) / scale
-                        : (static_cast<T>(input_size) / output_size);
+    if (scale > 0.) {
+      return static_cast<T>(1.0) / scale;
+    }
+    if (output_size > 0) {
+      return static_cast<T>(input_size) / output_size;
+    }
   }
+  return static_cast<T>(0);
 }
 
 template <typename T>
