@@ -321,7 +321,9 @@ __global__ void StridedCopyDefaultFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 #pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
@@ -383,11 +385,17 @@ __global__ void Strided2ContiguousCaseZeroFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     T* output_data) {
   int64_t input_offset = 0;
-  int64_t output_offset = (blockIdx.z * gridDim.y * gridDim.x +
-                           blockIdx.y * gridDim.x + blockIdx.x) *
-                              blockDim.z * blockDim.y * blockDim.x +
-                          threadIdx.z * blockDim.y * blockDim.x +
-                          threadIdx.y * blockDim.x + threadIdx.x;
+  int64_t output_offset =
+      (static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(gridDim.y) *
+           static_cast<int64_t>(gridDim.x) +
+       static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(gridDim.x) +
+       static_cast<int64_t>(blockIdx.x)) *
+          static_cast<int64_t>(blockDim.z) * static_cast<int64_t>(blockDim.y) *
+          static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.z) * static_cast<int64_t>(blockDim.y) *
+          static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
@@ -471,10 +479,16 @@ __global__ void Strided2ContiguousCaseOneFunc(
     T* out_data,
     phi::Array<int64_t, 6> dims,
     const int64_t x_max) {
-  int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t x =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (x < x_max) {
     int64_t input_offset = 0;
-    int64_t output_offset = (blockIdx.z * gridDim.y + blockIdx.y) * x_max + x;
+    int64_t output_offset =
+        (static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(gridDim.y) +
+         static_cast<int64_t>(blockIdx.y)) *
+            x_max +
+        x;
 
     int64_t reg_dims[6] = {
         dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
@@ -658,7 +672,9 @@ __global__ void Strided2ContiguousDefaultFunc(
     T* output_data,
     Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 #pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;

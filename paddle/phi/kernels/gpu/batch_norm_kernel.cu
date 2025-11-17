@@ -247,7 +247,10 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -348,7 +351,10 @@ static __global__ void BNForwardTraining2DChannelLastWriteRes(
     BatchNormParamType<T> scale_val = scale[i];
     BatchNormParamType<T> bias_val = bias[i];
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_sub_mean =
@@ -394,7 +400,10 @@ static __global__ void BNForwardTraining2DCompStat(
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int64_t j = blockIdx.x * blockDim.x + threadIdx.x; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.x) *
+                         static_cast<int64_t>(blockDim.x) +
+                     static_cast<int64_t>(threadIdx.x);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = (j / HxW * C + i) * HxW + j % HxW;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -522,7 +531,10 @@ static __global__ void BNForwardTraining2DWriteRes(
     BatchNormParamType<T> scale_val = scale[i];
     BatchNormParamType<T> bias_val = bias[i];
 
-    for (int64_t j = blockIdx.x * blockDim.x + threadIdx.x; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.x) *
+                         static_cast<int64_t>(blockDim.x) +
+                     static_cast<int64_t>(threadIdx.x);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = (j / HxW * C + i) * HxW + j % HxW;
       BatchNormParamType<T> x_sub_mean =

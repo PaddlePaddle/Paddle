@@ -268,8 +268,12 @@ __global__ void DequantKernel(T* output,
                               const int64_t n,  // hidden
                               const float* dequant_out_scale_data) {
   int64_t numel = m * n;
-  int64_t stride = blockDim.x * gridDim.x * VecSize;
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t stride = static_cast<int64_t>(blockDim.x) *
+                   static_cast<int64_t>(gridDim.x) * VecSize;
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
   int64_t col_id = idx % n;
 
   phi::AlignedVector<int32_t, VecSize> in_vec;

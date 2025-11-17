@@ -284,7 +284,10 @@ static __global__ void BNBackward2DChannelLastStage1(
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -365,7 +368,10 @@ static __global__ void BNBackward2DChannelLastStage2(
     BatchNormParamType<T> inv_var_val =
         is_test ? 1.0 / sqrt(variances[i] + epsilon) : variances[i];
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> dy_i =
@@ -430,7 +436,10 @@ static __global__ void BNBackward2DChannelLastStage3(
     BatchNormParamType<T> dscale_val = dscales[i];
     BatchNormParamType<T> dbias_val = dbias[i];
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       dx[index] = scale[i] * inv_var_val *

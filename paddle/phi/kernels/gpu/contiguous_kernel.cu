@@ -48,9 +48,14 @@ __global__ void ContiguousCaseZeroFunc(
   int64_t input_offset = 0;
   int64_t grid_idx = static_cast<int64_t>(blockIdx.z) * gridDim.y * gridDim.x +
                      static_cast<int64_t>(blockIdx.y) * gridDim.x + blockIdx.x;
-  int64_t block_size = blockDim.z * (blockDim.y * blockDim.x);
-  int64_t block_idx = threadIdx.z * (blockDim.y * blockDim.x) +
-                      threadIdx.y * blockDim.x + threadIdx.x;
+  int64_t block_size =
+      static_cast<int64_t>(blockDim.z) *
+      (static_cast<int64_t>(blockDim.y) * static_cast<int64_t>(blockDim.x));
+  int64_t block_idx =
+      static_cast<int64_t>(threadIdx.z) * (static_cast<int64_t>(blockDim.y) *
+                                           static_cast<int64_t>(blockDim.x)) +
+      static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t output_offset = grid_idx * block_size + block_idx;
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
