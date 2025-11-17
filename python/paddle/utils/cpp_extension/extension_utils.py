@@ -202,8 +202,7 @@ def custom_write_stub(resource, pyfile):
     # NOTE: To avoid importing .so file instead of python file because they have same name,
     # we rename .so shared library to another name, see EasyInstallCommand.
     filename, ext = os.path.splitext(resource)
-    if not filename.endswith("_pd_"):
-        resource = filename + "_pd_" + ext
+    resource = filename + "_pd_" + ext
 
     api_content = []
     if CustomOpInfo.instance().empty():

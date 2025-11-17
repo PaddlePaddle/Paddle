@@ -873,11 +873,7 @@ class BuildExtension(build_ext):
 
             # Get the extension name from the extension module, not the distribution name
             # This ensures we use the correct package name from setup.py
-            ext_name = (
-                self.extensions[0].name
-                if self.extensions
-                else self.distribution.get_name()
-            )
+            ext_name = self.extensions[0].name
 
             # Extract the last part of the extension name for the Python file
             # For example, from "custom_setup_ops.my_ops.custom_relu" we get "custom_relu"
@@ -991,18 +987,7 @@ class InstallCommand(install):
         Returns:
             str: The extension name
         """
-        ext_name = None
-        if (
-            hasattr(self.distribution, 'ext_modules')
-            and self.distribution.ext_modules
-        ):
-            ext_name = self.distribution.ext_modules[0].name
-
-        # If no extension name is found, fall back to distribution name
-        if ext_name is None:
-            ext_name = self.distribution.get_name()
-
-        return ext_name
+        return self.distribution.ext_modules[0].name
 
     def finalize_options(self) -> None:
         super().finalize_options()
