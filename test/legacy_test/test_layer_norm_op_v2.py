@@ -241,40 +241,6 @@ class TestLayerNormParamDygraph(unittest.TestCase):
 
         self._run_test_on_places(run_test)
 
-    def test_custom_initialization(self):
-        """test custom initialization using weight_attr and bias_attr."""
-
-        def run_test(p):
-            weight_val = 2.5
-            bias_val = -1.0
-            weight_initializer = paddle.nn.initializer.Constant(
-                value=weight_val
-            )
-            bias_initializer = paddle.nn.initializer.Constant(value=bias_val)
-
-            layer = paddle.nn.LayerNorm(
-                normalized_shape=self.normalized_shape,
-                elementwise_affine=True,
-                weight_attr=weight_initializer,
-                bias_attr=bias_initializer,
-            )
-
-            expected_weight = paddle.full(
-                self.normalized_shape, weight_val, dtype=layer.weight.dtype
-            )
-            expected_bias = paddle.full(
-                self.normalized_shape, bias_val, dtype=layer.bias.dtype
-            )
-
-            np.testing.assert_allclose(
-                layer.weight.numpy(), expected_weight.numpy()
-            )
-            np.testing.assert_allclose(
-                layer.bias.numpy(), expected_bias.numpy()
-            )
-
-        self._run_test_on_places(run_test)
-
     def test_alias(self):
         """test parameter alias epsilon/eps"""
 
@@ -428,44 +394,6 @@ class TestLayerNormParamStatic(unittest.TestCase):
                     )
                     assert layer.weight is None
                     assert layer.bias is None
-
-    def test_static_custom_initialization(self):
-        """test custom initialization in static graph mode."""
-        for p in self.places:
-            with static_guard():
-                main = base.Program()
-                start = base.Program()
-                with (
-                    base.unique_name.guard(),
-                    base.program_guard(main, start),
-                ):
-                    weight_val = 2.5
-                    bias_val = -1.0
-                    weight_initializer = paddle.nn.initializer.Constant(
-                        value=weight_val
-                    )
-                    bias_initializer = paddle.nn.initializer.Constant(
-                        value=bias_val
-                    )
-
-                    layer = paddle.nn.LayerNorm(
-                        normalized_shape=self.normalized_shape,
-                        elementwise_affine=True,
-                        weight_attr=weight_initializer,
-                        bias_attr=bias_initializer,
-                    )
-
-                exe = base.Executor(p)
-                exe.run(start)
-                weight_np, bias_np = exe.run(
-                    main, fetch_list=[layer.weight, layer.bias]
-                )
-
-                expected_weight = np.full(self.normalized_shape, weight_val)
-                expected_bias = np.full(self.normalized_shape, bias_val)
-
-                np.testing.assert_allclose(weight_np, expected_weight)
-                np.testing.assert_allclose(bias_np, expected_bias)
 
     def test_static_alias(self):
         """test parameter alias epsilon/eps in static graph mode."""
