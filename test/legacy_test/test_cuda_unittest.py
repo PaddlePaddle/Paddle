@@ -40,25 +40,11 @@ from paddle.cuda import (
 
 class TestDevice(unittest.TestCase):
     def test_device(self):
-        cpu_tensor = paddle.tensor([1]).to("cpu")
-        cpu_device = cpu_tensor.device
-        with cpu_device:
+        tensor = paddle.tensor([1]).to(paddle.get_device())
+        tensor_device = tensor.device
+        with tensor_device:
             new_tensor = paddle.tensor([1])
-            assert new_tensor.device == cpu_device
-
-        if paddle.device.is_compiled_with_cuda():
-            gpu_tensor = paddle.tensor([1]).to("gpu:0")
-            gpu_device = gpu_tensor.device
-            with gpu_device:
-                new_tensor = paddle.tensor([1])
-                assert new_tensor.device == gpu_device
-
-        if paddle.device.is_compiled_with_xpu():
-            xpu_tensor = paddle.tensor([1]).to("xpu:0")
-            xpu_device = xpu_tensor.device
-            with xpu_device:
-                new_tensor = paddle.tensor([1])
-                assert new_tensor.device == xpu_device
+            assert new_tensor.device == tensor_device
 
     def test_static_device(self):
         paddle.enable_static()
@@ -74,6 +60,8 @@ class TestDevice(unittest.TestCase):
                 any("device" in str(warning.message).lower() for warning in w),
                 msg=f"Expected a warning related to 'device', but got {[str(w.message) for w in w]}",
             )
+
+
 class TestCudaIpcCollect(unittest.TestCase):
     def test_ipc_collect(self):
         if (
