@@ -19,7 +19,7 @@ import paddle
 
 
 class TestCaptureFwdGraph(unittest.TestCase):
-    def run_test(self):
+    def test_capture_fwd_graph(self):
         x = paddle.rand([3, 9, 5])
         file_path = "./fwd_graph"
         with paddle.utils.capture_fwd_graph_guard(file_path):
@@ -28,8 +28,9 @@ class TestCaptureFwdGraph(unittest.TestCase):
             z = out1 - out2
             w = out0 * out2
             out3 = paddle.concat([y, z, w], axis=1)
-        if os.path.exists(file_path + ".png"):
-            file_size = os.path.getsize(file_path + ".png")
+
+        if os.path.exists(file_path + ".svg"):
+            file_size = os.path.getsize(file_path + ".svg")
             assert file_size > 0
         else:
             raise Exception("The graph file does not exist.")

@@ -194,7 +194,7 @@ class Graph:
         self.edges[edge_name] = edge
 
     def render(self, file_path):
-        self.dot.render(file_path, format='png')
+        self.dot.render(file_path, format='svg')
 
 
 class GraphBuilder:
