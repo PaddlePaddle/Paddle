@@ -201,6 +201,8 @@ __all__ = [
     'is_bf16_supported',
     'manual_seed',
     'reset_peak_memory_stats',
+    'ipc_collect',
+    'get_stream_from_external',
 ]
 
 _cudnn_version = None
@@ -972,9 +974,9 @@ def get_device_capability(
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> # import paddle
-            >>> # cap = paddle.device.get_device_capability()
-            >>> # print(cap)
+            >>> import paddle
+            >>> cap = paddle.device.get_device_capability()
+            >>> print(cap)
     """
     prop = get_device_properties(device)
     return prop.major, prop.minor
@@ -1817,6 +1819,25 @@ def synchronize(device: PlaceLike | None = None) -> None:
         )
 
 
+def ipc_collect() -> None:
+    """
+    Force collects GPU memory after it has been released by CUDA IPC.
+    This function checks if any sent CUDA tensors could be cleaned from the memory.
+    Force closes shared memory file used for reference counting if there is no active counters.
+    Useful when the producer process stopped actively sending tensors and want to release unused memory.
+    Returns:
+        None
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> # Force collect expired IPC memory
+            >>> paddle.device.ipc_collect() #this is equivalent to paddle.cuda.ipc_collect()
+    """
+    paddle.base.libpaddle._ipc_collect()
+
+
 def get_stream_from_external(
     data_ptr: int, device: PlaceLike | None = None
 ) -> Stream:
@@ -1847,7 +1868,7 @@ def get_stream_from_external(
 
             >>> import paddle
             >>> # Suppose external_stream_ptr is from another CUDA library
-            >>> s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+            >>> # s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
     '''
     if device is None:
         place = paddle.framework._current_expected_place_()
@@ -1953,6 +1974,7 @@ class nvtx:
             msg (str): The name of the NVTX range.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_push("test") is equivalent to paddle.cuda.nvtx.range_push("test")
@@ -1967,6 +1989,7 @@ class nvtx:
         Pop the most recent NVTX range marker.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
@@ -1984,6 +2007,7 @@ def reset_peak_memory_stats(device: PlaceLike | int | None = None) -> None:
 
     Example:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'

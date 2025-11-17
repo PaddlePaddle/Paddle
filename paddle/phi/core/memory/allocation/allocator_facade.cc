@@ -92,6 +92,11 @@ PHI_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
                          false,
                          "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
+PHI_DEFINE_EXPORTED_bool(
+    use_multi_scale_virtual_memory_auto_growth,
+    false,
+    "Use VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator.");
+
 // NOTE(Ruibiao): This FLAGS is just to be compatible with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
@@ -939,11 +944,9 @@ class AllocatorFacadePrivate {
     if (FLAGS_small_pool_size_in_mb <= 0) {
       return;
     }
-    if (FLAGS_use_auto_growth_v2 || FLAGS_use_cuda_malloc_async_allocator ||
-        FLAGS_use_virtual_memory_auto_growth) {
+    if (FLAGS_use_auto_growth_v2 || FLAGS_use_cuda_malloc_async_allocator) {
       VLOG(6) << "PreAlloc is not implemented for "
-                 "AutoGrowthBestFitAllocatorV2, CUDAMallocAsyncAllocator or "
-                 "VirtualMemoryAutoGrowthBestFitAllocator.";
+                 "AutoGrowthBestFitAllocatorV2 or CUDAMallocAsyncAllocator.";
       return;
     }
     const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
@@ -952,8 +955,7 @@ class AllocatorFacadePrivate {
                       allocators_.end(),
                       common::errors::NotFound("No allocator for %s", p));
     if (current_device_id == p.GetDeviceId()) {
-      auto allocator =
-          std::dynamic_pointer_cast<AutoGrowthBestFitAllocator>(it->second);
+      auto allocator = it->second;
       VLOG(8) << "PreAlloc for dev_id=" << p.GetDeviceId();
       allocator->PreAlloc();
     }
@@ -1077,11 +1079,28 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth &&
+        !FLAGS_use_multi_scale_virtual_memory_auto_growth) {
       auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
       allocators_[p] =
           std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
               cuda_allocator, platform::GpuMinChunkSize(), p);
+    } else if (val > 0 && FLAGS_use_multi_scale_virtual_memory_auto_growth) {
+      auto cuda_allocator_small = std::make_shared<CUDAVirtualMemAllocator>(p);
+      auto cuda_allocator_large = std::make_shared<CUDAVirtualMemAllocator>(p);
+      auto vmm_allocator_small =
+          std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+              cuda_allocator_small, platform::GpuMinChunkSize(), p);
+      auto vmm_allocator_large =
+          std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+              cuda_allocator_large, platform::GpuMinChunkSize(), p);
+
+      allocators_[p] = std::make_shared<
+          VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator>(
+          vmm_allocator_small,
+          vmm_allocator_large,
+          platform::GpuMinChunkSize(),
+          p);
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
       if (FLAGS_use_auto_growth_v2) {

@@ -19,6 +19,38 @@
 
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_small_pool_size_in_mb,
+    0,
+    "Threshold (MiB) separating the small and large pools. "
+    "0 disables the small pool and enables single-pool mode "
+    "(all requests go to the large pool). When > 0, requests "
+    "<= threshold use the small pool; larger requests use the "
+    "large pool. Default: 0.");
+PHI_DEFINE_EXPORTED_uint64(vmm_small_pool_min_growth_size_in_mb,
+                           0,
+                           "The minimal chunk size for the small pool in MiB. "
+                           "If small_pool_size_in_mb > 0, this overrides "
+                           "the constructor-provided global growth size "
+                           "(FLAGS_auto_growth_chunk_size_in_mb).");
+PHI_DEFINE_EXPORTED_uint64(vmm_large_pool_min_growth_size_in_mb,
+                           0,
+                           "The minimal chunk size for the large pool in MiB. "
+                           "If small_pool_size_in_mb > 0, this overrides "
+                           "the constructor-provided global growth size "
+                           "(FLAGS_auto_growth_chunk_size_in_mb).");
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_large_pool_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the large pool. 0 disables pre-allocation.");
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_small_pool_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the small pool. 0 disables pre-allocation.");
+PHI_DEFINE_EXPORTED_uint64(
+    vmm_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the small pool. 0 disables pre-allocation.");
 PHI_DEFINE_EXPORTED_bool(
     dump_vmm_allocation_info,
     false,
@@ -152,7 +184,27 @@ void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
 std::optional<AllocationPtr>
 VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
   AllocationPtr allocateptr = nullptr;
-  if (!FLAGS_native_compact) return underlying_allocator_->Allocate(size);
+  // Just Allocate, no compact.
+  if (!FLAGS_native_compact) {
+    if (all_blocks_.empty()) {
+      allocateptr = std::move(underlying_allocator_->Allocate(size));
+    } else {
+      auto free_block = std::prev(all_blocks_.end());
+      if (free_block->is_free_) {
+        assert(free_block->size_ < size);
+        auto remain_size = size - free_block->size_;
+        VLOG(1) << " Tail free block size {" << free_block->size_
+                << "} is smaller than allocate size {" << size
+                << "} after compact, re-alloc {" << remain_size << "}";
+        allocateptr = std::move(underlying_allocator_->Allocate(remain_size));
+      } else {
+        VLOG(1) << "Tail block is not free, just allocate {" << size << "}";
+        allocateptr = std::move(underlying_allocator_->Allocate(size));
+      }
+    }
+    return allocateptr;
+  }
+  // Compact branch, try allocate and compact.
   try {
     allocateptr = std::move(underlying_allocator_->Allocate(size));
   } catch (const paddle::memory::allocation::BadAlloc &e) {
@@ -184,9 +236,11 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
 }
 
 void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
-  void *ptr = nullptr;
+  void *alloc_ptr = nullptr;
+  size_t alloc_size = 0;
   if (FLAGS_dump_vmm_allocation_info) {
-    DumpInfo("===== Before ExtendOrCompact =====");
+    DumpInfo("===== Before ExtendOrCompact ===== request size: " +
+             std::to_string(size));
   }
 
   auto allocateptr = AllocateOrCompact(size).value_or(nullptr);
@@ -207,13 +261,14 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
     return;
   }
 
-  ptr = allocateptr->ptr();
-  size = allocateptr->size();
+  alloc_ptr = allocateptr->ptr();
+  alloc_size = allocateptr->size();
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
   if (all_blocks_.empty()) {
-    all_blocks_.emplace_back(ptr, size, true);
-    free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
+    all_blocks_.emplace_back(alloc_ptr, alloc_size, true);
+    free_blocks_.emplace(std::make_pair(alloc_size, alloc_ptr),
+                         all_blocks_.begin());
     return;
   }
 
@@ -221,21 +276,24 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
   auto block_it = all_blocks_.end();
   block_it--;
   if (block_it->is_free_ &&
-      reinterpret_cast<uint8_t *>(block_it->ptr_) + block_it->size_ == ptr) {
+      reinterpret_cast<uint8_t *>(block_it->ptr_) + block_it->size_ ==
+          alloc_ptr) {
     // merge with pre
     free_blocks_.erase(std::make_pair(block_it->size_, block_it->ptr_));
-    block_it->size_ += size;
+    block_it->size_ += alloc_size;
     free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
                          block_it);
   } else {
     // do not merge
-    all_blocks_.emplace_back(ptr, size, true);
+    all_blocks_.emplace_back(alloc_ptr, alloc_size, true);
     auto block_it = all_blocks_.end();
     block_it--;
-    free_blocks_.emplace(std::make_pair(size, ptr), block_it);
+    free_blocks_.emplace(std::make_pair(alloc_size, alloc_ptr), block_it);
   }
   if (FLAGS_dump_vmm_allocation_info) {
-    DumpInfo("===== After ExtendOrCompact =====");
+    DumpInfo("===== After ExtendOrCompact =====  request size: " +
+             std::to_string(size) +
+             " alloc size: " + std::to_string(alloc_size));
   }
 }
 
@@ -291,6 +349,59 @@ void VirtualMemoryAutoGrowthBestFitAllocator::DumpInfo(
     auto [size, ptr] = key;
     std::cout << "Size: " << size << ", Ptr: " << ptr << "\t" << list_iter->ptr_
               << std::endl;
+  }
+}
+
+void VirtualMemoryAutoGrowthBestFitAllocator::PreAlloc() {
+  auto pre_alloc_size = FLAGS_vmm_pre_alloc_in_mb << 20;
+  VLOG(4)
+      << "Begin PreAllocate in VirtualMemoryAutoGrowthBestFitAllocator size "
+      << pre_alloc_size;
+  PreAllocate(pre_alloc_size);
+  VLOG(4)
+      << "Finish PreAllocate in VirtualMemoryAutoGrowthBestFitAllocator size "
+      << pre_alloc_size;
+}
+
+void VirtualMemoryAutoGrowthBestFitAllocator::PreAllocate(size_t size) {
+  if (size <= 0) return;
+  ExtendOrCompact(size);
+}
+
+bool VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::IsSmallRequest(
+    size_t size) {
+  auto small_pool_size = FLAGS_vmm_small_pool_size_in_mb << 20;
+  return size <= small_pool_size;
+}
+
+void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
+  auto small_allocator =
+      std::dynamic_pointer_cast<VirtualMemoryAutoGrowthBestFitAllocator>(
+          GetSmallAllocator());
+  auto large_allocator =
+      std::dynamic_pointer_cast<VirtualMemoryAutoGrowthBestFitAllocator>(
+          GetLargeAllocator());
+
+  auto vmm_small_pool_pre_alloc = FLAGS_vmm_small_pool_pre_alloc_in_mb << 20;
+  auto vmm_large_pool_pre_alloc = FLAGS_vmm_large_pool_pre_alloc_in_mb << 20;
+
+  if (vmm_small_pool_pre_alloc > 0) {
+    VLOG(4) << "Begin Small Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
+            << vmm_small_pool_pre_alloc;
+    small_allocator->PreAllocate(vmm_small_pool_pre_alloc);
+    VLOG(4) << "Finish Small Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
+            << vmm_small_pool_pre_alloc;
+  }
+  if (vmm_large_pool_pre_alloc > 0) {
+    VLOG(4) << "Begin Large Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
+            << vmm_large_pool_pre_alloc;
+    large_allocator->PreAllocate(vmm_large_pool_pre_alloc);
+    VLOG(4) << "Finish Large Pool PreAllocate in "
+               "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
+            << vmm_large_pool_pre_alloc;
   }
 }
 

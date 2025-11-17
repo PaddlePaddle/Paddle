@@ -206,7 +206,7 @@ class Upsample(paddle.nn.Layer):
         out_shape = in_shape * self.scale
         out_shape.stop_gradient = True
 
-        # reisze by actual_shape
+        # resize by actual_shape
         out = paddle.nn.functional.interpolate(
             x=inputs, size=out_shape, mode='nearest'
         )
