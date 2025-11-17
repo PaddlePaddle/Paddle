@@ -596,7 +596,13 @@ struct GemmFpAIntB {
     // printf("[Debug] Entered Sm750-800 branch, returning early.\n");
     // return;
     KernelRunner<compile_needed>::run_kernel(params, shared_storage);
-#elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 1010)
+#elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 910)
+    static constexpr bool compile_needed =
+        platform::is_same<KernelArch, arch::Sm80>::value;
+    // printf("[Debug] Entered Sm800-910 branch, returning early.\n");
+    // return;
+    KernelRunner<compile_needed>::run_kernel(params, shared_storage);
+#elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 910) && (__CUDA_ARCH__ < 1010)
     static constexpr bool compile_needed =
         platform::is_same<KernelArch, arch::Sm80>::value;
     // printf("[Debug] Entered Sm800-1010 branch, returning early.\n");
