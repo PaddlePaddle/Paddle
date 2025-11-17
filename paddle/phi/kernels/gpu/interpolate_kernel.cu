@@ -87,11 +87,12 @@ __forceinline__ __device__ void PreCalculatorForLinearInterpInputIndex(
     T* lambda2,
     T src_x,
     const size_t in_img_x) {
-  *in_img_idx = min(static_cast<size_t>(floorf(src_x)), in_img_x - 1);
+  size_t src_x_floor = floorf(src_x);
+  *in_img_idx = max(min(src_x_floor, in_img_x - 1), static_cast<size_t>(0));
   *x_id = (*in_img_idx < in_img_x - 1) ? 1 : 0;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  MT raw_lambda = static_cast<MT>(src_x) - static_cast<MT>(*in_img_idx);
-  *lambda1 = static_cast<T>(std::min(std::max(raw_lambda, MT(0)), MT(1)));
+  *lambda1 =
+      static_cast<T>(static_cast<MT>(src_x) - static_cast<MT>(src_x_floor));
   *lambda2 = static_cast<T>(1.0) - *lambda1;
 }
 
