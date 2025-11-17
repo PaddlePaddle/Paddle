@@ -6,7 +6,7 @@ on:
       docker_distribute_image:
         type: string
         required: true
-      clone-can-skip:
+      can-skip:
         type: string
         required: false
         default: "false"
@@ -30,6 +30,7 @@ defaults:
 jobs:
   formers-test:
     name: formers test
+    if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
     steps:
@@ -129,13 +130,6 @@ jobs:
           git config --global --add safe.directory /workspace
           git checkout test
           '
-
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          workflow-name: 'distribute-formers'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test
         if: steps.check-bypass.outputs.can-skip != 'true'

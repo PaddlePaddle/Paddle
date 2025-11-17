@@ -6,7 +6,7 @@ on:
       docker_distribute_image:
         type: string
         required: true
-      clone-can-skip:
+      can-skip:
         type: string
         required: false
         default: "false"
@@ -30,6 +30,7 @@ defaults:
 jobs:
   test:
     name: Test
+    if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
     steps:
@@ -120,13 +121,6 @@ jobs:
           rm Paddle.tar.gz
           git checkout test
           '
-
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          workflow-name: 'distribute-test'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test
         if: steps.check-bypass.outputs.can-skip != 'true'
