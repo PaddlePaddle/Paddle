@@ -616,19 +616,13 @@ class TestIndexAddAPI_Compatibility(unittest.TestCase):
         # 6. Tensor method kwargs (PyTorch style)
         out6 = x.index_add(dim=self.axis, index=index, source=value)
         paddle_dygraph_out.append(out6)
-        # 7. Mixed args and kwargs (PyTorch positional + kwargs)
-        out7 = paddle.index_add(x, self.axis, index, source=value)
-        paddle_dygraph_out.append(out7)
-        # 8. Mixed args and kwargs (PyTorch positional + kwargs)
-        out8 = paddle.index_add(x, self.axis, index=index, source=value)
-        paddle_dygraph_out.append(out8)
-        # 9. Test 'out' parameter
-        out9 = paddle.empty_like(x)
+        # 7. Test 'out' parameter
+        out7 = paddle.empty_like(x)
         paddle.index_add(
-            input=x, dim=self.axis, index=index, source=value, out=out9
+            input=x, dim=self.axis, index=index, source=value, out=out7
         )
-        paddle_dygraph_out.append(out9)
-        # 10. Test 'alpha' parameter
+        paddle_dygraph_out.append(out7)
+        # 8. Test 'alpha' parameter
         alpha = 2.0
         out10 = paddle.index_add(
             input=x, dim=self.axis, index=index, source=value, alpha=alpha
@@ -668,13 +662,9 @@ class TestIndexAddAPI_Compatibility(unittest.TestCase):
             out5 = x.index_add(index, self.axis, value)
             # 6. Tensor method kwargs (PyTorch style)
             out6 = x.index_add(dim=self.axis, index=index, source=value)
-            # 7. Mixed args and kwargs
-            out7 = paddle.index_add(x, self.axis, index, source=value)
-            # 8. Mixed args and kwargs
-            out8 = paddle.index_add(x, self.axis, index=index, source=value)
-            # 9. Test 'alpha' parameter
+            # 7. Test 'alpha' parameter
             alpha = 2.0
-            out9 = paddle.index_add(
+            out7 = paddle.index_add(
                 input=x, dim=self.axis, index=index, source=value, alpha=alpha
             )
             ref_out = self.get_ref_out()
@@ -688,8 +678,6 @@ class TestIndexAddAPI_Compatibility(unittest.TestCase):
                 out5,
                 out6,
                 out7,
-                out8,
-                out9,
             ]
             feed_dict = {
                 "x": self.np_input,

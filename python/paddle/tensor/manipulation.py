@@ -30,7 +30,6 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
-    index_add_decorator,
     param_one_alias,
     param_two_alias,
     reshape_decorator,
@@ -59,6 +58,7 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
+    from numbers import Number
 
     from paddle import Tensor
     from paddle._typing import (
@@ -7600,16 +7600,30 @@ def scatter_add_(
     )
 
 
-@index_add_decorator()
+@overload
 def index_add(
     x: Tensor,
     index: Tensor,
     axis: int,
     value: Tensor,
-    alpha: int = 1,
+    alpha: Number = 1,
     out: Tensor | None = None,
     name: str | None = None,
-) -> Tensor:
+) -> Tensor: ...
+
+
+@overload
+def index_add(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+    alpha: Number = 1,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+def index_add(*args: Any, **kwargs: Any) -> Tensor:
     """
     Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
 
@@ -7654,6 +7668,56 @@ def index_add(
              [1., 1., 1.],
              [2., 2., 2.]])
     """
+    len_args = len(args)
+    if len_args + len(kwargs) < 4:
+        raise TypeError(
+            f"Too few arguments in the function call: {len_args}, {len(kwargs)}. Expect one of: \n"
+            " - (Tensor x, Tensor index, int axis, Tensor value, Number alpha = 1, Tensor | None out = None, str | None name = None)\n"
+            " - (Tensor input, int dim, Tensor index, Tensor source, Number alpha = 1, Tensor | None out = None)"
+        )
+
+    def safe_set_param(key: str, value: Any):
+        if key in kwargs:
+            raise TypeError(f"got multiple values for argument '{key}'")
+        kwargs[key] = value
+
+    if 'input' in kwargs:
+        safe_set_param('x', kwargs.pop('input'))
+
+    if 'dim' in kwargs:
+        safe_set_param('axis', kwargs.pop('dim'))
+
+    if 'source' in kwargs:
+        safe_set_param('value', kwargs.pop('source'))
+
+    if len_args >= 4:
+        if isinstance(args[1], int):
+            new_args = [args[0], args[2], args[1], args[3]]
+            remaining_args = []
+            if len_args > 4:
+                remaining_args.append(args[4])
+            if len_args > 5:
+                remaining_args.append(args[5])
+
+            args = tuple(new_args + remaining_args)
+        else:
+            param_keys = ["alpha", "out", "name"]
+            for idx in range(min(len_args - 4, len(param_keys))):
+                safe_set_param(param_keys[idx], args[idx + 4])
+            args = args[:4]
+
+    return _index_add_wrapper(*args, **kwargs)
+
+
+def _index_add_wrapper(
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: Number = 1,
+    out: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
     if in_dynamic_or_pir_mode():
         scaled_value = value * alpha if alpha != 1 else value
         return _C_ops.index_add(x, index, scaled_value, axis, out=out)
@@ -7714,7 +7778,6 @@ def index_add(
     return out
 
 
-@index_add_decorator()
 @inplace_apis_in_dygraph_only
 def index_add_(
     x: Tensor,
