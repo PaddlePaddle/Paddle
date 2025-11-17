@@ -63,6 +63,26 @@ def attention_naive_with_mask(q, k, v, attn_bias):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
+def attention_naive_with_mask_and_scale(q, k, v, attn_bias, scale):
+    """
+    Naive attention implementation that accepts a custom scale factor.
+    """
+    qt = paddle.transpose(q, [0, 2, 1, 3])
+    kt = paddle.transpose(k, [0, 2, 1, 3])
+    vt = paddle.transpose(v, [0, 2, 1, 3])
+
+    scale_factor = scale if scale is not None else (1.0 / np.sqrt(q.shape[-1]))
+
+    s = paddle.matmul(qt * scale_factor, paddle.transpose(kt, [0, 1, 3, 2]))
+
+    if attn_bias is not None:
+        s = s + attn_bias
+
+    p = F.softmax(s)
+    o = paddle.matmul(p, vt)
+    return paddle.transpose(o, [0, 2, 1, 3])
+
+
 is_sm80 = (
     (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
@@ -1842,6 +1862,142 @@ class TestFlashAttentionAlignment(unittest.TestCase):
             atol=self.atol,
             err_msg='Memory efficient attention output does not match expected values',
         )
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 7.5 or 8.x",
+)
+class TestSDPAttentionWithScale(unittest.TestCase):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (2, 128, 8, 32)
+        self.dtype = paddle.bfloat16
+        self.dropout = 0.0
+        self.causal = False
+        self.scale = 0.5
+        self.rtol = 5e-3
+        self.atol = 1e-3
+        paddle.disable_static()
+
+    def _prepare_tensors(self):
+        """Helper to create q, k, v and reference q_, k_, v_"""
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k_ = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v_ = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        return q, k, v, q_, k_, v_
+
+    def _run_test(self, backends, attn_mask, scale, skip_grad=False):
+        """Generic test runner"""
+        q, k, v, q_, k_, v_ = self._prepare_tensors()
+
+        with sdp_kernel(**backends):
+            out = scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=attn_mask,
+                dropout_p=self.dropout,
+                is_causal=self.causal,
+                scale=scale,
+            )
+
+        out_ = attention_naive_with_mask_and_scale(q_, k_, v_, attn_mask, scale)
+
+        np.testing.assert_allclose(
+            out.numpy(), out_.numpy(), rtol=self.rtol, atol=self.atol
+        )
+        if not skip_grad:
+            out.backward()
+            out_.backward()
+
+            self.assertIsNotNone(q.grad, "q.grad is None, backward failed.")
+            self.assertIsNotNone(k.grad, "k.grad is None, backward failed.")
+            self.assertIsNotNone(v.grad, "v.grad is None, backward failed.")
+
+            np.testing.assert_allclose(
+                q.grad.numpy(),
+                q_.grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                k.grad.numpy(),
+                k_.grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                v.grad.numpy(),
+                v_.grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+
+    def test_no_mask_with_scale_fallback(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": True,
+            "enable_mem_efficient": True,
+        }
+        self._run_test(backends, attn_mask=None, scale=self.scale)
+
+    def test_mask_with_scale_math_only(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": False,
+            "enable_mem_efficient": False,
+        }
+        mask = paddle.randn(
+            [self.shape[0], 1, self.shape[1], self.shape[1]],
+            dtype=self.dtype,
+        )
+        self._run_test(backends, attn_mask=mask, scale=self.scale)
+
+    def test_mask_with_scale_full_fallback(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": True,
+            "enable_mem_efficient": True,
+        }
+        mask = paddle.randn(
+            [self.shape[0], 1, self.shape[1], self.shape[1]],
+            dtype=self.dtype,
+        )
+        self._run_test(backends, attn_mask=mask, scale=self.scale)
+
+    def test_mask_with_scale_none_math(self):
+        backends = {
+            "enable_math": True,
+            "enable_flash": False,
+            "enable_mem_efficient": False,
+        }
+        mask = paddle.randn(
+            [self.shape[0], 1, self.shape[1], self.shape[1]],
+            dtype=self.dtype,
+        )
+        self._run_test(backends, attn_mask=mask, scale=None)
 
 
 if __name__ == '__main__':

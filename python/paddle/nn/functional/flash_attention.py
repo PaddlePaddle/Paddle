@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, overload
 
-import numpy as np
-
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops
@@ -102,8 +100,11 @@ def check_dtypes_low_precision(query, debug=False):
     return dtype in supported_dtypes
 
 
-def can_use_flash_attn(query, key, attn_mask, dropout, is_causal) -> bool:
+def can_use_flash_attn(
+    query, key, attn_mask, dropout, is_causal, scale
+) -> bool:
     # sdpa flash check
+    # step0 check scale is None (FAV2 does not support scale)
     # step1 check tensor place on cuda
     # step2 check tensor shape, flash attn only support shape == 4
     # step3 check head_dim <= 256
@@ -111,6 +112,8 @@ def can_use_flash_attn(query, key, attn_mask, dropout, is_causal) -> bool:
     # step5 check specify sm head dim constraint
     # step6 check causal qk
     # step7 check sm dtype support
+    if scale is not None:
+        return False
     if "gpu" not in paddle.get_device():
         return False
     if query.ndim != 4:
@@ -128,11 +131,14 @@ def can_use_flash_attn(query, key, attn_mask, dropout, is_causal) -> bool:
     return True
 
 
-def can_use_efficient(query) -> bool:
+def can_use_efficient(query, scale) -> bool:
     # sdpa efficient check
+    # step0 check scale is None
     # step1 check tensor place on cuda
     # step2 check arch_info in [sm50, sm90]
     # step3 check tensor shape, mem efficient only support shape == 4
+    if scale is not None:
+        return False
     if "gpu" not in paddle.get_device():
         return False
     if _get_arch_info() < 50 and _get_arch_info() > 90:
@@ -189,6 +195,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: Literal[False] = ...,
     training: bool = ...,
+    scale: float | None = ...,
 ) -> tuple[Tensor, None]: ...
 
 
@@ -202,6 +209,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: Literal[True] = ...,
     training: bool = ...,
+    scale: float | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
 
@@ -215,6 +223,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: bool = ...,
     training: bool = ...,
+    scale: float | None = ...,
 ) -> tuple[Tensor, Tensor | None]: ...
 
 
@@ -227,6 +236,7 @@ def _math_attention(
     causal=False,
     return_softmax=False,
     training=True,
+    scale=None,
 ):
     r"""
     This is a basic implementation of scaled dot product attention composed of
@@ -236,7 +246,8 @@ def _math_attention(
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
     value = paddle.transpose(value, [0, 2, 1, 3])
-    product = paddle.matmul(x=query * (head_dim**-0.5), y=key, transpose_y=True)
+    scale = scale or head_dim**-0.5
+    product = paddle.matmul(x=query * scale, y=key, transpose_y=True)
 
     if mask is not None:
         product = product + mask
@@ -309,7 +320,9 @@ def _select_sdp(head_dim: int) -> str:
     return "mem_efficient"
 
 
-def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
+def _select_sdp_for_sdpa(
+    query, key, attn_mask, dropout, is_causal, scale
+) -> str:
     r"""
     this select sdpa is alignment for torch version
     """
@@ -331,10 +344,12 @@ def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
             continue
 
         if backend == SDPBackend.FLASH_ATTENTION:
-            if can_use_flash_attn(query, key, attn_mask, dropout, is_causal):
+            if can_use_flash_attn(
+                query, key, attn_mask, dropout, is_causal, scale
+            ):
                 return "flash_attn"
         elif backend == SDPBackend.EFFICIENT_ATTENTION:
-            if can_use_efficient(query):
+            if can_use_efficient(query, scale):
                 return "mem_efficient"
         elif backend == SDPBackend.MATH:
             return "math"
@@ -357,6 +372,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
+    softmax_scale: float | None = ...,
 ) -> tuple[Tensor, None]: ...
 
 
@@ -373,6 +389,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
+    softmax_scale: float | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
 
@@ -389,6 +406,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
+    softmax_scale: float | None = ...,
 ) -> tuple[Tensor, Tensor | None]: ...
 
 
@@ -1369,6 +1387,7 @@ def scaled_dot_product_attention(
     training: bool = True,
     name: str | None = None,
     backend: str | None = None,
+    scale: float | None = None,
 ) -> Tensor:
     r"""
     The equation is:
@@ -1411,6 +1430,10 @@ def scaled_dot_product_attention(
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
+        backend(str, optional): Specify which backend to compute scaled dot product attention.
+                        Currently only support "p2p" for distribution usage.
+        scale(float, optional): The scaling factor used in the calculation of attention weights.
+                        If None, scale = 1 / sqrt(head_dim).
 
     Returns:
         out(Tensor): The attention tensor.
@@ -1445,6 +1468,7 @@ def scaled_dot_product_attention(
         and value.is_dist()
     ):
         # ring attention for auto_parallel mode
+        assert scale is None, f"Backend {backend} not support scale parameter."
         out = paddle.distributed.auto_parallel.ring_attention.RingFlashAttention.apply(
             query,
             key,
@@ -1455,15 +1479,15 @@ def scaled_dot_product_attention(
         )
         return out
 
-    if attn_mask is None:
+    # flash attention V2 does not support scale
+    if scale is None and attn_mask is None:
         # downgraded to ordinary flash attention implementation
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
     else:
-        head_dim = query.shape[3]
         sdp_func_name = _select_sdp_for_sdpa(
-            query, key, attn_mask, dropout_p, is_causal
+            query, key, attn_mask, dropout_p, is_causal, scale
         )
-        if attn_mask.dtype == paddle.bool:
+        if attn_mask is not None and attn_mask.dtype == paddle.bool:
             attn_mask = paddle.where(
                 attn_mask,
                 paddle.to_tensor(0.0, dtype=query.dtype),
@@ -1530,14 +1554,19 @@ def scaled_dot_product_attention(
                 [query.shape[1]] * query.shape[0], dtype='int32'
             )
 
-            scale = 1.0 / np.sqrt(query.shape[-1])
-
             query = query.transpose([0, 2, 1, 3])
             key = key.transpose([0, 2, 1, 3])
             value = value.transpose([0, 2, 1, 3])
 
             output = variable_length_memory_efficient_attention(
-                query, key, value, seq_lens, seq_lens, attn_mask, scale
+                query,
+                key,
+                value,
+                seq_lens,
+                seq_lens,
+                attn_mask,
+                scale,
+                is_causal,
             )
 
             out = output.transpose([0, 2, 1, 3])
@@ -1552,6 +1581,7 @@ def scaled_dot_product_attention(
                 is_causal,
                 False,
                 training,
+                scale,
             )[0]
 
     if query_ndim == 3:
