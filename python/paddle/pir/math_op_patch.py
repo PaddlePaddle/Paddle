@@ -1446,7 +1446,6 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
-    @requires_grad.setter
     def requires_grad_(self, value: bool) -> None:
         """
         Set whether this Tensor requires gradient computation.

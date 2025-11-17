@@ -574,6 +574,19 @@ def monkey_patch_math_tensor():
             )
         self.stop_gradient = not value
 
+    def requires_grad_(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     @property
     def itemsize(self: Tensor) -> int:
         """
@@ -625,6 +638,7 @@ def monkey_patch_math_tensor():
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         # for logical compare
         ('__array_ufunc__', None),
         ('itemsize', itemsize),
