@@ -184,7 +184,7 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   const int block_size = PREDEFINED_BLOCK_SIZE;
   const int grid_size =
       std::min(static_cast<int>((main_size + block_size - 1) / block_size),
-               dev_ctx.GetMaxPhysicalThreadCount());
+               (dev_ctx.GetMaxPhysicalThreadCount() / block_size));
 
   dim3 grid_dim(grid_size, 1, 1);
   dim3 block_dim(block_size, 1, 1);
