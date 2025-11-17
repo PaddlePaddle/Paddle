@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import itertools
 import unittest
 from functools import partial
 
@@ -48,53 +49,53 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         def generate_input3(axis):
             return np.array([axis]).astype(np.int32)
 
-        for shape in [[32], [16, 64], [32, 16, 16], [32, 64, 16, 32]]:
-            for index in [[0, 1]]:
-                for axis in [0, 1, 2, 3]:
-                    for input in [
-                        {"X": ["input_data"], "Index": ["index_data"]},
-                    ]:
-                        for index_type_int32 in [True, False]:
-                            self.shape = shape
-                            self.axis = axis
-                            self.input_num = len(input)
-                            self.index_type_int32 = index_type_int32
-                            ops_config = [
-                                {
-                                    "op_type": "gather",
-                                    "op_inputs": input,
-                                    "op_outputs": {"Out": ["output_data"]},
-                                    "op_attrs": {"axis": axis},
-                                }
-                            ]
-                            ops = self.generate_op_config(ops_config)
+        for shape, index, axis, input, index_type_int32 in itertools.product(
+            [[32], [16, 64], [32, 16, 16], [32, 64, 16, 32]],
+            [[0, 1]],
+            [0, 1, 2, 3],
+            [
+                {"X": ["input_data"], "Index": ["index_data"]},
+            ],
+            [True, False],
+        ):
+            self.shape = shape
+            self.axis = axis
+            self.input_num = len(input)
+            self.index_type_int32 = index_type_int32
+            ops_config = [
+                {
+                    "op_type": "gather",
+                    "op_inputs": input,
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": {"axis": axis},
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs=(
-                                    {
-                                        "index_data": TensorConfig(
-                                            data_gen=partial(
-                                                (
-                                                    generate_input2
-                                                    if index_type_int32
-                                                    else generate_input4
-                                                ),
-                                                index,
-                                            )
-                                        ),
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1, shape
-                                            )
-                                        ),
-                                    }
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs=(
+                    {
+                        "index_data": TensorConfig(
+                            data_gen=partial(
+                                (
+                                    generate_input2
+                                    if index_type_int32
+                                    else generate_input4
                                 ),
-                                outputs=["output_data"],
+                                index,
                             )
+                        ),
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1, shape)
+                        ),
+                    }
+                ),
+                outputs=["output_data"],
+            )
 
-                            yield program_config
+            yield program_config
 
     def generate_dynamic_shape(self, attrs):
         if len(self.shape) == 1:

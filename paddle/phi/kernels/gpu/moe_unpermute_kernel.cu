@@ -226,8 +226,13 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const bool MP,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk) {
-  const int rows = unzipped_tokens.dims()[0];
-  const int cols = unzipped_tokens.dims()[1];
+  const int64_t cols = unzipped_tokens.dims()[1];
+  PADDLE_ENFORCE_LE(cols,
+                    std::numeric_limits<int32_t>::max(),
+                    common::errors::InvalidArgument(
+                        "unzipped_tokens.dims()[1] should be less than "
+                        "INT_MAX, received unzipped_tokens.dims()[1]: (%ld)",
+                        cols));
   PADDLE_ENFORCE_LE(
       num_experts,
       MAX_NUM_EXPERTS,
@@ -237,7 +242,12 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
           "value.",
           MAX_NUM_EXPERTS,
           num_experts));
-  const int topk = expert_routemap_topk.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
+  PADDLE_ENFORCE_LE(
+      topk,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument(
+          "topk should be less than INT_MAX, received topk: (%ld)", topk));
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
   if (unzipped_tokens.numel() == 0) return;  // 0-size tensor
@@ -258,8 +268,8 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                                   zipped_probs_topk,
                                   total_zipped_tokens_num,
                                   num_experts,
-                                  cols,
-                                  topk,
+                                  static_cast<int>(cols),
+                                  static_cast<int>(topk),
                                   MP);
 }
 }  // namespace phi

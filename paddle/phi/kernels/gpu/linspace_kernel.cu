@@ -25,7 +25,9 @@ namespace phi {
 template <typename T, typename StepT>
 __global__ void LinspaceKernelInner(
     T start, T stop, StepT step, int64_t size, T* out) {
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
@@ -40,7 +42,9 @@ __global__ void LinspaceKernelInner(
 template <typename T>
 __global__ void LinspaceKernelInner(
     T start, T stop, T step, int64_t size, T* out) {
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
