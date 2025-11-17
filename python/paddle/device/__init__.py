@@ -619,8 +619,9 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
             >>> paddle.device.set_device("gpu:0" )
             >>> x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
             >>> print(x2.place)
-            >>> print(x1.place)
             Place(gpu:0)
+            >>> # Paddle explicitly defines tensors, and the place of a tensor will be retained if it is not directly manipulated.
+            >>> print(x1.place)
             Place(cpu)
 
     """
