@@ -753,15 +753,12 @@ def id(tokens, expression, context):
     valid_id_combos = id_matcher.find_matches(name_with_id)
     valid_keys = list(valid_id_combos.keys())
     IDENTIFIER_tokens = []
-    attr_flag = False
     for token in tokens:
-        if token.type == TokenType.EQUAL:
-            attr_flag = True
+        if token.value in GLOBAL_ATTRIBUTE_KEYWORDS:
             break
         if token.type == TokenType.IDENTIFIER:
             IDENTIFIER_tokens.append(token)
-    if attr_flag:
-        IDENTIFIER_tokens.pop()
+
     for token in IDENTIFIER_tokens:
         assert all(k in token.value for k in valid_keys), (
             f"The token: {token.value} must contain all of the following keys: {valid_keys}"

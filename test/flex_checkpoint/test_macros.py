@@ -117,6 +117,7 @@ class MacroContext:
             source_state_shard_info=source_state_shard_info,
             destination_state_shard_info=destination_state_shard_info,
         )
+        self.aoa_config_reverse = False
 
     def get_all_dst_state_keys(self) -> Iterable[str]:
         return self._ctx.get_all_dst_state_keys()
