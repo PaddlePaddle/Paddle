@@ -32,7 +32,9 @@ void UnStackKernel(const Context &dev_ctx,
   auto dx = outs;
   if (axis < 0) axis += dy->dims().size();
 
-  int n = dy->dims()[axis];
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t n = dy->dims()[axis];
+
   std::vector<T *> dx_datas(n);  // NOLINT
   for (int i = 0; i < n; i++) {
     dx_datas[i] = dev_ctx.template Alloc<T>(dx[i]);

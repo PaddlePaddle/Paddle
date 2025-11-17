@@ -67,8 +67,12 @@ void GRUUnitKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(reset_hidden_prev);
   dev_ctx.template Alloc<T>(hidden);
 
-  int batch_size = input_p->dims()[0];
-  int frame_size = hidden_prev_p->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t batch_size = input_p->dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t frame_size = hidden_prev_p->dims()[1];
+
 
   auto x = phi::EigenMatrix<T>::From(input);
   auto h_p = phi::EigenMatrix<T>::From(hidden_prev);
@@ -212,8 +216,12 @@ void GRUUnitGradKernel(const Context& dev_ctx,
   auto d_r_h_p = phi::EigenMatrix<T>::From(reset_hidden_prev_grad);
   auto& place = *dev_ctx.eigen_device();
 
-  int batch_size = input.dims()[0];
-  int frame_size = hidden_prev.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t batch_size = input.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t frame_size = hidden_prev.dims()[1];
+
 
   Eigen::array<int, 2> extents{{batch_size, frame_size}};
   Eigen::array<int, 2> u_offsets{{0, 0}};

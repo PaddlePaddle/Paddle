@@ -38,10 +38,18 @@ inline void im2col_common(const phi::DenseTensor& im,
       (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
   int im_width =
       (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
-  int filter_height = col->dims()[1];
-  int filter_width = col->dims()[2];
-  int output_height = col->dims()[3];
-  int output_width = col->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t filter_height = col->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t filter_width = col->dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t output_height = col->dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t output_width = col->dims()[4];
+
   int channels_col = im_channels * filter_height * filter_width;
 
   // Convert dimensions to 64-bit to prevent overflow in arithmetic operations
@@ -101,10 +109,18 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(
       (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
   int im_width =
       (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
-  int filter_height = col->dims()[1];
-  int filter_width = col->dims()[2];
-  int output_height = col->dims()[3];
-  int output_width = col->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t filter_height = col->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t filter_width = col->dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t output_height = col->dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t output_width = col->dims()[4];
+
 
   const T* im_data = im.data<T>();
   T* col_data = col->data<T>();
@@ -153,10 +169,18 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
       (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
   int im_width =
       (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
-  int filter_height = col->dims()[1];
-  int filter_width = col->dims()[2];
-  int output_height = col->dims()[3];
-  int output_width = col->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t filter_height = col->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t filter_width = col->dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t output_height = col->dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t output_width = col->dims()[4];
+
 
   constexpr int plh = 1;
   constexpr int prh = 1;

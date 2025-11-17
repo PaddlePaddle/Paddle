@@ -34,10 +34,18 @@ void WarprnntGradKernel(const Context& dev_ctx,
                         DenseTensor* input_grad) {
   dev_ctx.template Alloc<T>(input_grad);
 
-  int B = warprnntgrad.dims()[0];     // B
-  int Tmax = warprnntgrad.dims()[1];  // Tmax
-  int Umax = warprnntgrad.dims()[2];  // Umax
-  int D = warprnntgrad.dims()[3];     // D
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t B = warprnntgrad.dims()[0];
+       // B
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t Tmax = warprnntgrad.dims()[1];
+    // Tmax
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t Umax = warprnntgrad.dims()[2];
+    // Umax
+  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  int64_t D = warprnntgrad.dims()[3];
+       // D
 
   // (B,)
   auto loss_grad_e = EigenTensor<T, 1>::From(loss_grad);
