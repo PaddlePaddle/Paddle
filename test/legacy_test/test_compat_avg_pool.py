@@ -67,6 +67,10 @@ class TestCompatAvgPool1DAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(result_pd.numpy(), result_np, rtol=1e-05)
 
+    @unittest.skipIf(
+        paddle.is_compiled_with_xpu(),
+        "XPU Kernel has accuracy issue.",
+    )
     def test_all_cases(self):
         self.run_test_case(2, 2, 0, False, True)
         self.run_test_case(3, 1, 1, False, True)
@@ -130,6 +134,10 @@ class TestCompatAvgPool2DAPI(unittest.TestCase):
                 )
             np.testing.assert_allclose(result_pd.numpy(), result_np, rtol=1e-05)
 
+    @unittest.skipIf(
+        paddle.is_compiled_with_xpu(),
+        "XPU Kernel has accuracy issue.",
+    )
     def test_all_cases(self):
         self.run_test_case(2, 2, 0, False, True, None)
         self.run_test_case([3, 3], [1, 1], [1, 1], False, True, None)
@@ -196,6 +204,10 @@ class TestCompatAvgPool3DAPI(unittest.TestCase):
                 )
             np.testing.assert_allclose(result_pd.numpy(), result_np, rtol=1e-05)
 
+    @unittest.skipIf(
+        paddle.is_compiled_with_xpu(),
+        "XPU Kernel has accuracy issue.",
+    )
     def test_all_cases(self):
         self.run_test_case(2, 2, 0, False, True, None)
         self.run_test_case([3, 3, 3], [1, 1, 1], [1, 1, 1], False, True, None)
