@@ -2326,6 +2326,36 @@ class Variable(metaclass=VariableMetaClass):
         self.desc.set_stop_gradient(s)
 
     @property
+    def requires_grad(self) -> bool:
+        """
+        Whether this Tensor requires gradient computation.
+
+        This is a convenience property that returns the opposite of stop_gradient.
+        Setting requires_grad=True is equivalent to setting stop_gradient=False.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3])
+                >>> print(x.requires_grad)  # False by default
+                >>>
+                >>> x.requires_grad = False
+                >>> print(x.stop_gradient)  # True
+        """
+        return not self.desc.stop_gradient()
+
+    @requires_grad.setter
+    def requires_grad_(self, value) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        self.desc.set_stop_gradient(not value)
+
+    @property
     def persistable(self):
         """
         Indicating if we current Variable should be long-term alive

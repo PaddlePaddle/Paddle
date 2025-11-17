@@ -1000,6 +1000,60 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_requires_grad___doc__,  // NOLINT
+             R"DOC(requires_grad_($self, requires_grad=True, /)
+--
+
+Change if autograd should record operations on this tensor: sets this tensor’s requires_grad attribute in-place. Returns this tensor.
+
+Args:
+    requires_grad_ (bool, optional): If set to ``True``,  makes it so that autograd will begin to record operations on tensor.
+
+Returns:
+    None.
+
+Examples:
+
+    .. code-block:: python
+
+      # Let's say we want to preprocess some saved weights and use
+      # the result as new weights.
+      >>> saved_weights = [0.1, 0.2, 0.3, 0.25]
+      >>> loaded_weights = paddle.tensor(saved_weights)
+      >>> weights = preprocess(loaded_weights)  # some function
+      >>> print(weights)
+      tensor([-0.5503,  0.4926, -2.1158, -0.8303])
+
+      # Now, start to record operations done to weights
+      >>> weights.requires_grad_()
+      >>> out = weights.pow(2).sum()
+      >>> out.backward()
+      >>> print(weights.grad)
+      tensor([-1.1007,  0.9853, -4.2316, -1.6606])
+
+)DOC");
+
+static PyObject* tensor_requires_grad_(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "RequireGradient " << self->tensor.name();
+
+  Py_ssize_t args_num = PyTuple_Size(args);
+  bool require_grad = true;
+  if (args_num == (Py_ssize_t)1) {
+    require_grad = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  }
+  auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
+  meta->SetStopGradient(!require_grad);
+  if (!meta->GradNode()) {
+    meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+  }
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__zero_grads(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
@@ -3794,6 +3848,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_retain_grads__doc__},
+    {"requires_grad_",
+     (PyCFunction)(void (*)())tensor_requires_grad_,
+     METH_VARARGS | METH_KEYWORDS,
+     tensor_requires_grad___doc__},
     {"clear_gradient",
      (PyCFunction)(void (*)())tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,
