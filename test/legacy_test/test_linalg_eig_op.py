@@ -20,7 +20,7 @@ import paddle
 class TestEigAPI0Size(unittest.TestCase):
     def test_errors(self):
         with paddle.device("cpu"):
-            for shape in [[1, 1], [1, 4, 4], [1, 1, 2, 3, 3]]:
+            for shape in [[0, 0], [0, 4, 4], [1, 0, 2, 3, 3]]:
                 x = paddle.randn(
                     shape=shape, dtype='float32', requires_grad=True
                 )
