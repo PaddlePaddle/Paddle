@@ -2312,7 +2312,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Note: Whether use torch compatible version kernel.
  */
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
-                         true,
+                         false,
                          "Whether use torch compatible version kernel.");
 
 /**
@@ -2323,5 +2323,5 @@ PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
  * Note: Whether to reshard auto_parallel API outputs.
  */
 PHI_DEFINE_EXPORTED_bool(need_output_reshard,
-                         false,
+                         true,
                          "Whether to reshard auto_parallel API outputs.");
