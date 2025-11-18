@@ -118,6 +118,12 @@ struct VectorTypeStorage : public TypeStorage {
 
   explicit VectorTypeStorage(const ParamKey& key) {
     data_ = reinterpret_cast<Type*>(malloc(key.size() * sizeof(Type)));
+    PADDLE_ENFORCE_NOT_NULL(
+        data_,
+        phi::errors::ResourceExhausted(
+            "Failed to allocate memory for VectorTypeStorage::data_, "
+            "requested size = %zu bytes.",
+            size_ * sizeof(Type)));
     memcpy(reinterpret_cast<void*>(data_),
            reinterpret_cast<const void*>(key.data()),
            key.size() * sizeof(Type));
