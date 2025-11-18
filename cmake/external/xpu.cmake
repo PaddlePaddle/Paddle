@@ -388,36 +388,7 @@ if(WITH_XPU_XRE5 AND (NOT WITH_XPTI))
   set(CUPTI_INCLUDE_DIR "${XPU_CUPTI_INC_DIR}")
   set(CUPTI_LIBRARY_PATH "${XPU_LIB_DIR}")
   message(STATUS "Compile with XPU CUPTI!")
-  # set(CUPTI_ROOT
-  #     ${XPU_INC_DIR}
-  #     CACHE PATH "CUPTI ROOT")
-  # find_path(
-  #   CUPTI_INCLUDE_DIR cupti.h
-  #   PATHS ${CUPTI_ROOT} ${CUPTI_ROOT}/cupti
-  #   NO_DEFAULT_PATH)
-
-  # list(
-  #   APPEND
-  #   CUPTI_CHECK_LIBRARY_DIRS
-  #   ${XPU_LIB_DIR})
-  # find_library(
-  #   CUPTI_LIBRARY
-  #   NAMES libcupti.so libcupti.dylib # libcupti_static.a
-  #   PATHS ${CUPTI_CHECK_LIBRARY_DIRS} ${CUPTI_INCLUDE_DIR}
-  #   NO_DEFAULT_PATH
-  #   DOC "Path to cuPTI library.")
-
-  # get_filename_component(CUPTI_LIBRARY_PATH ${CUPTI_LIBRARY} DIRECTORY)
-  # if(CUPTI_INCLUDE_DIR AND CUPTI_LIBRARY)
-  #   set(CUPTI_FOUND ON)
-  # else()
-  #   set(CUPTI_FOUND OFF)
-  # endif()
-  # if(CUPTI_FOUND)
-  #   message(STATUS "Compile with XPU CUPTI!")
-  # endif()
 endif()
-message(STATUS "CUPTI_FOUND: ${CUPTI_FOUND}")
 
 if(WITH_XPU_PLUGIN)
   message(STATUS "Compile with XPU PLUGIN!")

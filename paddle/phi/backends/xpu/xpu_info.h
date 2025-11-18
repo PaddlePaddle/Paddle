@@ -33,8 +33,6 @@ class XPUContext;
 namespace backends {
 namespace xpu {
 
-// using gpuDeviceProp = cudaDeviceProp;
-
 /***** Version Management *****/
 
 //! Get the version of XPU Driver
@@ -57,7 +55,7 @@ int GetXPUCurrentDeviceId();
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices();
 
-//! Get the properties of the ith GPU device.
+//! Get the properties of the ith XPU device.
 PADDLE_API const gpuDeviceProp &GetDeviceProperties(int id);
 
 #ifdef PADDLE_WITH_XPU

@@ -184,7 +184,7 @@ const gpuDeviceProp& GetDeviceProperties(int id) {
     PADDLE_THROW(common::errors::OutOfRange(
         "The device id %d is out of range [0, %d), where %d is the number of "
         "devices on this machine. Because the device id should be greater than "
-        "or equal to zero and smaller than the number of gpus. Please input "
+        "or equal to zero and smaller than the number of xpus. Please input "
         "appropriate device again!",
         id,
         static_cast<int>(g_device_props.size()),

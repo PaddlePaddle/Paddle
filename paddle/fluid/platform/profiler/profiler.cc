@@ -59,8 +59,6 @@ void SynchronizeDevice() {
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  // TODO(zhangxiaoci) xpu do not support device sync yet
-  // KL3 might do
   PADDLE_ENFORCE_XPU_SUCCESS(cudaDeviceSynchronize());
 #endif
 }
@@ -166,10 +164,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                             std::string("%s"),
                             kv.second.c_str());
   }
-// 可以加xpu试试
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU)
-  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
 #ifdef PADDLE_WITH_XPU
   std::vector<int32_t> device_ids = GetXPUSelectedDevices();
