@@ -3567,7 +3567,7 @@ USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(trans_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creator)
-USE_TRT_CONVERTER(custom_plugin_creater)  // typos: disable-line
+USE_TRT_CONVERTER(custom_plugin_creator)
 USE_TRT_CONVERTER(custom_generic_plugin_creator)
 USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
