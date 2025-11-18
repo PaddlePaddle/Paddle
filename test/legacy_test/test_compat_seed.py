@@ -19,7 +19,7 @@ from paddle.base import core
 from paddle.compat import seed as compat_seed
 
 
-class TestCompatPad(unittest.TestCase):
+class TestCompatSeed(unittest.TestCase):
     def test_seed(self):
         paddle.seed(42)
         seed_cpu_random = core.default_cpu_generator().random()

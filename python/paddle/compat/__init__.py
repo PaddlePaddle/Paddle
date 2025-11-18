@@ -1085,6 +1085,13 @@ def use_torch_proxy_guard(enable: bool = True):
 def seed() -> int:
     r"""Sets the seed for generating random numbers to a non-deterministic
     random number on all devices. Returns a 64 bit number used to seed the RNG.
+    Returns:
+        Returns: int64, the seed used to seed the RNG.
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> seed = paddle.compat.seed()
     """
     seed = core.default_cpu_generator().seed()
     paddle.seed(seed)
