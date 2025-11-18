@@ -1403,6 +1403,12 @@ def scaled_dot_product_attention(
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
 
+    Note:
+        This API differs from :ref:`api_paddle_compat_nn_functional_scaled_dot_product_attention` in that:
+            1. The QKV layout of this API is [batch_size, seq_len, num_heads, head_dim] or [seq_len, num_heads, head_dim].
+            2. This API supports GQA(Generic Query Attention) mode.
+        If you need GQA mode or num_head first layout, please use ``paddle.compat.nn.functional.scaled_dot_product_attention``.
+
     Args:
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:

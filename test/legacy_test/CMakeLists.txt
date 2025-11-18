@@ -54,7 +54,6 @@ list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
 list(REMOVE_ITEM TEST_OPS test_allgather)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
-list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
 #Note(risemeup1): Delete some unit tests related to the parameter server.
 list(REMOVE_ITEM TEST_OPS test_dist_fleet_trainer_desc_config)

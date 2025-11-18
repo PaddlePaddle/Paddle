@@ -170,6 +170,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_conv3d_layer$|\
 ^test_decorator$|\
 ^test_flash_attention$|\
+^test_compat_attention$|\
 ^test_flash_attention_deterministic$|\
 ^test_conv3d_onednn_op$|\
 ^test_functional_conv2d$|\
