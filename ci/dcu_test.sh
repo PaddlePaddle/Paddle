@@ -23,6 +23,7 @@ function hybrid_paddlex() {
     unset HIP_VISIBLE_DEVICES
     git clone --depth=1000 https://gitee.com/paddlepaddle/PaddleX.git
     cd PaddleX
+    pip install --upgrade ruamel.yaml ruamel.yaml.clib
     pip install -e .[base]
     paddlex --install PaddleClas
     paddlex --install PaddleSeg
