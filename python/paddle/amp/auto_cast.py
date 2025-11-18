@@ -1444,3 +1444,7 @@ def get_autocast_dtype(device_type: PlaceLike | None = None) -> _DTypeLiteral:
     else:
         tracer = _dygraph_tracer()
         return tracer._amp_dtype
+
+
+def is_use_master_grad() -> bool:
+    return amp_global_state().use_master_grad

@@ -36,6 +36,7 @@ from .auto_cast import (  # noqa: F401
     decorate,
     get_autocast_dtype,
     is_autocast_enabled,
+    is_use_master_grad,
 )
 from .grad_scaler import (  # noqa: F401
     AmpScaler,
@@ -50,6 +51,7 @@ __all__ = [
     'is_float16_supported',
     'is_bfloat16_supported',
     'is_autocast_enabled',
+    'is_use_master_grad',
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',

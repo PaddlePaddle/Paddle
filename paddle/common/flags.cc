@@ -2314,3 +2314,14 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
+
+/**
+ * Output reshard control
+ * Name: FLAGS_need_output_reshard
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Note: Whether to reshard auto_parallel API outputs.
+ */
+PHI_DEFINE_EXPORTED_bool(need_output_reshard,
+                         false,
+                         "Whether to reshard auto_parallel API outputs.");
