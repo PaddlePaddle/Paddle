@@ -134,8 +134,12 @@ void TransposeTwoAxis(const DenseTensor& input,
   transposed_input->Resize(input.dims());
   dev_ctx.template Alloc<T>(transposed_input);
 
+#ifdef PADDLE_WITH_XPU
+  phi::TransposeKernel<T, Context>(dev_ctx, input, permute, transposed_input);
+#else
   funcs::TransCompute<Context, T>(
       input.dims().size(), dev_ctx, input, transposed_input, permute);
+#endif
 }
 
 // Apply eig to a batch of matrices, values, vectors and (intermediate

@@ -24,12 +24,12 @@ set(MAGMA_LIB_DIR ${MAGMA_INSTALL_DIR}/lib)
 # use magma tag v2.9.0 on 07/28/2025 https://github.com/icl-utk-edu/magma/tree/v2.9.0
 if(LINUX)
   set(MAGMA_FILE
-      "magma_lnx_v2.9.0.20250728.tar.gz"
+      "magma_lnx_xpu_v2.9.0.20250728.tar.gz"
       CACHE STRING "" FORCE)
   set(MAGMA_URL
       "https://paddlepaddledeps.bj.bcebos.com/${MAGMA_FILE}"
       CACHE STRING "" FORCE)
-  set(MAGMA_URL_MD5 35bb7d1d8641dc7fc3be96b02f32645b)
+  set(MAGMA_URL_MD5 e0c12bdfd0fd7737cb1cb3a24472f0a5)
   set(MAGMA_LIB "${MAGMA_LIB_DIR}/libmagma.so")
 elseif(WIN32)
   message("magma do not support windows yet, skip ...")
