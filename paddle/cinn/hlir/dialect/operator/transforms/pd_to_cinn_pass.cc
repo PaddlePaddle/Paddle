@@ -1508,7 +1508,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<FlipOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);
-  ps.Add<FullWithTensorOpPattern>(context);
+  // ps.Add<FullWithTensorOpPattern>(context);
   ps.Add<RefreshCombineOpPattern>(context);
   ps.Add<SqueezeOpPattern>(context);
   ps.Add<UnsqueezeOpPattern>(context);

@@ -349,7 +349,14 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
       if (dim_expr.isa<symbol::Broadcast<symbol::DimExpr>>()) {
         const auto& simplified_dim_expr = SimplifyBroadcast(
             dim_expr.Get<symbol::Broadcast<symbol::DimExpr>>());
-        simplified_dim_exprs.push_back(simplified_dim_expr);
+        std::string string_shape = ToString(simplified_dim_expr);
+        if (string_shape.size() >= 100) {
+          auto new_dim = symbol::DimExpr{GetNextSymName()};
+          AddEqualCstr(simplified_dim_expr, new_dim);
+          simplified_dim_exprs.push_back(new_dim);
+        } else {
+          simplified_dim_exprs.push_back(simplified_dim_expr);
+        }
       } else {
         simplified_dim_exprs.push_back(dim_expr);
       }
