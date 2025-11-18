@@ -96,6 +96,7 @@ jobs:
         run: |
           set -ex
           cd ${work_dir}/Paddle
+          sed -i '' '/cuda-python/d' python/unittest_py/requirements.txt
           pip3.10 install -r ${work_dir}/Paddle/python/unittest_py/requirements.txt
           pip3.10 install -U ${work_dir}/Paddle/dist/*whl
           bash -x ${work_dir}/Paddle/ci/run_mac_test.sh ${PYTHON_ABI:-""} ${PROC_RUN:-""}
