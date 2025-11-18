@@ -22,6 +22,7 @@
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/mem_utils.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
@@ -42,6 +43,12 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
       const std::shared_ptr<Allocator> &underlying_allocator,
       size_t alignment,
       const phi::GPUPlace &place);
+
+  std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
+    return underlying_allocator_;
+  }
+  std::pair<size_t, size_t> SumLargestFreeBlockSizes(int32_t n) const;
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
 
   bool IsAllocThreadSafe() const override { return true; }
   void PreAlloc() override;

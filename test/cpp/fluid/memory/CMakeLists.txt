@@ -58,6 +58,17 @@ cc_test(
   SRCS test_aligned_allocator.cc
   DEPS phi common)
 
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip allocator_visitor_test on Windows")
+  else()
+    nv_test(
+      allocator_visitor_test
+      SRCS allocator_visitor_test.cc
+      DEPS phi common)
+  endif()
+endif()
+
 if(WIN32)
   cc_test(
     retry_allocator_test

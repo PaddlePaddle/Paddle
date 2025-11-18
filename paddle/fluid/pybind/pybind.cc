@@ -183,6 +183,7 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/xpu_ipc_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -3628,7 +3629,6 @@ All parameter, weight, gradient are variables in Paddle.
         return platform::GetDeviceProperties(id);
       },
       py::return_value_policy::copy);
-
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })
@@ -3669,7 +3669,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 #endif
-
+#if defined(PADDLE_WITH_CUDA)
+  m.def("vmm_max_free_size", [] {
+    memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()), 1);
+  });
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   m.def(
       "get_device_properties",
@@ -3731,6 +3735,14 @@ All parameter, weight, gradient are variables in Paddle.
         platform::GetXPUDeviceUtilizationRate);
   m.def("get_xpu_device_total_memory", platform::GetXPUDeviceTotalMemory);
   m.def("get_xpu_device_used_memory", platform::GetXPUDeviceUsedMemory);
+  m.def("nvprof_start", platform::CudaProfilerStart);
+  m.def("nvprof_stop", platform::CudaProfilerStop);
+  m.def("nvprof_nvtx_push", [](const std::string &name) {
+    platform::CudaNvtxRangePush(name, platform::NvtxRangeColor::Green);
+  });
+  m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
+  m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
+  m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())

@@ -45,7 +45,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Check bypass for codestyle / Check bypass'
+          JOB_NAME: 'Pre Commit'
 
       - name: Rerun Clone
         if: ${{ contains(github.event.comment.body, 'clone') }}
@@ -65,8 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-SOT / Check bypass for SOT / Check bypass'
-
+          JOB_NAME: 'PR-CI-SOT / Check bypass / Check bypass'
 
       - name: Rerun CPU
         if: ${{ contains(github.event.comment.body, 'cpu') }}
@@ -96,7 +95,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-Inference / Check bypass for inference / Check bypass'
+          JOB_NAME: 'PR-CI-Inference / Check bypass / Check bypass'
 
       - name: Rerun Inference build
         if: ${{ contains(github.event.comment.body, 'inference') && contains(github.event.comment.body, 'build') }}
@@ -166,7 +165,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-XPU / Check bypass for XPU / Check bypass'
+          JOB_NAME: 'Linux-XPU / Check bypass / Check bypass'
 
       - name: Rerun XPU build
         if: ${{ contains(github.event.comment.body, 'xpu') && contains(github.event.comment.body, 'build') }}
@@ -196,7 +195,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Distribute-stable / Build'
+          JOB_NAME: 'Distribute-stable-build / Build'
 
       - name: Rerun Distribute-stable test
         if: ${{ contains(github.event.comment.body, 'distribute') && contains(github.event.comment.body, 'test') }}
@@ -206,7 +205,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Distribute-stable / Test'
+          JOB_NAME: 'Distribute-stable-test / Test'
 
       - name: Rerun build
         if: ${{ contains(github.event.comment.body, 'linux') && contains(github.event.comment.body, 'build') }}
@@ -249,7 +248,7 @@ jobs:
           JOB_NAME: 'CE-Framework / Whl'
 
       - name: Rerun CE-Framework Infer
-        if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'infer') }}
+        if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'infer') && !contains(github.event.comment.body, 'inference') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -276,7 +275,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Api-Benchmark / Check bypass for Api-Benchmark / Check bypass'
+          JOB_NAME: 'Api-Benchmark / Check bypass / Check bypass'
 
       - name: Rerun Doc-Preview
         if: ${{ contains(github.event.comment.body, 'doc') && contains(github.event.comment.body, 'preview') }}
@@ -286,4 +285,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Doc-Preview / Check bypass for Doc-Preview / Check bypass'
+          JOB_NAME: 'Doc-Preview / Check bypass / Check bypass'
