@@ -578,13 +578,13 @@ fi
 UNITYBUILD_RULE_CHANGED=$(git diff --name-only upstream/$BRANCH |
                           grep "unity_build_rule.cmake" || true)
 if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${PR_ID}" ]; then
-    echo_line="You must have one RD (Avin0323(Recommend) or zhwesky2010 or
+    echo_line="You must have one RD (Avin0323(Recommend) or
                wanghuancoder) approval for modifying
                unity_build_rule.cmake which the rules of Unity Build."
     echo_line=$(echo ${echo_line})
     # Avin0323(23427135) zhwesky2010(52485244)
     # wanghuancoder(26922892) luotao1(6836917)
-    check_approval 1 Avin0323 zhwesky2010 wanghuancoder
+    check_approval 1 Avin0323 wanghuancoder
 fi
 
 if [ -n "${echo_list}" ];then

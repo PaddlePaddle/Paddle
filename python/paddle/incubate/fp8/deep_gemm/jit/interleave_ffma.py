@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The file has been adapted from DeepSeek DeepEP project
+# The file has been adapted from DeepSeek DeepGEMM project
 # Copyright (c) 2025 DeepSeek
-# Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+# Licensed under the MIT License - https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
 
 import argparse
 import mmap
@@ -22,11 +22,10 @@ import os
 import re
 import subprocess
 
-from ..utils import get_cuda_home
+from paddle.utils.cpp_extension.cpp_extension import CUDA_HOME
 
 
 def run_cuobjdump(file_path):
-    CUDA_HOME = get_cuda_home()
     command = [f"{CUDA_HOME}/bin/cuobjdump", "-sass", file_path]
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode == 0
@@ -42,9 +41,9 @@ def extract_ffma(sass):
     skip_next_line = False
     for line in lines:
         if "code for" in line:
-            arch_name = line.replace("code for ", "").strip()
+            arch_name = line.lstrip().replace("code for ", "", 1).rstrip()
         elif "Function :" in line:
-            func_name = line.replace("Function :", "").strip()
+            func_name = line.lstrip().replace("Function :", "", 1).rstrip()
         elif "FFMA" in line:
             current.append(line)
             skip_next_line = True
@@ -57,7 +56,7 @@ def extract_ffma(sass):
                 collected.append((f"{arch_name}::{func_name}", current))
             current = []
 
-    if os.getenv("DG_PRINT_REG_REUSE", None):
+    if int(os.getenv("DG_JIT_PRINT_REG_REUSE", 0)):
         print(f"Found {len(collected)} FFMA segments")
     return collected
 
@@ -93,7 +92,7 @@ def parse_registers(line):
 
 
 def modify_segment(m, name, ffma_lines):
-    num_lines = len(ffma_lines)
+    num_lines = (len(ffma_lines) * 9 // 16) // 2 * 2
     assert num_lines % 2 == 0
 
     le_bytes, new_le_bytes = [], []
@@ -127,7 +126,7 @@ def modify_segment(m, name, ffma_lines):
             low_hex.to_bytes(8, "little") + high_hex.to_bytes(8, "little")
         )
         last_reused, last_dst_reg = reused, dst_reg
-    if os.getenv("DG_PRINT_REG_REUSE", None):
+    if int(os.getenv("DG_JIT_PRINT_REG_REUSE", 0)):
         print(
             f" > segment `{name}` new reused list ({num_changed} changed): {reused_list}"
         )
@@ -149,7 +148,7 @@ def modify_segment(m, name, ffma_lines):
 
 
 def process(path):
-    if os.getenv("DG_PRINT_REG_REUSE", None):
+    if int(os.getenv("DG_JIT_PRINT_REG_REUSE", 0)):
         print(f"Processing {path}")
     output = run_cuobjdump(path)
     segments = extract_ffma(output)

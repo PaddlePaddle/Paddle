@@ -346,7 +346,7 @@ function check_approvals_of_unittest() {
             echo "************************************"
             echo -e "It is forbidden to disable or delete the unit-test.\n"
             echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-            echo -e "Then you must have one RD (kolinwei(recommended), chalsliu, XieYunshen or zhouwei25) approval for the deletion of unit-test. \n"
+            echo -e "Then you must have one RD (kolinwei(recommended), XieYunshen, chalsliu) approval for the deletion of unit-test. \n"
             echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
             echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
             echo "************************************"
