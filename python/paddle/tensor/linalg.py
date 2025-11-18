@@ -4178,8 +4178,14 @@ def _transpose_last_2dim(x):
     return x
 
 
+@ParamAliasDecorator({"x": ["A"], "y": ["B"]})
 def solve(
-    x: Tensor, y: Tensor, left: bool = True, name: str | None = None
+    x: Tensor,
+    y: Tensor,
+    left: bool = True,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
 
@@ -4197,14 +4203,19 @@ def solve(
 
     Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
 
+    .. note::
+        Alias Support: The parameter name ``A`` can be used as an alias for ``x``.
+        Alias Support: The parameter name ``B`` can be used as an alias for ``y``.
+
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be ``[*, M, M]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``A``.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
+            more batch dimensions. Its data type should be float32 or float64. Alias: ``B``.
         left (bool, optional): Whether to solve the system :math:`X * Out = Y` or :math:`Out * X = Y`. Default: True.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'.
@@ -4234,21 +4245,23 @@ def solve(
         y = _transpose_last_2dim(y)
 
     if in_dynamic_or_pir_mode():
-        out = _C_ops.solve(x, y)
+        output = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'solve')
         check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'solve')
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(
-            type="solve", inputs={"X": x, "Y": y}, outputs={"Out": out}
+            type="solve", inputs={"X": x, "Y": y}, outputs={"Out": output}
         )
 
     if not left:
-        out = _transpose_last_2dim(out)
-    return out
+        output = _transpose_last_2dim(output)
+    if out is not None:
+        paddle.assign(output, output=out)
+    return output
 
 
 def triangular_solve(

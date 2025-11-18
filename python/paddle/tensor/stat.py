@@ -717,6 +717,7 @@ def _compute_quantile(
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
     ignore_nan: bool = False,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input along the specified axis.
@@ -742,6 +743,7 @@ def _compute_quantile(
         ignore_nan: (bool, optional): Whether to ignore NaN of input Tensor.
             If ``ignore_nan`` is True, it will calculate nanquantile.
             Otherwise it will calculate quantile. Default is False.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
@@ -890,20 +892,30 @@ def _compute_quantile(
         outputs = paddle.stack(outputs, 0)
     else:
         outputs = outputs[0]
-    # return outputs.astype(x.dtype)
+
+    if out is not None:
+        paddle.assign(outputs, output=out)
     return outputs
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def quantile(
     x: Tensor,
     q: float | Sequence[float] | Tensor,
     axis: int | list[int] | None = None,
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input along the specified axis.
     If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
@@ -925,6 +937,8 @@ def quantile(
             lower, midpoint and nearest. Default is linear.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
@@ -975,6 +989,7 @@ def quantile(
         keepdim=keepdim,
         interpolation=interpolation,
         ignore_nan=False,
+        out=out,
     )
 
 
