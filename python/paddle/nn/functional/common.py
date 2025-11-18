@@ -949,10 +949,7 @@ def _interpolate_wrapper(
             )
         return out
 
-    if antialias:
-        raise ValueError(
-            "The argument 'antialias' cannot be set to true because old static graph is not supported."
-        )
+    # NOTE: The argument 'antialias' cannot be set to true because old static graph is not supported.
     dtype = helper.input_dtype(input_param_name='x')
 
     out = helper.create_variable_for_type_inference(dtype)

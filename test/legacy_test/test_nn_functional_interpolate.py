@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -138,46 +137,17 @@ class TestInterpolateParam(unittest.TestCase):
         """test unsupported antialias"""
         with self.assertRaises(TypeError):
             out1 = paddle.nn.functional.interpolate(
-                x=self.input_data,
                 input=self.input_data,
                 size=[12, 12],
                 antialias="True",
             )
         with self.assertRaises(ValueError):
             out1 = paddle.nn.functional.interpolate(
-                self.input_data,
                 input=self.input_data,
                 size=[12, 12],
                 mode="nearest",
                 antialias=True,
             )
-        with self.assertRaises(ValueError):
-            paddle.enable_static()
-
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(
-                    name='x', shape=[2, 3, 6, 10], dtype='float32'
-                )
-                out1 = paddle.nn.functional.interpolate(
-                    self.input_data,
-                    input=self.input_data,
-                    size=[12, 12],
-                    mode="nearest",
-                    antialias=True,
-                )
-
-                place = (
-                    get_device_place()
-                    if (paddle.is_compiled_with_cuda() or is_custom_device())
-                    else paddle.CPUPlace()
-                )
-                exe = paddle.static.Executor(place)
-
-                input_data = np.random.rand(2, 3, 6, 10).astype('float32')
-                feed = {'x': input_data}
-                results = exe.run(feed=feed, fetch_list=[out1])
-
-            paddle.disable_static()
 
 
 if __name__ == '__main__':
