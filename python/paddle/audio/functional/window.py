@@ -493,7 +493,7 @@ def _apply_window_postprocess(
                 raise RuntimeError(
                     f"Pinning memory is not supported for {device}"
                 )
-
+    w = paddle.to_tensor(w, place=device)
     if pin_memory and paddle.in_dynamic_mode():
         w = w.pin_memory()
     if requires_grad is True:
