@@ -322,6 +322,59 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
   return nullptr;
 }
 
+size_t VirtualMemoryAutoGrowthBestFitAllocator::CompactImpl(
+    const phi::Place &place) {
+  VLOG(1) << "Do Memory Compact Manual";
+  size_t compact_free_size = memory_compactor_->Compact(
+      all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
+  VLOG(1) << "Memory Compact Manual Finish Compact size: " << compact_free_size;
+
+  if (compact_free_size > 0) {
+    auto free_block = std::prev(all_blocks_.end());
+    assert(free_block->is_free_);
+    // remove all old free blocks and put new free block into free_blocks_.
+    free_blocks_.clear();
+    free_blocks_.emplace(std::make_pair(free_block->size_, free_block->ptr_),
+                         free_block);
+  }
+  return compact_free_size;
+}
+
+bool VirtualMemoryAutoGrowthBestFitAllocator::TryAllocateBatch(
+    const std::vector<size_t> &sizes) {
+  auto SimulateAlloc =
+      [&](size_t size,
+          std::map<std::pair<size_t, void *>, size_t> &shadow_blocks) {
+        auto iter = shadow_blocks.lower_bound(std::make_pair(size, nullptr));
+        if (iter != shadow_blocks.end()) {
+          size_t block_size = iter->first.first;
+          void *block_ptr = iter->first.second;
+          shadow_blocks.erase(iter);
+          if (NeedSplit(block_size, alignment_, size)) {
+            size_t remaining_size = block_size - size;
+            void *remaining_ptr = reinterpret_cast<uint8_t *>(block_ptr) + size;
+            shadow_blocks.emplace(std::make_pair(remaining_size, remaining_ptr),
+                                  remaining_size);
+          }
+          return true;
+        }
+        return false;
+      };
+
+  std::lock_guard<SpinLock> guard(spinlock_);
+
+  // copy free_blocks_ to shadow_blocks_
+  std::map<std::pair<size_t, void *>, size_t> shadow_blocks;
+  for (const auto &pair : free_blocks_) {
+    shadow_blocks.emplace(pair.first, pair.first.first);
+  }
+  for (size_t size : sizes) {
+    size_t aligned_size = AlignedSize(size, alignment_);
+    if (!SimulateAlloc(aligned_size, shadow_blocks)) return false;
+  }
+  return true;
+}
+
 std::pair<size_t, size_t>
 VirtualMemoryAutoGrowthBestFitAllocator::SumLargestFreeBlockSizes(
     int32_t n) const {
@@ -420,6 +473,18 @@ void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
                "VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator size "
             << vmm_large_pool_pre_alloc;
   }
+}
+
+size_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::CompactImpl(
+    const phi::Place &place) {
+  auto large_allocator =
+      std::dynamic_pointer_cast<VirtualMemoryAutoGrowthBestFitAllocator>(
+          GetLargeAllocator());
+  VLOG(1) << "Do Memory Compact Large Pool Manual";
+  size_t compact_free_size = large_allocator->Compact(place);
+  VLOG(1) << "Memory Compact Large Pool Manual Finish Compact size: "
+          << compact_free_size;
+  return compact_free_size;
 }
 
 }  // namespace allocation

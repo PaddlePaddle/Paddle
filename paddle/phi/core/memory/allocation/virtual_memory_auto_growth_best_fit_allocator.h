@@ -53,10 +53,13 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
   void PreAlloc() override;
   void PreAllocate(size_t size);
+  // Try to simulate an allocation, simulating a request for vector<size>.
+
+  bool TryAllocateBatch(const std::vector<size_t> &sizes);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
-
+  size_t CompactImpl(const phi::Place &place) override;
   void FreeImpl(phi::Allocation *allocation) override;
 
  private:
@@ -99,10 +102,11 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
             small_allocator, large_allocator, alignment, place) {}
   bool IsAllocThreadSafe() const override { return true; }
   void PreAlloc() override;
-
- private:
-  // Determine if the request size is a small request.
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
   bool IsSmallRequest(size_t size) override;
+
+ protected:
+  size_t CompactImpl(const phi::Place &place) override;
 };
 
 }  // namespace allocation

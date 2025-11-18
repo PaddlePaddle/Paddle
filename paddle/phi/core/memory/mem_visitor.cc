@@ -48,6 +48,12 @@ void AllocatorVisitor::Visit(
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
 
+void AllocatorVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  allocator->GetSmallAllocator()->Accept(this);
+  allocator->GetLargeAllocator()->Accept(this);
+}
+
 void FreeMemoryMetricsVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
   auto [large_size, sum_size] =
@@ -56,6 +62,15 @@ void FreeMemoryMetricsVisitor::Visit(
   sum_size_ = std::max(sum_size_, sum_size);
   VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator large_free_size:"
           << large_size_ << " sum_free_size:" << sum_size_;
+}
+
+void TryAllocVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  // TODO(liujinnan): More detailed handling of multi-stream and MultiScalePool
+  // scenarios.
+  is_try_alloc_success_ |= allocator->TryAllocateBatch(sizes_);
+  VLOG(1) << "Visit VirtualMemoryAutoGrowthBestFitAllocator try_alloc_result:"
+          << is_try_alloc_success_;
 }
 #endif
 }  // namespace memory
