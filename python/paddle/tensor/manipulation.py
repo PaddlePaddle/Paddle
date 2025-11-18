@@ -7668,18 +7668,21 @@ def index_add(*args: Any, **kwargs: Any) -> Tensor:
              [1., 1., 1.],
              [2., 2., 2.]])
     """
-    len_args = len(args)
-    if len_args + len(kwargs) < 4:
-        raise TypeError(
-            f"Too few arguments in the function call: {len_args}, {len(kwargs)}. Expect one of: \n"
-            " - (Tensor x, Tensor index, int axis, Tensor value, Number alpha = 1, Tensor | None out = None, str | None name = None)\n"
-            " - (Tensor input, int dim, Tensor index, Tensor source, Number alpha = 1, Tensor | None out = None)"
-        )
 
     def safe_set_param(key: str, value: Any):
         if key in kwargs:
             raise TypeError(f"got multiple values for argument '{key}'")
         kwargs[key] = value
+
+    len_args = len(args)
+    if len_args >= 2 and isinstance(args[1], int):
+        param_keys = ["dim", "index", "source", "alpha", "out"]
+
+        for idx in range(min(len_args - 1, len(param_keys))):
+            safe_set_param(param_keys[idx], args[idx + 1])
+
+        safe_set_param("input", args[0])
+        args = ()
 
     if 'input' in kwargs:
         safe_set_param('x', kwargs.pop('input'))
@@ -7689,22 +7692,6 @@ def index_add(*args: Any, **kwargs: Any) -> Tensor:
 
     if 'source' in kwargs:
         safe_set_param('value', kwargs.pop('source'))
-
-    if len_args >= 4:
-        if isinstance(args[1], int):
-            new_args = [args[0], args[2], args[1], args[3]]
-            remaining_args = []
-            if len_args > 4:
-                remaining_args.append(args[4])
-            if len_args > 5:
-                remaining_args.append(args[5])
-
-            args = tuple(new_args + remaining_args)
-        else:
-            param_keys = ["alpha", "out", "name"]
-            for idx in range(min(len_args - 4, len(param_keys))):
-                safe_set_param(param_keys[idx], args[idx + 4])
-            args = args[:4]
 
     return _index_add_wrapper(*args, **kwargs)
 
