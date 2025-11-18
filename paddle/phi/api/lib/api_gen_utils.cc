@@ -829,7 +829,6 @@ void SetReplicatedDistAttrForOutput(
 /* ------------------ for Allocator ----------------------- */
 void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
                        std::string api) {
-  std::cout << "enter CheckAndDoCompact" << std::endl;
   if (!FLAGS_enable_compact_mem) return;
 #if defined(PADDLE_WITH_CUDA)
   const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
