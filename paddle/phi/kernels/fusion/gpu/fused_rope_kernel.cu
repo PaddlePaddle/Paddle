@@ -75,7 +75,7 @@ void FusedRopeKernel(const Context& dev_ctx,
   outs_data[0] = out_q->data<T>();
   int num_inputs = 1;
 
-  if (k) {
+  if (k && k->numel() > 0) {
     auto k_dims = k->dims();
     auto k_batch_size = time_major ? k_dims[1] : k_dims[0];
     PADDLE_ENFORCE_LE(
@@ -93,7 +93,7 @@ void FusedRopeKernel(const Context& dev_ctx,
     num_inputs++;
   }
 
-  if (v) {
+  if (v && v->numel() > 0) {
     auto v_dims = v->dims();
     auto v_batch_size = time_major ? v_dims[1] : v_dims[0];
     PADDLE_ENFORCE_LE(
