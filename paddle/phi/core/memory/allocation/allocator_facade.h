@@ -32,6 +32,7 @@
 
 namespace paddle {
 namespace memory {
+class AllocatorVisitor;
 namespace allocation {
 
 // Allocator Facade is the interface exposed to other modules.
@@ -72,6 +73,21 @@ class AllocatorFacade {
   uint64_t Release(const phi::Place& place);
   // Compact memory of free blocks held by the VmmAllocator.
   size_t Compact(const phi::Place& place);
+
+  /**
+   * @brief Accepts an AllocatorVisitor and iterates over all nested Allocator
+   * instances associated with a specific memory location (Place), executing the
+   * visitor's corresponding Visit method for each one.
+   *
+   * This method facilitates the traversal of the Allocator hierarchy for the
+   * given memory Place, allowing the visitor to collect statistics or perform
+   * operations on all constituent allocators.
+   *
+   * @param place The memory location
+   * @param visitor A pointer to the AllocatorVisitor whose Visit methods will
+   * be executed against the nested allocators found at the specified Place.
+   */
+  void Accept(const phi::Place& place, AllocatorVisitor* visitor);
 
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size,

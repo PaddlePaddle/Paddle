@@ -228,7 +228,9 @@ __global__ void FusedResidualDropoutGrad(const T *dout,
                                          const T factor,
                                          const int64_t size,
                                          T *dx) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   using LoadT = phi::AlignedVector<T, VecSize>;
   using StoreT = phi::AlignedVector<T, VecSize>;
@@ -278,8 +280,12 @@ __global__ void FusedResidualDropoutBias(
     const float *dequant_out_scale_data = nullptr,
     const float quant_next_in_scale = 1.0,
     const float residual_alpha = 1.0) {
-  int64_t col_id = blockDim.x * blockIdx.x + threadIdx.x;
-  int64_t row_id = blockIdx.y * gridDim.z + blockIdx.z;
+  int64_t col_id =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
+  int64_t row_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(gridDim.z) +
+      static_cast<int64_t>(blockIdx.z);
   if (row_id >= rows) {
     return;
   }

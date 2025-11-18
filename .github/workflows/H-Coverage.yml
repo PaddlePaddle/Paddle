@@ -213,6 +213,7 @@ jobs:
   test:
     name: Coverage test
     needs: [build]
+    if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: H-Coverage
     steps:

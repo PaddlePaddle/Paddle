@@ -207,7 +207,7 @@ class TestHouseholderProductAPI_type_error(TestHouseholderProductAPI):
             out = paddle.linalg.householder_product(x, tau)
 
 
-class TestHouseholderProductAPI_shape_dismatch_error(TestHouseholderProductAPI):
+class TestHouseholderProductAPI_shape_mismatch_error(TestHouseholderProductAPI):
     # len(x.shape) and len(tau.shape) + 1 must be equal
     def test_error(self):
         with self.assertRaises(AssertionError):

@@ -81,7 +81,7 @@ class TestAutoTune(unittest.TestCase):
         else:
             self.assertEqual(loader.num_workers, 2)
 
-    def test_distributer_batch_sampler_autotune(self):
+    def test_distributor_batch_sampler_autotune(self):
         paddle.incubate.autotune.set_config(
             config={
                 "dataloader": {

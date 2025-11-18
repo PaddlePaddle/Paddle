@@ -205,18 +205,10 @@ inline bool NeedTypePromotion(
   // floating-point numbers and between complex and real numbers.
   if (x_dtype != y_dtype) {
 // TODO(Xi Zhao): we got special case for add now, should remove it in future.
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
     if ((op_name == "add" || op_name == "add_") &&
         x_dtype == DataType::FLOAT32 &&
-        (y_dtype == phi::DataType::BFLOAT16 ||
-         y_dtype == phi::DataType::FLOAT16)) {
-      return false;
-    }
-#elif defined(PADDLE_WITH_XPU)
-    if ((op_name == "add" || op_name == "add_") &&
-        x_dtype == DataType::FLOAT32 &&
-        (y_dtype == phi::DataType::BFLOAT16 ||
-         y_dtype == phi::DataType::FLOAT16)) {
+        (y_dtype == DataType::FLOAT16 || y_dtype == DataType::BFLOAT16)) {
       return false;
     }
 #endif

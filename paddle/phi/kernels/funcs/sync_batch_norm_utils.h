@@ -307,7 +307,10 @@ static __global__ void KeBNBackwardScaleBias2D(
 
     auto inv_var_i = inv_variance[i];
     auto mean_i = mean[i];
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += gridDim.y * blockDim.y) {
       const int64_t id = layout == DataLayout::kNCHW
                              ? ((j / HxW) * C + i) * HxW + (j % HxW)
