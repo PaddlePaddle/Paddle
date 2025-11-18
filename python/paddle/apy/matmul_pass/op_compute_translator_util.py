@@ -520,8 +520,8 @@ class CinnOpScaleCodeGen:
             a_bool=lambda x: x
         )
         in_name = inputs[0].var_name
-        true_str = f"{scale} * {in_name} + {bias}"
-        false_str = f"{scale} * ({in_name} + {bias})"
+        true_str = f"{scale}f * {in_name} + {bias}f"
+        false_str = f"{scale}f * ({in_name} + {bias}f)"
         out = self.get_out_cg_val(0)
         mut_lir_code_gen_ctx.let(
             out, true_str if bias_after_scale else false_str
