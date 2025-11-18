@@ -842,7 +842,7 @@ class ParallelEnv:
         """
         The type of custom device for parallel training.
 
-        Its value is equal to the value of the environment variable ``PADDLE_XCCL_BACKEND`` . The default value is None.
+        Its value is equal to the value of paddle.device.get_all_custom_device_type() . The default value is None.
 
         """
         return self._device_type
