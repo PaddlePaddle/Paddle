@@ -99,6 +99,13 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
       false,
       common::errors::InvalidArgument("Indices cannot be empty."));
 
+  if (value.numel() == 0) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   bool is_initialized = out->initialized();
   auto meta = x.meta();
   meta.dims = out->dims();
