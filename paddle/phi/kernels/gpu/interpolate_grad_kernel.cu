@@ -130,10 +130,17 @@ __global__ void KeNearestNeighborInterpNCHWBw(T* in,
                                               const float ratio_h,
                                               const float ratio_w,
                                               const bool align_corners) {
-  IndexType out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
-  IndexType out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
-  IndexType nc_id = threadIdx.z + blockIdx.z * blockDim.z;
-  IndexType nc_stride = blockDim.z * gridDim.z;
+  IndexType out_img_idx =
+      static_cast<IndexType>(threadIdx.x) +
+      static_cast<IndexType>(blockIdx.x) * static_cast<IndexType>(blockDim.x);
+  IndexType out_img_idy =
+      static_cast<IndexType>(threadIdx.y) +
+      static_cast<IndexType>(blockIdx.y) * static_cast<IndexType>(blockDim.y);
+  IndexType nc_id =
+      static_cast<IndexType>(threadIdx.z) +
+      static_cast<IndexType>(blockIdx.z) * static_cast<IndexType>(blockDim.z);
+  IndexType nc_stride =
+      static_cast<IndexType>(blockDim.z) * static_cast<IndexType>(gridDim.z);
 
   // nearest_sampling by multiple read in_addr and write to out_addr
   IndexType in_img_idx =

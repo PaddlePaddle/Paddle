@@ -97,7 +97,9 @@ __global__ void merge_kernel(const T* A,
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
   int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
   for (int64_t offset = 0; offset < num_per_thread; offset++) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset * thread;
+    size_t idx =
+        static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+        static_cast<size_t>(threadIdx.x) + offset * thread;
     size_t total = sizeA + sizeB;
     if (idx >= total) return;
     size_t left = (idx > sizeB) ? idx - sizeB : 0;

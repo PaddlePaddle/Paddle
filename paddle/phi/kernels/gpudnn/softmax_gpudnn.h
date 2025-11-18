@@ -445,7 +445,8 @@ __device__ __forceinline__ void ThreadVecWrite(T* out,
   }
 
   // the tail
-  for (IndexType offset = dim_size - last + threadIdx.x; offset < dim_size;
+  for (IndexType offset = dim_size - last + static_cast<IndexType>(threadIdx.x);
+       offset < dim_size;
        offset += blockDim.x) {
     out[offset] = functor(static_cast<AccT>(input[offset]));
   }
