@@ -13,7 +13,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <cuda.h>
 #include <cuda_runtime.h>
-#endif
 
 #include <string>
 #include <vector>
@@ -58,12 +57,10 @@ std::vector<int> GetXPUSelectedDevices();
 //! Get the properties of the ith XPU device.
 PADDLE_API const gpuDeviceProp &GetDeviceProperties(int id);
 
-#ifdef PADDLE_WITH_XPU
 std::pair<int, int> GetXpuStreamPriorityRange();
 
 //! Blocks until stream has completed all operations.
 void XpuStreamSync(cudaStream_t stream);
-#endif
 
 /***** Memory Management *****/
 //! Get the minimum chunk size for XPU buddy allocator.
@@ -130,3 +127,5 @@ int64_t GetXPUDeviceUsedMemory(int dev_id);
 }  // namespace xpu
 }  // namespace backends
 }  // namespace phi
+
+#endif
