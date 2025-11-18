@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import platform
 import unittest
 
 import paddle
@@ -20,6 +21,9 @@ import paddle
 
 class TestCaptureFwdGraph(unittest.TestCase):
     def test_capture_fwd_graph(self):
+        # Do not test on Windows because it haven't graphviz exe on Windows CI
+        if 'Windows' == platform.system():
+            return
         x = paddle.rand([3, 9, 5])
         file_path = "./fwd_graph"
         with paddle.utils.capture_fwd_graph_guard(file_path):
