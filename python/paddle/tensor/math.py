@@ -32,7 +32,9 @@ from paddle._C_ops import (  # noqa: F401
     isinf,
     isnan,
     log,
+    log1p,
     log2,
+    log10,
     logsumexp,
     maximum,
     minimum,
@@ -3268,59 +3270,6 @@ def min(
             return out
 
 
-def log1p(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the natural log of the given input tensor, element-wise.
-
-    .. math::
-        Out = \ln(x+1)
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor, the natural log of the input Tensor computed element-wise.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> data = paddle.to_tensor([[0], [1]], dtype='float32')
-            >>> res = paddle.log1p(data)
-            >>> res
-            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.        ],
-             [0.69314718]])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.log1p(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            "log1p",
-        )
-        inputs = {'X': [x]}
-        helper = LayerHelper('log1p', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 @inplace_apis_in_dygraph_only
 def log1p_(x: Tensor, name: str | None = None) -> None:
     r"""
@@ -3341,78 +3290,6 @@ def log2_(x: Tensor, name: str | None = None) -> Tensor:
 
     if in_dynamic_mode():
         return _C_ops.log2_(x)
-
-
-def log10(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the log to the base 10 of the given input tensor, element-wise.
-
-    .. math::
-
-        Out = \log_10_x
-
-    Args:
-        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-
-    Returns:
-        Tensor: The log to the base 10 of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # example 1: x is a float
-            >>> x_i = paddle.to_tensor([[1.0], [10.0]])
-            >>> res = paddle.log10(x_i)
-            >>> res
-            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.],
-             [1.]])
-
-            >>> # example 2: x is float32
-            >>> x_i = paddle.full(shape=[1], fill_value=10, dtype='float32')
-            >>> paddle.to_tensor(x_i)
-            >>> res = paddle.log10(x_i)
-            >>> res
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.])
-
-            >>> # example 3: x is float64
-            >>> x_i = paddle.full(shape=[1], fill_value=10, dtype='float64')
-            >>> paddle.to_tensor(x_i)
-            >>> res = paddle.log10(x_i)
-            >>> res
-            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [1.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.log10(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            "log10",
-        )
-        inputs = {'X': [x]}
-        helper = LayerHelper('log10', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 @inplace_apis_in_dygraph_only

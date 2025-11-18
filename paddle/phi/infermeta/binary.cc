@@ -523,11 +523,6 @@ void CompareAllInferMeta(const MetaTensor& x,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();
-  PADDLE_ENFORCE_GE(
-      dim_x.size(),
-      dim_y.size(),
-      errors::InvalidArgument(
-          "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
   out->set_dims(common::make_ddim({}));
 }
