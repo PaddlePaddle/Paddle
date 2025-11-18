@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// NOTE(): support float16 to half in header file.
-#define PADDLE_CUDA_FP16
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -110,13 +108,8 @@ __forceinline__ __device__ phi::dtype::float16 CudaShuffleXorSync(
 template <>
 __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleXorSync(
     unsigned mask, phi::dtype::bfloat16 val, int width) {
-#if defined(PADDLE_CUDA_BF16)
   return phi::dtype::bfloat16(
       __shfl_xor_sync(mask, val.to_nv_bfloat16(), width));
-#else
-  PADDLE_ENFORCE(
-      false, "__shfl_xor_sync with bfloat16 is not supported on cuda <= 11.");
-#endif
 }
 
 template <>

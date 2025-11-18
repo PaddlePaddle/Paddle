@@ -25,7 +25,9 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
 )
 from paddle.utils.decorator_utils import (
+    lp_pool_function_decorator,
     param_one_alias,
+    param_two_alias,
 )
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
@@ -1801,9 +1803,10 @@ def adaptive_avg_pool3d(
         return pool_out
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def adaptive_max_pool1d(
     x: Tensor,
-    output_size: int,
+    output_size: Size1,
     return_mask: bool = False,
     name: str | None = None,
 ) -> Tensor:
@@ -1816,7 +1819,7 @@ def adaptive_max_pool1d(
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
-        output_size (int): The pool kernel size. The value should be an integer.
+        output_size (int|list|tuple): The pool kernel size. It can be an integer, or a list or tuple containing a single integer.
         return_mask (bool): If true, the index of max pooling point will be returned along
                 with outputs. It cannot be set in average pooling type. Default False.
         name(str|None, optional): For detailed information, please refer
@@ -1903,6 +1906,7 @@ def adaptive_max_pool1d(
         )
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def adaptive_max_pool2d(
     x: Tensor,
     output_size: Size2,
@@ -1994,6 +1998,7 @@ def adaptive_max_pool2d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def adaptive_max_pool3d(
     x: Tensor,
     output_size: Size3,
@@ -2409,6 +2414,7 @@ def fractional_max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@lp_pool_function_decorator
 def lp_pool1d(
     x: Tensor,
     norm_type: float,
@@ -2540,6 +2546,7 @@ def lp_pool1d(
         return squeeze(pool_out, [axis])
 
 
+@lp_pool_function_decorator
 def lp_pool2d(
     x: Tensor,
     norm_type: float,

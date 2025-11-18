@@ -212,6 +212,11 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
                 x=x, output_size=[None, 3, None]
             )
 
+            # test @param_two_alias(["x", "input"], ["return_mask", "return_indices"])
+            out_6 = paddle.nn.functional.adaptive_max_pool3d(
+                input=x, output_size=[None, 3, None], return_indices=False
+            )
+
             np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
 
             np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
@@ -221,6 +226,7 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
             # np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
             np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
+            np.testing.assert_allclose(out_6.numpy(), self.res_5_np)
 
 
 class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):

@@ -201,6 +201,8 @@ __all__ = [
     'is_bf16_supported',
     'manual_seed',
     'reset_peak_memory_stats',
+    'ipc_collect',
+    'get_stream_from_external',
 ]
 
 _cudnn_version = None
@@ -516,6 +518,35 @@ class device:
         return False
 
 
+def current_device() -> int:
+    """
+    Return the index of a currently selected device.
+
+    Returns:
+        int: The index of the currently selected device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> device_id = paddle.device.current_device() # this is equivalent to paddle.cuda.current_device()
+            >>> print(f"Current device index: {device_id}")
+    """
+    # Use paddle.device.get_device() to get the current device string
+    device_str = get_device()
+
+    # Parse the device string to extract the device index
+    # Format examples: 'gpu:0', 'xpu:0', 'custom_device:0'
+    if ':' in device_str:
+        device_id = int(device_str.split(':')[1])
+    else:
+        # If no device index is specified, default to 0
+        device_id = 0
+
+    return device_id
+
+
 def is_bf16_supported(including_emulation: bool = True) -> bool:
     """
     Return a bool indicating if the current CUDA/ROCm device supports dtype bfloat16.
@@ -538,9 +569,26 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
 
     """
     # including_emulation is not used here, but kept for compatibility with the original implementation
-    return core.is_bfloat16_supported(
-        paddle.framework._current_expected_place()
-    )
+    if core.is_bfloat16_supported(paddle.framework._current_expected_place()):
+        return True
+
+    # If CUDA is not available, than it does not support bf16 either
+    if not is_available():
+        return False
+
+    device = get_device()
+
+    # Check for CUDA version and device compute capability.
+    # This is a fast way to check for it.
+    if not including_emulation:
+        return False
+
+    # Finally try to create a bfloat16 device.
+    try:
+        paddle.tensor([1.0], dtype=paddle.bfloat16, device=device)
+        return True
+    except:
+        return False
 
 
 def set_device(device: PlaceLike | int) -> PlaceLike:
@@ -926,9 +974,9 @@ def get_device_capability(
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> # import paddle
-            >>> # cap = paddle.device.get_device_capability()
-            >>> # print(cap)
+            >>> import paddle
+            >>> cap = paddle.device.get_device_capability()
+            >>> print(cap)
     """
     prop = get_device_properties(device)
     return prop.major, prop.minor
@@ -1584,7 +1632,7 @@ class stream_guard:
             >>> data1 = paddle.ones(shape=[20])
             >>> data2 = paddle.ones(shape=[20])
             >>> data3 = data1 + data2
-            >>> with paddle.device.stream_guard(s):
+            >>> with paddle.device.stream_guard(s):# this is equivalent to paddle.cuda.StreamContext(s) and paddle.device.StreamContext(s)
             ...     s.wait_stream(paddle.device.default_stream()) # type: ignore[attr-defined]
             ...     data4 = data1 + data3
 
@@ -1625,6 +1673,43 @@ class stream_guard:
             set_stream(self.src_prev_stream)
         else:
             set_stream(self.src_prev_stream)
+
+
+StreamContext = stream_guard
+
+
+def stream(stream: Stream | None) -> stream_guard:
+    '''
+
+    Notes:
+        This API only supports dynamic graph mode currently.
+    A context manager that specifies the current stream context by the given stream.
+
+    Args:
+        stream(Stream, optional): the selected stream. If stream is None, just yield.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('cuda')
+            >>> s = paddle.device.Stream()
+            >>> data1 = paddle.ones(shape=[20])
+            >>> data2 = paddle.ones(shape=[20])
+            >>> data3 = data1 + data2
+
+            >>> with paddle.device.stream(s): # this is equivalent to paddle.cuda.stream(s)
+            ...     s.wait_stream(paddle.cuda.current_stream())
+            ...     data4 = data1 + data3
+            >>> print(data4)
+
+    '''
+    return StreamContext(stream)
 
 
 class device_guard:
@@ -1734,6 +1819,25 @@ def synchronize(device: PlaceLike | None = None) -> None:
         )
 
 
+def ipc_collect() -> None:
+    """
+    Force collects GPU memory after it has been released by CUDA IPC.
+    This function checks if any sent CUDA tensors could be cleaned from the memory.
+    Force closes shared memory file used for reference counting if there is no active counters.
+    Useful when the producer process stopped actively sending tensors and want to release unused memory.
+    Returns:
+        None
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> # Force collect expired IPC memory
+            >>> paddle.device.ipc_collect() #this is equivalent to paddle.cuda.ipc_collect()
+    """
+    paddle.base.libpaddle._ipc_collect()
+
+
 def get_stream_from_external(
     data_ptr: int, device: PlaceLike | None = None
 ) -> Stream:
@@ -1764,7 +1868,7 @@ def get_stream_from_external(
 
             >>> import paddle
             >>> # Suppose external_stream_ptr is from another CUDA library
-            >>> s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+            >>> # s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
     '''
     if device is None:
         place = paddle.framework._current_expected_place_()
@@ -1870,6 +1974,7 @@ class nvtx:
             msg (str): The name of the NVTX range.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_push("test") is equivalent to paddle.cuda.nvtx.range_push("test")
@@ -1884,6 +1989,7 @@ class nvtx:
         Pop the most recent NVTX range marker.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
@@ -1900,15 +2006,17 @@ def reset_peak_memory_stats(device: PlaceLike | int | None = None) -> None:
     It sets the peak memory usage back to zero for all devices.
 
     Example:
-        >>> # doctest: +REQUIRES(env:GPU)
-        >>> import paddle
-        >>> paddle.device.set_device('gpu')  # or '<custom_device>'
+        .. code-block:: python
 
-        >>> # paddle.cuda.reset_max_memory_allocated() is equivalent to paddle.device.reset_max_memory_allocated()
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
-        >>> paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
-        >>> paddle.device.reset_max_memory_allocated(0)
-        >>> paddle.device.reset_max_memory_allocated("gpu:0")
+            >>> # paddle.cuda.reset_max_memory_allocated() is equivalent to paddle.device.reset_max_memory_allocated()
+
+            >>> paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
+            >>> paddle.device.reset_max_memory_allocated(0)
+            >>> paddle.device.reset_max_memory_allocated("gpu:0")
     """
     reset_max_memory_allocated()
 

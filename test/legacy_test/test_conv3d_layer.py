@@ -326,10 +326,10 @@ class TestConv3dAPI_Compatibility(unittest.TestCase):
             # Position args (args)
             out1 = paddle.nn.functional.conv3d(x, w)
             paddle_dygraph_out.append(out1)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.nn.functional.conv3d(x=x, weight=w)
             paddle_dygraph_out.append(out2)
-            # Key words args for alias compatibility
+            # Keywords args for alias compatibility
             out3 = paddle.nn.functional.conv3d(input=x, weight=w)
             paddle_dygraph_out.append(out3)
             # Combined args and kwargs
@@ -368,10 +368,10 @@ class TestConv3dAPI_Compatibility(unittest.TestCase):
             # Position args (args)
             out1 = paddle.nn.functional.conv3d(x, w)
             fetch_list.append(out1)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.nn.functional.conv3d(x=x, weight=w)
             fetch_list.append(out2)
-            # Key words args for alias compatibility
+            # Keywords args for alias compatibility
             out3 = paddle.nn.functional.conv3d(input=x, weight=w)
             fetch_list.append(out3)
             # Combined args and kwargs

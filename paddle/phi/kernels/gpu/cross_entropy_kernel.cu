@@ -215,7 +215,9 @@ __global__ void CrossEntropyExpHardLabel(T* loss,
                                          const int64_t dim,
                                          const int64_t d,
                                          const int ignore_idx) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t idx_n = idx / (d * dim);
   int64_t idx_dim = (idx / d) % dim;
   int64_t idx_d = idx % d;

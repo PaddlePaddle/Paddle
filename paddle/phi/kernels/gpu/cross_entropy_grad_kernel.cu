@@ -99,7 +99,9 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
                                                const int64_t n,
                                                const int64_t d,
                                                const int64_t remain) {
-  int64_t ids = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t ids =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (ids < n * d) {
     int64_t idx_n = ids / d;
     int64_t idx_remain = ids % remain;
@@ -120,7 +122,9 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
                                                      const int64_t dim,
                                                      const int64_t d,
                                                      const int ignore_index) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t idx_n = idx / (d * dim);
   int64_t idx_dim = (idx / d) % dim;
   int64_t idx_d = idx % d;
@@ -168,7 +172,9 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
 
   const int rank = logit_grad->dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logit_grad->dims()[axis_v];
+  int64_t axis_dim = logit_grad->dims()[axis_v];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   const int64_t n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
