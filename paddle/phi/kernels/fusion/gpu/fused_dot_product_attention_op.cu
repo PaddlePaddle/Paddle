@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/gpudnn/mha_cudnn_frontend.h"
 
-PHI_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace fusion {

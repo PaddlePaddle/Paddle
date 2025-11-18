@@ -216,12 +216,14 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
   // The instance in the batch.
   __shared__ float2 smem[THREADS_PER_BLOCK];
   int32_t ni = blockIdx.z;
-  int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x);
   if (ci >= params.c) {
     return;
   }
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
@@ -265,14 +267,15 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci =
-      blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x) * THREADS_PER_CHANNEL;
   if (ci >= params.c || threadIdx.x * THREADS_PER_CHANNEL >= params.cPerBlock) {
     return;
   }
   int32_t gj = ci / params.cPerGroup;
   int32_t cj = ci % params.cPerGroup;
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
@@ -416,7 +419,8 @@ inline __device__ void GroupNormCompute(int64_t dhwBegin,
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
     float src_data = phi::__2float<T>(params.srcX[offset]);
     if (params.srcR != nullptr) {
       auto gi = ci / params.cPerGroup;
@@ -458,7 +462,8 @@ inline __device__ void GroupNormCompute<phi::float16, 2>(
   // Iterate over the activations to compute the sums.
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -513,7 +518,8 @@ inline __device__ void GroupNormCompute<__half, 2>(
   // Iterate over the activations to compute the sums.
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -568,7 +574,8 @@ inline __device__ void GroupNormCompute<phi::bfloat16, 2>(
   // Iterate over the activations to compute the sums.
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __nv_bfloat162 h2 =
@@ -616,8 +623,9 @@ __global__ void groupNormNDHWCScaleKernel(
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci =
-      blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x) * THREADS_PER_CHANNEL;
 
   // The group that thread works on and the channel in the group (modulus).
   int32_t gi = ci / params.cPerGroup;
@@ -642,7 +650,7 @@ __global__ void groupNormNDHWCScaleKernel(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
   GroupNormCompute<T, THREADS_PER_CHANNEL>(

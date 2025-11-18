@@ -304,10 +304,10 @@ class TestOneHotAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.nn.functional.one_hot(x, self.num_classes)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.nn.functional.one_hot(x=x, num_classes=self.num_classes)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.nn.functional.one_hot(
             input=x, num_classes=self.num_classes
         )
@@ -327,11 +327,11 @@ class TestOneHotAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.nn.functional.one_hot(x, self.num_classes)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.nn.functional.one_hot(
                 x=x, num_classes=self.num_classes
             )
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.nn.functional.one_hot(
                 input=x, num_classes=self.num_classes
             )

@@ -26,7 +26,9 @@ __global__ void FlattenIndicesKernel(const IntT* indices,
                                      const int64_t non_zero_num,
                                      const int64_t sparse_dim,
                                      IntT* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   phi::funcs::sparse::FlattenIndices<IntT>(indices,
                                            sparse_offsets,
                                            non_zero_num,
@@ -42,7 +44,9 @@ __global__ void IndexToCoordinateKernel(const IntT* index,
                                         const int64_t non_zero_num,
                                         const int64_t sparse_dim,
                                         IntT* indices) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   IndexToCoordinate(index,
                     dims,
                     non_zero_num,

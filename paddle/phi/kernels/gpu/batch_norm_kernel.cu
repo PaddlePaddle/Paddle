@@ -65,7 +65,9 @@ static __global__ void BNForwardInference(const T *x,
                                           const int64_t HxW,
                                           const double epsilon,
                                           T *y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   int64_t num = HxW * N * C;
   for (int64_t i = gid; i < num; i += stride) {
@@ -82,7 +84,9 @@ static __global__ void InverseVariance(const BatchNormParamType<T> *variance,
                                        const double epsilon,
                                        const int C,
                                        BatchNormParamType<T> *inv_variance) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (tid < C) {
     inv_variance[tid] = 1 / sqrt(variance[tid] + epsilon);
   }
@@ -100,7 +104,9 @@ static __global__ void BN1DForwardInference(
     const int64_t HxW,
     const double epsilon,
     T *y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   int64_t num = static_cast<int64_t>(N) * C * HxW;
   for (int64_t i = gid; i < num; i += stride) {
@@ -233,12 +239,18 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -329,14 +341,20 @@ static __global__ void BNForwardTraining2DChannelLastWriteRes(
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> mean_val = compute_mean[i];
     BatchNormParamType<T> inv_var_val = compute_inv_var[i];
     BatchNormParamType<T> scale_val = scale[i];
     BatchNormParamType<T> bias_val = bias[i];
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_sub_mean =
@@ -374,12 +392,18 @@ static __global__ void BNForwardTraining2DCompStat(
   int outer_loop_stride = gridDim.y * blockDim.y;
   int inner_loop_stride = gridDim.x * blockDim.x;
 
-  for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+           static_cast<int64_t>(threadIdx.y);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int64_t j = blockIdx.x * blockDim.x + threadIdx.x; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.x) *
+                         static_cast<int64_t>(blockDim.x) +
+                     static_cast<int64_t>(threadIdx.x);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = (j / HxW * C + i) * HxW + j % HxW;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -497,14 +521,20 @@ static __global__ void BNForwardTraining2DWriteRes(
   int outer_loop_stride = gridDim.y * blockDim.y;
   int inner_loop_stride = gridDim.x * blockDim.x;
 
-  for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+           static_cast<int64_t>(threadIdx.y);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> mean_val = compute_mean[i];
     BatchNormParamType<T> inv_var_val = compute_inv_var[i];
     BatchNormParamType<T> scale_val = scale[i];
     BatchNormParamType<T> bias_val = bias[i];
 
-    for (int64_t j = blockIdx.x * blockDim.x + threadIdx.x; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.x) *
+                         static_cast<int64_t>(blockDim.x) +
+                     static_cast<int64_t>(threadIdx.x);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = (j / HxW * C + i) * HxW + j % HxW;
       BatchNormParamType<T> x_sub_mean =

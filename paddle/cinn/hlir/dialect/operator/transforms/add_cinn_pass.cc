@@ -34,6 +34,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_cast_to_elementwise_add_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/convert_fa_to_qkvmha_pass.h"
@@ -198,6 +199,7 @@ void ApplyGroupOpPass(::pir::Program* program,
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateAddCastToElementwiseAddPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());

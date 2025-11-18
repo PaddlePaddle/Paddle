@@ -461,7 +461,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
       sizeof(bias_data)));
 
   if (enable_auxiliary && activation != "none") {
-    // Note (Ming Huang): The initialization of ReseveSpace is happened in the
+    // Note (Ming Huang): The initialization of ReserveSpace is happened in the
     // dev_ctx.Alloc. Therefore, we set real date type up here.
     if (activation == "relu") {
       phi::DataType rs_type = phi::DataType::BOOL;

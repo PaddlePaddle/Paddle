@@ -24,6 +24,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
+from paddle.tensor.to_string import DEFAULT_PRINT_OPTIONS
 from paddle.utils.dlpack import DLDeviceType
 
 
@@ -1336,6 +1337,72 @@ class TestEagerTensor(unittest.TestCase):
         [0.    , 0.    ]])"""
 
         self.assertEqual(a_str, expected)
+
+    def test_tensor_str_complex64(self):
+        original_opt = copy.deepcopy(DEFAULT_PRINT_OPTIONS)
+        try:
+            paddle.disable_static(paddle.CPUPlace())
+            a = paddle.to_tensor(
+                [[1.5 + 1j, 1.0 - 2j], [0 - 3j, 0]], dtype="complex64"
+            ).cpu()
+            paddle.set_printoptions(precision=4)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+       [[(1.5000+1.0000j), (1.0000-2.0000j)],
+        [(0.0000-3.0000j), (0.0000+0.0000j)]])"""
+
+            self.assertEqual(a_str, expected)
+
+            paddle.set_printoptions(precision=4, sci_mode=True)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+       [[(1.5000e+00+1.0000e+00j), (1.0000e+00-2.0000e+00j)],
+        [(0.0000e+00-3.0000e+00j), (0.0000e+00+0.0000e+00j)]])"""
+
+            self.assertEqual(a_str, expected)
+        finally:
+            paddle.set_printoptions(
+                precision=original_opt.precision,
+                threshold=original_opt.threshold,
+                edgeitems=original_opt.edgeitems,
+                sci_mode=original_opt.sci_mode,
+                linewidth=original_opt.linewidth,
+            )
+
+    def test_tensor_str_complex128(self):
+        original_opt = copy.deepcopy(DEFAULT_PRINT_OPTIONS)
+        try:
+            paddle.disable_static(paddle.CPUPlace())
+            a = paddle.to_tensor(
+                [[1.5 + 1j, 1.0 - 2j], [0 - 3j, 0]], dtype="complex128"
+            ).cpu()
+            paddle.set_printoptions(precision=4)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+       [[(1.5000+1.0000j), (1.0000-2.0000j)],
+        [(0.0000-3.0000j), (0.0000+0.0000j)]])"""
+
+            self.assertEqual(a_str, expected)
+
+            paddle.set_printoptions(precision=4, sci_mode=True)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+       [[(1.5000e+00+1.0000e+00j), (1.0000e+00-2.0000e+00j)],
+        [(0.0000e+00-3.0000e+00j), (0.0000e+00+0.0000e+00j)]])"""
+
+            self.assertEqual(a_str, expected)
+        finally:
+            paddle.set_printoptions(
+                precision=original_opt.precision,
+                threshold=original_opt.threshold,
+                edgeitems=original_opt.edgeitems,
+                sci_mode=original_opt.sci_mode,
+                linewidth=original_opt.linewidth,
+            )
 
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
