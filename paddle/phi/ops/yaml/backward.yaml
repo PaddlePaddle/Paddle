@@ -898,6 +898,7 @@
   kernel :
     func : eig_grad
     data_type : out_v
+  optional : out_w_grad, out_v_grad
 
 - backward_op : eigh_grad
   forward : eigh (Tensor x, str UPLO) -> Tensor(out_w), Tensor(out_v)

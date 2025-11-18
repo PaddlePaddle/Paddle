@@ -39,11 +39,22 @@
 
 namespace phi {
 
+template <class T, class Context>
+static DenseTensor Fill(const Context& dev_ctx,
+                        std::vector<int64_t> shape,
+                        T fill_value) {
+  DenseTensor ret;
+  ret.Resize(common::make_ddim(shape));
+  dev_ctx.template Alloc<T>(&ret);
+  funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
+  return ret;
+}
+
 inline int BatchCount(const DenseTensor& matrix) {
   int count = 1;
   int num_dims = matrix.dims().size();
   for (int i = 0; i < num_dims - 2; ++i) {
-    count *= matrix.dims()[i];
+    count *= matrix.dims(i);
   }
   return count;
 }
@@ -130,7 +141,7 @@ void LapackEig(DenseTensor* input,
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
   int num_dims = input->dims().size();
-  int order = input->dims()[num_dims - 1];
+  int order = static_cast<int>(input->dims(-1));
 
   T* input_data = input->data<T>();
   int lda = std::max<int>(1, order);
@@ -144,7 +155,7 @@ void LapackEig(DenseTensor* input,
 
   int batch_count = BatchCount(*input);
   int matrix_stride = MatrixStride(*input);
-  int values_stride = values->dims()[values->dims().size() - 1];
+  int values_stride = static_cast<int>(values->dims(-1));
 
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
@@ -274,19 +285,35 @@ void ConstructComplexVectors(DenseTensor* c_vectors,
 template <typename T, typename Context>
 void ComputeBackwardForComplexInput(const DenseTensor& L,
                                     const DenseTensor& V,
-                                    const DenseTensor& gL,
-                                    const DenseTensor& gV,
+                                    const paddle::optional<DenseTensor>& gL,
+                                    const paddle::optional<DenseTensor>& gV,
                                     T* x_grad_data,
                                     int batch_count,
                                     int order,
                                     const Context& dev_ctx) {
+  DenseTensor gL_maybe_zero;
+  if (gL.get_ptr()) {
+    gL_maybe_zero = gL.get();
+  } else {
+    gL_maybe_zero =
+        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(L.dims()), T(0));
+  }
+
+  DenseTensor gV_maybe_zero;
+  if (gV.get_ptr()) {
+    gV_maybe_zero = gV.get();
+  } else {
+    gV_maybe_zero =
+        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
+  }
+
   DenseTensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
   DenseTensor Econj = phi::Subtract<T>(dev_ctx,
                                        phi::funcs::Unsqueeze(Lconj, -2),
                                        phi::funcs::Unsqueeze(Lconj, -1));
-  DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV);
+  DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV_maybe_zero);
   DenseTensor diag_real = phi::Real<T>(dev_ctx, VhgV);
   DenseTensor diag_res =
       phi::funcs::BatchDiag<T>(dev_ctx, diag_real, batch_count);
@@ -312,8 +339,8 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   result.Resize(V.dims());
   dev_ctx.template Alloc<T>(&result);
   result = phi::Divide<T>(dev_ctx, result, Econj);
-  result =
-      phi::funcs::DiagFill<T, T>(dev_ctx, order, order, order, 0, gL, result);
+  result = phi::funcs::DiagFill<T, T>(
+      dev_ctx, order, order, order, 0, gL_maybe_zero, result);
   DenseTensor rhs = phi::Matmul<T>(dev_ctx, result, Vh);
 
   // solve linear system
@@ -321,8 +348,8 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = Vh.dims()[Vh.dims().size() - 1];
-  int k = rhs.dims()[rhs.dims().size() - 1];
+  int m = Vh.dims(-1);
+  int k = rhs.dims(-1);
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 

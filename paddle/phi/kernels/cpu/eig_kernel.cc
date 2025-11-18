@@ -24,16 +24,16 @@ void EigKernel(const Context& dev_ctx,
                const DenseTensor& x,
                DenseTensor* out_w,
                DenseTensor* out_v) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      errors::InvalidArgument("EigKernel input tensor is empty."));
-  if (!IsComplexType(x.dtype())) {
-    dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
-    dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
+  dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
+  dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
 
+  if (x.numel() == 0) {
+    return;
+  }
+
+  if (!IsComplexType(x.dtype())) {
     int batch_count = BatchCount(x);
-    int order = static_cast<int>(x.dims()[x.dims().size() - 1]);
+    int order = static_cast<int>(x.dims(-1));
 
     PADDLE_ENFORCE_LT(0,
                       order,
@@ -45,14 +45,10 @@ void EigKernel(const Context& dev_ctx,
 
     // double the size of real_w, the first half stores the real part,
     // the next half stores the imag part
-    std::vector<int> origin_dim = common::vectorize<int>(out_w->dims());
-    int last_item = origin_dim.back();
-    origin_dim.pop_back();
-    origin_dim.push_back(last_item * 2);
-
-    phi::DDim big_dim = common::make_ddim(origin_dim);
-
-    real_w.Resize(big_dim);
+    std::vector<int64_t> real_w_dims =
+        common::vectorize<int64_t>(out_w->dims());
+    real_w_dims.back() *= 2;
+    real_w.Resize(common::make_ddim(real_w_dims));
     dev_ctx.template Alloc<phi::dtype::Real<T>>(&real_w);
     real_v.Resize(x.dims());
     dev_ctx.template Alloc<phi::dtype::Real<T>>(&real_v);
@@ -92,9 +88,6 @@ void EigKernel(const Context& dev_ctx,
     TransposeTwoAxis<phi::dtype::Complex<T>, Context>(
         out_v_trans, out_v, x.dims().size() - 1, x.dims().size() - 2, dev_ctx);
   } else {
-    dev_ctx.template Alloc<T>(out_w);
-    dev_ctx.template Alloc<T>(out_v);
-
     phi::ApplyEigKernel<T, Context>(x, out_w, out_v, dev_ctx);
   }
 }

@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -372,6 +373,51 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
         self.assertRaises(RuntimeError, paddle.linalg.eig, x)
+
+
+class TestOptionalGradInput(unittest.TestCase):
+    def test_eager(self):
+        with dygraph_guard(), paddle.device.device_guard("cpu"):
+            x = paddle.randn(3, 3, requires_grad=True)
+            w, v = paddle.linalg.eig(x)
+
+            np.testing.assert_allclose(
+                (x @ v),
+                w.unsqueeze(0) * v,
+                atol=1e-5,
+                rtol=1e-5,
+            )  # Aμ = λμ
+
+            (dw_dx,) = paddle.grad(w, x, retain_graph=True)
+            (dv_dx,) = paddle.grad(v, x, retain_graph=True)
+            (dwdv_dx,) = paddle.grad([w, v], x)
+            np.testing.assert_allclose(
+                (dw_dx + dv_dx).numpy(),
+                dwdv_dx.numpy(),
+                atol=1e-5,
+                rtol=1e-5,
+            )
+
+    def test_dy2st(self):
+        with dygraph_guard(), paddle.device.device_guard("cpu"):
+            x = paddle.randn(3, 3, requires_grad=True)
+
+            def f(x):
+                w, v = paddle.linalg.eig(x)
+                return (
+                    w,
+                    v,
+                )
+
+            st_f = paddle.jit.to_static(f, full_graph=True, backend=None)
+
+            w, v = st_f(x)
+            np.testing.assert_allclose(
+                (x @ v),
+                w.unsqueeze(0) * v,
+                atol=1e-5,
+                rtol=1e-5,
+            )  # Aμ = λμ
 
 
 if __name__ == "__main__":
