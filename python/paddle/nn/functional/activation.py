@@ -21,6 +21,7 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     param_one_alias,
+    param_two_alias,
     softmax_param_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -156,6 +157,7 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     return _C_ops.elu_(x, alpha)
 
 
+@param_two_alias(["x", "input"], ["threshold", "lambd"])
 def hardshrink(
     x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
@@ -1267,6 +1269,7 @@ def softmax_(
     return _C_ops.softmax_(outs_cast, axis)
 
 
+@param_two_alias(["x", "input"], ["threshold", "lambd"])
 def softshrink(
     x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
@@ -1685,6 +1688,7 @@ def log_softmax(
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
     r"""
     The gated linear unit. The input is evenly splited into 2 parts along a

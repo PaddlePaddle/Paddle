@@ -1576,6 +1576,7 @@ class TestHardShrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+            out1 = F.hardshrink(input=x, lambd=0.6)
             hd = paddle.nn.Hardshrink(lambd=0.7)
             self.assertEqual(hd.lambd, 0.7)
             hd.lambd = 0.6
@@ -1747,6 +1748,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+            out1 = F.softshrink(input=x, lambd=self.threshold)
             softshrink = paddle.nn.Softshrink(lambd=self.threshold + 1)
             self.assertEqual(softshrink.lambd, self.threshold + 1)
             softshrink.lambd = self.threshold
@@ -4609,6 +4611,146 @@ class TestLog1pAPI(unittest.TestCase):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
+class TestLog10APICompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.uniform(0.1, 10, self.shape).astype(
+            self.dtype
+        )
+
+    def test_dygraph_compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.log10(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.log10(x=x)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.log10(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method args
+        out4 = paddle.empty([])
+        out5 = x.log10(out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.log10()
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.log10(x, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.log10(self.np_input)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.log10(x)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.log10(x=x)
+            # Key words args for torch
+            out3 = paddle.log10(input=x)
+            # Tensor method args
+            out4 = x.log10()
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.log10(self.np_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
+class TestLog1pAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.log1p(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.log1p(x=x)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.log1p(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method args
+        out4 = paddle.empty([])
+        out5 = x.log1p(out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.log1p()
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.log1p(x, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.log1p(self.np_input)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.log1p(x)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.log1p(x=x)
+            # Key words args for torch
+            out3 = paddle.log1p(input=x)
+            # Tensor method args
+            out4 = x.log1p()
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.log1p(self.np_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 class TestSquare(TestActivation):
     def setUp(self):
         self.op_type = "square"
@@ -6224,11 +6366,13 @@ create_test_act_bf16_class(
 class TestActivationAPI_Compatibility(unittest.TestCase):
     ACTIVATION_CONFIGS = [
         ("paddle.abs", np.abs, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.asin", np.asin, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.log2", np.log2, {'min_val': 0.0, 'max_val': 8.0}),
         ("paddle.exp", np.exp, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.expm1", np.expm1, {'min_val': -1.0, 'max_val': 1.0}),
         ("paddle.round", np.round, {'min_val': -5.0, 'max_val': 5.0}),
         ("paddle.tanh", np.tanh, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.cosh", np.cosh, {'min_val': -1.0, 'max_val': 1.0}),
     ]
     ACTIVATION_NOT_METHOD_CONFIGS = [
         (
@@ -6265,10 +6409,10 @@ def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):
         # (1) Position args
         out1 = paddle_func(x)
         paddle_dygraph_out.append(out1)
-        # (2) Key words args for paddle
+        # (2) Keywords args for paddle
         out2 = paddle_func(x=x)
         paddle_dygraph_out.append(out2)
-        # (3) Key words args for torch compatibility
+        # (3) Keywords args for torch compatibility
         out3 = paddle_func(input=x)
         paddle_dygraph_out.append(out3)
         # (4) Tensor method args: x.func()
@@ -6296,9 +6440,9 @@ def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # (1) Position args
             out1 = paddle_func(x)
-            # (2) Key words args for paddle
+            # (2) Keywords args for paddle
             out2 = paddle_func(x=x)
-            # (3) Key words args for torch compatibility
+            # (3) Keywords args for torch compatibility
             out3 = paddle_func(input=x)
             # (4) Tensor method args (x.func())
             out4 = getattr(x, act_name)()
@@ -6337,10 +6481,10 @@ def generate_test_case_for_not_method_func(
         # (1) Position args
         out1 = paddle_func(x)
         paddle_dygraph_out.append(out1)
-        # (2) Key words args for paddle
+        # (2) Keywords args for paddle
         out2 = paddle_func(x=x)
         paddle_dygraph_out.append(out2)
-        # (3) Key words args for torch compatibility
+        # (3) Keywords args for torch compatibility
         out3 = paddle_func(input=x)
         paddle_dygraph_out.append(out3)
         if has_out:
@@ -6365,9 +6509,9 @@ def generate_test_case_for_not_method_func(
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # (1) Position args
             out1 = paddle_func(x)
-            # (2) Key words args for paddle
+            # (2) Keywords args for paddle
             out2 = paddle_func(x=x)
-            # (3) Key words args for torch compatibility
+            # (3) Keywords args for torch compatibility
             out3 = paddle_func(input=x)
             ref_out = ref_func(self.np_x)
             fetch_list = [out1, out2, out3]

@@ -1,0 +1,251 @@
+id: no-deeply-nested-loops
+language: python
+valid:
+  # 1 level - OK
+  - |
+    for i in range(10):
+        print(i)
+
+  # 2 levels - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            print(i, j)
+
+  # 3 levels - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                print(i, j, k)
+
+  # 4 levels - OK (threshold not reached)
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    print(i, j, k, m)
+
+  # Using itertools.product - OK
+  - |
+    import itertools
+    for i, j, k, m, n in itertools.product(range(10), range(10), range(10), range(10), range(10)):
+        print(i, j, k, m, n)
+
+  # 5 levels but inner loop depends on outer variable - OK (not suitable for itertools.product)
+  - |
+    for i in range(10):
+        for j in i:
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        print(i, j, k, m, n)
+
+  # 5 levels but second level depends on first - OK
+  - |
+    for a in list_a:
+        for b in a:
+            for c in list_c:
+                for d in list_d:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but third level depends on second - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in b:
+                for d in list_d:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fourth level depends on third - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in c:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fifth level depends on fourth - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in d:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fifth level depends on first - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in a:
+                        process(a, b, c, d, e)
+
+  # 5 levels but second level uses indexing on first - OK
+  - |
+    for i in a:
+        for j in i[x]:
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but third level uses multi-dimensional indexing on first - OK
+  - |
+    for i in a:
+        for j in range(10):
+            for k in i[x][y]:
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but fourth level accesses attribute of second - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in b.items:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels but fifth level uses method call on third - OK
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in c.get_items():
+                        process(a, b, c, d, e)
+
+  # 5 levels but has break in inner loop - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        if some_condition(i, j, k, m, n):
+                            break
+                        process(i, j, k, m, n)
+
+
+  # 5 levels but break happens before entering third loop - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            if should_stop(i, j):
+                break
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but continue happens at third level - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                if should_skip(i, j, k):
+                    continue
+                for m in range(10):
+                    for n in range(10):
+                        process(i, j, k, m, n)
+
+  # 5 levels but returns before the last two loops - OK
+  - |
+    def do_work(data):
+        for a in data:
+            for b in range(10):
+                if not validate(a, b):
+                    return None
+                for c in range(10):
+                    for d in range(10):
+                        for e in range(10):
+                            consume(a, b, c, d, e)
+
+  # 5 levels breaked by extra code - OK
+  - |
+    for i in range(10):
+        for j in range(10):
+            # some processing
+            process(i, j)
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        print(i, j, k, m, n)
+
+invalid:
+  # 5 levels - should be caught
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        print(i, j, k, m, n)
+
+  # 6 levels - should be caught
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        for p in range(10):
+                            print(i, j, k, m, n, p)
+
+  # 5 levels with different iterables - should be caught
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+
+  # 5 levels with fifth level variable name containing outer variable - should be caught
+  - |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in some_var_name_has_b:
+                        process(a, b, c, d, e)
+
+  # 5 levels with complex loop variables - should be caught
+  - |
+    for batch in [1, 2]:
+        for size in [[32, 32]]:
+            for kernel in [[3, 3]]:
+                for stride in [[1, 1], [2, 2]]:
+                    for padding in [[1, 1]]:
+                        config = create_config(batch, size, kernel, stride, padding)
+
+  # 5 levels but has continue in inner loop - should be caught
+  - |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        if some_condition(i, j, k, m, n):
+                            continue
+                        process(i, j, k, m, n)
+
+  # 5 levels but has return in inner loop - should be caught
+  - |
+    def func():
+        for i in range(10):
+            for j in range(10):
+                for k in range(10):
+                    for m in range(10):
+                        for n in range(10):
+                            if some_condition(i, j, k, m, n):
+                                return
+                            process(i, j, k, m, n)

@@ -1,0 +1,7 @@
+id: no-int64-type-cuda-index-without-cast
+valid:
+  - int64_t global_thread_idx = static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) + static_cast<int64_t>(threadIdx.x);
+  - int row_id = blockIdx.y * gridDim.z + blockIdx.z;
+invalid:
+  - int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  - int64_t row_id = blockIdx.y * gridDim.z + blockIdx.z;

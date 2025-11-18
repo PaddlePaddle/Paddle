@@ -88,4 +88,5 @@ PD_REGISTER_KERNEL(index_select_grad,
                    ALL_LAYOUT,
                    phi::IndexSelectGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
