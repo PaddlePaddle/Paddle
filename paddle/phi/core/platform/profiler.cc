@@ -27,7 +27,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/profiler/host_event_recorder.h"
 #include "paddle/phi/core/platform/profiler_helper.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 #include "paddle/common/flags.h"

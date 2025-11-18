@@ -336,10 +336,10 @@ class TestExpandAsAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.expand_as(x, y)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.expand_as(x=x, y=y)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.expand_as(input=x, other=y)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -369,10 +369,10 @@ class TestExpandAsAPI_Compatibility(unittest.TestCase):
             # Position args (args)
             out1 = paddle.expand_as(x, y)
             paddle_dygraph_out.append(out1)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.expand_as(x=x, y=y)
             paddle_dygraph_out.append(out2)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.expand_as(input=x, other=y)
             paddle_dygraph_out.append(out3)
             # Combined args and kwargs

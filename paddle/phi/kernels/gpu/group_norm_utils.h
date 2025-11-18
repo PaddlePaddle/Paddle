@@ -92,7 +92,7 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
       y += blockDim.x;
     }
   }
-  int64_t remain = size % (VecSize * blockDim.x);
+  int64_t remain = size % (VecSize * static_cast<int64_t>(blockDim.x));
 
   T ins_x[VecSize];
   T ins_y[VecSize];

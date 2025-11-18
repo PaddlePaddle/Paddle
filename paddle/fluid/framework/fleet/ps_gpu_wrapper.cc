@@ -1246,7 +1246,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                   merge_values.offsets.size(),
                   static_cast<size_t>(node_size_),
                   common::errors::InvalidArgument(
-                      "Size dismatch in merge_values.offsets.size()(size = "
+                      "Size mismatch in merge_values.offsets.size()(size = "
                       "%zu) and static_cast<size_t>(node_size_)(size = %zu).",
                       merge_values.offsets.size(),
                       static_cast<size_t>(node_size_)));
@@ -1456,7 +1456,7 @@ void PSGPUWrapper::MergeKeys(std::shared_ptr<HeterContext> gpu_task) {
                   merge_values.offsets.size(),
                   static_cast<size_t>(node_size_),
                   common::errors::InvalidArgument(
-                      "Size dismatch in merge_values.offsets.size()(size = "
+                      "Size mismatch in merge_values.offsets.size()(size = "
                       "%zu) and static_cast<size_t>(node_size_)(size = %zu).",
                       merge_values.offsets.size(),
                       static_cast<size_t>(node_size_)));

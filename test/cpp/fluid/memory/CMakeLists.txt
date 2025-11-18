@@ -58,6 +58,17 @@ cc_test(
   SRCS test_aligned_allocator.cc
   DEPS phi common)
 
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip allocator_visitor_test on Windows")
+  else()
+    nv_test(
+      allocator_visitor_test
+      SRCS allocator_visitor_test.cc
+      DEPS phi common)
+  endif()
+endif()
+
 if(WIN32)
   cc_test(
     retry_allocator_test
@@ -78,6 +89,17 @@ cc_test(
   allocator_facade_abs_flags_test
   SRCS allocator_facade_abs_flags_test.cc
   DEPS phi common)
+
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip vmm_allocator_tail_test on Windows")
+  else()
+    nv_test(
+      vmm_allocator_tail_test
+      SRCS vmm_allocator_tail_test.cc
+      DEPS phi common)
+  endif()
+endif()
 
 cc_test(
   allocator_facade_frac_flags_test
@@ -187,5 +209,16 @@ if(WITH_GPU)
         vmm_auto_growth_best_fit_allocator_test
         PROPERTIES ENVIRONMENT "FLAGS_use_virtual_memory_auto_growth=true")
     endif()
+  endif()
+endif()
+
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip multi_scale_allocator_test on Windows")
+  else()
+    nv_test(
+      multi_scale_allocator_test
+      SRCS multi_scale_allocator_test.cc
+      DEPS phi common)
   endif()
 endif()

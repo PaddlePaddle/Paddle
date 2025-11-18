@@ -31,7 +31,9 @@ __global__ void LogspaceKernelInner(
   MPType mt_stop = static_cast<MPType>(stop);
   MPType mt_base = static_cast<MPType>(base);
 
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {

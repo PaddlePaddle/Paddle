@@ -201,6 +201,8 @@ __all__ = [
     'is_bf16_supported',
     'manual_seed',
     'reset_peak_memory_stats',
+    'ipc_collect',
+    'get_stream_from_external',
 ]
 
 _cudnn_version = None
@@ -608,12 +610,21 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
 
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> paddle.device.set_device("cpu")
             >>> x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
+            >>> print(x1.place)
+            Place(cpu)
+
+            >>> paddle.device.set_device("gpu:0")
             >>> x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
-            >>> data = paddle.stack([x1,x2], axis=1)
+            >>> print(x2.place)
+            Place(gpu:0)
+            >>> # x1 is still on cpu
+            >>> print(x1.place)
+            Place(cpu)
 
     """
     place = device_to_place(device)
@@ -972,9 +983,9 @@ def get_device_capability(
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> # import paddle
-            >>> # cap = paddle.device.get_device_capability()
-            >>> # print(cap)
+            >>> import paddle
+            >>> cap = paddle.device.get_device_capability()
+            >>> print(cap)
     """
     prop = get_device_properties(device)
     return prop.major, prop.minor
@@ -1817,6 +1828,25 @@ def synchronize(device: PlaceLike | None = None) -> None:
         )
 
 
+def ipc_collect() -> None:
+    """
+    Force collects GPU memory after it has been released by CUDA IPC.
+    This function checks if any sent CUDA tensors could be cleaned from the memory.
+    Force closes shared memory file used for reference counting if there is no active counters.
+    Useful when the producer process stopped actively sending tensors and want to release unused memory.
+    Returns:
+        None
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> # Force collect expired IPC memory
+            >>> paddle.device.ipc_collect() #this is equivalent to paddle.cuda.ipc_collect()
+    """
+    paddle.base.libpaddle._ipc_collect()
+
+
 def get_stream_from_external(
     data_ptr: int, device: PlaceLike | None = None
 ) -> Stream:
@@ -1847,7 +1877,7 @@ def get_stream_from_external(
 
             >>> import paddle
             >>> # Suppose external_stream_ptr is from another CUDA library
-            >>> s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+            >>> # s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
     '''
     if device is None:
         place = paddle.framework._current_expected_place_()
@@ -1953,6 +1983,7 @@ class nvtx:
             msg (str): The name of the NVTX range.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_push("test") is equivalent to paddle.cuda.nvtx.range_push("test")
@@ -1967,6 +1998,7 @@ class nvtx:
         Pop the most recent NVTX range marker.
         Example:
             .. code-block:: python
+
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
                 >>> # paddle.device.nvtx.range_pop("test") is equivalent to paddle.cuda.nvtx.range_pop("test")
@@ -1984,6 +2016,7 @@ def reset_peak_memory_stats(device: PlaceLike | int | None = None) -> None:
 
     Example:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
@@ -2052,8 +2085,26 @@ class Device(str):
     _DEFAULT_DEVICE_STACK = []
     _SUPPORTED_TYPES = {"cpu", "gpu", "cuda", "xpu"}
 
-    def __new__(cls, type: str | int | None = None, index: int | None = None):
-        if isinstance(type, str):
+    def __new__(
+        cls, type: PlaceLike | int | None = None, index: int | None = None
+    ):
+        if isinstance(type, paddle.base.libpaddle.Place):
+            if type.is_cpu_place():
+                dev_type = 'cpu'
+                dev_index = None
+            elif type.is_gpu_place():
+                dev_type = 'cuda'
+                dev_index = type.gpu_device_id()
+            elif type.is_xpu_place():
+                dev_type = 'xpu'
+                dev_index = type.gpu_device_id()
+            elif type.is_custom_place():
+                dev_type = type.get_device_type()
+                dev_index = type.get_device_id()
+            else:
+                raise ValueError(f"Unknown place type: {type}")
+
+        elif isinstance(type, str):
             t = type.lower()
             if t not in cls._SUPPORTED_TYPES and ":" not in t:
                 raise ValueError(f"Unsupported device type: {t}")

@@ -44,7 +44,7 @@ api_annotation_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/padd
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01, jeff41404 or qingqing01) approval for API change.\n"
 
-    check_approval 1 XiaoguangHu01 jeff41404 qingqing01
+    check_approval 1 XiaoguangHu01 jeff41404 qingqing01 zhwesky2010
 fi
 
 if [ "$api_annotation_diff" != "" ]; then
