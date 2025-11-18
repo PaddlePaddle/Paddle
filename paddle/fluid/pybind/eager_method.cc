@@ -1044,7 +1044,7 @@ static PyObject* tensor_requires_grad_(TensorObject* self,
   if (args_num == (Py_ssize_t)1) {
     require_grad = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
-  auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
+  auto meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   meta->SetStopGradient(!require_grad);
   if (!meta->GradNode()) {
     meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
