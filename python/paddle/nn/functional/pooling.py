@@ -1144,18 +1144,19 @@ def max_pool2d(
     return_mask: bool = False,
     ceil_mode: bool = False,
     data_format: DataLayout2D = 'NCHW',
+    dilation: Size2 = 1,  # 新增 dilation 参数，默认为 1
     name: str | None = None,
 ) -> Tensor:
     """
-    This API implements max pooling 2d operation.
+    This API implements max pooling 2d operation with an optional dilation parameter.
     See more details in :ref:`api_paddle_nn_MaxPool2d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
-                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
-                          `"NHWC"`, where `N` is batch size, `C` is the number of channels,
-                          `H` is the height of the feature, and `W` is the width of the
-                          feature. The data type if float32 or float64.
+                    shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
+                    `"NHWC"`, where `N` is batch size, `C` is the number of channels,
+                    `H` is the height of the feature, and `W` is the width of the
+                    feature. The data type is float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
@@ -1165,10 +1166,10 @@ def max_pool2d(
         padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
+            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_width] whose value means the padding size of each dimension.
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
-            The default value is 0.
+        dilation (int|list|tuple): The dilation rate of the pooling kernel. Default is 1.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -1177,6 +1178,7 @@ def max_pool2d(
         name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
@@ -1186,9 +1188,9 @@ def max_pool2d(
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> # max pool2d
+            >>> # max pool2d with dilation
             >>> x = paddle.uniform([1, 3, 32, 32], paddle.float32)
-            >>> out = F.max_pool2d(x, kernel_size=2, stride=2, padding=0)
+            >>> out = F.max_pool2d(x, kernel_size=2, stride=2, padding=0, dilation=2)
             >>> print(out.shape)
             [1, 3, 16, 16]
             >>> # for return_mask=True
@@ -1198,7 +1200,8 @@ def max_pool2d(
             >>> print(max_indices.shape)
             [1, 3, 16, 16]
     """
-
+    # 将 dilation 转换为 list/tuple 以方便后续处理
+    dilation = convert_to_list(dilation, 2, 'pool_dilation')
     kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -1222,10 +1225,11 @@ def max_pool2d(
             "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
+    # 调用底层的 max_pool2d 操作
     if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x, kernel_size, stride, padding, False, False, ceil_mode, dilation
             )
             return output if return_mask else output[0]
         else:
@@ -1241,6 +1245,7 @@ def max_pool2d(
                 False,
                 False,
                 padding_algorithm,
+                dilation,  # 新增 dilation
             )
 
     else:
@@ -1271,6 +1276,7 @@ def max_pool2d(
                     "ceil_mode": ceil_mode,
                     "exclusive": True,
                     "data_format": data_format,
+                    "dilations": dilation,  # 新增 dilations
                 },
             )
             return (pool_out, mask)
@@ -1293,6 +1299,7 @@ def max_pool2d(
                     "ceil_mode": ceil_mode,
                     "exclusive": True,
                     "data_format": data_format,
+                    "dilations": dilation,  # 新增 dilations
                 },
             )
             return pool_out
