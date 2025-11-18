@@ -55,6 +55,9 @@ std::vector<int> GetXPUSelectedDevices() {
   return phi::backends::xpu::GetXPUSelectedDevices();
 }
 
+const gpuDeviceProp& GetDeviceProperties(int id) {
+  return phi::backends::xpu::GetDeviceProperties(id);
+}
 /**************************** Memory Management **************************/
 
 void MemcpySyncH2D(void* dst,

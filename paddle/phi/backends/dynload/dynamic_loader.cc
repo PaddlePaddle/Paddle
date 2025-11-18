@@ -612,7 +612,6 @@ void* GetCUPTIDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cupti_dir, PTI_LIB_NAME, false, {cupti_lib_path});
 #elif defined(PADDLE_WITH_XPU)
-  std::cout << "CUPTI lib path: " << cupti_lib_path << std::endl;
   return GetDsoHandleFromSearchPath(
       FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
 #elif defined(__linux__) && defined(PADDLE_WITH_CUDA)

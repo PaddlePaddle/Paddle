@@ -26,7 +26,7 @@ set(XPU_ML_LIB_NAME "libxpuml.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XPUTX_LIB_NAME "libxpuToolsExt.so")
-set(CUPTI_LIB_NAME "libcupti.so")
+set(XPU_CUPTI_LIB_NAME "libcupti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
@@ -63,6 +63,10 @@ endif()
 
 if(WITH_XPU_XRE5)
   set(XPU_XPUTX_BASE_VERSION "2.0.2.0")
+endif()
+
+if(WITH_XPU_XRE5)
+  set(XPU_CUPTI_BASE_VERSION "1.0.1.0")
 endif()
 
 if(NOT DEFINED XPU_FFT_BASE_DATE)
@@ -104,6 +108,10 @@ if(WITH_XPU_XRE5)
   set(XPU_XPUTX_BASE_URL
       "https://klx-sdk-release-public.su.bcebos.com/xre/xprofiler/release")
   set(XPU_XPUTX_DIR_NAME "xprofiler-Linux_x86_64-${XPU_XPUTX_BASE_VERSION}")
+  set(XPU_CUPTI_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/cupti/paddle-dev/${XPU_CUPTI_BASE_VERSION}"
+  )
+  set(XPU_CUPTI_DIR_NAME "cupti-11.8-Linux")
 endif()
 
 if(WITH_XPU_FFT)
@@ -183,6 +191,7 @@ set(XPU_XHPC_URL
     CACHE STRING "" FORCE)
 
 set(XPU_XPUTX_URL "${XPU_XPUTX_BASE_URL}/${XPU_XPUTX_DIR_NAME}.tar.gz")
+set(XPU_CUPTI_URL "${XPU_CUPTI_BASE_URL}/${XPU_CUPTI_DIR_NAME}.tar.gz")
 
 if(DEFINED XPU_BASE_URL)
   set(XPU_XRE_URL "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz")
@@ -278,6 +287,8 @@ if(WITH_XPU_XRE5)
       ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
+      ${CMAKE_SOURCE_DIR}/tools/xpu/get_cupti_dependence.sh ${XPU_CUPTI_URL}
+      ${XPU_CUPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xputx_dependence.sh ${XPU_XPUTX_URL}
       ${XPU_XPUTX_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
@@ -358,7 +369,12 @@ if(WITH_XPU_XRE5)
   include_directories(${XPU_XFA_INC_DIR})
   set(XPU_XPUDNN_INC_DIR "${XPU_INC_DIR}/xhpc/xpudnn")
   include_directories(${XPU_XPUDNN_INC_DIR})
+  set(XPU_XPUTX_INC_DIR "${XPU_INC_DIR}/nvtx3")
+  include_directories(${XPU_XPUTX_INC_DIR})
   set(XPU_XPUTX_LIB "${XPU_LIB_DIR}/${XPU_XPUTX_LIB_NAME}")
+  set(XPU_CUPTI_INC_DIR "${XPU_INC_DIR}/cupti")
+  include_directories(${XPU_CUPTI_INC_DIR})
+  set(XPU_CUPTI_LIB "${XPU_LIB_DIR}/${XPU_CUPTI_LIB_NAME}")
 endif()
 
 if(WITH_XPTI)
@@ -367,44 +383,41 @@ if(WITH_XPTI)
   set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
 endif()
 
-if(WITH_XPU_XRE5)
-  set(CUPTI_ROOT
-      "/usr/local/"
-      CACHE PATH "CUPTI ROOT")
-endif()
-find_path(
-  CUPTI_INCLUDE_DIR cupti.h
-  PATHS ${CUPTI_ROOT} ${CUPTI_ROOT}/include ${CUPTI_ROOT}/include/cupti
-        $ENV{CUPTI_ROOT} $ENV{CUPTI_ROOT}/include $ENV{CUPTI_ROOT}/include/cupti
-  NO_DEFAULT_PATH)
-
-list(
-  APPEND
-  CUPTI_CHECK_LIBRARY_DIRS
-  ${CUPTI_ROOT}
-  ${CUPTI_ROOT}/lib64
-  ${CUPTI_ROOT}/lib
-  $ENV{CUPTI_ROOT}
-  $ENV{CUPTI_ROOT}/lib64
-  $ENV{CUPTI_ROOT}/lib
-  /usr/lib)
-find_library(
-  CUPTI_LIBRARY
-  NAMES libcupti.so libcupti.dylib # libcupti_static.a
-  PATHS ${CUPTI_CHECK_LIBRARY_DIRS} ${CUPTI_INCLUDE_DIR}
-  NO_DEFAULT_PATH
-  DOC "Path to cuPTI library.")
-
-get_filename_component(CUPTI_LIBRARY_PATH ${CUPTI_LIBRARY} DIRECTORY)
-if(CUPTI_INCLUDE_DIR AND CUPTI_LIBRARY)
+if(WITH_XPU_XRE5 AND (NOT WITH_XPTI))
   set(CUPTI_FOUND ON)
-else()
-  set(CUPTI_FOUND OFF)
-endif()
-if(CUPTI_FOUND)
+  set(CUPTI_INCLUDE_DIR "${XPU_CUPTI_INC_DIR}")
+  set(CUPTI_LIBRARY_PATH "${XPU_LIB_DIR}")
   message(STATUS "Compile with XPU CUPTI!")
+  # set(CUPTI_ROOT
+  #     ${XPU_INC_DIR}
+  #     CACHE PATH "CUPTI ROOT")
+  # find_path(
+  #   CUPTI_INCLUDE_DIR cupti.h
+  #   PATHS ${CUPTI_ROOT} ${CUPTI_ROOT}/cupti
+  #   NO_DEFAULT_PATH)
+
+  # list(
+  #   APPEND
+  #   CUPTI_CHECK_LIBRARY_DIRS
+  #   ${XPU_LIB_DIR})
+  # find_library(
+  #   CUPTI_LIBRARY
+  #   NAMES libcupti.so libcupti.dylib # libcupti_static.a
+  #   PATHS ${CUPTI_CHECK_LIBRARY_DIRS} ${CUPTI_INCLUDE_DIR}
+  #   NO_DEFAULT_PATH
+  #   DOC "Path to cuPTI library.")
+
+  # get_filename_component(CUPTI_LIBRARY_PATH ${CUPTI_LIBRARY} DIRECTORY)
+  # if(CUPTI_INCLUDE_DIR AND CUPTI_LIBRARY)
+  #   set(CUPTI_FOUND ON)
+  # else()
+  #   set(CUPTI_FOUND OFF)
+  # endif()
+  # if(CUPTI_FOUND)
+  #   message(STATUS "Compile with XPU CUPTI!")
+  # endif()
 endif()
-# message(STATUS "CUPTI_FOUND: ${CUPTI_FOUND}")
+message(STATUS "CUPTI_FOUND: ${CUPTI_FOUND}")
 
 if(WITH_XPU_PLUGIN)
   message(STATUS "Compile with XPU PLUGIN!")
@@ -426,7 +439,6 @@ if(WITH_XPU_XRE5)
     ${XPU_XFA_LIB}
     ${XPU_XPUDNN_LIB}
     ${XPU_ML_LIB})
-  #     ${CUPTI_LIB})
 
   if(NOT WITH_MKL)
     target_link_libraries(xpulib ${XPU_XPUDNN_OMP_LIB})

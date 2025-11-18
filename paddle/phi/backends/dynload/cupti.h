@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "glog/logging.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/common/port.h"
 
@@ -43,12 +42,10 @@ extern void *cupti_dso_handle;
     template <typename... Args>                                   \
     inline CUptiResult CUPTIAPI operator()(Args... args) {        \
       using cuptiFunc = decltype(&::__name);                      \
-      VLOG(1) << "call of " << #__name << " before";              \
       std::call_once(cupti_dso_flag, []() {                       \
         cupti_dso_handle = phi::dynload::GetCUPTIDsoHandle();     \
       });                                                         \
       static void *p_##__name = dlsym(cupti_dso_handle, #__name); \
-      VLOG(1) << "call of " << #__name << " after";               \
       return reinterpret_cast<cuptiFunc>(p_##__name)(args...);    \
     }                                                             \
   };                                                              \

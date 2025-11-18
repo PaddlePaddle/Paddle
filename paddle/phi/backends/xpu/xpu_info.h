@@ -20,12 +20,20 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 
+namespace paddle {
+using gpuDeviceProp = cudaDeviceProp;
+}
+
 namespace phi {
+
+using gpuDeviceProp = cudaDeviceProp;
 
 class XPUContext;
 
 namespace backends {
 namespace xpu {
+
+// using gpuDeviceProp = cudaDeviceProp;
 
 /***** Version Management *****/
 
@@ -48,6 +56,9 @@ int GetXPUCurrentDeviceId();
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices();
+
+//! Get the properties of the ith GPU device.
+PADDLE_API const gpuDeviceProp &GetDeviceProperties(int id);
 
 #ifdef PADDLE_WITH_XPU
 std::pair<int, int> GetXpuStreamPriorityRange();

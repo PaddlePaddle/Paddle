@@ -16,7 +16,6 @@
 
 #include <cstdio>
 
-#include <sstream>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/os_info.h"
 #ifdef PADDLE_WITH_XPU
@@ -101,13 +100,6 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   event.kernel_info.blocks_per_sm = blocks_per_sm;
   event.kernel_info.warps_per_sm = warps_per_sm;
   event.kernel_info.occupancy = occupancy;
-
-  VLOG(1) << "++++++++ AddKernelRecord ++++++++";
-  VLOG(1) << "event.name = " << event.name;
-  VLOG(1) << "device_id = " << event.device_id;
-  VLOG(1) << "context_id = " << event.context_id;
-  VLOG(1) << "stream_id = " << event.stream_id;
-  VLOG(1) << "correlation_id = " << event.correlation_id;
 
   collector->AddDeviceEvent(std::move(event));
 }
@@ -318,20 +310,6 @@ CuptiRuntimeCbidStr::CuptiRuntimeCbidStr() {
 #undef REGISTER_RUNTIME_CBID_STR
 }
 
-std::string TidMappingToString(
-    const std::unordered_map<uint32_t, uint64_t>& tid_mapping) {
-  std::ostringstream oss;
-  oss << "{ ";
-  bool first = true;
-  for (auto& kv : tid_mapping) {
-    if (!first) oss << ", ";
-    first = false;
-    oss << kv.first << ": " << kv.second;
-  }
-  oss << " }";
-  return oss.str();
-}
-
 void AddApiRecord(const CUpti_ActivityAPI* api,
                   uint64_t start_ns,
                   const std::unordered_map<uint32_t, uint64_t> tid_mapping,
@@ -357,13 +335,6 @@ void AddApiRecord(const CUpti_ActivityAPI* api,
 #endif
   event.correlation_id = api->correlationId;
   event.callback_id = api->cbid;
-  VLOG(1) << "++++++++ AddApiRecord ++++++++";
-  VLOG(1) << "event.name = " << event.name;
-  VLOG(1) << "tid = " << tid;
-  VLOG(1) << "api->threadId = " << api->threadId;
-  VLOG(1) << "tid_mapping = " << TidMappingToString(tid_mapping);
-  VLOG(1) << "correlation_id = " << event.correlation_id;
-  VLOG(1) << "callback_id = " << event.callback_id;
   collector->AddRuntimeEvent(std::move(event));
 }
 

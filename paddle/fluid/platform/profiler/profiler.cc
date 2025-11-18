@@ -167,9 +167,9 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                             kv.second.c_str());
   }
 // 可以加xpu试试
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||
-// defined(PADDLE_WITH_XPU)
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
+  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
 #ifdef PADDLE_WITH_XPU
   std::vector<int32_t> device_ids = GetXPUSelectedDevices();
