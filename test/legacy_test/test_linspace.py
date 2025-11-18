@@ -186,6 +186,92 @@ class TestLinspaceAPI(unittest.TestCase):
             )
             assert 'linspace_res' in out.name
 
+
+class TestLinspaceAPINewParams(unittest.TestCase):
+    def test_out_parameter(self):
+        with dygraph_guard():
+            for dtype in ['float32', 'float64']:
+                out_tensor = paddle.empty([5], dtype=dtype)
+                original_ptr = out_tensor.data_ptr()
+
+                result = paddle.linspace(0, 10, 5, dtype=dtype, out=out_tensor)
+
+                self.assertEqual(result.data_ptr(), original_ptr)
+                self.assertEqual(result.data_ptr(), out_tensor.data_ptr())
+
+                np_expected = np.linspace(0, 10, 5).astype(dtype)
+                np.testing.assert_allclose(
+                    result.numpy(), np_expected, rtol=1e-5
+                )
+
+    def test_device_cpu(self):
+        with dygraph_guard():
+            result = paddle.linspace(0, 10, 5, dtype='float32', device='cpu')
+
+            self.assertTrue(result.place.is_cpu_place())
+
+            np_expected = np.linspace(0, 10, 5, dtype='float32')
+            np.testing.assert_allclose(result.numpy(), np_expected, rtol=1e-5)
+
+    def test_requires_grad_true(self):
+        with dygraph_guard():
+            result = paddle.linspace(
+                0, 10, 5, dtype='float32', requires_grad=True
+            )
+
+            self.assertFalse(result.stop_gradient)
+
+            np_expected = np.linspace(0, 10, 5, dtype='float32')
+            np.testing.assert_allclose(result.numpy(), np_expected, rtol=1e-5)
+
+    def test_all_new_params_combination(self):
+        with dygraph_guard():
+            paddle.device.set_device('cpu')
+            out_tensor = paddle.empty([5], dtype='float32')
+
+            result = paddle.linspace(
+                0,
+                10,
+                5,
+                dtype='float32',
+                out=out_tensor,
+                device='cpu',
+                requires_grad=True,
+            )
+
+            self.assertEqual(result.data_ptr(), out_tensor.data_ptr())
+            self.assertTrue(result.place.is_cpu_place())
+            self.assertFalse(result.stop_gradient)
+
+            np_expected = np.linspace(0, 10, 5, dtype='float32')
+            np.testing.assert_allclose(result.numpy(), np_expected, rtol=1e-5)
+
+
+class TestLinspaceAPIAliases(unittest.TestCase):
+    def test_alias_end(self):
+        with dygraph_guard():
+            result1 = paddle.linspace(0, stop=10, num=5, dtype='float32')
+            result2 = paddle.linspace(0, end=10, num=5, dtype='float32')
+
+            np.testing.assert_array_equal(result1.numpy(), result2.numpy())
+
+    def test_alias_steps(self):
+        with dygraph_guard():
+            result1 = paddle.linspace(0, 10, num=5, dtype='float32')
+            result2 = paddle.linspace(0, 10, steps=5, dtype='float32')
+
+            np.testing.assert_array_equal(result1.numpy(), result2.numpy())
+
+    def test_both_aliases(self):
+        with dygraph_guard():
+            result1 = paddle.linspace(0, stop=10, num=5, dtype='float32')
+            result2 = paddle.linspace(0, end=10, steps=5, dtype='float32')
+
+            np.testing.assert_array_equal(result1.numpy(), result2.numpy())
+
+            np_expected = np.linspace(0, 10, 5, dtype='float32')
+            np.testing.assert_allclose(result2.numpy(), np_expected, rtol=1e-5)
+
     def test_imperative(self):
         out1 = paddle.linspace(0, 10, 5, dtype='float32')
         np_out1 = np.linspace(0, 10, 5, dtype='float32')

@@ -1746,8 +1746,6 @@
   kernel :
     func : index_elementwise_put_grad
     data_type : out_grad
-  data_transform :
-    skip_transform : index
   no_need_buffer: x
 
 - backward_op : index_elementwise_put_with_tensor_grad
@@ -1759,8 +1757,6 @@
   kernel :
     func : index_elementwise_put_with_tensor_grad
     data_type : out_grad
-  data_transform :
-    skip_transform : index
   no_need_buffer: x, value
 
 - backward_op : index_put_double_grad

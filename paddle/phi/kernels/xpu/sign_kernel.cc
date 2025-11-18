@@ -30,4 +30,5 @@ void SignKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sign, XPU, ALL_LAYOUT, phi::SignKernel, float) {}
+PD_REGISTER_KERNEL(
+    sign, XPU, ALL_LAYOUT, phi::SignKernel, int32_t, int64_t, float) {}

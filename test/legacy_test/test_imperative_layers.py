@@ -141,7 +141,8 @@ class TestLayerPrint(unittest.TestCase):
 
         module = nn.Dropout(p=0.5)
         self.assertEqual(
-            str(module), 'Dropout(p=0.5, axis=None, mode=upscale_in_train)'
+            str(module),
+            'Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)',
         )
 
         module = nn.Dropout2D(p=0.5)

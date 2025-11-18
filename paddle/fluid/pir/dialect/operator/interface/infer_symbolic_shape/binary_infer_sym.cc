@@ -762,6 +762,11 @@ bool DropoutOpInferSymbolicShape(
   return true;
 }
 
+bool Dropout_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return DropoutOpInferSymbolicShape(op, infer_context);
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
