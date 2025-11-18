@@ -273,6 +273,3 @@ def capture_fwd_graph_guard(file_path: str):
         # Build the forward graph
         builder.build_graph(matches)
         builder.save_graph(file_path)
-
-
-__all__ = ['capture_fwd_graph_guard']
