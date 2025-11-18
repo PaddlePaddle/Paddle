@@ -509,12 +509,8 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
   phi::MetaTensor meta_out_1(kernel_out_1, kernel_result.is_stride_kernel);
 
   std::vector<phi::MetaTensor*> output_metas_for_compact;
-  if (kernel_out_0) {
-    output_metas_for_compact.push_back(&meta_out_0);
-  }
-  if (kernel_out_1) {
-    output_metas_for_compact.push_back(&meta_out_1);
-  }
+  if (kernel_out_0) output_metas_for_compact.push_back(&meta_out_0);
+  if (kernel_out_1) output_metas_for_compact.push_back(&meta_out_1);
 
   phi::FusedGemmEpilogueInferMeta(MakeMetaTensor(*input_x),
                                   MakeMetaTensor(*input_y),
@@ -1206,15 +1202,9 @@ std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> cudnn_lstm_grad_impl(
   }
 
   std::vector<phi::MetaTensor*> output_metas_for_compact;
-  if (kernel_out_0) {
-    output_metas_for_compact.push_back(&meta_out_0);
-  }
-  if (kernel_out_1) {
-    output_metas_for_compact.push_back(&meta_out_1);
-  }
-  if (kernel_out_2) {
-    output_metas_for_compact.push_back(&meta_out_1);
-  }
+  if (kernel_out_0) output_metas_for_compact.push_back(&meta_out_0);
+  if (kernel_out_1) output_metas_for_compact.push_back(&meta_out_1);
+  if (kernel_out_2) output_metas_for_compact.push_back(&meta_out_1);
   output_metas_for_compact.insert(output_metas_for_compact.end(),
                                   kernel_out_3_metas.begin(),
                                   kernel_out_3_metas.end());
@@ -1514,9 +1504,6 @@ void embedding_grad_impl(const Tensor& x,
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->GetCompleteDims());
       meta_out.set_dtype(input_weight->dtype());
-      std::vector<phi::MetaTensor*> output_metas_for_compact;
-      output_metas_for_compact.push_back(&meta_out);
-      CheckAndDoCompact(output_metas_for_compact, "embedding_grad");
       using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::SelectedRows&,
