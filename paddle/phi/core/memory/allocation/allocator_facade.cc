@@ -255,6 +255,7 @@ class AllocatorFacadePrivate {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         allow_free_idle_chunk_ = allow_free_idle_chunk;
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
+          paddle::platform::CUDADeviceGuard guard(dev_id);
           InitAutoGrowthCUDAAllocator(phi::GPUPlace(dev_id),
                                       allow_free_idle_chunk_);
           PreAllocCUDAAllocator(phi::GPUPlace(dev_id));

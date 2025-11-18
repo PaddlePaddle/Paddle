@@ -136,6 +136,7 @@ void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
 }
 
 phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
+  std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
   size = AlignedSize(size, granularity_);
 
   CUdeviceptr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;

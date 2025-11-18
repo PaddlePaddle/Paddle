@@ -44,6 +44,7 @@ class CUDAVirtualMemAllocator : public Allocator {
 
  private:
   phi::GPUPlace place_;
+  std::once_flag once_flag_;
 
   CUdeviceptr virtual_mem_base_;
   size_t virtual_mem_size_;
