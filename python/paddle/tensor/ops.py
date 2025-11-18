@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from paddle._C_ops import (  # noqa: F401
     abs,
+    acosh,
     ceil,
     cos,
     exp,
