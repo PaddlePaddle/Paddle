@@ -72,8 +72,7 @@ void MultiEncoderXPUKernel(
                                     ? nullptr
                                     : max_seq_len.get_ptr()->data<int>();
   int64_t batch_size = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t seq_len = 1;
   int head_dim;
   if (x.dims().size() == 2) {
@@ -177,8 +176,7 @@ void MultiEncoderXPUKernel(
   xpu::Activation_t qkv_act(static_cast<xpu::Activation_t::act_enum>(act_type));
 
   int64_t batch = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   // matmul_size * layer_num
   if (seq_lod_data) {

@@ -67,16 +67,13 @@ void CrossAttentionXPUKernelImpl(
   }
 
   int64_t batch = input_q.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t max_q_len = input_q.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t max_kv_len = input_kv.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int max_seq_len = std::max(max_q_len, max_kv_len);
   int qkv_shape = 0;  // B x L x H x D

@@ -47,12 +47,10 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
                         DenseTensor *out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t rows = x.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t cols = x.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int r = 0;
   if (bias) {

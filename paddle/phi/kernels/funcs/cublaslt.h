@@ -249,15 +249,14 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                        const phi::DenseTensor& mat_b,
                        phi::DenseTensor* workspace,
                        phi::DenseTensor* out) {
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t m = mat_a.dims()[0];
 
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t k = mat_a.dims()[1];
 
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t n = mat_b.dims()[1];
-
 
   // init data structure
   cublasStatus_t status;

@@ -39,15 +39,18 @@ void WarpctcGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(logits_grad);
 
   if (logits_length.is_initialized()) {
-    // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
     int64_t max_seq_length = warpctcgrad.dims()[0];
-      // Tmax
-    // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+    // Tmax
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
     int64_t num_sequences = warpctcgrad.dims()[1];
-       // B
-    // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+    // B
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
     int64_t seq_width = warpctcgrad.dims()[2];
-           // D
+    // D
 
     // B
     auto logits_len_e = EigenTensor<int64_t, 1>::From(*logits_length);

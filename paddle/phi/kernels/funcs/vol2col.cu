@@ -138,28 +138,22 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
   int input_width =
       (data_layout != DataLayout::NHWC ? vol.dims()[3] : vol.dims()[2]);
   int64_t filter_depth = col->dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t filter_height = col->dims()[2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t filter_width = col->dims()[3];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t output_depth = col->dims()[4];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t output_height = col->dims()[5];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t output_width = col->dims()[6];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
@@ -366,28 +360,22 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
   int input_width =
       (data_layout != DataLayout::NHWC ? vol->dims()[3] : vol->dims()[2]);
   int64_t filter_depth = col.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t filter_height = col.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t filter_width = col.dims()[3];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t output_depth = col.dims()[4];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t output_height = col.dims()[5];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   int64_t output_width = col.dims()[6];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   bool paddings_size_is_6 = (paddings.size() == 6);
   int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];

@@ -50,7 +50,7 @@ void CrossEntropyOpKernel(const Context& dev_ctx,
     y_2d = phi::ReshapeToMatrix(*y, rank - 1);
   }
 
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t axis_dim = x.dims()[rank - 1];
 
   phi::funcs::CrossEntropyFunctor<Context, T>()(

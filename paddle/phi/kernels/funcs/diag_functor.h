@@ -113,7 +113,7 @@ DenseTensor BatchDiag(const Context& dev_ctx, const DenseTensor& x, int batch) {
     out_shape.push_back(x.dims()[i]);
   }
   out.Resize(common::make_ddim(out_shape));
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t order = x.dims()[num_dims - 1];
 
   int stride_out = order * order;

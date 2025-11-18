@@ -334,8 +334,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   auto place = dev_ctx.GetPlace();
 
   int64_t batch_size = label.numel();
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
 
   PADDLE_ENFORCE_LE(
       label.numel(),

@@ -32,7 +32,7 @@ void UnStackKernel(const Context &dev_ctx,
   auto dx = outs;
   if (axis < 0) axis += dy->dims().size();
 
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t n = dy->dims()[axis];
 
   std::vector<T *> dx_datas(n);  // NOLINT

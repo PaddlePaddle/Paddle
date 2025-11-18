@@ -1096,8 +1096,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   const auto& in_dims = input->dims();
   int64_t p_num = ps.numel();
   int64_t bs = in_dims[0];
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int vocab_size = in_dims[1];
   T* out_ptr = dev_ctx.template Alloc<T>(out);
   int64_t* ids_ptr = dev_ctx.template Alloc<int64_t>(ids);

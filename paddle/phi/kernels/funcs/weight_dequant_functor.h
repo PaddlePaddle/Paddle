@@ -367,10 +367,10 @@ void WeightDequantize(const Context& dev_ctx,
                       DenseTensor* out) {
   using DataType = typename PDDataTypeTraits<T>::DataType;
 
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t n = scale.dims()[0];
 
-  // TODO(large-tensor): downstream functors may still use int; guard until upgraded.
+  // TODO(large-tensor): downstream functors may still use int
   int64_t k = x.dims()[1];
 
   dim3 block(512);
