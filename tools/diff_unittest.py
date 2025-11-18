@@ -44,7 +44,7 @@ for i in origin:
 If you delete the unit test, such as commenting it out,
 please ask for approval of one RD below for passing CI:
 
-    - kolinwei(recommended) or zhouwei25
+    - kolinwei(recommended)
 '''
 if error:
     for each_diff in diffs:

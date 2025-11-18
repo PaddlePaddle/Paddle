@@ -42,7 +42,9 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx >= output_grad_numel) {
     return;
   }

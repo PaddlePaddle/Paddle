@@ -54,8 +54,8 @@ __global__ void SoftCrossEntropyKernel(T* Y,
   int64_t tid = threadIdx.x;
   T val(0);
 
-  int64_t idx = blockIdx.x * class_num + tid;
-  int64_t end = blockIdx.x * class_num + class_num;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * class_num + tid;
+  int64_t end = static_cast<int64_t>(blockIdx.x) * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
     val += phi::funcs::TolerableValue<T>()(phi::funcs::real_log(X[idx])) *
            label[idx];
@@ -122,8 +122,14 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   T* loss_data = dev_ctx.template Alloc<T>(out);
   const T* prob_data = prob->data<T>();
 
-  int batch_size = prob->dims()[0];
-  int class_num = prob->dims()[1];
+  int64_t batch_size = prob->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t class_num = prob->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   constexpr int kMaxBlockDim = 512;
 
   // big tensor currently not supported

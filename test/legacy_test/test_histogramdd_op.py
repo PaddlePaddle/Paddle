@@ -428,7 +428,7 @@ class TestHistogramddAPI_check_weights_type_error(TestHistogramddAPI):
             paddle.histogramdd(sample, weights=weights)
 
 
-class TestHistogramddAPI_sample_weights_shape_dismatch_error(
+class TestHistogramddAPI_sample_weights_shape_mismatch_error(
     TestHistogramddAPI
 ):
     def test_error(self):
@@ -447,7 +447,7 @@ class TestHistogramddAPI_sample_weights_shape_dismatch_error(
             paddle.histogramdd(sample, weights=weights)
 
 
-class TestHistogramddAPI_sample_weights_type_dismatch_error(TestHistogramddAPI):
+class TestHistogramddAPI_sample_weights_type_mismatch_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [  # float32

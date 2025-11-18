@@ -249,7 +249,7 @@ __device__ __forceinline__ void ReadData(T* dst,
                                          const T* __restrict__ src,
                                          int64_t num) {
   if (IsBoundary) {  // blockDim.x * NX > num
-    int64_t thread_offset = threadIdx.x * NX;
+    int64_t thread_offset = static_cast<int64_t>(threadIdx.x) * NX;
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
@@ -259,7 +259,8 @@ __device__ __forceinline__ void ReadData(T* dst,
   } else {  // blockDim,x * NX < num
     constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
     constexpr int kVectorsPerThread = NX / kVectorSize;
-    int64_t thread_offset = threadIdx.x * kVectorsPerThread;
+    int64_t thread_offset =
+        static_cast<int64_t>(threadIdx.x) * kVectorsPerThread;
 
     using VecType = details::VectorType<T, kVectorSize>;
     const VecType* vec_input = reinterpret_cast<const VecType*>(src);
@@ -557,7 +558,7 @@ __device__ __forceinline__ void WriteData(T* dst,
                                           T* __restrict__ src,
                                           int64_t num) {
   if (IsBoundary) {
-    int64_t thread_offset = threadIdx.x * NX;
+    int64_t thread_offset = static_cast<int64_t>(threadIdx.x) * NX;
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if ((thread_offset + idx) < num) {
@@ -569,7 +570,8 @@ __device__ __forceinline__ void WriteData(T* dst,
     constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
     constexpr int kVectorsPerThread = NX / kVectorSize;
 
-    int64_t thread_offset = threadIdx.x * kVectorsPerThread;
+    int64_t thread_offset =
+        static_cast<int64_t>(threadIdx.x) * kVectorsPerThread;
     using VecType = details::VectorType<T, kVectorSize>;
     VecType* vec_dst = reinterpret_cast<VecType*>(dst);
     VecType vec_temp[kVectorsPerThread];
@@ -850,7 +852,7 @@ __device__ __forceinline__ void ReadDataBc(
 template <typename T, int NX, int NY>
 __device__ __forceinline__ void InitWithDataIndex(T* dst,
                                                   int64_t block_offset) {
-  int64_t thread_offset = block_offset + threadIdx.x * NX;
+  int64_t thread_offset = block_offset + static_cast<int64_t>(threadIdx.x) * NX;
 #pragma unroll
   for (int nx = 0; nx < NX; ++nx) {
     dst[nx] = static_cast<T>(thread_offset + nx);

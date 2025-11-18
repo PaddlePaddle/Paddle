@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -106,41 +107,41 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     out_w = (in_w - 1) * stride[2] + d_block_w
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
-    for n in range(in_n):
-        for d in range(in_d):
-            for i in range(in_h):
-                for j in range(in_w):
-                    for g in range(groups):
-                        input_masked = input_[
-                            n, g * sub_in_c : (g + 1) * sub_in_c, d, i, j
-                        ]  # (c)
-                        input_masked = np.reshape(
-                            input_masked, (sub_in_c, 1, 1, 1)
-                        )
-                        input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
+    for n, d, i, j, g in itertools.product(
+        range(in_n),
+        range(in_d),
+        range(in_h),
+        range(in_w),
+        range(groups),
+    ):
+        input_masked = input_[
+            n, g * sub_in_c : (g + 1) * sub_in_c, d, i, j
+        ]  # (c)
+        input_masked = np.reshape(input_masked, (sub_in_c, 1, 1, 1))
+        input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
 
-                        for k in range(f_out_c):
-                            tmp_out = np.sum(
-                                input_masked
-                                * filter_[
-                                    g * sub_in_c : (g + 1) * sub_in_c,
-                                    k,
-                                    :,
-                                    :,
-                                    :,
-                                ],
-                                axis=0,
-                            )
-                            d1, d2 = d * stride[0], d * stride[0] + d_block_d
-                            i1, i2 = i * stride[1], i * stride[1] + d_block_h
-                            j1, j2 = j * stride[2], j * stride[2] + d_block_w
-                            out[
-                                n,
-                                g * f_out_c + k,
-                                d1 : d2 : dilations[0],
-                                i1 : i2 : dilations[1],
-                                j1 : j2 : dilations[2],
-                            ] += tmp_out
+        for k in range(f_out_c):
+            tmp_out = np.sum(
+                input_masked
+                * filter_[
+                    g * sub_in_c : (g + 1) * sub_in_c,
+                    k,
+                    :,
+                    :,
+                    :,
+                ],
+                axis=0,
+            )
+            d1, d2 = d * stride[0], d * stride[0] + d_block_d
+            i1, i2 = i * stride[1], i * stride[1] + d_block_h
+            j1, j2 = j * stride[2], j * stride[2] + d_block_w
+            out[
+                n,
+                g * f_out_c + k,
+                d1 : d2 : dilations[0],
+                i1 : i2 : dilations[1],
+                j1 : j2 : dilations[2],
+            ] += tmp_out
 
     out = out[
         :,
