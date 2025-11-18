@@ -612,6 +612,87 @@ add_doc_and_signature(
     "def log2(x: Tensor, name: str | None = None, * , out: Tensor | None = None) -> Tensor",
 )
 add_doc_and_signature(
+    "log10",
+    r"""
+    Calculates the log to the base 10 of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \log_{10}x
+
+    Args:
+        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: The log to the base 10 of the input Tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # example 1: x is a float
+            >>> x_i = paddle.to_tensor([[1.0], [10.0]])
+            >>> res = paddle.log10(x_i)
+            >>> res
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.],
+             [1.]])
+
+            >>> # example 2: x is float32
+            >>> x_i = paddle.full(shape=[1], fill_value=10, dtype='float32')
+            >>> paddle.to_tensor(x_i)
+            >>> res = paddle.log10(x_i)
+            >>> res
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.])
+
+            >>> # example 3: x is float64
+            >>> x_i = paddle.full(shape=[1], fill_value=10, dtype='float64')
+            >>> paddle.to_tensor(x_i)
+            >>> res = paddle.log10(x_i)
+            >>> res
+            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [1.])
+    """,
+    "def log10(x: Tensor, name: str | None = None, * , out: Tensor | None = None) -> Tensor",
+)
+add_doc_and_signature(
+    "log1p",
+    r"""
+    Calculates the natural log of the given input tensor plus 1, element-wise.
+
+    .. math::
+
+        Out = \ln(x+1)
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: The natural log of the input Tensor plus 1 computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> data = paddle.to_tensor([[0], [1]], dtype='float32')
+            >>> res = paddle.log1p(data)
+            >>> res
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        ],
+             [0.69314718]])
+    """,
+    "def log1p(x: Tensor, name: str | None = None, * , out: Tensor | None = None) -> Tensor",
+)
+add_doc_and_signature(
     "matmul",
     """
     Applies matrix multiplication to two tensors. `matmul` follows
@@ -1780,6 +1861,40 @@ def cos(
 )
 
 add_doc_and_signature(
+    "cosh",
+    """
+    Cosh Activation Operator.
+
+    Input range `(-inf, inf)`, output range `(1, inf)`.
+
+    .. math::
+       out = \\frac{exp(x)+exp(-x)}{2}
+
+    Args:
+        x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. Output of Cosh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.cosh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.08107233, 1.02006674, 1.00500417, 1.04533851])
+    """,
+    "def cosh(x: Tensor, name: str | None = None, *, out: Tensor | None = None) -> Tensor",
+)
+
+add_doc_and_signature(
     "floor",
     """
     Floor Activation Operator. Computes floor of x element-wise.
@@ -2746,3 +2861,37 @@ def abs(
 # zhanrongrun
 
 # other
+add_doc_and_signature(
+    "asin",
+    f"""
+    Arcsine Operator.
+
+    .. math::
+        out = sin^{-1}(x)
+
+    Args:
+        x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Same shape and data type as input (integer types are autocasted into float32)
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.asin(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
+    """,
+    """
+def asin(
+    x: Tensor,
+    name: str | None = None
+) -> Tensor
+""",
+)

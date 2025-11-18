@@ -67,7 +67,9 @@ __global__ void ScatterCUDAKernel(const T* params,
                                   size_t slice_size) {
   int64_t num = index_size * slice_size;
   int64_t block_size = blockDim.x;
-  int64_t i = (blockIdx.x * block_size + threadIdx.x) * VecSize;
+  int64_t i = (static_cast<int64_t>(blockIdx.x) * block_size +
+               static_cast<int64_t>(threadIdx.x)) *
+              VecSize;
   for (; i < num; i += gridDim.x * block_size * VecSize) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i % slice_size;  // offset inside the slice
