@@ -2312,7 +2312,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Note: Whether use torch compatible version kernel.
  */
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
-                         false,
+                         true,
                          "Whether use torch compatible version kernel.");
 
 /**

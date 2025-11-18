@@ -1177,7 +1177,7 @@ class _ShardOptimizer(Optimizer):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
             if paddle.amp.is_use_master_grad():
-                os.environ["FLAGS_need_output_reshard"] = "true"
+                os.environ["FLAGS_need_output_reshard"] = "false"
                 for param in self._inner_opt._parameter_list:
                     self._shard_fn._register_hook_for_param_grad(param)
 
