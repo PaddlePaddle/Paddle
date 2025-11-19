@@ -372,25 +372,36 @@ class TestTensorRequiresGrad_(unittest.TestCase):
         self.assertFalse(y.requires_grad)
         self.assertTrue(y.stop_gradient)
 
+    def test_requires_grad_old_static_mode(self):
+        """Test requires_grad behavior in static mode"""
+        paddle.enable_static()
+        with paddle.pir_utils.OldIrGuard():
+            x = paddle.static.data(name='x', shape=[2, 3], dtype='float32')
+
+            # In static mode, variables also have stop_gradient=True by default
+            self.assertFalse(x.requires_grad)
+            self.assertTrue(x.stop_gradient)
+
+            # Test setting requires_grad in static mode
+            x.requires_grad_(True)
+            self.assertTrue(x.requires_grad)
+            self.assertFalse(x.stop_gradient)
+
     def test_requires_grad_static_mode(self):
         """Test requires_grad behavior in static mode"""
         paddle.enable_static()
 
-        try:
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(name='x', shape=[2, 3], dtype='float32')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name='x', shape=[2, 3], dtype='float32')
 
-                # In static mode, variables also have stop_gradient=True by default
-                self.assertFalse(x.requires_grad)
-                self.assertTrue(x.stop_gradient)
+            # In static mode, variables also have stop_gradient=True by default
+            self.assertFalse(x.requires_grad)
+            self.assertTrue(x.stop_gradient)
 
-                # Test setting requires_grad in static mode
-                x.requires_grad_(True)
-                self.assertTrue(x.requires_grad)
-                self.assertFalse(x.stop_gradient)
-
-        finally:
-            paddle.disable_static()
+            # Test setting requires_grad in static mode
+            x.requires_grad_(True)
+            self.assertTrue(x.requires_grad)
+            self.assertFalse(x.stop_gradient)
 
     def test_requires_grad_edge_cases(self):
         """Test edge cases for requires_grad"""
