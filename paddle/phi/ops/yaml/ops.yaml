@@ -2946,7 +2946,7 @@
   backward : interp_antialias_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : inverse
   args : (Tensor x)

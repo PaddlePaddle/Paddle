@@ -594,9 +594,9 @@ static void Interpolate2DCPUBwd(
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   double ratio_h =
-      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
   double ratio_w =
-      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   // TODO(zrr1999): to align xpu
   if (out_h <= 1) {
@@ -771,11 +771,11 @@ static void Interpolate3DCPUBwd(
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   double ratio_d =
-      funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
+      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
   double ratio_h =
-      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
   double ratio_w =
-      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolationGrad<T>(output_grad,

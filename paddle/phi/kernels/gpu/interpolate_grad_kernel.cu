@@ -53,7 +53,7 @@ __global__ void KeLinearInterpBw(T* in,
                                  const size_t output_h,
                                  const size_t output_w,
                                  const size_t num_channels,
-                                 const double ratio_w,
+                                 const float ratio_w,
                                  const bool align_corners,
                                  const int align_mode,
                                  const DataLayout data_layout) {
@@ -127,8 +127,8 @@ __global__ void KeNearestNeighborInterpNCHWBw(T* in,
                                               const size_t out_img_h,
                                               const size_t out_img_w,
                                               const size_t nc,
-                                              const double ratio_h,
-                                              const double ratio_w,
+                                              const float ratio_h,
+                                              const float ratio_w,
                                               const bool align_corners) {
   IndexType out_img_idx = threadIdx.x + blockIdx.x * blockDim.x;
   IndexType out_img_idy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -176,8 +176,8 @@ __global__ void KeNearestNeighborInterpBw(
     const size_t output_h,
     const size_t output_w,
     const size_t num_channels,
-    const double ratio_h,
-    const double ratio_w,
+    const float ratio_h,
+    const float ratio_w,
     const bool align_corners,
     funcs::FastDivModForInterpolate divmods) {
   int64_t nthreads = output_h * output_w;
@@ -260,8 +260,8 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
                                               const int64_t out_w,
                                               const int64_t n,
                                               const int64_t num_channels,
-                                              double ratio_h,
-                                              double ratio_w,
+                                              float ratio_h,
+                                              float ratio_w,
                                               const float align_type_value,
                                               bool is_nchw) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -365,8 +365,8 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
                                        const int64_t out_w,
                                        const int64_t n,
                                        const int64_t num_channels,
-                                       double ratio_h,
-                                       double ratio_w,
+                                       float ratio_h,
+                                       float ratio_w,
                                        const T* __restrict__ out,
                                        const float align_type_value) {
   int64_t index = threadIdx.x + static_cast<int64_t>(blockDim.x) * blockIdx.x;
@@ -499,8 +499,8 @@ __global__ void KeBilinearInterpBw(T* in,
                                    const int64_t n,
                                    const int64_t out_chw,
                                    const int64_t num_channels,
-                                   double ratio_h,
-                                   double ratio_w,
+                                   float ratio_h,
+                                   float ratio_w,
                                    const float align_type_value,
                                    funcs::FastDivModForInterpolate divmods) {
   int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -558,8 +558,8 @@ __global__ void KeBicubicInterpBw(T* in,
                                   const size_t output_h,
                                   const size_t output_w,
                                   const size_t num_channels,
-                                  const double ratio_h,
-                                  const double ratio_w,
+                                  const float ratio_h,
+                                  const float ratio_w,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   int64_t nthreads = output_h * output_w;
@@ -584,12 +584,12 @@ __global__ void KeBicubicInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<MT>(
+    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<float>(
         ratio_h, out_img_idy, align_corners);
     int64_t input_y = floorf(in_img_idy);
 
     const MT y_t = in_img_idy - input_y;
-    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<MT>(
+    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<float>(
         ratio_w, out_img_idx, align_corners);
     int64_t input_x = floorf(in_img_idx);
     const MT x_t = in_img_idx - input_x;
@@ -804,9 +804,9 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
                                             const size_t output_h,
                                             const size_t output_w,
                                             const size_t num_channels,
-                                            const double ratio_d,
-                                            const double ratio_h,
-                                            const double ratio_w,
+                                            const float ratio_d,
+                                            const float ratio_h,
+                                            const float ratio_w,
                                             const bool align_corners,
                                             const DataLayout data_layout) {
   int64_t nthreads = output_h * output_w;
@@ -944,7 +944,7 @@ static void Interpolate1DCUDABwd(
     return;
   }
 
-  double ratio_w = 0.f;
+  float ratio_w = 0.f;
   if (out_w > 1) {
     float new_scale_w = 0.f;
     new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
@@ -998,8 +998,8 @@ static void Interpolate2DCUDABwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  double scale_h = -1;
-  double scale_w = -1;
+  float scale_h = -1;
+  float scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -1083,10 +1083,10 @@ static void Interpolate2DCUDABwd(
   }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  double ratio_h =
-      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
-  double ratio_w =
-      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = in_h * in_w;
   int64_t out_hw = out_h * out_w;
@@ -1265,9 +1265,9 @@ static void Interpolate3DCUDABwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  double scale_d = -1;
-  double scale_h = -1;
-  double scale_w = -1;
+  float scale_d = -1;
+  float scale_h = -1;
+  float scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -1370,12 +1370,12 @@ static void Interpolate3DCUDABwd(
   }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  double ratio_d =
-      funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
-  double ratio_h =
-      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
-  double ratio_w =
-      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
+  float ratio_d =
+      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_dhw = in_d * in_h * in_w;
   int64_t out_dhw = out_d * out_h * out_w;

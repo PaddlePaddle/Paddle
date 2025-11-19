@@ -110,7 +110,7 @@ __global__ void KeLinearInterpFw(const T* in,
                                  const size_t output_h,
                                  const size_t output_w,
                                  const size_t num_channels,
-                                 const double ratio_w,
+                                 const float ratio_w,
                                  const bool align_corners,
                                  const int align_mode,
                                  const DataLayout data_layout) {
@@ -263,8 +263,8 @@ __global__ void KeBilinearInterpFw(const T* in,
                                    const size_t output_h,
                                    const size_t output_w,
                                    const size_t num_channels,
-                                   const double ratio_h,
-                                   const double ratio_w,
+                                   const float ratio_h,
+                                   const float ratio_w,
                                    const bool align_corners,
                                    funcs::FastDivModForInterpolate divmods) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -286,9 +286,9 @@ __global__ void KeBilinearInterpFw(const T* in,
     size_t in_img_idx, in_img_idy, h_id, w_id;
     MT h1lambda, w1lambda, h2lambda, w2lambda;
 
-    MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
+    MT src_w = funcs::AreaPixelComputeSourceIndex<float>(
         ratio_w, out_img_idx, align_corners);
-    MT src_h = funcs::AreaPixelComputeSourceIndex<MT>(
+    MT src_h = funcs::AreaPixelComputeSourceIndex<float>(
         ratio_h, out_img_idy, align_corners);
 
     PreCalculatorForLinearInterpInputIndex(
@@ -319,8 +319,8 @@ __global__ void KeInterpAAFw(const T* in,
                              const size_t out_img_h,
                              const size_t out_img_w,
                              const size_t nc,
-                             const double ratio_h,
-                             const double ratio_w,
+                             const float ratio_h,
+                             const float ratio_w,
                              const InterpFilter& interp_filter) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
@@ -396,8 +396,8 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
                                        const size_t out_img_h,
                                        const size_t out_img_w,
                                        const size_t nc,
-                                       const double ratio_h,
-                                       const double ratio_w,
+                                       const float ratio_h,
+                                       const float ratio_w,
                                        const bool align_corners) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   size_t out_img_idx =
@@ -410,9 +410,9 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
   size_t in_img_idx, in_img_idy, h_id, w_id;
   MT h1lambda, w1lambda, h2lambda, w2lambda;
 
-  MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
+  MT src_w = funcs::AreaPixelComputeSourceIndex<float>(
       ratio_w, out_img_idx, align_corners);
-  MT src_h = funcs::AreaPixelComputeSourceIndex<MT>(
+  MT src_h = funcs::AreaPixelComputeSourceIndex<float>(
       ratio_h, out_img_idy, align_corners);
 
   PreCalculatorForLinearInterpInputIndex(
@@ -467,8 +467,8 @@ __global__ void KeBicubicInterpFw(const T* in,
                                   const size_t output_h,
                                   const size_t output_w,
                                   const size_t num_channels,
-                                  const double ratio_h,
-                                  const double ratio_w,
+                                  const float ratio_h,
+                                  const float ratio_w,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   size_t nthreads = output_h * output_w;
@@ -494,12 +494,12 @@ __global__ void KeBicubicInterpFw(const T* in,
       channel_id = tid % num_channels;
     }
 
-    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<MT>(
+    MT in_img_idy = funcs::AreaPixelComputeSourceIndex<float>(
         ratio_h, out_img_idy, align_corners);
     int64_t input_y = floorf(in_img_idy);
     const auto y_t = static_cast<MT>(in_img_idy - input_y);
 
-    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<MT>(
+    MT in_img_idx = funcs::AreaPixelComputeSourceIndex<float>(
         ratio_w, out_img_idx, align_corners);
     int64_t input_x = floorf(in_img_idx);
     const auto x_t = static_cast<MT>(in_img_idx - input_x);
@@ -583,9 +583,9 @@ __global__ void KeTrilinearInterpFw(const T* in,
                                     const size_t output_h,
                                     const size_t output_w,
                                     const size_t num_channels,
-                                    const double ratio_d,
-                                    const double ratio_h,
-                                    const double ratio_w,
+                                    const float ratio_d,
+                                    const float ratio_h,
+                                    const float ratio_w,
                                     const bool align_corners,
                                     const int align_mode,
                                     const DataLayout data_layout) {
@@ -844,7 +844,7 @@ static void Interpolate1DCUDAFwd(
     return;
   }
 
-  double ratio_w = 0.f;
+  float ratio_w = 0.f;
   if (out_w > 1) {
     float new_scale_w = 0.f;
     new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
@@ -900,8 +900,8 @@ static void Interpolate2DCUDAFwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  double scale_w = -1;
-  double scale_h = -1;
+  float scale_w = -1;
+  float scale_h = -1;
   if (size_tensor && size_tensor->size() > 0) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
@@ -993,10 +993,10 @@ static void Interpolate2DCUDAFwd(
   }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  double ratio_h =
-      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
-  double ratio_w =
-      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = static_cast<int64_t>(in_h) * in_w;
   int64_t out_hw = static_cast<int64_t>(out_h) * out_w;
@@ -1143,8 +1143,8 @@ static void InterpolateAA2DCUDAFwd(
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  double scale_w = -1;
-  double scale_h = -1;
+  float scale_w = -1;
+  float scale_h = -1;
   if (size_tensor && size_tensor->size() > 0) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
@@ -1236,10 +1236,10 @@ static void InterpolateAA2DCUDAFwd(
   }
 
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  double ratio_h =
-      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
-  double ratio_w =
-      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_hw = static_cast<int64_t>(in_h) * in_w;
   int64_t out_hw = static_cast<int64_t>(out_h) * out_w;
@@ -1497,11 +1497,11 @@ static void Interpolate3DCUDAFwd(
     return;
   }
 
-  double ratio_d =
+  float ratio_d =
       funcs::AreaPixelComputeScale<double>(in_d, out_d, align_corners, scale_d);
-  double ratio_h =
+  float ratio_h =
       funcs::AreaPixelComputeScale<double>(in_h, out_h, align_corners, scale_h);
-  double ratio_w =
+  float ratio_w =
       funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
 
   int64_t in_dhw = in_d * in_h * in_w;

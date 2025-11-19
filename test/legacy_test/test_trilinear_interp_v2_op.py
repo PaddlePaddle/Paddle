@@ -185,7 +185,7 @@ def trilinear_interp_np(
             if out_size <= 1:
                 return 0.0
             return (in_size - 1.0) / (out_size - 1.0)
-        return 1.0 / scale if scale > 0 else 1.0 * in_size / out_size
+        return 1.0 / scale if scale > 0 else in_size / out_size
 
     ratio_d = compute_ratio(in_d, out_d, scale_d, align_corners)
     ratio_h = compute_ratio(in_h, out_h, scale_h, align_corners)
@@ -933,7 +933,7 @@ class TestTrilinearInterp_attr_tensor_Case1(TestTrilinearInterpOp_attr_tensor):
         self.out_h = 16
         self.out_w = 8
         self.scale = 0.3
-        self.out_size = [14, 4, 4]
+        self.out_size = [12, 4, 4]
         self.align_corners = True
         self.align_mode = 1
 
