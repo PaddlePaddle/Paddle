@@ -2425,6 +2425,7 @@ def get_setup_parameters():
         and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
+        packages.extend(['paddle.distributed.communication.flash_ep'])
     if (
         env_dict.get("WITH_GPU") == 'ON'
         and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
