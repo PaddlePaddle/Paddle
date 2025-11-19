@@ -25,6 +25,24 @@ def use_torch_inside_inner_function():
     return torch.sin(torch.tensor([0.0, 1.0, 2.0])).numpy()
 
 
+class TestTorchProxyBlockedModule(unittest.TestCase):
+    def test_blocked_module(self):
+        with paddle.compat.use_torch_proxy_guard():
+            with self.assertRaises(ModuleNotFoundError):
+                pass
+
+            with self.assertRaises(AttributeError):
+                import torch_proxy_blocked_module
+
+            paddle.compat.extend_torch_proxy_blocked_modules(
+                {"torch_proxy_blocked_module"}
+            )
+            import torch_proxy_blocked_module
+
+            # Use torch specific function out of execute module stage
+            torch_proxy_blocked_module.use_torch_specific_fn()
+
+
 class TestTorchProxy(unittest.TestCase):
     def test_enable_torch_proxy(self):
         with self.assertRaises(ModuleNotFoundError):

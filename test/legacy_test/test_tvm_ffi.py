@@ -14,6 +14,10 @@
 
 from __future__ import annotations
 
+import paddle
+
+paddle.compat.enable_torch_proxy()
+
 import platform
 import unittest
 from typing import TYPE_CHECKING
