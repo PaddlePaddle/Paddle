@@ -2269,10 +2269,6 @@ def flashmask_attention(
 
         if "xpu" in paddle.get_device():
             fa_version = 2
-        elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
-            "FLAGS_cudnn_deterministic"
-        ]:
-            fa_version = 2
         else:
             fa_version = paddle.base.framework.get_flags(
                 ["FLAGS_flash_attn_version"]
