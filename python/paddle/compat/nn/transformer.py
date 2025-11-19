@@ -272,6 +272,177 @@ class MultiheadAttention(nn.Layer):
             pad_tensor = paddle.zeros(pad_shape, dtype=mask.dtype)
         return paddle.concat([mask, pad_tensor], axis=-1)
 
+    def _project_qkv(
+        self, query: Tensor, key: Tensor, value: Tensor
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        if self._qkv_same_embed_dim:
+            if id(query) == id(key) and id(key) == id(value):
+                qkv = F.linear(query, self.in_proj_weight.T, self.in_proj_bias)
+                q, k, v = qkv.split(3, axis=-1)
+            else:
+                q_w, k_w, v_w = self.in_proj_weight.chunk(3, axis=0)
+                q_b, k_b, v_b = (
+                    self.in_proj_bias.chunk(3, axis=0)
+                    if self.in_proj_bias is not None
+                    else (None,) * 3
+                )
+                q = F.linear(query, q_w.T, q_b)
+                k = F.linear(key, k_w.T, k_b)
+                v = F.linear(value, v_w.T, v_b)
+        else:
+            q = F.linear(query, self.q_proj_weight.T, self.q_proj_bias)
+            k = F.linear(key, self.k_proj_weight.T, self.k_proj_bias)
+            v = F.linear(value, self.v_proj_weight.T, self.v_proj_bias)
+        return q, k, v
+
+    def _prepare_qkv_heads(
+        self,
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        batch_size: int,
+        target_seq_len: int,
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        if self.add_bias_kv:
+            k = paddle.concat(
+                [k, self.bias_k.expand([batch_size, -1, -1])], axis=1
+            )
+            v = paddle.concat(
+                [v, self.bias_v.expand([batch_size, -1, -1])], axis=1
+            )
+
+        q = q.reshape(
+            [batch_size, target_seq_len, self.num_heads, self.head_dim]
+        ).transpose([0, 2, 1, 3])
+
+        current_src_len = k.shape[1]
+        k = k.reshape(
+            [batch_size, current_src_len, self.num_heads, self.head_dim]
+        ).transpose([0, 2, 1, 3])
+        v = v.reshape(
+            [batch_size, current_src_len, self.num_heads, self.head_dim]
+        ).transpose([0, 2, 1, 3])
+
+        if self.add_zero_attn:
+            zeros = paddle.zeros(
+                [batch_size, self.num_heads, 1, self.head_dim], dtype=k.dtype
+            )
+            k = paddle.concat([k, zeros], axis=2)
+            v = paddle.concat([v, zeros], axis=2)
+
+        return q, k, v
+
+    def _prepare_attn_mask(
+        self,
+        attn_mask: Tensor | None,
+        key_padding_mask: Tensor | None,
+        target_seq_len: int,
+        src_len_before_bias: int,
+        dtype: DTypeLike,
+        batch_size: int,
+        is_causal: bool,
+        can_use_sdpa: bool,
+    ) -> Tensor | None:
+        should_auto_gen_causal = is_causal and (not can_use_sdpa)
+        final_mask = None
+
+        if should_auto_gen_causal:
+            final_mask = paddle.triu(
+                paddle.ones(
+                    [target_seq_len, src_len_before_bias], dtype=paddle.bool
+                ),
+                diagonal=1,
+            )
+            if self.add_bias_kv:
+                final_mask = self._pad_mask(final_mask, pad_amt=1)
+            if self.add_zero_attn:
+                final_mask = self._pad_mask(final_mask, pad_amt=1)
+
+        if attn_mask is not None:
+            if attn_mask.dim() == 2:
+                user_mask = attn_mask
+            elif attn_mask.dim() == 3:
+                user_mask = attn_mask.reshape(
+                    [batch_size, self.num_heads, target_seq_len, -1]
+                )
+            else:
+                raise ValueError(f"attn_mask dim error: {attn_mask.dim()}")
+
+            if self.add_bias_kv:
+                user_mask = self._pad_mask(user_mask)
+            if self.add_zero_attn:
+                user_mask = self._pad_mask(user_mask)
+
+            final_mask = user_mask
+
+        if key_padding_mask is not None:
+            kp_mask = key_padding_mask.unsqueeze(1).unsqueeze(2)
+
+            if self.add_bias_kv:
+                kp_mask = self._pad_mask(kp_mask)
+            if self.add_zero_attn:
+                kp_mask = self._pad_mask(kp_mask)
+
+            final_mask = (
+                kp_mask
+                if final_mask is None
+                else self._combine_masks(final_mask, kp_mask, dtype=dtype)
+            )
+
+        return final_mask
+
+    def _attention_core(
+        self,
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        final_mask: Tensor | None,
+        need_weights: bool,
+        is_causal: bool,
+        can_use_sdpa: bool,
+    ) -> tuple[Tensor, Tensor | None]:
+        batch_size, _, target_seq_len, _ = q.shape
+
+        if can_use_sdpa:
+            sdpa_is_causal = is_causal if final_mask is None else False
+            if final_mask is not None and final_mask.dtype == paddle.bool:
+                final_mask = self._convert_bool_mask_to_float(
+                    final_mask, q.dtype
+                )
+
+            attn_output = F.scaled_dot_product_attention(
+                q.transpose([0, 2, 1, 3]),
+                k.transpose([0, 2, 1, 3]),
+                v.transpose([0, 2, 1, 3]),
+                attn_mask=final_mask,
+                dropout_p=self.dropout if self.training else 0.0,
+                is_causal=sdpa_is_causal,
+                training=self.training,
+            )
+            attn_output = attn_output.reshape(
+                [batch_size, target_seq_len, self.embed_dim]
+            )
+            return attn_output, None
+        else:
+            scores = paddle.matmul(q, k, transpose_y=True)
+            scores = scores / (self.head_dim**0.5)
+
+            if final_mask is not None:
+                if final_mask.dtype == paddle.bool:
+                    final_mask = self._convert_bool_mask_to_float(
+                        final_mask, scores.dtype
+                    )
+                scores = scores + final_mask
+
+            weights = F.softmax(scores, axis=-1)
+            weights = F.dropout(weights, self.dropout, training=self.training)
+
+            ctx = paddle.matmul(weights, v)
+            attn_output = ctx.transpose([0, 2, 1, 3]).reshape(
+                [batch_size, target_seq_len, self.embed_dim]
+            )
+            return attn_output, weights if need_weights else None
+
     def forward(
         self,
         query: paddle.Tensor,
@@ -333,168 +504,45 @@ class MultiheadAttention(nn.Layer):
             value = value.transpose([1, 0, 2])
 
         batch_size, target_seq_len, _ = query.shape
-        source_seq_len = key.shape[1]
-        if self._qkv_same_embed_dim:
-            if id(query) == id(key) and id(key) == id(value):
-                qkv = F.linear(query, self.in_proj_weight.T, self.in_proj_bias)
-                q, k, v = qkv.split(3, axis=-1)
-            else:
-                q_w, k_w, v_w = self.in_proj_weight.chunk(3, axis=0)
-                q_b, k_b, v_b = (
-                    self.in_proj_bias.chunk(3, axis=0)
-                    if self.in_proj_bias is not None
-                    else (None,) * 3
-                )
-                q = F.linear(query, q_w.T, q_b)
-                k = F.linear(
-                    key,
-                    k_w.T,
-                    k_b,
-                )
-                v = F.linear(
-                    value,
-                    v_w.T,
-                    v_b,
-                )
-        else:
-            q = F.linear(query, self.q_proj_weight.T, self.q_proj_bias)
-            k = F.linear(key, self.k_proj_weight.T, self.k_proj_bias)
-            v = F.linear(value, self.v_proj_weight.T, self.v_proj_bias)
-
         src_len_before_bias = key.shape[1]
-        if self.add_bias_kv:
-            k = paddle.concat(
-                [k, self.bias_k.expand([batch_size, -1, -1])], axis=1
-            )
-            v = paddle.concat(
-                [v, self.bias_v.expand([batch_size, -1, -1])], axis=1
-            )
 
-            if attn_mask is not None:
-                attn_mask = self._pad_mask(attn_mask)
-            if key_padding_mask is not None:
-                key_padding_mask = self._pad_mask(key_padding_mask)
-            source_seq_len += 1
+        q, k, v = self._project_qkv(query, key, value)
 
-        q = q.reshape(
-            [batch_size, target_seq_len, self.num_heads, self.head_dim]
-        ).transpose([0, 2, 1, 3])
-        k = k.reshape(
-            [batch_size, source_seq_len, self.num_heads, self.head_dim]
-        ).transpose([0, 2, 1, 3])
-        v = v.reshape(
-            [batch_size, source_seq_len, self.num_heads, self.head_dim]
-        ).transpose([0, 2, 1, 3])
-
-        if self.add_zero_attn:
-            zeros = paddle.zeros(
-                [batch_size, self.num_heads, 1, self.head_dim], dtype=k.dtype
-            )
-            k = paddle.concat([k, zeros], axis=2)
-            v = paddle.concat([v, zeros], axis=2)
-
-            if attn_mask is not None:
-                attn_mask = self._pad_mask(attn_mask)
-            if key_padding_mask is not None:
-                key_padding_mask = self._pad_mask(key_padding_mask)
-
-            source_seq_len += 1
+        q, k, v = self._prepare_qkv_heads(q, k, v, batch_size, target_seq_len)
 
         can_use_sdpa = not need_weights and q.dtype in [
             paddle.float16,
             paddle.bfloat16,
         ]
-        # TODO(littleherozzzx): sdpa has computation error for certain case, force math implementation temporarily, expected to be fixed in https://github.com/PaddlePaddle/Paddle/pull/76446
+
+        # TODO(littleherozzzx): sdpa has computation error for certain case,
+        # force math implementation temporarily, expected to be fixed in
+        # https://github.com/PaddlePaddle/Paddle/pull/76446
         can_use_sdpa = False
 
-        should_auto_gen_causal = is_causal
-        if not can_use_sdpa:
-            should_auto_gen_causal = False
+        final_mask = self._prepare_attn_mask(
+            attn_mask=attn_mask,
+            key_padding_mask=key_padding_mask,
+            target_seq_len=target_seq_len,
+            src_len_before_bias=src_len_before_bias,
+            dtype=q.dtype,
+            batch_size=batch_size,
+            is_causal=is_causal,
+            can_use_sdpa=can_use_sdpa,
+        )
 
-        final_mask = None
-        if should_auto_gen_causal:
-            raw_causal_mask = paddle.triu(
-                paddle.ones(
-                    [target_seq_len, src_len_before_bias], dtype=paddle.bool
-                ),
-                diagonal=1,
-            )
-            final_mask = raw_causal_mask
-
-            if self.add_bias_kv:
-                final_mask = self._pad_mask(final_mask, pad_amt=1)
-            if self.add_zero_attn:
-                final_mask = self._pad_mask(final_mask, pad_amt=1)
-
-        if attn_mask is not None:
-            if attn_mask.dim() == 2:
-                final_mask = attn_mask
-            elif attn_mask.dim() == 3:
-                final_mask = attn_mask.reshape(
-                    [batch_size, self.num_heads, target_seq_len, source_seq_len]
-                )
-            else:
-                raise ValueError(f"attn_mask dim error: {attn_mask.dim()}")
-
-        if key_padding_mask is not None:
-            kp_mask = key_padding_mask.unsqueeze(1).unsqueeze(2)
-            final_mask = (
-                kp_mask
-                if final_mask is None
-                else self._combine_masks(final_mask, kp_mask, dtype=q.dtype)
-            )
-
-        attn_weights = None
-
-        sdpa_is_causal = is_causal if final_mask is None else False
-        if can_use_sdpa:
-            if final_mask is not None and final_mask.dtype == paddle.bool:
-                final_mask = self._convert_bool_mask_to_float(
-                    final_mask, q.dtype
-                )
-            attn_output = F.scaled_dot_product_attention(
-                q.transpose([0, 2, 1, 3]),
-                k.transpose([0, 2, 1, 3]),
-                v.transpose([0, 2, 1, 3]),
-                attn_mask=final_mask,
-                dropout_p=self.dropout if self.training else 0.0,
-                is_causal=sdpa_is_causal,
-                training=self.training,
-            )
-            attn_output = attn_output.reshape(
-                [batch_size, target_seq_len, self.embed_dim]
-            )
-        else:
-            scores = paddle.matmul(q, k, transpose_y=True)
-            scores = scores / (self.head_dim**0.5)
-
-            if final_mask is not None:
-                if final_mask.dtype == paddle.bool:
-                    final_mask = self._convert_bool_mask_to_float(
-                        final_mask, scores.dtype
-                    )
-                scores = scores + final_mask
-
-            weights = F.softmax(scores, axis=-1)
-            weights = F.dropout(weights, self.dropout, training=self.training)
-            attn_weights = weights
-
-            ctx = paddle.matmul(weights, v)
-
-            attn_output = ctx.transpose([0, 2, 1, 3]).reshape(
-                [batch_size, target_seq_len, self.embed_dim]
-            )
+        attn_output, attn_weights = self._attention_core(
+            q, k, v, final_mask, need_weights, is_causal, can_use_sdpa
+        )
 
         attn_output = self.out_proj(attn_output)
 
         if not self.batch_first:
             attn_output = attn_output.transpose([1, 0, 2])
 
-        if need_weights:
+        if need_weights and attn_weights is not None:
             if average_attn_weights:
                 attn_weights = attn_weights.mean(axis=1)
-        else:
-            attn_weights = None
 
         if not is_batched:
             attn_output = attn_output.squeeze(0 if self.batch_first else 1)
