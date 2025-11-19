@@ -20,7 +20,6 @@ from .pir_attrs_serializer import PirAttrsSerializer
 
 
 class FacadeOp:
-
     def __init__(self):
         self.custom_op_name_ = self.custom_op_name()
         self.infer_meta_ = self._check_to_str_pair(self.infer_meta())

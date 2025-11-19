@@ -98,21 +98,21 @@ PD_REGISTER_KERNEL(matmul,
                    ALL_LAYOUT,
                    phi::MatmulKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten,
                    XPU,
                    ALL_LAYOUT,
                    phi::MatmulWithFlattenKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(legacy_matmul,
                    XPU,
                    ALL_LAYOUT,
                    phi::LegacyMatmulKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

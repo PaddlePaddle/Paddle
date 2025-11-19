@@ -71,7 +71,12 @@ XpuEventResourcePool::XpuEventResourcePool() {
 
     auto deleter = [dev_idx](xpuEventHandle event) {
       phi::backends::xpu::XPUDeviceGuard guard(dev_idx);
-      xpu_event_destroy(event);
+      if (xpu_event_query(event) == XPU_SUCCESS) {
+        xpu_event_destroy(event);
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "event not finished, can not destroy"));
+      }
     };
 
     pool_.emplace_back(ResourcePool<XpuEventObject>::Create(creator, deleter));

@@ -39,9 +39,9 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
             if kernel_params == api.infer_meta['param']:
                 return '', '', register_code
 
-            assert len(api.infer_meta['param']) <= len(
-                kernel_params
-            ), f"{api.api} api: Parameters error. The params of infer_meta should be a subset of kernel params."
+            assert len(api.infer_meta['param']) <= len(kernel_params), (
+                f"{api.api} api: Parameters error. The params of infer_meta should be a subset of kernel params."
+            )
 
             tensor_type_map = {
                 'const Tensor&': 'const MetaTensor&',

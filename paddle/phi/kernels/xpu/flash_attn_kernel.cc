@@ -213,7 +213,8 @@ void FlashAttnKernelBase(
                    : 0,                           // flash_mask_head_num
       nullptr,                                    // flashmask_maxmin
       is_flashmask ? flashmask_stream : nullptr,  // side_stream
-      0                                           // fixlen_batch_num
+      0,                                          // fixlen_batch_num
+      false                                       // unpadded_lse
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
   if (is_flashmask && flashmask_stream != nullptr) {
@@ -231,14 +232,14 @@ class XPUTypeUnpadded {
   using Type = T;
 };
 template <>
-class XPUTypeUnpadded<phi::dtype::float16> {
+class XPUTypeUnpadded<phi::float16> {
  public:
-  using Type = XPUTypeTrait<phi::dtype::float16>::Type;
+  using Type = XPUTypeTrait<phi::float16>::Type;
 };
 template <>
-class XPUTypeUnpadded<phi::dtype::bfloat16> {
+class XPUTypeUnpadded<phi::bfloat16> {
  public:
-  using Type = XPUTypeTrait<phi::dtype::float16>::Type;
+  using Type = XPUTypeTrait<phi::float16>::Type;
 };
 #endif
 
@@ -301,7 +302,7 @@ void FlashAttnUnpaddedKernel(
   }
 
   using XPUType = typename XPUTypeUnpadded<T>::Type;
-  if (std::is_same<T, phi::dtype::bfloat16>::value) {
+  if (std::is_same<T, phi::bfloat16>::value) {
     PADDLE_THROW(common::errors::Unimplemented(
         "xpu2 unsupported bfloat16 type in flash attention op."));
   }
@@ -461,6 +462,21 @@ void FlashAttnKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(k.dims().size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(v.dims().size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(out->dims().size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
 
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];
@@ -601,8 +617,8 @@ PD_REGISTER_KERNEL(flash_attn_unpadded,
                    ALL_LAYOUT,
                    phi::FlashAttnUnpaddedKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetBackend(phi::Backend::CPU);  // cu_seqlens_q
   kernel->InputAt(4).SetBackend(phi::Backend::CPU);  // cu_seqlens_k
   kernel->InputAt(5).SetBackend(
@@ -613,9 +629,9 @@ PD_REGISTER_KERNEL(flash_attn,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlashAttnKernel,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(3).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -624,8 +640,8 @@ PD_REGISTER_KERNEL(flashmask_attention,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlashMaskKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(4).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

@@ -63,7 +63,6 @@ IfInstruction::IfInstruction(size_t id,
                  common::errors::PreconditionNotMet(
                      "Cond instruction only support if op"));
   auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
-  op_ = op;
 
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
@@ -119,7 +118,7 @@ IfInstruction::IfInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
     if (value.use_count() > 0) {
-      VLOG(6) << "value " << i << " use conutn != 0";
+      VLOG(6) << "value " << i << " use count != 0";
       is_last_op = false;
     }
   }

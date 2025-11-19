@@ -23,7 +23,7 @@ namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
-void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph) const {
+void MatmulElementwiseAddONEDNNFusePass::ApplyImpl(Graph* graph) const {
   auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
   auto matmul_as_x = {true, false};
 
@@ -33,7 +33,7 @@ void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph) const {
     }
 }
 
-void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
+void MatmulElementwiseAddONEDNNFusePass::FuseMatmulElementwiseAdd(
     Graph* graph, const std::string& matmul_type, bool matmul_as_x) const {
   const std::string fusion_mode = matmul_as_x ? "x" : "y";
   const auto name_scope = matmul_type + "_elementwise_add_as_" + fusion_mode;
@@ -87,7 +87,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
   }
 }
 
-MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
+MatmulElementwiseAddONEDNNFusePass::MatmulElementwiseAddONEDNNFusePass() {
   AddOpCompat(OpCompat("matmul"))
       .AddInput("X")
       .IsTensor()
@@ -164,7 +164,7 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
 }  // namespace paddle::framework::ir
 
 REGISTER_PASS(matmul_elementwise_add_onednn_fuse_pass,
-              paddle::framework::ir::MatmulElementwiseAddMKLDNNFusePass);
+              paddle::framework::ir::MatmulElementwiseAddONEDNNFusePass);
 REGISTER_PASS_CAPABILITY(matmul_elementwise_add_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()

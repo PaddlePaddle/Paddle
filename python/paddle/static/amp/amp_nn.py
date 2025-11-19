@@ -132,13 +132,13 @@ def update_loss_scaling(
             'update_loss_scaling',
         )
         if e.dtype in [paddle.float16, paddle.bfloat16]:
-            assert (
-                prev_loss_scaling.dtype == paddle.float32
-            ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16 or bfloat16."
+            assert prev_loss_scaling.dtype == paddle.float32, (
+                "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16 or bfloat16."
+            )
         else:
-            assert (
-                prev_loss_scaling.dtype == e.dtype
-            ), "The dtype of prev_loss_scaling should be equal to the dtype of x."
+            assert prev_loss_scaling.dtype == e.dtype, (
+                "The dtype of prev_loss_scaling should be equal to the dtype of x."
+            )
 
     helper = LayerHelper("update_loss_scaling", **locals())
 

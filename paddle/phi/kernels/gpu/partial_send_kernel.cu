@@ -19,7 +19,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/gpu/partial_send_kernel.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
@@ -35,7 +35,7 @@ void PartialSendKernel(const Context& dev_ctx,
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
   auto x = &x_in;
-  int numel = x->numel();
+  int64_t numel = x->numel();
 
   PADDLE_ENFORCE_GE(
       peer,
@@ -108,10 +108,10 @@ PD_REGISTER_KERNEL(partial_send,
                    phi::PartialSendKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(partial_send,
                    GPU,
@@ -121,5 +121,5 @@ PD_REGISTER_KERNEL(partial_send,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

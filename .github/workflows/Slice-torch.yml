@@ -1,4 +1,4 @@
-name: Slice-baseline
+name: Slice-baseline-torch
 
 on:
   workflow_dispatch:

@@ -31,8 +31,8 @@ void SpectralNormGradKernel(const Context& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
-  const int h = u.dims()[0];
-  const int w = v.dims()[0];
+  const int64_t h = u.dims()[0];
+  const int64_t w = v.dims()[0];
 
   DenseTensor weight_mat, out_grad_mat;
   auto dims = weight.dims();

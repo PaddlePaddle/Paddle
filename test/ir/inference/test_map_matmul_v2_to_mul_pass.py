@@ -29,15 +29,19 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # cpu
         config = self.create_inference_config(use_gpu=False)
-        yield config, [
-            "mul",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["mul"],
+            (1e-5, 1e-5),
+        )
 
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, [
-            "mul",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["mul"],
+            (1e-5, 1e-5),
+        )
 
         # TRT
         # config = self.create_trt_inference_config()
@@ -56,10 +60,6 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             if predictor_config.tensorrt_engine_enabled():
                 # On 3080, the results of MatMul and Mul are different
                 return True
-
-                x_shape = list(program_config.inputs["matmul_x"].shape)
-                if len(x_shape) > 5:
-                    return True
             return False
 
         self.add_ignore_check_case(
@@ -112,7 +112,7 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=100,
             passes=["gpu_cpu_map_matmul_v2_to_mul_pass"],

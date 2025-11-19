@@ -133,18 +133,18 @@ class Conll05st(Dataset):
     ):
         self.data_file = data_file
         if self.data_file is None:
-            assert (
-                download
-            ), "data_file is not set and downloading automatically is disabled"
+            assert download, (
+                "data_file is not set and downloading automatically is disabled"
+            )
             self.data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'conll05st', download
             )
 
         self.word_dict_file = word_dict_file
         if self.word_dict_file is None:
-            assert (
-                download
-            ), "word_dict_file is not set and downloading automatically is disabled"
+            assert download, (
+                "word_dict_file is not set and downloading automatically is disabled"
+            )
             self.word_dict_file = _check_exists_and_download(
                 word_dict_file,
                 WORDDICT_URL,
@@ -155,9 +155,9 @@ class Conll05st(Dataset):
 
         self.verb_dict_file = verb_dict_file
         if self.verb_dict_file is None:
-            assert (
-                download
-            ), "verb_dict_file is not set and downloading automatically is disabled"
+            assert download, (
+                "verb_dict_file is not set and downloading automatically is disabled"
+            )
             self.verb_dict_file = _check_exists_and_download(
                 verb_dict_file,
                 VERBDICT_URL,
@@ -168,9 +168,9 @@ class Conll05st(Dataset):
 
         self.target_dict_file = target_dict_file
         if self.target_dict_file is None:
-            assert (
-                download
-            ), "target_dict_file is not set and downloading automatically is disabled"
+            assert download, (
+                "target_dict_file is not set and downloading automatically is disabled"
+            )
             self.target_dict_file = _check_exists_and_download(
                 target_dict_file,
                 TRGDICT_URL,
@@ -181,9 +181,9 @@ class Conll05st(Dataset):
 
         self.emb_file = emb_file
         if self.emb_file is None:
-            assert (
-                download
-            ), "emb_file is not set and downloading automatically is disabled"
+            assert download, (
+                "emb_file is not set and downloading automatically is disabled"
+            )
             self.emb_file = _check_exists_and_download(
                 emb_file, EMB_URL, EMB_MD5, 'conll05st', download
             )
@@ -293,7 +293,9 @@ class Conll05st(Dataset):
         wf.close()
         tf.close()
 
-    def __getitem__(self, idx: int) -> tuple[
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],

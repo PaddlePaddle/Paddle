@@ -209,8 +209,8 @@ PD_REGISTER_KERNEL(dropout,
                    phi::DropoutRawKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 

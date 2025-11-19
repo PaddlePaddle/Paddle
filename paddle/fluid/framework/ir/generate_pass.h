@@ -21,7 +21,7 @@ namespace framework {
 namespace ir {
 
 // Generate a substitute pass from protobuf.
-class GeneratePass : public Pass {
+class PADDLE_API GeneratePass : public Pass {
  public:
   // from binary_str
   explicit GeneratePass(const std::string& binary_str,
@@ -51,7 +51,7 @@ class OpHelper;
 class SubgraphHelper;
 
 // VarHelper is used to represent a variable node.
-class VarHelper {
+class PADDLE_API VarHelper {
  public:
   enum class Type { kInput, kOutput };
 
@@ -67,20 +67,20 @@ class OpHelper {
  public:
   // Convert multiple inputs.
   struct Arguments {
-    Arguments(const char* parameter, const VarHelper& var_helper);
-    Arguments(const char* parameter,
-              std::initializer_list<VarHelper> var_helpers);
+    PADDLE_API Arguments(const char* parameter, const VarHelper& var_helper);
+    PADDLE_API Arguments(const char* parameter,
+                         std::initializer_list<VarHelper> var_helpers);
 
     std::string parameter_;
     std::vector<VarHelper> var_helpers_;
   };
 
-  OpHelper(const char* type, SubgraphHelper* subgraph_helper);
+  PADDLE_API OpHelper(const char* type, SubgraphHelper* subgraph_helper);
 
-  OpHelper& operator()(const Arguments& input);
-  OpHelper& operator()(std::initializer_list<Arguments> inputs);
+  PADDLE_API OpHelper& operator()(const Arguments& input);
+  PADDLE_API OpHelper& operator()(std::initializer_list<Arguments> inputs);
 
-  VarHelper Out(const char* name);
+  PADDLE_API VarHelper Out(const char* name);
 
  private:
   OpHelper() = delete;
@@ -128,9 +128,9 @@ class SubgraphHelper {
   const std::vector<std::string>& InputVars() const;
   const std::vector<std::string>& OutputVars() const;
 
-  void AddInputVar(const std::string& name);
+  PADDLE_API void AddInputVar(const std::string& name);
 
-  void AddOutputVars(const VarHelper& var_helper);
+  PADDLE_API void AddOutputVars(const VarHelper& var_helper);
 
   template <size_t i,
             typename... Ts,
@@ -161,7 +161,7 @@ class SubgraphHelper {
 
 }  // namespace generate_pass
 
-class PassPairs {
+class PADDLE_API PassPairs {
  public:
   using SubgraphType = generate_pass::SubgraphHelper;
 

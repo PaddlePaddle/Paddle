@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle.base import core
@@ -94,7 +100,8 @@ class TestUniqueRaiseError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestOneGPU(TestUniqueOp):
     def init_config(self):
@@ -108,15 +115,16 @@ class TestOneGPU(TestUniqueOp):
         }
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(
                 place, atol=1e-5, check_dygraph=False
             )  # unique return sorted data in dygraph
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestRandomGPU(TestUniqueOp):
     def init_config(self):
@@ -135,8 +143,8 @@ class TestRandomGPU(TestUniqueOp):
         self.outputs = {'Out': target_out, 'Index': target_index}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(
                 place, atol=1e-5, check_dygraph=False
             )  # unique return sorted data in dygraph
@@ -184,8 +192,8 @@ class TestSortedUniqueFP16Op(TestSortedUniqueOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestSortedUniqueBF16Op(TestSortedUniqueOp):
@@ -193,7 +201,7 @@ class TestSortedUniqueBF16Op(TestSortedUniqueOp):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_dygraph=False
         )  # unique return sorted data in dygraph
@@ -245,8 +253,8 @@ class TestUniqueOpAxisNoneFP16Op(TestUniqueOpAxisNone):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestUniqueOpAxisNoneBF16Op(TestUniqueOpAxisNone):
@@ -254,7 +262,7 @@ class TestUniqueOpAxisNoneBF16Op(TestUniqueOpAxisNone):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_dygraph=False
         )  # unique return sorted data in dygraph
@@ -299,8 +307,8 @@ class TestUniqueOpAxisNegFP16Op(TestUniqueOpAxisNeg):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestUniqueOpAxisNegBF16Op(TestUniqueOpAxisNeg):
@@ -308,7 +316,7 @@ class TestUniqueOpAxisNegBF16Op(TestUniqueOpAxisNeg):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_dygraph=False
         )  # unique return sorted data in dygraph
@@ -353,8 +361,8 @@ class TestUniqueOpAxis1FP16Op(TestUniqueOpAxis1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestUniqueOpAxis1BF16Op(TestUniqueOpAxis1):
@@ -362,7 +370,7 @@ class TestUniqueOpAxis1BF16Op(TestUniqueOpAxis1):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_dygraph=False
         )  # unique return sorted data in dygraph

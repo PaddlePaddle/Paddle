@@ -102,6 +102,7 @@ if TYPE_CHECKING:
         mp_degree: int
         pp_degree: int
         sep_degree: int
+        cp_degree: int
         sharding_degree: int
         order: list[str]
 
@@ -325,6 +326,7 @@ class DistributedStrategy:
             'pp',
             'sharding',
             'sep',
+            'cp',
             'mp',
         ]
         self.sync_param_name: list[str] = ["embedding", "layer_norm", ".b_"]
@@ -1907,6 +1909,7 @@ class DistributedStrategy:
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
             **sep_degree(int)**: set number of GPUs in a sep parallel group. Default 1
+            **cp_degree(int)**: set number of GPUs in a context parallel group. Default 1
             **sharding_degree(int)**: set number of GPUs in a sharding parallel group. Default 1
             **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','sep', 'mp']
 

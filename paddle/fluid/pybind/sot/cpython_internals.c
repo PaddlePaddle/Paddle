@@ -26,6 +26,11 @@ limitations under the License. */
 #define Py_BUILD_CORE       // internal/pycore_opcode.h need this macro
 #define NEED_OPCODE_TABLES  // To get _PyOpcode_Caches and _PyOpcode_Deopt
 
+#if PY_3_14_PLUS
+#include <internal/pycore_interpframe.h>
+#include <internal/pycore_stackref.h>
+#endif
+
 #if PY_3_12_PLUS
 // see https://github.com/python/cpython/issues/105268#issuecomment-1678256123
 #undef _PyGC_FINALIZED
@@ -54,6 +59,7 @@ int Internal_PyInterpreterFrame_GetLine(_PyInterpreterFrame *frame) {
   return PyCode_Addr2Line(PyFrame_GET_CODE(frame), addr);
 }
 
+#if !PY_3_14_PLUS
 static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
                                          int opcode,
                                          int oparg) {
@@ -87,6 +93,7 @@ static int Internal_PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
   }
   return 0;
 }
+#endif
 
 #if PY_3_12_PLUS
 void Internal_PyObject_VirtualFree(void *obj, size_t size) {
@@ -124,33 +131,56 @@ static void Internal_clear_thread_frame(PyThreadState *tstate,
   // _PyThreadState_PopFrame, since f_code is already cleared at that point:
   assert((PyObject **)frame + PyFrame_GET_CODE(frame)->co_framesize ==
          tstate->datastack_top);
+#if !PY_3_14_PLUS
   tstate->c_recursion_remaining--;
+#endif
   assert(frame->frame_obj == NULL || frame->frame_obj->f_frame == frame);
   Internal_PyFrame_ClearExceptCode(frame);
-#if PY_3_13_PLUS
+#if PY_3_14_PLUS
+  PyStackRef_CLEAR(frame->f_executable);
+#elif PY_3_13_PLUS
   Py_DECREF(frame->f_executable);
 #else
   Py_DECREF(frame->f_code);
 #endif
+#if !PY_3_14_PLUS
   tstate->c_recursion_remaining++;
+#endif
   Internal_PyThreadState_PopFrame(tstate, frame);
 }
+
+#if PY_3_14_PLUS
+static inline PyGenObject *Internal_PyGen_GetGeneratorFromFrame(
+    _PyInterpreterFrame *frame) {
+  assert(frame->owner == FRAME_OWNED_BY_GENERATOR);
+  size_t offset_in_gen = offsetof(PyGenObject, gi_iframe);
+  return (PyGenObject *)(((char *)frame) - offset_in_gen);
+}
+#endif
 
 static void Internal_clear_gen_frame(PyThreadState *tstate,
                                      _PyInterpreterFrame *frame) {
   assert(frame->owner == FRAME_OWNED_BY_GENERATOR);
+#if PY_3_14_PLUS
+  PyGenObject *gen = Internal_PyGen_GetGeneratorFromFrame(frame);
+#else
   PyGenObject *gen = _PyFrame_GetGenerator(frame);
+#endif
   gen->gi_frame_state = FRAME_CLEARED;
   assert(tstate->exc_info == &gen->gi_exc_state);
   tstate->exc_info = gen->gi_exc_state.previous_item;
   gen->gi_exc_state.previous_item = NULL;
+#if !PY_3_14_PLUS
   tstate->c_recursion_remaining--;
+#endif
   assert(frame->frame_obj == NULL || frame->frame_obj->f_frame == frame);
   Internal_PyFrame_ClearExceptCode(frame);
 #if PY_3_13_PLUS
   _PyErr_ClearExcState(&gen->gi_exc_state);
 #endif
+#if !PY_3_14_PLUS
   tstate->c_recursion_remaining++;
+#endif
   frame->previous = NULL;
 }
 
@@ -202,20 +232,37 @@ PyObject *get_framelocals_mapping(_PyInterpreterFrame *frame) {
 
   // If the frame is not yet executed, return an empty mapping, see
   // `frame_get_var` function
+#if PY_3_14_PLUS
+  if (!frame->stackpointer) {
+    return mapping;
+  }
+#else
   if (!frame->stacktop) {
     return mapping;
   }
+#endif
 
   PyCodeObject *co = PyFrame_GET_CODE(frame);
 
   // Get local variables, see `frame_get_var` function
   int offset = co->co_nlocalsplus - co->co_nfreevars;
   for (int i = 0; i < offset; i++) {
+#if PY_3_14_PLUS
+    update_framelocals_mapping(
+        mapping, co, i, PyStackRef_AsPyObjectBorrow(frame->localsplus[i]));
+#else
     update_framelocals_mapping(mapping, co, i, frame->localsplus[i]);
+#endif
   }
 
   // Get closure variables, see `frame_init_get_vars` function
+#if PY_3_14_PLUS
+  PyObject *closure =
+      ((PyFunctionObject *)PyStackRef_AsPyObjectBorrow((frame)->f_funcobj))
+          ->func_closure;
+#else
   PyObject *closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
+#endif
   for (int i = 0; i < co->co_nfreevars; ++i) {
     update_framelocals_mapping(
         mapping, co, offset + i, PyTuple_GET_ITEM(closure, i));
@@ -404,7 +451,8 @@ static _PyStackChunk *Internal_allocate_chunk(int size_in_bytes,
 }
 
 /* Minimum size of data stack chunk */
-#define DATA_STACK_CHUNK_SIZE (16 * 1024)
+#define DATA_STACK_CHUNK_SIZE \
+  (16 * 1024)  // py314+ is _PY_DATA_STACK_CHUNK_SIZE
 #define MINIMUM_OVERHEAD 1000
 
 static PyObject **Internal_push_chunk(PyThreadState *tstate, int size) {
@@ -549,6 +597,9 @@ PyFrameObject *Internal_PyFrame_New_NoTrack(PyCodeObject *code) {
   f->f_fast_as_locals = 0;
 #endif
   f->f_lineno = 0;
+#if PY_3_14_PLUS
+  f->f_overwritten_fast_locals = NULL;
+#endif
   return f;
 }
 
@@ -610,7 +661,9 @@ PyFrameObject *Internal_PyFrame_MakeAndSetFrameObject(
   }
 #endif
   assert(frame->owner != FRAME_OWNED_BY_FRAME_OBJECT);
+#if !PY_3_14_PLUS
   assert(frame->owner != FRAME_CLEARED);
+#endif
   f->f_frame = frame;
   frame->frame_obj = f;
   return f;
@@ -626,6 +679,51 @@ static inline PyFrameObject *Internal_PyFrame_GetFrameObject(
   return Internal_PyFrame_MakeAndSetFrameObject(frame);
 }
 
+#if PY_3_14_PLUS
+static void Internal_take_ownership(PyFrameObject *f,
+                                    _PyInterpreterFrame *frame) {
+  Py_BEGIN_CRITICAL_SECTION(f);
+  assert(frame->owner < FRAME_OWNED_BY_INTERPRETER);
+  assert(frame->owner != FRAME_OWNED_BY_FRAME_OBJECT);
+  _PyInterpreterFrame *new_frame = (_PyInterpreterFrame *)f->_f_frame_data;
+  _PyFrame_Copy(frame, new_frame);
+  // _PyFrame_Copy takes the reference to the executable,
+  // so we need to restore it.
+  frame->f_executable = PyStackRef_DUP(new_frame->f_executable);
+  f->f_frame = new_frame;
+  new_frame->owner = FRAME_OWNED_BY_FRAME_OBJECT;
+  if (_PyFrame_IsIncomplete(new_frame)) {
+    // This may be a newly-created generator or coroutine frame. Since it's
+    // dead anyways, just pretend that the first RESUME ran:
+    PyCodeObject *code = PyFrame_GET_CODE(new_frame);
+    new_frame->instr_ptr =
+        _PyFrame_GetBytecode(new_frame) + code->_co_firsttraceable + 1;
+  }
+  assert(!_PyFrame_IsIncomplete(new_frame));
+  assert(f->f_back == NULL);
+  _PyInterpreterFrame *prev = _PyFrame_GetFirstComplete(frame->previous);
+  if (prev) {
+    assert(prev->owner < FRAME_OWNED_BY_INTERPRETER);
+    PyObject *exc = PyErr_GetRaisedException();
+    /* Link PyFrameObjects.f_back and remove link through
+     * _PyInterpreterFrame.previous */
+    PyFrameObject *back = Internal_PyFrame_GetFrameObject(prev);
+    if (back == NULL) {
+      /* Memory error here. */
+      assert(PyErr_ExceptionMatches(PyExc_MemoryError));
+      /* Nothing we can do about it */
+      PyErr_Clear();
+    } else {
+      f->f_back = (PyFrameObject *)Py_NewRef(back);
+    }
+    PyErr_SetRaisedException(exc);
+  }
+  if (!_PyObject_GC_IS_TRACKED((PyObject *)f)) {
+    _PyObject_GC_TRACK((PyObject *)f);
+  }
+  Py_END_CRITICAL_SECTION();
+}
+#else
 static void Internal_take_ownership(PyFrameObject *f,
                                     _PyInterpreterFrame *frame) {
 #if PY_3_12_PLUS
@@ -692,8 +790,22 @@ static void Internal_take_ownership(PyFrameObject *f,
     PyObject_GC_Track((PyObject *)f);
   }
 }
+#endif
 
-#if PY_3_13_PLUS
+#if PY_3_14_PLUS
+void Internal_PyFrame_ClearLocals(_PyInterpreterFrame *frame) {
+  assert(frame->stackpointer != NULL);
+  _PyStackRef *sp = frame->stackpointer;
+  _PyStackRef *locals = frame->localsplus;
+  frame->stackpointer = locals;
+  while (sp > locals) {
+    sp--;
+    PyStackRef_XCLOSE(*sp);
+  }
+  Py_CLEAR(frame->f_locals);
+}
+
+#elif PY_3_13_PLUS
 void Internal_PyFrame_ClearLocals(_PyInterpreterFrame *frame) {
   assert(frame->stacktop >= 0);
   int stacktop = frame->stacktop;
@@ -725,7 +837,11 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
   if (frame->frame_obj) {
     PyFrameObject *f = frame->frame_obj;
     frame->frame_obj = NULL;
+#if PY_3_14_PLUS
+    if (!_PyObject_IsUniquelyReferenced((PyObject *)f)) {
+#else
     if (Py_REFCNT(f) > 1) {
+#endif
       Internal_take_ownership(f, frame);
       Py_DECREF(f);
       return;
@@ -743,11 +859,13 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
   Py_XDECREF(frame->f_locals);
 #endif
 
-#if PY_3_12_PLUS
+#if PY_3_14_PLUS
+  PyStackRef_CLEAR(frame->f_funcobj);
+#elif PY_3_12_PLUS
   Py_DECREF(frame->f_funcobj);
 #else
-  Py_DECREF(frame->f_func);
-  Py_DECREF(frame->f_code);
+Py_DECREF(frame->f_func);
+Py_DECREF(frame->f_code);
 #endif
 }
 

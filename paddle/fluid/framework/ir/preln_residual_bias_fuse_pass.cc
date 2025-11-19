@@ -217,7 +217,7 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     // elementwise1_out. This will lead to two or more PrelnResidualBias
     // patterns is found near elementwise1_out, and these patterns will interact
     // on each other, so we make below check to ensure only one
-    // PrelnResidualBias pattern is delalted with.
+    // PrelnResidualBias pattern is dealt with.
     for (auto op : elementwise1_out->inputs) {
       if (op->Name() == "fused_bias_dropout_residual_layer_norm") return;
     }

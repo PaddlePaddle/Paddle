@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices, get_places
 
 import paddle
 import paddle.optimizer as optim
@@ -58,7 +58,7 @@ class SimpleModel(nn.Layer):
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
         self.log_np = np.random.randn(4, 8).astype('float32')
         self.predict_np = np.abs(np.random.randn(64, 8).astype('float32'))
 

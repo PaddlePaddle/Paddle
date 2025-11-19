@@ -21,7 +21,6 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert fused preln_skip_layernorm op to tensorrt layer";
     if (!(engine_->use_varseqlen() && engine_->with_interleaved())) {
       PADDLE_THROW(common::errors::Fatal(
@@ -71,10 +70,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
             "fail to get creator of CustomPrelnSkipLayerNormPluginDynamic"));
     const std::vector<nvinfer1::PluginField> fields{
         {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
-        { "gamma",
-          scale,
-          nvinfer1::PluginFieldType::kFLOAT32,
-          scale_size }};
+        {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size}};
     nvinfer1::PluginFieldCollection* pluginPtr =
         static_cast<nvinfer1::PluginFieldCollection*>(
             malloc(sizeof(*pluginPtr) +
@@ -99,11 +95,6 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     output_names.push_back(op_desc.Output("Out_1")[0]);
     ReplenishLayerAndOutput(
         layer, "preln_skip_layernorm", {output_names}, test_mode);
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "PreInErnie want to use oss, must be with interleaved, "
-        "your TRT version is no less than 7.0"));
-#endif
   }
 };
 

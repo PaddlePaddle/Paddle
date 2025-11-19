@@ -156,5 +156,5 @@ PD_REGISTER_KERNEL(global_gather,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

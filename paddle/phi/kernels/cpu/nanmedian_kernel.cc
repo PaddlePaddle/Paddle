@@ -26,6 +26,7 @@ template <typename T, typename Context>
 void CalcMedianFunc(const Context& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int64_t>& nan_counts,
+                    const std::vector<int64_t>& nan_indice,
                     bool ignore_nan,
                     int64_t sort_k,
                     int64_t stride,
@@ -101,6 +102,11 @@ void CalcMedianFunc(const Context& dev_ctx,
   } else {  // not ignore_nan - no nan value; sort_k = stride/2 + 1
     if (is_ori_odd) {
       for (i = 0; i < pre_dim; i++) {
+        if (nan_counts[i] > 0) {
+          o_ptr[i] = std::numeric_limits<T>::quiet_NaN();
+          m_ptr[i] = nan_indice[i];
+          continue;
+        }
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
         o_ptr[i] = sort_out_ptr[pos];
@@ -113,6 +119,11 @@ void CalcMedianFunc(const Context& dev_ctx,
       }
     } else {
       for (i = 0; i < pre_dim; i++) {
+        if (nan_counts[i] > 0) {
+          o_ptr[i] = std::numeric_limits<T>::quiet_NaN();
+          m_ptr[i] = nan_indice[i];
+          continue;
+        }
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
         T m_val_left = sort_k > 1 ? sort_out_ptr[pos - 1] : sort_out_ptr[pos];
@@ -138,6 +149,7 @@ template <typename T, typename Context>
 void ProcessMedianKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const std::string& mode,
+                         bool ignore_nan,
                          DenseTensor* out,
                          DenseTensor* median_index) {
   const T* x_data = x.data<T>();
@@ -161,47 +173,61 @@ void ProcessMedianKernel(const Context& dev_ctx,
 
   int64_t max_valid_num = 0;
   std::vector<int64_t> nan_counts;
-  bool ignore_nan = true;
-  if (ignore_nan) {
-    int64_t total_nan_num = 0;
-    std::vector<T> col_vec;
-    col_vec.reserve(stride);
-    col_vec.resize(stride);
-    nan_counts.clear();
-    nan_counts.reserve(pre_dim);
-    nan_counts.resize(pre_dim);
-    for (int64_t i = 0; i < pre_dim; i++) {
-      col_vec.clear();
-      col_vec.insert(
-          col_vec.begin(), x_data + i * stride, x_data + (i + 1) * stride);
-      nan_counts[i] =
-          std::count_if(col_vec.begin(), col_vec.end(), [&](const T& val) {
-            return std::isnan(static_cast<float>(val));
-          });
-      total_nan_num += nan_counts[i];
-      if (stride - nan_counts[i] > max_valid_num)
-        max_valid_num = stride - nan_counts[i];
-    }
-    // all elems are nan
-    if (total_nan_num == numel) {
-      for (i = 0; i < pre_dim; i++) {
-        out_data[i] = std::numeric_limits<T>::quiet_NaN();
-        if (mode == "avg") {
-          m_data[2 * i] = -1;
-          m_data[2 * i + 1] = -1;  // indices are all -1
-        } else {
-          m_data[i] = -1;
+  std::vector<int64_t> nan_indice;
+
+  int64_t total_nan_num = 0;
+  std::vector<T> col_vec;
+  col_vec.reserve(stride);
+  col_vec.resize(stride);
+  nan_counts.clear();
+  nan_counts.reserve(pre_dim);
+  nan_counts.resize(pre_dim);
+  nan_indice.clear();
+  nan_indice.reserve(pre_dim);
+  nan_indice.resize(pre_dim);
+  for (int64_t i = 0; i < pre_dim; i++) {
+    col_vec.clear();
+    col_vec.insert(
+        col_vec.begin(), x_data + i * stride, x_data + (i + 1) * stride);
+
+    int64_t first_nan_idx = -1;
+    int64_t nan_count = 0;
+
+    for (int64_t j = 0; j < stride; ++j) {
+      if (std::isnan(static_cast<float>(col_vec[j]))) {
+        ++nan_count;
+        if (first_nan_idx == -1) {
+          first_nan_idx = j;
         }
       }
-      return;
     }
-    ignore_nan = total_nan_num > 0;
+
+    nan_counts[i] = nan_count;
+    nan_indice[i] = first_nan_idx;
+
+    total_nan_num += nan_count;
+    if (stride - nan_count > max_valid_num) {
+      max_valid_num = stride - nan_count;
+    }
+  }
+  if (total_nan_num == numel) {
+    for (i = 0; i < pre_dim; i++) {
+      out_data[i] = std::numeric_limits<T>::quiet_NaN();
+      if (mode == "avg") {
+        m_data[2 * i] = numel / 2;
+        m_data[2 * i + 1] = numel / 2 - 1;
+      } else {
+        m_data[i] = numel / 2;
+      }
+    }
+    return;
   }
 
   int64_t sort_k = ignore_nan ? max_valid_num : ((stride >> 1) + 1);
   CalcMedianFunc<T, Context>(dev_ctx,
                              x,
                              nan_counts,
+                             nan_indice,
                              ignore_nan,
                              sort_k,
                              stride,
@@ -242,7 +268,8 @@ void NanmedianKernel(const Context& dev_ctx,
         &tmp_x);  // resize to 2D so as to compute median on last axis
   }
 
-  ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, mode, out, median_index);
+  ProcessMedianKernel<T, Context>(
+      dev_ctx, tmp_x, mode, true, out, median_index);
 }
 
 }  // namespace phi

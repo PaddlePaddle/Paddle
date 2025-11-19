@@ -127,5 +127,5 @@ PD_REGISTER_KERNEL(moe_combine_no_weight_grad,
                    phi::MoeCombineNoWeightGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

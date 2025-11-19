@@ -63,4 +63,4 @@ PD_REGISTER_KERNEL(add_act_xpu,
                    ALL_LAYOUT,
                    phi::fusion::AddActXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

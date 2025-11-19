@@ -44,7 +44,7 @@ void LayerNormActXPUKernel(const Context& dev_ctx,
   if (scale_ptr == nullptr) {
     // no scale, do nothing
   } else if (scale_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+             phi::CppTypeToDataType<phi::float16>::Type()) {
     float* scale_data_temp =
         RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
     int r = xpu::cast<XPUType, float>(
@@ -65,7 +65,7 @@ void LayerNormActXPUKernel(const Context& dev_ctx,
   if (bias_ptr == nullptr) {
     // no bias, do nothing
   } else if (bias_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+             phi::CppTypeToDataType<phi::float16>::Type()) {
     float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
     int r = xpu::cast<XPUType, float>(
         dev_ctx.x_context(),
@@ -129,4 +129,4 @@ PD_REGISTER_KERNEL(layer_norm_act_xpu,
                    ALL_LAYOUT,
                    phi::fusion::LayerNormActXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

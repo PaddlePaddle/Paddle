@@ -163,9 +163,9 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         linear1_weight_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
             linear1_weight
         )[-1]
-        assert (
-            linear1_weight_col_dim_mapping >= 0
-        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{linear1_weight_col_dim_mapping}]"
+        assert linear1_weight_col_dim_mapping >= 0, (
+            f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{linear1_weight_col_dim_mapping}]"
+        )
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -202,9 +202,9 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         linear2_weight_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
             linear2_weight
         )[-1]
-        assert (
-            linear2_weight_col_dim_mapping >= 0
-        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{linear2_weight_col_dim_mapping}]"
+        assert linear2_weight_col_dim_mapping >= 0, (
+            f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{linear2_weight_col_dim_mapping}]"
+        )
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 

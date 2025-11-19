@@ -32,7 +32,7 @@ namespace allocation {
 // Returns a shared pointer that holds the IPC base pointer for the given
 // handle.
 std::shared_ptr<void> GetIpcBasePtr(std::string handle);
-
+void IpcCollect();
 class XpuIpcAllocation : public Allocation {
  public:
   explicit XpuIpcAllocation(void *ptr,

@@ -36,4 +36,9 @@ DenseTensor Cast(const Context& dev_ctx,
   return dense_out;
 }
 
+#ifdef _WIN32
+#define INSTANTIATE_CAST_KERNEL(type, context)        \
+  template PADDLE_API void CastKernel<type, context>( \
+      const context&, const DenseTensor&, DataType, DenseTensor*);
+#endif
 }  // namespace phi

@@ -983,13 +983,9 @@ class PsDescBuilder:
 
     def build_worker_desc(self):
         for table in self.tables:
-            table_proto = (
-                self.ps_desc.worker_param.downpour_worker_param.downpour_table_param.add()
-            )
+            table_proto = self.ps_desc.worker_param.downpour_worker_param.downpour_table_param.add()
             table._set(table_proto)
-            table_proto = (
-                self.ps_desc.server_param.downpour_server_param.downpour_table_param.add()
-            )
+            table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add()
             table._set(table_proto)
             if type(table) == BarrierTable and self.barrier_table_id is None:
                 self.barrier_table_id = table.idx
@@ -1002,9 +998,7 @@ class PsDescBuilder:
     def build_server_desc(self):
         self.sparse_table_maps = {}
         for table in self.tables:
-            table_proto = (
-                self.ps_desc.server_param.downpour_server_param.downpour_table_param.add()
-            )
+            table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add()
             table._set(table_proto)
             if (
                 table_proto.type == the_one_ps_pb2.PS_SPARSE_TABLE
@@ -1402,9 +1396,9 @@ class TheOnePSRuntime(RuntimeBase):
             self._communicator.stop()
         self._worker.stop_worker()
         if self.is_heter_ps_mode:
-            assert (
-                self._heter_client is not None
-            ), "heter client should not be None in heterps mode"
+            assert self._heter_client is not None, (
+                "heter client should not be None in heterps mode"
+            )
             self._heter_client.stop()
 
     @staticmethod

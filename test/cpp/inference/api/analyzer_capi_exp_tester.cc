@@ -76,9 +76,9 @@ TEST(PD_Config, profile_onednn) {
   PD_ConfigSetCpuMathLibraryNumThreads(config, 10);
   PD_ConfigSwitchIrDebug(config, TRUE);
   PD_ConfigEnableONEDNN(config);
-  bool onednn_enable = PD_ConfigMkldnnEnabled(config);
+  bool onednn_enable = PD_ConfigOnednnEnabled(config);
   EXPECT_TRUE(onednn_enable);
-  PD_ConfigEnableMkldnnBfloat16(config);
+  PD_ConfigEnableOnednnBfloat16(config);
   PD_ConfigSetOnednnCacheCapacity(config, 0);
   PD_ConfigSetModel(config, prog_file.c_str(), params_file.c_str());
   PD_ConfigDestroy(config);

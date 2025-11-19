@@ -47,7 +47,7 @@ void AllToAllKernel(const Context& dev_ctx,
                           errors::NotFound("Should initialize NCCL firstly."));
 
   int nranks = comm_ctx->GetSize();
-  int send_numel = x.numel() / nranks;
+  int64_t send_numel = x.numel() / nranks;
   size_t offset = 0;
 
   PADDLE_ENFORCE_EQ(
@@ -97,8 +97,8 @@ PD_REGISTER_KERNEL(all_to_all,
                    int16_t,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(all_to_all,
                    GPU,
@@ -112,5 +112,5 @@ PD_REGISTER_KERNEL(all_to_all,
                    int16_t,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

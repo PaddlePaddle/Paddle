@@ -122,7 +122,8 @@ void ConvActivationOnednnFusePass::FuseConvConcatAct(
       }
 
       bool is_not_conv_onednn =
-          !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
+          !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+            prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_onednn"));
       if ((prev_op_nodes[0]->Op()->Type() != "conv2d" &&
            prev_op_nodes[0]->Op()->Type() != "fused_conv2d") ||
           is_not_conv_onednn) {

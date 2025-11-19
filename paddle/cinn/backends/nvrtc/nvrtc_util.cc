@@ -51,6 +51,23 @@ static std::vector<std::string> GetNvidiaAllIncludePath(
   std::vector<std::string> include_paths;
   const std::string delimiter = "/";
   // Expand this list if necessary.
+#if CUDA_VERSION >= 13000 && defined(__linux__)
+  const std::vector<std::string> sub_modules = {"cu13",
+                                                "cublas",
+                                                "cuda_cupti",
+                                                "cudnn",
+                                                "cufft",
+                                                "cufile",
+                                                "cusparse",
+                                                "cusparselt",
+                                                "cusolver",
+                                                "cuda_nvrtc",
+                                                "curand",
+                                                "nccl",
+                                                "nvjitlink",
+                                                "nvtx",
+                                                "cuda_runtime"};
+#else
   const std::vector<std::string> sub_modules = {"cuda_cccl",
                                                 "cublas",
                                                 "cudnn",
@@ -60,11 +77,17 @@ static std::vector<std::string> GetNvidiaAllIncludePath(
                                                 "cuda_nvrtc",
                                                 "curand",
                                                 "cuda_runtime"};
+#endif
   for (auto& sub_module : sub_modules) {
     std::string path =
         nvidia_package_dir + delimiter + sub_module + delimiter + "include";
     include_paths.push_back(path);
   }
+#if CUDA_VERSION >= 13000 && defined(__linux__)
+  include_paths.push_back(nvidia_package_dir + delimiter + "cu13/include/cccl");
+  include_paths.push_back(nvidia_package_dir + delimiter +
+                          "cu13/include/nvtx3");
+#endif
   return include_paths;
 }
 
@@ -78,9 +101,7 @@ std::string Compiler::operator()(const std::string& code,
 
 Compiler::Compiler() {
   if (FLAGS_nvrtc_compile_to_cubin) {
-#if CUDA_VERSION >= 11010
     compile_to_cubin_ = true;
-#endif
   }
   VLOG(4) << "FLAGS_nvrtc_compile_to_cubin: " << FLAGS_nvrtc_compile_to_cubin
           << ", compile_to_cubin_: " << compile_to_cubin_;
@@ -132,7 +153,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   std::vector<std::string> compile_options;
   std::vector<const char*> param_cstrings{};
   nvrtcProgram prog;
-  std::string cc = "30";
+  std::string cc = "75";
   int major, minor;
   cudaError_t e1 =
       cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0);
@@ -143,7 +164,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     cc = std::to_string(major) + std::to_string(minor);
   } else {
     LOG(WARNING) << "cannot detect compute capability from your device, "
-                 << "fall back to compute_30.";
+                 << "fall back to compute_75.";
   }
   if (compile_to_cubin_) {
     compile_options.push_back("-arch=sm_" + cc);
@@ -153,7 +174,11 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   } else {
     compile_options.push_back("-arch=compute_" + cc);
   }
+#if CUDA_VERSION >= 13000 && defined(__linux__)
+  compile_options.push_back("-std=c++17");
+#else
   compile_options.push_back("-std=c++14");
+#endif
   compile_options.push_back("-default-device");
 
   if (include_headers) {  // prepare include headers
@@ -263,9 +288,6 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
 
   return prefix_name_ + ".cubin";
 }
-
-// std::string Compiler::GetPtx() { return ReadFile(prefix_name_ + ".ptx",
-// std::ios::in); }
 
 void Compiler::CompileToPtx() {
   auto include_dir = cinn::common::Context::Global().runtime_include_dir();

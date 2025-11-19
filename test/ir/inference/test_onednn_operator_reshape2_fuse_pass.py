@@ -45,7 +45,7 @@ class TestTranspose2Reshape2OneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 "axis": axis,
-                "use_mkldnn": True,
+                "use_onednn": True,
             },
         )
 
@@ -75,7 +75,7 @@ class TestTranspose2Reshape2OneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 "operator_reshape2_onednn_fuse_pass",
             ],
@@ -83,7 +83,7 @@ class TestTranspose2Reshape2OneDNNFusePass(PassAutoScanTest):
         yield config, ["fused_transpose"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=[
                 "operator_reshape2_onednn_fuse_pass",

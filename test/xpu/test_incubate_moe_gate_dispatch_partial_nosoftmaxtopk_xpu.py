@@ -114,11 +114,13 @@ def test_moe_dispatch_partial_nosoftmaxtopk_pad_op():
         combine_weihgts.shape,
     )
 
-    dysum, dcombine_weights_sum = paddle.ones_like(ys_sum), paddle.randn(
-        comm_sum.shape
-    ).astype(comm_sum.dtype)
-    dy_, dcombine_weights_ = paddle.ones_like(y_), paddle.ones_like(
-        combine_weihgts_
+    dysum, dcombine_weights_sum = (
+        paddle.ones_like(ys_sum),
+        paddle.randn(comm_sum.shape).astype(comm_sum.dtype),
+    )
+    dy_, dcombine_weights_ = (
+        paddle.ones_like(y_),
+        paddle.ones_like(combine_weihgts_),
     )
     dy_[~valid_y] = 0
 
@@ -233,11 +235,13 @@ def test_moe_dispatch_partial_nosoftmaxtopk_unpad_op():
         combine_weihgts.shape,
     )
 
-    dysum, dcombine_weights_sum = paddle.ones_like(ys_sum), paddle.randn(
-        comm_sum.shape
-    ).astype(comm_sum.dtype)
-    dy_, dcombine_weights_ = paddle.ones_like(y_), paddle.ones_like(
-        combine_weihgts_
+    dysum, dcombine_weights_sum = (
+        paddle.ones_like(ys_sum),
+        paddle.randn(comm_sum.shape).astype(comm_sum.dtype),
+    )
+    dy_, dcombine_weights_ = (
+        paddle.ones_like(y_),
+        paddle.ones_like(combine_weihgts_),
     )
     dy_[~valid_y] = 0
 
@@ -259,7 +263,6 @@ def test_moe_dispatch_partial_nosoftmaxtopk_unpad_op():
 
 
 def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
-
     S, E, D = 3, 4, 3
     k = 2
     capacity = 2
@@ -285,7 +288,6 @@ def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
 
 
 def test_moe_ops_partial_nosoftmax_topk_empty_output():
-
     S, E, D = 3, 4, 3
     k = 2
     capacity = 2
@@ -309,7 +311,6 @@ def test_moe_ops_partial_nosoftmax_topk_empty_output():
 
 
 class TestMoeDispatchPartialNoSoftmaxTopkOp(unittest.TestCase):
-
     def test_moe_dispatch_partial_nosoftmaxtopk_pad_op(self):
         test_moe_dispatch_partial_nosoftmaxtopk_pad_op()
 

@@ -68,7 +68,6 @@ jobs:
           PADDLE_VERSION: 0.0.0
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
           WITH_PIP_CUDA_LIBRARIES: "OFF"
           WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
@@ -114,7 +113,6 @@ jobs:
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
-            -e PRECISION_TEST \
             -e WITH_PIP_CUDA_LIBRARIES \
             -e WITH_FLAGCX \
             -e LITE_GIT_TAG \
@@ -272,7 +270,6 @@ jobs:
           COVERALLS_UPLOAD: "ON"
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
-          PRECISION_TEST: "ON"
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
           WITH_SHARED_PHI: "ON"
@@ -315,7 +312,6 @@ jobs:
             -e COVERALLS_UPLOAD \
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
-            -e PRECISION_TEST \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
             -e WITH_SHARED_PHI \

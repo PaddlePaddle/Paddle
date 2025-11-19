@@ -21,7 +21,7 @@ PD_REGISTER_KERNEL(fake_dequantize_max_abs,
                    phi::FakeDequantizeMaxAbsKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(fake_channel_wise_dequantize_max_abs,
                    GPU,
@@ -29,4 +29,4 @@ PD_REGISTER_KERNEL(fake_channel_wise_dequantize_max_abs,
                    phi::FakeChannelWiseDequantizeMaxAbsKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

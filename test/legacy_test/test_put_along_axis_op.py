@@ -16,7 +16,13 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -77,6 +83,93 @@ class TestPutAlongAxisOp(OpTest):
         self.index = np.array([[[0]]]).astype(self.index_type)
         self.axis = 1
         self.axis_type = "int64"
+
+
+class TestPutAlongAxisInt16OpBase(TestPutAlongAxisOp):
+    no_need_check_grad = True
+
+    def init_data(self):
+        self.set_type()
+        self.x_shape = (10, 10, 10)
+        self.index_type = "int64"
+        self.axis = 1
+        self.axis_type = "int64"
+        self.set_reduce_op()
+        self.set_value_and_index()
+
+    def set_type(self):
+        self.dtype = np.int16
+        self.x_type = "int16"
+        self.value_type = "int16"
+
+    def set_value_and_index(self):
+        self.value = np.array([99]).astype(self.value_type)
+        self.index = np.array([[[0]]]).astype(self.index_type)
+
+    def set_reduce_op(self):
+        self.reduce_op = "assign"
+
+    def test_check_grad(self):
+        """int16 can not pass check_grad data type check for op multiply"""
+        pass
+
+
+class TestPutAlongAxisUInt8OpBase(TestPutAlongAxisInt16OpBase):
+    no_need_check_grad = True
+
+    def set_type(self):
+        self.dtype = np.uint8
+        self.x_type = "uint8"
+        self.value_type = "uint8"
+
+    def set_reduce_op(self):
+        self.reduce_op = "assign"
+        self.value = np.array([127]).astype(self.value_type)
+        self.index = np.array([[[0]]]).astype(self.index_type)
+
+    def test_check_grad(self):
+        """uint8 can not pass check_grad data type check for op multiply"""
+        pass
+
+
+class TestPutAlongAxisInt16OpAdd(TestPutAlongAxisInt16OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "add"
+
+
+class TestPutAlongAxisInt16OpMul(TestPutAlongAxisInt16OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "mul"
+
+
+class TestPutAlongAxisInt16OpAMin(TestPutAlongAxisInt16OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "amin"
+
+
+class TestPutAlongAxisInt16OpAMax(TestPutAlongAxisInt16OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "amax"
+
+
+class TestPutAlongAxisUInt8OpAdd(TestPutAlongAxisUInt8OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "add"
+
+
+class TestPutAlongAxisUInt8OpMul(TestPutAlongAxisUInt8OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "mul"
+
+
+class TestPutAlongAxisUInt8OpAMin(TestPutAlongAxisUInt8OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "amin"
+
+
+class TestPutAlongAxisUInt8OpAMax(TestPutAlongAxisUInt8OpBase):
+    def set_reduce_op(self):
+        self.reduce_op = "amax"
 
 
 class TestPutAlongAxisFP16Op(TestPutAlongAxisOp):
@@ -611,8 +704,8 @@ class TestPutAlongAxisOpMaxNotIncludeSelf(TestPutAlongAxisOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisBF16Op(OpTest):
@@ -644,7 +737,7 @@ class TestPutAlongAxisBF16Op(OpTest):
         self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
         self.inputs['Value'] = convert_float_to_uint16(self.inputs['Value'])
         self.outputs['Result'] = convert_float_to_uint16(self.outputs['Result'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -770,7 +863,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPILargeCase(unittest.TestCase):
@@ -783,7 +876,7 @@ class TestPutAlongAxisAPILargeCase(unittest.TestCase):
         self.axis = 1
         self.value_np = np.ones(self.index_shape).astype(np.float32)
         self.x_feed = copy.deepcopy(self.x_np)
-        self.place = [paddle.CUDAPlace(0)]
+        self.place = [get_device_place()]
 
     def test_api_dygraph(self):
         def run(place):
@@ -1049,7 +1142,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
@@ -1096,12 +1189,12 @@ class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
@@ -1150,11 +1243,11 @@ class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
@@ -1201,11 +1294,11 @@ class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
@@ -1252,38 +1345,66 @@ class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
-)
-class TestPutAlongAxisAPIMulUint8(unittest.TestCase):
+class TestPutAlongAxisAPIReduceLowBits(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
-        self.dtype = 'uint8'
-        self.x_type = "uint8"
-        self.x_shape = (10, 10, 10)
-        self.value_type = "uint8"
-        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.setup_dtype()
+        self.set_range()
+        self.set_op_to_test()
+        self.x_shape = (8, 8)
+        self.value = np.random.randint(*self.ranges, (8, 8)).astype(
+            self.value_type
+        )
         self.index_type = "int64"
-        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.index = np.ones((8, 8), dtype=np.int64)
         self.axis = 1
         self.axis_type = "int64"
         self.op_type = "put_along_axis"
         self.prim_op_type = "prim"
         self.public_python_api = paddle.tensor.put_along_axis
         self.python_api = paddle.tensor.put_along_axis
-        self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
+        self.xnp = np.random.randint(*self.ranges, self.x_shape).astype(
+            self.x_type
+        )
+        self.input_filter()
         # numpy put_along_axis is an inplace operation.
         self.target = copy.deepcopy(self.xnp)
-        for i in range(5):
-            for j in range(5):
-                for k in range(5):
-                    self.target[i, self.index[i, j, k], k] *= self.value[
-                        i, j, k
-                    ]
+        if self.op == "mul":
+            host_op = lambda x, y: x * y
+        elif self.op == "amax":
+            host_op = lambda x, y: max(x, y)
+        elif self.op == "amin":
+            host_op = lambda x, y: min(x, y)
+        else:
+            raise ValueError(
+                f"Unsupported reduce op for put along axis: {self.op}"
+            )
+        for i in range(8):
+            for j in range(8):
+                self.target[i, self.index[i, j]] = host_op(
+                    self.target[i, self.index[i, j]], self.value[i, j]
+                )
+
+    def input_filter(self):
+        if self.ranges[0] <= 0 and self.op == "mul":
+            is_zero = self.values == 0
+            self.values[is_zero] = 1
+            is_zero = self.xnp == 0
+            self.xnp[is_zero] = 1
+
+    def setup_dtype(self):
+        self.dtype = 'uint8'
+        self.x_type = "uint8"
+        self.value_type = "uint8"
+
+    def set_range(self):
+        self.ranges = [1, 5]
+
+    def set_op_to_test(self):
+        self.op = "mul"
 
     def test_api_dygraph(self):
         def run(place):
@@ -1296,14 +1417,51 @@ class TestPutAlongAxisAPIMulUint8(unittest.TestCase):
                 index_tensor,
                 value_tensor,
                 self.axis,
-                "mul",
+                self.op,
                 True,
                 False,
             )
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else paddle.CPUPlace()
+        )
+
+
+class TestPutAlongAxisAPIMulInt16(TestPutAlongAxisAPIReduceLowBits):
+    def setup_dtype(self):
+        self.dtype = 'int16'
+        self.x_type = "int16"
+        self.value_type = "int16"
+
+
+class TestPutAlongAxisAPIMinInt16(TestPutAlongAxisAPIMulInt16):
+    def set_range(self):
+        self.ranges = [-32760, 32761]
+
+    def set_op_to_test(self):
+        self.op = "amin"
+
+
+class TestPutAlongAxisAPIMaxInt16(TestPutAlongAxisAPIMinInt16):
+    def set_op_to_test(self):
+        self.op = "amax"
+
+
+class TestPutAlongAxisAPIMinUInt8(TestPutAlongAxisAPIReduceLowBits):
+    def set_range(self):
+        self.ranges = [0, 256]
+
+    def set_op_to_test(self):
+        self.op = "amin"
+
+
+class TestPutAlongAxisAPIMaxUInt8(TestPutAlongAxisAPIMinUInt8):
+    def set_op_to_test(self):
+        self.op = "amax"
 
 
 class TestPutAlongAxisDynamicShape(unittest.TestCase):

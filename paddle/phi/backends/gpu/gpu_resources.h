@@ -20,33 +20,36 @@
 
 namespace phi {
 
-void InitGpuProperties(Place place,
-                       int* compute_capability,
-                       int* runtime_version,
-                       int* driver_version,
-                       int* multi_process,
-                       int* max_threads_per_mp,
-                       int* max_threads_per_block,
-                       std::array<unsigned int, 3>* max_grid_dim_size);
+PADDLE_API void InitGpuProperties(
+    Place place,
+    int* compute_capability,
+    int* runtime_version,
+    int* driver_version,
+    int* multi_process,
+    int* max_threads_per_mp,
+    int* max_threads_per_block,
+    std::array<unsigned int, 3>* max_grid_dim_size);
 
-void InitStream(gpuStream_t* stream);
-void DestroyStream(gpuStream_t stream);
+PADDLE_API void InitStream(gpuStream_t* stream);
+PADDLE_API void DestroyStream(gpuStream_t stream);
 
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
-void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream);
-void DestroyBlasHandle(blasHandle_t handle);
+PADDLE_API void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream);
+PADDLE_API void DestroyBlasHandle(blasHandle_t handle);
 
-void InitBlasLtHandle(blasLtHandle_t* blaslt_handle);
-void DestroyBlasLtHandle(blasLtHandle_t handle);
+PADDLE_API void InitBlasLtHandle(blasLtHandle_t* blaslt_handle);
+PADDLE_API void DestroyBlasLtHandle(blasLtHandle_t handle);
 
-void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place);
-void DestroyDnnHandle(dnnHandle_t handle);
+PADDLE_API void InitDnnHandle(dnnHandle_t* handle,
+                              gpuStream_t stream,
+                              Place place);
+PADDLE_API void DestroyDnnHandle(dnnHandle_t handle);
 
-void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream);
-void DestroySolverHandle(solverHandle_t solver_handle);
+PADDLE_API void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream);
+PADDLE_API void DestroySolverHandle(solverHandle_t solver_handle);
 
-void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream);
-void DestroySparseHandle(sparseHandle_t handle);
+PADDLE_API void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream);
+PADDLE_API void DestroySparseHandle(sparseHandle_t handle);
 #endif
 // void InitDnnWorkspace();
 

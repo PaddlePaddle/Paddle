@@ -98,9 +98,5 @@ void ExpandGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(expand_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ExpandGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    expand_grad, OneDNN, ONEDNN, phi::ExpandGradKernel, float, phi::bfloat16) {}

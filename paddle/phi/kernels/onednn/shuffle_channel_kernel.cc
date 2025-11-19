@@ -68,4 +68,4 @@ PD_REGISTER_KERNEL(shuffle_channel,
                    ONEDNN,
                    phi::ShuffleChannelMKLDNNKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

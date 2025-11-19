@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
-
     def test_load_model_not_exist(self):
         place = core.CPUPlace()
         exe = executor.Executor(place)

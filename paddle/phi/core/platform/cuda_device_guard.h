@@ -19,7 +19,7 @@
 namespace paddle {
 namespace platform {
 
-class CUDADeviceGuard {
+class PADDLE_API CUDADeviceGuard {
  public:
   explicit CUDADeviceGuard(int dev_id) { SetDeviceIndex(dev_id); }
 

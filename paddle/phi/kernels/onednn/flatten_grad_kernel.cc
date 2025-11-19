@@ -58,4 +58,4 @@ PD_REGISTER_KERNEL(flatten_grad,
                    ONEDNN,
                    phi::FlattenGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

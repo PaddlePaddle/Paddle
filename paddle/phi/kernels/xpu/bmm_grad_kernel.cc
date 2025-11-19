@@ -115,5 +115,4 @@ void BmmGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    bmm_grad, XPU, ALL_LAYOUT, phi::BmmGradKernel, float, phi::dtype::float16) {
-}
+    bmm_grad, XPU, ALL_LAYOUT, phi::BmmGradKernel, float, phi::float16) {}

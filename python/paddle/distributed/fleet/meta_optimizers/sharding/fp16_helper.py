@@ -146,10 +146,10 @@ class FP16Utils:
                         if worker_idx == shard.worker_idx
                     }
                 )
-                assert (
-                    to_check_param == should_check_param
-                ), f"amp \
+                assert to_check_param == should_check_param, (
+                    f"amp \
                     check_finite_and_unscale checking miss [{should_check_param - to_check_param}] and got unexpected [{to_check_param - should_check_param}]"
+                )
 
         if update_loss_scaling_op_idx == -1:
             return

@@ -19,7 +19,6 @@ import paddle
 
 class TestLayerListEmptyInsert(unittest.TestCase):
     def test_insert_empty_list(self):
-
         # Test successful case - insert at index 0
         layers = paddle.nn.LayerList()
         linear = paddle.nn.Linear(10, 10)

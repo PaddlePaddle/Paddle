@@ -15,22 +15,18 @@
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 namespace phi {
 
 template <typename T, typename Context>
-void AllKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               bool keep_dim,
-               DenseTensor* out) {
+PADDLE_API void AllKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const std::vector<int64_t>& dims,
+                          bool keep_dim,
+                          DenseTensor* out) {
   auto x_dim = x.dims();
   for (int i = 0; i < x_dim.size(); i++) {
     PADDLE_ENFORCE_LE(
@@ -62,8 +58,8 @@ PD_REGISTER_KERNEL(all,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -77,8 +73,8 @@ PD_REGISTER_KERNEL(all,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #endif

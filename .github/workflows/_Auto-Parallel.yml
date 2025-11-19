@@ -28,6 +28,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'auto-parallel'
@@ -37,7 +38,7 @@ jobs:
   parallel-test:
     name: Parallel test
     needs: check-bypass
-    if: ${{ inputs.can-skip != 'true'  && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Auto-Parallel
     steps:
@@ -95,6 +96,8 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           cd PaddleNLP
           git pull
+          git checkout 6ac04028757dfbcc089916997493611f62de81b2
+          git switch -c 6ac04028757dfbcc089916997493611f62de81b2
           git submodule update --init --recursive --force
           '
 

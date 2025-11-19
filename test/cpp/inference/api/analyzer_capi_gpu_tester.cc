@@ -36,7 +36,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PADDLE_ENFORCE_EQ(
       10,
       num_thread,
-      common::errors::InvalidArgument("The num of thread should be"
+      common::errors::InvalidArgument("The num of thread should be "
                                       "equal to 10, but got %d.",
                                       num_thread));
   PD_SwitchSpecifyInputNames(config, true);

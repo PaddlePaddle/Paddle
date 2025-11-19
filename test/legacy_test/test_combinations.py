@@ -16,7 +16,7 @@ import unittest
 from itertools import combinations, combinations_with_replacement
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 from paddle.base import Program
@@ -47,7 +47,7 @@ class TestCombinationsAPIBase(unittest.TestCase):
         self.modify_setting()
         self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
 
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
 
     def init_setting(self):
         self.dtype_np = 'float64'
@@ -120,7 +120,7 @@ class TestCombinationsAPI2(TestCombinationsAPIBase):
 
 class TestCombinationsEmpty(unittest.TestCase):
     def setUp(self):
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
 
     def test_dygraph(self):
         paddle.disable_static()

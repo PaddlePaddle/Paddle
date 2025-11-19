@@ -9,7 +9,7 @@ add_subdirectory(elementwise)
 add_subdirectory(fused)
 add_subdirectory(math)
 if(WITH_ONEDNN)
-  add_subdirectory(mkldnn)
+  add_subdirectory(onednn)
 endif()
 
 add_subdirectory(reader)

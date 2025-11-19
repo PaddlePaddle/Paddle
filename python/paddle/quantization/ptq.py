@@ -116,14 +116,14 @@ class PTQ(Quantization):
         """
         _model = model
         if not inplace:
-            assert (
-                not self._is_parallel_training()
-            ), "'inplace' is not compatible with parallel training."
+            assert not self._is_parallel_training(), (
+                "'inplace' is not compatible with parallel training."
+            )
             _model = copy.deepcopy(model)
             _model.eval()
-        assert (
-            not model.training
-        ), "Post-Training Quantization should not work on training models. Please set evaluation mode by model.eval()."
+        assert not model.training, (
+            "Post-Training Quantization should not work on training models. Please set evaluation mode by model.eval()."
+        )
         self._config._specify(_model)
         self._convert_to_quant_layers(_model, self._config)
         self._insert_activation_observers(_model, self._config)

@@ -38,8 +38,8 @@ __global__ void add_bias_grad_kernel(const T* dout_data,
     int col = idx % out_dim;
     T temp = static_cast<T>(0);
     for (int i = 0; i < ins_num; ++i) {
-      int select_indx = ((row + 1) * i + 1) * col;
-      temp += dout_data[select_indx];
+      int select_index = ((row + 1) * i + 1) * col;
+      temp += dout_data[select_index];
     }
     db_data[idx] += temp;
   }

@@ -158,7 +158,7 @@ struct QuantStore {
     DstVec dst_vec;
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
-      if constexpr (std::is_same_v<OutT, phi::dtype::float8_e4m3fn>) {
+      if constexpr (std::is_same_v<OutT, phi::float8_e4m3fn>) {
         dst_vec[i] = FP8QuantHelperFunc<float, OutT>(static_cast<float>(src[i]),
                                                      quant_scale_,
                                                      quant_round_type_,

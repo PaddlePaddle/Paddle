@@ -93,8 +93,7 @@ def convert_load(x):
 
         # get the new output of the var
         if isinstance(x, Value):
-
-            from paddle.jit.pir_dy2static.parameter_recorder import (
+            from paddle.jit.dy2static.parameter_recorder import (
                 _global_inplace_map,
             )
 
@@ -450,8 +449,8 @@ def _run_paddle_cond(
     _convert_tensor_array_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
+    from paddle.jit.dy2static.parameter_recorder import _global_inplace_map
     from paddle.jit.dy2static.program_translator import ProgramTranslator
-    from paddle.jit.pir_dy2static.parameter_recorder import _global_inplace_map
 
     if use_pir_api():
         inplace_map = _global_inplace_map
@@ -757,13 +756,17 @@ def convert_var_dtype(var, dtype):
             'int32',
             'int64',
             'uint8',
-        ], f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
+        ], (
+            f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
+        )
         assert dtype in [
             'bool',
             'int',
             'float',
             'complex',
-        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        ], (
+            f"The casted target dtype is {dtype}, which is not supported in type casting."
+        )
         cast_map = {
             'bool': 'bool',
             'int': 'int32',
@@ -777,7 +780,9 @@ def convert_var_dtype(var, dtype):
             'int',
             'float',
             'complex',
-        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        ], (
+            f"The casted target dtype is {dtype}, which is not supported in type casting."
+        )
         return eval(dtype)(var)
 
 

@@ -544,13 +544,13 @@ void ChromeTracingLogger::StartLog() {
 }
 
 void ChromeTracingLogger::LogMetaInfo(const std::string& version,
-                                      uint32_t span_indx) {
+                                      uint32_t span_index) {
   output_file_stream_ << string_format(std::string(
                                            R"JSON(
     "schemaVersion": "%s",
-    "span_indx": "%d",)JSON"),
+    "span_index": "%d",)JSON"),
                                        version.c_str(),
-                                       span_indx);
+                                       span_index);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

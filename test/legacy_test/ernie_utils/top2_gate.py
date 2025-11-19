@@ -365,7 +365,9 @@ class Top2Gate(nn.Layer):
                 assert (
                     not sharding_configs.comm_overlap
                     and not pp_config.sharding_comm_overlap
-                ), "orthogonal loss will cause twice gradient accumulate, will break pp/sharding overlap"
+                ), (
+                    "orthogonal loss will cause twice gradient accumulate, will break pp/sharding overlap"
+                )
 
         self.eps = paddle.to_tensor([1e-12], dtype="float32")
         if config.multimodel_experts:
@@ -393,16 +395,16 @@ class Top2Gate(nn.Layer):
                     self.num_experts_list.append(expert_num)
             else:
                 # 非group_experts, 依赖token_type_bias实现hard-gate能力。
-                assert (
-                    not config.moe_group_experts
-                ), "group_experts must use hard_gate when multimodel_experts is True"
+                assert not config.moe_group_experts, (
+                    "group_experts must use hard_gate when multimodel_experts is True"
+                )
         else:
             self.num_experts_list = [self.num_experts]
         if gate_weight is not None:
             self.weight = gate_weight
-            assert (
-                not self.config.moe_use_token_type_bias
-            ), "gate_weights is from outside, token_type_bias can't be used"
+            assert not self.config.moe_use_token_type_bias, (
+                "gate_weights is from outside, token_type_bias can't be used"
+            )
             logger.info("moe use gate_weight from outside")
             # 强制在amp下任使用fp32精度
             self._cast_to_low_precision = False  # 兼容develop分支paddle
@@ -477,9 +479,9 @@ class Top2Gate(nn.Layer):
 
         if self.use_token_type_bias:
             if self.config.multimodel_experts:
-                assert (
-                    not self.config.moe_use_hard_gate
-                ), "multimodel_experts with hard_gate is not support token_type_bias."
+                assert not self.config.moe_use_hard_gate, (
+                    "multimodel_experts with hard_gate is not support token_type_bias."
+                )
             num_experts = (
                 sum(self.num_experts)
                 if self.config.multimodel_experts
@@ -629,9 +631,9 @@ class Top2Gate(nn.Layer):
                 cap = self.cap[1]
         # capacity = 2S/E
         capacity = int(cap * num_tokens // num_experts)
-        assert (
-            capacity > 0
-        ), f"requires capacity to >= 0. cap={cap}, num_tokens={num_tokens}"
+        assert capacity > 0, (
+            f"requires capacity to >= 0. cap={cap}, num_tokens={num_tokens}"
+        )
         return capacity
 
     def top2_gating(self, logits, cap=None, correction_bias=None):
@@ -925,9 +927,9 @@ class TopKGateFused(Top2Gate):
                 )
             if self.use_token_type_bias:
                 assert token_type_ids is not None
-                assert (
-                    token_type_ids.max() < self.bias.shape[0]
-                ), f"token_type_ids {token_type_ids.max()} >= bias shape {self.bias.shape[0]}"
+                assert token_type_ids.max() < self.bias.shape[0], (
+                    f"token_type_ids {token_type_ids.max()} >= bias shape {self.bias.shape[0]}"
+                )
                 bias = self.bias[token_type_ids]  # [seq]
                 logits = logits + bias
             orthogonal_loss = None
@@ -976,14 +978,14 @@ class DeepEPTop2Gate(TopKGateFused):
             paddle.Tensor: The value of auxiliary loss.
 
         """
-        assert (
-            len(gates.shape) == 2
-        ), "gates.shape must be [sequence_length, num_experts]"
+        assert len(gates.shape) == 2, (
+            "gates.shape must be [sequence_length, num_experts]"
+        )
         if input_ids is not None:
             # has_padding = (input_ids == 0).any()
-            assert (
-                input_ids.shape[0] == gates.shape[0]
-            ), f"check input_ids shape {input_ids.shape}"
+            assert input_ids.shape[0] == gates.shape[0], (
+                f"check input_ids shape {input_ids.shape}"
+            )
             valid_mask = (input_ids != 0).astype(paddle.float32)
             seqlen_float = valid_mask.sum().item()
             gates = gates * valid_mask.unsqueeze(-1)

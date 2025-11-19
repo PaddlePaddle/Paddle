@@ -19,7 +19,7 @@ namespace phi::funcs {
 template <typename Context, typename T>
 void FindAbsMaxFunctor<Context, T>::operator()(const Context &dev_ctx,
                                                const T *in,
-                                               const int num,
+                                               const int64_t num,
                                                T *out) {
   *out = std::abs(*(std::max_element(in + 0, in + num, Compare<T>())));
 }

@@ -15,10 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import (
-    Dy2StTestBase,
-    test_pir_only,
-)
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -34,7 +31,6 @@ def call_fused_rms_norm(x, y):
 
 
 class TestOptionalTensorOutput(Dy2StTestBase):
-    @test_pir_only
     def test_fused_rms_norm(self):
         if not paddle.is_compiled_with_cuda():
             return

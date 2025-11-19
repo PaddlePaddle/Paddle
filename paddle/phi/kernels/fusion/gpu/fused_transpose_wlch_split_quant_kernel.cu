@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fused_transpose_wlch_split_quant_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -100,8 +101,8 @@ __global__ void __launch_bounds__(512)
       reinterpret_cast<__nv_fp8_e4m3**>(meta + num_experts);
   float** scale_ptrs = reinterpret_cast<float**>(meta + num_experts * 2);
 
-  const size_t block_off_x = blockIdx.x * size_t(128);
-  const size_t block_off_y = blockIdx.y * 128;
+  const size_t block_off_x = static_cast<size_t>(blockIdx.x) * 128;
+  const size_t block_off_y = static_cast<size_t>(blockIdx.y) * 128;
 
   // 1. Load 128x128 block from input.
   for (uint32_t i = 0; i < 8; i++) {
@@ -156,7 +157,7 @@ __global__ void __launch_bounds__(512)
       off = (off / 64) * 64 + (off % 2) * 32 + (off % 64) / 2;
     }
     float scale_out = 1.0f / col_scale[off];
-    size_t idx_y = blockIdx.x - expert_off / 128;
+    size_t idx_y = static_cast<size_t>(blockIdx.x) - expert_off / 128;
     size_t idx_x = block_off_y + threadIdx.y * 32 + threadIdx.x;
     size_t idx = idx_y * H + idx_x;
     if (idx_x < H) {
@@ -214,7 +215,7 @@ void FusedTransposeWLCHSplitQuantKernel(
   // Allocate outs and scales
   for (size_t i = 0; i < num_experts; i++) {
     if (outs[i] != nullptr) {
-      dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(outs[i]);
+      dev_ctx.template Alloc<phi::float8_e4m3fn>(outs[i]);
     }
     if (scales[i] != nullptr) {
       dev_ctx.template Alloc<float>(scales[i]);
@@ -236,8 +237,7 @@ void FusedTransposeWLCHSplitQuantKernel(
   }
   for (size_t i = 0; i < num_experts; i++) {
     meta_ptr[num_experts + i] =
-        outs[i] ? reinterpret_cast<int64_t>(
-                      outs[i]->data<phi::dtype::float8_e4m3fn>())
+        outs[i] ? reinterpret_cast<int64_t>(outs[i]->data<phi::float8_e4m3fn>())
                 : 0;
   }
   for (size_t i = 0; i < num_experts; i++) {
@@ -254,7 +254,7 @@ void FusedTransposeWLCHSplitQuantKernel(
   dim3 block(32, 16);
 
   const __nv_bfloat16* x_ptr =
-      reinterpret_cast<const __nv_bfloat16*>(x.data<phi::dtype::bfloat16>());
+      reinterpret_cast<const __nv_bfloat16*>(x.data<phi::bfloat16>());
   int64_t* meta_gpu_ptr = meta_gpu.data<int64_t>();
   FastDivMod W_divmod(W), C_divmod(C);
 
@@ -284,7 +284,7 @@ PD_REGISTER_KERNEL(fused_transpose_wlch_split_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedTransposeWLCHSplitQuantKernel,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }

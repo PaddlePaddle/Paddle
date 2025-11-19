@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/gather_grad_kernel.h"
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -86,6 +85,6 @@ PD_REGISTER_KERNEL(gather_grad,
                    int32_t,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

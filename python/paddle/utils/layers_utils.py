@@ -558,12 +558,12 @@ def get_inputs_outputs_in_block(block):
     Returns the inputs and outputs variable used in this block but not
     created in this block.
     """
-    assert isinstance(
-        block, Block
-    ), "input non-Block argument for get_inputs_outputs_in_block."
-    assert (
-        block.parent_idx != -1
-    ), "input block should be a sub-block, not main block."
+    assert isinstance(block, Block), (
+        "input non-Block argument for get_inputs_outputs_in_block."
+    )
+    assert block.parent_idx != -1, (
+        "input block should be a sub-block, not main block."
+    )
 
     # Find input/output var names of all ops in block
     inner_inputs = set()

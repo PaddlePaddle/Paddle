@@ -424,7 +424,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     PADDLE_ENFORCE(out.size() == 3U || out.size() == 2U || out.size() == 5U ||
                        out.size() == 12U,
                    ::common::errors::InvalidArgument(
-                       "The output tensor sizes of conv2d op in conv2d op"
+                       "The output tensor sizes of conv2d op in conv2d op "
                        "should be 2 or 3 or 5."));
 
     *ret = CINNValuePack{res};

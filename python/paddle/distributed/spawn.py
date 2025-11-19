@@ -274,15 +274,15 @@ def _get_subprocess_env_list(nprocs, options):
         args.paddle_cpuonly = True
         args.selected_devices = None
         args.ips = args.cluster_node_ips
-        assert (
-            options.get('use_paddlecloud', None) is None
-        ), "CPUONLY spawn doesn't support use paddle cloud"
-        assert (
-            len(args.cluster_node_ips.split(',')) <= 1
-        ), "CPUONLY spawn only support single trainer, that is len(ips)=1, but got %s."
-        assert (
-            _get_trainers_num() == 1
-        ), "CPUONLY spawn doesn't support multi-trainer"
+        assert options.get('use_paddlecloud', None) is None, (
+            "CPUONLY spawn doesn't support use paddle cloud"
+        )
+        assert len(args.cluster_node_ips.split(',')) <= 1, (
+            "CPUONLY spawn only support single trainer, that is len(ips)=1, but got %s."
+        )
+        assert _get_trainers_num() == 1, (
+            "CPUONLY spawn doesn't support multi-trainer"
+        )
     elif options['backend'] == 'xccl':
         args.selected_devices = None
         custom_device_name = core.get_all_custom_device_type()[0]

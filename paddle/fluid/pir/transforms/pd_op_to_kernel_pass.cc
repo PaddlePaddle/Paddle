@@ -69,10 +69,12 @@
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(enable_collect_shape);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 REGISTER_FILE_SYMBOLS(pd_op_to_kernel_pass);
 namespace paddle::dialect {
 
@@ -281,6 +283,9 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     }
   } else if ((op->isa<AffineGridOp>() || op->isa<AffineGridGradOp>()) &&
              kernel_key.backend() == phi::Backend::GPUDNN) {
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      return true;
+    }
     bool use_cudnn = true;
     int version = -1;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1161,7 +1166,7 @@ phi::KernelKey GetKernelKey(
                   .dtype();
     } else {
       PADDLE_THROW(
-          "FeedOp, FetchOp, ArrayLengthOp can only output a densetensor or "
+          "FeedOp, FetchOp, ArrayLengthOp can only output a dense tensor or "
           "dense tensor array.");
     }
     return {phi::Backend::CPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
@@ -1527,8 +1532,12 @@ void HandleForCudaGraphOp(
   auto cuda_graph_op = op_item->dyn_cast<CudaGraphOp>();
   std::vector<pir::Type> new_outputs;
   for (size_t i = 0; i < cuda_graph_op.num_results(); ++i) {
-    new_outputs.push_back(
-        ConvertOpTypeToKernelType(ctx, cuda_graph_op.result(i).type(), place));
+    // Here, we set place as an undefined type to avoid unnecessary memcpy
+    // operations that may occur if place is fixed to a specific device (e.g.,
+    // GPU) too early. The real output place will be inferred later in
+    // `ProcessBlock` and then assigned to the outputs of new_cg_op.
+    new_outputs.push_back(ConvertOpTypeToKernelType(
+        ctx, cuda_graph_op.result(i).type(), phi::Place()));
   }
   auto new_cg_op = builder.Build<CudaGraphOp>(std::move(new_outputs));
 
@@ -1539,7 +1548,24 @@ void HandleForCudaGraphOp(
                ctx,
                map_op_pair,
                map_value_pair,
-               true);
+               /*for_if_block=*/false);
+
+  PADDLE_ENFORCE_EQ(new_cg_op.block()->back().isa<::pir::YieldOp>(),
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "CudaGraphOp's block should end with YieldOp"));
+
+  auto yield_op = new_cg_op.block()->back().dyn_cast<::pir::YieldOp>();
+
+  PADDLE_ENFORCE_EQ(
+      yield_op.num_operands(),
+      new_cg_op.num_results(),
+      common::errors::PreconditionNotMet(
+          "CudaGraphOp's num_operands must equal to its YieldOp's"));
+
+  for (size_t i = 0; i < yield_op.num_operands(); ++i) {
+    new_cg_op->result(i).set_type(yield_op.operand_type(i));
+  }
 
   // update map
   (*map_op_pair)[op_item] = new_cg_op;
@@ -2851,9 +2877,9 @@ std::vector<pir::Value> BuildInputs(
               PADDLE_THROW(common::errors::Unimplemented(
                   "builtin.combine Input type only support "
                   "VectorType<DenseTensorType> and "
-                  "VectorType<SelectedRowsType> and"
-                  "VectorType<DenseTensorArrayType> and"
-                  "VectorType<SparseCooTensorType> and"
+                  "VectorType<SelectedRowsType> and "
+                  "VectorType<DenseTensorArrayType> and "
+                  "VectorType<SparseCooTensorType> and "
                   "VectorType<SparseCsrTensorType>"));
             }
 
@@ -2912,9 +2938,9 @@ std::vector<pir::Value> BuildInputs(
                 PADDLE_THROW(common::errors::Unimplemented(
                     "builtin.combine Input type only support "
                     "VectorType<DenseTensorType> and "
-                    "VectorType<SelectedRowsType> and"
-                    "VectorType<DenseTensorArrayType> and"
-                    "VectorType<SparseCooTensorType> and"
+                    "VectorType<SelectedRowsType> and "
+                    "VectorType<DenseTensorArrayType> and "
+                    "VectorType<SparseCooTensorType> and "
                     "VectorType<SparseCsrTensorType>"));
               }
               in_i = AddPlaceTransferOp(
@@ -3621,10 +3647,11 @@ void ProcessBlock(
         kernel_key.set_backend(phi::Backend::ONEDNN);
         kernel_key.set_layout(phi::DataLayout::ONEDNN);
       }
-    } else if (FLAGS_use_mkldnn && kernel_key.backend() == phi::Backend::CPU &&
+    } else if ((FLAGS_use_mkldnn || FLAGS_use_onednn) &&
+               kernel_key.backend() == phi::Backend::CPU &&
                !op_item->HasTrait<OneDNNTrait>() &&
                SupportsONEDNN(kernel_name, kernel_key.dtype())) {
-      // Support FLAGS_use_mkldnn
+      // Support FLAGS_use_mkldnn || FLAGS_use_onednn
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;

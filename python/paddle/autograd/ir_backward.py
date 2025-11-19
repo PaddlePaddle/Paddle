@@ -218,6 +218,18 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         raise ValueError(
             "grad_outputs should have the same length of as outputs."
         )
+
+    def _check_shape(output, grad) -> bool:
+        if len(output.shape) != len(grad.shape):
+            return False
+        for o_dim, g_dim in zip(output.shape, grad.shape):
+            if o_dim == -1 or g_dim == -1:
+                # Skip comparison if any dimension is -1 (wildcard for dynamic shape)
+                continue
+            if o_dim != g_dim:
+                return False
+        return True
+
     backward_ops = []
     for i, grad in enumerate(grad_outputs):
         output = outputs[i]
@@ -229,7 +241,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
             )
             grad_outputs[i] = grad_value
         else:
-            if output.shape != grad.shape:
+            if not _check_shape(output, grad):
                 raise ValueError(
                     f"The shape of grad_output[{i}] {grad.shape} should be the same as the shape of output[{i}] {output.shape}"
                 )
@@ -270,6 +282,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     visited_output.add(opresult)
 
                     complete_outputs.append(opresult)
+                    if opresult not in state.value_to_valuegrad:
+                        state.value_to_valuegrad[opresult] = [[grad_value]]
 
     return grad_outputs, complete_outputs, backward_ops
 
@@ -585,9 +599,9 @@ def append_backward_ops(
             i += 1
 
     def update_if_double_grad_input_grad_map(input_grads, all_inputs):
-        assert len(input_grads) == len(
-            all_inputs
-        ), "input_grads should same to all_inputs"
+        assert len(input_grads) == len(all_inputs), (
+            "input_grads should same to all_inputs"
+        )
         for input, input_grad in zip(all_inputs, input_grads):
             if isinstance(input_grad, list):
                 state.value_to_valuegrad[input].append(input_grad)

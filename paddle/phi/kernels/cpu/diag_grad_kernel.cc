@@ -67,10 +67,10 @@ PD_REGISTER_KERNEL(diag_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::DiagGradKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

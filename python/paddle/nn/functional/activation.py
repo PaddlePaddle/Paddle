@@ -19,6 +19,11 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+    param_two_alias,
+    softmax_param_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -32,7 +37,10 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DataLayout2D, DTypeLike
 
-__all__ = []
+from paddle._C_ops import (  # noqa: F401
+    gelu,
+    softplus,
+)
 
 
 def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
@@ -149,70 +157,7 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     return _C_ops.elu_(x, alpha)
 
 
-def gelu(
-    x: Tensor, approximate: bool = False, name: str | None = None
-) -> Tensor:
-    r"""
-    gelu activation.
-
-    The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
-
-    if approximate is True
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
-
-    else
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        approximate (bool, optional): Whether to enable approximation. Default is False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
-            >>> out1 = F.gelu(x)
-            >>> print(out1)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15865529,  0.34573123],
-             [ 0.84134471,  1.39978933]])
-            >>> out2 = F.gelu(x, True)
-            >>> print(out2)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15880796,  0.34571400],
-             [ 0.84119201,  1.39957154]])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.gelu(x, approximate)
-    else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'gelu'
-        )
-        helper = LayerHelper("gelu", **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='gelu',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'approximate': approximate},
-        )
-        return out
-
-
+@param_two_alias(["x", "input"], ["threshold", "lambd"])
 def hardshrink(
     x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
@@ -583,9 +528,9 @@ def prelu(
                [-1.25000000,  6.        ,  7.        , -2.        ],
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
-    assert (
-        len(weight.shape) == 0 or len(weight.shape) == 1
-    ), "The dim count of weight shape should be 0 or 1 in prelu()."
+    assert len(weight.shape) == 0 or len(weight.shape) == 1, (
+        "The dim count of weight shape should be 0 or 1 in prelu()."
+    )
 
     mode = 'all'
     if len(weight.shape) == 1 and weight.shape[0] > 1:
@@ -606,19 +551,19 @@ def prelu(
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
-        assert (
-            len(x.shape) > 1
-        ), "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
+        assert len(x.shape) > 1, (
+            "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
+        )
 
         # NOTE(GuoxiaWang): support NHWC data format
         if data_format == 'NHWC':
-            assert (
-                weight.shape[0] == x.shape[-1]
-            ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            assert weight.shape[0] == x.shape[-1], (
+                "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            )
         else:
-            assert (
-                weight.shape[0] == x.shape[1]
-            ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            assert weight.shape[0] == x.shape[1], (
+                "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            )
         mode = 'channel'
 
     if in_dynamic_or_pir_mode():
@@ -812,6 +757,7 @@ def relu_(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.relu_(x)
 
 
+@param_one_alias(["x", "input"])
 def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     log_sigmoid activation.
@@ -822,6 +768,7 @@ def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1056,7 +1003,8 @@ def selu(
         return out
 
 
-def silu(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     silu activation
 
@@ -1066,8 +1014,14 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
 
     Where :math:`x` is the input Tensor.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``silu(input=tensor_x)`` is equivalent to ``silu(x=tensor_x)``.
+
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1084,10 +1038,21 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+
+            >>> out = F.silu(x, True)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.silu(x)
+        if inplace:
+            return _C_ops.silu_(x)
+        else:
+            return _C_ops.silu(x)
     else:
         check_variable_and_dtype(
             x,
@@ -1108,11 +1073,14 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@softmax_param_alias
 def softmax(
     x: Tensor,
     axis: int = -1,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This operator implements the softmax layer. The calculation process is as follows:
@@ -1197,6 +1165,7 @@ def softmax(
             :math:`axis + D` . Default is -1.
         dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor, optional): The output Tensor.
 
     Returns:
         A Tensor with the same shape and data type (use ``dtype`` if it is
@@ -1235,7 +1204,6 @@ def softmax(
               [0.03205860, 0.08714432, 0.23688282, 0.64391426],
               [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
-
     if (
         (dtype is not None)
         and (not isinstance(dtype, core.VarDesc.VarType))
@@ -1244,7 +1212,7 @@ def softmax(
         dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
-        return _C_ops.softmax(outs_cast, axis)
+        return _C_ops.softmax(outs_cast, axis, out=out)
     else:
         use_cudnn = True
         if dtype is None:
@@ -1301,67 +1269,7 @@ def softmax_(
     return _C_ops.softmax_(outs_cast, axis)
 
 
-def softplus(
-    x: Tensor, beta: float = 1, threshold: float = 20, name: str | None = None
-) -> Tensor:
-    r"""
-    softplus activation
-
-    .. math::
-        softplus(x)=\begin{cases}
-                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
-                x,&x>\frac{\varepsilon}{\beta}.
-            \end{cases}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
-        beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
-        threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
-            >>> out = F.softplus(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.softplus(x, beta, threshold)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'softplus',
-        )
-        helper = LayerHelper('softplus', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='softplus',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'beta': beta, 'threshold': threshold},
-        )
-        return out
-
-
+@param_two_alias(["x", "input"], ["threshold", "lambd"])
 def softshrink(
     x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
@@ -1689,7 +1597,7 @@ def log_softmax(
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
+        dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
             to ``dtype`` before the operation is performed. This is useful for
             preventing data type overflows. Supported dtype: float32, float64.
@@ -1734,12 +1642,11 @@ def log_softmax(
               [-12.31326640, -1.31326640 , -0.31326640 , -15.31326640],
               [-3.44018970 , -2.44018970 , -1.44018970 , -0.44018970 ]]])
     """
-
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        if dtype is not None:
+        if dtype is not None and x.dtype != dtype:
             x = _C_ops.cast(x, dtype)
         return _C_ops.log_softmax(x, axis)
     else:
@@ -1781,6 +1688,7 @@ def log_softmax(
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
     r"""
     The gated linear unit. The input is evenly splited into 2 parts along a

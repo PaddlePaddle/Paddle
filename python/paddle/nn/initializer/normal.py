@@ -243,7 +243,11 @@ class TruncatedNormalInitializer(Initializer):
                 core.eager.Tensor,
             )
         else:
-            expected = (framework.Variable, paddle.pir.core.ParameterMeta)
+            expected = (
+                framework.Variable,
+                paddle.pir.Value,
+                paddle.pir.core.ParameterMeta,
+            )
 
         assert isinstance(var, expected)
         assert isinstance(block, (framework.Block, pir.Block))

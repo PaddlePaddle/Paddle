@@ -61,7 +61,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
 }
 
 // only poolop
-bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+bool CanONEDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // oneDNN is supporting only unchangeable in size pool window
   auto src_tz = common::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
@@ -181,7 +181,7 @@ phi::KernelKey GetPoolExpectedKernelType(
   auto data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
-  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  op_ptr->SetDnnFallback(!CanONEDNNSupportPool(ctx));
   // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_DNNL
 
   return phi::KernelKey(data_type, ctx.GetPlace());
@@ -194,7 +194,7 @@ phi::KernelKey GetPoolDoubleGradExpectedKernelType(
       op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "grad_x@GRAD");
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
-  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  op_ptr->SetDnnFallback(!CanONEDNNSupportPool(ctx));
   // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_DNNL
 
   return phi::KernelKey(data_type, ctx.GetPlace());

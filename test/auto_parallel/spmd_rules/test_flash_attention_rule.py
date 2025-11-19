@@ -50,7 +50,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
         v_tensor_dist_attr.process_mesh = process_mesh
         v_tensor_dist_attr.dims_mapping = [0, -1, -1, -1]
         v_shape = [2, 1024, 64, 512]
-        v_spec = DistTensorSpec(v_shape, k_tensor_dist_attr)
+        v_spec = DistTensorSpec(v_shape, v_tensor_dist_attr)
         self.v_spec = v_spec
 
         out_tensor_dist_attr = TensorDistAttr()

@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, paddle_static_guard
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -287,7 +292,8 @@ def quant_weights(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOp(OpTest):
@@ -348,13 +354,14 @@ class TestQuantLinearOp(OpTest):
         }
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(place, check_dygraph=False)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias1(TestQuantLinearOp):
@@ -377,7 +384,8 @@ class TestQuantLinearOpNoBias1(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias2(TestQuantLinearOp):
@@ -400,7 +408,8 @@ class TestQuantLinearOpNoBias2(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias3(TestQuantLinearOp):
@@ -423,7 +432,8 @@ class TestQuantLinearOpNoBias3(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias4(TestQuantLinearOp):
@@ -446,7 +456,8 @@ class TestQuantLinearOpNoBias4(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithBias1(TestQuantLinearOp):
@@ -469,7 +480,8 @@ class TestQuantLinearOpWithBias1(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithBias2(TestQuantLinearOp):
@@ -492,7 +504,8 @@ class TestQuantLinearOpWithBias2(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithPadding1(TestQuantLinearOp):
@@ -515,7 +528,8 @@ class TestQuantLinearOpWithPadding1(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithPadding2(TestQuantLinearOp):
@@ -538,7 +552,8 @@ class TestQuantLinearOpWithPadding2(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
@@ -590,7 +605,7 @@ class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
                         quant_min_bound=quant_min_bound,
                     )
 
-                place = base.CUDAPlace(0)
+                place = get_device_place()
                 exe = base.Executor(place=place)
                 exe.run(startup_program)
                 out = exe.run(
@@ -606,7 +621,8 @@ class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpError(unittest.TestCase):

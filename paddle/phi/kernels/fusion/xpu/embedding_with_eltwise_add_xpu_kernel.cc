@@ -107,7 +107,10 @@ void MultiEmbeddingKernel(const Context& dev_ctx,
   std::vector<xpu::VectorParam<TID>> arg_ids;
   auto* mask_tensor = mask.get_ptr();
   if (mask_tensor != nullptr) {
-    int batch_size = mask_tensor->dims()[0];
+    int64_t batch_size = mask_tensor->dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     auto pad_seq_len = mask_tensor->dims()[1];
     max_seq_len->Resize({1});
     dev_ctx.template HostAlloc<int>(max_seq_len)[0] = pad_seq_len;
@@ -207,7 +210,7 @@ PD_REGISTER_KERNEL(embedding_with_eltwise_add_xpu,
                    ALL_LAYOUT,
                    phi::fusion::EmbeddingWithEltwiseAddXpuKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(1).SetBackend(phi::Backend::CPU);

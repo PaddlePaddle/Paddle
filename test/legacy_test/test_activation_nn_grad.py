@@ -26,7 +26,6 @@ from paddle.base import core
 
 
 class TestSigmoidTripleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -164,7 +163,6 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -485,7 +483,6 @@ class TestCosDoubleGradCheck(unittest.TestCase):
 
 
 class TestCosDoubleGradCheck2(unittest.TestCase):
-
     def _check_cos_double_dynamic(self, place):
         with dygraph_guard():
             x = paddle.randn([64, 64])

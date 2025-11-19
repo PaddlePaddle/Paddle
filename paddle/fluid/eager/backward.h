@@ -25,7 +25,8 @@ namespace egr {
 // each grad_tensors[i] keeps the value for its corresponding tensors[i]
 TEST_API void Backward(const std::vector<paddle::Tensor>& tensors,
                        const std::vector<paddle::Tensor>& grad_tensors,
-                       bool retain_graph = false);
+                       bool retain_graph = false,
+                       std::string dump_backward_graph_path = "");
 
 TEST_API std::vector<paddle::Tensor> Grad(
     const std::vector<paddle::Tensor>& tensors,
@@ -35,7 +36,8 @@ TEST_API std::vector<paddle::Tensor> Grad(
     bool create_graph = false,
     bool only_inputs = false,
     bool allow_unused = false,
-    const std::vector<paddle::Tensor>& no_grad_vars = {});
+    const std::vector<paddle::Tensor>& no_grad_vars = {},
+    const std::string dump_backward_graph_path = "");
 
 // Reserved for gradient()
 

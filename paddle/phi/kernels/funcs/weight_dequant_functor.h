@@ -15,9 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
@@ -130,7 +128,9 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
   AlignedVector<T, 16> vec_out;
 
   int warp_id = threadIdx.x / 32, lane_id = threadIdx.x % 32;
-  int tile_id = blockIdx.x * blockDim.x / 32 + warp_id;
+  int64_t tile_id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) / 32 +
+      warp_id;
   // Every two rows of the original weights are interleaved into a row with
   // stride of 64, so if each thread processes 16 elements(for int8, we can use
   // ldg.128 to load weights), then every group of four adjacent threads will
@@ -186,7 +186,9 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
   AlignedVector<T, 32> vec_out;
 
   int warp_id = threadIdx.x / 32, lane_id = threadIdx.x % 32;
-  int tile_id = blockIdx.x * blockDim.x / 32 + warp_id;
+  int64_t tile_id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) / 32 +
+      warp_id;
   // Every 4 rows of the original weights are interleaved into a row with
   // stride of 32, so if each thread processes 16 elements(for int8, we can use
   // ldg.128 to load weights), then every group of two adjacent threads will
@@ -244,7 +246,9 @@ __global__ void int8_weight_only_dequant(const uint8_t* weight,
   AlignedVector<T, 16> vec_out;
 
   int warp_id = threadIdx.x / 32, lane_id = threadIdx.x % 32;
-  int tile_id = blockIdx.x * blockDim.x / 32 + warp_id;
+  int64_t tile_id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) / 32 +
+      warp_id;
   // Every two rows of the original weights are interleaved into a row with
   // stride of 64, so if each thread processes 16 elements(for int8, we can use
   // ldg.128 to load weights), then every group of four adjacent threads will
@@ -304,7 +308,9 @@ __global__ void int4_weight_only_dequant(const uint8_t* weight,
   AlignedVector<T, 32> vec_out;
 
   int warp_id = threadIdx.x / 32, lane_id = threadIdx.x % 32;
-  int tile_id = blockIdx.x * blockDim.x / 32 + warp_id;
+  int64_t tile_id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) / 32 +
+      warp_id;
   // Every two rows of the original weights are interleaved into a row with
   // stride of 64, so if each thread processes 16 elements(for int8, we can use
   // ldg.128 to load weights), then every group of four adjacent threads will

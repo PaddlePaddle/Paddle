@@ -14,10 +14,13 @@
 
 from __future__ import annotations
 
+import inspect
 import math
-from typing import TYPE_CHECKING, Literal
+import warnings
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, pir
@@ -31,6 +34,7 @@ from paddle.framework import (
 )
 from paddle.tensor.creation import full
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.layers_utils import NotSupportedTensorArgumentError
 
 from ...base.data_feeder import (
@@ -226,6 +230,19 @@ def unfold(
     return out
 
 
+@overload
+def interpolate(
+    input: Tensor,
+    size: ShapeLike | None = None,
+    scale_factor: ShapeLike | float | None = None,
+    mode: _InterpolateMode = 'nearest',
+    align_corners: bool = False,
+    recompute_scale_factor: bool | None = None,
+    antialias: bool = False,
+) -> Tensor: ...
+
+
+@overload
 def interpolate(
     x: Tensor,
     size: ShapeLike | None = None,
@@ -238,8 +255,20 @@ def interpolate(
     ) = None,
     recompute_scale_factor: bool | None = None,
     name: str | None = None,
-) -> Tensor:
+) -> Tensor: ...
+
+
+def interpolate(*args: Any, **kwargs: Any) -> Tensor:
     """
+
+    This function has two functionalities, depending on the parameters passed:
+
+    1. ``interpolate(input, size, scale_factor, mode, align_corners, recompute_scale_factor, antialias)``:
+        PyTorch compatible interpolate.
+
+    2. ``interpolate(x, size, scale_factor, mode, align_corners, align_mode, data_format, recompute_scale_factor, name)``
+        The original PaddlePaddle implementation of interpolate, see the following docs.
+
 
     This API resizes a batch of images.
 
@@ -380,6 +409,7 @@ def interpolate(
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
              specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
              be presumed according to its dimension. See details in :attr:`data_format`.
+            alias: ``input``.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -396,6 +426,9 @@ def interpolate(
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
+        antialias(bool) : flag to apply anti-aliasing. Default: False. Using anti-alias option together with align_corners=False,
+                          interpolation result would match Pillow result for downsampling operation.
+                          Supported modes: 'bilinear', 'bicubic'.
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
@@ -441,6 +474,42 @@ def interpolate(
             >>> print(output_2.shape)
             [2, 3, 12, 10]
     """
+    len_args = len(args)
+
+    def safe_set_param(key: str, value: Any):
+        if key in kwargs:
+            raise TypeError(f"got multiple values for argument '{key}'")
+        kwargs[key] = value
+
+    if "input" in kwargs:
+        safe_set_param('x', kwargs.pop("input"))
+    if len(args) >= 6 and type(args[5]) is not int:  # torch api
+        param_keys = ["recompute_scale_factor", "antialias"]
+        for idx in range(min(len_args - 5, len(param_keys))):
+            safe_set_param(param_keys[idx], args[idx + 5])
+        args = args[:5]
+    if kwargs.get("antialias"):  # args[6] = antialias, and its value is True
+        raise ValueError(
+            "The argument 'antialias' cannot be set to true because this feature is not supported yet and will be added later."
+        )
+
+    return _interpolate_wrapper(*args, **kwargs)
+
+
+def _interpolate_wrapper(
+    x: Tensor,
+    size: ShapeLike | None = None,
+    scale_factor: ShapeLike | float | None = None,
+    mode: _InterpolateMode = 'nearest',
+    align_corners: bool = False,
+    align_mode: int = 0,
+    data_format: (
+        DataLayout1DVariant | DataLayout2D | DataLayout3D | None
+    ) = None,
+    recompute_scale_factor: bool | None = None,
+    antialias: bool = False,
+    name: str | None = None,
+) -> Tensor:
     if data_format is None:
         dim_size = len(x.shape)
         if dim_size == 3:
@@ -599,9 +668,9 @@ def interpolate(
                 if isinstance(dim_size, (Variable, paddle.pir.Value)):
                     contain_var = True
                     continue
-                assert (
-                    dim_size > 0
-                ), "Each dimension size given in out_shape must be greater than 0."
+                assert dim_size > 0, (
+                    "Each dimension size given in out_shape must be greater than 0."
+                )
 
             if contain_var:
                 new_size_tensor = []
@@ -655,7 +724,7 @@ def interpolate(
             if len(x.shape) == 5:
                 if len(out_shape) != 3:
                     raise ValueError(
-                        "size length should be 3 for " "input 5-D tensor."
+                        "size length should be 3 for input 5-D tensor."
                     )
                 if contain_var:
                     attrs['out_d'] = size_list[0]
@@ -871,6 +940,9 @@ def interpolate(
         attrs=attrs,
     )
     return out
+
+
+interpolate.__signature__ = inspect.signature(_interpolate_wrapper)
 
 
 def upsample(
@@ -1139,11 +1211,13 @@ def bilinear(
         return out
 
 
+@param_one_alias(["x", "input"])
 def dropout(
     x: Tensor,
     p: float = 0.5,
     axis: int | Sequence[int] | None = None,
     training: bool = True,
+    inplace: bool = False,
     mode: _DropoutMode = "upscale_in_train",
     name: str | None = None,
 ) -> Tensor:
@@ -1158,6 +1232,7 @@ def dropout(
         p (float|int, optional): Probability of setting units to zero. Default: 0.5.
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
+        inplace (bool, optional): If set to ``True``, will do this operation in-place. Default: ``False``
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
             1. upscale_in_train (default), upscale the output at training time
@@ -1317,7 +1392,17 @@ def dropout(
         if in_dynamic_or_pir_mode():
             if paddle.static.default_main_program().random_seed != 0:
                 seed = paddle.static.default_main_program().random_seed
-            out = _C_ops.dropout(
+            if inplace:
+                return _C_ops.dropout_(
+                    x,
+                    None,
+                    p,
+                    not training,
+                    mode,
+                    seed if seed is not None else 0,
+                    seed is not None,
+                )
+            return _C_ops.dropout(
                 x,
                 None,
                 p,
@@ -1326,8 +1411,6 @@ def dropout(
                 seed if seed is not None else 0,
                 seed is not None,
             )
-
-            return out
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
@@ -1345,7 +1428,7 @@ def dropout(
 
                 if isinstance(
                     dropout_prob, Variable
-                ) and not dropout_prob.shape != [1]:
+                ) and dropout_prob.shape != [1]:
                     raise TypeError(
                         f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
                     )
@@ -1368,6 +1451,10 @@ def dropout(
             )
             return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
+        if inplace:
+            raise NotImplementedError(
+                "inplace not supported for dropout_nd yet"
+            )
         if not in_dynamic_mode():
             check_variable_and_dtype(
                 x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
@@ -1425,6 +1512,74 @@ def dropout(
                 else x
             )
             return ret
+
+
+def dropout1d(
+    input: paddle.Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    inplace: bool = False,
+) -> paddle.Tensor:
+    """
+    Randomly zero out entire 1D channels (feature maps) during training.
+
+    Args:
+        input: Input tensor of shape [C, L] (2D) or [N, C, L] (3D)
+        p: Probability of a channel being zeroed. Default: 0.5
+        training: If False, returns input unchanged. Default: True
+        inplace: If True, modifies input tensor in-place. Default: False
+                WARNING: Currently not implemented (will behave as False).
+                TODO: Implement in-place operation in future versions.
+                Default: False
+
+    Returns:
+        Tensor with the same shape as input, where entire channels are zeroed with probability p
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            # Case 1: 3D input (batched)
+            >>> x = paddle.randn([2, 3, 10])  # [N, C, L]
+            >>> y_train = paddle.nn.functional.dropout1d(x, p=0.2)  # Training mode
+            >>> y_test = paddle.nn.functional.dropout1d(x, p=0.2, training=False)  # Test mode
+            >>> print("Original first channel:", x[0, 0, :])
+            >>> print("Train output (may be zeroed):", y_train[0, 0, :])
+            >>> print("Test output (always unchanged):", y_test[0, 0, :])
+
+            # Case 2: 2D input (single sample)
+            >>> x = paddle.randn([3, 8])  # [C, L]
+            >>> y = paddle.nn.functional.dropout1d(x, p=0.5)
+            >>> print("Input shape:", x.shape)
+            >>> print("Output shape:", y.shape)
+            >>> print("Zeroed channels count:", paddle.sum(y == 0).item())
+    """
+    if p < 0 or p > 1:
+        raise ValueError(f"dropout probability must be in [0, 1], got {p}")
+
+    ndim = input.ndim
+    if ndim not in [2, 3]:
+        raise RuntimeError(f"dropout1d expects 2D or 3D input, got {ndim}D")
+
+    if inplace:
+        warnings.warn(
+            "inplace=True is currently not supported in dropout1d and will be ignored. "
+            "This parameter is reserved for future implementation."
+        )
+        # TODO: Implement actual in-place operation when supported by dropout
+
+    need_squeeze = ndim == 2
+    if need_squeeze:
+        input = input.unsqueeze(0)  # [C, L] -> [1, C, L]
+
+    # Apply dropout along channel dimension
+    result = dropout(input, p=p, axis=1, training=training)
+
+    if need_squeeze:
+        result = result.squeeze(0)  # [1, C, L] -> [C, L]
+
+    return result
 
 
 def dropout2d(
@@ -1788,6 +1943,7 @@ def feature_alpha_dropout(
     )
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def pad(
     x: Tensor,
     pad: ShapeLike,
@@ -1823,8 +1979,14 @@ def pad(
         4. If mode is ``'reflect'``, pad[0] and pad[1] must be no greater than width-1. The height and depth
         dimension has the same condition.
 
+    .. note::
+    Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+    For example, ``input=tensor_x`` is equivalent to ``x=tensor_x``.
+
+
     Args:
         x (Tensor): The input tensor with data type float32, float64, int32, int64, complex64 or complex128.
+        input: An alias for ``x`` , with identical behavior.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int. Refer to Note for details.
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default is ``'constant'``.
 
@@ -1991,7 +2153,9 @@ def pad(
         'replicate',
         'constant',
         'circular',
-    ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
+    ], (
+        f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
+    )
 
     x_dim = len(x.shape)
     if in_dynamic_mode():
@@ -2085,9 +2249,9 @@ def pad(
         4: ["NCHW", "NHWC"],
         5: ["NCDHW", "NDHWC"],
     }
-    assert (
-        data_format in supported_format_map[x_dim]
-    ), f"input tensor dimension is {x_dim}, it's data format should be in {supported_format_map[x_dim]} but got {data_format}"
+    assert data_format in supported_format_map[x_dim], (
+        f"input tensor dimension is {x_dim}, it's data format should be in {supported_format_map[x_dim]} but got {data_format}"
+    )
 
     unsqueezed_dim = []
 
@@ -2217,6 +2381,7 @@ def zeropad2d(
     )
 
 
+@param_one_alias(["axis", "dim"])
 def cosine_similarity(
     x1: Tensor, x2: Tensor, axis: int = 1, eps: float = 1e-8
 ) -> Tensor:
@@ -2560,7 +2725,7 @@ def class_center_sample(
         >>> # num_classes of each GPU can be different, e.g num_classes_list = [10, 8]
         >>> num_classes_list = [10, 10]
         >>> num_classes = paddle.sum(paddle.to_tensor(num_classes_list))
-        >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64') # type: ignore
+        >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')  # type: ignore[arg-type]
         >>> label_list = [] # type: ignore
         >>> dist.all_gather(label_list, label)
         >>> label = paddle.concat(label_list, axis=0)
@@ -2677,6 +2842,16 @@ def class_center_sample(
     return remapped_label, sampled_class_center
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "output_sizes": ["output_size"],
+        "kernel_sizes": ["kernel_size"],
+        "strides": ["stride"],
+        "paddings": ["padding"],
+        "dilations": ["dilation"],
+    }
+)
 def fold(
     x: Tensor,
     output_sizes: Size2,
@@ -2754,9 +2929,9 @@ def fold(
     )
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
-    assert (
-        math.prod(x.shape) >= 0
-    ), "The number of elements must greater or equal than zero."
+    assert math.prod(x.shape) >= 0, (
+        "The number of elements must greater or equal than zero."
+    )
 
     def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))
@@ -2764,34 +2939,34 @@ def fold(
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]
     else:
-        assert _is_list_or_tuple_(output_sizes) and (
-            len(output_sizes) == 2
-        ), "output_sizes should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(output_sizes) and (len(output_sizes) == 2), (
+            "output_sizes should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert _is_list_or_tuple_(kernel_sizes) and (
-            len(kernel_sizes) == 2
-        ), "kernel_sizes should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(kernel_sizes) and (len(kernel_sizes) == 2), (
+            "kernel_sizes should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert _is_list_or_tuple_(strides) and (
-            len(strides) == 2
-        ), "strides should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(strides) and (len(strides) == 2), (
+            "strides should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert _is_list_or_tuple_(dilations) and (
-            len(dilations) == 2
-        ), "dilations should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(dilations) and (len(dilations) == 2), (
+            "dilations should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
-    elif isinstance(paddings, list):
+    elif isinstance(paddings, (list, tuple)):
         if len(paddings) == 2:
             paddings = paddings * 2
         elif len(paddings) == 4:

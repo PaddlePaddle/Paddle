@@ -128,9 +128,7 @@ class RecordEvent(ContextDecorator):
         if self.event_type not in _AllowedEventTypeList:
             warn(
                 "Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
-                  can be recorded.".format(
-                    *_AllowedEventTypeList
-                )
+                  can be recorded.".format(*_AllowedEventTypeList)
             )
             self.event = None
         else:

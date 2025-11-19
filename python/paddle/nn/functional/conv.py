@@ -26,6 +26,7 @@ from paddle.device import (
 )
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -272,9 +273,9 @@ def _conv_nd(
                     attrs={'axis': -1},
                 )
             else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
+                assert len(x_shape) > len(y_shape), (
+                    'The length of pre_bias must greater than the length of bias'
+                )
                 padding = len(x_shape) - len(y_shape) - channel_dim
                 bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding
@@ -291,6 +292,7 @@ def _conv_nd(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv1d(
     x: Tensor,
     weight: Tensor,
@@ -347,20 +349,27 @@ def conv1d(
 
             L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type
             of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel with shape [M, C/g, K], where M is
             the number of output channels, g is the number of groups, K is the kernel's size.
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain one integers, (stride_size). Default: 1.
-        padding (int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
+        padding (int|str|tuple|list, optional): The padding size.
+            Padding could be in one of the following forms.
+
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
             3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
             4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
+
             The default value is 0.
         dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain one integer, (dilation_size). Default: 1.
@@ -545,6 +554,7 @@ def conv1d(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv2d(
     x: Tensor,
     weight: Tensor,
@@ -607,9 +617,13 @@ def conv2d(
             H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
@@ -963,8 +977,7 @@ def conv1d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
             output_size = [*convert_to_list(output_size, 1, 'output_size'), 1]
@@ -1236,8 +1249,7 @@ def conv2d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple)):
             if _contain_var(output_size):
@@ -1338,9 +1350,9 @@ def conv2d_transpose(
                     attrs={'axis': -1},
                 )
             else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
+                assert len(x_shape) > len(y_shape), (
+                    'The length of pre_bias must greater than the length of bias'
+                )
                 padding = len(x_shape) - len(y_shape) - channel_dim
                 bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding
@@ -1357,6 +1369,7 @@ def conv2d_transpose(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv3d(
     x: Tensor,
     weight: Tensor,
@@ -1413,9 +1426,13 @@ def conv3d(
             H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\
             W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
@@ -1710,8 +1727,7 @@ def conv3d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
             output_size = convert_to_list(output_size, 3, 'output_size')

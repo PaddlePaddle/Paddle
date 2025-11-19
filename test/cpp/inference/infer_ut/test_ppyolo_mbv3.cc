@@ -103,7 +103,7 @@ TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
-TEST(DISABLED_mkldnn_tester_ppyolo_mbv3, multi_thread4_mkl_bz2) {
+TEST(DISABLED_onednn_tester_ppyolo_mbv3, multi_thread4_mkl_bz2) {
   // TODO(OliverLPH): onednn multi thread will fail
   int thread_num = 4;
   // init input data

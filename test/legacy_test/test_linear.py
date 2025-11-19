@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
-from paddle.base import core
 
 
 class LinearTestCase(unittest.TestCase):
@@ -29,11 +28,7 @@ class LinearTestCase(unittest.TestCase):
         self.input = np.ones((3, 1, 2)).astype(self.dtype)
         self.weight = np.ones((2, 2)).astype(self.dtype)
         self.bias = np.ones(2).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def functional(self, place):
         paddle.disable_static(place)
@@ -78,7 +73,7 @@ class LinearTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(res_nn, res_np)
 
     def test_weight_init(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.seed(100)
         linear = paddle.nn.Linear(

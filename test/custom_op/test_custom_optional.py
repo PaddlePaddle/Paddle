@@ -142,9 +142,9 @@ def optional_inplace_dynamic_add(custom_func, device, dtype, np_x, np_y):
         else:
             outx = 2 * x
             outy = None
-        assert (
-            outy is None
-        ), "The output `outy` of optional_inplace_dynamic_add should be None"
+        assert outy is None, (
+            "The output `outy` of optional_inplace_dynamic_add should be None"
+        )
 
     out = outx + outy if outy is not None else outx
     out.backward()
@@ -379,9 +379,9 @@ def optional_inplace_vector_dynamic_add(
         else:
             outx = 2 * x
             outy = None
-        assert (
-            outy is None
-        ), "The output `outy` of optional_inplace_dynamic_add should be None"
+        assert outy is None, (
+            "The output `outy` of optional_inplace_dynamic_add should be None"
+        )
 
     if outy is not None:
         out = outx

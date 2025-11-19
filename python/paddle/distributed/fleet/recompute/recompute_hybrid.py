@@ -57,9 +57,9 @@ def _split_activation(tensor, mp_group):
 
     tensor_numel = paddle.numel(tensor)
     assert tensor_numel != 0, "can't recompute zero element"
-    assert (
-        tensor_numel % mp_degree == 0
-    ), f"The capacity of the activation ({tensor_numel}) cannot be divisible by mp_degree({mp_degree})"
+    assert tensor_numel % mp_degree == 0, (
+        f"The capacity of the activation ({tensor_numel}) cannot be divisible by mp_degree({mp_degree})"
+    )
 
     # use inplace operation to save memory
     data = tensor.flatten_()
@@ -306,9 +306,9 @@ def recompute_hybrid(
 
     """
     mp_group = ctx.get('mp_group', None)
-    assert (
-        mp_group is not None
-    ), "ctx must contains mp_group and mp_group can not be None."
+    assert mp_group is not None, (
+        "ctx must contains mp_group and mp_group can not be None."
+    )
 
     offload = ctx.get('offload', False)
     partition = ctx.get('partition', False)

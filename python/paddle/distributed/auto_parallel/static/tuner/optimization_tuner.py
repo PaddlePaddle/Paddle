@@ -85,9 +85,9 @@ def parse_process_groups():
 
 
 def get_metric(results):
-    assert isinstance(
-        results, dict
-    ), f"results should be type of dictionary, but got {type(results)}."
+    assert isinstance(results, dict), (
+        f"results should be type of dictionary, but got {type(results)}."
+    )
     if 'Throughput' in results and isinstance(results['Throughput'], float):
         return float(results['Throughput'])
     else:

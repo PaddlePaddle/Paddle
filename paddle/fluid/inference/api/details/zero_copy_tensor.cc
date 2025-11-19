@@ -372,7 +372,7 @@ void Tensor::CopyStringsFromCpu(const paddle_infer::Strings *data) {
                     0,
                     common::errors::PreconditionNotMet(
                         "You should call Tensor::Reshape(const "
-                        "std::size_t &shape)function before copying"
+                        "std::size_t &shape) function before copying "
                         "the string data from cpu."));
   *tensor = *data;
 }

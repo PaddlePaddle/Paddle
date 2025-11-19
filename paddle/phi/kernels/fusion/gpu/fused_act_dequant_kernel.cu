@@ -90,18 +90,17 @@ void FusedActDequantKernel(const Context& dev_ctx,
   int cols = x_dims[1];
 
   out->Resize({rows, cols});
-  dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
+  dev_ctx.template Alloc<phi::bfloat16>(out);
 
-  auto out_ptr =
-      reinterpret_cast<void*>(out->template data<phi::dtype::bfloat16>());
+  auto out_ptr = reinterpret_cast<void*>(out->template data<phi::bfloat16>());
 
   dim3 grid(rows);
   dim3 block(256);
 
   FusedActDequant<<<grid, block, 0, dev_ctx.stream()>>>(
-      x.data<phi::dtype::float8_e4m3fn>(),
+      x.data<phi::float8_e4m3fn>(),
       x_scale.data<float>(),
-      out->data<phi::dtype::bfloat16>(),
+      out->data<phi::bfloat16>(),
       rows,
       cols);
 
@@ -121,6 +120,6 @@ PD_REGISTER_KERNEL(fused_act_dequant,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float8_e4m3fn) {
+                   phi::float8_e4m3fn) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BFLOAT16);
 }

@@ -64,21 +64,6 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.RAW: 'raw',
 }
 
-_NUMPY_DTYPE_2_PADDLE_DTYPE = {
-    'bool': core.VarDesc.VarType.BOOL,
-    'float16': core.VarDesc.VarType.FP16,
-    'uint16': core.VarDesc.VarType.BF16,
-    'float32': core.VarDesc.VarType.FP32,
-    'float64': core.VarDesc.VarType.FP64,
-    'int8': core.VarDesc.VarType.INT8,
-    'int16': core.VarDesc.VarType.INT16,
-    'int32': core.VarDesc.VarType.INT32,
-    'int64': core.VarDesc.VarType.INT64,
-    'uint8': core.VarDesc.VarType.UINT8,
-    'complex64': core.VarDesc.VarType.COMPLEX64,
-    'complex128': core.VarDesc.VarType.COMPLEX128,
-}
-
 
 def convert_float_to_uint16(data, data_format="NCHW"):
     if data.size == 0:
@@ -119,6 +104,8 @@ def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
             bool,
             np.float16,
             np.uint16,
+            np.uint32,
+            np.uint64,
             np.float32,
             np.float64,
             np.int8,
@@ -136,6 +123,8 @@ def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
             'bool',
             'float16',
             'uint16',
+            'uint32',
+            'uint64',
             'float32',
             'float64',
             'int4',

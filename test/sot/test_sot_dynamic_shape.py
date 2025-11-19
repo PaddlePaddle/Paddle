@@ -249,7 +249,7 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             )
             for i in range(1, 5):
                 self.assert_results(pad_func, paddle.randn([1, 3, 224, 224]), i)
-                self.assertEqual(ctx.translate_count, i)
+                self.assertEqual(ctx.translate_count, 1 if i == 1 else 2)
 
     def test_dynamic_shape_int_mul_float(self):
         with (
@@ -304,14 +304,16 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_shape_constraint, paddle.randn([8, 7, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 4  # add constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                4,  # add constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([9, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 4  # hit constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                4,  # hit constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
@@ -338,7 +340,8 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_shape_constraint, paddle.randn([8, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 5  # hit 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                5,  # hit 2 * (s0 + s1 - 2) <= 30
             )
 
             with self.assertRaises(ConditionalFallbackError):

@@ -235,7 +235,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
                     0,
                     common::errors::InvalidArgument(
                         "The groupNormNDHWCSum of SkipGroupnormAct Plugin got "
-                        "wrong parameters"
+                        "wrong parameters: "
                         "params.c %% params.cPerBlock should be 0, but get %d.",
                         params.c % params.cPerBlock));
   PADDLE_ENFORCE_EQ(
@@ -243,7 +243,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCSum of SkipGroupnormAct Plugin got wrong "
-          "parameters"
+          "parameters: "
           "params.dhw  %% params.dhwPerBlock should be 0, but get %d.",
           params.dhw % params.dhwPerBlock));
   // Make sure a group does not span multiple blocks.
@@ -252,7 +252,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCSum of SkipGroupnormAct Plugin got wrong "
-          "parameters"
+          "parameters: "
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
   dim3 grid;
@@ -368,7 +368,7 @@ void skipGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCScale of SkipGroupnormAct Plugin got "
-          "wrong parameters"
+          "wrong parameters: "
           "params.c %% params.cPerBlock should be 0, but get %d.",
           params.c % params.cPerBlock));
   // Make sure a group does not span multiple blocks.
@@ -377,7 +377,7 @@ void skipGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
       0,
       common::errors::InvalidArgument(
           "The groupNormNDHWCScale of SkipGroupnormAct Plugin got wrong "
-          "parameters"
+          "parameters: "
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
           params.cPerBlock % params.cPerGroup));
   dim3 grid;

@@ -381,13 +381,8 @@ nvinfer1::Dims GroupNormPlugin::getOutputDimensions(
 
 int GroupNormPlugin::enqueue(int batch_size,
                              const void *const *inputs,
-#if IS_TRT_VERSION_LT(8000)
-                             void **outputs,
-                             void *workspace,
-#else
                              void *const *outputs,
                              void *workspace,
-#endif
                              cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
   int groups = groups_;
@@ -787,13 +782,14 @@ int GroupNormPluginDynamic::enqueue(
       params_.invDHWC =
           1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
-      PADDLE_ENFORCE_EQ(cPerBlock % params_.cPerGroup,
-                        0,
-                        common::errors::InvalidArgument(
-                            "cPerBlock should be multiple of params_.cPerGroup"
-                            "now cPerBlock is %d, params_.cPerGroup is %d",
-                            cPerBlock,
-                            params_.cPerGroup));
+      PADDLE_ENFORCE_EQ(
+          cPerBlock % params_.cPerGroup,
+          0,
+          common::errors::InvalidArgument(
+              "cPerBlock should be multiple of params_.cPerGroup, "
+              "now cPerBlock is %d, params_.cPerGroup is %d",
+              cPerBlock,
+              params_.cPerGroup));
       PADDLE_ENFORCE_EQ(
           params_.cPerGroup % 2,
           0,

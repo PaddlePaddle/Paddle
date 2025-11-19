@@ -16,9 +16,14 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
+
+from paddle.utils.cpp_extension.extension_utils import (
+    _get_all_paddle_includes_from_include_root,
+)
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
@@ -136,12 +141,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # please refer to the comments in `paddle/tests/custom_op/utils.py``
         paddle_includes = []
         for site_packages_path in getsitepackages():
-            paddle_includes.append(
-                os.path.join(site_packages_path, 'paddle', 'include')
-            )
-            paddle_includes.append(
-                os.path.join(
-                    site_packages_path, 'paddle', 'include', 'third_party'
+            paddle_include_dir = Path(site_packages_path) / "paddle/include"
+            paddle_includes.extend(
+                _get_all_paddle_includes_from_include_root(
+                    str(paddle_include_dir)
                 )
             )
 

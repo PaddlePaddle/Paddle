@@ -151,9 +151,9 @@ def _warn_cur_rank_not_in_group(group):
 
 def _get_or_throw_group_rank(global_rank, group):
     group_rank = group.get_group_rank(global_rank)
-    assert (
-        group_rank >= 0
-    ), f"The input rank {global_rank} can not be found inside the group {group.name}"
+    assert group_rank >= 0, (
+        f"The input rank {global_rank} can not be found inside the group {group.name}"
+    )
     return group_rank
 
 
@@ -218,9 +218,9 @@ def destroy_process_group(group: Group | None = None) -> None:
 
     """
     group = _get_global_group() if group is None else group
-    assert (
-        group.id in _GroupManager.group_map_by_id
-    ), f"Destroy group with id {group.id} is invalid."
+    assert group.id in _GroupManager.group_map_by_id, (
+        f"Destroy group with id {group.id} is invalid."
+    )
     if _is_global_group(group):
         _GroupManager.group_map_by_id.clear()
     else:

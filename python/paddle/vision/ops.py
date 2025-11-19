@@ -707,9 +707,9 @@ def box_coder(
             )
         elif isinstance(prior_box_var, (list, tuple)):
             prior_box_var = list(prior_box_var)
-            assert (
-                len(prior_box_var) == 4
-            ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
+            assert len(prior_box_var) == 4, (
+                "Input prior_box_var must be Variable or list|tuple with 4 elements."
+            )
             output_box = _C_ops.box_coder(
                 prior_box,
                 None,
@@ -747,9 +747,9 @@ def box_coder(
             inputs['PriorBoxVar'] = prior_box_var
         elif isinstance(prior_box_var, (list, tuple)):
             attrs['variance'] = prior_box_var
-            assert (
-                len(attrs['variance']) == 4
-            ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
+            assert len(attrs['variance']) == 4, (
+                "Input prior_box_var must be Variable or list|tuple with 4 elements."
+            )
         else:
             raise TypeError(
                 "Input prior_box_var must be Variable or list|tuple"
@@ -1128,9 +1128,9 @@ class DeformConv2D(Layer):
         bias_attr: ParamAttrLike | None = None,
     ) -> None:
         super().__init__()
-        assert (
-            weight_attr is not False
-        ), "weight_attr should not be False in Conv."
+        assert weight_attr is not False, (
+            "weight_attr should not be False in Conv."
+        )
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._deformable_groups = deformable_groups
@@ -1277,20 +1277,20 @@ def distribute_fpn_proposals(
             ...     rois_num=rois_num)
             ...
     """
-    assert (
-        max_level > 0 and min_level > 0
-    ), "min_level and max_level should be greater than 0"
+    assert max_level > 0 and min_level > 0, (
+        "min_level and max_level should be greater than 0"
+    )
 
     num_lvl = max_level - min_level + 1
     assert num_lvl > 1, "max_level should be greater than min_level"
-    assert (
-        num_lvl < 100
-    ), "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
+    assert num_lvl < 100, (
+        "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
+    )
 
     if in_dynamic_or_pir_mode():
-        assert (
-            rois_num is not None
-        ), "rois_num should not be None in dygraph mode."
+        assert rois_num is not None, (
+            "rois_num should not be None in dygraph mode."
+        )
         (
             multi_rois,
             rois_num_per_level,
@@ -1632,9 +1632,9 @@ def roi_pool(
 
     pooled_height, pooled_width = output_size
     if in_dynamic_or_pir_mode():
-        assert (
-            boxes_num is not None
-        ), "boxes_num should not be None in dygraph mode."
+        assert boxes_num is not None, (
+            "boxes_num should not be None in dygraph mode."
+        )
         return _C_ops.roi_pool(
             x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale
         )
@@ -1792,9 +1792,9 @@ def roi_align(
 
     pooled_height, pooled_width = output_size
     if in_dynamic_or_pir_mode():
-        assert (
-            boxes_num is not None
-        ), "boxes_num should not be None in dygraph mode."
+        assert boxes_num is not None, (
+            "boxes_num should not be None in dygraph mode."
+        )
         return _C_ops.roi_align(
             x,
             boxes,
@@ -2050,12 +2050,12 @@ def nms(
         return sorted_global_indices[sorted_keep_boxes_indices]
 
     if top_k is not None:
-        assert (
-            top_k <= scores.shape[0]
-        ), "top_k should be smaller equal than the number of boxes"
-    assert (
-        categories is not None
-    ), "if category_idxs is given, categories which is a list of unique id of all categories is necessary"
+        assert top_k <= scores.shape[0], (
+            "top_k should be smaller equal than the number of boxes"
+        )
+    assert categories is not None, (
+        "if category_idxs is given, categories which is a list of unique id of all categories is necessary"
+    )
 
     mask = paddle.zeros_like(scores, dtype='int32')
 
@@ -2262,9 +2262,9 @@ def generate_proposals(
     """
 
     if in_dygraph_mode():
-        assert (
-            return_rois_num
-        ), "return_rois_num should be True in dygraph mode."
+        assert return_rois_num, (
+            "return_rois_num should be True in dygraph mode."
+        )
         attrs = (
             pre_nms_top_n,
             post_nms_top_n,
@@ -2279,9 +2279,9 @@ def generate_proposals(
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num
     elif in_pir_mode():
-        assert (
-            return_rois_num
-        ), "return_rois_num should be True in PaddlePaddle inner op mode."
+        assert return_rois_num, (
+            "return_rois_num should be True in PaddlePaddle inner op mode."
+        )
         rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
             scores,
             bbox_deltas,

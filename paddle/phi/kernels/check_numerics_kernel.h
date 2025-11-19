@@ -29,4 +29,17 @@ void CheckNumericsKernel(const Context& dev_ctx,
                          DenseTensor* stats,
                          DenseTensor* values);
 
+#ifdef _WIN32
+#define INSTANTIATE_CHECKNUMBERICS_KERNEL(type, context)       \
+  template PADDLE_API void CheckNumericsKernel<type, context>( \
+      const context&,                                          \
+      const DenseTensor&,                                      \
+      const std::string&,                                      \
+      const std::string&,                                      \
+      const int,                                               \
+      const int,                                               \
+      const std::string&,                                      \
+      DenseTensor*,                                            \
+      DenseTensor*);
+#endif
 }  // namespace phi

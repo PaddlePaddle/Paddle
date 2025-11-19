@@ -652,7 +652,9 @@ def argument_to_value(while_op):
 
     assert len(while_op.as_while_op().block_arguments()) + 1 == len(
         while_op.operands_source()
-    ), "while op's block_arguments size + 1 should same to while op's operands_source size"
+    ), (
+        "while op's block_arguments size + 1 should same to while op's operands_source size"
+    )
     arg_to_value_map = ValueDict()
     value_to_arg_map = ValueDict()
     for arg, value in zip(
@@ -763,7 +765,7 @@ def update_while_output_stopgradient(while_op, yield_op):
             while_op.result(i - 1).stop_gradient = False
 
 
-def find_index_of_yiled(value, yield_op):
+def find_index_of_yield(value, yield_op):
     for i, v in enumerate(yield_op.operands_source()):
         if v.is_same(value):
             return i
@@ -781,7 +783,7 @@ def update_tuple_pop_origin_inputs(tuple_pop_outputs):
     for input in tuple_push_inputs:
         if input.first_use().owner().name() == "cf.yield":
             yield_op = input.first_use().owner()
-            index = find_index_of_yiled(input, yield_op)
+            index = find_index_of_yield(input, yield_op)
             assert index != -1
             tuple_push_inputs_with_if.append(
                 yield_op.get_parent_block().parent_op.result(index)

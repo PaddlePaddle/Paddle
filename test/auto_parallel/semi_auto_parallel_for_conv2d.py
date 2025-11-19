@@ -24,9 +24,9 @@ class TestConv2dApiForSemiAutoParallel(SemiAutoParallelTestBase):
         super().__init__()
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_conv2d_shard(self):
         shapes = ([8, 3, 8, 8], [6, 3, 3, 3], [6])

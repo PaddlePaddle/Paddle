@@ -141,7 +141,8 @@ IntSet Evaluate(Expr expr,
                 const std::unordered_map<ir::Var, IntSet>& var_domain) {
   Expr copy_for_upper_bound = ir::ir_utils::IRCopy(expr);
   Expr copy_for_lower_bound = ir::ir_utils::IRCopy(expr);
-  common::cas_intervals_t var_intervals;
+  common::cas_intervals_t
+      var_intervals;  // variable name -> CasIntervals[lower_bound, upper_bound]
   std::vector<ir::Expr> var_vec = ir::ir_utils::CollectIRNodesWithoutTensor(
       expr, [](const ir::Expr* x) { return x->as_var(); });
   for (Expr var_expr : var_vec) {
@@ -150,7 +151,9 @@ IntSet Evaluate(Expr expr,
       const ir::Var& fixed_var = fixed.at(var);
       var_intervals.emplace(
           fixed_var->name,
-          common::CasInterval(fixed_var->lower_bound, fixed_var->upper_bound));
+          common::CasInterval(
+              fixed_var->lower_bound,
+              cinn::common::NormalizeUpperBound(fixed_var->upper_bound)));
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, Expr(fixed_var));
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, Expr(fixed_var));
     } else if (var_domain.count(var) != 0) {
@@ -172,7 +175,8 @@ IntSet Evaluate(Expr expr,
           ::common::errors::InvalidArgument(
               "The 'upper_bound' of the variable must be defined."));
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, var->lower_bound);
-      optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var->upper_bound);
+      optim::ReplaceVarWithExpr(
+          &copy_for_upper_bound, var, NormalizeUpperBound(var->upper_bound));
     }
   }
   ir::Expr lower_bound = optim::ArithSimplify(copy_for_lower_bound);

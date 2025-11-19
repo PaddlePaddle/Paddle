@@ -52,4 +52,4 @@ PD_REGISTER_KERNEL(sine_pos_xpu,
                    ALL_LAYOUT,
                    phi::fusion::SinePosXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -232,6 +232,13 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
                 x = paddle.to_tensor(input_x)
                 result = paddle.unique_consecutive(x)
 
+    def test_dygraph_alias(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input_x = np.random.randint(20, size=100).astype("float64")
+                x = paddle.to_tensor(input_x)
+                result = paddle.unique_consecutive(input=x)
+
 
 class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def setUp(self):
@@ -299,9 +306,32 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
                 fetch_list=[result],
             )
 
+    def check_static_result_alias(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            paddle.enable_static()
+            input_x = paddle.static.data(
+                name="input_x",
+                shape=[
+                    100,
+                ],
+                dtype="float32",
+            )
+            result, inverse, counts = paddle.unique_consecutive(
+                input=input_x, return_inverse=True, return_counts=True, axis=-1
+            )
+            x_np = np.random.randint(20, size=100).astype("float32")
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"input_x": x_np},
+                fetch_list=[result],
+            )
+
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
+            self.check_static_result_alias(place=place)
 
     def test_dygraph(self):
         for place in self.places:
@@ -372,6 +402,31 @@ class TestUniqueConsecutive_ZeroSize(OpTest):
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=False)
+
+
+class TestFunctionalUniqueConsecutive(unittest.TestCase):
+    def test_functional_unique_consecutive(self):
+        with base.dygraph.guard():
+            x_np = np.random.randint(20, size=[20]).astype("int32")
+            x = paddle.tensor(x_np)
+            out_expect = paddle.unique_consecutive(x)
+            out_res = paddle.functional.unique_consecutive(x)
+            np.testing.assert_equal(out_expect.numpy(), out_res.numpy())
+
+            out_expect = paddle.unique_consecutive(
+                x, return_inverse=True, return_counts=True
+            )
+            out_res = paddle.functional.unique_consecutive(
+                x, return_inverse=True, return_counts=True
+            )
+            for expect, res in zip(out_expect, out_res):
+                np.testing.assert_equal(expect.numpy(), res.numpy())
+
+            x_np = np.random.randint(20, size=[20, 10]).astype("int32")
+            x = paddle.tensor(x_np)
+            out_expect = paddle.unique_consecutive(x, axis=1)
+            out_res = paddle.functional.unique_consecutive(x, axis=1)
+            np.testing.assert_equal(out_expect.numpy(), out_res.numpy())
 
 
 if __name__ == "__main__":

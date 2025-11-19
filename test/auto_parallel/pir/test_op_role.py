@@ -37,7 +37,6 @@ class TestOpRole(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
             with paddle.base.program_guard(main_program):
-
                 # op_role = -1
                 x0 = paddle.static.data(name='x0', shape=[1, 128, 512])
                 x1 = paddle.nn.functional.relu(x0)

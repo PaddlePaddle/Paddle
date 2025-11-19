@@ -270,6 +270,16 @@ bool is_zero(Expr v) {
   return false;
 }
 
+Expr NormalizeUpperBound(Expr upper_bound, bool minus_one /* = true */) {
+  if (upper_bound == SymbolicExprLimit::positive_inf) {
+    return upper_bound;
+  }
+  if (minus_one) {
+    return upper_bound - ir::Expr(1);  // [lower, upper) to [lower, upper]
+  }
+  return upper_bound + ir::Expr(1);  // (lower, upper] to [lower, upper)
+}
+
 Expr CastIfNeeded(Expr body, Type type) {
   if (body.type() == type) return body;
   return ir::Cast::Make(type, body);

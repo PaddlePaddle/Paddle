@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy
 import scipy.linalg
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -413,16 +413,16 @@ class TestLUOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(paddle.CPUPlace(), check_pir=True)
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
             paddle.CPUPlace(), ['X'], ['Out'], check_pir=True
         )
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ['X'], ['Out'], check_pir=True
+                get_device_place(), ['X'], ['Out'], check_pir=True
             )
 
 

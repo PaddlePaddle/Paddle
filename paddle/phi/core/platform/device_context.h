@@ -117,7 +117,7 @@ using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
 using XPUPinnedDeviceContext = phi::XPUPinnedContext;
 #endif
 
-void EmplaceDeviceContexts(
+PADDLE_API void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const std::vector<phi::Place>& places,

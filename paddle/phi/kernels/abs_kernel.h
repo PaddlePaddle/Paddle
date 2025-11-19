@@ -20,6 +20,8 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
+PADDLE_API void AbsKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          DenseTensor* out);
 
 }  // namespace phi

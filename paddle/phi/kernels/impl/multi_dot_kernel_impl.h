@@ -122,7 +122,7 @@ std::vector<uint64_t> GetOrder(const std::vector<const DenseTensor*>& ins,
   // m[i, j]: save the lowest cost for multiplying ins[i...j]
   std::vector<uint64_t> m(n * n, 0);
   // define ins[i...j] means multiplying matrices from ins[i] to ins[j]
-  // order[i, j] = k, this means that ins[i...k] and ins[k...j] fist and then
+  // order[i, j] = k, this means that ins[i...k] and ins[k...j] first and then
   // multiply the resulting matrices is the optimal order for ins[i...j]
   std::vector<uint64_t> order(n * n);
   for (uint64_t l = 1; l < n; l++) {

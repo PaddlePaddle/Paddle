@@ -67,7 +67,9 @@ __global__ void ScatterCUDAKernel(const T* params,
                                   size_t slice_size) {
   int64_t num = index_size * slice_size;
   int64_t block_size = blockDim.x;
-  int64_t i = (blockIdx.x * block_size + threadIdx.x) * VecSize;
+  int64_t i = (static_cast<int64_t>(blockIdx.x) * block_size +
+               static_cast<int64_t>(threadIdx.x)) *
+              VecSize;
   for (; i < num; i += gridDim.x * block_size * VecSize) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i % slice_size;  // offset inside the slice
@@ -166,6 +168,12 @@ void GPUScatterAssign(const phi::GPUContext& dev_ctx,
                       const DenseTensor& index,
                       DenseTensor* output,
                       bool overwrite = true) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for GPUScatterAssign since inputs has 0-size tensor.";
+    return;
+  }
+
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -256,6 +264,10 @@ template <typename T, typename IndexT = int>
 void GPUScatterGradForX(const phi::GPUContext& dev_ctx,
                         const DenseTensor& index,
                         DenseTensor* output) {
+  if (index.numel() == 0) {
+    VLOG(6) << "Do nothing for GPUScatterGradX since index is 0-size tensor.";
+    return;
+  }
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   // slice size
@@ -392,7 +404,8 @@ inline DenseTensor restride_dim(const phi::DenseTensor& src,
 template <int nt, int vt, typename func_t>
 __global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
   constexpr int nv = nt * vt;
-  int idx = nv * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      nv * static_cast<int64_t>(blockIdx.x) + static_cast<int64_t>(threadIdx.x);
 
 #pragma unroll
   for (int i = 0; i < vt; ++i) {
@@ -404,7 +417,7 @@ __global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
 }
 
 template <typename T, typename IndexT = int>
-void GPUScatterAdd(const phi::GPUContext& ctx,
+void GPUScatterAdd(const phi::GPUContext& dev_ctx,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output,
@@ -483,7 +496,7 @@ void GPUScatterAdd(const phi::GPUContext& ctx,
   constexpr int vt = 8;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   scatter_gather_elementwise_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, reduce_add);

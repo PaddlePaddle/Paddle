@@ -217,9 +217,9 @@ void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
   } else if (type == DataType::INT64) {
     visitor.template apply<int64_t>();
   } else if (type == DataType::FLOAT16) {
-    visitor.template apply<phi::dtype::float16>();
+    visitor.template apply<phi::float16>();
   } else if (type == DataType::BFLOAT16) {
-    visitor.template apply<phi::dtype::bfloat16>();
+    visitor.template apply<phi::bfloat16>();
   } else {
     PADDLE_THROW(errors::InvalidArgument(
         "The received values data type %s can not meet input requirements. "

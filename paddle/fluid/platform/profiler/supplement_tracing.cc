@@ -34,7 +34,7 @@ limitations under the License. */
 #include "paddle/phi/core/os_info.h"
 
 COMMON_DECLARE_bool(enable_record_memory);
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 

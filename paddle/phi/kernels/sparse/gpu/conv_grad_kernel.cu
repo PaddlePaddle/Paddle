@@ -270,6 +270,6 @@ PD_REGISTER_KERNEL(conv3d_coo_grad,
                    phi::sparse::Conv3dCooGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

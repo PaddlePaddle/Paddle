@@ -187,23 +187,21 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_NOT_NULL(moment2_output_for_xdnn);
 
     int r = 0;
-    using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // cast moment1 and moment2, from fp16 to fp32
     // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
-    r = xpu::cast<XPUType16, float>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType16*>(
-            moment1.template data<phi::dtype::float16>()),
-        moment1_input_for_xdnn,
-        moment1.numel());
+    r = xpu::cast<XPUType16, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType16*>(
+                                        moment1.template data<phi::float16>()),
+                                    moment1_input_for_xdnn,
+                                    moment1.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment1 from fp16 to float");
-    r = xpu::cast<XPUType16, float>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType16*>(
-            moment2.template data<phi::dtype::float16>()),
-        moment2_input_for_xdnn,
-        moment2.numel());
+    r = xpu::cast<XPUType16, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType16*>(
+                                        moment2.template data<phi::float16>()),
+                                    moment2_input_for_xdnn,
+                                    moment2.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment2 from fp16 to float");
 
     // acquire xpu_scale_value
@@ -396,7 +394,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
 
   if (moment_in_fp16) {
     int r = 0;
-    using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
@@ -452,14 +450,14 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
         dev_ctx.x_context(),
         moment1_output_for_xdnn,
         reinterpret_cast<XPUType16*>(
-            dev_ctx.template Alloc<phi::dtype::float16>(moment1_out)),
+            dev_ctx.template Alloc<phi::float16>(moment1_out)),
         moment1.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment1_out from float to fp16");
     r = xpu::cast<float, XPUType16>(
         dev_ctx.x_context(),
         moment2_output_for_xdnn,
         reinterpret_cast<XPUType16*>(
-            dev_ctx.template Alloc<phi::dtype::float16>(moment2_out)),
+            dev_ctx.template Alloc<phi::float16>(moment2_out)),
         moment2.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment2_out from float to fp16");
   }
@@ -580,23 +578,21 @@ void AdamwDenseKernel(
     PADDLE_ENFORCE_XDNN_NOT_NULL(moment2_output_for_xdnn);
 
     int r = 0;
-    using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // cast moment1 and moment2, from fp16 to fp32
     // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
-    r = xpu::cast<XPUType16, float>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType16*>(
-            moment1.template data<phi::dtype::float16>()),
-        moment1_input_for_xdnn,
-        moment1.numel());
+    r = xpu::cast<XPUType16, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType16*>(
+                                        moment1.template data<phi::float16>()),
+                                    moment1_input_for_xdnn,
+                                    moment1.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment1 from fp16 to float");
-    r = xpu::cast<XPUType16, float>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType16*>(
-            moment2.template data<phi::dtype::float16>()),
-        moment2_input_for_xdnn,
-        moment2.numel());
+    r = xpu::cast<XPUType16, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType16*>(
+                                        moment2.template data<phi::float16>()),
+                                    moment2_input_for_xdnn,
+                                    moment2.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment2 from fp16 to float");
 
     // acquire xpu_scale_value
@@ -773,7 +769,7 @@ void AdamwDenseKernel(
 
   if (moment_in_fp16) {
     int r = 0;
-    using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
@@ -829,14 +825,14 @@ void AdamwDenseKernel(
         dev_ctx.x_context(),
         moment1_output_for_xdnn,
         reinterpret_cast<XPUType16*>(
-            dev_ctx.template Alloc<phi::dtype::float16>(moment1_out)),
+            dev_ctx.template Alloc<phi::float16>(moment1_out)),
         moment1.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment1_out from float to fp16");
     r = xpu::cast<float, XPUType16>(
         dev_ctx.x_context(),
         moment2_output_for_xdnn,
         reinterpret_cast<XPUType16*>(
-            dev_ctx.template Alloc<phi::dtype::float16>(moment2_out)),
+            dev_ctx.template Alloc<phi::float16>(moment2_out)),
         moment2.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast moment2_out from float to fp16");
   }
@@ -881,8 +877,8 @@ PD_REGISTER_KERNEL(adamw,
                    ALL_LAYOUT,
                    phi::AdamwDenseKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);

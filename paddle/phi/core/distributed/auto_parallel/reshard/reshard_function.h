@@ -26,7 +26,7 @@ namespace distributed {
 class DistTensor;
 class TensorDistAttr;
 
-class ReshardFunction {
+class PADDLE_API ReshardFunction {
  public:
   ReshardFunction() = default;
   virtual ~ReshardFunction() = default;

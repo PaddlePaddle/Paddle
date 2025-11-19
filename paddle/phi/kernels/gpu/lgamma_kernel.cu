@@ -50,5 +50,5 @@ PD_REGISTER_KERNEL(lgamma,
                    phi::LgammaKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

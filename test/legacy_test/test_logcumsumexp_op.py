@@ -18,7 +18,13 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -162,7 +168,7 @@ class TestLogcumsumexp(unittest.TestCase):
             y4 = paddle.logcumsumexp(x, dtype='float64')
             y5 = paddle.logcumsumexp(x, axis=-2)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             out = exe.run(
                 main,
@@ -194,9 +200,9 @@ class TestLogcumsumexp(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
-        paddle.disable_static(paddle.base.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
@@ -224,7 +230,7 @@ class TestLogcumsumexp(unittest.TestCase):
             x = paddle.static.data('X', [100, 100], dtype='int32')
             y = paddle.logcumsumexp(x)
 
-            place = base.CUDAPlace(0)
+            place = get_device_place()
             exe = base.Executor(place)
             out = exe.run(main, feed={'X': data_np}, fetch_list=[y])
 
@@ -316,7 +322,7 @@ class TestLogcumsumexpFP16(unittest.TestCase):
         return y_np, x_g_np
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         np.random.seed(20)
@@ -334,8 +340,8 @@ class TestLogcumsumexpFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestLogcumsumexpBF16Op(OpTest):
@@ -351,8 +357,8 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        place = core.CUDAPlace(0)
+        place = get_device_place()
+        place = get_device_place()
         self.check_output_with_place_customized(
             checker=self.verify_output, place=place, check_pir=True
         )
@@ -372,7 +378,7 @@ class TestLogcumsumexpBF16Op(OpTest):
         np.testing.assert_allclose(hist, hist2, rtol=0.3)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],

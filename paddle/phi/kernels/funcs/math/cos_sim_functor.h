@@ -174,7 +174,7 @@ struct CosSimDxFunctor {
 
 template <typename DeviceContext, typename T>
 struct CosSimDyFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,

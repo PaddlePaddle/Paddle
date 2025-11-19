@@ -52,7 +52,8 @@ class OpProtoAndCheckerMaker {
   static const char *OpDeviceAttrName() { return "op_device"; }
   static const char *OpWithQuantAttrName() { return "with_quant_attr"; }
 
-  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
+  PADDLE_API void operator()(proto::OpProto *proto,
+                             OpAttrChecker *attr_checker);
 
   virtual void Make() = 0;
 
@@ -90,10 +91,11 @@ class OpProtoAndCheckerMaker {
     }
   };
 
-  VariableBuilder AddInput(const std::string &name, const std::string &comment);
+  PADDLE_API VariableBuilder AddInput(const std::string &name,
+                                      const std::string &comment);
 
-  VariableBuilder AddOutput(const std::string &name,
-                            const std::string &comment);
+  PADDLE_API VariableBuilder AddOutput(const std::string &name,
+                                       const std::string &comment);
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,

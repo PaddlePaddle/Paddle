@@ -25,7 +25,10 @@ if(WITH_XPU_BKCL)
 endif()
 
 if(WITH_FLAGCX)
-  list(APPEND DISTRIBUTED_COMMON_SRCS flagcx_comm_context.cc flagcx_tools.cc)
+  list(APPEND DISTRIBUTED_COMMON_SRCS flagcx_tools.cc)
+  if(NOT WITH_XPU)
+    list(APPEND DISTRIBUTED_COMMON_SRCS flagcx_comm_context.cc)
+  endif()
 endif()
 
 collect_srcs(core_srcs SRCS ${DISTRIBUTED_COMMON_SRCS})

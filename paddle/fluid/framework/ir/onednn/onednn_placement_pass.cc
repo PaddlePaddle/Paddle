@@ -64,7 +64,7 @@ inline bool FoundPhiOneDNNKernelWithCorrectDataType(
   return false;
 }
 
-bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
+bool ONEDNNPlacementPass::IsSupport(const Node* op) const {
   if (FoundOneDNNKernelWithCorrectDataType(op) ||
       FoundPhiOneDNNKernelWithCorrectDataType(op)) {
     // For interpolate ops, there's a little difference between Paddle and
@@ -89,8 +89,8 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
 
 }  // namespace paddle::framework::ir
 
-REGISTER_PASS(onednn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
-    .RequirePassAttr("mkldnn_enabled_op_types");
+REGISTER_PASS(onednn_placement_pass, paddle::framework::ir::ONEDNNPlacementPass)
+    .RequirePassAttr("onednn_enabled_op_types");
 
 REGISTER_PASS_CAPABILITY(onednn_placement_pass)
     .AddCombination(

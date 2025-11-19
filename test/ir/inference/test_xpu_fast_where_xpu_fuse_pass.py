@@ -90,7 +90,7 @@ class TestFastWhereXPUFusePassOneCase0(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],
@@ -166,7 +166,7 @@ class TestFastWhereXPUFusePassOneCase1(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],
@@ -242,7 +242,7 @@ class TestFastWhereXPUFusePassOneCase2(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],
@@ -318,7 +318,7 @@ class TestFastWhereXPUFusePassOneCase3(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],
@@ -394,7 +394,7 @@ class TestFastWhereXPUFusePassOneCase4(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],
@@ -470,7 +470,7 @@ class TestFastWhereXPUFusePassOneCase5(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],
@@ -597,7 +597,7 @@ class TestFastWhereXPUFusePassCascadeCase0(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],
@@ -724,7 +724,7 @@ class TestFastWhereXPUFusePassCascadeCase1(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fast_where_xpu_fuse_pass"],

@@ -49,7 +49,7 @@ parser.add_argument(
     '--bisect_branch',
     type=str,
     default='develop',
-    help='The mainline branch to bisect (feature branch ignored.',
+    help='The mainline branch to bisect (feature branch ignored).',
 )
 parser.add_argument(
     '--log_file', type=str, default='', help='The file use to log outputs.'

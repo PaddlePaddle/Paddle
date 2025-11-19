@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -22,14 +23,15 @@ from paddle.incubate.nn.functional import blha_get_max_len
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not core.is_compiled_with_xpu(),
     "Only support XPU or GPU in CUDA mode.",
 )
 class TestBlhaGetMaxLenOp(unittest.TestCase):
     def setUp(self):
         self.name = "TestBlhaGetMaxLenOpDynamic"
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         elif paddle.device.is_compiled_with_xpu():
             place = paddle.device.XPUPlace(0)
         else:
@@ -74,8 +76,8 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
         test_encoder_data_res = np.max(self.test_encoder_data).astype("int32")
         test_decoder_data_res = np.max(self.test_decoder_data).astype("int32")
 
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         elif paddle.device.is_compiled_with_xpu():
             place = paddle.device.XPUPlace(0)
         else:
@@ -109,14 +111,18 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    not (
+        (core.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+    )
+    and not core.is_compiled_with_xpu(),
     "Only support XPU or GPU in CUDA mode.",
 )
 class TestBlhaGetMaxLenOp_ZeroSize(unittest.TestCase):
     def setUp(self):
         self.name = "TestBlhaGetMaxLenOpDynamic_ZeroSize"
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         elif paddle.device.is_compiled_with_xpu():
             place = paddle.device.XPUPlace(0)
         else:
@@ -152,8 +158,8 @@ class TestBlhaGetMaxLenOp_ZeroSize(unittest.TestCase):
     def test_static_api(self):
         paddle.enable_static()
 
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         elif paddle.device.is_compiled_with_xpu():
             place = paddle.device.XPUPlace(0)
         else:

@@ -56,6 +56,12 @@ void FloorDivideKernel(const Context& dev_ctx,
                        DenseTensor* out);
 
 template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out);
+
+template <typename T, typename Context>
 void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
@@ -120,6 +126,17 @@ DenseTensor FloorDivide(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   FloorDivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor TruncDivide(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  TruncDivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
 

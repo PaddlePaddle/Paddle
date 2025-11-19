@@ -121,13 +121,13 @@ class TestOneDNNMultiGruFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=['multi_gru_fuse_pass'],
         )
         yield config, ['multi_gru'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False, passes=['multi_gru_fuse_pass'])
+        self.run_and_statistics(quant=False, passes=['multi_gru_fuse_pass'])
 
 
 if __name__ == '__main__':

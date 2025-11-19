@@ -357,9 +357,9 @@ class NdMeshReshardFunctionCrossMesh(ReshardFunction):
         )
 
         nd_mesh_func = NdMeshReshardFunction()
-        assert nd_mesh_func.is_suitable(
-            tmp_dist_attr, dst_dist_attr
-        ), f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+        assert nd_mesh_func.is_suitable(tmp_dist_attr, dst_dist_attr), (
+            f"Invoke the p to r reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+        )
         return nd_mesh_func.reshard(
             tmp_dist_attr, dst_dist_attr, src_value, dst_type
         )

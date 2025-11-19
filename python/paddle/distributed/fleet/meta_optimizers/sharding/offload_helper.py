@@ -196,15 +196,15 @@ class OffloadHelper:
 
                 if 'subprog' not in output_name:
                     assert output_name == input_name + '.cast_fp16'
-                    assert (
-                        input_name not in param_to_fp16
-                    ), "There must be only one cast op from fp32 param to fp16 param."
+                    assert input_name not in param_to_fp16, (
+                        "There must be only one cast op from fp32 param to fp16 param."
+                    )
                     param_to_fp16[input_name] = output_name
                 else:
                     # fp16-->recompute_var
-                    assert (
-                        input_name in param_to_fp16
-                    ), "param must first be cast to fp16"
+                    assert input_name in param_to_fp16, (
+                        "param must first be cast to fp16"
+                    )
                     fp16_param = param_to_fp16[input_name]
                     fp16_param_to_recompute[fp16_param] = output_name
                     recompute_to_fp16[output_name] = fp16_param
@@ -445,15 +445,15 @@ class OffloadHelper:
 
                 if 'subprog' not in output_name:
                     assert output_name == input_name + '.cast_fp16'
-                    assert (
-                        input_name not in param_to_fp16
-                    ), "There must be only one cast op from fp32 param to fp16 param."
+                    assert input_name not in param_to_fp16, (
+                        "There must be only one cast op from fp32 param to fp16 param."
+                    )
                     param_to_fp16[input_name] = output_name
                 else:
                     # fp16-->recompute_var
-                    assert (
-                        input_name in param_to_fp16
-                    ), "param must first be cast to fp16"
+                    assert input_name in param_to_fp16, (
+                        "param must first be cast to fp16"
+                    )
                     fp16_param = param_to_fp16[input_name]
                     fp16_param_to_recompute[fp16_param] = output_name
                     recompute_to_fp16[output_name] = fp16_param

@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import _C_ops, base, ones_like
-from paddle.base import Program, core, program_guard
+from paddle.base import Program, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_
 
 
@@ -37,11 +38,7 @@ class TestOnesLikeAPI(unittest.TestCase):
             out4 = ones_like(x, 'int32')
             out5 = ones_like(x, 'int64')
 
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         exe = base.Executor(place)
         outs = exe.run(
             train_program,
@@ -59,11 +56,7 @@ class TestOnesLikeAPI(unittest.TestCase):
 class TestOnesAPI(unittest.TestCase):
     def test_api(self):
         shape = [3, 4]
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:

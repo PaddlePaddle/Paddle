@@ -46,7 +46,6 @@ class Testi1API(unittest.TestCase):
         self.place = get_places()
 
     def test_api_static(self):
-
         def run(place):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):

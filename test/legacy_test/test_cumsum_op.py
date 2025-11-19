@@ -22,12 +22,19 @@ from paddle.framework import use_pir_api
 sys.path.append("../../legacy_test")
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.inference as paddle_infer
 from paddle import base
 from paddle.base import core
+from paddle.framework import convert_np_dtype_to_dtype_
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -68,7 +75,7 @@ class TestCumsumOp(unittest.TestCase):
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(
@@ -103,14 +110,14 @@ class TestCumsumOp(unittest.TestCase):
         self.run_static()
 
     def test_gpu_dygraph(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
-        paddle.disable_static(paddle.base.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         self.run_cases()
         paddle.enable_static()
 
     def test_gpu_static(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         self.run_static(use_gpu=True)
 
@@ -120,6 +127,314 @@ class TestCumsumOp(unittest.TestCase):
             base.program_guard(base.Program()),
         ):
             x = paddle.static.data('x', [3, 4])
+            y = paddle.cumsum(x, name='out')
+            self.assertTrue('out' in y.name)
+
+
+class TestCumsumOp_Compatibility(unittest.TestCase):
+    def run_cases(self):
+        data_np = np.arange(12).reshape(3, 4)
+        data = paddle.to_tensor(data_np)
+
+        y = paddle.cumsum(input=data)
+        z = np.cumsum(data_np)
+        np.testing.assert_array_equal(z, y.numpy())
+
+        y = paddle.cumsum(input=data, dim=0)
+        z = np.cumsum(data_np, axis=0)
+        np.testing.assert_array_equal(z, y.numpy())
+
+        y = paddle.cumsum(input=data, dim=-1)
+        z = np.cumsum(data_np, axis=-1)
+        np.testing.assert_array_equal(z, y.numpy())
+
+        y = paddle.cumsum(input=data, dtype='float64')
+        self.assertTrue(y.dtype == paddle.float64)
+
+        y = paddle.cumsum(input=data, dtype=np.int32)
+        self.assertTrue(y.dtype == paddle.int32)
+
+        y = paddle.cumsum(input=data, dim=-2)
+        z = np.cumsum(data_np, axis=-2)
+        np.testing.assert_array_equal(z, y.numpy())
+
+    def run_static(self, use_gpu=False):
+        with paddle.static.program_guard(paddle.static.Program()):
+            data_np = np.random.random((100, 100)).astype(np.float32)
+            x = paddle.static.data('X', [100, 100])
+            y = paddle.cumsum(input=x)
+            y2 = paddle.cumsum(input=x, dim=0)
+            y3 = paddle.cumsum(input=x, dim=-1)
+            y4 = paddle.cumsum(input=x, dtype='float64')
+            y5 = paddle.cumsum(input=x, dtype=np.int32)
+            y6 = paddle.cumsum(input=x, dim=-2)
+
+            place = get_device_place() if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(
+                feed={'X': data_np},
+                fetch_list=[
+                    y,
+                    y2,
+                    y3,
+                    y4,
+                    y5,
+                    y6,
+                ],
+            )
+            self.assertTrue(out[3].dtype == np.float64)
+            self.assertTrue(out[4].dtype == np.int32)
+            z = np.cumsum(data_np, axis=-2)
+            np.testing.assert_allclose(z, out[5], rtol=1e-05)
+
+        def test_cpu_dygraph(self):
+            paddle.disable_static(paddle.base.CPUPlace())
+            self.run_cases()
+            paddle.enable_static()
+
+        def test_cpu_static(self):
+            self.run_static()
+
+        def test_gpu_dygraph(self):
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
+                return
+            paddle.disable_static(get_device_place())
+            self.run_cases()
+            paddle.enable_static()
+
+        def test_gpu_static(self):
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
+                return
+            self.run_static(use_gpu=True)
+
+        def test_name(self):
+            with (
+                paddle.pir_utils.OldIrGuard(),
+                base.program_guard(base.Program()),
+            ):
+                x = paddle.static.data('x', [3, 4])
+                y = paddle.cumsum(input=x, name='out')
+                self.assertTrue('out' in y.name)
+
+
+class TestCumsumOp_INT(unittest.TestCase):
+    def run_cases(self):
+        data_np = np.arange(12).reshape(3, 4).astype(np.uint8)
+        data = paddle.to_tensor(data_np)
+        y = paddle.cumsum(data)
+        z = np.cumsum(data_np)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-1)
+        z = np.cumsum(data_np, axis=-1)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-2)
+        z = np.cumsum(data_np, axis=-2)
+        np.testing.assert_array_equal(z, y.numpy())
+
+        data_np = np.arange(12).reshape(3, 4).astype(np.int8)
+        data = paddle.to_tensor(data_np)
+        y = paddle.cumsum(data)
+        z = np.cumsum(data_np)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-1)
+        z = np.cumsum(data_np, axis=-1)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-2)
+        z = np.cumsum(data_np, axis=-2)
+        np.testing.assert_array_equal(z, y.numpy())
+
+        data_np = np.arange(12).reshape(3, 4).astype(np.int16)
+        data = paddle.to_tensor(data_np)
+        y = paddle.cumsum(data)
+        z = np.cumsum(data_np)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-1)
+        z = np.cumsum(data_np, axis=-1)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-2)
+        z = np.cumsum(data_np, axis=-2)
+        np.testing.assert_array_equal(z, y.numpy())
+
+        data_np = np.arange(12).reshape(3, 4).astype(np.int32)
+        data = paddle.to_tensor(data_np)
+        y = paddle.cumsum(data)
+        z = np.cumsum(data_np)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-1)
+        z = np.cumsum(data_np, axis=-1)
+        np.testing.assert_array_equal(z, y.numpy())
+        y = paddle.cumsum(data, axis=-2)
+        z = np.cumsum(data_np, axis=-2)
+        np.testing.assert_array_equal(z, y.numpy())
+
+        # test data type
+        data_np = np.arange(12).reshape(3, 4).astype(np.int16)
+        data = paddle.to_tensor(data_np)
+        y = paddle.cumsum(data, axis=0, dtype='int32')
+        z = np.cumsum(data_np, axis=0, dtype="int32")
+        np.testing.assert_equal(convert_np_dtype_to_dtype_(z.dtype), y.dtype)
+
+    def run_static_uint8(self, use_gpu=False):
+        with paddle.static.program_guard(paddle.static.Program()):
+            data_np = np.random.random((100, 100)).astype(np.uint8)
+            x = paddle.static.data('X', [100, 100], dtype='uint8')
+            y = paddle.cumsum(x)
+            y2 = paddle.cumsum(x, axis=0)
+            y3 = paddle.cumsum(x, axis=-1)
+            y4 = paddle.cumsum(x, axis=-2)
+            y5 = paddle.cumsum(x, axis=-1, dtype='int32')
+            place = get_device_place() if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(
+                feed={'X': data_np},
+                fetch_list=[
+                    y,
+                    y2,
+                    y3,
+                    y4,
+                    y5,
+                ],
+            )
+            z = np.cumsum(data_np)
+            np.testing.assert_allclose(z, out[0], rtol=1e-05)
+            z = np.cumsum(data_np, axis=0)
+            np.testing.assert_allclose(z, out[1], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1)
+            np.testing.assert_allclose(z, out[2], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-2)
+            np.testing.assert_allclose(z, out[3], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1, dtype="int32")
+            np.testing.assert_equal(z.dtype, out[4].dtype)
+
+    def run_static_int8(self, use_gpu=False):
+        with paddle.static.program_guard(paddle.static.Program()):
+            data_np = np.random.random((100, 100)).astype(np.int8)
+            x = paddle.static.data('X', [100, 100], dtype='int8')
+            y = paddle.cumsum(x)
+            y2 = paddle.cumsum(x, axis=0)
+            y3 = paddle.cumsum(x, axis=-1)
+            y4 = paddle.cumsum(x, axis=-2)
+            y5 = paddle.cumsum(x, axis=-1, dtype='int16')
+            place = get_device_place() if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(
+                feed={'X': data_np},
+                fetch_list=[
+                    y,
+                    y2,
+                    y3,
+                    y4,
+                    y5,
+                ],
+            )
+            z = np.cumsum(data_np)
+            np.testing.assert_allclose(z, out[0], rtol=1e-05)
+            z = np.cumsum(data_np, axis=0)
+            np.testing.assert_allclose(z, out[1], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1)
+            np.testing.assert_allclose(z, out[2], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-2)
+            np.testing.assert_allclose(z, out[3], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1, dtype="int16")
+            np.testing.assert_equal(z.dtype, out[4].dtype)
+
+    def run_static_int16(self, use_gpu=False):
+        with paddle.static.program_guard(paddle.static.Program()):
+            data_np = np.random.random((100, 100)).astype(np.int16)
+            x = paddle.static.data('X', [100, 100], dtype='int16')
+            y = paddle.cumsum(x)
+            y2 = paddle.cumsum(x, axis=0)
+            y3 = paddle.cumsum(x, axis=-1)
+            y4 = paddle.cumsum(x, axis=-2)
+            place = get_device_place() if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(
+                feed={'X': data_np},
+                fetch_list=[
+                    y,
+                    y2,
+                    y3,
+                    y4,
+                ],
+            )
+            z = np.cumsum(data_np)
+            np.testing.assert_allclose(z, out[0], rtol=1e-05)
+            z = np.cumsum(data_np, axis=0)
+            np.testing.assert_allclose(z, out[1], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1)
+            np.testing.assert_allclose(z, out[2], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-2)
+            np.testing.assert_allclose(z, out[3], rtol=1e-05)
+
+    def run_static_uint16(self, use_gpu=False):
+        with paddle.static.program_guard(paddle.static.Program()):
+            data_np = np.random.random((100, 100)).astype(np.uint16)
+            x = paddle.static.data('X', [100, 100], dtype='uint16')
+            y = paddle.cumsum(x)
+            y2 = paddle.cumsum(x, axis=0)
+            y3 = paddle.cumsum(x, axis=-1)
+            y4 = paddle.cumsum(x, axis=-2)
+            place = get_device_place() if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(
+                feed={'X': data_np},
+                fetch_list=[
+                    y,
+                    y2,
+                    y3,
+                    y4,
+                ],
+            )
+            z = np.cumsum(data_np)
+            np.testing.assert_allclose(z, out[0], rtol=1e-05)
+            z = np.cumsum(data_np, axis=0)
+            np.testing.assert_allclose(z, out[1], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1)
+            np.testing.assert_allclose(z, out[2], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-2)
+            np.testing.assert_allclose(z, out[3], rtol=1e-05)
+
+        def test_cpu_dygraph(self):
+            paddle.disable_static(paddle.base.CPUPlace())
+            self.run_cases()
+            paddle.enable_static()
+
+        def test_cpu_static(self):
+            self.run_static_uint8()
+            self.run_static_int8()
+            self.run_static_int16()
+
+        def test_gpu_dygraph(self):
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
+                return
+            paddle.disable_static(get_device_place())
+            self.run_cases()
+            paddle.enable_static()
+
+        def test_gpu_static(self):
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
+                return
+            self.run_static_uint8(use_gpu=True)
+            self.run_static_int8(use_gpu=True)
+            self.run_static_uint16(use_gpu=True)
+            self.run_static_int16(use_gpu=True)
             y = paddle.cumsum(x, name='out')
             self.assertTrue('out' in y.name)
 
@@ -316,7 +631,7 @@ class TestCumsumFP16(unittest.TestCase):
         return y_np, x_g_np
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         np.random.seed(20)
@@ -542,8 +857,8 @@ create_test_fp16_class(TestSumOpReverseExclusive)
 
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA or not support bfloat16",
     )
     class TestCumsumBF16Op(parent):
@@ -555,11 +870,11 @@ def create_test_bf16_class(parent):
             self.enable_cinn = False
 
         def test_check_output(self):
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, check_prim=True, check_pir=True)
 
         def test_check_grad(self):
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ["X"],
@@ -589,33 +904,12 @@ create_test_bf16_class(TestSumOpExclusive5)
 create_test_bf16_class(TestSumOpReverseExclusive)
 
 
-class BadInputTest(unittest.TestCase):
-
-    def test_error(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-
-            def test_bad_x():
-                data = [1, 2, 4]
-                result = paddle.cumsum(data, axis=0)
-
-            with self.assertRaises(TypeError):
-                test_bad_x()
-        paddle.disable_static()
-
-
 class TestTensorAxis(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -663,6 +957,8 @@ class TestTensorAxis(unittest.TestCase):
                 )
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
+            elif is_custom_device():
+                config.enable_custom_device(get_device(), 0)
             else:
                 config.disable_gpu()
 
@@ -729,9 +1025,8 @@ class TestTensorAxis(unittest.TestCase):
 
 
 class TestCumSumOpFp16(unittest.TestCase):
-
     def test_fp16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
             x_np = np.random.random((100, 100)).astype('float16')
             with paddle.static.program_guard(paddle.static.Program()):
@@ -742,11 +1037,46 @@ class TestCumSumOpFp16(unittest.TestCase):
                 y2 = paddle.cumsum(x, axis=0)
                 y3 = paddle.cumsum(x, axis=-1)
                 y4 = paddle.cumsum(x, axis=-2)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
             paddle.disable_static()
+
+
+class TestCumsumOut(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.test_configs = [
+            {'shape': [100], 'dtype': 'float32'},
+            {'shape': [12, 15], 'dtype': 'float64'},
+            {'shape': [4, 5, 6], 'dtype': 'int32'},
+            {'shape': [2, 3, 4, 5], 'dtype': 'int64'},
+            {'shape': [50, 2], 'dtype': 'float32'},
+        ]
+
+    def test_out_parameter(self):
+        for config in self.test_configs:
+            shape = config['shape']
+            dtype = config['dtype']
+            axis = -1
+
+            with self.subTest(shape=shape, dtype=dtype):
+                if 'int' in dtype:
+                    x_np = np.random.randint(0, 100, size=shape).astype(dtype)
+                else:
+                    x_np = np.random.randn(*shape).astype(dtype)
+
+                x_tensor = paddle.to_tensor(x_np)
+
+                expected_tensor = paddle.cumsum(x_tensor, axis=axis)
+
+                out_tensor = paddle.zeros_like(expected_tensor)
+                paddle.cumsum(x_tensor, axis=axis, out=out_tensor)
+
+                np.testing.assert_allclose(
+                    out_tensor.numpy(), expected_tensor.numpy(), rtol=1e-20
+                )
 
 
 def create_test_class(op_type, dtype, shape, axis):

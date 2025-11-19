@@ -199,6 +199,34 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (3, 3, 3))
 
     @prog_scope()
+    def test_compat_slogdet(self):
+        # 2-D input
+        x = paddle.randn([3, 3])
+        x.stop_gradient = False
+        sign, logabsdet = paddle.compat.slogdet(x)
+        _, x_grad = paddle.static.append_backward(
+            logabsdet.sum(), parameter_list=[x]
+        )[0]
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[sign, logabsdet, x_grad])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[2].shape, (3, 3))
+
+        # 3-D input
+        x1 = paddle.randn([3, 3, 3])
+        x1.stop_gradient = False
+        sign1, logabsdet1 = paddle.compat.slogdet(x1)
+        _, x1_grad = paddle.static.append_backward(
+            logabsdet1.sum(), parameter_list=[x1]
+        )[0]
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[sign1, logabsdet1, x1_grad])
+        self.assertEqual(res[0].shape, (3,))
+        self.assertEqual(res[2].shape, (3, 3, 3))
+
+    @prog_scope()
     def test_multi_dot(self):
         a = paddle.randn([4])
         a.stop_gradient = False

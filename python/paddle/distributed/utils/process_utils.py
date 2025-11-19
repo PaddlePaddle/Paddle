@@ -34,8 +34,9 @@ def _get_cpu_info(numa_id):
         processed_cpu_info = []
         cpu_ranges = i.split(',')
         for cpu_range in cpu_ranges:
-            start, end = int(cpu_range.split("-")[0]), int(
-                cpu_range.split("-")[1]
+            start, end = (
+                int(cpu_range.split("-")[0]),
+                int(cpu_range.split("-")[1]),
             )
             processed_cpu_info.extend(list(range(start, end + 1)))
         return processed_cpu_info

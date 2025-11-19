@@ -526,7 +526,7 @@ func (config *Config) EnableONEDNN() {
 /// \brief Set the cache capacity of different input shapes for OneDNN.
 /// Default value 0 means not caching any shape.
 /// Please see MKL-DNN Data Caching Design Document:
-/// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
+/// https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md
 ///
 /// \param capacity The cache capacity.
 ///
@@ -539,8 +539,8 @@ func (config *Config) SetOnednnCacheCapacity(capacity int32) {
 ///
 /// \return bool Whether to use the OneDNN.
 ///
-func (config *Config) MkldnnEnabled() bool {
-	return cvtPDBoolToGo(C.PD_ConfigMkldnnEnabled(config.c))
+func (config *Config) OnednnEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigOnednnEnabled(config.c))
 }
 
 ///
@@ -585,14 +585,14 @@ func (config *Config) SetONEDNNOp(opList []string) {
 		buf[i] = (*C.char)(unsafe.Pointer(char))
 	}
 
-	C.PD_ConfigSetMkldnnOp(config.c, C.size_t(num), (**C.char)(unsafe.Pointer(&buf[0])))
+	C.PD_ConfigSetOnednnOp(config.c, C.size_t(num), (**C.char)(unsafe.Pointer(&buf[0])))
 }
 
 ///
 /// \brief Turn on OneDNN bfloat16.
 ///
-func (config *Config) EnableMkldnnBfloat16() {
-	C.PD_ConfigEnableMkldnnBfloat16(config.c)
+func (config *Config) EnableOnednnBfloat16() {
+	C.PD_ConfigEnableOnednnBfloat16(config.c)
 }
 
 ///
@@ -600,8 +600,8 @@ func (config *Config) EnableMkldnnBfloat16() {
 ///
 /// \return bool Whether to use the OneDNN Bfloat16.
 ///
-func (config *Config) MkldnnBfloat16Enabled() bool {
-	return cvtPDBoolToGo(C.PD_ConfigMkldnnBfloat16Enabled(config.c))
+func (config *Config) OnednnBfloat16Enabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigOnednnBfloat16Enabled(config.c))
 }
 
 /// \brief Specify the operator type list to use Bfloat16 acceleration.

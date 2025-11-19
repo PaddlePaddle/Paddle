@@ -59,12 +59,21 @@ inline std::unordered_map<std::string, std::string> GetAttributeMap(
 inline void SetActivationAttrs(paddle::framework::OpDesc* fused_op,
                                paddle::framework::OpDesc* act_op,
                                const std::string& act_type) {
-  if (fused_op->HasAttr("use_mkldnn")) {
+  bool use_mkldnn = false;
+  if (fused_op->HasAttr("use_mkldnn") && !fused_op->HasAttr("use_onednn")) {
     PADDLE_ENFORCE(PADDLE_GET_CONST(bool, fused_op->GetAttr("use_mkldnn")),
                    common::errors::PreconditionNotMet(
-                       "oneDNN activation fuses require use_mkldnn=True"));
+                       "oneDNN activation fuses require use_onednn=True"));
   }
-  fused_op->SetAttr("use_mkldnn", true);
+  if (fused_op->HasAttr("use_mkldnn")) {
+    use_mkldnn = PADDLE_GET_CONST(bool, fused_op->GetAttr("use_mkldnn"));
+  }
+  if (!use_mkldnn && fused_op->HasAttr("use_onednn")) {
+    PADDLE_ENFORCE(PADDLE_GET_CONST(bool, fused_op->GetAttr("use_onednn")),
+                   common::errors::PreconditionNotMet(
+                       "oneDNN activation fuses require use_onednn=True"));
+  }
+  fused_op->SetAttr("use_onednn", true);
 
   auto attr_map = GetAttributeMap(act_type);
   for (const auto& attr : attr_map) {

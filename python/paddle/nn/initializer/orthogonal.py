@@ -85,16 +85,20 @@ class Orthogonal(Initializer):
         """
         assert not (
             isinstance(var, framework.EagerParamBase) and var.is_dist()
-        ), "Currently, orthogonal initializer not support lazy init for dist param."
+        ), (
+            "Currently, orthogonal initializer not support lazy init for dist param."
+        )
         block = self._check_block(block)
-        assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))
+        assert isinstance(
+            var, (framework.Variable, paddle.pir.Value, pir.core.ParameterMeta)
+        )
         assert isinstance(block, (framework.Block, pir.Block))
         self._seed = block.program.random_seed
 
         shape = var.shape
-        assert (
-            len(shape) >= 2
-        ), "Only Tensor with 2 or more dimensions can be initialized by Orthogonal"
+        assert len(shape) >= 2, (
+            "Only Tensor with 2 or more dimensions can be initialized by Orthogonal"
+        )
 
         row = shape[0]
         col = 1

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include "paddle/common/macros.h"
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -32,7 +32,7 @@ namespace gpu {
 
 static constexpr int kDefaultConvWorkspaceSizeLimitMB = 512;
 
-int GetDefaultConvWorkspaceSizeLimitMB();
+PADDLE_API int GetDefaultConvWorkspaceSizeLimitMB();
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi

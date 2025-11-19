@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest
 from test_fusion_lstm_op import ACTIVATION, fc
-
-sys.path.append("../deprecated/legacy_test")
 from test_gru_op import gru
 
 
@@ -111,7 +108,7 @@ class TestFusionGRUOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
 
     def test_check_output(self):

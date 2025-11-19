@@ -44,11 +44,11 @@ class DistMetaTensor : public MetaTensor {
 
   virtual ~DistMetaTensor() = default;
 
-  DDim dims() const override;
+  PADDLE_API DDim dims() const override;
 
   const distributed::TensorDistAttr& dist_attr() const;
 
-  bool initialized() const override;
+  PADDLE_API bool initialized() const override;
 
  private:
   /**

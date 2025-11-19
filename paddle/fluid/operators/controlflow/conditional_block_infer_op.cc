@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -87,12 +88,12 @@ class ConditionalBlockInferOp : public ConditionalOp {
         auto &pdesc = *block->Program();
         exec_.reset(new framework::Executor(dev_place));
 #ifdef PADDLE_WITH_DNNL
-        if (FLAGS_use_mkldnn) exec_->EnableONEDNN(pdesc);
+        if (FLAGS_use_mkldnn || FLAGS_use_onednn) exec_->EnableONEDNN(pdesc);
 #endif
         ctx_ = exec_->Prepare(
             pdesc, block->ID(), std::vector<std::string>(), false);
 #ifdef PADDLE_WITH_DNNL
-        if (FLAGS_use_mkldnn) {
+        if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
           platform::AttachPointerHashToONEDNNKey(exec_.get(), dev_place);
           platform::RegisterModelLayout(ctx_->ops_, dev_place);
         }

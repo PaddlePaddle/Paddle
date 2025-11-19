@@ -13,7 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -77,8 +76,8 @@ void QrGradKernel(const Context& dev_ctx,
 
   auto a_dims = A.dims();
   int a_rank = a_dims.size();
-  int m = a_dims[a_rank - 2];
-  int n = a_dims[a_rank - 1];
+  int64_t m = a_dims[a_rank - 2];
+  int64_t n = a_dims[a_rank - 1];
 
   if ((m > n) && (!reduced)) {
     PADDLE_THROW(errors::InvalidArgument(
@@ -130,8 +129,8 @@ void QrGradKernel(const Context& dev_ctx,
     M = Add<T, Context>(
         dev_ctx, M_tril_0, TransposeLast2Dim<T, Context>(dev_ctx, M_tril_1));
 #else
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       DenseTensor M_tril_tmp = TrilTriu<T, Context>(dev_ctx, M_tmp1, -1, true);
       DenseTensor M_tril =
           Add<T, Context>(dev_ctx,

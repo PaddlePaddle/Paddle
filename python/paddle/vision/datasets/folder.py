@@ -59,9 +59,9 @@ def has_valid_extension(filename: str, extensions: Sequence[str]) -> bool:
     Returns:
         bool: True if the filename ends with one of given extensions
     """
-    assert isinstance(
-        extensions, (list, tuple)
-    ), "`extensions` must be list or tuple."
+    assert isinstance(extensions, (list, tuple)), (
+        "`extensions` must be list or tuple."
+    )
     extensions = tuple([x.lower() for x in extensions])
     return filename.lower().endswith(extensions)
 

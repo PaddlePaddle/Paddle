@@ -32,9 +32,9 @@ def random_unique_float(shape, dtype):
     numel = np.prod(shape)
     arr = np.random.uniform(-10.0, 10.0, numel * 10).astype(dtype)
     arr = np.unique(arr)
-    assert (
-        arr.shape[0] >= numel
-    ), f"failed to create enough unique values: {arr.shape[0]} vs {numel}"
+    assert arr.shape[0] >= numel, (
+        f"failed to create enough unique values: {arr.shape[0]} vs {numel}"
+    )
     arr = arr[:numel]
     np.random.shuffle(arr)
     arr = arr.reshape(shape)

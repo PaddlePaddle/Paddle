@@ -5,4 +5,5 @@ collect_srcs(
   scalar.cc
   int_array.cc
   memory_utils.cc
+  logging_utils.cc
   port.cc)

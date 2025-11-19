@@ -24,6 +24,8 @@ limitations under the License. */
 
 namespace phi::distributed {
 
+using phi::distributed::auto_parallel::str_join;
+
 SpmdInfo ArgSortInferSpmd(const DistMetaTensor& x,
                           int axis,
                           bool descending,
@@ -31,7 +33,8 @@ SpmdInfo ArgSortInferSpmd(const DistMetaTensor& x,
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
@@ -50,10 +53,11 @@ SpmdInfo ArgSortInferSpmd(const DistMetaTensor& x,
           x_ndim,
           axis));
 
-  std::vector<int64_t> x_dims_mapping_dst(x_dims_mapping);
-  x_dims_mapping_dst[axis] = -1;
-  std::vector<int64_t> y_dims_mapping_dst(x_dims_mapping_dst);
-  std::vector<int64_t> indices_dims_mapping_dst(x_dims_mapping_dst);
+  std::vector<std::vector<int64_t>> x_dims_mapping_dst(x_dims_mapping);
+  x_dims_mapping_dst[axis] = std::vector<int64_t>({});
+  std::vector<std::vector<int64_t>> y_dims_mapping_dst(x_dims_mapping_dst);
+  std::vector<std::vector<int64_t>> indices_dims_mapping_dst(
+      x_dims_mapping_dst);
   auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   auto y_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   auto indices_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -79,7 +83,8 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
@@ -91,7 +96,8 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
   auto ind_shape = common::vectorize(indices.dims());
   int ind_ndim = static_cast<int>(ind_shape.size());
   auto ind_dist_attr_src = indices.dist_attr();
-  std::vector<int64_t> ind_dims_mapping = ind_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> ind_dims_mapping =
+      ind_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       ind_ndim,
       ind_dims_mapping.size(),
@@ -103,8 +109,8 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
   auto out_grad_shape = common::vectorize(out_grad.dims());
   int out_grad_ndim = static_cast<int>(out_grad_shape.size());
   auto out_grad_dist_attr_src = out_grad.dist_attr();
-  std::vector<int64_t> out_grad_dims_mapping =
-      out_grad_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> out_grad_dims_mapping =
+      out_grad_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_grad_ndim,
       out_grad_dims_mapping.size(),
@@ -129,9 +135,9 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
         errors::InvalidArgument("ArgSortGrad x dims_mapping[%d]=[%d] should be "
                                 "equal to indices dims_mapping[%d]=[%d].",
                                 i,
-                                x_dims_mapping[i],
+                                str_join(x_dims_mapping[i]),
                                 i,
-                                ind_dims_mapping[i]));
+                                str_join(ind_dims_mapping[i])));
   }
 
   axis = axis < 0 ? axis + x_ndim : axis;
@@ -145,11 +151,13 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
           axis));
 
   // step 1: infer spmd info
-  std::vector<int64_t> x_dims_mapping_dst(x_dims_mapping);
-  x_dims_mapping_dst[axis] = -1;
-  std::vector<int64_t> out_grad_dims_mapping_dst(x_dims_mapping_dst);
-  std::vector<int64_t> indices_dims_mapping_dst(x_dims_mapping_dst);
-  std::vector<int64_t> x_grad_dims_mapping_dst(x_dims_mapping_dst);
+  std::vector<std::vector<int64_t>> x_dims_mapping_dst(x_dims_mapping);
+  x_dims_mapping_dst[axis] = std::vector<int64_t>({});
+  std::vector<std::vector<int64_t>> out_grad_dims_mapping_dst(
+      x_dims_mapping_dst);
+  std::vector<std::vector<int64_t>> indices_dims_mapping_dst(
+      x_dims_mapping_dst);
+  std::vector<std::vector<int64_t>> x_grad_dims_mapping_dst(x_dims_mapping_dst);
 
   auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   auto out_grad_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);

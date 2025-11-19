@@ -81,13 +81,13 @@ def load(path, **configs):
     if "place" not in configs:
         configs["place"] = "cpu"
     place = configs["place"]
-    assert isinstance(
-        place, str
-    ), f"configs[place] must be a str, but this is a {type(place)}"
+    assert isinstance(place, str), (
+        f"configs[place] must be a str, but this is a {type(place)}"
+    )
 
-    assert re.search(
-        "^(cpu|gpu:[0-9]*)$", place
-    ), "configs[place] must be cpu, gpu:0, gpu:1 ..."
+    assert re.search("^(cpu|gpu:[0-9]*)$", place), (
+        "configs[place] must be cpu, gpu:0, gpu:1 ..."
+    )
 
     return load_with_place(path, **configs)
 

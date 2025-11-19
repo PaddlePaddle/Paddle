@@ -146,6 +146,7 @@ type_patches:
       - type : pir::Int64Attribute       # 新增属性类型为Int64Attribute
       - data : 0                      # 新增属性默认值
 ```
+更多patch配置案例可以参考相关单测，在`Paddle/test/cpp/pir/serialize_deserialize` 目录下。
 
 ## pir_version 配置说明
 ### C++端版本号管理与CMake配置
@@ -162,11 +163,12 @@ type_patches:
   │  ├─0.yaml
   │  └─1.yaml
   ```
-  - RELEASE_VERSION 为已发布的版本中PIR版本号，即为patch yaml文件名的最大值。
-  - DEVELOP_VERSION 为当前develop分支下的PIR版本号，若存在未发布的新增patch，配置在`0.yaml`中，且当前的develop pir 版本号为0。
+  - RELEASE_VERSION 为已发布的版本中PIR版本号，即为patch yaml文件名的最大值，每次新版本发布且存在新增patch时，`RELEASE_VERSION + 1`，若无新增patch则无需修改。
+  - DEVELOP_VERSION 为当前develop分支下的PIR版本号，若需要新增patch，配置在`0.yaml`中（没有则说明当前为新版本发布后第一次新增patch，需要新建文件），并将`-DDEVELOP_VERSION`设置为0。
 
 - ReadModule和WriteModule参数中的pir_version设为默认值，可以不用传递。pir_version 函数默认值为-1，进入函数后会获取CMake中配置的当前的PIR版本号。
 
+- 完整修改配置流程可以参考PR：https://github.com/PaddlePaddle/Paddle/pull/72751（修改DDEVELOP_VERSION），https://github.com/PaddlePaddle/Paddle/pull/72639（新增patch yaml）
 ### Python端
 - Paddle的主版本号定义在Python端，与PIR version不产生关联。Python端不再需要获取和传入pir_version，直接使用默认值即可。
 ### Paddle发版要求

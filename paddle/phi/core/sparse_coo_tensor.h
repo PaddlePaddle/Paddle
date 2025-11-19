@@ -30,8 +30,9 @@ class DenseTensorUtils;
 /// DenseTensor.
 /// non_zero_indices_ represents the indices of non zero elements in original
 /// DenseTensor.
-class SparseCooTensor : public TensorBase,
-                        public TypeInfoTraits<TensorBase, SparseCooTensor> {
+class PADDLE_API SparseCooTensor
+    : public TensorBase,
+      public TypeInfoTraits<TensorBase, SparseCooTensor> {
  public:
   SparseCooTensor();
   /// \brief Create the sparse coo tensor

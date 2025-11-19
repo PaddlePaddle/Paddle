@@ -180,8 +180,8 @@ std::unordered_set<::pir::Operation*> GetMasters(
 }
 
 bool IsConstOp(const ::pir::Operation* op) {
-  static std::unordered_set<std::string> const_op_type = {
-      "const_scalar", "fill_constant", "arange"};
+  static std::unordered_set<std::string> const_op_type = {"const_scalar",
+                                                          "fill_constant"};
   return const_op_type.count(CompatibleInfo::OpName(*op));
 }
 

@@ -79,6 +79,25 @@ struct EqualFunctor {
     }
   }
 };
+template <typename InT, typename OutT = bool>
+struct NanEqualFunctor {
+  HOSTDEVICE OutT operator()(const InT a, const InT b) const {
+    if (std::is_floating_point<InT>::value) {
+      if (isnan(static_cast<float>(a)) && isnan(static_cast<float>(b))) {
+        return static_cast<OutT>(true);
+      }
+      if (isnan(static_cast<float>(a)) || isnan(static_cast<float>(b))) {
+        return static_cast<OutT>(false);
+      }
+      if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b))) {
+        return static_cast<OutT>(a == b);
+      }
+      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-15);
+    } else {
+      return static_cast<OutT>(a == b);
+    }
+  }
+};
 
 template <typename T>
 struct EqualFunctor<phi::dtype::complex<T>> {

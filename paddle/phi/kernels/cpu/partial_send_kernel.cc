@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <utility>
 #include <vector>
-
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -39,4 +38,4 @@ PD_REGISTER_KERNEL(partial_send,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -37,8 +37,8 @@ PDNode* BuildSeqExpandConcatPattern(PDPattern* pattern) {
   // concat output
 
   // So the following variables will be removed:
-  // sequence-expand output
-  // sequence-expand output
+  // sequence_expand output
+  // sequence_expand output
 
   // Three operators
   auto* sequence_expand0 = pattern->NewNode(

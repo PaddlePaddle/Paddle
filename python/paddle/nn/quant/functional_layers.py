@@ -28,7 +28,7 @@ class add(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, y, name=None):
-        return math.add(x, y, name)
+        return math.add(x, y, name=name)
 
 
 class subtract(FloatFunctionalLayer):
@@ -36,7 +36,7 @@ class subtract(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, y, name=None):
-        return math.subtract(x, y, name)
+        return math.subtract(x, y, name=name)
 
 
 class multiply(FloatFunctionalLayer):
@@ -44,7 +44,7 @@ class multiply(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, y, name=None):
-        return math.multiply(x, y, name)
+        return math.multiply(x, y, name=name)
 
 
 class divide(FloatFunctionalLayer):
@@ -52,7 +52,7 @@ class divide(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, y, name=None):
-        return math.divide(x, y, name)
+        return math.divide(x, y, name=name)
 
 
 class reshape(FloatFunctionalLayer):
@@ -60,7 +60,7 @@ class reshape(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, shape, name=None):
-        return manipulation.reshape(x, shape, name)
+        return manipulation.reshape(x, shape, name=name)
 
 
 class transpose(FloatFunctionalLayer):
@@ -68,7 +68,7 @@ class transpose(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, perm, name=None):
-        return manipulation.transpose(x, perm, name)
+        return manipulation.transpose(x, perm, name=name)
 
 
 class concat(FloatFunctionalLayer):
@@ -76,7 +76,7 @@ class concat(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, axis=0, name=None):
-        return manipulation.concat(x, axis, name)
+        return manipulation.concat(x, axis, name=name)
 
 
 class flatten(FloatFunctionalLayer):
@@ -84,7 +84,7 @@ class flatten(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, start_axis=0, stop_axis=-1, name=None):
-        return manipulation.flatten(x, start_axis, stop_axis, name)
+        return manipulation.flatten(x, start_axis, stop_axis, name=name)
 
 
 class matmul(FloatFunctionalLayer):
@@ -92,4 +92,4 @@ class matmul(FloatFunctionalLayer):
         super().__init__()
 
     def forward(self, x, y, transpose_x=False, transpose_y=False, name=None):
-        return linalg.matmul(x, y, transpose_x, transpose_y, name)
+        return linalg.matmul(x, y, transpose_x, transpose_y, name=name)

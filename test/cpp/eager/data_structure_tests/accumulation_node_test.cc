@@ -62,7 +62,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
       static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
   // AccumulationNode
-  auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
+  auto node = std::make_shared<GradNodeAccumulation>(input_et);
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
   // operator()
@@ -142,7 +142,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
       static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
   // AccumulationNode
-  auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
+  auto node = std::make_shared<GradNodeAccumulation>(input_et);
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
   // operator()
@@ -224,7 +224,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
   grad_dt->mutable_data<float>(phi::CPUPlace())[0] = static_cast<float>(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
   // AccumulationNode
-  auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
+  auto node = std::make_shared<GradNodeAccumulation>(input_et);
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
   // operator()
@@ -312,7 +312,7 @@ TEST(AccumulationNode, Tensor) {
   grad_meta->MutableGrad()->set_impl(grad_dt);
 
   // AccumulationNode
-  auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
+  auto node = std::make_shared<GradNodeAccumulation>(input_et);
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
 

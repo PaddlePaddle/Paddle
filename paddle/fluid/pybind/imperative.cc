@@ -737,7 +737,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(common::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, IPUPlace, XPUPinnedPlace"
+                  "CPUPlace, IPUPlace, XPUPinnedPlace "
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -761,7 +761,7 @@ void BindImperative(py::module *m_ptr) {
                  allow_ops);
              imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
                  block_ops);
-             VLOG(5) << "AMP operators changed, "
+             VLOG(7) << "AMP operators changed, "
                      << imperative::AmpOperators::Instance();
            })
       .def("_get_amp_op_list",
@@ -1103,7 +1103,7 @@ void BindImperative(py::module *m_ptr) {
         PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                           count_tensor.numel(),
                           common::errors::InvalidArgument(
-                              "`offset` and `count` tensor size dismatch."));
+                              "`offset` and `count` tensor size mismatch."));
         PADDLE_ENFORCE_EQ(
             src_tensor.dims().size(),
             dst_tensor->dims().size(),
@@ -1302,7 +1302,7 @@ void BindImperative(py::module *m_ptr) {
           PADDLE_ENFORCE_EQ(offset_tensor.numel(),
                             count_tensor.numel(),
                             common::errors::InvalidArgument(
-                                "`offset` and `count` tensor size dismatch."));
+                                "`offset` and `count` tensor size mismatch."));
           auto *offset_data = offset_tensor.data<int64_t>();
           auto *count_data = count_tensor.data<int64_t>();
           for (int64_t i = 0; i < count_tensor.numel(); i++) {

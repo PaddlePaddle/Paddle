@@ -24,8 +24,8 @@ namespace xblas = baidu::xpu::xblas;
 namespace phi {
 namespace fusion {
 
-using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
-using XPUTypeBF16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
+using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
+using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
 
 template <typename T_X,
           typename T_W,
@@ -54,7 +54,10 @@ void FcXPUKernelImpl(const Context& dev_ctx,
   auto in_mat_dims = flatten_to_2d(x.dims(), in_num_col_dims);
   int m = in_mat_dims[0];
   int k = in_mat_dims[1];
-  int n = w.dims()[0];
+  int64_t n = w.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   auto* x_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
   const float* x_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
@@ -397,10 +400,9 @@ void FcXPUKernel(const Context& dev_ctx,
     // float16 kernel
     if (w.dtype() == DataType::INT16) {
       if (out_dtype == DataType::FLOAT32) {
-        FC_XPU_KERNEL_IMPL(phi::dtype::float16, int16_t, float, int16_t);
+        FC_XPU_KERNEL_IMPL(phi::float16, int16_t, float, int16_t);
       } else if (out_dtype == DataType::FLOAT16) {
-        FC_XPU_KERNEL_IMPL(
-            phi::dtype::float16, int16_t, dtype::float16, int16_t);
+        FC_XPU_KERNEL_IMPL(phi::float16, int16_t, dtype::float16, int16_t);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
@@ -411,9 +413,9 @@ void FcXPUKernel(const Context& dev_ctx,
       }
     } else if (w.dtype() == DataType::INT8) {
       if (out_dtype == DataType::FLOAT16) {
-        FC_XPU_KERNEL_IMPL(phi::dtype::float16, int8_t, dtype::float16, int8_t);
+        FC_XPU_KERNEL_IMPL(phi::float16, int8_t, dtype::float16, int8_t);
       } else if (out_dtype == DataType::INT8) {
-        FC_XPU_KERNEL_IMPL(phi::dtype::float16, int8_t, int8_t, int8_t);
+        FC_XPU_KERNEL_IMPL(phi::float16, int8_t, int8_t, int8_t);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
@@ -462,10 +464,7 @@ void FcXPUKernel(const Context& dev_ctx,
     // bfloat16 kernel
     if (w.dtype() == DataType::BFLOAT16) {
       if (out_dtype == DataType::BFLOAT16) {
-        FC_XPU_KERNEL_IMPL(phi::dtype::bfloat16,
-                           phi::dtype::bfloat16,
-                           phi::dtype::bfloat16,
-                           float);
+        FC_XPU_KERNEL_IMPL(phi::bfloat16, phi::bfloat16, phi::bfloat16, float);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, w_dtype is %s and out_dtype is "
@@ -499,6 +498,6 @@ PD_REGISTER_KERNEL(fc_xpu,
                    ALL_LAYOUT,
                    phi::fusion::FcXPUKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int8_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

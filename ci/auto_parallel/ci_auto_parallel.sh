@@ -77,6 +77,7 @@ get_diff_TO_case(){
     case_list[${#case_list[*]}]=llama_auto
     case_list[${#case_list[*]}]=gpt-3_auto
     case_list[${#case_list[*]}]=gpt-3_dygraph
+    case_list[${#case_list[*]}]=deepseek_auto
 }
 
 print_info(){
@@ -258,6 +259,14 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             execute_func_list $cmd gpt-3_dygraph
             let case_num++
             clean_file ${work_dir}/../PaddleNLP/llm
+        elif [[ ${case} == "deepseek_auto" ]];then
+            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh
+            timeout 5m bash $cmd prepare_case deepseek_case_list_auto $FLAGS_install_deps $FLAGS_download_data
+            execute_func_list $cmd deepseek_auto
+            export FLAGS_install_deps=1
+            export FLAGS_download_data="deepseek ""$FLAGS_download_data"
+            let case_num++
+            clean_file ${work_dir}/../PaddleNLP/llm/auto_parallel/deepseek-v3
         else
             echo -e "\033[31m ---- no ${case} \033"
             let case_num++

@@ -77,15 +77,14 @@ void MultiplyGradKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void MultiplyGradKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    const DenseTensor& dout,
-    int axis,
-    DenseTensor* dx,
-    DenseTensor* dy) {
-  using T = phi::dtype::complex<float>;
+void MultiplyGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                    const DenseTensor& x,
+                                                    const DenseTensor& y,
+                                                    const DenseTensor& dout,
+                                                    int axis,
+                                                    DenseTensor* dx,
+                                                    DenseTensor* dy) {
+  using T = phi::complex64;
   if (dout.numel() == 0) {
     if (dx) {
       if (dx->numel() == 0) {
@@ -188,10 +187,10 @@ PD_REGISTER_KERNEL(multiply_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MultiplyGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    float) {
 }

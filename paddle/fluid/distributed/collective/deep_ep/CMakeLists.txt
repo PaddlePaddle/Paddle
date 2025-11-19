@@ -7,8 +7,13 @@ if(WITH_NVSHMEM)
                        CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 
   set(DEEPEP_KERNEL_SRCS
-      kernels/intranode.cu kernels/runtime.cu kernels/internode.cu
-      kernels/internode_ll.cu kernels/internode_ll_two_stage.cu)
+      kernels/intranode.cu
+      kernels/runtime.cu
+      kernels/internode.cu
+      kernels/internode_ll.cu
+      kernels/internode_ll_two_stage.cu
+      kernels/internode_ll.cu
+      kernels/m2n_ll_two_stage.cu)
   cc_library(
     deepep_kernels
     SRCS ${DEEPEP_KERNEL_SRCS}

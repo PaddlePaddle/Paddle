@@ -827,9 +827,9 @@ class SplitFunctor<phi::GPUContext, T> {
   }
 };
 
-#define DEFINE_FUNCTOR(type)                           \
-  template class ConcatFunctor<phi::GPUContext, type>; \
-  template class SplitFunctor<phi::GPUContext, type>
+#define DEFINE_FUNCTOR(type)                                      \
+  template class PADDLE_API ConcatFunctor<phi::GPUContext, type>; \
+  template class PADDLE_API SplitFunctor<phi::GPUContext, type>
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

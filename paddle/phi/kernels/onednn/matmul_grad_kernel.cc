@@ -250,23 +250,19 @@ void LegacyMatmulGradKernel(const Context &dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(matmul_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::MatmulGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    matmul_grad, OneDNN, ONEDNN, phi::MatmulGradKernel, float, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    OneDNN,
                    ONEDNN,
                    phi::MatmulWithFlattenGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(legacy_matmul_grad,
                    OneDNN,
                    ONEDNN,
                    phi::LegacyMatmulGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

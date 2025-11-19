@@ -20,7 +20,12 @@ limitations under the License. */
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
+
+// Forward declaration of cuBLAS types.
+using cublasHandle_t = struct cublasContext*;
+using cublasLtHandle_t = struct cublasLtContext*;
 
 namespace Eigen {
 struct GpuDevice;
@@ -117,6 +122,34 @@ class CustomContext : public DeviceContext,
   void SetDriverVersion(int val);
 
   void SetRuntimeVersion(int val);
+
+  cublasHandle_t cublas_handle() const;
+
+  cublasLtHandle_t cublaslt_handle() const;
+
+  void SetBlasHandle(cublasHandle_t);
+  void SetBlasHandle(std::function<cublasHandle_t()>&&);
+
+  void SetBlasTensorCoreHandle(cublasHandle_t);
+  void SetBlasTensorCoreHandle(std::function<cublasHandle_t()>&&);
+
+  void SetBlasTF32Handle(cublasHandle_t);
+  void SetBlasTF32Handle(std::function<cublasHandle_t()>&&);
+
+  void SetBlasLtHandle(cublasLtHandle_t);
+  void SetBlasLtHandle(std::function<cublasLtHandle_t()>&&);
+
+  bool tensor_core_available() const;
+
+  void CublasCall(const std::function<void(cublasHandle_t)>&) const;
+
+  void TensorCoreCublasCallIfAvailable(
+      const std::function<void(cublasHandle_t)>&) const;
+
+  bool HasDnnAttr(const std::string& attr_name) const;
+  const Attribute& GetDnnAttr(const std::string& attr_name) const;
+  void SetDnnAttr(const std::string& attr_name, Attribute attr);
+  void ClearDnnAttr();
 
  private:
   CustomContext();

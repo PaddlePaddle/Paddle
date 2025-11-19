@@ -502,6 +502,7 @@ static void SlotNameMatching(
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(common::errors::Fatal(
                   "Detected mismatched slot names."
+                  "Detected mismatched slot names: "
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
                   grad_fwd_slotname_map[grad_slot_name],
@@ -536,7 +537,7 @@ static void SlotNameMatching(
             if (grad_fwd_slotname_map.count(grad_slot_name) &&
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(common::errors::Fatal(
-                  "Detected mismatched slot names"
+                  "Detected mismatched slot names: "
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
                   grad_fwd_slotname_map[grad_slot_name],

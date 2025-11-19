@@ -56,7 +56,7 @@ void SingleThreadLockFreeWorker::Wait() {
 void SingleThreadLockFreeWorker::AddTask(Task task) {
   tasks_queue_[tail_] = task;
   tail_++;
-  if (tail_ >= tasks_queue_.size()) {
+  if (static_cast<size_t>(tail_) >= tasks_queue_.size()) {
     tasks_queue_.resize(tasks_queue_.size() + capacity_);
   }
 }

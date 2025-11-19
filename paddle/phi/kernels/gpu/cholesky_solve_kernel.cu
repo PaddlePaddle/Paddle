@@ -19,7 +19,6 @@
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
@@ -108,16 +107,15 @@ void cusolver_potrs<double>(const solverHandle_t &handle,
 }
 
 template <>
-void cusolver_potrs<phi::dtype::complex<float>>(
-    const solverHandle_t &handle,
-    cublasFillMode_t uplo,
-    int M,
-    int N,
-    phi::dtype::complex<float> *Adata,
-    int lda,
-    phi::dtype::complex<float> *Bdata,
-    int ldb,
-    int *devInfo) {
+void cusolver_potrs<phi::complex64>(const solverHandle_t &handle,
+                                    cublasFillMode_t uplo,
+                                    int M,
+                                    int N,
+                                    phi::complex64 *Adata,
+                                    int lda,
+                                    phi::complex64 *Bdata,
+                                    int ldb,
+                                    int *devInfo) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::cusolverDnCpotrs(handle,
                                 uplo,
@@ -131,16 +129,15 @@ void cusolver_potrs<phi::dtype::complex<float>>(
 }
 
 template <>
-void cusolver_potrs<phi::dtype::complex<double>>(
-    const cusolverDnHandle_t &handle,
-    cublasFillMode_t uplo,
-    int M,
-    int N,
-    phi::dtype::complex<double> *Adata,
-    int lda,
-    phi::dtype::complex<double> *Bdata,
-    int ldb,
-    int *devInfo) {
+void cusolver_potrs<phi::complex128>(const cusolverDnHandle_t &handle,
+                                     cublasFillMode_t uplo,
+                                     int M,
+                                     int N,
+                                     phi::complex128 *Adata,
+                                     int lda,
+                                     phi::complex128 *Bdata,
+                                     int ldb,
+                                     int *devInfo) {
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZpotrs(
       handle,
       uplo,

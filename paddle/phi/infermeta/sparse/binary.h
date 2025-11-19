@@ -22,41 +22,41 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-void Conv3dInferMeta(const MetaTensor& x,
-                     const MetaTensor& kernel,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations,
-                     const std::vector<int>& strides,
-                     const int groups,
-                     const bool subm,
-                     const std::string& key,
-                     MetaTensor* out,
-                     MetaTensor* rulebook,
-                     MetaTensor* counter);
+PADDLE_API void Conv3dInferMeta(const MetaTensor& x,
+                                const MetaTensor& kernel,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& dilations,
+                                const std::vector<int>& strides,
+                                const int groups,
+                                const bool subm,
+                                const std::string& key,
+                                MetaTensor* out,
+                                MetaTensor* rulebook,
+                                MetaTensor* counter);
 
-void Conv3dImplicitGemmInferMeta(const MetaTensor& x,
-                                 const MetaTensor& kernel,
-                                 const std::vector<int>& paddings,
-                                 const std::vector<int>& dilations,
-                                 const std::vector<int>& strides,
-                                 const int groups,
-                                 const bool subm,
-                                 const std::string& key,
-                                 MetaTensor* out);
+PADDLE_API void Conv3dImplicitGemmInferMeta(const MetaTensor& x,
+                                            const MetaTensor& kernel,
+                                            const std::vector<int>& paddings,
+                                            const std::vector<int>& dilations,
+                                            const std::vector<int>& strides,
+                                            const int groups,
+                                            const bool subm,
+                                            const std::string& key,
+                                            MetaTensor* out);
 
-void Pool3dInferMeta(const MetaTensor& x,
-                     const std::vector<int>& kernel_sizes,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations,
-                     const std::vector<int>& strides,
-                     MetaTensor* out,
-                     MetaTensor* rulebook,
-                     MetaTensor* counter);
+PADDLE_API void Pool3dInferMeta(const MetaTensor& x,
+                                const std::vector<int>& kernel_sizes,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& dilations,
+                                const std::vector<int>& strides,
+                                MetaTensor* out,
+                                MetaTensor* rulebook,
+                                MetaTensor* counter);
 
-void SparseCooTensorInferMeta(const MetaTensor& values,
-                              const MetaTensor& indices,
-                              const std::vector<int64_t>& shape,
-                              MetaTensor* out);
+PADDLE_API void SparseCooTensorInferMeta(const MetaTensor& values,
+                                         const MetaTensor& indices,
+                                         const std::vector<int64_t>& shape,
+                                         MetaTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

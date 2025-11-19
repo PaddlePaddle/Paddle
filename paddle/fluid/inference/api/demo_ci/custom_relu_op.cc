@@ -71,9 +71,9 @@ std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
 
 std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
   // TODO(chenweihang): Check Input
-  if (x.place() == paddle::PlaceType::kCPU) {
+  if (x.is_cpu()) {
     return relu_cpu_forward(x);
-  } else if (x.place() == paddle::PlaceType::kGPU) {
+  } else if (x.is_gpu()) {
     return relu_cuda_forward(x);
   } else {
     throw std::runtime_error("Not implemented.");
@@ -84,9 +84,9 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
                                          const paddle::Tensor& out,
                                          const paddle::Tensor& grad_out) {
   // TODO(chenweihang): Check Input
-  if (x.place() == paddle::PlaceType::kCPU) {
+  if (x.is_cpu()) {
     return relu_cpu_backward(x, out, grad_out);
-  } else if (x.place() == paddle::PlaceType::kGPU) {
+  } else if (x.is_gpu()) {
     return relu_cuda_backward(x, out, grad_out);
   } else {
     throw std::runtime_error("Not implemented.");

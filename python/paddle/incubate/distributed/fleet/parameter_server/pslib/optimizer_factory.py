@@ -778,9 +778,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
                             sparse_table_names,
                             dense_table_index,
                         )
-                        program_configs[program_id][
-                            'cond2denseid'
-                        ] = cond2denseid
+                        program_configs[program_id]['cond2denseid'] = (
+                            cond2denseid
+                        )
                         multi_task_dense_tables_push = dense_tables
                         multi_task_dense_tables_pull = dense_tables[:]
 
@@ -893,12 +893,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
                             )
                     else:
                         if flag_multi_task:
-                            program_configs[program_id][
-                                "pull_dense"
-                            ] = multi_task_dense_tables_pull
-                            program_configs[program_id][
-                                "push_dense"
-                            ] = multi_task_dense_tables_push
+                            program_configs[program_id]["pull_dense"] = (
+                                multi_task_dense_tables_pull
+                            )
+                            program_configs[program_id]["push_dense"] = (
+                                multi_task_dense_tables_push
+                            )
                         else:
                             program_configs[program_id]["pull_dense"] = [
                                 dense_table_index

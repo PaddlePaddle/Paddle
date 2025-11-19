@@ -106,7 +106,6 @@ class StatementContext: ...
 
 
 class StatementContextRegistry:
-
     _ctx_map: dict[
         type[Any],
         Callable[[Any], AbstractContextManager[None]],

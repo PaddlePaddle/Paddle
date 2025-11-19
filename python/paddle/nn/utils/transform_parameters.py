@@ -165,12 +165,15 @@ def vector_to_parameters(
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
             True)
     """
+    assert len(vec.shape) == 1
     origin_shapes = []
     sections = []
+    total_elements = 0
     for param in parameters:
         shape = param.shape
         origin_shapes.append(shape)
         numel = reduce(lambda x, y: x * y, shape, 1)
+        total_elements += numel
         sections.append(numel)
 
     if len(sections) == 1:
@@ -178,7 +181,18 @@ def vector_to_parameters(
 
     if in_dygraph_mode():
         with paddle.base.dygraph.no_grad():
-            res = _C_ops.split(vec, sections, 0)
+            res = []
+            if total_elements == vec.shape[0]:
+                res = _C_ops.split(vec, sections, 0)
+            elif total_elements < vec.shape[0]:
+                pointer = 0
+                for section in sections:
+                    res.append(vec[pointer : pointer + section])
+                    pointer += section
+            else:
+                raise ValueError(
+                    "The total_elements of vec should be equal to or larger than the number of elements in parameters."
+                )
             for i in range(0, len(parameters)):
                 res[i]._share_underline_tensor_to(parameters[i])
     else:

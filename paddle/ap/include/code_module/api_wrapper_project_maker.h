@@ -137,31 +137,44 @@ struct ApiWrapperProjectMaker {
         [&](axpr::CppDataType<double>) -> RetT { return "double"; },
         [&](axpr::CppDataType<axpr::bfloat16>) -> RetT {
           return adt::errors::TypeError{
-              "bfloat16 are not allowed being used by so function"};
+              "bfloat16 is not supported in SO function calls; use float or "
+              "half "
+              "(if available) as an alternative"};
         },
         [&](axpr::CppDataType<axpr::float8_e4m3fn>) -> RetT {
           return adt::errors::TypeError{
-              "float8_e4m3fn are not allowed being used by so function"};
+              "float8_e4m3fn is not supported in SO function calls; consider "
+              "using "
+              "higher-precision floating-point types"};
         },
         [&](axpr::CppDataType<axpr::float8_e5m2>) -> RetT {
           return adt::errors::TypeError{
-              "float8_e5m2 are not allowed being used by so function"};
+              "float8_e5m2 is not supported in SO function calls; consider "
+              "using "
+              "higher-precision floating-point types"};
         },
         [&](axpr::CppDataType<axpr::float16>) -> RetT {
           return adt::errors::TypeError{
-              "float16 are not allowed being used by so function"};
+              "float16 (half precision) is not supported in SO function calls; "
+              "use "
+              "float instead if possible"};
         },
         [&](axpr::CppDataType<axpr::complex64>) -> RetT {
           return adt::errors::TypeError{
-              "complex64 are not allowed being used by so function"};
+              "complex64 is not supported in SO function calls; decompose into "
+              "real and imaginary parts manually"};
         },
         [&](axpr::CppDataType<axpr::complex128>) -> RetT {
           return adt::errors::TypeError{
-              "complex128 are not allowed being used by so function"};
+              "complex128 is not supported in SO function calls; handle "
+              "complex "
+              "arithmetic explicitly"};
         },
         [&](axpr::CppDataType<axpr::pstring>) -> RetT {
           return adt::errors::TypeError{
-              "pstring are not allowed being used by so function"};
+              "pstring is not supported in SO function calls; use const char* "
+              "or "
+              "void* with length metadata instead"};
         },
         [&](axpr::CppDataType<adt::Undefined>) -> RetT { return "void"; });
   }

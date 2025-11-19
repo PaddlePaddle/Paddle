@@ -478,9 +478,9 @@ class DistributedContext:
             self.copy_dist_attr_from_program_to_graph()
 
     def add_process_mesh(self, process_mesh):
-        assert isinstance(
-            process_mesh, (ProcessMesh, core.ProcessMesh)
-        ), 'The type of dim_mapping must be ProcessMesh.'
+        assert isinstance(process_mesh, (ProcessMesh, core.ProcessMesh)), (
+            'The type of dim_mapping must be ProcessMesh.'
+        )
         if process_mesh not in self.process_meshes:
             self._process_meshes.append(process_mesh)
 
@@ -787,9 +787,9 @@ class DistributedContext:
                     )
                 dist_tensor = cur_dist_tensor
                 self._node_id_to_tensor_id[_node_id(node)] = cur_tensor_id
-                assert (
-                    dist_tensor is not None
-                ), "Tensor must have a distributed tensor after the initialization for program."
+                assert dist_tensor is not None, (
+                    "Tensor must have a distributed tensor after the initialization for program."
+                )
                 serial_tensor_node_id = _node_id(node)
                 new_dist_tensor = DistributedTensor(
                     dist_tensor.serial_tensor, dist_tensor.dist_attr
@@ -810,9 +810,9 @@ class DistributedContext:
                     )
                 dist_op = cur_dist_op
                 self._node_id_to_op_id[_node_id(node)] = cur_op_id
-                assert (
-                    dist_op is not None
-                ), "Operator must have a distributed operator after the initialization for program."
+                assert dist_op is not None, (
+                    "Operator must have a distributed operator after the initialization for program."
+                )
                 serial_op_node_id = _node_id(node)
                 new_dist_op = DistributedOperator(
                     dist_op.serial_op, dist_op.dist_attr
@@ -843,9 +843,9 @@ class DistributedContext:
                         cur_tensor_id, None
                     )
                 dist_tensor = cur_dist_tensor
-                assert (
-                    dist_tensor is not None
-                ), "Tensor must have a distributed tensor after the initialization for program."
+                assert dist_tensor is not None, (
+                    "Tensor must have a distributed tensor after the initialization for program."
+                )
                 serial_tensor_node_id = _node_id(node)
                 new_dist_tensor = DistributedTensor(
                     dist_tensor.serial_tensor, dist_tensor.dist_attr
@@ -865,9 +865,9 @@ class DistributedContext:
                         cur_op_id, None
                     )
                 dist_op = cur_dist_op
-                assert (
-                    dist_op is not None
-                ), "Operator must have a distributed operator after the initialization for program."
+                assert dist_op is not None, (
+                    "Operator must have a distributed operator after the initialization for program."
+                )
                 serial_op_node_id = _node_id(node)
                 new_dist_op = DistributedOperator(
                     dist_op.serial_op, dist_op.dist_attr
@@ -875,9 +875,9 @@ class DistributedContext:
                 self._dist_ops_for_graph[serial_op_node_id] = new_dist_op
 
     def copy_dist_attr_from_graph_to_program(self):
-        assert (
-            self._is_initialized
-        ), "Both program and graph must be initialized."
+        assert self._is_initialized, (
+            "Both program and graph must be initialized."
+        )
         updated_tensors = {}
         all_nodes = self._serial_ordered_nodes
         process_meshes = [self.process_meshes[0]]
@@ -1023,9 +1023,9 @@ class DistributedContext:
         for block in self.serial_main_program.blocks:
             for tensor in block.vars.values():
                 dist_tensor = self.get_dist_tensor_for_program(tensor)
-                assert (
-                    dist_tensor is not None
-                ), f"Tensor {dist_tensor.serial_tensor.name} does not have a distributed attribute."
+                assert dist_tensor is not None, (
+                    f"Tensor {dist_tensor.serial_tensor.name} does not have a distributed attribute."
+                )
                 if (dist_tensor is not None) and (
                     not dist_tensor.validate_dist_attr()
                 ):
@@ -1034,9 +1034,9 @@ class DistributedContext:
                     )
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
-                assert (
-                    dist_op is not None
-                ), f"Operator {dist_op.serial_op.type} does not have a distributed attribute."
+                assert dist_op is not None, (
+                    f"Operator {dist_op.serial_op.type} does not have a distributed attribute."
+                )
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
                     raise AssertionError(
                         f"Operator {dist_op.serial_op.type} (id: {dist_op.serial_op.desc.id()}, original_id: {dist_op.serial_op.desc.original_id()}) has a wrong distributed attributes {dist_op.dist_attr} ."
@@ -1214,18 +1214,18 @@ class BlockState:
 
         for idx, block in enumerate(program.blocks):
             assert idx == block.idx, "index doesn't match"
-            assert (
-                block.forward_block_idx == -1
-            ), f"forward_block_idx of forward block [{idx}] is not [{block.forward_block_idx}]"
+            assert block.forward_block_idx == -1, (
+                f"forward_block_idx of forward block [{idx}] is not [{block.forward_block_idx}]"
+            )
             self.forward_indices.append(idx)
             self.nblock += 1
 
         assert self.nblock >= 1
 
     def parse_backward_blocks(self, program):
-        assert (
-            0 in self.forward_indices
-        ), f"forward block idx are{self.forward_indices}"
+        assert 0 in self.forward_indices, (
+            f"forward block idx are{self.forward_indices}"
+        )
         self.backward_to_forward_index_map[0] = 0
 
         for idx, block in enumerate(program.blocks):

@@ -59,6 +59,7 @@ from .common import (
     class_center_sample,
     cosine_similarity,
     dropout,
+    dropout1d,
     dropout2d,
     dropout3d,
     feature_alpha_dropout,
@@ -171,6 +172,7 @@ from .vision import (
     pixel_unshuffle,
 )
 
+logsigmoid = log_sigmoid
 __all__ = [
     'celu',
     'conv1d',
@@ -191,6 +193,7 @@ __all__ = [
     'leaky_relu',
     'leaky_relu_',
     'log_sigmoid',
+    'logsigmoid',
     'maxout',
     'prelu',
     'relu',
@@ -216,6 +219,7 @@ __all__ = [
     'gumbel_softmax',
     'sequence_mask',
     'dropout',
+    'dropout1d',
     'dropout2d',
     'dropout3d',
     'alpha_dropout',
@@ -240,6 +244,8 @@ __all__ = [
     'max_unpool1d',
     'max_unpool2d',
     'max_unpool3d',
+    'moe_permute',
+    'moe_unpermute',
     'adaptive_avg_pool1d',
     'adaptive_avg_pool2d',
     'adaptive_avg_pool3d',
@@ -302,6 +308,4 @@ __all__ = [
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
-    'moe_permute',
-    'moe_unpermute',
 ]

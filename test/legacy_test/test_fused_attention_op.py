@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
@@ -152,7 +152,7 @@ class TestFusedAttentionOp(OpTest):
         ).astype(self.x_type)
 
     def GetBaselineOut(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
 
         cache_kv = None
@@ -238,7 +238,7 @@ class TestFusedAttentionOp(OpTest):
         return final_out, tensor_query.grad
 
     def GetFusedAttentionOut(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         q_proj_weight = paddle.to_tensor(
             self.q_proj.weight, stop_gradient=False
         )
@@ -540,7 +540,7 @@ class TestFusedAttentionOpParamStopGradient(OpTest):
         ).astype(self.x_type)
 
     def GetBaselineOut(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
 
         cache_kv = None
@@ -623,7 +623,7 @@ class TestFusedAttentionOpParamStopGradient(OpTest):
         return final_out, tensor_query.grad
 
     def GetFusedAttentionOut(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         q_proj_weight = paddle.to_tensor(
             self.q_proj.weight, stop_gradient=False
         )

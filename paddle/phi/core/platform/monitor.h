@@ -145,26 +145,26 @@ class StatRegistry {
 #define STAT_RESET(item, t) _##item.reset(t)
 #define STAT_GET(item) _##item.get()
 
-#define DEFINE_FLOAT_STATUS(item)                    \
-  paddle::platform::StatValue<float> _##item(#item); \
-  int TouchStatRegistrar_##item() {                  \
-    _##item.Touch();                                 \
-    return 0;                                        \
+#define DEFINE_FLOAT_STATUS(item)                               \
+  PADDLE_API paddle::platform::StatValue<float> _##item(#item); \
+  PADDLE_API int TouchStatRegistrar_##item() {                  \
+    _##item.Touch();                                            \
+    return 0;                                                   \
   }
 
-#define DEFINE_INT_STATUS(item)                        \
-  paddle::platform::StatValue<int64_t> _##item(#item); \
-  int TouchStatRegistrar_##item() {                    \
-    _##item.Touch();                                   \
-    return 0;                                          \
+#define DEFINE_INT_STATUS(item)                                   \
+  PADDLE_API paddle::platform::StatValue<int64_t> _##item(#item); \
+  PADDLE_API int TouchStatRegistrar_##item() {                    \
+    _##item.Touch();                                              \
+    return 0;                                                     \
   }
 
-#define USE_STAT(item)                    \
-  extern int TouchStatRegistrar_##item(); \
+#define USE_STAT(item)                               \
+  PADDLE_API extern int TouchStatRegistrar_##item(); \
   UNUSED static int use_stat_##item = TouchStatRegistrar_##item()
 
-#define USE_INT_STAT(item)                             \
-  extern paddle::platform::StatValue<int64_t> _##item; \
+#define USE_INT_STAT(item)                                        \
+  PADDLE_API extern paddle::platform::StatValue<int64_t> _##item; \
   USE_STAT(item)
 
 #define USE_FLOAT_STAT(item)                         \

@@ -376,9 +376,9 @@ class FunctionGraph:
             guards = OrderedSet(guards)  # type: ignore
 
             for guard in guards:
-                assert isinstance(
-                    guard, StringifiedExpression
-                ), "guard must be StringifiedExpression."
+                assert isinstance(guard, StringifiedExpression), (
+                    "guard must be StringifiedExpression."
+                )
 
             return make_guard(guards)
 
@@ -523,11 +523,14 @@ class FunctionGraph:
         from ..breakpoint import BreakpointManager
 
         BreakpointManager().on_event("compile_function")
-        graph_fn, (
-            statement_ir,
-            symbolic_inputs,
-            _,
-            symbolic_outputs,
+        (
+            graph_fn,
+            (
+                statement_ir,
+                symbolic_inputs,
+                _,
+                symbolic_outputs,
+            ),
         ) = compile_graph_result
         compiled_fn_name = f"___graph_fn_{statement_ir.name}"
         # prepare function and inputs
@@ -990,16 +993,22 @@ class FunctionGraph:
     def gen_load_inputs(self, inputs: OrderedSet[GraphNodeVariableType]):
         for input_var in inputs:
             if isinstance(input_var, SymbolicVariable):
-                # For SymbolicVariable, we use paddle.full([], value, "int64")
+                # For SymbolicVariable, we use _wrap_int_to_tensor(value)
                 # to convert it to a Tensor
+                def _wrap_int_to_tensor(value):
+                    return paddle.tensor.fill_constant(
+                        shape=[],
+                        dtype="int64",
+                        value=value,
+                        force_cpu=True,
+                    )
+
                 self.pycode_gen.gen_load_object(
-                    paddle.full,
-                    "___paddle_full",
+                    _wrap_int_to_tensor,
+                    "___wrap_int_to_tensor",
                 )
-                self.pycode_gen.gen_build_list(0)
                 input_var.tracker.gen_instructions(self.pycode_gen)
-                self.pycode_gen.gen_load_const("int64")
-                self.pycode_gen.gen_call_function(3)
+                self.pycode_gen.gen_call_function(1)
             elif isinstance(input_var, NumPyArrayVariable):
                 # For NumPyArrayVariable, we use paddle.to_tensor(value) to convert it to a Tensor
                 self.pycode_gen.gen_load_object(

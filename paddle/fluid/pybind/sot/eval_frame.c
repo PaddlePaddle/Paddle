@@ -28,6 +28,9 @@ limitations under the License. */
 
 #include <object.h>
 #include <pystate.h>
+#if PY_3_14_PLUS
+#include <internal/pycore_interpframe.h>
+#endif
 
 #if PY_3_11_PLUS
 #define CALL_STAT_INC(name) ((void)0)
@@ -97,7 +100,16 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
   Py_INCREF(func);
-#if PY_3_12_PLUS
+
+#if PY_3_14_PLUS
+  func->func_closure =
+      ((PyFunctionObject *)PyStackRef_AsPyObjectBorrow((frame)->f_funcobj))
+          ->func_closure;
+  _PyStackRef func_stackref = PyStackRef_FromPyObjectSteal((PyObject *)func);
+  _PyFrame_Initialize(
+      tstate, shadow, func_stackref, NULL, code, 0, frame->previous);
+  _PyStackRef *fastlocals_new = shadow->localsplus;
+#elif PY_3_12_PLUS
   Py_XINCREF(((PyFunctionObject *)frame->f_funcobj)->func_closure);
   func->func_closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
   _PyFrame_Initialize(shadow, func, NULL, code, 0);
@@ -113,7 +125,11 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 #endif
 
+#if PY_3_14_PLUS
+  _PyStackRef *fastlocals_old = frame->localsplus;
+#else
   PyObject **fastlocals_old = frame->localsplus;
+#endif
 
   // The namemap to map the name to index in new frame localsplus.
   PyObject *namemap = PyDict_New();
@@ -134,8 +150,12 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
     if (index == NULL) {
       continue;
     }
+#if PY_3_14_PLUS
+    fastlocals_new[PyLong_AsSize_t(index)] = PyStackRef_DUP(fastlocals_old[i]);
+#else
     Py_XINCREF(fastlocals_old[i]);
     fastlocals_new[PyLong_AsSize_t(index)] = fastlocals_old[i];
+#endif
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);

@@ -276,7 +276,7 @@ PD_REGISTER_KERNEL(topk,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
 
@@ -288,6 +288,6 @@ PD_REGISTER_KERNEL(topk_v1,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

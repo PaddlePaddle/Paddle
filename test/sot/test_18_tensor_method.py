@@ -85,7 +85,7 @@ def middle_tensor_name(a: paddle.Tensor, b: paddle.Tensor):
 
 @check_no_breakgraph
 def tensor_numel(x: paddle.Tensor):
-    return x.numel(), x.size
+    return x.numel(), int(x.size)
 
 
 @check_no_breakgraph

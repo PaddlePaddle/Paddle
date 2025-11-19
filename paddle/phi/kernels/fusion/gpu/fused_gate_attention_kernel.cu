@@ -321,8 +321,8 @@ PD_REGISTER_KERNEL(fused_gate_attention,
                    ALL_LAYOUT,
                    phi::fusion::FusedGateAttentionOpKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(fused_gate_attention,
                    GPU,
@@ -330,6 +330,6 @@ PD_REGISTER_KERNEL(fused_gate_attention,
                    phi::fusion::FusedGateAttentionOpKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

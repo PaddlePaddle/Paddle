@@ -153,7 +153,7 @@ class TestConv2dTransFilterDilationsNxNTo1x1PassPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["conv2d_trans_filter_dilations_nxn_to_1x1_pass"],

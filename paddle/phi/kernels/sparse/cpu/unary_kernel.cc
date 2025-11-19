@@ -83,8 +83,8 @@ void DivScalarCsrKernel(const Context& dev_ctx,
                      phi::sparse::prefix##CooKernel,                   \
                      float,                                            \
                      double,                                           \
-                     phi::dtype::complex<float>,                       \
-                     phi::dtype::complex<double>) {                    \
+                     phi::complex64,                                   \
+                     phi::complex128) {                                \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);     \
   }                                                                    \
                                                                        \
@@ -94,8 +94,8 @@ void DivScalarCsrKernel(const Context& dev_ctx,
                      phi::sparse::prefix##CsrKernel,                   \
                      float,                                            \
                      double,                                           \
-                     phi::dtype::complex<float>,                       \
-                     phi::dtype::complex<double>) {                    \
+                     phi::complex64,                                   \
+                     phi::complex128) {                                \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);     \
   }
 
@@ -169,7 +169,7 @@ PD_REGISTER_KERNEL(isnan_coo,
                    phi::sparse::IsnanCooKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -181,7 +181,7 @@ PD_REGISTER_KERNEL(isnan_csr,
                    phi::sparse::IsnanCsrKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);

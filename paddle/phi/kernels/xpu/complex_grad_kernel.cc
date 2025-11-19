@@ -17,7 +17,6 @@
 
 #include "fft/cuComplex.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
@@ -145,19 +144,13 @@ void ComplexGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(imag_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ImagGradKernel,
-                   phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(
+    imag_grad, XPU, ALL_LAYOUT, phi::ImagGradKernel, phi::complex64) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(real_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::RealGradKernel,
-                   phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(
+    real_grad, XPU, ALL_LAYOUT, phi::RealGradKernel, phi::complex64) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 

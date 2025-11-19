@@ -42,7 +42,9 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx >= output_grad_numel) {
     return;
   }
@@ -81,6 +83,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,
+    int64_t output_size,
     DenseTensor* x_grad) {
   auto input_dim = x_grad->dims();
   if (dim < 0) {
@@ -186,6 +189,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
+                                int64_t output_size,
                                 DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
@@ -223,7 +227,7 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -232,4 +236,4 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

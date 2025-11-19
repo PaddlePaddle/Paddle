@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device
 
 import paddle
 import paddle.incubate.nn.functional as F
@@ -144,7 +144,7 @@ class TestFusedWeightedSwigluActQuant(unittest.TestCase):
 
 if __name__ == '__main__':
     # Set up test environment
-    paddle.device.set_device('gpu')
+    paddle.device.set_device(get_device())
 
     # Run tests
     unittest.main(verbosity=2)

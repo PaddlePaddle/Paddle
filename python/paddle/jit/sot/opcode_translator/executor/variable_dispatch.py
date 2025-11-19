@@ -31,6 +31,7 @@ from ...symbolic_shape.operators import (
     SYMBOLIC_UNARY_OPS,
     symbolic_not,
     symbolic_to_bool,
+    symbolic_truediv,
 )
 from ...utils import (
     NUMPY_API_SUPPORTED_DICT,
@@ -1071,7 +1072,6 @@ Dispatcher.register(
 def apply_op_with_zero_division_check(
     op: BinaryOp, lhs: VariableBase, rhs: VariableBase
 ):
-
     graph = lhs.graph
     if op in NEED_GUARD_ZERO_DIVISION_ERROR_OPS:
         call_eq = BuiltinVariable(operator.eq, graph, DanglingTracker())
@@ -1201,7 +1201,9 @@ for binary_fn in BINARY_OPS:
                         "TensorVariable",
                     ),
                     partial(
-                        lambda reverse_magic_name, var, other: other.graph.call_tensor_method(
+                        lambda reverse_magic_name,
+                        var,
+                        other: other.graph.call_tensor_method(
                             reverse_magic_name, other, var
                         ),
                         magic_method.name,
@@ -1219,6 +1221,9 @@ for unary_fn in SYMBOLIC_UNARY_OPS:
         ),
     )
 for binary_fn in SYMBOLIC_BINARY_OPS:
+    compute_fn = binary_fn
+    if binary_fn is symbolic_truediv:
+        binary_fn = operator.truediv
     register_fns = [binary_fn]
     if (
         inplace_binary_fn := non_inplace_op_to_inplace_op(binary_fn)
@@ -1232,7 +1237,7 @@ for binary_fn in SYMBOLIC_BINARY_OPS:
                 lambda fn, var, other: var.graph.call_symbolic_api(
                     fn, var, other
                 ),
-                binary_fn,
+                compute_fn,
             ),
         )
         Dispatcher.register(
@@ -1242,7 +1247,7 @@ for binary_fn in SYMBOLIC_BINARY_OPS:
                 lambda fn, var, other: var.graph.call_symbolic_api(
                     fn, var, other
                 ),
-                binary_fn,
+                compute_fn,
             ),
         )
 

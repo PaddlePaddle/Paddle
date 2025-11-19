@@ -334,7 +334,7 @@ struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
                "the argument 2 of DataValue.complex64() should be a DataValue, "
                "but a " +
                axpr::GetTypeName(args.at(1)) + " were given"};
-    ADT_LET_CONST_REF(imag, real_val.template TryGet<float>())
+    ADT_LET_CONST_REF(imag, imag_val.template TryGet<float>())
         << adt::errors::TypeError{
                std::string() +
                "the argument 2 of DataValue.complex64() should be a float32, "
@@ -366,7 +366,7 @@ struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
                "the argument 2 of DataValue.complex128() should be a "
                "DataValue, but a " +
                axpr::GetTypeName(args.at(1)) + " were given"};
-    ADT_LET_CONST_REF(imag, real_val.template TryGet<double>())
+    ADT_LET_CONST_REF(imag, imag_val.template TryGet<double>())
         << adt::errors::TypeError{
                std::string() +
                "the argument 2 of DataValue.complex128() should be a float64, "

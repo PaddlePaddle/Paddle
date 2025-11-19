@@ -174,7 +174,7 @@ def _patch_float_precision(digits):
 
 
 class Directive:
-    """Base class of global direvtives just for `xdoctest`."""
+    """Base class of global directives just for `xdoctest`."""
 
     pattern: typing.Pattern
 

@@ -337,15 +337,15 @@ class ProgramHelper:
 
     def _verify_optimizer(self, optimizer):
         assert optimizer is not None
-        assert hasattr(
-            optimizer, "minimize"
-        ), "Optimizer must have minimize() method."
-        assert (
-            self.proxy_layer.mode == 'train'
-        ), f"Required mode == 'train', but received '{self.proxy_layer.mode}'"
-        assert (
-            len(self.loss_vars) == 1
-        ), f"Required len(loss_vars) == 1, but received len(loss_vars) = {len(self.loss_vars)}"
+        assert hasattr(optimizer, "minimize"), (
+            "Optimizer must have minimize() method."
+        )
+        assert self.proxy_layer.mode == 'train', (
+            f"Required mode == 'train', but received '{self.proxy_layer.mode}'"
+        )
+        assert len(self.loss_vars) == 1, (
+            f"Required len(loss_vars) == 1, but received len(loss_vars) = {len(self.loss_vars)}"
+        )
 
     def to(self, mode):
         """
@@ -353,9 +353,9 @@ class ProgramHelper:
         """
         assert mode in ['train', 'eval', 'predict']
         func = getattr(self.proxy_layer, '_' + mode)
-        assert isinstance(
-            func, StaticFunction
-        ), "Please call build_program(mode) firstly."
+        assert isinstance(func, StaticFunction), (
+            "Please call build_program(mode) firstly."
+        )
         self.proxy_layer.set_mode(mode)
 
     def static_func(self):
@@ -419,9 +419,9 @@ class ProgramHelper:
                 value_name = dy_param_name_to_pir_param_name[param.name]
                 value = value_name_to_value[value_name]
                 # get param_var's dist_attr
-                assert (
-                    value.is_dist_dense_tensor_type()
-                ), f"param [{value.name}] is not dist tensor type"
+                assert value.is_dist_dense_tensor_type(), (
+                    f"param [{value.name}] is not dist tensor type"
+                )
                 dist_attr = {
                     "dims_mapping": value.dist_attr().dims_mapping,
                     "process_shape": value.dist_attr().process_mesh.shape,
@@ -536,9 +536,9 @@ class ProgramHelper:
                 if param.dtype in [paddle.float16, paddle.bfloat16]:
                     continue
                 scope_tensor = global_scope().var(param.name).get_tensor()
-                assert (
-                    scope_var and scope_tensor._is_initialized()
-                ), f"Parameter: {param.name} is not put into global_scope or not initialized."
+                assert scope_var and scope_tensor._is_initialized(), (
+                    f"Parameter: {param.name} is not put into global_scope or not initialized."
+                )
                 param_used = param
                 # For the params without dist_attr.
                 # NOTE(lizhiyu): In principle, each param should have dist_attr.

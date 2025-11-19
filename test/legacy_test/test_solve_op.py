@@ -260,7 +260,6 @@ class TestSolveOpBatched_case8(OpTest):
 
 
 class TestSolveOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

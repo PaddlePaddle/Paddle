@@ -87,7 +87,7 @@ class CEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker {
                      "and the out-of-bounds will be set to 0 ")
         .SetDefault(0);
     AddAttr<int64_t>("vocab_size",
-                     "(int64, default -1), The total vocabulary size to check"
+                     "(int64, default -1), The total vocabulary size to check "
                      "the out-of-bounds ids. If it is -1, no check will be ")
         .SetDefault(-1);
     AddComment(R"DOC(

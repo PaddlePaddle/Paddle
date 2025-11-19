@@ -719,8 +719,7 @@ def _check_inputs(func, xs, v=None):
         xs, (framework.Variable, typing.Sequence, paddle.pir.Value)
     ):
         raise TypeError(
-            f"Expected 'xs' is a Tensor|Sequence[Tensor],"
-            f"but got {type(xs)}."
+            f"Expected 'xs' is a Tensor|Sequence[Tensor], but got {type(xs)}."
         )
     if isinstance(xs, typing.Sequence) and not all(
         isinstance(x, (framework.Variable, paddle.pir.Value)) for x in xs

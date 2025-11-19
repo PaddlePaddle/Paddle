@@ -479,5 +479,98 @@ TEST(IRSimplify, if_fold_EQ_2) {
 }
 )ROC"));
 }
+
+/*
+serial for (i_j_fused, 0ll, 524288ll)
+{
+  serial for (j_0, 0, 128)
+  {
+    var_45[(i_j_fused / 16), (((i_j_fused % 16) * 128) + j_0)] =
+      pow(2.0f, ceil(log2((0.00223214296f * var_31[0]))))
+  }
+ }
+*/
+TEST(IRSimplifyPowerCeilLog2BitOpLdexpf, Base) {
+  Context::Global().ResetNameId();
+
+  /// Create input IR matching the specified pattern
+  const std::vector<ir::Expr> shape_2d = {ir::Expr(32768), ir::Expr(16)};
+  const std::vector<ir::Expr> shape_3d = {ir::Expr(32768), ir::Expr(16)};
+
+  ir::Tensor var_31 =
+      ir::_Tensor_::Make("var_31", ir::Float(32), shape_2d, shape_2d);
+  var_31->WithBuffer("global", "var_31_buffer");
+
+  ir::Tensor var_45 =
+      ir::_Tensor_::Make("var_45", ir::Float(32), shape_3d, shape_3d);
+  var_45->WithBuffer("global", "var_45_buffer");
+
+  // Define loop variables
+  ir::Var var_i_j_fused = ir::Var(ir::Expr(0), ir::Expr(524288), "i_j_fused");
+  ir::Var var_j_0 = ir::Var(ir::Expr(0), ir::Expr(128), "j_0");
+
+  // Create innermost loop body
+  ir::Expr body = ir::Store::Make(
+      var_45,
+      ir::Call::Make(
+          ir::Float(32),  // Return type
+          "pow",          // Intrinsic function name
+          {ir::Expr(2.0f),
+           ir::Call::Make(
+               ir::Float(32),
+               "ceil",
+               {ir::Call::Make(
+                   ir::Float(32),
+                   "log2",
+                   {ir::Mul::Make(ir::Expr(0.00223214296f),
+                                  ir::Load::Make(var_31, {ir::Expr(0)}))},
+                   {},
+                   ir::CallType::Intrinsic)},
+               {},
+               ir::CallType::Intrinsic)},
+          {},
+          ir::CallType::Intrinsic),
+      {ir::Div::Make(var_i_j_fused, ir::Expr(16)),
+       ir::Add::Make(ir::Mul::Make(ir::Mod::Make(var_i_j_fused, ir::Expr(16)),
+                                   ir::Expr(128)),
+                     var_j_0)});
+
+  // Create j_0 loop
+  ir::Expr j_0_loop = ir::For::Make(var_j_0,
+                                    ir::Expr(0),
+                                    ir::Expr(128),
+                                    ir::ForType::Serial,
+                                    ir::DeviceAPI::Host,
+                                    ir::Block::Make({body}));
+
+  // Create i_j_fused loop
+  ir::Expr i_j_fused_loop = ir::For::Make(var_i_j_fused,
+                                          ir::Expr(0),
+                                          ir::Expr(524288),
+                                          ir::ForType::Serial,
+                                          ir::DeviceAPI::Host,
+                                          ir::Block::Make({j_0_loop}));
+
+  // Final expression
+  ir::Expr expr = ir::Block::Make({i_j_fused_loop});
+
+  VLOG(6) << "Before Simplify: " << expr;
+  cinn::optim::Simplify(&expr);
+  VLOG(6) << "After Simplify: " << expr;
+
+  // Expected output verification
+  std::string expected_ir = R"ROC({
+  serial for (i_j_fused, 0, 524288)
+  {
+    serial for (j_0, 0, 128)
+    {
+      var_45[(i_j_fused / 16), (((i_j_fused % 16) * 128) + j_0)] = ldexpf(1.00000000f, ((bitwise_and(right_shift(__float_as_uint((0.00223214296f * var_31[0])), 23), 255) - 127) + select((((bitwise_and(right_shift(__float_as_uint((0.00223214296f * var_31[0])), 23), 255) - 127) != -127) and (bitwise_and(__float_as_uint((0.00223214296f * var_31[0])), 8388607) != 0)), 1, 0)))
+    }
+  }
+})ROC";
+
+  EXPECT_EQ(utils::GetStreamCnt(expr), utils::Trim(expected_ir));
+}
+
 }  // namespace common
 }  // namespace cinn

@@ -16,7 +16,13 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -198,8 +204,8 @@ class TestTakeAlongAxisOp2(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTakeAlongAxisBF16Op(OpTest):
@@ -225,7 +231,7 @@ class TestTakeAlongAxisBF16Op(OpTest):
 
         self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
         self.outputs['Result'] = convert_float_to_uint16(self.outputs['Result'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -409,7 +415,6 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
 class TestTakeAlongAxisAPICase4(unittest.TestCase):
     def test_static_shape_take_along_axis(self):
         with dygraph_guard():
-
             x = paddle.randn([4, 2])
             ind = paddle.to_tensor([[0, 1]])
 
@@ -448,19 +453,58 @@ class TestTakeAlongAxis_ZeroSize(OpTest):
         self.check_output_with_place(
             paddle.CPUPlace(), check_pir=self.check_pir
         )
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_output_with_place(
-                core.CUDAPlace(0), check_pir=self.check_pir
+                get_device_place(), check_pir=self.check_pir
             )
 
     def test_check_grad(self):
         self.check_grad_with_place(
             paddle.CPUPlace(), ['Input'], 'Result', check_pir=self.check_pir
         )
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ['Input'], 'Result', check_pir=self.check_pir
+                get_device_place(),
+                ['Input'],
+                'Result',
+                check_pir=self.check_pir,
             )
+
+
+class TestTakeAlongAxisInt16(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.int16
+        self.x_type = "int16"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """int16 does not require and allow for grad check"""
+        pass
+
+
+class TestTakeAlongAxisUInt8(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.uint8
+        self.x_type = "uint8"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """uint8 does not require and allow for grad check"""
+        pass
 
 
 if __name__ == "__main__":

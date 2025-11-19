@@ -297,7 +297,8 @@ void MergedMomentumInnerCompute(
                 params_out[idx],
                 velocities_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
-      } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+      } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+                 dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
         phi::funcs::ForRange<Context> for_range(
             static_cast<const Context &>(dev_ctx), params[idx]->numel());
         const auto grad_type = grads[idx]->dtype();

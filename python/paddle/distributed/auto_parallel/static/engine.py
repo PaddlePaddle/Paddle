@@ -284,9 +284,9 @@ class Engine:
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "1F1B"
         ):
-            assert (
-                os.getenv("CUDA_MODULE_LOADING") != "LAZY"
-            ), "EXP_CUDA_MODULE_LOADING_LAZY not supported in 1F1B pipeline."
+            assert os.getenv("CUDA_MODULE_LOADING") != "LAZY", (
+                "EXP_CUDA_MODULE_LOADING_LAZY not supported in 1F1B pipeline."
+            )
 
         self.history = None
 
@@ -471,28 +471,28 @@ class Engine:
             raise ValueError("Only support static graph mode.")
 
         if inputs_spec:
-            assert isinstance(
-                inputs_spec, list
-            ), f"inputs should be list, but received {type(inputs_spec)}"
-            assert isinstance(
-                inputs, list
-            ), f"inputs should be list, but received {type(inputs)}"
-            assert len(inputs_spec) == len(
-                inputs
-            ), "the number of `inputs_spec` should be equal to `inputs`'s."
+            assert isinstance(inputs_spec, list), (
+                f"inputs should be list, but received {type(inputs_spec)}"
+            )
+            assert isinstance(inputs, list), (
+                f"inputs should be list, but received {type(inputs)}"
+            )
+            assert len(inputs_spec) == len(inputs), (
+                "the number of `inputs_spec` should be equal to `inputs`'s."
+            )
             for input_spec, input in zip(inputs_spec, inputs):
                 if input_spec.shape != input.shape:
                     input.desc.set_shape(input_spec.shape)
         if labels_spec:
-            assert isinstance(
-                labels_spec, list
-            ), f"labels should be list, but received {type(labels_spec)}"
-            assert isinstance(
-                labels, list
-            ), f"labels should be list, but received {type(labels)}"
-            assert len(labels_spec) == len(
-                labels
-            ), "the number of `labels_spec` should be equal to `labels`'s."
+            assert isinstance(labels_spec, list), (
+                f"labels should be list, but received {type(labels_spec)}"
+            )
+            assert isinstance(labels, list), (
+                f"labels should be list, but received {type(labels)}"
+            )
+            assert len(labels_spec) == len(labels), (
+                "the number of `labels_spec` should be equal to `labels`'s."
+            )
             for label_spec, label in zip(labels_spec, labels):
                 if label_spec.shape != label.shape:
                     label.desc.set_shape(label_spec.shape)
@@ -562,18 +562,18 @@ class Engine:
             else:
                 raise ValueError(f"Unsupported data {data}")
         if user_feeds is not None:
-            assert isinstance(
-                user_feeds, dict
-            ), f"user_feeds must be a dict, but receive {type(user_feeds).__name__}"
+            assert isinstance(user_feeds, dict), (
+                f"user_feeds must be a dict, but receive {type(user_feeds).__name__}"
+            )
             for name, data in user_feeds.items():
                 feeds[name] = data
         return feeds
 
     def _prepare_fetch(self, user_fetches, mode):
         if user_fetches is not None:
-            assert isinstance(
-                user_fetches, list
-            ), f"user_fetches must be a list, but receive {type(user_fetches).__name__}"
+            assert isinstance(user_fetches, list), (
+                f"user_fetches must be a list, but receive {type(user_fetches).__name__}"
+            )
         fetch_names = []
         fetch_indices = []
 
@@ -1149,9 +1149,9 @@ class Engine:
                     if mode != "predict" and self._loss:
                         assert isinstance(
                             self._loss, paddle.nn.Layer
-                        ) or callable(
-                            self._loss
-                        ), "the type of `loss` of the Engine arguments should be sub classes of `paddle.nn.Layer` or any callable function."
+                        ) or callable(self._loss), (
+                            "the type of `loss` of the Engine arguments should be sub classes of `paddle.nn.Layer` or any callable function."
+                        )
                         self._losses = auto_utils.to_list(
                             self._loss(*(outputs + self._labels))
                         )
@@ -1164,9 +1164,9 @@ class Engine:
                                 )
                             )
             elif mode == "train":
-                assert isinstance(
-                    self._loss, Variable
-                ), "the type of `loss` of the Engine arguments should be Variable."
+                assert isinstance(self._loss, Variable), (
+                    "the type of `loss` of the Engine arguments should be Variable."
+                )
                 self._losses = auto_utils.to_list(self._loss)
 
         # TODO(zhiqiu): distributed_context is no longer used in pir_program
@@ -1237,7 +1237,9 @@ class Engine:
             self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
-        self._dist_contexts[mode].gradient_scale_using_allreduce_avg = (
+        self._dist_contexts[
+            mode
+        ].gradient_scale_using_allreduce_avg = (
             self._strategy.gradient_scale_using_allreduce_avg
         )
         self._fwd_main_progs[mode] = serial_main_prog.clone()
@@ -1270,9 +1272,9 @@ class Engine:
 
         if self._tuning.run_after_tuning:
             # update the strategy
-            self._dist_contexts[mode]._strategy = (
-                self._optimization_tuner.get_best_config()
-            )
+            self._dist_contexts[
+                mode
+            ]._strategy = self._optimization_tuner.get_best_config()
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -1333,9 +1335,9 @@ class Engine:
         for ib, block in enumerate(origin_main_prog.blocks):
             for iop, op in enumerate(block.ops):
                 ref_op = ref_blocks[ib].ops[iop]
-                assert (
-                    op.type == ref_op.type
-                ), f"'{mode}' mode op '{op.type}' is different with '{ref_mode}' op '{ref_op.type}'. "
+                assert op.type == ref_op.type, (
+                    f"'{mode}' mode op '{op.type}' is different with '{ref_mode}' op '{ref_op.type}'. "
+                )
                 ref_op_dist_attr = (
                     ref_dist_context.get_op_dist_attr_for_program(ref_op)
                 )
@@ -1412,9 +1414,9 @@ class Engine:
                 for op in dist_main_prog.global_block().ops:
                     if op.name() == "pd_op.data":
                         var_name = op.str_attr("name")
-                        assert (
-                            var_name not in name_map_value
-                        ), f"The value {var_name} in {op} is already exist"
+                        assert var_name not in name_map_value, (
+                            f"The value {var_name} in {op} is already exist"
+                        )
                         name_map_value[var_name] = op.result(0)
                 del_ops = []
                 block = startup_prog.global_block()
@@ -2078,9 +2080,9 @@ class Engine:
             if self._orig_startup_prog is None:
                 self._orig_startup_prog = static.default_startup_program()
         else:
-            assert (
-                self._inputs_spec and self._labels_spec
-            ), "Please call the dataloader(...) before calling prepare(...)"
+            assert self._inputs_spec and self._labels_spec, (
+                "Please call the dataloader(...) before calling prepare(...)"
+            )
 
         self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
         self._inputs, self._labels = inputs, labels
@@ -2265,12 +2267,12 @@ class Engine:
         if batch_size is None:
             return None
 
-        assert (
-            len(set(self._dp_world_sizes)) == 1
-        ), f"DistributedBatchSampler only support one data parallel group, but got [{len(set(self._dp_world_sizes))}] different data parallel groups"
-        assert (
-            batch_size % self._dp_world_sizes[0] == 0
-        ), f"batch_size [{batch_size}] is not divisible by dp_world_size [{self._dp_world_sizes[0]}]"
+        assert len(set(self._dp_world_sizes)) == 1, (
+            f"DistributedBatchSampler only support one data parallel group, but got [{len(set(self._dp_world_sizes))}] different data parallel groups"
+        )
+        assert batch_size % self._dp_world_sizes[0] == 0, (
+            f"batch_size [{batch_size}] is not divisible by dp_world_size [{self._dp_world_sizes[0]}]"
+        )
         return batch_size // self._dp_world_sizes[0]
 
     def _validate_batch(self, batch):
@@ -2311,9 +2313,9 @@ class Engine:
                     )
                 if self._acc_steps > 1:
                     shape = list(spec.shape)
-                    assert (
-                        shape[0] % self._acc_steps == 0
-                    ), f"Requires batch_size[{spec.shape[0]}] to be divisible by k_steps[{self._acc_steps}]."
+                    assert shape[0] % self._acc_steps == 0, (
+                        f"Requires batch_size[{spec.shape[0]}] to be divisible by k_steps[{self._acc_steps}]."
+                    )
                     shape[0] //= self._acc_steps
                     spec.shape = shape
         return specs or []
@@ -2341,9 +2343,9 @@ class Engine:
         return metrics_name
 
     def _switch_mode(self, mode):
-        assert (
-            mode in self._dist_contexts
-        ), f"{mode} model is not ready, please call `prepare()` first."
+        assert mode in self._dist_contexts, (
+            f"{mode} model is not ready, please call `prepare()` first."
+        )
         self.to_mode(mode)
 
     def to_mode(self, mode: _Mode) -> None:

@@ -54,7 +54,7 @@ PD_REGISTER_KERNEL(diagonal,
                    ALL_LAYOUT,
                    phi::DiagonalKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t,
                    bool) {}

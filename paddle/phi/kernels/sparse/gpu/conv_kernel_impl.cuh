@@ -1264,12 +1264,11 @@ void conv_forward_implicit_gemm_cuda(const phi::GPUContext &dev_ctx,
       throw std::runtime_error(
           "FP16 kernels are not supported for implicit GEMM now for SM75-.");
     }
-    auto in_feats = reinterpret_cast<half *>(const_cast<phi::dtype::float16 *>(
-        _in_feats.data<phi::dtype::float16>()));
+    auto in_feats = reinterpret_cast<half *>(
+        const_cast<phi::float16 *>(_in_feats.data<phi::float16>()));
     auto kernel = reinterpret_cast<half *>(
-        const_cast<phi::dtype::float16 *>(_kernel.data<phi::dtype::float16>()));
-    auto out_feats =
-        reinterpret_cast<half *>(_out_feats.data<phi::dtype::float16>());
+        const_cast<phi::float16 *>(_kernel.data<phi::float16>()));
+    auto out_feats = reinterpret_cast<half *>(_out_feats.data<phi::float16>());
 
     if (num_out_channels % 64 == 0 && num_in_channels % 32 == 0) {
       int j_factors1 = num_out_channels / 16 / 4;

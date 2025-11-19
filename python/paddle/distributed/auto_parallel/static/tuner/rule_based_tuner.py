@@ -511,9 +511,9 @@ class GraphUtil:
                         else:
                             var_node.attrs["type"] = "var"
                         graph.attrs["var_to_id"][var_name] = var_node.id
-                        graph.attrs["id_to_var_desc_id"][
-                            var_node.id
-                        ] = var.desc.original_id()
+                        graph.attrs["id_to_var_desc_id"][var_node.id] = (
+                            var.desc.original_id()
+                        )
                         graph.attrs["id_to_var_name"][var_node.id] = var_name
                     else:
                         var_node_id = graph.attrs["var_to_id"][var_name]
@@ -539,12 +539,12 @@ class GraphUtil:
                             else:
                                 var_node.attrs["type"] = "var"
                             graph.attrs["var_to_id"][var_name] = var_node.id
-                            graph.attrs["id_to_var_desc_id"][
-                                var_node.id
-                            ] = var.desc.original_id()
-                            graph.attrs["id_to_var_name"][
-                                var_node.id
-                            ] = var_name
+                            graph.attrs["id_to_var_desc_id"][var_node.id] = (
+                                var.desc.original_id()
+                            )
+                            graph.attrs["id_to_var_name"][var_node.id] = (
+                                var_name
+                            )
                         else:
                             var_node_id = graph.attrs["var_to_id"][var_name]
                             var_node = graph._nodes[var_node_id]
@@ -1176,9 +1176,7 @@ class RuleBasedTuner:
                 self.op_original_id_to_op[op.desc.original_id()] = op
                 self.op_original_id_to_idx[op.desc.original_id()] = idx
 
-            grad_op_id_to_op_id = (
-                self.full_main_program_dist_context.dist_op_context.grad_op_id_to_op_id
-            )
+            grad_op_id_to_op_id = self.full_main_program_dist_context.dist_op_context.grad_op_id_to_op_id
 
             for grad_op_original_id in grad_op_id_to_op_id:
                 op_id = grad_op_id_to_op_id[grad_op_original_id]
@@ -1408,9 +1406,9 @@ class RuleBasedTuner:
                 if parallelism not in self.sub_programs_dist_context[idx]:
                     self.sub_programs_dist_context[idx][parallelism] = {}
                 key = self.convert_process_mesh_to_key(process_mesh)
-                self.sub_programs_dist_context[idx][parallelism][
-                    key
-                ] = dist_context
+                self.sub_programs_dist_context[idx][parallelism][key] = (
+                    dist_context
+                )
             else:
                 self._logger.info(
                     f"No pattern has be matched under {parallelism} parallelism when sub program is {sub_fwd_program}."
@@ -1534,9 +1532,9 @@ class RuleBasedTuner:
                         ref_dims_mapping = (
                             fwd_op_dist_attr.get_output_dims_mapping(input_name)
                         )
-                assert (
-                    ref_dims_mapping is not None
-                ), f"[{input_name}] 's dims mapping is NONE"
+                assert ref_dims_mapping is not None, (
+                    f"[{input_name}] 's dims mapping is NONE"
+                )
                 grad_op_dist_attr.set_input_dims_mapping(
                     input_name, ref_dims_mapping
                 )
@@ -1574,9 +1572,9 @@ class RuleBasedTuner:
                         map(_is_grad_var_name, grad_op_next_op.input_arg_names)
                     )
                     output_name = grad_op_next_op.output_arg_names[0]
-                    assert (
-                        output_name in grad_var_to_var
-                    ), f"sum op's output '{output_name}' has no corresponding var"
+                    assert output_name in grad_var_to_var, (
+                        f"sum op's output '{output_name}' has no corresponding var"
+                    )
                     ref_fwd_var_name = grad_var_to_var[output_name]
                     ref_fwd_var = vars[ref_fwd_var_name]
                     ref_fwd_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
@@ -1756,12 +1754,12 @@ class RuleBasedTuner:
                             continue
 
                 if "Grad" in op.input_names and "Param" in ops[idx].input_names:
-                    assert (
-                        len(op.input("Param")) == 1
-                    ), "Only support one-to-one now."
-                    assert (
-                        len(op.input("Grad")) == 1
-                    ), "Only support one-to-one now."
+                    assert len(op.input("Param")) == 1, (
+                        "Only support one-to-one now."
+                    )
+                    assert len(op.input("Grad")) == 1, (
+                        "Only support one-to-one now."
+                    )
                     param = vars[op.input("Param")[0]]
                     grad_var = vars[op.input("Grad")[0]]
                     if param.desc.original_id() in dist_tensors:
@@ -1968,20 +1966,18 @@ class RuleBasedTuner:
                         1
                     ] = self.stage_best_cost_of_pm[start][end][key][
                         "dist_context"
-                    ][
-                        0
-                    ]
-                    self.stage_best_cost_of_pm[start][end][key]["cost"][
-                        0
-                    ] = cost
+                    ][0]
+                    self.stage_best_cost_of_pm[start][end][key]["cost"][0] = (
+                        cost
+                    )
                     self.stage_best_cost_of_pm[start][end][key]["dist_context"][
                         0
                     ] = dist_context
 
                 elif index == 1:
-                    self.stage_best_cost_of_pm[start][end][key]["cost"][
-                        1
-                    ] = cost
+                    self.stage_best_cost_of_pm[start][end][key]["cost"][1] = (
+                        cost
+                    )
                     self.stage_best_cost_of_pm[start][end][key]["dist_context"][
                         1
                     ] = dist_context
@@ -2045,9 +2041,9 @@ class RuleBasedTuner:
                 best_cost = self.stage_best_cost_of_pm[start][end][key][
                     "best_cost"
                 ]
-                self.stage_best_cost_of_dm[start][end][dm_key][
-                    "cost"
-                ] = best_cost
+                self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = (
+                    best_cost
+                )
                 self.stage_best_cost_of_dm[start][end][dm_key][
                     "dist_context"
                 ] = self.stage_best_cost_of_pm[start][end][key][
@@ -2103,12 +2099,12 @@ class RuleBasedTuner:
                 )
                 if cost < best_cost:
                     best_cost = cost
-                    self.stage_best_cost_of_dm[start][end][dm_key][
-                        "cost"
-                    ] = cost
-                    self.stage_best_cost_of_dm[start][end][dm_key][
-                        "memory"
-                    ] = local_stage_memory
+                    self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = (
+                        cost
+                    )
+                    self.stage_best_cost_of_dm[start][end][dm_key]["memory"] = (
+                        local_stage_memory
+                    )
                     self.stage_best_cost_of_dm[start][end][dm_key][
                         "dist_context"
                     ] = dist_context
@@ -2156,12 +2152,12 @@ class RuleBasedTuner:
         if (start <= 1 and end <= 2) or end == len(self.layers) - 1:
             cost, local_stage_memory = self._get_sub_program_cost(dist_context)
             self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = cost
-            self.stage_best_cost_of_dm[start][end][dm_key][
-                "memory"
-            ] = local_stage_memory
-            self.stage_best_cost_of_dm[start][end][dm_key][
-                "dist_context"
-            ] = dist_context
+            self.stage_best_cost_of_dm[start][end][dm_key]["memory"] = (
+                local_stage_memory
+            )
+            self.stage_best_cost_of_dm[start][end][dm_key]["dist_context"] = (
+                dist_context
+            )
 
         # some cache is used to speed up because the layer 1~end is same, for example:
         # stage_best_cost_of_dm[0][2] = stage_best_cost_of_dm[0][1] + stage_best_cost_of_dm[0][1] - stage_best_cost_of_pm[0][0]
@@ -2180,9 +2176,9 @@ class RuleBasedTuner:
                     end - 1
                 ][dm_key]["memory"]
                 self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = cost
-                self.stage_best_cost_of_dm[start][end][dm_key][
-                    "memory"
-                ] = local_stage_memory
+                self.stage_best_cost_of_dm[start][end][dm_key]["memory"] = (
+                    local_stage_memory
+                )
                 self.stage_best_cost_of_dm[start][end][dm_key][
                     "dist_context"
                 ] = dist_context
@@ -2207,9 +2203,9 @@ class RuleBasedTuner:
                     local_stage_memory_former_1 - local_stage_memory_former_2
                 )
                 self.stage_best_cost_of_dm[start][end][dm_key]["cost"] = cost
-                self.stage_best_cost_of_dm[start][end][dm_key][
-                    "memory"
-                ] = local_stage_memory
+                self.stage_best_cost_of_dm[start][end][dm_key]["memory"] = (
+                    local_stage_memory
+                )
                 self.stage_best_cost_of_dm[start][end][dm_key][
                     "dist_context"
                 ] = dist_context
@@ -2672,9 +2668,9 @@ class RuleBasedTuner:
         for key in best_dist_context._dist_tensors_for_program:
             if key in self._dist_context._dist_tensors_for_program:
                 dist_tensor = best_dist_context._dist_tensors_for_program[key]
-                dist_attrs["tensor"][
-                    key
-                ] = dist_tensor.dist_attr.serialize_to_string()
+                dist_attrs["tensor"][key] = (
+                    dist_tensor.dist_attr.serialize_to_string()
+                )
         assert dist_attrs["tensor"], "Tensor dist attrs must not be None."
 
         for key in best_dist_context._dist_ops_for_program:
@@ -2756,9 +2752,9 @@ class RuleBasedTuner:
             else:
                 best_dist_context = self.tune_o1()
 
-        assert (
-            best_dist_context is not None
-        ), "can not find a parallel strategy to run, please use passes such as recompute, amp or sharding."
+        assert best_dist_context is not None, (
+            "can not find a parallel strategy to run, please use passes such as recompute, amp or sharding."
+        )
 
         for key in best_dist_context._dist_tensors_for_program:
             if key in self._dist_context._dist_tensors_for_program:

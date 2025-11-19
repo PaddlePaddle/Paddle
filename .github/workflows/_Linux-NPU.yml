@@ -25,6 +25,7 @@ env:
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'npu'
@@ -34,7 +35,7 @@ jobs:
   test:
     name: Test
     needs: check-bypass
-    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: NPU
 
@@ -99,7 +100,7 @@ jobs:
           FLAGS_use_stride_kernel: 0
           FLAGS_allocator_strategy: naive_best_fit
           FLAGS_npu_storage_format: 0
-          TEST_IMPORTANT: "OFF"
+          TEST_IMPORTANT: "ON"
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |

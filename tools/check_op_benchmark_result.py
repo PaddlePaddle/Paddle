@@ -115,9 +115,9 @@ def compare_benchmark_result(
     develop_speed = develop_result.get("speed")
     pr_speed = pr_result.get("speed")
 
-    assert type(develop_speed) == type(
-        pr_speed
-    ), "The types of comparison results need to be consistent."
+    assert type(develop_speed) == type(pr_speed), (
+        "The types of comparison results need to be consistent."
+    )
 
     if isinstance(develop_speed, dict) and isinstance(pr_speed, dict):
         if check_speed_result(case_name, develop_speed, pr_speed, pr_result):

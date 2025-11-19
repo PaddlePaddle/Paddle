@@ -772,7 +772,7 @@ Tensor heaviside_decomp(const Tensor& x, const Tensor& y) {
 }
 
 template <typename T>
-Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
+Tensor leaky_relu_decomp(const Tensor& x, double negative_slope) {
   auto multiply_tmp = full_scalar<T>(negative_slope, x.dtype(), x.place()) * x;
   if (negative_slope < 1.0) {
     return maximum<T>(x, multiply_tmp);

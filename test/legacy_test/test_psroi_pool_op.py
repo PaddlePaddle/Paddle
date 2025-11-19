@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_devices, get_places
 
 import paddle
 
@@ -168,8 +168,20 @@ class TestPSROIPoolOp(OpTest):
 
     def setUp(self):
         self.op_type = 'psroi_pool'
-        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, output_channels, spatial_scale: paddle.vision.ops.psroi_pool(
-            x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale
+        self.python_api = (
+            lambda x,
+            boxes,
+            boxes_num,
+            pooled_height,
+            pooled_width,
+            output_channels,
+            spatial_scale: paddle.vision.ops.psroi_pool(
+                x,
+                boxes,
+                boxes_num,
+                (pooled_height, pooled_width),
+                spatial_scale,
+            )
         )
         self.set_data()
 
@@ -228,7 +240,7 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
-        places = get_places(string_format=True)
+        places = get_devices()
         for place in places:
             paddle.set_device(place)
             test_output_size_is_int()
@@ -282,7 +294,7 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         paddle.disable_static()
-        places = get_places(string_format=True)
+        places = get_devices()
         for place in places:
             paddle.set_device(place)
             test_output_size_is_int()

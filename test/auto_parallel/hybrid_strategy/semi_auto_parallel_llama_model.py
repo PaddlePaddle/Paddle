@@ -990,13 +990,13 @@ def split_sequence_dim(inputs):
 
     if sep_degree > 1:
         assert inputs.is_dist(), "Input tensor must be a distributed tensor."
-        assert (
-            len(inputs.shape) == 2
-        ), f"input_ids should be [batch_size, seq_len], but got {inputs.shape}"
+        assert len(inputs.shape) == 2, (
+            f"input_ids should be [batch_size, seq_len], but got {inputs.shape}"
+        )
         _, seq_len = inputs.shape
-        assert (
-            seq_len % sep_degree == 0
-        ), f"sequence length {seq_len} must be divisible by cp degree {sep_degree}"
+        assert seq_len % sep_degree == 0, (
+            f"sequence length {seq_len} must be divisible by cp degree {sep_degree}"
+        )
         # split sequence dim
         placements[sep_index] = dist.Shard(1)
         split_input = dist.reshard(inputs, process_mesh, placements)

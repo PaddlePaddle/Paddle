@@ -114,10 +114,17 @@ class MSRAInitializer(Initializer):
         """
         assert not (
             isinstance(var, framework.EagerParamBase) and var.is_dist()
-        ), "Currently, kaiming initializer not support lazy init for dist param."
+        ), (
+            "Currently, kaiming initializer not support lazy init for dist param."
+        )
         block = self._check_block(block)
         assert isinstance(
-            var, (framework.Variable, paddle.pir.core.ParameterMeta)
+            var,
+            (
+                framework.Variable,
+                paddle.pir.Value,
+                paddle.pir.core.ParameterMeta,
+            ),
         )
         assert isinstance(block, (framework.Block, paddle.pir.Block))
         f_in, f_out = self._compute_fans(var)
@@ -166,12 +173,19 @@ class MSRAInitializer(Initializer):
                     -limit,
                     limit,
                     self._seed,
-                    _current_expected_place(),
+                    var.place
+                    if var.place._type()
+                    else _current_expected_place(),
                 )
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
-                place = _current_expected_place()
+                # var.place._type() means undefined, happens when initializer is specified in ParamAttr
+                place = (
+                    var.place
+                    if var.place._type()
+                    else _current_expected_place()
+                )
                 out_var = _C_ops.gaussian(
                     out_var.shape, 0.0, std, self._seed, out_dtype, place
                 )

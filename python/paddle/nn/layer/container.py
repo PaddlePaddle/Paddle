@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 from collections import OrderedDict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from itertools import chain
 from typing import Any
 
 from typing_extensions import Self
@@ -29,6 +30,10 @@ from ...base.framework import Parameter
 from .layers import Layer
 
 __all__ = []
+
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 
 
 class LayerDict(Layer):
@@ -76,6 +81,7 @@ class LayerDict(Layer):
 
     """
 
+    @param_one_alias(["sublayers", "modules"])
     def __init__(
         self,
         sublayers: (
@@ -540,6 +546,7 @@ class LayerList(Layer):
             ...         return x
     """
 
+    @param_one_alias(["sublayers", "modules"])
     def __init__(self, sublayers: Iterable[Layer] | None = None) -> None:
         super().__init__()
         if sublayers is not None:
@@ -555,6 +562,9 @@ class LayerList(Layer):
             if idx < 0:
                 idx += len(self)
         return idx
+
+    def _get_abs_string_index(self, idx):
+        return str(self._get_abs_idx(idx))
 
     def __getitem__(self, idx: int) -> Layer:
         if isinstance(idx, slice):
@@ -584,6 +594,20 @@ class LayerList(Layer):
 
     def __iter__(self) -> Iterator[Layer]:
         return iter(self._sub_layers.values())
+
+    def __iadd__(self, modules: Iterable[Layer]) -> Self:
+        return self.extend(modules)
+
+    def __add__(self, other: Iterable[Layer]) -> LayerList:
+        combined = LayerList()
+        for i, module in enumerate(chain(self, other)):
+            combined.add_module(str(i), module)
+        return combined
+
+    def __dir__(self) -> list[str]:
+        keys = super().__dir__()
+        keys = [key for key in keys if not key.isdigit()]
+        return keys
 
     def append(self, sublayer: Layer) -> Self:
         """
@@ -631,9 +655,9 @@ class LayerList(Layer):
         """
         assert isinstance(index, int) and -len(
             self._sub_layers
-        ) <= index <= len(
-            self._sub_layers
-        ), f"index should be an integer in range [{-len(self)}, {len(self)}]"
+        ) <= index <= len(self._sub_layers), (
+            f"index should be an integer in range [{-len(self)}, {len(self)}]"
+        )
 
         if index < 0:
             index += len(self)
@@ -669,6 +693,11 @@ class LayerList(Layer):
             idx = str(offset + i)
             self.add_sublayer(idx, sublayer)
         return self
+
+    def pop(self, key: int | slice) -> Layer:
+        v = self[key]
+        del self[key]
+        return v
 
 
 class Sequential(Layer):
@@ -720,9 +749,18 @@ class Sequential(Layer):
             >>> res2 = model2(data)  # [30, 30]
     """
 
-    def __init__(self, *layers: Layer | tuple[str, Layer] | list[Any]) -> None:
+    def __init__(
+        self,
+        *layers: Layer
+        | tuple[str, Layer]
+        | list[Any]
+        | OrderedDict[str, Layer],
+    ) -> None:
         super().__init__()
-        if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
+        if len(layers) == 1 and isinstance(layers[0], OrderedDict):
+            for name, layer in layers[0].items():
+                self.add_sublayer(name, layer)
+        elif len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
         else:

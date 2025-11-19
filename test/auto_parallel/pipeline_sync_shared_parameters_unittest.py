@@ -200,8 +200,7 @@ class TestSharedParameters:
         cur_rank = dist.get_rank()
         stage_layers = SingleStage(
             self.model.linears[
-                cur_rank
-                * num_layers_per_card : (cur_rank + 1)
+                cur_rank * num_layers_per_card : (cur_rank + 1)
                 * num_layers_per_card
             ]
         )

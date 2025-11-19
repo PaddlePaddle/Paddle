@@ -73,7 +73,7 @@ class TestXpuRedundantSqueezeUnsqueezeEliminationPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             min_success_num=1,
@@ -84,9 +84,10 @@ class TestXpuRedundantSqueezeUnsqueezeEliminationPass(PassAutoScanTest):
 class TestXpuRedundantSqueezeUnsqueezeEliminationPass2(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ["leaky_relu", "elementwise_add", "leaky_relu"], (
-            1e-5,
-            1e-5,
+        yield (
+            config,
+            ["leaky_relu", "elementwise_add", "leaky_relu"],
+            (1e-5, 1e-5),
         )
 
     def sample_program_config(self, draw):
@@ -176,7 +177,7 @@ class TestXpuRedundantSqueezeUnsqueezeEliminationPass2(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             min_success_num=1,

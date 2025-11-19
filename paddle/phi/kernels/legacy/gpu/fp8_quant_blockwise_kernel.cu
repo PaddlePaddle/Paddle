@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/legacy/gpu/fp8_quant_blockwise_kernel.h"
 #include <cuda_fp8.h>
 #include <cstdint>
 #include <vector>
@@ -492,9 +493,9 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                               using_pow2_scale>;
   kernel<<<grid, block, 0, dev_ctx.stream()>>>(
       reinterpret_cast<const __nv_bfloat16 *>(X.data<phi::bfloat16>()),
-      reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::dtype::float8_e4m3fn>()),
+      reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
       input_transpose ? reinterpret_cast<__nv_fp8_e4m3 *>(
-                            out_transposed->data<phi::dtype::float8_e4m3fn>())
+                            out_transposed->data<phi::float8_e4m3fn>())
                       : nullptr,
       reinterpret_cast<float *>(scale->data<float>()),
       input_transpose
@@ -525,10 +526,10 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
   PD_CHECK(X.dtype() == phi::DataType::BFLOAT16,
            "X datatype error, can only be bfloat16");
 
-  dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+  dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
   dev_ctx.template Alloc<float>(scale);
   if (input_transpose) {
-    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out_transposed);
+    dev_ctx.template Alloc<phi::float8_e4m3fn>(out_transposed);
     dev_ctx.template Alloc<float>(scale_transposed);
   }
 

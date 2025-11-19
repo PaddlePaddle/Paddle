@@ -163,7 +163,7 @@ def map_variables(
         new_dataclass = dataclass_from_dict(
             variable.get_py_type(),
             {
-                fd.name: map_func(variable.getattr(fd.name))
+                fd.name: _map_variable(variable.getattr(fd.name))
                 for fd in fields(variable.get_py_type())
             },
         )
@@ -343,7 +343,6 @@ class VariableBase:
     mutable_attrs = []
 
     def __init__(self, graph: FunctionGraph, tracker: Tracker):
-
         self.graph = graph
         self.tracker = tracker
         self.id = VariableBase.name_generator.next()

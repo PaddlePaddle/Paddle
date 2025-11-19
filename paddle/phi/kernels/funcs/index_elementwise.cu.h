@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -37,7 +38,7 @@ __global__ void index_elementwise_with_tensor_kernel(const int64_t N,
                                                      const func_t f) {
   const auto tid = threadIdx.x;
   const auto nv = nt * vt;
-  auto idx = nv * blockIdx.x + tid;
+  int64_t idx = static_cast<int64_t>(nv) * blockIdx.x + tid;
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
@@ -53,11 +54,27 @@ __global__ void index_elementwise_kernel(const int64_t N,
                                          const func_t f) {
   const auto tid = threadIdx.x;
   const auto nv = nt * vt;
-  auto idx = nv * blockIdx.x + tid;
+  int64_t idx = static_cast<int64_t>(nv) * blockIdx.x + tid;
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
       f(idx, value_T);
+      idx += nt;
+    }
+  }
+}
+
+template <int nt, int vt, typename T, typename func_t>
+__global__ void index_put_kernel(const int64_t N,
+                                 const bool accumulate,
+                                 const func_t f) {
+  const auto tid = threadIdx.x;
+  const auto nv = nt * vt;
+  int64_t idx = static_cast<int64_t>(nv) * blockIdx.x + tid;
+#pragma unroll
+  for (int i = 0; i < vt; i++) {
+    if (idx < N) {
+      f(idx, accumulate);
       idx += nt;
     }
   }
@@ -175,15 +192,15 @@ struct OffsetCalculator {
   stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
-template <int N, bool signed_strides = false>
-static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator_put(
+template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
+static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator_put(
     std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
-  return OffsetCalculator<N, uint32_t, signed_strides>(
+  return OffsetCalculator<N, OffsetT, signed_strides>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
 }
 
-template <int N, bool signed_strides = false>
-static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
+template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
+static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
     int ndim,
     const int64_t* shape,
     const std::vector<std::vector<int64_t>>& strides) {
@@ -192,8 +209,29 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
     strides_array[i] = strides[i].data();
   }
 
-  return OffsetCalculator<N, uint32_t, signed_strides>(
+  return OffsetCalculator<N, OffsetT, signed_strides>(
       ndim, shape, strides_array.data());
+}
+
+template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
+static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
+    const phi::DenseTensorIteratorBase& iter) {
+  PADDLE_ENFORCE_LE(N,
+                    iter.ntensors(),
+                    ::common::errors::InvalidArgument(
+                        "Tensor Numel must less or equal than Args"));
+  std::array<const int64_t*, N> strides;
+  for (int i = 0; i < N; i++) {
+    strides[i] = iter.operands_[i].stride_bytes.data();
+  }
+  return OffsetCalculator<N, OffsetT, signed_strides>(
+      iter.ndim(), iter.shape().data(), strides.data());
+}
+constexpr bool IsInUint32Range(int64_t value) {
+  return value >= 0 && value <= std::numeric_limits<int32_t>::max();
+}
+constexpr bool IsInUint32Range(int64_t v1, int64_t v2) {
+  return IsInUint32Range(v1) && IsInUint32Range(v2);
 }
 
 }  // namespace funcs

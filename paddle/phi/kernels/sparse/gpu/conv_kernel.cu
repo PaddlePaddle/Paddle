@@ -317,7 +317,7 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    phi::sparse::Conv3dCooKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
   kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);

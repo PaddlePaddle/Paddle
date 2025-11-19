@@ -46,9 +46,5 @@ void ClipGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(clip_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::ClipGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    clip_grad, OneDNN, ONEDNN, phi::ClipGradKernel, float, phi::bfloat16) {}

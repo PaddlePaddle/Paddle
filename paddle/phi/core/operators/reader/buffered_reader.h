@@ -38,7 +38,7 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-class BufferedReader : public framework::DecoratedReader {
+class PADDLE_API BufferedReader : public framework::DecoratedReader {
   using TensorVec = phi::TensorArray;
   using VecFuture = std::future<TensorVec>;
 

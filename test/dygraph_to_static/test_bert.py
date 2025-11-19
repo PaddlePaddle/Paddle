@@ -30,7 +30,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import unique_name
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -189,10 +188,7 @@ class TestBert(Dy2StTestBase):
     def predict_static(self, data):
         paddle.enable_static()
         exe = base.Executor(place)
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
 
         # load inference model
         [
@@ -274,10 +270,7 @@ class TestBert(Dy2StTestBase):
         return pred_res
 
     def predict_analysis_inference(self, data):
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
 
         output = PredictorTools(
             self.model_save_dir, model_filename, self.params_filename, data

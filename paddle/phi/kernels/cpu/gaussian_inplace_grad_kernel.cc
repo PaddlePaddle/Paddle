@@ -20,12 +20,11 @@ limitations under the License. */
 namespace phi {
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
   if (x_grad) {
     auto* data = dev_ctx.template Alloc<T>(x_grad);
@@ -34,12 +33,11 @@ void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
 }
 
 // If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
   if (x_grad) {
     auto* data = dev_ctx.template Alloc<T>(x_grad);
@@ -67,5 +65,5 @@ PD_REGISTER_KERNEL(gaussian_inplace_grad,
                    phi::GaussianInplaceGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

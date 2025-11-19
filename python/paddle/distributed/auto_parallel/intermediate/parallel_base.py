@@ -57,9 +57,9 @@ class ParallelOptimizer:
                     level = str(level)
                 assert level in ("0", "1", "2", "3", None)
                 if optimizer.level is not None:
-                    assert (
-                        level == optimizer.level
-                    ), f"The level passed in is not identical with previous level. Current level is {level}, previous level is {optimizer.level}"
+                    assert level == optimizer.level, (
+                        f"The level passed in is not identical with previous level. Current level is {level}, previous level is {optimizer.level}"
+                    )
                 self.level = level
                 self.sharding_mesh_dim = sharding_mesh_dim
         else:

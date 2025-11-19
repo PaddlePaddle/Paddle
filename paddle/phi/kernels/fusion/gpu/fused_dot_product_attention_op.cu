@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/gpudnn/mha_cudnn_frontend.h"
 
-PHI_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace fusion {
@@ -497,12 +497,12 @@ PD_REGISTER_KERNEL(fused_dot_product_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedDotProductAttentionKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(fused_dot_product_attention_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedDotProductAttentionGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

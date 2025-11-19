@@ -145,9 +145,9 @@ class WMT16(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert (
-                download
-            ), "data_file is not set and downloading automatically is disabled"
+            assert download, (
+                "data_file is not set and downloading automatically is disabled"
+            )
             self.data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'wmt16', download
             )
@@ -271,7 +271,9 @@ class WMT16(Dataset):
                 self.trg_ids.append(trg_ids)
                 self.trg_ids_next.append(trg_ids_next)
 
-    def __getitem__(self, idx: int) -> tuple[
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],

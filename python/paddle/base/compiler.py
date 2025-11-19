@@ -205,9 +205,9 @@ class CompiledProgram:
         Returns:
             self
         """
-        assert (
-            not self._is_inference
-        ), "Already compiled with inference, cannot be recompiled."
+        assert not self._is_inference, (
+            "Already compiled with inference, cannot be recompiled."
+        )
 
         assert any(
             [
@@ -238,9 +238,9 @@ class CompiledProgram:
             assert scope is not None, ""
             self._local_scopes = []
 
-        assert isinstance(
-            places, (list, tuple)
-        ), f"Currently, The places type can only be list or tuple, but the input type is {type(places)}."
+        assert isinstance(places, (list, tuple)), (
+            f"Currently, The places type can only be list or tuple, but the input type is {type(places)}."
+        )
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
@@ -255,9 +255,9 @@ class CompiledProgram:
         ):
             tps = self._program._trainers_endpoints
 
-            assert self._build_strategy.num_trainers == len(
-                tps
-            ), "The trainer numbers is not equal to endpoint numbers."
+            assert self._build_strategy.num_trainers == len(tps), (
+                "The trainer numbers is not equal to endpoint numbers."
+            )
             self._build_strategy.trainers_endpoints = tps
 
         if self._program:
@@ -270,9 +270,9 @@ class CompiledProgram:
             )
 
         if self._program is not None and self._program._enable_dgc:
-            assert (
-                self._build_strategy.num_trainers * len(places) > 1
-            ), "DGC is not available for single card training."
+            assert self._build_strategy.num_trainers * len(places) > 1, (
+                "DGC is not available for single card training."
+            )
             assert (
                 self._build_strategy.reduce_strategy
                 == BuildStrategy.ReduceStrategy.AllReduce
@@ -363,9 +363,9 @@ class CompiledProgram:
         has_set_place = place_list is not None
         if has_set_place:
             for p in place_list:
-                assert (
-                    p._type() == place._type()
-                ), "Place type not match. You may set wrong type of places."
+                assert p._type() == place._type(), (
+                    "Place type not match. You may set wrong type of places."
+                )
         else:
             if isinstance(place, core.CUDAPlace):
                 place_list = cuda_places()

@@ -89,7 +89,6 @@ class MOEAllGatherLayer(MOELayer):
         group_experts=False,
         moe_statics=None,
     ):
-
         super().__init__(
             gate,
             experts,

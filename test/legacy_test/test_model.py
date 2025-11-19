@@ -18,6 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle import Model, base, jit, to_tensor
@@ -182,14 +183,15 @@ def dynamic_evaluate(model, dataloader):
 
 
 @unittest.skipIf(
-    not base.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not (base.is_compiled_with_cuda() or is_custom_device()),
+    'CPU testing is not supported',
 )
 class TestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             cls().skipTest('module not tested when ONLY_CPU compiling')
-        cls.device = paddle.set_device('gpu')
+        cls.device = paddle.set_device(get_device())
         base.enable_dygraph(cls.device)
 
         sp_num = 1280
@@ -860,11 +862,7 @@ class TestModelFunction(unittest.TestCase):
             ori_results = model.predict_batch(tensor_img)
             base.disable_dygraph() if dynamic else None
 
-            place = (
-                base.CPUPlace()
-                if not base.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
+            place = get_device_place()
             new_scope = base.Scope()
             with base.scope_guard(new_scope):
                 exe = base.Executor(place)

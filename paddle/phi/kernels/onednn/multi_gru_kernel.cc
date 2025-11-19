@@ -56,7 +56,7 @@ class MultiGRUHandler {
                   const std::string& gate_activation,
                   int layers,
                   bool origin_mode,
-                  const std::string& mkldnn_data_type,
+                  const std::string& onednn_data_type,
                   float scale_data,
                   float shift_data,
                   bool force_fp32_output,
@@ -695,7 +695,7 @@ void RunKernel(const Context& dev_ctx,
                const std::string& gate_activation,
                int layers_in,
                bool origin_mode,
-               const std::string& mkldnn_data_type,
+               const std::string& onednn_data_type,
                float scale_data,
                float shift_data,
                bool force_fp32_output,
@@ -710,7 +710,7 @@ void RunKernel(const Context& dev_ctx,
                                    gate_activation,
                                    layers_in,
                                    origin_mode,
-                                   mkldnn_data_type,
+                                   onednn_data_type,
                                    scale_data,
                                    shift_data,
                                    force_fp32_output,
@@ -732,7 +732,7 @@ void RunKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MultiGRUMKLDNNKernel(
+void MultiGRUONEDNNKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
     const std::vector<const DenseTensor*>& weight_x,
@@ -743,7 +743,7 @@ void MultiGRUMKLDNNKernel(
     const std::string& gate_activation,
     int layers,
     bool origin_mode,
-    const std::string& mkldnn_data_type,
+    const std::string& onednn_data_type,
     float scale_data,
     float shift_data,
     bool force_fp32_output,
@@ -769,7 +769,7 @@ void MultiGRUMKLDNNKernel(
                                  gate_activation,
                                  layers,
                                  origin_mode,
-                                 mkldnn_data_type,
+                                 onednn_data_type,
                                  scale_data,
                                  shift_data,
                                  force_fp32_output,
@@ -785,7 +785,7 @@ void MultiGRUMKLDNNKernel(
                              gate_activation,
                              layers,
                              origin_mode,
-                             mkldnn_data_type,
+                             onednn_data_type,
                              scale_data,
                              shift_data,
                              force_fp32_output,
@@ -795,4 +795,4 @@ void MultiGRUMKLDNNKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    multi_gru, OneDNN, ONEDNN, phi::MultiGRUMKLDNNKernel, float, uint8_t) {}
+    multi_gru, OneDNN, ONEDNN, phi::MultiGRUONEDNNKernel, float, uint8_t) {}

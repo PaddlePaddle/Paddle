@@ -47,8 +47,17 @@ set(PYBIND_DEPS
     auto_parallel
     executor_cache)
 
+if(WIN32)
+  list(APPEND PYBIND_DEPS dynload_common)
+endif()
 if(WITH_GPU)
   list(APPEND PYBIND_DEPS gpu_event_timer)
+  if(WIN32)
+    list(APPEND PYBIND_DEPS dynload_cuda cuda_graph_lib)
+    if(TENSORRT_FOUND)
+      list(APPEND PYBIND_DEPS dynload_tensorrt)
+    endif()
+  endif()
 endif()
 
 if(WITH_CINN)
@@ -126,6 +135,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    cudart_py.cc
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
@@ -136,7 +146,9 @@ set(PYBIND_SRCS
     sot/eval_frame.c
     sot/guards.cc
     op_callstack_utils.cc
-    python_callable_registry.cc)
+    python_callable_registry.cc
+    arg_pre_process.cc
+    args_mapper.cc)
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
@@ -144,6 +156,14 @@ if(WITH_DISTRIBUTE)
   string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
   if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
     set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
+    set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
+    add_definitions(-DPADDLE_WITH_DEEP_EP)
+    if(WITH_NVSHMEM)
+      set(PYBIND_DEPS ${PYBIND_DEPS} nvshmem)
+    endif()
+  endif()
+  if(WITH_XPU AND WITH_XPU_XRE5)
+    set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep_xpu)
     set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
     add_definitions(-DPADDLE_WITH_DEEP_EP)
     if(WITH_NVSHMEM)
@@ -175,7 +195,7 @@ if(WITH_PYTHON)
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
   endif()
-  if(WITH_FLAGCX)
+  if(WITH_FLAGCX AND NOT WITH_XPU)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_flagcx)
   endif()
   if(WITH_CUSTOM_DEVICE)
@@ -273,6 +293,12 @@ if(WITH_PYTHON)
     list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
   endif()
 
+  if(WITH_GPU
+     AND WIN32
+     AND TENSORRT_FOUND)
+    list(APPEND EAGER_GENERATOR_DEPS dynload_tensorrt)
+  endif()
+
   add_executable(
     eager_generator generator.cc eager_legacy_op_function_generator.cc
                     eager_generator.cc)
@@ -281,7 +307,8 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_generator ${os_dependency_modules})
 
-  set(EAGER_OP_IMPL_DEPS eager_generator eager_python_c_codegen)
+  set(EAGER_OP_IMPL_DEPS eager_generator eager_python_c_codegen
+                         eager_monkey_patch_codegen)
 
   if(WITH_ROCM)
     target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
@@ -302,17 +329,6 @@ if(WITH_PYTHON)
         OUTPUT ${eager_generator_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
         DEPENDS phi)
-      add_custom_command(
-        OUTPUT ${eager_generator_path}/phi_core.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${eager_generator_path}
-        DEPENDS phi)
-      if(WITH_GPU OR WITH_ROCM)
-        add_custom_command(
-          OUTPUT ${eager_generator_path}/phi_gpu.dll
-          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB}
-                  ${eager_generator_path}
-          DEPENDS phi)
-      endif()
       list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
     endif()
 
@@ -426,16 +442,6 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
-      add_custom_command(
-        OUTPUT ${op_impl_path}/phi_core.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${op_impl_path}
-        DEPENDS phi)
-      if(WITH_GPU OR WITH_ROCM)
-        add_custom_command(
-          OUTPUT ${op_impl_path}/phi_gpu.dll
-          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${op_impl_path}
-          DEPENDS phi)
-      endif()
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 
@@ -618,10 +624,25 @@ if(WITH_PYTHON)
     set(SHARD_LIB_NAME libpaddle)
   endif()
   set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
-  cc_library(
-    ${SHARD_LIB_NAME} SHARED
-    SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+  if(WIN32)
+    if(WITH_GPU AND TENSORRT_FOUND)
+      cc_library(
+        ${SHARD_LIB_NAME} SHARED
+        SRCS ${PYBIND_SRCS}
+        DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS}
+             dynload_tensorrt)
+    else()
+      cc_library(
+        ${SHARD_LIB_NAME} SHARED
+        SRCS ${PYBIND_SRCS}
+        DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    endif()
+  else()
+    cc_library(
+      ${SHARD_LIB_NAME} SHARED
+      SRCS ${PYBIND_SRCS}
+      DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+  endif()
 
   if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
     target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)

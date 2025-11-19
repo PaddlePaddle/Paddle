@@ -94,7 +94,7 @@ class TestFcXPUFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["fc_xpu_fuse_pass", "link_xpu_op_max_pass"],

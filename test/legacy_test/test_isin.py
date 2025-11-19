@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -81,8 +81,8 @@ def run_dygraph(
     use_gpu=False,
 ):
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     x_data = x_data.astype(type)
     test_x_data = test_x_data.astype(type)
@@ -103,8 +103,8 @@ def run_static(
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     exe = base.Executor(place)
     with paddle.static.program_guard(main_program, startup_program):
         x_data = x_data.astype(type)
@@ -166,8 +166,8 @@ def run_dygraph_bf16(
     use_gpu=False,
 ):
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     x_e = paddle.to_tensor(convert_float_to_uint16(x_data))
     x_t = paddle.to_tensor(convert_float_to_uint16(test_x_data))
@@ -185,8 +185,8 @@ def run_static_bf16(
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     exe = base.Executor(place)
     with paddle.static.program_guard(main_program, startup_program):
         x_data = convert_float_to_uint16(x_data)
@@ -276,8 +276,8 @@ class TestIsIn(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestIsInFP16(unittest.TestCase):
@@ -301,8 +301,8 @@ class TestIsInFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestIsInBF16(unittest.TestCase):
@@ -330,6 +330,65 @@ class TestIsIn_ZeroSize(unittest.TestCase):
 
     def test_with_gpu(self):
         test(DATA_CASES_ZERO_SIZE, DATA_TYPE, use_gpu=True)
+
+
+class TestIsinCompatibility(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for case in DATA_CASES:
+            x_data = case['x_data']
+            test_x_data = case['test_x_data']
+
+            x_tensor = paddle.to_tensor(x_data)
+            test_x_tensor = paddle.to_tensor(test_x_data)
+
+            result_1 = paddle.isin(x_tensor, test_x_tensor)
+            result_2 = paddle.isin(x=x_tensor, test_x=test_x_tensor)
+            result_3 = paddle.isin(
+                elements=x_tensor, test_elements=test_x_tensor
+            )
+            result_4 = paddle.isin(x_tensor, test_elements=test_x_tensor)
+
+            np.testing.assert_array_equal(result_1.numpy(), result_2.numpy())
+            np.testing.assert_array_equal(result_1.numpy(), result_3.numpy())
+            np.testing.assert_array_equal(result_1.numpy(), result_4.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+
+        for case in DATA_CASES:
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name='x',
+                    shape=case['x_data'].shape,
+                    dtype=str(case['x_data'].dtype),
+                )
+                test_x = paddle.static.data(
+                    name='test_x',
+                    shape=case['test_x_data'].shape,
+                    dtype=str(case['test_x_data'].dtype),
+                )
+
+                out_1 = paddle.isin(x, test_x)
+                out_2 = paddle.isin(x=x, test_x=test_x)
+                out_3 = paddle.isin(elements=x, test_elements=test_x)
+                out_4 = paddle.isin(x, test_elements=test_x)
+
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                results = exe.run(
+                    main_prog,
+                    feed={'x': case['x_data'], 'test_x': case['test_x_data']},
+                    fetch_list=[out_1, out_2, out_3, out_4],
+                )
+
+                for i in range(1, len(results)):
+                    np.testing.assert_array_equal(results[0], results[i])
 
 
 if __name__ == '__main__':

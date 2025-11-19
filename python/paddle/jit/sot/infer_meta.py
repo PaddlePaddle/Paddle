@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import paddle
@@ -33,7 +34,11 @@ from paddle.distributed.auto_parallel.static.dist_input_spec import (
 from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
-from paddle.jit.dy2static.utils import extract_tensor_dynamic_dims
+from paddle.jit.dy2static.utils import (
+    ALREADY_D2S,
+    extract_tensor_dynamic_dims,
+    graph_tracing_guard,
+)
 from paddle.pir import is_fake_value
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
@@ -63,9 +68,9 @@ class DistInfo:
 
     @staticmethod
     def from_tensor(tensor: paddle.Tensor) -> DistInfo:
-        assert (
-            isinstance(tensor, paddle.Tensor) and tensor.is_dist()
-        ), f"Expect a Tensor, but got a {type(tensor)}."
+        assert isinstance(tensor, paddle.Tensor) and tensor.is_dist(), (
+            f"Expect a Tensor, but got a {type(tensor)}."
+        )
 
         mesh = tensor.process_mesh
         sharding_specs = get_shard_spec(
@@ -77,9 +82,9 @@ class DistInfo:
 
     @staticmethod
     def from_value(value: paddle.pir.Value) -> DistInfo:
-        assert (
-            isinstance(value, paddle.pir.Value) and value.is_dist()
-        ), f"Expect a Value, but got a {type(value)}."
+        assert isinstance(value, paddle.pir.Value) and value.is_dist(), (
+            f"Expect a Value, but got a {type(value)}."
+        )
         return DistInfo(
             value.dist_attr().process_mesh,
             value.dist_attr().dims_mapping,
@@ -149,13 +154,13 @@ class MetaInfoOrNull:
     ) -> MetaInfoOrNull:
         if not tensor._is_dense_tensor_hold_allocation():
             return MetaInfoOrNull.null()
-        assert isinstance(
-            tensor, paddle.Tensor
-        ), "Expect a Tensor, but got a Value."
+        assert isinstance(tensor, paddle.Tensor), (
+            "Expect a Tensor, but got a Value."
+        )
 
-        assert (
-            -1 not in tensor.shape
-        ), "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
+        assert -1 not in tensor.shape, (
+            "Tensor shape should not contain -1, maybe you pass a Value to from_tensor"
+        )
         user_specified_dynamic_axes = extract_tensor_dynamic_dims(tensor)
         dynamic_axes = dynamic_axes or []
         dynamic_axes = MetaInfoOrNull.mix_axes(
@@ -265,9 +270,9 @@ class MetaInfo:
         spec_name=None,
         dist_info=None,
     ):
-        assert (
-            -1 not in shape
-        ), "NOTE: Shape should not contain -1, consider convert it to SymbolicInt."
+        assert -1 not in shape, (
+            "NOTE: Shape should not contain -1, consider convert it to SymbolicInt."
+        )
         self.name = name
         self.persistable = persistable
         self.type = type
@@ -430,9 +435,9 @@ class VariableCreator(metaclass=Singleton):
                 placements = to_placements(meta.dist_info.dims_mapping, mesh)
                 var = paddle._pir_ops.shard_tensor(var, mesh, placements)
                 var.stop_gradient = meta.stop_gradient
-        assert not isinstance(
-            var, paddle.Tensor
-        ), "Expect a Variable, but got a Tensor."
+        assert not isinstance(var, paddle.Tensor), (
+            "Expect a Variable, but got a Tensor."
+        )
         return var
 
     def get_variable(self, meta: MetaInfoOrNull, without_cache=False):
@@ -459,6 +464,7 @@ class VariableCreator(metaclass=Singleton):
                     convert_meta_to_variable(kwargs),
                 )
 
+            graph_tracing_context_manager = nullcontext()
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
             ):
@@ -467,7 +473,12 @@ class VariableCreator(metaclass=Singleton):
                     # Do we need add condition check here?
                     func = getattr(args[0], func)
                     args = args[1:]
-                out = func(*args, **kwargs)
+                if hasattr(func, ALREADY_D2S):
+                    graph_tracing_context_manager = graph_tracing_guard(
+                        self.main_program
+                    )
+                with graph_tracing_context_manager:
+                    out = func(*args, **kwargs)
         return convert_variable_to_meta_info(out)
 
 
@@ -513,9 +524,9 @@ def infer_meta(func, *args, **kwargs):
 
 
 def infer_meta_for_layer(layer, *args, **kwargs):
-    assert isinstance(
-        layer, paddle.nn.Layer
-    ), f"Expect a Layer, but got {layer}."
+    assert isinstance(layer, paddle.nn.Layer), (
+        f"Expect a Layer, but got {layer}."
+    )
     layer = paddle.jit.to_static(layer, full_graph=True)
 
     args_, kwargs_ = convert_meta_to_input_spec((args, kwargs))
@@ -636,9 +647,9 @@ class LayerInferMetaCache(Cache, metaclass=Singleton):
 
 class ConstrainedInputSpec(InputSpec):
     def __init__(self, dynamic_axes: list[int], *args, **kwargs):
-        self.ranges: list[tuple[int, int | None, int | None]] = (
-            []
-        )  # (idx of dim, min, max)
+        self.ranges: list[
+            tuple[int, int | None, int | None]
+        ] = []  # (idx of dim, min, max)
         super().__init__(*args, **kwargs)
         min_non_specialized_number = get_min_non_specialized_number()
         for i in dynamic_axes:

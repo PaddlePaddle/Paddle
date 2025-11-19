@@ -41,14 +41,12 @@ def main_test_func(place, dtype):
             adam_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1
-            )
             feeder = base.DataFeeder(place=place, feed_list=[x, y])
             exe = base.Executor(place)
             exe.run(base.default_startup_program())
-            for data in train_reader():
-                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+            uci_housing = paddle.text.datasets.UCIHousing(mode='train')
+            for data in uci_housing:
+                exe.run(main, feed=feeder.feed([data]), fetch_list=fetch_list)
 
 
 class AdamFp32Test(unittest.TestCase):

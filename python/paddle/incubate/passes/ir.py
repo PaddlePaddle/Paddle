@@ -311,9 +311,9 @@ class PassDesc:
 
     class OpHelper:
         def _to_readable_code(self, skip_op_callstack=True):
-            assert isinstance(
-                skip_op_callstack, bool
-            ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+            assert isinstance(skip_op_callstack, bool), (
+                f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
+            )
             outputs_str = "{"
             outputs_str += ", ".join(
                 [f"{k}={v}" for k, v in self._outputs.items()]

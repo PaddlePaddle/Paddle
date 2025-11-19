@@ -32,7 +32,10 @@ from .auto_cast import (  # noqa: F401
     amp_decorate,
     amp_guard,
     auto_cast,
+    autocast,
     decorate,
+    get_autocast_dtype,
+    is_autocast_enabled,
 )
 from .grad_scaler import (  # noqa: F401
     AmpScaler,
@@ -46,7 +49,14 @@ __all__ = [
     'decorate',
     'is_float16_supported',
     'is_bfloat16_supported',
+    'is_autocast_enabled',
+    'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
+    'get_autocast_gpu_dtype',
 ]
+
+get_autocast_cpu_dtype = get_autocast_dtype
+get_autocast_gpu_dtype = get_autocast_dtype
 
 
 def is_float16_supported(device: str | None = None) -> bool:

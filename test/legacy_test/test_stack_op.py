@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -215,8 +220,8 @@ class TestStackAPIWithDenseTensorArray(unittest.TestCase):
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
+            get_device_place()
+            if (base.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
 
@@ -252,8 +257,8 @@ class TestTensorStackAPIWithDenseTensorArray(unittest.TestCase):
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
+            get_device_place()
+            if (base.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
 
@@ -279,7 +284,6 @@ class TestTensorStackAPIWithDenseTensorArray(unittest.TestCase):
 
 
 class API_test(unittest.TestCase):
-
     def test_out(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -332,11 +336,15 @@ class API_DygraphTest(unittest.TestCase):
     def test_single_tensor_error(self):
         with base.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
-            self.assertRaises(Exception, paddle.stack, x)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) stack\(\): argument 'x' \(position 0\) must be list of Tensors",
+                paddle.stack,
+                x,
+            )
 
 
 class TestStackOpWithNegativeShape(unittest.TestCase):
-
     def test_out(self):
         main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(main_prg, startup_prg):
@@ -467,15 +475,15 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
         out.backward()
 
         np.testing.assert_equal(out.shape, [2, 1, 0])
-        # np.testing.assert_equal(x1.grad, None)
-        # np.testing.assert_equal(x2.grad, None)
+        np.testing.assert_equal(x1.grad.shape, [1, 0])
+        np.testing.assert_equal(x2.grad.shape, [1, 0])
         np.testing.assert_equal(out, np.ones([2, 1, 0]))
 
         paddle.enable_static()
 
     def test_dygraph_gpu(self):
-        if base.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.disable_static(place)
 
             x1 = paddle.ones([1, 0])
@@ -487,8 +495,8 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
             out.backward()
 
             np.testing.assert_equal(out.shape, [2, 1, 0])
-            np.testing.assert_equal(x1.grad, None)
-            np.testing.assert_equal(x2.grad, None)
+            np.testing.assert_equal(x1.grad.shape, [1, 0])
+            np.testing.assert_equal(x2.grad.shape, [1, 0])
             np.testing.assert_equal(out, np.ones([2, 1, 0]))
 
             paddle.enable_static()
@@ -515,9 +523,9 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
             np.testing.assert_equal(expected_result, result)
 
     def test_static_gpu(self):
-        if base.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
-            place = base.CUDAPlace(0)
+            place = get_device_place()
             exe = base.Executor(place)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -541,6 +549,72 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
                 )
                 expected_result = np.stack([input1, input2, input3], axis=0)
                 np.testing.assert_equal(expected_result, result)
+
+
+class TestStackOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.inputs_np = [
+            np.random.rand(2, 3).astype(np.float32) for _ in range(3)
+        ]
+        self.test_types = [
+            "decorator_tensors",
+            "decorator_dim",
+            "decorator_both",
+            "out",
+            "out_decorator",
+        ]
+
+    def do_test(self, test_type):
+        inputs = [
+            paddle.to_tensor(x, stop_gradient=False) for x in self.inputs_np
+        ]
+
+        if test_type == 'raw':
+            result = paddle.stack(inputs, axis=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'decorator_tensors':
+            result = paddle.stack(tensors=inputs, axis=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'decorator_dim':
+            result = paddle.stack(inputs, dim=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'decorator_both':
+            result = paddle.stack(tensors=inputs, dim=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'out':
+            out = paddle.empty((2, 3, 3), dtype='float32')
+            out.stop_gradient = False
+            paddle.stack(inputs, axis=1, out=out)
+            out.mean().backward()
+            grads = [x.grad for x in inputs]
+            return out, grads
+        elif test_type == 'out_decorator':
+            out = paddle.empty((2, 3, 3), dtype='float32')
+            out.stop_gradient = False
+            paddle.stack(tensors=inputs, dim=1, out=out)
+            out.mean().backward()
+            grads = [x.grad for x in inputs]
+            return out, grads
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        out_std, grads_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, grads = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-20)
+            for g, g_std in zip(grads, grads_std):
+                np.testing.assert_allclose(g.numpy(), g_std.numpy(), rtol=1e-20)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

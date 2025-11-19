@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-PD_DEFINE_bool(enable_mkldnn, true, "Enable ONEDNN");
+PD_DEFINE_bool(enable_onednn, true, "Enable ONEDNN");
 
 namespace paddle {
 namespace inference {
@@ -33,7 +33,7 @@ void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->EnableNewExecutor();
   cfg->SetOptimizationLevel(3);
 
-  if (FLAGS_enable_mkldnn) cfg->EnableONEDNN();
+  if (FLAGS_enable_onednn) cfg->EnableONEDNN();
 }
 
 template <typename T>
@@ -127,7 +127,7 @@ TEST(Analyzer_quant_image_classification, quantization) {
 
   AnalysisConfig int8_cfg;
   SetConfig(&int8_cfg, FLAGS_int8_model);
-  if (FLAGS_enable_int8_qat) int8_cfg.EnableMkldnnInt8();
+  if (FLAGS_enable_int8_qat) int8_cfg.EnableOnednnInt8();
 
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;

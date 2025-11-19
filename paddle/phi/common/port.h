@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include "paddle/common/macros.h"
 #include "paddle/utils/test_macros.h"
 
 #if !defined(_WIN32)
@@ -37,23 +38,23 @@
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
 #endif  // S_ISDIR
 
-TEST_API void *dlsym(void *handle, const char *symbol_name);
+PADDLE_API void *dlsym(void *handle, const char *symbol_name);
 
 void *dlopen(const char *filename, int flag);
 
-int gettimeofday(struct timeval *tp, void *tzp);
+PADDLE_API int gettimeofday(struct timeval *tp, void *tzp);
 #endif  // !_WIN32
 
 void ExecShellCommand(const std::string &cmd, std::string *message);
 
-bool PathExists(const std::string &path);
+PADDLE_API bool PathExists(const std::string &path);
 
 // TODO(yuyang18): If the functions below are needed by other files, move them
 // to paddle::filesystem namespace.
-bool FileExists(const std::string &filepath);
+PADDLE_API bool FileExists(const std::string &filepath);
 
-std::string DirName(const std::string &filepath);
+PADDLE_API std::string DirName(const std::string &filepath);
 
 void MkDir(const char *path);
 
-void MkDirRecursively(const char *fullpath);
+PADDLE_API void MkDirRecursively(const char *fullpath);

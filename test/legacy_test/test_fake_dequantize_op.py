@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 
 def quantize_max_abs(x, max_range):
@@ -347,8 +347,8 @@ class TestDequantizeOpHalf(TestDequantizeOp):
         import paddle
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = paddle.base.core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if paddle.base.core.is_float16_supported(place):
                 return [place]
             else:

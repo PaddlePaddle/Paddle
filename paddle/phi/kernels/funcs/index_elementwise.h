@@ -19,6 +19,7 @@ limitations under the License. */
 #include <type_traits>
 #include <vector>
 
+#include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 
 namespace phi {
@@ -113,6 +114,21 @@ CPUmake_offset_calculator(int ndim,
 
   return CPUOffsetCalculator<N, uint32_t, signed_strides>(
       ndim, shape, strides_array.data());
+}
+
+template <int N, bool signed_strides = false>
+static CPUOffsetCalculator<N, uint32_t, signed_strides>
+CPUmake_offset_calculator(const phi::DenseTensorIteratorBase& iter) {
+  PADDLE_ENFORCE_LE(N,
+                    iter.ntensors(),
+                    ::common::errors::InvalidArgument(
+                        "Tensor Numel must less or equal than Args"));
+  std::array<const int64_t*, N> strides;
+  for (int i = 0; i < N; i++) {
+    strides[i] = iter.operands_[i].stride_bytes.data();
+  }
+  return CPUOffsetCalculator<N, uint32_t, signed_strides>(
+      iter.ndim(), iter.shape().data(), strides.data());
 }
 
 }  // namespace funcs

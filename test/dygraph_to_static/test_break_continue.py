@@ -23,7 +23,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.framework import use_pir_api
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
@@ -355,11 +354,9 @@ class TestOptimBreakInWhile(TestContinueInWhile):
         dygraph_res = self.run_dygraph_mode()
         # NOTE(SigureMo): Temporarily run the test in sequential run mode to avoid dependency
         # on the execution order of the test cases.
-        if use_pir_api():
-            with exe_sequential_run_guard(True):
-                static_res = self.run_static_mode()
-        else:
+        with exe_sequential_run_guard(True):
             static_res = self.run_static_mode()
+
         np.testing.assert_allclose(
             dygraph_res,
             static_res,

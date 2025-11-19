@@ -197,4 +197,4 @@ PD_REGISTER_KERNEL(group_norm_grad,
                    ALL_LAYOUT,
                    phi::GroupNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

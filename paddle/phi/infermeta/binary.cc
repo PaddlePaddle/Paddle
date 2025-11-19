@@ -523,11 +523,6 @@ void CompareAllInferMeta(const MetaTensor& x,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();
-  PADDLE_ENFORCE_GE(
-      dim_x.size(),
-      dim_y.size(),
-      errors::InvalidArgument(
-          "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
   out->set_dims(common::make_ddim({}));
 }
@@ -712,12 +707,11 @@ void ConvInferMeta(const MetaTensor& input,
         (in_data_dims[i] < 0 || filter_dims[i + 2] < 0)) {
       output_shape.push_back(-1);
     } else {
-      const int dkernel =
-          static_cast<int>(dilations[i] * (filter_data_dims[i] - 1) + 1);
-      int output_size = static_cast<int>(
+      const int64_t dkernel = dilations[i] * (filter_data_dims[i] - 1) + 1;
+      int64_t output_size =
           (in_data_dims[i] + paddings[2 * i] + paddings[2 * i + 1] - dkernel) /
               strides[i] +
-          1);
+          1;
       output_shape.push_back(output_size);
     }
   }
@@ -1001,15 +995,14 @@ void CorrelationInferMeta(const MetaTensor& input1,
                         "Input(Y) of CorrelationOp must be 4 dims."
                         "But received dims is %d.",
                         in2_dims.size()));
-  std::vector<int64_t> output_shape =
-      CorrelationOutputSize(static_cast<int>(in_dims[0]),
-                            static_cast<int>(in_dims[2]),
-                            static_cast<int>(in_dims[3]),
-                            stride1,
-                            stride2,
-                            kernel_size,
-                            pad_size,
-                            max_displacement);
+  std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
+                                                            in_dims[2],
+                                                            in_dims[3],
+                                                            stride1,
+                                                            stride2,
+                                                            kernel_size,
+                                                            pad_size,
+                                                            max_displacement);
   out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(input1.dtype());
 }
@@ -1095,8 +1088,7 @@ void CrossEntropyInferMeta(const MetaTensor& x,
             "shall have the same dimensions. But received: the dimensions of "
             "Input(X) is [%d],"
             "the shape of Input(X) is [%s], the dimensions of Input(Label) "
-            "is "
-            "[%d], the shape of"
+            "is [%d], the shape of "
             "Input(Label) is [%s]",
             rank,
             x_dims,
@@ -1109,11 +1101,11 @@ void CrossEntropyInferMeta(const MetaTensor& x,
           label_dims[rank - 1],
           common::errors::InvalidArgument(
               "If Attr(soft_label) == true, the last dimension of "
-              "Input(X) and Input(Label) should be equal. But received: the"
+              "Input(X) and Input(Label) should be equal. But received: the "
               "last dimension of Input(X) is [%d], the shape of Input(X) is "
-              "[%s],"
+              "[%s], "
               "the last dimension of Input(Label) is [%d], the shape of "
-              "Input(Label)"
+              "Input(Label) "
               "is [%s], the last dimension is [%d].",
               x_dims[rank - 1],
               x_dims,
@@ -1245,11 +1237,19 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   }
 
   softmax->set_dims(logits_dims);
-  softmax->set_dtype(logits.dtype());
+  if (softmax->dtype() == DataType::BFLOAT16) {
+    softmax->set_dtype(DataType::FLOAT32);
+  } else {
+    softmax->set_dtype(logits.dtype());
+  }
 
   logits_dims[axis] = 1;
   loss->set_dims(logits_dims);
-  loss->set_dtype(logits.dtype());
+  if (logits.dtype() == DataType::BFLOAT16) {
+    loss->set_dtype(DataType::FLOAT32);
+  } else {
+    loss->set_dtype(logits.dtype());
+  }
 
   softmax->share_lod(logits);
   loss->share_lod(logits);
@@ -1912,7 +1912,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
                           const std::vector<int>& fused_transpose_Y,
                           const std::vector<int>& fused_reshape_Out,
                           const std::vector<int>& fused_transpose_Out,
-                          const std::string& mkldnn_data_type,
+                          const std::string& onednn_data_type,
                           const float scale_x,
                           const float scale_y,
                           const float scale_scale_in_eltwise,
@@ -2146,9 +2146,7 @@ void GatherNdInferMeta(const MetaTensor& x,
   for (int i = 0; i < index_dims_size - 1; ++i) {
     result_dims.emplace_back(index_dims[i]);
   }
-  for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
-       i < x_dims_size;
-       ++i) {
+  for (int64_t i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
     result_dims.emplace_back(x_dims[i]);
   }
 
@@ -2502,6 +2500,19 @@ void IndexAddInferMeta(const MetaTensor& x,
                        int axis,
                        MetaTensor* output) {
   auto input_dim = x.dims();
+  if (common::product(input_dim) == 0) {
+    output->set_dims(input_dim);
+    output->set_dtype(x.dtype());
+    output->set_layout(x.layout());
+    return;
+  }
+  if (index.dims().size() == 1 && index.dims()[0] == 0) {
+    output->set_dims(input_dim);
+    output->set_dtype(x.dtype());
+    output->set_layout(x.layout());
+    output->share_lod(x);
+    return;
+  }
   auto index_dim = index.dims();
   auto add_value_dim = add_value.dims();
 
@@ -2525,7 +2536,13 @@ void IndexAddInferMeta(const MetaTensor& x,
                         "the dimension of Input(Index) is [%d].",
                         index_dim,
                         index_dim.size()));
-
+  if (common::product(add_value_dim) == 0) {
+    output->set_dims(input_dim);
+    output->set_dtype(x.dtype());
+    output->set_layout(x.layout());
+    output->share_lod(x);
+    return;
+  }
   // Note, add_value does not support broadcast now.
   PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
                     true,
@@ -2599,6 +2616,7 @@ void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& index_stride,
                                   const int64_t slice_offset,
                                   const bool accumulate,
+                                  const bool is_combined,
                                   MetaTensor* out) {
   out->set_dims(common::make_ddim(input_dims));
   out->set_dtype(x.dtype());
@@ -2707,9 +2725,9 @@ void LogLossInferMeta(const MetaTensor& input,
         pred_dims,
         label_dims,
         common::errors::InvalidArgument(
-            "The dimensions of Input(Predicted) must be equal to the"
+            "The dimensions of Input(Predicted) must be equal to the "
             "dimensions of Input(Labels), but received dimensions of "
-            "Input(Predicted)"
+            "Input(Predicted) "
             "is [%s], received dimensions of Input(Labels) is [%s].",
             pred_dims,
             label_dims));
@@ -2825,9 +2843,9 @@ void LUUnpackInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The rank of input must greater than 2."));
 
-  int m = static_cast<int>(x_dims[x_rank - 2]);
-  int n = static_cast<int>(x_dims[x_rank - 1]);
-  int min_mn = std::min(m, n);
+  int64_t m = x_dims[x_rank - 2];
+  int64_t n = x_dims[x_rank - 1];
+  int64_t min_mn = std::min(m, n);
   if (unpack_ludata) {
     auto ldims = x_dims;
     auto udims = x_dims;
@@ -3332,7 +3350,7 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
                     dim_vec[0],
                     common::errors::InvalidArgument(
                         "X's second dimension is expected to be equal to "
-                        "Vec's first dimension"
+                        "Vec's first dimension, "
                         "but received X'shape = [%s], Vec's shape = [%s]",
                         dim_x,
                         dim_vec));
@@ -3469,7 +3487,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
   std::vector<phi::DDim> outs_dims;
   outs_dims.resize(n_ids);
   for (size_t i = 0; i < n_ids; ++i) {
-    int embedding_size = size[i];
+    int64_t embedding_size = size[i];
     const auto ids_dims = ids[i]->dims();
     int ids_rank = ids_dims.size();
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
@@ -3722,6 +3740,7 @@ void PullBoxSparseInferMeta(const MetaTensor& w,
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
+                                              int64_t output_size,
                                               MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = common::vectorize(input_dim);
@@ -3763,7 +3782,12 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
     if (dim < 0) {
       dim += input_dim.size();
     }
-    output_dim[dim] = -1;
+    if (output_size > 0) {
+      // Use provided output_size to avoid stream synchronization
+      output_dim[dim] = output_size;
+    } else {
+      output_dim[dim] = -1;
+    }
   }
 
   out->set_dims(common::make_ddim(output_dim));
@@ -3995,7 +4019,7 @@ void StftInferMeta(const MetaTensor& x,
   const auto& x_dims = x.dims();
   const int x_rank = x_dims.size();
   const auto& window_dims = window.dims();
-  const int window_size = static_cast<int>(window_dims[0]);
+  const int64_t window_size = window_dims[0];
 
   PADDLE_ENFORCE_EQ(
       x_rank,
@@ -4019,8 +4043,8 @@ void StftInferMeta(const MetaTensor& x,
           n_fft,
           window_size));
 
-  int seq_length = static_cast<int>(x_dims[x_rank - 1]);
-  int n_frames = 1 + (seq_length - n_fft) / hop_length;
+  int64_t seq_length = x_dims[x_rank - 1];
+  int64_t n_frames = 1 + (seq_length - n_fft) / hop_length;
 
   PADDLE_ENFORCE_LE(n_fft,
                     seq_length,
@@ -4179,9 +4203,9 @@ void LstsqInferMeta(const MetaTensor& x,
   int x_rank = x_dims.size();
   int y_rank = y_dims.size();
 
-  int m = static_cast<int>(x_dims[x_rank - 2]);
-  int n = static_cast<int>(x_dims[x_rank - 1]);
-  int nrhs = static_cast<int>(y_dims[x_rank - 1]);
+  int64_t m = x_dims[x_rank - 2];
+  int64_t n = x_dims[x_rank - 1];
+  int64_t nrhs = y_dims[x_rank - 1];
 
   PADDLE_ENFORCE_GE(x_rank,
                     2,
@@ -4360,9 +4384,9 @@ void YoloBoxInferMeta(const MetaTensor& x,
                         "But received class_num (%s)",
                         class_num));
 
-  int box_num = 0;
+  int64_t box_num = 0;
   if ((dim_x[2] > 0 && dim_x[3] > 0) || config.is_runtime) {
-    box_num = static_cast<int>(dim_x[2] * dim_x[3] * anchor_num);
+    box_num = dim_x[2] * dim_x[3] * anchor_num;
   } else {
     box_num = -1;
   }
@@ -4535,9 +4559,9 @@ void UnpoolInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(in_x_dims,
                     in_y_dims,
                     common::errors::InvalidArgument(
-                        "The dimensions of Input(X) must equal to be"
-                        "the dimensions of Input(Indices), but received"
-                        "dimensions of Input(X) is [%d], received dimensions"
+                        "The dimensions of Input(X) must equal to be "
+                        "the dimensions of Input(Indices), but received "
+                        "dimensions of Input(X) is [%d], received dimensions "
                         "of Input(Indices) is [%d]",
                         in_x_dims,
                         in_y_dims));
@@ -4581,9 +4605,9 @@ void Unpool3dInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(in_x_dims,
                     in_y_dims,
                     common::errors::InvalidArgument(
-                        "The dimensions of Input(X) must equal to be"
-                        "the dimensions of Input(Indices), but received"
-                        "dimensions of Input(X) is [%d], received dimensions"
+                        "The dimensions of Input(X) must equal to be "
+                        "the dimensions of Input(Indices), but received "
+                        "dimensions of Input(X) is [%d], received dimensions "
                         "of Input(Indices) is [%d]",
                         in_x_dims,
                         in_y_dims));
@@ -4656,7 +4680,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
         (x.dims()[1] + (group_size - 1)) / group_size,
         errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
                                 "to (Input(weight).dim[1] + (group_size -1))"
-                                " / group_size"
+                                " / group_size. "
                                 "But receive %d and %d",
                                 dim_scale[0],
                                 (x.dims()[1] + (group_size - 1)) / group_size));
@@ -4668,8 +4692,8 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                           scale.dims()[0],
                           real_channel_shape));
   }
-  int n = static_cast<int>(x.dims()[1]);
-  int k = static_cast<int>(real_channel_shape);
+  int64_t n = x.dims()[1];
+  int64_t k = real_channel_shape;
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(scale.dtype());
 }

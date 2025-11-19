@@ -77,6 +77,14 @@ void DenseTensor::set_layout(const DataLayout layout) {
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
+  // Handle the empty tensor
+  if (numel() == 0) {
+    // Empty tensor does not need to check the holder size
+    holder_ = holder;
+    meta_.offset = 0;  // Ensure the offset is reset
+    return;
+  }
+
   if (holder_ && meta_.is_contiguous()) {
     PADDLE_ENFORCE_LE(
         numel() * static_cast<int64_t>(SizeOf(dtype())) +
@@ -197,11 +205,11 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   }
 }
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
-  template TEST_API dtype* DenseTensor::mutable_data(                    \
-      const DDim& dims, const Place& place, size_t requested_size);      \
-  template TEST_API dtype* DenseTensor::mutable_data(const Place& place, \
-                                                     size_t requested_size);
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                       \
+  template PADDLE_API dtype* DenseTensor::mutable_data(                    \
+      const DDim& dims, const Place& place, size_t requested_size);        \
+  template PADDLE_API dtype* DenseTensor::mutable_data(const Place& place, \
+                                                       size_t requested_size);
 
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)

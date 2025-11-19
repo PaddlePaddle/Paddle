@@ -162,6 +162,7 @@
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(phi::TensorArray);
@@ -816,6 +817,15 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) { self.cache_runtime_context_ = b; })
       .def_property(
           "mkldnn_enabled_op_types",
+          [](const BuildStrategy &self) {
+            return self.onednn_enabled_op_types_;
+          },
+          [](BuildStrategy &self,
+             const std::unordered_set<std::string> &onednn_enabled_op_types) {
+            self.onednn_enabled_op_types_ = onednn_enabled_op_types;
+          })
+      .def_property(
+          "onednn_enabled_op_types",
           [](const BuildStrategy &self) {
             return self.onednn_enabled_op_types_;
           },

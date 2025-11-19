@@ -48,7 +48,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 'Y': OpTest.np_dtype_to_base_dtype(self.y),
             }
             self.outputs = {'Out': self.out}
-            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+            self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
         def init_dtype(self):
             pass
@@ -81,7 +81,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 'Y': OpTest.np_dtype_to_base_dtype(self.y),
             }
             self.outputs = {'Out': self.out}
-            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+            self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     class TestRemainderOp(unittest.TestCase):
         def test_dygraph(self):

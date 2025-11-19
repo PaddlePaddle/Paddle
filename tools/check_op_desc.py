@@ -300,17 +300,17 @@ def compare_op_desc(origin_op_desc, new_op_desc):
             desc_error_message.setdefault(op_type, {})[ATTRS] = attrs_diff
 
         if ins_version_errors:
-            version_error_message.setdefault(op_type, {})[
-                INPUTS
-            ] = ins_version_errors
+            version_error_message.setdefault(op_type, {})[INPUTS] = (
+                ins_version_errors
+            )
         if outs_version_errors:
-            version_error_message.setdefault(op_type, {})[
-                OUTPUTS
-            ] = outs_version_errors
+            version_error_message.setdefault(op_type, {})[OUTPUTS] = (
+                outs_version_errors
+            )
         if attrs_version_errors:
-            version_error_message.setdefault(op_type, {})[
-                ATTRS
-            ] = attrs_version_errors
+            version_error_message.setdefault(op_type, {})[ATTRS] = (
+                attrs_version_errors
+            )
 
     return desc_error_message, version_error_message
 

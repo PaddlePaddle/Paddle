@@ -19,6 +19,9 @@ import numpy as np
 import paddle
 from paddle.nn.quant import weight_quantize
 
+paddle.seed(3)
+np.random.seed(3)
+
 # fmt: off
 # 预先计算得到的权重矩阵，作为ref用于测试
 ref_out = [[-103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103],
@@ -86,7 +89,8 @@ ref_out = [[-103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -103, -1
 [-69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69, -69],
 [-52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52, -52]]
 # fmt: off
-
+np.set_printoptions(threshold=100000000)
+paddle.set_printoptions(threshold=100000000)
 
 def arrange_cols(rows, cols):
     weight = []
@@ -129,6 +133,35 @@ class WeightQuantizeW4a8ZeroSizeTensorTestCase(unittest.TestCase):
         self.setUp()
         self._test_dygraph()
 
+class WeightQuantizeW4afp8TestCase(unittest.TestCase):
+    def setUp(self):
+        self.rows = 128
+        self.cols = 128
+        weight = np.random.randint(-7, 7, size=[self.rows, self.cols], dtype='int8') # shape: [K, N]
+        self.weight_trans = weight.transpose() + 7
+        weight1 = weight[0::2, :] & 0x0F
+        weight2 = (weight[1::2, :] & 0x0F) << 4
+        weight_packed = weight1 | weight2
+        self.weight_packed = paddle.to_tensor(weight_packed)
+
+    def test(self):
+        out = weight_quantize(self.weight_packed, algo="w4afp8")[0] # shape: [N, K/2]
+        out_np = np.array(out.reshape([-1, 32]))
+        out_np_1 = (out_np >> 4) & 0x0F
+        out_np_2 = out_np & 0x0F
+        result = np.zeros((out_np_1.shape[0], out_np_1.shape[1]*2), dtype=out_np.dtype)
+        result[:, 1::2] = out_np_1
+        result[:, 0::2] = out_np_2
+
+
+
+        # ref out
+        tmp = self.weight_trans.reshape([-1, 64])
+        tmp1 = tmp[:, 0:32] & 0x0F
+        tmp2 = (tmp[:, 32:64] & 0x0F) << 4
+        ref_out = tmp1 | tmp2
+        ref_out = ref_out.reshape([-1, self.rows])
+        np.allclose(ref_out.astype("int32"), out.astype("int32").numpy(), atol=1e-2)
 
 if __name__ == '__main__':
     unittest.main()

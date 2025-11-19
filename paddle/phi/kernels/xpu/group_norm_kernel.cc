@@ -125,7 +125,8 @@ void GroupNormKernel(const Context& dev_ctx,
                                    bias_data,
                                    mean_data,
                                    var_data,
-                                   channel_first);
+                                   channel_first,  // is_nchw
+                                   false);         // is_rstd
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "group_norm");
 }
 
@@ -136,5 +137,5 @@ PD_REGISTER_KERNEL(group_norm,
                    ALL_LAYOUT,
                    phi::GroupNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

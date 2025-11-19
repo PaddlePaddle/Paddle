@@ -88,9 +88,9 @@ PD_REGISTER_KERNEL(all_gather,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL(all_gather,
@@ -105,7 +105,7 @@ PD_REGISTER_KERNEL(all_gather,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif

@@ -39,7 +39,7 @@ void YoloBoxXPUKernel(const Context& dev_ctx,
   const float* anchor_grid_data;
   // fix precision of fp16 model
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  if (std::is_same<T, phi::float16>::value) {
     float* grid_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(grid.numel());
     int r = xpu::cast<XPUType, float>(
         dev_ctx.x_context(),
@@ -101,4 +101,4 @@ PD_REGISTER_KERNEL(yolo_box_xpu,
                    ALL_LAYOUT,
                    phi::fusion::YoloBoxXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

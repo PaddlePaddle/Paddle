@@ -78,7 +78,7 @@ class DecoratorTransformer(BaseTransformer):
                 # match case like:
                 # @a.d.g.deco
                 re_tmp = re.match(
-                    fr'({RE_PYMODULE})*({RE_PYNAME})$',
+                    rf'({RE_PYMODULE})*({RE_PYNAME})$',
                     deco_full_name,
                 )
                 deco_name = re_tmp.group(2)

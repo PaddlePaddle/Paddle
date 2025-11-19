@@ -58,6 +58,7 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("output_data_type", pat.Attr("output_data_type"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
     } else if (fusable_ops_ == paddle::dialect::TransposeOp::name()) {
       op_attrs.emplace("perm", pat.Attr("perm"));
     } else if (fusable_ops_ ==
@@ -126,6 +127,7 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("output_data_type", pat.Attr("output_data_type"));
       fused_op_attrs.emplace("data_format", pat.Attr("data_format"));
       fused_op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      fused_op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
 
     } else if (fusable_ops_ == paddle::dialect::TransposeOp::name()) {
       fused_op_attrs.emplace("axis", pat.Attr("perm"));
@@ -137,6 +139,7 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
       fused_op_attrs.emplace("output_data_type", res.StrAttr("fp32"));
       fused_op_attrs.emplace("data_format", res.StrAttr("AnyLayout"));
       fused_op_attrs.emplace("mkldnn_data_type", res.StrAttr("float32"));
+      fused_op_attrs.emplace("onednn_data_type", res.StrAttr(""));
 
     } else if (fusable_ops_ ==
                paddle::onednn::dialect::FusedElementwiseMulOp::name()) {

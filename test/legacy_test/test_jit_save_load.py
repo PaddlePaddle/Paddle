@@ -709,7 +709,6 @@ class TestUtilsMapAndPack(unittest.TestCase):
 
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
-
     def test_dict_input(self):
         # NOTE: This net cannot be executed, it is just
         # a special case for exporting models in model validation
@@ -765,7 +764,6 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
 
 
 class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
-
     def test_dict_input(self):
         net = LinearNetWithDictInputNoPrune(8, 8)
         temp_dir = tempfile.TemporaryDirectory()

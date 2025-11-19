@@ -23,15 +23,23 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-class RetryAllocator : public Allocator {
+PADDLE_API void RegisterOOMCallback(
+    std::function<size_t(phi::Place, size_t)> callback);
+
+class PADDLE_API RetryAllocator : public Allocator {
  public:
-  RetryAllocator(std::shared_ptr<Allocator> allocator, size_t retry_ms)
-      : underlying_allocator_(std::move(allocator)), retry_time_(retry_ms) {
+  RetryAllocator(std::shared_ptr<Allocator> allocator,
+                 phi::Place place,
+                 size_t retry_ms)
+      : underlying_allocator_(std::move(allocator)),
+        place_(place),
+        retry_time_(retry_ms) {
     PADDLE_ENFORCE_NOT_NULL(
         underlying_allocator_,
         common::errors::InvalidArgument(
@@ -42,6 +50,10 @@ class RetryAllocator : public Allocator {
         common::errors::PreconditionNotMet(
             "Underlying allocator of RetryAllocator is not thread-safe"));
   }
+  std::shared_ptr<Allocator>& GetUnderLyingAllocator() {
+    return underlying_allocator_;
+  }
+  void Accept(AllocatorVisitor* visitor) override { visitor->Visit(this); }
 
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -51,9 +63,13 @@ class RetryAllocator : public Allocator {
   uint64_t ReleaseImpl(const phi::Place& place) override {
     return underlying_allocator_->Release(place);
   }
+  size_t CompactImpl(const phi::Place& place) override {
+    return underlying_allocator_->Compact(place);
+  }
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;
+  phi::Place place_;
   std::chrono::milliseconds retry_time_;
   std::mutex mutex_;
   std::condition_variable cv_;

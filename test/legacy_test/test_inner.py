@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -33,11 +34,7 @@ class TestMultiplyApi(unittest.TestCase):
             )
             res = paddle.inner(x, y)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -120,7 +117,6 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-
     def test_errors_static_case1(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
@@ -147,27 +143,43 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.rand(10, 2)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(Exception, paddle.inner, x, y)
+        self.assertRaisesRegex(
+            ValueError,
+            "After performing an optional transpose",
+            paddle.inner,
+            x,
+            y,
+        )
 
     def test_errors_dynamic_case2(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(Exception, paddle.inner, x_data, y)
+        self.assertRaisesRegex(
+            Exception, r"matmul\(\): argument", paddle.inner, x_data, y
+        )
 
     def test_errors_dynamic_case3(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         x = paddle.to_tensor(x_data)
-        self.assertRaises(Exception, paddle.inner, x, y_data)
+        self.assertRaisesRegex(
+            Exception, r"matmul\(\): argument", paddle.inner, x, y_data
+        )
 
     def test_errors_dynamic_case4(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
-        self.assertRaises(Exception, paddle.inner, x_data, y_data)
+        self.assertRaisesRegex(
+            Exception,
+            r"matmul\(\): argument",
+            paddle.inner,
+            x_data,
+            y_data,
+        )
 
 
 class TestMultiplyApi_ZeroSize(unittest.TestCase):

@@ -32,10 +32,6 @@ void ArangeTensorKernel(const Context& dev_ctx,
       static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
   MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
   MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
-  if (std::isnan(static_cast<float>(end_value))) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "The end value of arange cannot be NaN. Please check your input."));
-  }
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
@@ -58,8 +54,8 @@ PD_REGISTER_KERNEL(arange_tensor,
                    ALL_LAYOUT,
                    phi::ArangeTensorKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);

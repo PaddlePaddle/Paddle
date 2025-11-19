@@ -19,7 +19,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_only,
 )
 from ifelse_simple_func import dyfunc_with_if_else
 
@@ -64,18 +63,6 @@ def test_return_if_else(x):
         x += 6666
         return x
         x -= 8888  # useless statement to test our code can handle it.
-
-
-def test_return_in_while(x):
-    x = paddle.to_tensor(x)
-    i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
-    while i < 10:
-        i += 1
-        if i > 5:
-            x += 110
-            return x
-        x += i
-    return x
 
 
 def test_return_in_for(x):
@@ -216,7 +203,7 @@ def test_return_if_else_2(x):
         a = 0
 
 
-def test_return_in_while_2(x):
+def test_return_in_while(x):
     while True:
         a = 12
         return 12
@@ -344,50 +331,6 @@ class TestReturnInFor(TestReturnBase):
         self.dygraph_func = test_return_in_for
 
 
-class TestReturnInWhile(Dy2StTestBase):
-    def setUp(self):
-        self.input = np.ones(1).astype('int32')
-
-    def init_dygraph_func(self):
-        self.dygraph_func = test_return_in_while
-
-    def _run(self):
-        res = paddle.jit.to_static(self.dygraph_func)(self.input)
-        if isinstance(res, (tuple, list)):
-            return tuple(r.numpy() for r in res)
-        elif isinstance(res, core.eager.Tensor):
-            return res.numpy()
-        return res
-
-    def _test_value_impl(self):
-        paddle.disable_static()
-        with enable_to_static_guard(False):
-            dygraph_res = self._run()
-        static_res = self._run()
-        if isinstance(dygraph_res, tuple):
-            self.assertTrue(isinstance(static_res, tuple))
-            self.assertEqual(len(dygraph_res), len(static_res))
-            for i in range(len(dygraph_res)):
-                np.testing.assert_allclose(
-                    dygraph_res[i], static_res[i], rtol=1e-05
-                )
-        elif isinstance(dygraph_res, np.ndarray):
-            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
-        else:
-            self.assertEqual(dygraph_res, static_res)
-
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
-    @test_legacy_only
-    @test_ast_only
-    def test_transformed_static_result(self):
-        self.init_dygraph_func()
-        if hasattr(self, "error"):
-            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                self._test_value_impl()
-        else:
-            self._test_value_impl()
-
-
 class TestReturnIfDiff(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_diff_return
@@ -435,9 +378,9 @@ class TestReturnIfElse(Dy2StTestBase):
             self._test_value_impl()
 
 
-class TestReturnInWhile2(TestReturnBase):
+class TestReturnInWhile(TestReturnBase):
     def init_dygraph_func(self):
-        self.dygraph_func = test_return_in_while_2
+        self.dygraph_func = test_return_in_while
         self.error = "Found return statement in While or For body and loop"
 
 

@@ -31,6 +31,16 @@ add_definitions(-DPADDLE_WITH_XBYAK)
 add_definitions(-DXBYAK64)
 add_definitions(-DXBYAK_NO_OP_NAMES)
 
+# For CMake >= 4.0.0, set policy compatibility for xbyak's CMake.
+set(XBYAK_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "xbyak: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(XBYAK_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+
 ExternalProject_Add(
   ${XBYAK_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
@@ -38,7 +48,7 @@ ExternalProject_Add(
   DEPENDS ""
   PREFIX ${XBYAK_PREFIX_DIR}
   UPDATE_COMMAND ""
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XBYAK_INSTALL_ROOT}
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XBYAK_INSTALL_ROOT} ${XBYAK_POLICY_ARGS}
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${XBYAK_INSTALL_ROOT})
 
 add_library(xbyak INTERFACE)

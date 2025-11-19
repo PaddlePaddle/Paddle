@@ -16,10 +16,13 @@ limitations under the License. */
 
 using phi::distributed::auto_parallel::str_join;
 
+#define EXTRACT_SHAPE_AND_DIST_ATTR_BASE(x)  \
+  auto x##_shape = phi::vectorize(x.dims()); \
+  int x##_ndim = x##_shape.size();           \
+  const auto& x##_dist_attr_src = x.dist_attr();
+
 #define EXTRACT_SHAPE_AND_DIST_ATTR(x)                                 \
-  auto x##_shape = phi::vectorize(x.dims());                           \
-  int x##_ndim = x##_shape.size();                                     \
-  const auto& x##_dist_attr_src = x.dist_attr();                       \
+  EXTRACT_SHAPE_AND_DIST_ATTR_BASE(x)                                  \
   const auto& x##_dims_mapping_src = x##_dist_attr_src.dims_mapping(); \
   PADDLE_ENFORCE_EQ(x##_ndim,                                          \
                     x##_dims_mapping_src.size(),                       \
@@ -30,6 +33,20 @@ using phi::distributed::auto_parallel::str_join;
                         __LINE__,                                      \
                         #x,                                            \
                         x##_ndim,                                      \
+                        x##_dims_mapping_src.size()))
+
+#define EXTRACT_SHAPE_AND_DIST_ATTR_CO_SHARD(x)                              \
+  EXTRACT_SHAPE_AND_DIST_ATTR_BASE(x)                                        \
+  const auto& x##_dims_mapping_src = x##_dist_attr_src.multi_dims_mapping(); \
+  PADDLE_ENFORCE_EQ(x##_ndim,                                                \
+                    x##_dims_mapping_src.size(),                             \
+                    common::errors::InvalidArgument(                         \
+                        "[%d] [%d] The Tensor [%d]'s rank [%d] and "         \
+                        "dims_mapping size [%d] are not matched.",           \
+                        __FILE__,                                            \
+                        __LINE__,                                            \
+                        #x,                                                  \
+                        x##_ndim,                                            \
                         x##_dims_mapping_src.size()))
 
 #define EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(x)                   \

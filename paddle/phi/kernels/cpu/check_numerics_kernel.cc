@@ -59,7 +59,16 @@ void CheckNumericsKernel(const Context& dev_ctx,
                                    stats_ptr,
                                    values_ptr);
 }
-
+#ifdef _WIN32
+INSTANTIATE_CHECKNUMBERICS_KERNEL(float, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(double, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float16, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::bfloat16, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex64, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex128, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e4m3fn, CPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e5m2, CPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(check_numerics,
@@ -68,9 +77,9 @@ PD_REGISTER_KERNEL(check_numerics,
                    phi::CheckNumericsKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

@@ -110,12 +110,12 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.XPUPlace(0))
 
-        res = exe.run(
+        (res,) = exe.run(
             paddle.static.default_main_program(),
             feed={"x": np_x, "mask": np_mask},
             fetch_list=[out],
         )
-        self.assertEqual(np.allclose(res, np_out), True)
+        np.testing.assert_allclose(res, np_out)
 
     def test_simulator_skip_run_mode(self):
         os.environ['XPUSIM_SKIP_RUN'] = '1'

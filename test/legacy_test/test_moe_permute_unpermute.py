@@ -139,6 +139,22 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     tokens_per_expert=tokens_per_expert,
                     padding_alignment=128,
                 )
+                # do_gather = False
+                (
+                    _,
+                    zipped_expertwise_rowmap_no_gather,
+                    unzipped_probs_no_gather,
+                    _,
+                ) = moe_permute(
+                    hidden_states,
+                    scale,
+                    expert_routemap_topk,
+                    expert_prob_topk,
+                    num_experts=expert_num,
+                    tokens_per_expert=tokens_per_expert,
+                    padding_alignment=128,
+                    do_gather=False,
+                )
 
                 unpermute_input = (
                     unzipped_tokens.astype("float32")
@@ -172,6 +188,17 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     expert_prob_topk._md5sum(),
                     expert_prob_topk_recovered._md5sum(),
                     err_msg="moe_permute_unpermute probs do not match",
+                )
+
+                np.testing.assert_equal(
+                    zipped_expertwise_rowmap_no_gather._md5sum(),
+                    zipped_expertwise_rowmap._md5sum(),
+                    err_msg="no_gather's zipped_expertwise_rowmap do not match",
+                )
+                np.testing.assert_equal(
+                    unzipped_probs_no_gather._md5sum(),
+                    unzipped_probs._md5sum(),
+                    err_msg="no_gather's unzipped_probs do not match",
                 )
 
 

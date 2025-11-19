@@ -71,7 +71,7 @@ void InstanceNormKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     scale_data_fp32 = scale_data_temp;
   } else if (scale_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+             phi::CppTypeToDataType<phi::float16>::Type()) {
     float* scale_data_temp =
         RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
     int r = xpu::cast<XPUType, float>(
@@ -95,7 +95,7 @@ void InstanceNormKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     bias_data_fp32 = bias_data_temp;
   } else if (bias_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+             phi::CppTypeToDataType<phi::float16>::Type()) {
     float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
     int r = xpu::cast<XPUType, float>(
         dev_ctx.x_context(),
@@ -133,4 +133,4 @@ PD_REGISTER_KERNEL(instance_norm,
                    ALL_LAYOUT,
                    phi::InstanceNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

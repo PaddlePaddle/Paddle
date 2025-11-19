@@ -22,13 +22,13 @@ import paddle.distributed as dist
 
 class TestCollectiveAllToAllSingle(unittest.TestCase):
     def setUp(self):
-        assert (
-            not paddle.distributed.is_initialized()
-        ), "The distributed environment has not been initialized."
+        assert not paddle.distributed.is_initialized(), (
+            "The distributed environment has not been initialized."
+        )
         dist.init_parallel_env()
-        assert (
-            paddle.distributed.is_initialized()
-        ), "The distributed environment has been initialized."
+        assert paddle.distributed.is_initialized(), (
+            "The distributed environment has been initialized."
+        )
 
     def test_collective_alltoall_single(self):
         rank = dist.get_rank()
@@ -76,9 +76,9 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
 
     def tearDown(self):
         dist.destroy_process_group()
-        assert (
-            not paddle.distributed.is_initialized()
-        ), "The distributed environment has been deinitialized."
+        assert not paddle.distributed.is_initialized(), (
+            "The distributed environment has been deinitialized."
+        )
 
 
 if __name__ == '__main__':

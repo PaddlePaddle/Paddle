@@ -47,9 +47,9 @@ class DistributedTranspose2(DistributedOperatorImplContainer):
     def update_dims_mapping(dist_op):
         # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
         op_desc = dist_op.serial_op.desc
-        assert (
-            dist_op.serial_op.type == "transpose2"
-        ), f"{dist_op.serial_op.type} is not supported by dist transpose yet."
+        assert dist_op.serial_op.type == "transpose2", (
+            f"{dist_op.serial_op.type} is not supported by dist transpose yet."
+        )
 
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]

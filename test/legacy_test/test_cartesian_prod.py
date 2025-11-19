@@ -16,7 +16,7 @@ import unittest
 from itertools import product
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_devices, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -36,7 +36,7 @@ class TestCartesianProdAPIBase(unittest.TestCase):
         self.c_np = np.random.random(self.c_shape).astype(self.dtype_np)
         self.d_np = np.empty(0, self.dtype_np)
 
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
 
     def init_setting(self):
         self.dtype_np = 'float32'
@@ -119,7 +119,7 @@ class TestCartesianProd_ZeroSize(unittest.TestCase):
         self.a_np = np.random.random(self.a_shape).astype(self.dtype_np)
         self.b_np = np.empty(0, self.dtype_np)
 
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
 
     def init_setting(self):
         self.dtype_np = 'float32'
@@ -217,8 +217,8 @@ class TestCartesianProdAPI5(TestCartesianProdAPIBase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the float16",
 )
 class TestCartesianProdAPIFP16(unittest.TestCase):
@@ -232,7 +232,7 @@ class TestCartesianProdAPIFP16(unittest.TestCase):
         self.b_np = np.random.random(self.b_shape).astype(self.dtype_np)
         self.c_np = np.random.random(self.c_shape).astype(self.dtype_np)
         self.d_np = np.empty(0, self.dtype_np)
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_static_graph(self):
         paddle.enable_static()
@@ -300,8 +300,8 @@ class TestCartesianProdAPIFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestCartesianProdAPIBF16(unittest.TestCase):
@@ -315,7 +315,7 @@ class TestCartesianProdAPIBF16(unittest.TestCase):
         self.b_np = np.random.random(self.b_shape).astype(self.dtype_np)
         self.c_np = np.random.random(self.c_shape).astype(self.dtype_np)
         self.d_np = np.empty(0, self.dtype_np)
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_static_graph(self):
         paddle.enable_static()

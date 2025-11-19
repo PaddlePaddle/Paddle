@@ -170,7 +170,7 @@ void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
 
   auto axis_range_assumption_stmts = op->PrepareAxisRangeAssumptionStmts();
   auto alloca_temp_buffer_stmts = op->PrepareAllocTempBufferStmts();
-  auto temp_buffer_alia_stmts = GenerateBufferAliasStmts(op, op->temp_bufs);
+  auto temp_buffer_alias_stmts = GenerateBufferAliasStmts(op, op->temp_bufs);
   auto alias_var_stmts = op->CudaAliasVarStmts();
   auto dealloc_temp_buffer_stmts =
       FilterDeallocTempBuffers(op->PrepareDeallocTempBufferStmts());
@@ -180,7 +180,7 @@ void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
       std::end(new_body_stmts), std::begin(field__), std::end(field__));
   APPEND_TO_NEW_BODY_STMTS(axis_range_assumption_stmts)
   APPEND_TO_NEW_BODY_STMTS(alloca_temp_buffer_stmts)
-  APPEND_TO_NEW_BODY_STMTS(temp_buffer_alia_stmts)
+  APPEND_TO_NEW_BODY_STMTS(temp_buffer_alias_stmts)
   APPEND_TO_NEW_BODY_STMTS(alias_var_stmts)
   APPEND_TO_NEW_BODY_STMTS(op->body_block->stmts())
   APPEND_TO_NEW_BODY_STMTS(dealloc_temp_buffer_stmts);
@@ -215,27 +215,6 @@ void CodeGenGpuDev::Visit(const ir::_Var_ *op) {
 
 void CodeGenGpuDev::VisitStmt(const ir::stmt::Alloc &stmt) {
   PrintTempBufferCreation(stmt->destination().as_buffer_ref());
-}
-
-inline void ProcessMinMaxOperand(ir::Expr *a,
-                                 ir::Expr *b,
-                                 int unify_bit,
-                                 bool both_dyn) {
-  if (unify_bit > 0) {
-    std::string type_func = "int" + std::to_string(unify_bit) + "_t";
-    if (both_dyn) {
-      // if both contains dynamic symbol, like: min(S0, S1), it it likely that
-      // S0 is int and S1 is int64_t. So we need to enforce the type cast by
-      // ir::Call
-      *a = ir::Call::Make(
-          common::Int(unify_bit), type_func, {*a}, {}, ir::CallType::Intrinsic);
-      *b = ir::Call::Make(
-          common::Int(unify_bit), type_func, {*b}, {}, ir::CallType::Intrinsic);
-    } else {
-      *a = ir::Cast::Make(common::Int(unify_bit), *a);
-      *b = ir::Cast::Make(common::Int(unify_bit), *b);
-    }
-  }
 }
 
 void CodeGenGpuDev::Visit(const ir::Min *op) {

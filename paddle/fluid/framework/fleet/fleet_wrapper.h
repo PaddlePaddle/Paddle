@@ -69,7 +69,7 @@ namespace framework {
 // Param<in>: scope, table_id, var_names
 // Param<out>: push_sparse_status
 
-class FleetWrapper {
+class PADDLE_API FleetWrapper {
  public:
   virtual ~FleetWrapper() {}
   FleetWrapper() {

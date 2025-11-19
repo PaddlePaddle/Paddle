@@ -66,7 +66,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 "mean": self.mean,
                 "std": self.std,
                 "seed": 10,
-                "use_mkldnn": self.use_onednn,
+                "use_onednn": self.use_onednn,
                 "dtype": typeid_dict[self.in_type_str],
             }
             paddle.seed(10)
@@ -119,7 +119,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 'mean': self.mean,
                 'std': self.std,
                 'seed': self.seed,
-                'use_mkldnn': self.use_onednn,
+                'use_onednn': self.use_onednn,
                 "dtype": typeid_dict[self.in_type_str],
             }
 
@@ -185,7 +185,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 'mean': self.mean,
                 'std': self.std,
                 'seed': self.seed,
-                'use_mkldnn': self.use_onednn,
+                'use_onednn': self.use_onednn,
                 "dtype": typeid_dict[self.in_type_str],
             }
             self.outputs = {'Out': np.zeros((123, 92), dtype=self.dtype)}

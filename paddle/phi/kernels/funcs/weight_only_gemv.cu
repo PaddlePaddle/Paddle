@@ -19,9 +19,7 @@ limitations under the License. */
 #include <cmath>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -1359,9 +1357,17 @@ void WeightOnlyGemvKernel(const Context& dev_ctx,
   const T* bias_data = bias ? bias.get().data<T>() : nullptr;
   const T* weight_scale_data = weight_scale.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
-  int m = x.dims()[0];
-  int k = x.dims()[1];
-  int n = weight.dims()[0];
+  int64_t m = x.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t k = x.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t n = weight.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
 
   WeightOnlyGemvWrapper<T>(dev_ctx,
                            x_data,
@@ -1393,10 +1399,10 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     float* output);
 
 template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
-                                    const phi::dtype::float16* input,
+                                    const phi::float16* input,
                                     const int8_t* weight,
-                                    const phi::dtype::float16* bias,
-                                    const phi::dtype::float16* scales,
+                                    const phi::float16* bias,
+                                    const phi::float16* scales,
                                     int m,
                                     int n,
                                     int k,
@@ -1404,13 +1410,13 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const std::string& weight_only_quant_type,
                                     const std::string& weight_only_type,
                                     const std::string& act_method,
-                                    phi::dtype::float16* output);
+                                    phi::float16* output);
 #ifdef PADDLE_CUDA_BF16
 template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
-                                    const phi::dtype::bfloat16* input,
+                                    const phi::bfloat16* input,
                                     const int8_t* weight,
-                                    const phi::dtype::bfloat16* bias,
-                                    const phi::dtype::bfloat16* scales,
+                                    const phi::bfloat16* bias,
+                                    const phi::bfloat16* scales,
                                     int m,
                                     int n,
                                     int k,
@@ -1418,7 +1424,7 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const std::string& weight_only_quant_type,
                                     const std::string& weight_only_type,
                                     const std::string& act_method,
-                                    phi::dtype::bfloat16* output);
+                                    phi::bfloat16* output);
 #endif
 
 }  // namespace phi

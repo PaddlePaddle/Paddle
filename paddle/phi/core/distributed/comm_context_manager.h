@@ -60,21 +60,22 @@ class CommContextManager {
   CommContext* Emplace(const std::string& unique_comm_key,
                        std::unique_ptr<CommContext> comm_context);
 
-  CommContext* Get(const std::string& unique_comm_key) const;
+  PADDLE_API CommContext* Get(const std::string& unique_comm_key) const;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   int GetRingId(const ncclComm_t& comm) const;
 #endif
 
-  bool Has(const std::string& unique_comm_key) const;
+  PADDLE_API bool Has(const std::string& unique_comm_key) const;
 
-  static void SetDeviceId(int dev_id);
+  PADDLE_API static void SetDeviceId(int dev_id);
 
-  void SetGroupSize(const std::string& pg_key, int size);
+  PADDLE_API void SetGroupSize(const std::string& pg_key, int size);
 
-  void AddGroupRanks(const std::string& pg_key, std::vector<int> global_ranks);
+  PADDLE_API void AddGroupRanks(const std::string& pg_key,
+                                std::vector<int> global_ranks);
 
-  std::vector<int> GetGroupRanks(const std::string& pg_key) const;
+  PADDLE_API std::vector<int> GetGroupRanks(const std::string& pg_key) const;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(

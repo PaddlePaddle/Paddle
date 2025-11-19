@@ -116,7 +116,12 @@ void Copy(const Context& dev_ctx,
         dst_ptr, src_ptr, numel);
   }
 }
-
+#ifdef _WIN32
+template PADDLE_API void Copy<GPUContext>(const GPUContext&,
+                                          const StringTensor&,
+                                          bool,
+                                          StringTensor*);
+#endif
 }  // namespace strings
 }  // namespace phi
 

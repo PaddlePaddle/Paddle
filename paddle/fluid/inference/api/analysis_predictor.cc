@@ -938,8 +938,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
         const std::vector<std::string> FusedOpPasses{// Operator fusion pass
                                                      "map_op_to_another_pass",
                                                      "conv2d_bn_fuse_pass",
+#ifndef PADDLE_WITH_HIP
                                                      "conv2d_add_act_fuse_pass",
-                                                     "conv2d_add_fuse_pass"};
+                                                     "conv2d_add_fuse_pass"
+#endif
+        };
 
         for (const auto &fused_op : FusedOpPasses) {
           fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
@@ -1031,24 +1034,24 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       }
 #endif
 #ifdef PADDLE_WITH_DNNL
-    } else if (config_.mkldnn_enabled()) {
-      // mkldnn
+    } else if (config_.onednn_enabled()) {
+      // onednn
       pir::IrContext *ctx = pir::IrContext::Instance();
       ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
       if (!config_.custom_pass_only_) {
-        for (const auto &mkldnn_pass : kPirMkldnnPasses) {
+        for (const auto &onednn_pass : kPirOnednnPasses) {
           if (std::find(config_.deleted_passes_.begin(),
                         config_.deleted_passes_.end(),
-                        mkldnn_pass) == config_.deleted_passes_.end()) {
-            pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+                        onednn_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(onednn_pass));
           }
         }
-        if (config_.mkldnn_bfloat16_enabled()) {
-          for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
+        if (config_.onednn_bfloat16_enabled()) {
+          for (const auto &onednn_pass : kPirOnednnBf16Passes) {
             if (std::find(config_.deleted_passes_.begin(),
                           config_.deleted_passes_.end(),
-                          mkldnn_pass) == config_.deleted_passes_.end()) {
-              pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+                          onednn_pass) == config_.deleted_passes_.end()) {
+              pass_pm.AddPass(pir::PassRegistry::Instance().Get(onednn_pass));
             }
           }
         }
@@ -2100,9 +2103,9 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
-  if (config_.mkldnn_enabled() && !config_.use_gpu()) {
-    LOG(INFO) << "MKLDNN is enabled";
-    argument_->SetMKLDNNEnabledOpTypes(config_.onednn_enabled_op_types_);
+  if (config_.onednn_enabled() && !config_.use_gpu()) {
+    LOG(INFO) << "ONEDNN is enabled";
+    argument_->SetONEDNNEnabledOpTypes(config_.onednn_enabled_op_types_);
   }
 
   if (config_.cinn_enabled()) {
@@ -2110,12 +2113,12 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (config_.mkldnn_bfloat16_enabled()) {
+  if (config_.onednn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
 
-  if (config_.mkldnn_int8_enabled()) {
+  if (config_.onednn_int8_enabled()) {
     LOG(INFO) << "Int8 is enabled";
     argument_->SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_->SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
@@ -2296,7 +2299,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
-  if (config_.mkldnn_enabled() ||
+  if (config_.onednn_enabled() ||
       (config_.tensorrt_engine_enabled() &&
        config_.tensorrt_precision_mode_ ==
            AnalysisConfig::Precision::kInt8)) {  // NOLINT
@@ -3598,14 +3601,12 @@ USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(index_select);
 USE_TRT_CONVERTER(temporal_shift)
 #endif
-#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
+#if PADDLE_WITH_CUSPARSELT
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
 #endif
-#if IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(quantize_linear)
 USE_TRT_CONVERTER(dequantize_linear)
-#endif
 #endif
 
 namespace paddle_infer {

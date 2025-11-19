@@ -155,7 +155,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void RunInstruction(const Instruction& instr_node);
   void RunNextInstructions(const Instruction& instr_id,
                            SchedulingQueue* reserved_next_ops);
-  void RunOperator(const Instruction& instr_node);
+  PADDLE_API void RunOperator(const Instruction& instr_node);
   // Trace
   void TraceInstructionList(const std::vector<Instruction>& vec_instr);
 

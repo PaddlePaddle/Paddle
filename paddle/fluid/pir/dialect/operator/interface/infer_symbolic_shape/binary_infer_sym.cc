@@ -762,6 +762,11 @@ bool DropoutOpInferSymbolicShape(
   return true;
 }
 
+bool Dropout_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return DropoutOpInferSymbolicShape(op, infer_context);
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const std::vector<symbol::DimExpr> &x_dims =
@@ -2226,11 +2231,11 @@ bool TakeAlongAxisOpInferSymbolicShape(
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;
     for (int i = 0; i < axis; ++i) {
-      out_sym_shape.push_back(arr_sym_shape[i]);
+      out_sym_shape.push_back(indices_sym_shape[i]);
     }
     out_sym_shape.push_back(indices_sym_shape[axis]);
     for (size_t i = axis + 1; i < arr_sym_shape.size(); ++i) {
-      out_sym_shape.push_back(arr_sym_shape[i]);
+      out_sym_shape.push_back(indices_sym_shape[i]);
     }
     return out_sym_shape;
   }();

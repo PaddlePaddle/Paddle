@@ -32,4 +32,13 @@ TEST_API void AnyKernel(const Context& dev_ctx,
                         bool keep_dim,
                         DenseTensor* out);
 
+#ifdef _WIN32
+#define INSTANTIATE_ANY_KERNEL(type, context)        \
+  template PADDLE_API void AnyKernel<type, context>( \
+      const context&,                                \
+      const DenseTensor&,                            \
+      const std::vector<int64_t>&,                   \
+      bool,                                          \
+      DenseTensor*);
+#endif
 }  // namespace phi

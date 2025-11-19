@@ -249,7 +249,6 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
-
     def test_errors1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -450,7 +449,7 @@ class TestRNNTLossAPICase(unittest.TestCase):
             dtype=np.float64,
         )
 
-    def test_functinal_api(self):
+    def test_functional_api(self):
         self.config()
 
         paddle.disable_static()

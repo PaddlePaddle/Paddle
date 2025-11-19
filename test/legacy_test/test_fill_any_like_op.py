@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.framework.dtype as dtypes
@@ -37,7 +42,7 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
             out_dtype, paddle.framework.core.VarDesc.VarType
         ):
             tmp_dtype = paddle.pir.core.vartype_to_datatype[tmp_dtype]
-    return paddle.full_like(x, value, tmp_dtype, name)
+    return paddle.full_like(x, value, tmp_dtype, name=name)
 
 
 class TestFillAnyLikeOp(OpTest):
@@ -74,7 +79,8 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestFillAnyLikeOpBfloat16(OpTest):
@@ -95,7 +101,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):

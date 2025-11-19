@@ -338,7 +338,7 @@ extern "C" {
 
 __device__ inline int FN_INT32(pow)(int a, int b) {
   if (a == 0 && b < 0) {
-    return -1;
+    return 0;
   }
   float res = pow(__int2float_rd(a), __int2float_rd(b));
   return __float2int_rn(res);
@@ -418,6 +418,9 @@ __device__ inline long long int FN_INT64(exp)(long long int a) {
 
 __device__ inline long long int FN_INT64(pow)(long long int a,
                                               long long int b) {
+  if (a == 0 && b < 0) {
+    return 0;
+  }
   double res = pow(__ll2double_rd(a), __ll2double_rd(b));
   return __double2ll_rn(res);
 }

@@ -26,7 +26,7 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 template <typename Context>
-void SliceStridedKernel(const Context& ctx,
+void SliceStridedKernel(const Context& dev_ctx,
                         const DenseTensor& input,
                         const std::vector<int64_t>& axes,
                         const IntArray& starts_arr,

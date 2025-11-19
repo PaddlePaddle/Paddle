@@ -96,7 +96,7 @@ void IntBincount(const Context &dev_ctx,
 
   auto bins_dtype = TransToDataType(out_dtype);
 
-  // auto x_dytpe = x.dtype();
+  // auto x_dtype = x.dtype();
   auto low_v = static_cast<T>(low);
   auto high_v = static_cast<T>(high);
   PD_CHECK(static_cast<int64_t>(low_v) == low);

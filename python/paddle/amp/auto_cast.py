@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from typing_extensions import TypeAlias, TypeGuard
 
     from paddle import Tensor
+    from paddle._typing import PlaceLike
     from paddle._typing.dtype_like import _DTypeLiteral
     from paddle.nn import Layer
     from paddle.nn.layer.layers import _StateDict
@@ -144,9 +145,7 @@ def _update_list(
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
-                raise ValueError(
-                    "Custom white list overlap " "custom black list"
-                )
+                raise ValueError("Custom white list overlap custom black list")
     if custom_white_list:
         for op_name in custom_white_list:
             if op_name in _black_list:
@@ -485,7 +484,7 @@ def amp_guard(
              observed in downstream ops. These ops will not be converted to fp16.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list;
              O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp).
-        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+        dtype(str|core.DataType, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
         use_promote(bool, optional): Whether op's dtype is 'float32', accord 'Promote to the Widest' principle, use 'float32' to calculate.
              Only active on 'AMP-02'. Default is True.
 
@@ -513,9 +512,9 @@ def amp_guard(
             paddle.float32
             >>> # doctest: -SKIP
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "We only support 'amp_guard' in dynamic or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "We only support 'amp_guard' in dynamic or pir mode."
+    )
 
     amp_state = locals()
     global _g_amp_state_
@@ -528,6 +527,8 @@ def amp_guard(
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     # check amp_dtype: float16 or bfloat16
+    if isinstance(dtype, paddle.base.core.DataType):
+        dtype = dtype.name
     dtype = dtype.lower()
     if enable:
         if dtype not in ['float16', 'bfloat16']:
@@ -839,7 +840,7 @@ def amp_decorate(
 @overload
 def amp_decorate(
     models: _ModelsT,
-    optimizers: Literal[None] = ...,
+    optimizers: None = ...,
     level: _AmpLevelLiteral = ...,
     dtype: _DTypeLiteral = ...,
     master_weight: bool | None = ...,
@@ -1060,6 +1061,57 @@ def amp_decorate(
                 return models[0], optimizers[0]
         else:
             return models[0]
+
+
+def autocast(
+    device_type: str | None,
+    dtype: _DTypeLiteral = 'float16',
+    enabled: bool = True,
+    cache_enabled: bool = True,
+) -> AbstractContextManager:
+    """
+    Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
+    If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided
+    by autocast algorithm for better performance.
+
+    Commonly, it is used together with `GradScaler` and `decorator` to achieve Auto-Mixed-Precision in
+    imperative mode.
+
+    Args:
+        device_type(str, optional): Device type.But because the paddle does not distinguish between devices, this parameter does not work
+        enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
+        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+        cache_enabled(bool, optional): whether to enable cache or not. Default is True. But this parameter is not used
+
+    Note:
+        paddle.cuda.amp.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+
+            >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+            >>> data = paddle.rand([10, 3, 32, 32])
+
+            >>> with paddle.amp.auto_cast():
+            ...     conv = conv2d(data)
+            ...     print(conv.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float16
+            >>> # doctest: -SKIP
+
+            >>> with paddle.amp.auto_cast(enable=False):
+            ...     conv = conv2d(data)
+            ...     print(conv.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float32
+            >>> # doctest: -SKIP
+
+    """
+    return auto_cast(enable=enabled, dtype=dtype)
 
 
 def auto_cast(
@@ -1322,3 +1374,73 @@ def decorate(
             master_grad,
             excluded_layers,
         )
+
+
+def is_autocast_enabled(device_type: PlaceLike | None = None) -> bool:
+    """
+    Check whether auto-mixed-precision is enabled in the current context.
+
+    Args:
+        device_type (PlaceLike, optional): The device type to check. This argument is ignored for all devices sharing the same AMP state in paddlepaddle.
+
+    Returns:
+        bool: True if auto-mixed-precision is enabled, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # Demo1: Check if auto-mixed-precision is enabled by default
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> print(paddle.is_autocast_enabled())
+            False
+
+            >>> # Demo2: Enable auto-mixed-precision and check again
+            >>> with paddle.amp.auto_cast():
+            ...     print(paddle.is_autocast_enabled())
+            True
+    """
+    if in_pir_mode():
+        amp_attrs = core._get_amp_attrs()
+        return amp_attrs._amp_level != AMP_LEVEL.O0
+    else:
+        tracer = _dygraph_tracer()
+        if tracer:
+            return tracer._amp_level != core.AmpLevel.O0
+        return False
+
+
+def get_autocast_dtype(device_type: PlaceLike | None = None) -> _DTypeLiteral:
+    """
+    Get the auto-mixed-precision dtype in the current context if autocast is enabled else default AMP dtype(float16).
+
+    Args:
+        device_type (PlaceLike, optional): The device type to check. This argument is ignored for all devices sharing the same AMP state in paddlepaddle.
+
+    Returns:
+        _DTypeLiteral: The current AMP dtype.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # Demo1: Get default auto-mixed-precision dtype
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> print(paddle.get_autocast_dtype())
+            float16
+
+            >>> # Demo2: Enable auto-mixed-precision and get the dtype
+            >>> with paddle.amp.auto_cast():
+            ...     print(paddle.get_autocast_dtype())
+            float16
+    """
+    if not is_autocast_enabled():
+        return "float16"
+    if in_pir_mode():
+        amp_attrs = core._get_amp_attrs()
+        return amp_attrs._amp_dtype
+    else:
+        tracer = _dygraph_tracer()
+        return tracer._amp_dtype

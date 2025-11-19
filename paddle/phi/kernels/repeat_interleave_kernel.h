@@ -23,6 +23,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             int repeats,
                             int dim,
+                            int64_t output_size,
                             DenseTensor* out);
 
 template <typename T, typename Context>
@@ -30,6 +31,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                                            const DenseTensor& x,
                                            const DenseTensor& repeat_tensor,
                                            int dim,
+                                           int64_t output_size,
                                            DenseTensor* out);
 
 }  // namespace phi

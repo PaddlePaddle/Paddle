@@ -11,7 +11,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -107,8 +107,8 @@ class TestViterbiAPI(unittest.TestCase):
         self.use_tag = True
         self.bz, self.len, self.ntags = 4, 8, 10
         self.places = (
-            [base.CPUPlace(), base.CUDAPlace(0)]
-            if core.is_compiled_with_cuda()
+            [base.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else [base.CPUPlace()]
         )
 

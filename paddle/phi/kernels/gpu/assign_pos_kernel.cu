@@ -21,9 +21,9 @@
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaximumNumBlocks = 4096;
+static constexpr int64_t kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
+static inline int NumBlocks(const int64_t N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaximumNumBlocks);
 }
@@ -76,7 +76,7 @@ void AssignPosKernel(const Context& dev_ctx,
 
   const T* num_data = numbers->data<T>();
 
-  int blocks = NumBlocks(numel);
+  int64_t blocks = NumBlocks(numel);
   int threads = kNumCUDAThreads;
 
   AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(

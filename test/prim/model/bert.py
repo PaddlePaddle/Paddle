@@ -328,12 +328,12 @@ class BertModel(nn.Layer):
             past_key_values_length=past_key_values_length,
         )
         if self.fuse:
-            assert (
-                not output_attentions
-            ), "Not support attentions output currently."
-            assert (
-                past_key_values is None
-            ), "Not support past_key_values currently."
+            assert not output_attentions, (
+                "Not support attentions output currently."
+            )
+            assert past_key_values is None, (
+                "Not support past_key_values currently."
+            )
             hidden_states = embedding_output
             all_hidden_states = [] if output_hidden_states else None
             for layer in self.encoder:

@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/row_conv_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+
 namespace phi {
 
 namespace {
@@ -74,7 +76,9 @@ __global__ void RowConvForward(const T *in,
                                int future_context,
                                const size_t *batch_indices,
                                T *out) {
-  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int64_t d =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
 
@@ -116,7 +120,10 @@ void RowConvKernel(const Context &dev_ctx,
   }
   int input_dim = 0;
   phi::Vector<size_t> batch_indices(batch_size + 1);
-  int timesteps = X->dims()[1];
+  int64_t timesteps = X->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   if (is_tensor) {
     for (int i = 0; i < batch_size + 1; i++) {
       batch_indices[i] = i * timesteps;
@@ -128,7 +135,10 @@ void RowConvKernel(const Context &dev_ctx,
   }
 
   int num_sequence = batch_indices.size() - 1;
-  int future_context = Filter->dims()[0];
+  int64_t future_context = Filter->dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   phi::MixVector<size_t> mix_vector(&batch_indices);
   size_t *idx = mix_vector.CUDAMutableData(dev_ctx.GetPlace());
   auto stream = dev_ctx.stream();

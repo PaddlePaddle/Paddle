@@ -135,7 +135,7 @@ PD_REGISTER_KERNEL(fused_rms_norm_ext,
                    phi::RMSLnFwd,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(fused_rms_norm_ext_grad,
                    GPU,
@@ -143,4 +143,4 @@ PD_REGISTER_KERNEL(fused_rms_norm_ext_grad,
                    phi::RMSLnBwd,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

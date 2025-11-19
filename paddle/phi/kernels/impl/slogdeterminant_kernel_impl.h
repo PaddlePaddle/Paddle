@@ -22,6 +22,7 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 #include "paddle/phi/kernels/slogdeterminant_kernel.h"
 
@@ -169,6 +170,151 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   auto output_dims = common::make_ddim(output_dim_vec);
   out->Resize(output_dims);
   VLOG(2) << "output dim:" << out->dims();
+}
+
+template <typename T, typename Context>
+struct SlogDeterminantV2Functor {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& input,
+                  int64_t rank,
+                  int64_t batch_count,
+                  DenseTensor* sign,
+                  DenseTensor* logdet) {
+    if (input.numel() == 0) {
+      dev_ctx.template Alloc<T>(sign);
+      if (sign->numel() > 0) {
+        FullKernel<T, Context>(dev_ctx,
+                               common::vectorize(sign->dims()),
+                               static_cast<T>(1),
+                               sign->dtype(),
+                               sign);
+      }
+      dev_ctx.template Alloc<T>(logdet);
+      if (logdet->numel() > 0) {
+        FullKernel<T, Context>(dev_ctx,
+                               common::vectorize(logdet->dims()),
+                               static_cast<phi::dtype::complex<T>>(0),
+                               logdet->dtype(),
+                               logdet);
+      }
+      return;
+    }
+    std::vector<T> input_vec;
+    T* sign_data = dev_ctx.template Alloc<T>(sign);
+    T* logdet_data = dev_ctx.template Alloc<T>(logdet);
+    phi::TensorToVector(input, dev_ctx, &input_vec);
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
+      auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<T> sub_vec(begin_iter,
+                             end_iter);  // get every square matrix data
+      typename detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
+          matrix(i, j) = sub_vec[rank * i + j];
+        }
+      }
+      VLOG(2) << "det value: " << matrix.determinant();
+      VLOG(2) << "matrix val: " << matrix;
+      T det_val = matrix.determinant();
+      sign_data[i] = phi::sign(det_val);
+      det_val >= 0
+          ? logdet_data[i] = std::log(det_val)
+          : logdet_data[i] = std::log(std::abs(
+                det_val));  // for computing log value of a negative value.
+    }
+  }
+};
+
+template <typename T, typename Context>
+struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& input,
+                  int64_t rank,
+                  int64_t batch_count,
+                  DenseTensor* sign,
+                  DenseTensor* logdet) {
+    if (input.numel() == 0) {
+      dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
+      dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
+      if (sign->numel() > 0) {
+        FullKernel<phi::dtype::complex<T>, Context>(
+            dev_ctx,
+            common::vectorize(sign->dims()),
+            static_cast<phi::dtype::complex<T>>(1),
+            sign->dtype(),
+            sign);
+      }
+      dev_ctx.template Alloc<T>(logdet);
+      if (logdet->numel() > 0) {
+        FullKernel<T, Context>(dev_ctx,
+                               common::vectorize(logdet->dims()),
+                               static_cast<phi::dtype::complex<T>>(0),
+                               logdet->dtype(),
+                               logdet);
+      }
+      return;
+    }
+    using MatrixType =
+        Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
+    using Complex_T = typename phi::dtype::complex<T>;
+    std::vector<Complex_T> input_vec;
+    Complex_T* sign_data = dev_ctx.template Alloc<Complex_T>(sign);
+    T* logdet_data = dev_ctx.template Alloc<T>(logdet);
+    phi::TensorToVector(input, dev_ctx, &input_vec);
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
+      auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<phi::dtype::complex<T>> sub_vec(
+          begin_iter,
+          end_iter);  // get every square matrix data
+      MatrixType matrix(rank, rank);
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
+          matrix(i, j) = static_cast<std::complex<T>>(sub_vec[rank * i + j]);
+        }
+      }
+      VLOG(2) << "det value: " << matrix.determinant();
+      VLOG(2) << "matrix val: " << matrix;
+      std::complex<T> det_val = matrix.determinant();
+      T abs_det_val = std::abs(det_val);
+      T epsilon = std::numeric_limits<T>::epsilon();
+
+      if (abs_det_val <= epsilon) {
+        sign_data[i] = Complex_T(0.0, 0.0);
+        logdet_data[i] = -std::numeric_limits<T>::infinity();
+      } else {
+        sign_data[i] = static_cast<Complex_T>(
+            phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val)));
+        logdet_data[i] = std::log(abs_det_val);
+      }
+    }
+  }
+};
+
+template <typename T, typename Context>
+void SlogDeterminantV2Kernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             DenseTensor* sign,
+                             DenseTensor* logdet) {
+  auto input_dim = common::vectorize(x.dims());
+  auto input_dim_size = input_dim.size();
+
+  auto batch_count = detail::GetBatchCount(x.dims());
+  VLOG(3) << "input dim:" << x.dims();
+  PADDLE_ENFORCE_GE(
+      input_dim_size,
+      2,
+      errors::InvalidArgument("the input matrix dimension size should greater "
+                              "than or equal to 2."));
+  PADDLE_ENFORCE_EQ(
+      input_dim[input_dim_size - 1],
+      input_dim[input_dim_size - 2],
+      errors::InvalidArgument("the input matrix should be square matrix."));
+  auto rank = input_dim[input_dim_size - 1];  // square matrix length
+  SlogDeterminantV2Functor<T, Context>()(
+      dev_ctx, x, rank, batch_count, sign, logdet);
+  VLOG(3) << "sign dim:" << sign->dims();
 }
 
 }  // namespace phi

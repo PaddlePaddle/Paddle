@@ -91,6 +91,8 @@ std::vector<std::string> GatherItersToTensorProducer(
 
 bool is_zero(Expr v);
 
+Expr NormalizeUpperBound(Expr upper_bound, bool minus_one = true);
+
 bool MathEqual(const Expr &a, const Expr &b);
 
 //! helper function to get a ir::Select node.

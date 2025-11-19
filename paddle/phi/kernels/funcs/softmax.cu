@@ -140,12 +140,12 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
 }
 
 template class SoftmaxCUDNNFunctor<float, phi::GPUContext>;
-template class SoftmaxCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<phi::float16, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<float, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<phi::float16, phi::GPUContext>;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-template class SoftmaxCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<phi::bfloat16, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<phi::bfloat16, phi::GPUContext>;
 #endif
 
 // MIOPEN do not support double
@@ -154,14 +154,14 @@ template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
 
-template class SoftmaxFunctor<phi::GPUContext, phi::dtype::float16>;
-template class SoftmaxFunctor<phi::GPUContext, phi::dtype::bfloat16>;
+template class SoftmaxFunctor<phi::GPUContext, phi::float16>;
+template class SoftmaxFunctor<phi::GPUContext, phi::bfloat16>;
 template class SoftmaxFunctor<phi::GPUContext, float>;
 template class SoftmaxFunctor<phi::GPUContext, double>;
 template class SoftmaxGradFunctor<phi::GPUContext, float>;
 template class SoftmaxGradFunctor<phi::GPUContext, double>;
-template class SoftmaxGradFunctor<phi::GPUContext, phi::dtype::float16>;
-template class SoftmaxGradFunctor<phi::GPUContext, phi::dtype::bfloat16>;
+template class SoftmaxGradFunctor<phi::GPUContext, phi::float16>;
+template class SoftmaxGradFunctor<phi::GPUContext, phi::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -26,7 +26,6 @@ SGD_LR = 1.0
 
 
 class TestLookAhead(unittest.TestCase):
-
     def test_lookahead_static(self):
         paddle.enable_static()
         place = base.CPUPlace()

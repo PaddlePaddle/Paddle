@@ -242,8 +242,8 @@ void ElementWiseMultiplyCsrGradCPUKernel(const Context& dev_ctx,
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     SparseCsrTensor tmp_dx;
     AllocCsrPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    dout*y_conj
       SparseCsrTensor y_conj;
       ConjugateCsrValues<T, IntT, Context>(dev_ctx, y, &y_conj);
@@ -261,8 +261,8 @@ void ElementWiseMultiplyCsrGradCPUKernel(const Context& dev_ctx,
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     SparseCsrTensor tmp_dy;
     AllocCsrPtr<T, IntT>(dev_ctx, y, &tmp_dy);
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    dout*x_conj
       SparseCsrTensor x_conj;
       ConjugateCsrValues<T, IntT, Context>(dev_ctx, x, &x_conj);
@@ -289,8 +289,8 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     SparseCsrTensor tmp_dx;
     AllocCsrPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    dout/y_conj
       SparseCsrTensor y_conj;
       ConjugateCsrValues<T, IntT, Context>(dev_ctx, y, &y_conj);
@@ -312,8 +312,8 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, &tmp_dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.values(), tmp_dy.mutable_values());
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    -dout * (out / y)_conj = -dout * out_conj / y_conj
       SparseCsrTensor out_conj;
       ConjugateCsrValues<T, IntT, Context>(dev_ctx, out, &out_conj);
@@ -387,8 +387,8 @@ void ElementWiseMultiplyCooGradCPUKernel(const Context& dev_ctx,
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     SparseCooTensor tmp_dx;
     AllocCooPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    dout*y_conj
       SparseCooTensor y_conj;
       ConjugateCooValues<T, IntT, Context>(dev_ctx, y, &y_conj);
@@ -406,8 +406,8 @@ void ElementWiseMultiplyCooGradCPUKernel(const Context& dev_ctx,
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     SparseCooTensor tmp_dy;
     AllocCooPtr<T, IntT>(dev_ctx, y, &tmp_dy);
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    dout*x_conj
       SparseCooTensor x_conj;
       ConjugateCooValues<T, IntT, Context>(dev_ctx, x, &x_conj);
@@ -434,8 +434,8 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     SparseCooTensor tmp_dx;
     AllocCooPtr<T, IntT>(dev_ctx, x, &tmp_dx);
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    dout/y_conj
       SparseCooTensor y_conj;
       ConjugateCooValues<T, IntT, Context>(dev_ctx, y, &y_conj);
@@ -456,8 +456,8 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, &tmp_dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.values(), tmp_dy.mutable_values());
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       //    -dout * (out / y)_conj = -dout * out_conj / y_conj
       SparseCooTensor out_conj;
       ConjugateCooValues<T, IntT, Context>(dev_ctx, out, &out_conj);
@@ -555,8 +555,8 @@ PD_REGISTER_KERNEL(add_csr_csr_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -571,8 +571,8 @@ PD_REGISTER_KERNEL(subtract_csr_csr_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -587,8 +587,8 @@ PD_REGISTER_KERNEL(multiply_csr_csr_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -603,8 +603,8 @@ PD_REGISTER_KERNEL(divide_csr_csr_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_CSR);
@@ -620,8 +620,8 @@ PD_REGISTER_KERNEL(add_coo_coo_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -636,8 +636,8 @@ PD_REGISTER_KERNEL(subtract_coo_coo_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -652,8 +652,8 @@ PD_REGISTER_KERNEL(multiply_coo_coo_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -668,8 +668,8 @@ PD_REGISTER_KERNEL(divide_coo_coo_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -684,7 +684,7 @@ PD_REGISTER_KERNEL(add_coo_dense_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

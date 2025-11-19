@@ -569,9 +569,9 @@ def _linear(x, weight, bias=None, name=None):
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
-        assert (
-            len(x.shape) < 4
-        ), "X latitude is not supported greater than 3 now."
+        assert len(x.shape) < 4, (
+            "X latitude is not supported greater than 3 now."
+        )
 
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'linear'
@@ -900,14 +900,13 @@ def split(
 
     """
     assert isinstance(size, (list, tuple)), (
-        "The type of size for "
-        "paddle.distributed.split must be list or tuple."
+        "The type of size for paddle.distributed.split must be list or tuple."
     )
     assert len(size) == 2, (
-        "Number of elements in size of " "paddle.distributed.split must be two."
+        "Number of elements in size of paddle.distributed.split must be two."
     )
     assert isinstance(operation, str), (
-        "The type of operation for " "paddle.distributed.split must be str."
+        "The type of operation for paddle.distributed.split must be str."
     )
     supported_operations = [
         'linear',

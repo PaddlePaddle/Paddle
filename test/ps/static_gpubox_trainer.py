@@ -184,7 +184,6 @@ class Main:
         fetch_info = [
             f"Epoch {epoch} Var {var_name}" for var_name in self.metrics
         ]
-        fetch_vars = [var for _, var in self.metrics.items()]
         print_step = int(self.config.get("runner.print_interval"))
         self.exe.train_from_dataset(
             program=paddle.static.default_main_program(),

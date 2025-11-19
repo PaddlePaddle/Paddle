@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 
@@ -24,10 +23,10 @@ PD_REGISTER_KERNEL(matmul_grad,
                    phi::MatmulGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(matmul_double_grad,
                    GPU,
@@ -35,9 +34,9 @@ PD_REGISTER_KERNEL(matmul_double_grad,
                    phi::MatmulDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(matmul_triple_grad,
                    GPU,
@@ -45,9 +44,9 @@ PD_REGISTER_KERNEL(matmul_triple_grad,
                    phi::MatmulTripleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    GPU,
@@ -55,8 +54,8 @@ PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    phi::MatmulWithFlattenGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten_double_grad,
                    GPU,
@@ -64,8 +63,8 @@ PD_REGISTER_KERNEL(matmul_with_flatten_double_grad,
                    phi::MatmulWithFlattenDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(legacy_matmul_grad,
                    GPU,
@@ -73,4 +72,4 @@ PD_REGISTER_KERNEL(legacy_matmul_grad,
                    phi::LegacyMatmulGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

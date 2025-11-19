@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place, get_places, is_custom_device
 from utils import static_guard
 
 import paddle
@@ -26,8 +27,10 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         place = paddle.CPUPlace()
-        if use_gpu and base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if use_gpu and (
+            base.core.is_compiled_with_cuda() or is_custom_device()
+        ):
+            place = get_device_place()
         exe = base.Executor(place)
         with static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
@@ -38,8 +41,8 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
 
 def run_dygraph(x_np, op_str, use_gpu=True):
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     x = paddle.to_tensor(x_np)
     dygraph_result = getattr(paddle, op_str)(x)
@@ -49,8 +52,10 @@ def run_dygraph(x_np, op_str, use_gpu=True):
 def run_eager(x_np, op_str, use_gpu=True):
     with paddle.base.dygraph.guard():
         place = paddle.CPUPlace()
-        if use_gpu and base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if use_gpu and (
+            base.core.is_compiled_with_cuda() or is_custom_device()
+        ):
+            place = get_device_place()
 
         x = paddle.to_tensor(x_np)
         dygraph_result = getattr(paddle, op_str)(x)
@@ -241,7 +246,7 @@ def test_bf16(test_case, op_str):
     x_np = np.array([float('inf'), -float('inf'), 2.0, 3.0])
     result_np = getattr(np, op_str)(x_np)
 
-    place = paddle.CUDAPlace(0)
+    place = get_device_place()
     paddle.disable_static(place)
     x = paddle.to_tensor(x_np, dtype='bfloat16')
     dygraph_result = getattr(paddle, op_str)(x).numpy()
@@ -290,8 +295,8 @@ class TestCUDANormal(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda()
-    or not base.core.is_float16_supported(base.core.CUDAPlace(0)),
+    not (base.core.is_compiled_with_cuda() or is_custom_device())
+    or not base.core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestCUDAFP16(unittest.TestCase):
@@ -303,8 +308,8 @@ class TestCUDAFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda()
-    or not base.core.is_bfloat16_supported(base.core.CUDAPlace(0)),
+    not (base.core.is_compiled_with_cuda() or is_custom_device())
+    or not base.core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestCUDABFP16(unittest.TestCase):
@@ -316,7 +321,6 @@ class TestCUDABFP16(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
-
     def test_bad_input(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -387,6 +391,155 @@ for op in op_list:
     create_test_class(op, "float64", [3, 4, 0, 3, 4])
     create_test_class(op, "int32", [3, 4, 0])
     create_test_class(op, "int64", [3, 4, 0, 3, 4])
+
+
+class TestAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = get_places()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 2, self.shape).astype(self.dtype)
+
+    def test_isfinite_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        out1 = paddle.isfinite(x)
+        paddle_dygraph_out.append(out1)
+
+        out2 = paddle.isfinite(x=x)
+        paddle_dygraph_out.append(out2)
+
+        out3 = paddle.isfinite(input=x)
+        paddle_dygraph_out.append(out3)
+
+        out4 = x.isfinite()
+        paddle_dygraph_out.append(out4)
+
+        ref_out = np.isfinite(self.np_input)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_isfinite_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.isfinite(x)
+            out2 = paddle.isfinite(x=x)
+            out3 = paddle.isfinite(input=x)
+            out4 = x.isfinite()
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = np.isfinite(self.np_input)
+            for out in fetches:
+                self.assertTrue((out == ref_out.all()).all())
+
+    def test_isinf_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        out1 = paddle.isinf(x)
+        paddle_dygraph_out.append(out1)
+
+        out2 = paddle.isinf(x=x)
+        paddle_dygraph_out.append(out2)
+
+        out3 = paddle.isinf(input=x)
+        paddle_dygraph_out.append(out3)
+
+        out4 = x.isinf()
+        paddle_dygraph_out.append(out4)
+
+        ref_out = np.isinf(self.np_input)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_isinf_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.isinf(x)
+            out2 = paddle.isinf(x=x)
+            out3 = paddle.isinf(input=x)
+            out4 = x.isinf()
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = np.isinf(self.np_input)
+            for out in fetches:
+                self.assertTrue((out == ref_out.all()).all())
+
+    def test_isnan_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        out1 = paddle.isnan(x)
+        paddle_dygraph_out.append(out1)
+
+        out2 = paddle.isnan(x=x)
+        paddle_dygraph_out.append(out2)
+
+        out3 = paddle.isnan(input=x)
+        paddle_dygraph_out.append(out3)
+
+        out4 = x.isnan()
+        paddle_dygraph_out.append(out4)
+
+        ref_out = np.isnan(self.np_input)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_isnan_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.isnan(x)
+            out2 = paddle.isnan(x=x)
+            out3 = paddle.isnan(input=x)
+            out4 = x.isnan()
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = np.isnan(self.np_input)
+            for out in fetches:
+                self.assertTrue((out == ref_out.all()).all())
+
 
 if __name__ == '__main__':
     paddle.enable_static()

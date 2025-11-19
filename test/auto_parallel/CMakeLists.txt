@@ -5,6 +5,7 @@ add_subdirectory(spmd_rules)
 add_subdirectory(hybrid_strategy)
 add_subdirectory(custom_op)
 add_subdirectory(pir)
+add_subdirectory(end_to_end)
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
@@ -40,11 +41,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
   set_tests_properties(test_reshard_s_to_r
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 150)
-  if(NOT WITH_COVERAGE)
-    py_test_modules(test_pipeline_scheduler MODULES test_pipeline_scheduler)
-    set_tests_properties(test_pipeline_scheduler
-                         PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
-  endif()
   py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
   set_tests_properties(test_reshard_r_to_p
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
@@ -109,6 +105,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_dygraph_inplace)
   set_tests_properties(test_semi_auto_parallel_dygraph_inplace
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_semi_auto_parallel_for_flex_checkpoint MODULES
+                  test_semi_auto_parallel_for_flex_checkpoint)
+  set_tests_properties(test_semi_auto_parallel_for_flex_checkpoint
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
   set_tests_properties(test_dist_tensor_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
@@ -128,6 +128,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   set_tests_properties(test_dist_checkpoint_utils
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+
   py_test_modules(
     test_semi_auto_parallel_unshard_dtensor MODULES
     test_semi_auto_parallel_unshard_dtensor ENVS FLAGS_enable_pir_api=1)
@@ -147,6 +148,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
+  py_test_modules(test_semi_auto_parallel_moe_utils MODULES
+                  test_semi_auto_parallel_moe_utils)
+  set_tests_properties(test_semi_auto_parallel_moe_utils
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   # End of unittests WITH multi cards and WITHOUT timeout
 
   py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
@@ -173,6 +178,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api ENVS
                   FLAGS_enable_pir_api=1)
+  py_test_modules(test_placement_types MODULES test_placement_types)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
   py_test_modules(test_parallel_api MODULES test_parallel_api)
   py_test_modules(test_dtensor_to_local_api MODULES test_dtensor_to_local_api)
@@ -204,6 +210,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     FLAGS_embedding_deterministic=1
     NVIDIA_TF32_OVERRIDE=0)
   # End of unittests WITH single card WITHOUT timeout
+
+  py_test_modules(test_clear_param_storage_api MODULES
+                  test_clear_param_storage_api)
 
 endif()
 

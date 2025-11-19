@@ -214,7 +214,7 @@ PD_REGISTER_KERNEL(fused_bn_add_activation_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedBatchNormAddActGradKernel,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
 }

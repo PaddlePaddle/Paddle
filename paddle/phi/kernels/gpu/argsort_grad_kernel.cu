@@ -36,25 +36,24 @@ namespace cub = hipcub;
 namespace rocprim {
 namespace detail {
 template <>
-struct radix_key_codec_base<phi::dtype::float16>
-    : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+struct radix_key_codec_base<phi::float16>
+    : radix_key_codec_integral<phi::float16, uint16_t> {};
 
 template <>
-struct radix_key_codec_base<phi::dtype::bfloat16>
-    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
+struct radix_key_codec_base<phi::bfloat16>
+    : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 #else
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
-struct NumericTraits<phi::dtype::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+struct NumericTraits<phi::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::float16> {};
 
 template <>
-struct NumericTraits<phi::dtype::bfloat16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
-};
+struct NumericTraits<phi::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::bfloat16> {};
 }  // namespace cub
 #endif
 
@@ -65,7 +64,9 @@ static __global__ void FillFlattenGrad(const T* dO,
                                        const IndType* indices,
                                        int64_t size,
                                        T* dX) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = index; i < size; i += stride) {
     dX[indices[i]] = dO[i];
@@ -232,5 +233,7 @@ PD_REGISTER_KERNEL(argsort_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   uint8_t,
+                   int16_t,
+                   phi::float16,
+                   phi::bfloat16) {}

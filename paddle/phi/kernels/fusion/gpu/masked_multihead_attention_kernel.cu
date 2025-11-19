@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/kernels/fusion/gpu/masked_multihead_attention_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
@@ -1009,13 +1009,25 @@ void DispatchWithDtype(const Context &dev_ctx,
                        NormalVersion) {
   const auto &x_dims = x.dims();
   int bsz = x_dims[0];
-  int cache_bsz = cache_kv.dims()[1];
-  int max_seq_len = cache_kv.dims()[3];
-  int dim_head = cache_kv.dims()[4];
+  int64_t cache_bsz = cache_kv.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t max_seq_len = cache_kv.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t dim_head = cache_kv.dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int timestep = max_seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
 
-  int k_num_head = cache_kv.dims()[2];
+  int64_t k_num_head = cache_kv.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int v_num_head = k_num_head;
   // this num_head means query's head
   int num_head =
@@ -1225,7 +1237,7 @@ void MMHAKernel(const Context &dev_ctx,
   if (x.dtype() == phi::DataType::INT32) {
     switch (str2int(compute_dtype.c_str())) {
       case str2int("fp16"):
-        DispatchWithDtype<phi::dtype::float16, Context>(
+        DispatchWithDtype<phi::float16, Context>(
             dev_ctx,
             x,
             cache_kv,
@@ -1248,11 +1260,11 @@ void MMHAKernel(const Context &dev_ctx,
             out,
             cache_kv_out,
             beam_cache_offset_out,
-            typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
+            typename DispatchDtypeTrait<phi::float16>::FuncVersion{});
         break;
 #if CUDA_VERSION >= 11000
       case str2int("bf16"):
-        DispatchWithDtype<phi::dtype::bfloat16, Context>(
+        DispatchWithDtype<phi::bfloat16, Context>(
             dev_ctx,
             x,
             cache_kv,
@@ -1275,7 +1287,7 @@ void MMHAKernel(const Context &dev_ctx,
             out,
             cache_kv_out,
             beam_cache_offset_out,
-            typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
+            typename DispatchDtypeTrait<phi::bfloat16>::FuncVersion{});
         break;
 #endif
       case str2int("fp32"):
@@ -1349,8 +1361,8 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int32_t) {}
 #else
 PD_REGISTER_KERNEL(masked_multihead_attention,
@@ -1358,6 +1370,6 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int32_t) {}
 #endif

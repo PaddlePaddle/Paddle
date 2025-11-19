@@ -19,7 +19,7 @@ import unittest
 
 import cv2
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 from PIL import Image
 
 import paddle
@@ -310,7 +310,7 @@ class TestTransformsCV2(unittest.TestCase):
             transforms.ContrastTransform(-1.0)
 
         with self.assertRaises(ValueError):
-            transforms.SaturationTransform(-1.0),
+            transforms.SaturationTransform(-1.0)
 
         with self.assertRaises(ValueError):
             transforms.HueTransform(-1.0)
@@ -360,12 +360,12 @@ class TestTransformsCV2(unittest.TestCase):
             transforms.RandomAffine([-30, 60], translate=[2, 2])
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3])
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(
                 10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]
-            ),
+            )
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(
@@ -633,15 +633,15 @@ class TestTransformsTensor(TestTransformsCV2):
             transforms.RandomAffine([-30, 60], translate=[2, 2])
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[-2, -1]),
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[-2, -1])
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3])
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(
                 10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]
-            ),
+            )
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(
@@ -819,7 +819,7 @@ class TestFunctional(unittest.TestCase):
         np_img_gray = (np.random.rand(28, 28, 1) * 255).astype('uint8')
         tensor_img_gray = F.to_tensor(np_img_gray)
 
-        places = get_places(string_format=True)
+        places = get_devices()
 
         def test_adjust_brightness(np_img, tensor_img):
             result_cv2 = np.array(F.adjust_brightness(np_img, 1.2))
@@ -956,7 +956,7 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(np.array(pil_result), expected)
 
         np_data = np.random.rand(3, 28, 28).astype('float32')
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             tensor_img = paddle.to_tensor(np_data)
             expected_tensor = tensor_img.clone()

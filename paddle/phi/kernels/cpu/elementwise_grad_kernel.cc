@@ -180,7 +180,7 @@ PD_REGISTER_KERNEL(maximum_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(minimum_grad,
                    CPU,
@@ -190,7 +190,7 @@ PD_REGISTER_KERNEL(minimum_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(remainder_grad,
                    CPU,
@@ -200,7 +200,7 @@ PD_REGISTER_KERNEL(remainder_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(heaviside_grad,
                    CPU,
@@ -219,9 +219,9 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(copysign_grad,
                    CPU,
@@ -235,5 +235,5 @@ PD_REGISTER_KERNEL(copysign_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

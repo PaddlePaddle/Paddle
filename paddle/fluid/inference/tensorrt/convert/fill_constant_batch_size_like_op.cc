@@ -21,7 +21,6 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a fill_constant_batch_size_like op to tensorrt "
                "fill_constant_batch_size_like layer";
 
@@ -76,7 +75,6 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     ReplenishLayerAndOutput(
         layer, "fill_constant_batch_size_like", {output_name}, test_mode);
-#endif
   }
 };
 

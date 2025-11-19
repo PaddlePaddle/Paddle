@@ -1,0 +1,295 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import unittest
+
+import numpy as np
+from op_test import get_device_place, is_custom_device
+
+import paddle
+from paddle import base, core
+
+
+class TestRandLikeAPI(unittest.TestCase):
+    """
+    Test python API for rand_like function.
+    """
+
+    def setUp(self):
+        self.x_float16 = np.zeros((10, 12)).astype("float16")
+        self.x_float32 = np.zeros((10, 12)).astype("float32")
+        self.x_float64 = np.zeros((10, 12)).astype("float64")
+        self.dtype = ["float16", "float32", "float64"]
+
+    def test_static_api_basic(self):
+        """Test basic static API functionality"""
+        paddle.enable_static()
+        try:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_float32 = paddle.static.data(
+                    name="x_float32", shape=[10, 12], dtype="float32"
+                )
+
+                # Test with default parameters
+                out1 = paddle.rand_like(x_float32)
+
+                # Test with specified name
+                out2 = paddle.rand_like(x_float32, name="test_rand_like")
+
+                place = base.CPUPlace()
+                if core.is_compiled_with_cuda() or is_custom_device():
+                    place = get_device_place()
+
+                exe = paddle.static.Executor(place)
+                outs = exe.run(
+                    feed={'x_float32': self.x_float32}, fetch_list=[out1, out2]
+                )
+
+                for out in outs:
+                    self.assertEqual(out.shape, (10, 12))
+                    self.assertEqual(out.dtype, np.float32)
+                    self.assertTrue(((out >= 0.0) & (out <= 1.0)).all())
+        finally:
+            paddle.disable_static()
+
+    def test_static_api_with_dtype(self):
+        """Test static API with different dtype specifications"""
+        paddle.enable_static()
+        try:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_float32 = paddle.static.data(
+                    name="x_float32", shape=[10, 12], dtype="float32"
+                )
+
+                place = base.CPUPlace()
+                if core.is_compiled_with_cuda() or is_custom_device():
+                    place = get_device_place()
+
+                exe = paddle.static.Executor(place)
+
+                # Test with different dtypes
+                for dtype in self.dtype:
+                    if dtype == "float16" and not (
+                        core.is_compiled_with_cuda() or is_custom_device()
+                    ):
+                        continue
+
+                    out = paddle.rand_like(x_float32, dtype=dtype)
+                    result = exe.run(
+                        feed={'x_float32': self.x_float32}, fetch_list=[out]
+                    )[0]
+
+                    self.assertEqual(result.shape, (10, 12))
+                    self.assertEqual(result.dtype, np.dtype(dtype))
+                    self.assertTrue(((result >= 0.0) & (result <= 1.0)).all())
+        finally:
+            paddle.disable_static()
+
+    def test_static_api_with_device(self):
+        """Test static API with device specification"""
+        paddle.enable_static()
+        try:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_float32 = paddle.static.data(
+                    name="x_float32", shape=[10, 12], dtype="float32"
+                )
+
+                # Test with CPU device
+                out1 = paddle.rand_like(x_float32, device=base.CPUPlace())
+
+                place = base.CPUPlace()
+                exe = paddle.static.Executor(place)
+                result = exe.run(
+                    feed={'x_float32': self.x_float32}, fetch_list=[out1]
+                )[0]
+
+                self.assertEqual(result.shape, (10, 12))
+                self.assertTrue(((result >= 0.0) & (result <= 1.0)).all())
+
+                # Test with CUDA device if available
+                if core.is_compiled_with_cuda() or is_custom_device():
+                    out2 = paddle.rand_like(
+                        x_float32, device=get_device_place()
+                    )
+                    place_cuda = get_device_place()
+                    exe_cuda = paddle.static.Executor(place_cuda)
+                    result_cuda = exe_cuda.run(
+                        feed={'x_float32': self.x_float32}, fetch_list=[out2]
+                    )[0]
+
+                    self.assertEqual(result_cuda.shape, (10, 12))
+                    self.assertTrue(
+                        ((result_cuda >= 0.0) & (result_cuda <= 1.0)).all()
+                    )
+        finally:
+            paddle.disable_static()
+
+    def test_dygraph_api_basic(self):
+        """Test basic dygraph API functionality"""
+        for x_np in [self.x_float32, self.x_float64]:
+            x = paddle.to_tensor(x_np)
+
+            # Test with default parameters
+            out1 = paddle.rand_like(x)
+            self.assertEqual(out1.shape, x.shape)
+            self.assertEqual(out1.dtype, x.dtype)
+            self.assertTrue(
+                ((out1.numpy() >= 0.0) & (out1.numpy() <= 1.0)).all()
+            )
+
+            # Test with name parameter
+            out2 = paddle.rand_like(x, name="test_rand_like")
+            self.assertEqual(out2.shape, x.shape)
+            self.assertEqual(out2.dtype, x.dtype)
+            self.assertTrue(
+                ((out2.numpy() >= 0.0) & (out2.numpy() <= 1.0)).all()
+            )
+
+        # Test with float16 if CUDA is available
+        if core.is_compiled_with_cuda() or is_custom_device():
+            x = paddle.to_tensor(self.x_float16)
+            out = paddle.rand_like(x)
+            self.assertEqual(out.shape, x.shape)
+            self.assertEqual(out.dtype, x.dtype)
+            self.assertTrue(((out.numpy() >= 0.0) & (out.numpy() <= 1.0)).all())
+
+    def test_dygraph_api_with_dtype(self):
+        """Test dygraph API with different dtype specifications"""
+        x = paddle.to_tensor(self.x_float32)
+
+        for dtype in self.dtype:
+            if dtype == "float16" and not (
+                core.is_compiled_with_cuda() or is_custom_device()
+            ):
+                continue
+
+            out = paddle.rand_like(x, dtype=dtype)
+            self.assertEqual(out.shape, x.shape)
+            self.assertEqual(out.dtype, getattr(paddle, dtype))
+            self.assertTrue(((out.numpy() >= 0.0) & (out.numpy() <= 1.0)).all())
+
+    def test_dygraph_api_with_requires_grad(self):
+        """Test dygraph API with requires_grad parameter"""
+        x = paddle.to_tensor(self.x_float32)
+
+        # Test requires_grad=True
+        out1 = paddle.rand_like(x, requires_grad=True)
+        self.assertEqual(out1.shape, x.shape)
+        self.assertFalse(out1.stop_gradient)
+        self.assertTrue(((out1.numpy() >= 0.0) & (out1.numpy() <= 1.0)).all())
+
+        # Test requires_grad=False
+        out2 = paddle.rand_like(x, requires_grad=False)
+        self.assertEqual(out2.shape, x.shape)
+        self.assertTrue(out2.stop_gradient)
+        self.assertTrue(((out2.numpy() >= 0.0) & (out2.numpy() <= 1.0)).all())
+
+    def test_dygraph_api_with_device(self):
+        """Test dygraph API with device specification"""
+        x = paddle.to_tensor(self.x_float32)
+
+        # Test with CPU device
+        out1 = paddle.rand_like(x, device=paddle.CPUPlace())
+        self.assertEqual(out1.shape, x.shape)
+        self.assertEqual(out1.dtype, x.dtype)
+        self.assertTrue(out1.place.is_cpu_place())
+        self.assertTrue(((out1.numpy() >= 0.0) & (out1.numpy() <= 1.0)).all())
+
+        # Test with CUDA device if available
+        if core.is_compiled_with_cuda() or is_custom_device():
+            out2 = paddle.rand_like(x, device=get_device_place())
+            self.assertEqual(out2.shape, x.shape)
+            self.assertEqual(out2.dtype, x.dtype)
+            self.assertTrue(out2.place.is_gpu_place())
+            self.assertTrue(
+                ((out2.numpy() >= 0.0) & (out2.numpy() <= 1.0)).all()
+            )
+
+    def test_dygraph_api_combined_params(self):
+        """Test dygraph API with combined parameters"""
+        x = paddle.to_tensor(self.x_float32)
+
+        # Test dtype + requires_grad
+        out1 = paddle.rand_like(x, dtype="float64", requires_grad=True)
+        self.assertEqual(out1.shape, x.shape)
+        self.assertEqual(out1.dtype, paddle.float64)
+        self.assertFalse(out1.stop_gradient)
+        self.assertTrue(((out1.numpy() >= 0.0) & (out1.numpy() <= 1.0)).all())
+
+        # Test all parameters together
+        out2 = paddle.rand_like(
+            x, name="combined_test", dtype="float64", requires_grad=False
+        )
+        self.assertEqual(out2.shape, x.shape)
+        self.assertEqual(out2.dtype, paddle.float64)
+        self.assertTrue(out2.stop_gradient)
+        self.assertTrue(((out2.numpy() >= 0.0) & (out2.numpy() <= 1.0)).all())
+
+    def test_different_shapes(self):
+        """Test with different input shapes"""
+        shapes = [
+            [
+                1,
+            ],
+            [5, 3],
+            [2, 4, 6],
+            [1, 2, 3, 4],
+        ]
+
+        for shape in shapes:
+            x = paddle.zeros(shape, dtype='float32')
+            out = paddle.rand_like(x)
+            self.assertEqual(out.shape, shape)
+            self.assertTrue(((out.numpy() >= 0.0) & (out.numpy() <= 1.0)).all())
+
+    def test_default_dtype_behavior(self):
+        """Test default dtype behavior"""
+        # Test that output dtype matches input dtype when dtype=None
+        dtypes_to_test = ['float32', 'float64']
+        if core.is_compiled_with_cuda() or is_custom_device():
+            dtypes_to_test.append('float16')
+
+        for dtype_str in dtypes_to_test:
+            x = paddle.zeros((3, 4), dtype=dtype_str)
+            out = paddle.rand_like(x)  # dtype=None (default)
+            self.assertEqual(out.dtype, x.dtype)
+            self.assertTrue(((out.numpy() >= 0.0) & (out.numpy() <= 1.0)).all())
+
+    def test_device_consistency_default_behavior(self):
+        """Test that output tensor is on the same device as input tensor by default"""
+        # Test CPU case
+        x_cpu = paddle.to_tensor(self.x_float32, place=paddle.CPUPlace())
+        out_cpu = paddle.rand_like(x_cpu)  # No device specified
+
+        self.assertTrue(x_cpu.place.is_cpu_place())
+        self.assertTrue(out_cpu.place.is_cpu_place())
+        self.assertEqual(str(x_cpu.place), str(out_cpu.place))
+
+        # Test CUDA case if available
+        if core.is_compiled_with_cuda():
+            x_cuda = paddle.to_tensor(self.x_float32, place=get_device_place())
+            out_cuda = paddle.rand_like(x_cuda)  # No device specified
+
+            self.assertTrue(x_cuda.place.is_gpu_place())
+            self.assertTrue(out_cuda.place.is_gpu_place())
+            self.assertEqual(str(x_cuda.place), str(out_cuda.place))
+
+
+if __name__ == "__main__":
+    unittest.main()

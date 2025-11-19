@@ -103,4 +103,4 @@ PD_REGISTER_KERNEL(conv2d_transpose_xpu,
                    ALL_LAYOUT,
                    phi::fusion::Conv2dTransposeXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

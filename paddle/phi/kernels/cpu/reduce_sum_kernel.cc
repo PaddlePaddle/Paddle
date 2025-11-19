@@ -56,8 +56,8 @@ void SumRawKernel(const Context& dev_ctx,
     }
     return;
   }
-  if constexpr (std::is_same_v<T, phi::dtype::float16> ||
-                std::is_same_v<T, phi::dtype::bfloat16>) {
+  if constexpr (std::is_same_v<T, phi::float16> ||
+                std::is_same_v<T, phi::bfloat16>) {
     DenseTensor x_fp32 = phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
     DataType final_out_dtype = out_dtype;
     if (final_out_dtype == DataType::UNDEFINED) {
@@ -95,9 +95,6 @@ void SumRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 PD_REGISTER_KERNEL(sum_raw,
                    CPU,
                    ALL_LAYOUT,
@@ -105,14 +102,14 @@ PD_REGISTER_KERNEL(sum_raw,
                    bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int16_t,
                    int8_t,
                    uint8_t,
                    int,
                    int64_t,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

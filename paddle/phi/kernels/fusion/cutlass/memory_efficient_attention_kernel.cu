@@ -278,5 +278,5 @@ PD_REGISTER_KERNEL(
     ALL_LAYOUT,
     phi::fusion::cutlass_internal::MemoryEfficientAttentionForwardKernel,
     float,
-    phi::dtype::bfloat16,
-    phi::dtype::float16) {}
+    phi::bfloat16,
+    phi::float16) {}

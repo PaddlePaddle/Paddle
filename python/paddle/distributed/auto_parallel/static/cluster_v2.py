@@ -85,21 +85,21 @@ class DeviceMesh(core.DeviceMesh):
         self._shape = list(self._mesh.shape)
 
         self._device_ids = self._mesh.flatten().tolist()
-        assert all(
-            isinstance(p, int) for p in self._device_ids
-        ), "All elements of the mesh be integer"
-        assert (
-            min(self._device_ids) >= 0
-        ), 'All elements of the mesh must be >= 0.'
+        assert all(isinstance(p, int) for p in self._device_ids), (
+            "All elements of the mesh be integer"
+        )
+        assert min(self._device_ids) >= 0, (
+            'All elements of the mesh must be >= 0.'
+        )
         unique_device_ids = set(self._device_ids)
-        assert len(unique_device_ids) == len(
-            self._device_ids
-        ), 'All elements of the mesh must be unique.'
+        assert len(unique_device_ids) == len(self._device_ids), (
+            'All elements of the mesh must be unique.'
+        )
 
         if dim_names is not None:
-            assert len(dim_names) == len(
-                self._shape
-            ), "The length of dims_names must be same as the shape of the mesh."
+            assert len(dim_names) == len(self._shape), (
+                "The length of dims_names must be same as the shape of the mesh."
+            )
             self._dim_names = dim_names
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]

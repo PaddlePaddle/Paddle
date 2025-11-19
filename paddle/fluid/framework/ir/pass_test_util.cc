@@ -34,10 +34,10 @@ OpDesc* CreateOp(ProgramDesc* prog,
                  const std::string& op_type_name,
                  const std::vector<InOutVarNamePair>& inputs,
                  const std::vector<InOutVarNamePair>& outputs,
-                 bool use_mkldnn) {
+                 bool use_onednn) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(op_type_name);
-  op->SetAttr("use_mkldnn", use_mkldnn);
+  op->SetAttr("use_onednn", use_onednn);
 
   for (const auto& input : inputs) {
     op->SetInput(input.first, {input.second});

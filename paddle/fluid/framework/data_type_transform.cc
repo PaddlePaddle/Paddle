@@ -32,6 +32,78 @@ struct CastDataTypeFunctor {
   }
 };
 
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e5m2,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::float8_e5m2 in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e5m2,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::float8_e5m2 in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e4m3fn,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::float8_e4m3fn in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e4m3fn,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::float8_e4m3fn in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float16,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::float16 in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float16,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::float16 in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::bfloat16,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::bfloat16 in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::bfloat16,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::bfloat16 in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
+  }
+};
+
 #if defined(PADDLE_WITH_XPU)
 
 template <typename InType, typename OutType>

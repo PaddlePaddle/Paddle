@@ -28,8 +28,8 @@ namespace xblas = baidu::xpu::xblas;
 
 namespace phi {
 
-using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
-using XPUTypeBF16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
+using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
+using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
 
 enum XPUFCCalcType {
   FC_INT16 = 0,

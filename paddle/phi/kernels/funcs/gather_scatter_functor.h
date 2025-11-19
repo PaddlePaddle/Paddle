@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -26,10 +25,10 @@ namespace funcs {
       func, int) Instantiate_Template_Function_index_t(func, float)          \
       Instantiate_Template_Function_index_t(                                 \
           func, double) Instantiate_Template_Function_index_t(func, int64_t) \
-          Instantiate_Template_Function_index_t(func, phi::dtype::float16)   \
-              Instantiate_Template_Function_index_t(func,                    \
-                                                    phi::dtype::bfloat16)    \
-                  Instantiate_Template_Function_index_t(func, unsigned char)
+          Instantiate_Template_Function_index_t(func, phi::float16)          \
+              Instantiate_Template_Function_index_t(func, phi::bfloat16)     \
+                  Instantiate_Template_Function_index_t(func, unsigned char) \
+                      Instantiate_Template_Function_index_t(func, int16_t)
 
 #define Instantiate_Template_Function_index_t(func, tensor_t)           \
   template void func<tensor_t, int>(phi::DenseTensor input,             \
@@ -45,17 +44,19 @@ namespace funcs {
                                         bool include_self,              \
                                         const phi::DeviceContext& dev_ctx);
 
-#define Instantiate_Template_Function_With_Out(func)                        \
-  Instantiate_Template_Function_index_t_With_Out(func, int)                 \
-      Instantiate_Template_Function_index_t_With_Out(func, float)           \
-          Instantiate_Template_Function_index_t_With_Out(func, double)      \
-              Instantiate_Template_Function_index_t_With_Out(func, int64_t) \
-                  Instantiate_Template_Function_index_t_With_Out(           \
-                      func, phi::dtype::float16)                            \
-                      Instantiate_Template_Function_index_t_With_Out(       \
-                          func, phi::dtype::bfloat16)                       \
-                          Instantiate_Template_Function_index_t_With_Out(   \
-                              func, unsigned char)
+#define Instantiate_Template_Function_With_Out(func)                           \
+  Instantiate_Template_Function_index_t_With_Out(func, int)                    \
+      Instantiate_Template_Function_index_t_With_Out(func, float)              \
+          Instantiate_Template_Function_index_t_With_Out(func, double)         \
+              Instantiate_Template_Function_index_t_With_Out(func, int64_t)    \
+                  Instantiate_Template_Function_index_t_With_Out(func,         \
+                                                                 phi::float16) \
+                      Instantiate_Template_Function_index_t_With_Out(          \
+                          func, phi::bfloat16)                                 \
+                          Instantiate_Template_Function_index_t_With_Out(      \
+                              func, unsigned char)                             \
+                              Instantiate_Template_Function_index_t_With_Out(  \
+                                  func, int16_t)
 #define Instantiate_Template_Function_index_t_With_Out(func, tensor_t)  \
   template void func<tensor_t, int>(phi::DenseTensor input,             \
                                     int dim,                            \

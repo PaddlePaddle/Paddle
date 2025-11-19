@@ -35,9 +35,9 @@ def _get_op_input_var_names(op):
     Returns:
         input_var_names or None.
     """
-    assert isinstance(
-        op, (IrNode, Operator)
-    ), "The input op should be IrNode or Operator."
+    assert isinstance(op, (IrNode, Operator)), (
+        "The input op should be IrNode or Operator."
+    )
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in SUPPORT_QUANTIZATION_OP_DICT:
@@ -55,9 +55,9 @@ def _get_op_input_var_names(op):
 
 def _get_op_output_var_names(op):
     """ """
-    assert isinstance(
-        op, (IrNode, Operator)
-    ), "The input op should be IrNode or Operator."
+    assert isinstance(op, (IrNode, Operator)), (
+        "The input op should be IrNode or Operator."
+    )
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in SUPPORT_QUANTIZATION_OP_DICT:
@@ -75,9 +75,9 @@ def _get_op_output_var_names(op):
 
 def _get_input_name_index(op, input_var_name):
     """Get the input name and index of the var_name in the op"""
-    assert isinstance(
-        op, (IrNode, Operator)
-    ), "The input op should be IrNode or Operator."
+    assert isinstance(op, (IrNode, Operator)), (
+        "The input op should be IrNode or Operator."
+    )
     op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in SUPPORT_QUANTIZATION_OP_DICT:
         return None
@@ -93,9 +93,9 @@ def _get_input_name_index(op, input_var_name):
 
 def _get_output_name_index(op, output_var_name):
     """Get the output name and index of the var_name in the op"""
-    assert isinstance(
-        op, (IrNode, Operator)
-    ), "The input op should be IrNode or Operator."
+    assert isinstance(op, (IrNode, Operator)), (
+        "The input op should be IrNode or Operator."
+    )
     op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in SUPPORT_QUANTIZATION_OP_DICT:
         return None
@@ -127,9 +127,9 @@ def set_variable_data(scope, place, var_name, np_value):
     '''
     Set the value of var node by name, if the node exits,
     '''
-    assert isinstance(
-        np_value, np.ndarray
-    ), 'The type of value should be numpy array.'
+    assert isinstance(np_value, np.ndarray), (
+        'The type of value should be numpy array.'
+    )
     var_node = scope.find_var(var_name)
     if var_node is not None:
         tensor = var_node.get_tensor()

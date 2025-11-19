@@ -1,4 +1,8 @@
+if(WIN32)
+  remove_definitions(-DPADDLE_DLL_EXPORT)
+endif()
 add_subdirectory(details)
+add_subdirectory(ir)
 
 paddle_test(data_type_test SRCS data_type_test.cc)
 

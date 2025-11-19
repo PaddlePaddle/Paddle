@@ -50,7 +50,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                     5,
                     common::errors::InvalidArgument(
                         "The `shape` in InstanceNormOp is invalid: "
-                        "the size of X's dimensions must smaller than"
+                        "the size of X's dimensions must smaller than "
                         "or equal to 5. But received: "
                         "the size of X's dimensions is [%d]",
                         x_dims.size()));
@@ -246,7 +246,7 @@ PD_REGISTER_KERNEL(instance_norm,
                    ALL_LAYOUT,
                    phi::InstanceNormKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
@@ -259,8 +259,8 @@ PD_REGISTER_KERNEL(instance_norm,
                    phi::InstanceNormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -274,7 +274,7 @@ PD_REGISTER_KERNEL(instance_norm,
                    phi::InstanceNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);

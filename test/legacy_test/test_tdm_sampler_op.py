@@ -155,14 +155,16 @@ class TestTDMSamplerOp(OpTest):
                 if sampling_res_list[0] != 0:
                     assert len(set(sampling_res_list)) == len(
                         sampling_res_list
-                    ), f"len(set(sampling_res_list)): {len(set(sampling_res_list))}, len(sampling_res_list): {len(sampling_res_list)} , sample_res: {sampling_res}, label_res:{label_sampling_res}, mask_res: {mask_sampling_res}"
+                    ), (
+                        f"len(set(sampling_res_list)): {len(set(sampling_res_list))}, len(sampling_res_list): {len(sampling_res_list)} , sample_res: {sampling_res}, label_res:{label_sampling_res}, mask_res: {mask_sampling_res}"
+                    )
                 # check legal
                 layer_node = self.tree_layer[layer_idx]
                 layer_node.append(0)
                 for sample in sampling_res_list:
-                    assert (
-                        sample in layer_node
-                    ), f"sample: {sample}, layer_node: {layer_node} , sample_res: {sampling_res}, label_res: {label_sampling_res}, mask_res:{mask_sampling_res}"
+                    assert sample in layer_node, (
+                        f"sample: {sample}, layer_node: {layer_node} , sample_res: {sampling_res}, label_res: {label_sampling_res}, mask_res:{mask_sampling_res}"
+                    )
 
                 # check label
                 label_flag = 1
@@ -171,9 +173,9 @@ class TestTDMSamplerOp(OpTest):
                 assert label_sampling_res[0] == label_flag
                 # check mask
                 padding_index = np.where(sampling_res == 0)
-                assert not np.sum(
-                    mask_sampling_res[padding_index]
-                ), f"np.sum(mask_sampling_res[padding_index]): {np.sum(mask_sampling_res[padding_index])} "
+                assert not np.sum(mask_sampling_res[padding_index]), (
+                    f"np.sum(mask_sampling_res[padding_index]): {np.sum(mask_sampling_res[padding_index])} "
+                )
                 start_offset = end_offset
             # check travel legal
             assert (

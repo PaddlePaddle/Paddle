@@ -17,6 +17,9 @@ limitations under the License. */
 
 #if SOT_IS_SUPPORTED
 #include <Python.h>
+#if PY_3_14_PLUS
+#include <internal/pycore_interpframe.h>
+#endif
 
 #if PY_3_11_PLUS
 
@@ -32,7 +35,12 @@ limitations under the License. */
   { #property_name, (getter)PyInterpreterFrameProxy_property_##func_name, NULL, NULL, NULL }
 // clang-format on
 
-#if PY_3_13_PLUS
+#if PY_3_14_PLUS
+static PyObject *PyInterpreterFrameProxy_property_f_executable(
+    PyInterpreterFrameProxy *self, void *closure) {
+  return PyStackRef_AsPyObjectNew(self->frame->f_executable);
+}
+#elif PY_3_13_PLUS
 DECLARE_PROXY_PROPERTY(f_executable)
 #else
 DECLARE_PROXY_PROPERTY(f_code)

@@ -193,6 +193,8 @@ set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 set(trimmed_op_yaml_files
     ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml},${pir_op_fwd_sparse_yaml},${pir_op_bfd_sparse_yaml}
 )
+set(python_api_info_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/python_api_info.yaml")
 
 execute_process(
   COMMAND
@@ -200,7 +202,8 @@ execute_process(
     ${trimmed_op_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
     --namespaces "paddle,pybind" --python_c_def_h_file
     ${python_c_header_file_tmp} --python_c_def_cc_file
-    ${python_c_source_file_tmp})
+    ${python_c_source_file_tmp} --python_api_info_yaml_path
+    ${python_api_info_yaml_path})
 
 set(generated_files_python_c "${python_c_header_file}"
                              "${python_c_source_file}")

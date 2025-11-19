@@ -49,6 +49,7 @@ def is_read_opcode(opname):
         "LOAD_NAME",
         "LOAD_GLOBAL",
         "LOAD_CLOSURE",
+        "LOAD_FAST_BORROW",
     ]:
         return True
     if opname in (

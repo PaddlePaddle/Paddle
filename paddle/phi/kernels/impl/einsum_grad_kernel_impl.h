@@ -44,7 +44,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   std::vector<int64_t> resize_dims;
   std::vector<int64_t> recover_shape;
   std::vector<int64_t> t_shape = common::vectorize<int64_t>(t.dims());
-  for (int i = 0; i < op_label.size(); i++) {
+  for (size_t i = 0; i < op_label.size(); i++) {
     int c = op_label[i];
     if (label2type[c] == LabelType::Reduction) {
       repeat_times.push_back(label2shape[c]);
@@ -64,7 +64,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
                         "shape size: `%d`, but got label nums: `%d`",
                         t_shape.size(),
                         op_label.size()));
-  for (int i = 0; i < op_label.size(); i++) {
+  for (size_t i = 0; i < op_label.size(); i++) {
     int c = op_label[i];
     if (label2type[c] == LabelType::Contraction &&
         t_shape[i] != label2shape[c]) {

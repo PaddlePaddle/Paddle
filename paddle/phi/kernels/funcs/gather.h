@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <memory.h>
 
 #include <cstring>
@@ -38,6 +39,11 @@ void CPUGather(const phi::CPUContext& dev_ctx UNUSED,
                const DenseTensor& src,
                const DenseTensor& index,
                DenseTensor* output) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6) << "Do nothing for CPUGather since inputs has 0-size tensor.";
+    return;
+  }
+
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],

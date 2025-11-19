@@ -190,7 +190,21 @@ paddle::Tensor CallScalarFunction(const paddle::Tensor& self_tensor,
   } else if (op_type == "mul") {
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0 / other), 0.0, true);
+    auto MPType = (self_tensor.dtype() == phi::DataType::FLOAT16 ||
+                   self_tensor.dtype() == phi::DataType::BFLOAT16 ||
+                   self_tensor.dtype() == phi::DataType::FLOAT8_E5M2 ||
+                   self_tensor.dtype() == phi::DataType::FLOAT8_E4M3FN)
+                      ? phi::DataType::FLOAT32
+                      : self_tensor.dtype();
+    PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
+        MPType, "CallScalarFunction", ([&] {
+          ret = scale_ad_func(
+              self_tensor,
+              phi::Scalar(static_cast<data_t>(static_cast<data_t>(1.0) /
+                                              static_cast<data_t>(other))),
+              0.0,
+              true);
+        }));
   } else if (op_type == "pow") {
     ret = pow_ad_func(self_tensor, other);
   }
@@ -2190,8 +2204,16 @@ static PyObject* tensor__ne__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__ne__", 0);
+      paddle::experimental::Scalar value;
+
+      // return True if other_obj is unsupported type
+      try {
+        value = CastPyArg2Scalar(other_obj, "__ne__", 0);
+      } catch (const ::common::enforce::EnforceNotMet& e) {
+        Py_INCREF(Py_True);
+        return Py_True;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
@@ -2283,8 +2305,16 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__eq__", 0);
+      paddle::experimental::Scalar value;
+
+      // return False if other_obj is unsupported type
+      try {
+        value = CastPyArg2Scalar(other_obj, "__eq__", 0);
+      } catch (const ::common::enforce::EnforceNotMet& e) {
+        Py_INCREF(Py_False);
+        return Py_False;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =

@@ -36,10 +36,10 @@ template <typename T>
 class EigenMatrix {};
 
 template <>
-class EigenMatrix<phi::dtype::float16> {
+class EigenMatrix<phi::float16> {
  public:
   using MatrixType =
-      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
+      Eigen::Matrix<phi::float16, Eigen::Dynamic, Eigen::Dynamic>;
 };
 
 template <>
@@ -110,7 +110,9 @@ __global__ void GetDetFromLUComplex(const T* lu_data,
                                     int64_t n,
                                     int64_t batch_size,
                                     T* out_data) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < batch_size) {
     int offset_lu = idx * n * n;
     int offset_ipiv = idx * n;
@@ -254,8 +256,8 @@ PD_REGISTER_KERNEL(determinant,
                    GPU,
                    ALL_LAYOUT,
                    phi::DeterminantKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

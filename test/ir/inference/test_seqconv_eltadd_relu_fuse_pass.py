@@ -105,13 +105,17 @@ class TestSeqconvEltaddReluFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config()
-        yield config, ["im2sequence", "fusion_seqconv_eltadd_relu"], (
-            1e-5,
-            1e-5,
+        yield (
+            config,
+            ["im2sequence", "fusion_seqconv_eltadd_relu"],
+            (
+                1e-5,
+                1e-5,
+            ),
         )
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=["seqconv_eltadd_relu_fuse_pass"]
         )
 

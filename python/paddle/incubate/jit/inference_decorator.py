@@ -85,9 +85,9 @@ def get_tensor(run_time_args, arg_name):
     elif is_list_or_tuple(run_time_args):
         this_input_tensor_lists = []
         for ele in run_time_args:
-            assert isinstance(
-                ele, paddle.Tensor
-            ), f"the elements in {arg_name} must be paddle.Tensor"
+            assert isinstance(ele, paddle.Tensor), (
+                f"the elements in {arg_name} must be paddle.Tensor"
+            )
             this_input_tensor_lists.append(ele)
         return this_input_tensor_lists
     elif is_fixed_type(run_time_args):
@@ -393,7 +393,7 @@ class InferenceEngine:
         config.enable_new_ir(self.enable_new_ir)
 
         device_num = paddle.device.get_device()
-        if 'gpu' in device_num:
+        if device_num.startswith('gpu'):
             gpu_id = int(device_num.split(':')[1])
             config.enable_use_gpu(
                 self.memory_pool_init_size_mb,

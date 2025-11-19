@@ -208,7 +208,6 @@ class TestPolygammaOp(OpTest):
 
 
 class TestPolygammaOp_ZeroSize(TestPolygammaOp):
-
     def init_config(self):
         self.dtype = np.float64
         self.order = 1

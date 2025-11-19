@@ -18,34 +18,24 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/complex_kernel_impl.h"
 
-#include "paddle/phi/common/complex.h"
-
 PD_REGISTER_KERNEL(conj,
                    CPU,
                    ALL_LAYOUT,
                    phi::ConjKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::complex64,
+                   phi::complex128,
                    float,
                    double,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(real,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RealKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+PD_REGISTER_KERNEL(
+    real, CPU, ALL_LAYOUT, phi::RealKernel, phi::complex64, phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(imag,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ImagKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+PD_REGISTER_KERNEL(
+    imag, CPU, ALL_LAYOUT, phi::ImagKernel, phi::complex64, phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 

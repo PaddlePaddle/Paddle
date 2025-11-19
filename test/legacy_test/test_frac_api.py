@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 def ref_frac(x):
@@ -34,11 +34,7 @@ class TestFracAPI(unittest.TestCase):
     def setUp(self):
         self.set_dtype()
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -58,12 +54,11 @@ class TestFracAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_api_eager(self):
-        paddle.disable_static(self.place)
-        x_tensor = paddle.to_tensor(self.x_np)
-        out = paddle.frac(x_tensor)
-        out_ref = ref_frac(self.x_np)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard(self.place):
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = paddle.frac(x_tensor)
+            out_ref = ref_frac(self.x_np)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
 
 class TestFracInt32(TestFracAPI):
@@ -92,11 +87,7 @@ class TestFracError(unittest.TestCase):
 
     def setUp(self):
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype('int16')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_error(self):
         paddle.enable_static()
@@ -117,11 +108,7 @@ class TestFracAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
         self.set_dtype()
         self.x_np = np.random.random([0, 3]).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)

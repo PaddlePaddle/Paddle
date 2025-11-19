@@ -18,9 +18,6 @@
 #include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -119,6 +116,54 @@ void DivideGradKernel(const Context& dev_ctx,
 }
 
 template <typename T>
+void MixedPrecisionAddGradFunc(const GPUContext& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               const DenseTensor& dout,
+                               DenseTensor* dx,
+                               DenseTensor* dy,
+                               int axis = -1) {
+  const auto& x_dtype = x.dtype();
+  const auto& y_dtype = y.dtype();
+  bool no_broadcast =
+      (dx && dy && dx->dims() == dy->dims() && dx->dims() == dout.dims());
+  if (no_broadcast) {
+    // Dispatch to non-broadcast (elementwise) kernels
+    if (x_dtype == phi::DataType::FLOAT32 &&
+        y_dtype == phi::DataType::FLOAT16) {
+      ElementwiseMixedPrecisionAddGrad<phi::float16>(dev_ctx, dout, dx, dy);
+    } else if (x_dtype == phi::DataType::FLOAT32 &&
+               y_dtype == phi::DataType::BFLOAT16) {
+      ElementwiseMixedPrecisionAddGrad<phi::bfloat16>(dev_ctx, dout, dx, dy);
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported mixed precision combination for AddGrad non-broadcast "
+          "path: x_dtype=%s, y_dtype=%s",
+          phi::DataTypeToString(x_dtype),
+          phi::DataTypeToString(y_dtype)));
+    }
+  } else {
+    // Dispatch to broadcast-aware kernels
+    if (x_dtype == phi::DataType::FLOAT32 &&
+        y_dtype == phi::DataType::FLOAT16) {
+      DefaultMixedPrecisionAddGrad<phi::float16>(
+          dev_ctx, x, y, dout, dx, dy, axis);
+    } else if (x_dtype == phi::DataType::FLOAT32 &&
+               y_dtype == phi::DataType::BFLOAT16) {
+      DefaultMixedPrecisionAddGrad<phi::bfloat16>(
+          dev_ctx, x, y, dout, dx, dy, axis);
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported mixed precision combination for AddGrad broadcast path: "
+          "x_dtype=%s, y_dtype=%s",
+          phi::DataTypeToString(x_dtype),
+          phi::DataTypeToString(y_dtype)));
+    }
+  }
+}
+
+template <typename T>
 void AddGradFunc(const GPUContext& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
@@ -142,6 +187,14 @@ void AddGradKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* dx,
                    DenseTensor* dy) {
+#ifdef PADDLE_WITH_CUDA
+  if (x.dtype() == DataType::FLOAT32 &&
+      (y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16)) {
+    phi::MixedPrecisionAddGradImpl<float>(
+        dev_ctx, x, y, dout, axis, dx, dy, MixedPrecisionAddGradFunc<float>);
+    return;
+  }
+#endif
   phi::AddGradImpl<T>(dev_ctx, x, y, dout, axis, dx, dy, AddGradFunc<T>);
 }
 
@@ -364,8 +417,8 @@ PD_REGISTER_KERNEL(fmax_grad,
                    float,
                    double,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmin_grad,
@@ -375,8 +428,8 @@ PD_REGISTER_KERNEL(fmin_grad,
                    float,
                    double,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_grad,
@@ -387,8 +440,8 @@ PD_REGISTER_KERNEL(maximum_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(minimum_grad,
                    GPU,
@@ -398,8 +451,8 @@ PD_REGISTER_KERNEL(minimum_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(remainder_grad,
                    GPU,
@@ -409,8 +462,8 @@ PD_REGISTER_KERNEL(remainder_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(heaviside_grad,
                    GPU,
@@ -419,8 +472,8 @@ PD_REGISTER_KERNEL(heaviside_grad,
                    float,
                    double,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(elementwise_pow_grad,
@@ -430,11 +483,11 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    float,
                    double,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(add_grad,
                    GPU,
@@ -444,10 +497,10 @@ PD_REGISTER_KERNEL(add_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(add_double_grad,
                    GPU,
@@ -457,10 +510,10 @@ PD_REGISTER_KERNEL(add_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(add_triple_grad,
                    GPU,
@@ -470,18 +523,18 @@ PD_REGISTER_KERNEL(add_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(divide_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DivideGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    double,
                    int8_t,
                    uint8_t,
@@ -489,64 +542,64 @@ PD_REGISTER_KERNEL(divide_grad,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(divide_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DivideDoubleGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    double,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(multiply_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultiplyGradKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    double,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(multiply_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultiplyDoubleGradKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    double,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(multiply_triple_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultiplyTripleGradKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    double,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(subtract_grad,
                    GPU,
@@ -556,10 +609,10 @@ PD_REGISTER_KERNEL(subtract_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(subtract_double_grad,
                    GPU,
@@ -569,10 +622,10 @@ PD_REGISTER_KERNEL(subtract_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(copysign_grad,
                    GPU,
@@ -586,5 +639,5 @@ PD_REGISTER_KERNEL(copysign_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

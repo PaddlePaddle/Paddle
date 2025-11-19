@@ -22,5 +22,5 @@ PD_REGISTER_KERNEL(inverse_grad,
                    phi::InverseGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

@@ -92,8 +92,8 @@ void TransferLayoutElimPass::PutTransferlayoutAfterOp(
   PADDLE_ENFORCE_EQ(
       var2_shape.size() >= 4L,
       true,
-      common::errors::InvalidArgument("var2_shape.size is too small"
-                                      "expected no small than 4L"
+      common::errors::InvalidArgument("var2_shape.size is too small, "
+                                      "expected no small than 4L, "
                                       "received %d",
                                       var2_shape.size()));
   auto new_var2_shape = var2_shape;

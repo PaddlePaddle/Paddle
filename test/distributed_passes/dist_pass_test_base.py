@@ -153,9 +153,9 @@ class DistPassTestBase(unittest.TestCase):
         with paddle.static.scope_guard(scope):
             exe.run(startup_prog)
             for batch_id, input_data in enumerate(reader()):
-                assert len(input_data) == len(
-                    inputs
-                ), f"{len(input_data)} vs {len(inputs)}"
+                assert len(input_data) == len(inputs), (
+                    f"{len(input_data)} vs {len(inputs)}"
+                )
                 feed = dict(zip(inputs, input_data))
                 fetch_values = exe.run(main_prog, feed=feed, fetch_list=outputs)
                 if paddle.distributed.get_rank() == 0:

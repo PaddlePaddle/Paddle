@@ -18,6 +18,7 @@ Usage:
     python check_op_kernel_same_dtypes.py > all_kernels.txt
     python check_op_kernel_same_dtypes.py OP_KERNEL_DTYPE_DEV.spec OP_KERNEL_DTYPE_PR.spec > is_valid
 """
+
 import collections
 import re
 import sys

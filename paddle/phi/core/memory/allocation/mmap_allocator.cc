@@ -343,13 +343,13 @@ void MemoryMapFdSet::Remove(const std::string &ipc_name) {
 }
 
 void MemoryMapFdSet::Clear() {
-  VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: set size - "
+  VLOG(7) << "PID: " << getpid() << ", MemoryMapFdSet: set size - "
           << fd_set_.size();
   std::lock_guard<std::mutex> guard(mtx_);
   for (auto const &fd : fd_set_) {
     int rlt = shm_unlink(fd.c_str());
     if (rlt == 0) {
-      VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: clear " << fd;
+      VLOG(7) << "PID: " << getpid() << ", MemoryMapFdSet: clear " << fd;
     }
   }
   fd_set_.clear();

@@ -165,4 +165,4 @@ PD_REGISTER_KERNEL(merged_momentum,
                    ALL_LAYOUT,
                    phi::MergedMomentumKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

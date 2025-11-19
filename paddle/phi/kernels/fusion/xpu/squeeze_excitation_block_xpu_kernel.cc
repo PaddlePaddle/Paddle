@@ -117,7 +117,7 @@ void SqueezeExcitationKernel(const Context& dev_ctx,
                              DenseTensor* out) {
   if (x.dtype() == DataType::FLOAT16 && filter.dtype() == DataType::INT16) {
     // float16 kernel
-    SQUEEZE_EXCITATION_KERNEL_IMPL(phi::dtype::float16, int16_t);
+    SQUEEZE_EXCITATION_KERNEL_IMPL(phi::float16, int16_t);
   } else if (x.dtype() == DataType::FLOAT32 &&
              filter.dtype() == DataType::INT16) {
     // float32 kernel
@@ -137,5 +137,5 @@ PD_REGISTER_KERNEL(squeeze_excitation_block,
                    XPU,
                    ALL_LAYOUT,
                    phi::fusion::SqueezeExcitationKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float) {}

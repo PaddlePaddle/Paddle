@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -39,7 +38,7 @@ template <typename T>
 struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
-                     std::is_same<T, phi::dtype::bfloat16>::value>> {
+                     std::is_same<T, phi::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
 };
 
@@ -47,14 +46,16 @@ template <typename T>
 struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
-                     !std::is_same<T, phi::dtype::bfloat16>::value>> {
+                     !std::is_same<T, phi::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
 };
 
 template <typename T, typename Context>
-void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+PADDLE_API void AbsKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          DenseTensor* out) {
   dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
@@ -73,9 +74,9 @@ PD_REGISTER_KERNEL(abs,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }

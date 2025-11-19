@@ -43,7 +43,10 @@ void TDMSamplerInner(const Context &dev_ctx,
                      phi::DenseTensor *label,
                      phi::DenseTensor *mask) {
   // get dimension
-  int input_ids_num = input_tensor.numel();
+  int64_t input_ids_num = input_tensor.numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   VLOG(3) << "TDM: input ids nums: " << input_ids_num;
   auto layer_nums = neg_samples_num_list.size();
   VLOG(3) << "TDM: tree layer nums: " << layer_nums;
@@ -218,7 +221,8 @@ void TDMSamplerInner(const Context &dev_ctx,
             layer_data[layer_offset[layer_idx] + sample_res],
             node_id_max,
             common::errors::InvalidArgument(
-                "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
+                "Negative node id of OP(fluid.layers.tdm_sampler) at layer "
+                "%ld, "
                 "expected >= %ld and <= %ld, but got %ld. Please check input "
                 "tdm tree structure and tdm travel info.",
                 layer_idx,

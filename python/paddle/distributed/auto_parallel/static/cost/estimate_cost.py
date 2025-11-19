@@ -37,9 +37,7 @@ class CostEstimator:
         self._loop_count = loop_count
         self._global_cost = Cost()
         self._local_cost_mapping = {}
-        self._detailed_cost = (
-            OrderedDict()
-        )  # {`op_id`: {"reshard": [], "dist_op": [], "local_cost": local_cost}}}
+        self._detailed_cost = OrderedDict()  # {`op_id`: {"reshard": [], "dist_op": [], "local_cost": local_cost}}}
         self._bubble_time_mapping = {}
         self._ordered_ops = []
         self.max_memories = {}
@@ -286,9 +284,7 @@ class CostEstimator:
 
         memories = {}
         self.max_memories = {}
-        var_info = (
-            {}
-        )  # var_name: [[process_mesh, dims_mapping], [id]], [[process_mesh, dims_mapping], [id]]}
+        var_info = {}  # var_name: [[process_mesh, dims_mapping], [id]], [[process_mesh, dims_mapping], [id]]}
 
         for block in self.program.blocks:
             for op in block.ops:

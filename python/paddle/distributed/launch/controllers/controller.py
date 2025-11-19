@@ -62,9 +62,9 @@ class ControllerBase:
         self.join_server = None
 
     def deploy_pod(self):
-        assert (
-            len(self.pod.containers) + len(self.pod.init_containers) > 0
-        ), "No container in the pod"
+        assert len(self.pod.containers) + len(self.pod.init_containers) > 0, (
+            "No container in the pod"
+        )
 
         self.ctx.logger.info(f"Run {self.pod}")
         if len(self.pod.init_containers) > 0:
@@ -309,9 +309,9 @@ class Controller(ControllerBase):
             self.ctx.logger.error(f"save log failed because {e}")
 
     def save_pod_env(self):
-        assert (
-            len(self.pod.containers) + len(self.pod.init_containers) > 0
-        ), "No container in the pod"
+        assert len(self.pod.containers) + len(self.pod.init_containers) > 0, (
+            "No container in the pod"
+        )
 
         if not self.ctx.args.log_dir:
             return

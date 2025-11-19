@@ -18,7 +18,6 @@ import pir
 
 
 class InsertReshapeBeforeYieldPass(access_topo_drr.DrrPass):
-
     def source_pattern(self, o, t):
         o.yield_op = o.ap_native_op("cf.yield")
         o.yield_op([t.output], [])

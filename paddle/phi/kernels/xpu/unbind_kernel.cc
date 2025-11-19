@@ -45,4 +45,4 @@ void UnbindKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    unbind, XPU, ALL_LAYOUT, phi::UnbindKernel, float, phi::dtype::bfloat16) {}
+    unbind, XPU, ALL_LAYOUT, phi::UnbindKernel, float, phi::bfloat16) {}

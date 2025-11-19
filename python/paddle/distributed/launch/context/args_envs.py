@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import warnings
 from argparse import REMAINDER, ArgumentParser
 
 from paddle.utils import strtobool
@@ -47,8 +48,14 @@ env_args_mapping = {
 
 
 def fetch_envs():
-    os.environ.pop('http_proxy', None)
-    os.environ.pop('https_proxy', None)
+    for proxy_key in ("http_proxy", "https_proxy"):
+        if os.environ.get(proxy_key) is not None:
+            os.environ[f"{proxy_key}_original"] = os.environ.pop(proxy_key)
+            warnings.warn(
+                f"Unset '{proxy_key}' to ensure stable NCCL communication in distributed training "
+                f"(backed up as '{proxy_key}_original').",
+                category=UserWarning,
+            )
 
     return os.environ.copy()
 

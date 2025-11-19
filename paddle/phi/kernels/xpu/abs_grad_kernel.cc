@@ -41,6 +41,6 @@ void AbsGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    abs_grad, XPU, ALL_LAYOUT, phi::AbsGradKernel, float, phi::dtype::float16) {
+    abs_grad, XPU, ALL_LAYOUT, phi::AbsGradKernel, float, phi::float16) {
   kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }

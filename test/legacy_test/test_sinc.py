@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16, convert_uint16_to_float, get_places
+from op_test import (
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -190,15 +196,15 @@ class TestSincInplaceAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestSincAPIFP16(unittest.TestCase):
     def setUp(self):
         self.shapes = [[6], [16, 64]]
         self.dtype = 'float16'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_dtype(self):
         def run_static(place):
@@ -266,15 +272,15 @@ class TestSincAPIFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSincAPIBF16(unittest.TestCase):
     def setUp(self):
         self.shapes = [[6], [16, 64]]
         self.dtype = 'uint16'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_dtype(self):
         def run(place):

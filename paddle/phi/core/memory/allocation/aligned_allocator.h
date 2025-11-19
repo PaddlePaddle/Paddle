@@ -22,7 +22,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class AlignedAllocator : public Allocator {
+class PADDLE_API AlignedAllocator : public Allocator {
  public:
   AlignedAllocator(std::shared_ptr<Allocator> underlying_allocator,
                    size_t alignment);

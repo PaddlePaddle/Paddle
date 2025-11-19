@@ -40,7 +40,7 @@ class XPUTestXPUTransposeOp(XPUOpTestWrapper):
             self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
             self.attrs = {
                 'axis': list(self.axis),
-                'use_mkldnn': False,
+                'use_onednn': False,
                 'use_xpu': True,
             }
             self.outputs = {
@@ -156,7 +156,7 @@ if 'complex64' in support_types:
             }
             self.attrs = {
                 'axis': list(self.axis),
-                'use_mkldnn': False,
+                'use_onednn': False,
                 'use_xpu': True,
             }
             self.outputs = {

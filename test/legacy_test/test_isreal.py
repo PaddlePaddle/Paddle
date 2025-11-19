@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base, static
@@ -44,8 +44,8 @@ COMPLEX_TYPE = ['complex64', 'complex128']
 
 def run_dygraph(data, type, use_gpu=False):
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     data = data.astype(type)
     x = paddle.to_tensor(data)
@@ -57,8 +57,8 @@ def run_static(data, type, use_gpu=False):
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     exe = base.Executor(place)
     with static.program_guard(main_program, startup_program):
         data = data.astype(type)

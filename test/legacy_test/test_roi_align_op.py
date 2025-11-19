@@ -221,14 +221,23 @@ class TestROIAlignOp(OpTest):
 
     def setUp(self):
         self.op_type = "roi_align"
-        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale, sampling_ratio, aligned: paddle.vision.ops.roi_align(
-            x,
+        self.python_api = (
+            lambda x,
             boxes,
             boxes_num,
-            (pooled_height, pooled_width),
+            pooled_height,
+            pooled_width,
             spatial_scale,
             sampling_ratio,
-            aligned,
+            aligned: paddle.vision.ops.roi_align(
+                x,
+                boxes,
+                boxes_num,
+                (pooled_height, pooled_width),
+                spatial_scale,
+                sampling_ratio,
+                aligned,
+            )
         )
         self.set_data()
 

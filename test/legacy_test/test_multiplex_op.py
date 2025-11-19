@@ -95,7 +95,6 @@ class TestMultiplexOp_complex128(TestMultiplexOp):
 
 
 class TestMultiplexOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):

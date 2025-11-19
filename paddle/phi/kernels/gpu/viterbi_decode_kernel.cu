@@ -105,15 +105,15 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
                                  const T* in,
                                  IndType* out_idx,
                                  T* out) {
-  typedef cub::BlockReduce<cub::KeyValuePair<int, T>, BlockDim> BlockReduce;
+  typedef cub::BlockReduce<cub::KeyValuePair<int64_t, T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   cub::ArgMax reducer;
   T init = (std::numeric_limits<T>::lowest)();  // for windows compile
-  for (int idx = blockIdx.x; idx < height; idx += gridDim.x) {
-    cub::KeyValuePair<int, T> kv_pair = {-1, init};
-    int h = idx / post_size;
-    int w = idx % post_size;
-    for (int k = threadIdx.x; k < width; k += blockDim.x) {
+  for (int64_t idx = blockIdx.x; idx < height; idx += gridDim.x) {
+    cub::KeyValuePair<int64_t, T> kv_pair = {-1, init};
+    int64_t h = idx / post_size;
+    int64_t w = idx % post_size;
+    for (int64_t k = threadIdx.x; k < width; k += blockDim.x) {
       kv_pair =
           reducer({k, in[h * width * post_size + k * post_size + w]}, kv_pair);
     }
@@ -128,7 +128,9 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
 }
 
 __global__ void ARangeKernel(int64_t* data, int num, int64_t scale) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int start = idx; idx < num; idx += gridDim.x) {
     data[idx] = idx * scale;
   }

@@ -47,7 +47,7 @@ void SumGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::dtype::bfloat16) {
+    sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
   kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
 }

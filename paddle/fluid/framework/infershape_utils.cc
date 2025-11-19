@@ -795,6 +795,11 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
               break;
             case phi::AttributeType::FLOAT64:
+              if (AttrTypeID(attr) == framework::proto::AttrType::FLOAT) {
+                const auto val = PADDLE_GET_CONST(float, attr);
+                infer_meta_context.EmplaceBackAttr(static_cast<double>(val));
+                break;
+              }
               infer_meta_context.EmplaceBackAttr(
                   PADDLE_GET_CONST(double, attr));
               break;

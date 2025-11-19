@@ -27,9 +27,6 @@
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
-
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 // clang-format off
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"

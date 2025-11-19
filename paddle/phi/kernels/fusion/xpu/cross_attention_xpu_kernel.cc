@@ -14,7 +14,6 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
@@ -67,9 +66,18 @@ void CrossAttentionXPUKernelImpl(
     fc_bias_data.emplace_back(fc_bias[i]->data<float>());
   }
 
-  int batch = input_q.dims()[0];
-  int max_q_len = input_q.dims()[1];
-  int max_kv_len = input_kv.dims()[1];
+  int64_t batch = input_q.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t max_q_len = input_q.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
+  int64_t max_kv_len = input_kv.dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int max_seq_len = std::max(max_q_len, max_kv_len);
   int qkv_shape = 0;  // B x L x H x D
   int hidden_dim = head_num * head_dim;
@@ -214,18 +222,17 @@ void CrossAttentionXPUKernel(
       input_kv.dtype() == DataType::FLOAT16 && qkv_dtype == DataType::FLOAT16) {
     // float16 kernel
     CROSS_ATTENTION_XPU_KERNEL_IMPL(
-        phi::dtype::float16, int16_t, phi::dtype::float16, int16_t);
+        phi::float16, int16_t, phi::float16, int16_t);
     return;
   }
   if (input_q.dtype() == DataType::FLOAT32 &&
       input_kv.dtype() == DataType::FLOAT32 && qkv_dtype == DataType::FLOAT32) {
     // float32 kernel
-    CROSS_ATTENTION_XPU_KERNEL_IMPL(
-        float, int16_t, phi::dtype::float16, int16_t);
+    CROSS_ATTENTION_XPU_KERNEL_IMPL(float, int16_t, phi::float16, int16_t);
     return;
   }
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
+      "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s "
       "and qkv_dtype is %s.",
       DataTypeToString(input_q.dtype()),
       DataTypeToString(input_kv.dtype()),
@@ -240,4 +247,4 @@ PD_REGISTER_KERNEL(cross_attention_xpu,
                    ALL_LAYOUT,
                    phi::fusion::CrossAttentionXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

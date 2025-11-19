@@ -25,10 +25,12 @@ from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.device.cuda import get_device_capability
-
-g_enable_math = None
-g_enable_flash = None
-g_enable_mem_efficient = None
+from paddle.nn.attention.sdpa import (
+    SDPBackend,
+    _get_backend_priority,
+    _get_enabled_backends,
+    sdpa_kernel,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -150,20 +152,22 @@ def sdp_kernel(
     With the sdp_kernel context manager, different algorithm implementations can
     be selected for scaled_dot_product_attention.
     """
-    global g_enable_math, g_enable_flash, g_enable_mem_efficient
-    original_enable_math = g_enable_math
-    original_enable_flash = g_enable_math
-    original_enable_mem_efficient = g_enable_mem_efficient
+    backend_list = []
+    if enable_flash:
+        backend_list.append(SDPBackend.FLASH_ATTENTION)
+    if enable_mem_efficient:
+        backend_list.append(SDPBackend.EFFICIENT_ATTENTION)
+    if enable_math:
+        backend_list.append(SDPBackend.MATH)
 
-    g_enable_math = enable_math
-    g_enable_flash = enable_flash
-    g_enable_mem_efficient = enable_mem_efficient
-    try:
-        yield
-    finally:
-        g_enable_math = original_enable_math
-        g_enable_flash = original_enable_flash
-        g_enable_mem_efficient = original_enable_mem_efficient
+    if not backend_list:
+        raise ValueError("At least one backend must be enabled")
+
+    with sdpa_kernel(backend_list) as context:
+        try:
+            yield context
+        finally:
+            pass
 
 
 # special for XPU device
@@ -260,7 +264,6 @@ def _math_attention(
 
 
 def _select_sdp_cuda(head_dim: int) -> str:
-
     if head_dim <= 256:
         return "flash_attn"
     else:
@@ -284,30 +287,24 @@ def _select_sdp(head_dim: int) -> str:
     if "metax_gpu" in place:
         return "flash_attn"
 
-    # not use sdp_kernel
-    if g_enable_flash is None:
-        if "gpu" not in place:
-            return "math"
-        else:
-            return _select_sdp_cuda(head_dim)
-
-    if (
-        g_enable_math is False
-        and g_enable_flash is False
-        and g_enable_mem_efficient is False
-    ):
+    enabled_backends = _get_enabled_backends()
+    if not enabled_backends:
         raise AssertionError(
             "No available backend for scaled_dot_product_attention was found."
         )
 
-    if g_enable_math is True:
-        if g_enable_flash is False and g_enable_mem_efficient is False:
+    enable_math = SDPBackend.MATH in enabled_backends
+    enable_flash = SDPBackend.FLASH_ATTENTION in enabled_backends
+    enable_mem_efficient = SDPBackend.EFFICIENT_ATTENTION in enabled_backends
+
+    if enable_math is True:
+        if enable_flash is False and enable_mem_efficient is False:
             return "math"
         if "gpu" not in place:
             return "math"
-    if g_enable_flash is True and g_enable_mem_efficient is True:
+    if enable_flash is True and enable_mem_efficient is True:
         return _select_sdp_cuda(head_dim)
-    if g_enable_flash is True:
+    if enable_flash is True:
         return "flash_attn"
     return "mem_efficient"
 
@@ -326,44 +323,25 @@ def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
     if "metax_gpu" in place:
         return "flash_attn"
 
-    # not use sdp_kernel
-    if (
-        g_enable_flash is None
-        and g_enable_math is None
-        and g_enable_mem_efficient is None
-    ):
-        # test flash attn usage
-        use_flash = can_use_flash_attn(
-            query, key, attn_mask, dropout, is_causal
-        )
-        use_efficient = can_use_efficient(query)
-        use_math = True
-        if use_flash:
-            return "flash_attn"
-        elif use_efficient:
-            return "mem_efficient"
-        elif use_math:
+    enabled_backends = _get_enabled_backends()
+    priority_order = _get_backend_priority()
+
+    for backend in priority_order:
+        if backend not in enabled_backends:
+            continue
+
+        if backend == SDPBackend.FLASH_ATTENTION:
+            if can_use_flash_attn(query, key, attn_mask, dropout, is_causal):
+                return "flash_attn"
+        elif backend == SDPBackend.EFFICIENT_ATTENTION:
+            if can_use_efficient(query):
+                return "mem_efficient"
+        elif backend == SDPBackend.MATH:
             return "math"
 
-    if (
-        g_enable_math is False
-        and g_enable_flash is False
-        and g_enable_mem_efficient is False
-    ):
-        raise AssertionError(
-            "No available backend for scaled_dot_product_attention was found."
-        )
-
-    if g_enable_math is True:
-        if g_enable_flash is False and g_enable_mem_efficient is False:
-            return "math"
-        if "gpu" not in place:
-            return "math"
-    if g_enable_flash is True and g_enable_mem_efficient is True:
-        return _select_sdp_cuda(query.shape[-1])
-    if g_enable_flash is True:
-        return "flash_attn"
-    return "mem_efficient"
+    raise RuntimeError(
+        "No available backend for scaled_dot_product_attention was found."
+    )
 
 
 @overload
@@ -509,30 +487,30 @@ def flash_attention(
             fa_version = paddle.base.framework.get_flags(
                 ["FLAGS_flash_attn_version"]
             )["FLAGS_flash_attn_version"]
-        assert (
-            in_dynamic_or_pir_mode() or fa_version == 2
-        ), "flash attention 3 only support dynamic or pir mode"
-        assert (
-            dropout == 0.0 or fa_version == 2
-        ), "flash attention 3 does not support dropout"
-        assert (
-            not return_softmax or fa_version == 2
-        ), "flash attention 3 does not support return softmax"
-        assert (
-            fixed_seed_offset is None or fa_version == 2
-        ), "flash attention 3 does not support return softmax"
-        assert (
-            rng_name == "" or fa_version == 2
-        ), "flash attention 3 does not support setting rng_name"
-        assert (
-            training or fa_version == 2
-        ), "flash attention 3 does not support setting training"
-        assert (
-            name is None or fa_version == 2
-        ), "flash attention 3 does not support setting name"
-        assert (
-            softmax_scale is None or fa_version == 3
-        ), "flash attention 2 does not support setting softmax_scale"
+        assert in_dynamic_or_pir_mode() or fa_version == 2, (
+            "flash attention 3 only support dynamic or pir mode"
+        )
+        assert dropout == 0.0 or fa_version == 2, (
+            "flash attention 3 does not support dropout"
+        )
+        assert not return_softmax or fa_version == 2, (
+            "flash attention 3 does not support return softmax"
+        )
+        assert fixed_seed_offset is None or fa_version == 2, (
+            "flash attention 3 does not support setting seed_offset"
+        )
+        assert rng_name == "" or fa_version == 2, (
+            "flash attention 3 does not support setting rng_name"
+        )
+        assert training or fa_version == 2, (
+            "flash attention 3 does not support setting training"
+        )
+        assert name is None or fa_version == 2, (
+            "flash attention 3 does not support setting name"
+        )
+        assert softmax_scale is None or fa_version == 3, (
+            "flash attention 2 does not support setting softmax_scale"
+        )
         if in_dynamic_or_pir_mode():
             if fa_version == 2:
                 (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
@@ -1143,9 +1121,9 @@ def flash_attn_varlen_func(
             >>> output = paddle.nn.functional.flash_attention.flash_attention_v3_varlen(q, q, q, cu_seqlens_q, cu_seqlens_q, max_seqlen_q=max_seq_len_q, max_seqlen_k=max_seq_len_q, causal=True)
             >>> # doctest: -SKIP
     """
-    assert (
-        "xpu" not in paddle.get_device()
-    ), "flash_attn_varlen_func is not supported on xpu"
+    assert "xpu" not in paddle.get_device(), (
+        "flash_attn_varlen_func is not supported on xpu"
+    )
 
     assert not paddle.get_flags(["FLAGS_cudnn_deterministic"])[
         "FLAGS_cudnn_deterministic"
@@ -1156,11 +1134,11 @@ def flash_attn_varlen_func(
             "FLAGS_flash_attn_version"
         ]
         == 3
-    ), "FLAGS_flash_attn_version is 2, conflits with flash_attn_varlen_func"
+    ), "FLAGS_flash_attn_version is 2, conflicts with flash_attn_varlen_func"
 
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "flash_attn_varlen_func only support dynamic or pir mode"
+    assert in_dynamic_or_pir_mode(), (
+        "flash_attn_varlen_func only support dynamic or pir mode"
+    )
 
     assert qv is None, "flash_attn_varlen_func does not support setting qv"
 
@@ -1475,6 +1453,7 @@ def scaled_dot_product_attention(
             dropout_p,
             is_causal,
         )
+        return out
 
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation
@@ -1595,6 +1574,7 @@ def flashmask_attention(
     rng_name: str = "",
     training: bool = True,
     name: str | None = None,
+    softmax_scale: float | None = None,
 ):
     r"""
     FlashMask: Official Implementation
@@ -1650,7 +1630,7 @@ def flashmask_attention(
             If causal mode is disabled, Query at position i will only attend to keys between [i - window_size, i + window_size] or [i - window_size[0], i + window_size[1]].
         return_softmax_lse (bool): Whether to return the log-sum-exp of the softmax. Default is False.
         return_seed_offset (bool): Whether to return the random seed offset. Default is False.
-        fixed_seed_of fset(Tensor, optional): With fixed seed, offset for dropout mask.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
         rng_name (str): The name to select Generator.
         training (bool): Whether the module is in training mode. Default is True.
         name (str, optional): Name of the operation. Default is None. Normally, users do not need to set this property.
@@ -2204,9 +2184,9 @@ def flashmask_attention(
             window_size = (window_size, window_size)
         sq = query.shape[1]
         bsz = query.shape[0]
-        assert (
-            startend_row_indices is None
-        ), "can't use window_size with startend_row_indices"
+        assert startend_row_indices is None, (
+            "can't use window_size with startend_row_indices"
+        )
         if causal:
             startend_row_indices = paddle.arange(
                 window_size[0] + 1, sq + window_size[0] + 1, dtype="int32"
@@ -2247,24 +2227,26 @@ def flashmask_attention(
         )
 
     else:
-        assert (
-            startend_row_indices.dtype == paddle.int32
-        ), f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
-        assert (
-            len(startend_row_indices.shape) == 4
-        ), f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+        assert startend_row_indices.dtype == paddle.int32, (
+            f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
+        )
+        assert len(startend_row_indices.shape) == 4, (
+            f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+        )
 
-        assert (
-            startend_row_indices.shape[0] == key.shape[0]
-        ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
+        assert startend_row_indices.shape[0] == key.shape[0], (
+            f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
+        )
 
-        assert (
-            startend_row_indices.shape[2] == key.shape[1]
-        ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        assert startend_row_indices.shape[2] == key.shape[1], (
+            f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        )
         assert startend_row_indices.shape[1] in [
             1,
             key.shape[2],
-        ], "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
+        ], (
+            "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
+        )
 
         if causal:
             if startend_row_indices.shape[-1] == 1:
@@ -2285,23 +2267,72 @@ def flashmask_attention(
                     f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
                 )
 
-        (
-            out,
-            result_softmax,
-            result_softmax_lse,
-            result_seed_offset,
-        ) = _C_ops.flashmask_attention(
-            query,
-            key,
-            value,
-            startend_row_indices,
-            fixed_seed_offset,
-            dropout,
-            causal,
-            False,
-            not training,
-            rng_name,
-        )
+        if "xpu" in paddle.get_device():
+            fa_version = 2
+        elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
+            "FLAGS_cudnn_deterministic"
+        ]:
+            fa_version = 2
+        else:
+            fa_version = paddle.base.framework.get_flags(
+                ["FLAGS_flash_attn_version"]
+            )["FLAGS_flash_attn_version"]
+
+        if fa_version == 2:
+            assert softmax_scale is None, (
+                "flashmask_attention does not support setting softmax_scale, use flashmask_attention_v2 instead"
+            )
+
+            (
+                out,
+                result_softmax,
+                result_softmax_lse,
+                result_seed_offset,
+            ) = _C_ops.flashmask_attention(
+                query,
+                key,
+                value,
+                startend_row_indices,
+                fixed_seed_offset,
+                dropout,
+                causal,
+                False,
+                not training,
+                rng_name,
+            )
+
+        elif fa_version == 3:
+            assert dropout == 0.0, (
+                "flashmask_attention_v2 does not support dropout"
+            )
+            assert not return_seed_offset, (
+                "flashmask_attention_v2 does not support return seed_offset"
+            )
+            assert fixed_seed_offset is None, (
+                "flashmask_attention_v2 does not support setting seed_offset"
+            )
+            assert rng_name == "", (
+                "flashmask_attention_v2 does not support setting rng_name"
+            )
+            assert training, (
+                "flashmask_attention_v2 does not support setting training to False"
+            )
+
+            assert name is None, (
+                "flashmask_attention_v2 does not support setting name"
+            )
+
+            if softmax_scale is None:
+                softmax_scale = query.shape[-1] ** (-0.5)
+
+            (
+                out,
+                result_softmax_lse,
+            ) = _C_ops.flashmask_attention_v2(
+                query, key, value, startend_row_indices, softmax_scale, causal
+            )
+        else:
+            raise ValueError(f"Invalid flash attention version: {fa_version}")
 
     outputs = [out]
     if return_softmax_lse:
@@ -2384,9 +2415,9 @@ def calc_reduced_attention_scores(
             >>> )
             >>> # doctest: -SKIP
     """
-    assert (
-        query.stop_gradient and key.stop_gradient
-    ), 'calc_reduced_attention_scores() is for inference only.'
+    assert query.stop_gradient and key.stop_gradient, (
+        'calc_reduced_attention_scores() is for inference only.'
+    )
 
     if in_dynamic_or_pir_mode():
         reduced_scores = _C_ops.calc_reduced_attn_scores(

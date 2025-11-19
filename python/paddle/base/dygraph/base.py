@@ -32,6 +32,8 @@ import paddle
 from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
+from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.download import check_and_create_dir
 
 from ..framework import _get_paddle_place
 from ..wrapped_decorator import (
@@ -323,6 +325,7 @@ def no_grad(func: None = ...) -> AbstractContextManager: ...
 def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]: ...
 
 
+@ParamAliasDecorator({"func": ["orig_func"]})
 def no_grad(func=None):
     """
     :api_attr: imperative
@@ -331,6 +334,9 @@ def no_grad(func=None):
     In this mode, the result of every computation will have `stop_gradient=True`.
 
     Also functions as a decorator. (Make sure to instantiate without parenthesis.)
+
+    .. note::
+        Alias Support: The parameter name ``orig_func`` can be used as an alias for ``func``.
 
     Examples:
 
@@ -676,6 +682,8 @@ def grad(
     only_inputs: bool = True,
     allow_unused: bool = False,
     no_grad_vars: Tensor | Sequence[Tensor] | set[Tensor] | None = None,
+    *,
+    dump_backward_graph_path: str | None = None,
 ) -> list[Tensor]:
     '''
     .. note::
@@ -719,7 +727,9 @@ def grad(
             their gradients if allow_unused=True. Default False.
         no_grad_vars (Tensor|list[Tensor]|tuple[Tensor]|set[Tensor], optional):
             the Tensors whose gradients are not needed to compute. Default None.
-
+        dump_backward_graph_path (str, optional): specifies the directory path for storing the debug file.
+            If this parameter is specified, the backward-related graph (in dot format)
+            and the debugging call stack information will be generated in this directory.
     Returns:
         list: a list of Tensors, whose length is the same as the Tensor number
         inside `inputs`, and the i-th returned Tensor is the sum of gradients of
@@ -829,14 +839,14 @@ def grad(
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
-                assert isinstance(
-                    each_var, core.eager.Tensor
-                ), f"Elements of {name} must be Tensor"
+                assert isinstance(each_var, core.eager.Tensor), (
+                    f"Elements of {name} must be Tensor"
+                )
             return in_out_list
         else:
-            assert isinstance(
-                in_out_list, core.eager.Tensor
-            ), f"{name} must be Tensor or list of Tensor"
+            assert isinstance(in_out_list, core.eager.Tensor), (
+                f"{name} must be Tensor or list of Tensor"
+            )
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -848,16 +858,16 @@ def grad(
 
         for each_var in grad_outputs:
             if each_var is not None:
-                assert isinstance(
-                    each_var, core.eager.Tensor
-                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                assert isinstance(each_var, core.eager.Tensor), (
+                    "grad_outputs must be None, a Variable or a list containing None or Variables"
+                )
     else:
         grad_outputs = []
 
     if len(grad_outputs) > 0:
-        assert len(grad_outputs) == len(
-            outputs
-        ), "The length of grad_outputs must be equal to outputs"
+        assert len(grad_outputs) == len(outputs), (
+            "The length of grad_outputs must be equal to outputs"
+        )
 
     if no_grad_vars is None:
         no_grad_vars = []
@@ -866,9 +876,9 @@ def grad(
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            assert isinstance(
-                var, core.eager.Tensor
-            ), "no_grad_vars can only contains Tensor"
+            assert isinstance(var, core.eager.Tensor), (
+                "no_grad_vars can only contains Tensor"
+            )
     else:
         raise AssertionError(
             "no_grad_vars must be None, Tensor or list/tuple/set of Tensors"
@@ -879,15 +889,15 @@ def grad(
     if retain_graph is None:
         retain_graph = create_graph
 
-    assert isinstance(
-        retain_graph, bool
-    ), "retain_graph must be None, True or False"
+    assert isinstance(retain_graph, bool), (
+        "retain_graph must be None, True or False"
+    )
 
     assert isinstance(allow_unused, bool), "allow_unused must be True or False"
 
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
-
+    check_and_create_dir(dump_backward_graph_path)
     return core.eager.run_partial_grad(
         outputs,
         inputs,
@@ -897,4 +907,5 @@ def grad(
         only_inputs,
         allow_unused,
         no_grad_vars,
+        dump_backward_graph_path,
     )

@@ -205,9 +205,9 @@ class FallbackWrapper:
         assert code is not None, f"Cannot find code for SIR: {SIR}"
 
         OpcodeExecutorCache().compile_time_stats.setdefault(code, 0)
-        OpcodeExecutorCache().compile_time_stats[
-            code
-        ] += partial_program_layer._compile_time_counter.get_total_time()
+        OpcodeExecutorCache().compile_time_stats[code] += (
+            partial_program_layer._compile_time_counter.get_total_time()
+        )
 
     @event_register(
         lambda self, *args, **kwargs: f"FallbackWrapper: {self.SIR.name}"

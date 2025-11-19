@@ -87,7 +87,7 @@ inline void RegisterModelLayout(
         phi::DataLayout::kNHWC)
       return;
 
-    VLOG(4) << "RegisterModelLayout for mkldnn";
+    VLOG(4) << "RegisterModelLayout for onednn";
     auto check_attrib = [](std::unique_ptr<framework::OperatorBase>& op,
                            const std::string& attrib_name) -> bool {
       if (op->HasAttr(attrib_name)) {
@@ -121,7 +121,7 @@ inline void RegisterModelLayout(const ::pir::Block* ir_block,
         phi::DataLayout::kNHWC)
       return;
 
-    VLOG(4) << "RegisterModelLayout for mkldnn";
+    VLOG(4) << "RegisterModelLayout for onednn";
     auto check_attrib = [](const pir::Operation& op,
                            const std::string& attrib_name) -> bool {
       if (op.attributes().count(attrib_name)) {
@@ -151,11 +151,13 @@ inline void RegisterModelLayout(const ::pir::Block* ir_block,
 
 inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
   return (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8" ||
+          op->GetAttrIfExists<std::string>("onednn_data_type") == "int8" ||
           op->GetAttrIfExists<bool>("use_quantizer"));
 }
 
 inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
-  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16" ||
+         op->GetAttrIfExists<std::string>("onednn_data_type") == "bfloat16";
 }
 
 }  // namespace platform

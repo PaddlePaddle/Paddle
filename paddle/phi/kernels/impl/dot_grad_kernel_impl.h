@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"

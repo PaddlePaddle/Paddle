@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import struct
 import unittest
 
@@ -228,7 +227,7 @@ class SimpleEmbeddingNet(nn.Layer):
     def forward(self, x):
         out = self.embedding(x)
         scale = paddle.full(shape=[1], fill_value=2, dtype="int64")
-        out = paddle.multiply(out, scale.astype("float32"))
+        out = out * (scale.astype("float32"))
         out = self.linear(out)
         out = nn.functional.dropout(out, p=0.2)
         return out
@@ -396,7 +395,7 @@ class AmpTestBase(unittest.TestCase):
         debug_info=None,
     ):
         def _extract_op_call(op_calls_str, pos):
-            return int(copy.copy(op_calls_str).split(",")[pos])
+            return int(op_calls_str.split(",")[pos])
 
         for op_type, expected_value in expected_bf16_calls.items():
             # print(f"[BF16] op_type={op_type}, value={value}")
@@ -418,7 +417,7 @@ class AmpTestBase(unittest.TestCase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
+                f"[{debug_info}] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
 
     def run_program(

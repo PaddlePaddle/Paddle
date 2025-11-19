@@ -89,6 +89,9 @@ else()
       set(FLASHATTN_V3_LIBRARIES
           "${FLASHATTN_INSTALL_DIR}/bin/libflashattnv3${CMAKE_SHARED_LIBRARY_SUFFIX}"
           CACHE FILEPATH "flash-attn Library" FORCE)
+      set(FLASHMASK_V2_LIBRARIES
+          "${FLASHATTN_INSTALL_DIR}/bin/libflashmaskv2${CMAKE_SHARED_LIBRARY_SUFFIX}"
+          CACHE FILEPATH "flash-attn Library" FORCE)
     endif()
   else()
     set(FLASHATTN_LIBRARIES
@@ -98,6 +101,9 @@ else()
       set(FLASHATTN_V3_LIBRARIES
           "${FLASHATTN_INSTALL_DIR}/lib/libflashattnv3${CMAKE_SHARED_LIBRARY_SUFFIX}"
           CACHE FILEPATH "flash-attn Library" FORCE)
+      set(FLASHMASK_V2_LIBRARIES
+          "${FLASHATTN_INSTALL_DIR}/lib/libflashmaskv2${CMAKE_SHARED_LIBRARY_SUFFIX}"
+          CACHE FILEPATH "flash-attn Library" FORCE)
     endif()
   endif()
 
@@ -105,6 +111,7 @@ else()
   if(WITH_FLASHATTN_V3)
     add_definitions(-DPADDLE_WITH_FLASHATTN_V3)
     list(APPEND BUILD_BYPRODUCTS_LIST ${FLASHATTN_V3_LIBRARIES})
+    list(APPEND BUILD_BYPRODUCTS_LIST ${FLASHMASK_V2_LIBRARIES})
   endif()
 
   if(NOT DEFINED FA_JOB_POOLS_COMPILE)
@@ -293,6 +300,7 @@ endif()
 message(STATUS "flash-attn library: ${FLASHATTN_LIBRARIES}")
 if(WITH_FLASHATTN_V3)
   message(STATUS "flash-attn-v3 library: ${FLASHATTN_V3_LIBRARIES}")
+  message(STATUS "flash-mask-v2 library: ${FLASHMASK_V2_LIBRARIES}")
 endif()
 get_filename_component(FLASHATTN_LIBRARY_PATH ${FLASHATTN_LIBRARIES} DIRECTORY)
 include_directories(${FLASHATTN_INCLUDE_DIR})

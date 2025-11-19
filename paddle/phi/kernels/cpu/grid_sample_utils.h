@@ -26,13 +26,13 @@ void Unnormalize(const CPUContext& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 3>::From(*grid_slice);
 
-  if (!align_corners) {
+  if (align_corners) {
+    auto factor = static_cast<T>(max_val * 0.5);
+    grid_slice_t.device(place) = (grid_slice_t + static_cast<T>(1)) * factor;
+  } else {
     auto factor = static_cast<T>((max_val + 1) * 0.5);
     grid_slice_t.device(place) =
         (grid_slice_t + static_cast<T>(1)) * factor - static_cast<T>(0.5);
-  } else {
-    auto factor = static_cast<T>(max_val * 0.5);
-    grid_slice_t.device(place) = (grid_slice_t + static_cast<T>(1)) * factor;
   }
 }
 
@@ -89,14 +89,51 @@ void GetGridPointValue(const DenseTensor& input,
   for (int i = 0; i < n; i++) {
     for (int k = 0; k < out_h; k++) {
       for (int l = 0; l < out_w; l++) {
-        if (IsInBound(
-                x_t(i, k, l), y_t(i, k, l), (T)(in_w - 1), (T)(in_h - 1))) {
+        if (IsInBound<int>(static_cast<int>(x_t(i, k, l)),
+                           static_cast<int>(y_t(i, k, l)),
+                           (in_w - 1),
+                           (in_h - 1))) {
+          for (int j = 0; j < c; j++) {
+            output_t(i, j, k, l) = input_t(i,
+                                           j,
+                                           static_cast<int>(y_t(i, k, l)),
+                                           static_cast<int>(x_t(i, k, l)));
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+void GetGridPointValue_nearest(const DenseTensor& input,
+                               DenseTensor* output,
+                               const DenseTensor& x,
+                               const DenseTensor& y) {
+  const int n = input.dims()[0];
+  const int c = input.dims()[1];
+  const int in_h = input.dims()[2];
+  const int in_w = input.dims()[3];
+  const int out_h = x.dims()[1];
+  const int out_w = x.dims()[2];
+  auto x_t = EigenTensor<T, 3>::From(x);
+  auto y_t = EigenTensor<T, 3>::From(y);
+  auto output_t = EigenTensor<T, 4>::From(*output).setConstant((T)0);
+  auto input_t = EigenTensor<T, 4>::From(input);
+
+  for (int i = 0; i < n; i++) {
+    for (int k = 0; k < out_h; k++) {
+      for (int l = 0; l < out_w; l++) {
+        if (IsInBound<int>(static_cast<int>(std::nearbyint(x_t(i, k, l))),
+                           static_cast<int>(std::nearbyint(y_t(i, k, l))),
+                           (in_w - 1),
+                           (in_h - 1))) {
           for (int j = 0; j < c; j++) {
             output_t(i, j, k, l) =
                 input_t(i,
                         j,
-                        static_cast<int>(round(y_t(i, k, l))),
-                        static_cast<int>(round(x_t(i, k, l))));
+                        static_cast<int>(std::nearbyint(y_t(i, k, l))),
+                        static_cast<int>(std::nearbyint(x_t(i, k, l))));
           }
         }
       }
@@ -207,19 +244,66 @@ void Get3DGridPointValue(const DenseTensor& input,
     for (int m = 0; m < out_d; m++) {
       for (int k = 0; k < out_h; k++) {
         for (int l = 0; l < out_w; l++) {
-          if (IsInBound3D(x_t(i, m, k, l),
-                          y_t(i, m, k, l),
-                          z_t(i, m, k, l),
-                          (T)(in_w - 1),
-                          (T)(in_h - 1),
-                          (T)(in_d - 1))) {
+          if (IsInBound3D<int>(static_cast<int>(x_t(i, m, k, l)),
+                               static_cast<int>(y_t(i, m, k, l)),
+                               static_cast<int>(z_t(i, m, k, l)),
+                               (in_w - 1),
+                               (in_h - 1),
+                               (in_d - 1))) {
             for (int j = 0; j < c; j++) {
               output_t(i, j, m, k, l) =
                   input_t(i,
                           j,
-                          static_cast<int>(round(z_t(i, m, k, l))),
-                          static_cast<int>(round(y_t(i, m, k, l))),
-                          static_cast<int>(round(x_t(i, m, k, l))));
+                          static_cast<int>(z_t(i, m, k, l)),
+                          static_cast<int>(y_t(i, m, k, l)),
+                          static_cast<int>(x_t(i, m, k, l)));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+void Get3DGridPointValue_nearest(const DenseTensor& input,
+                                 DenseTensor* output,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& z) {
+  const int n = input.dims()[0];
+  const int c = input.dims()[1];
+  const int in_d = input.dims()[2];
+  const int in_h = input.dims()[3];
+  const int in_w = input.dims()[4];
+  const int out_d = x.dims()[1];
+  const int out_h = x.dims()[2];
+  const int out_w = x.dims()[3];
+  auto x_t = EigenTensor<T, 4>::From(x);
+  auto y_t = EigenTensor<T, 4>::From(y);
+  auto z_t = EigenTensor<T, 4>::From(z);
+  auto output_t =
+      EigenTensor<T, 5>::From(*output).setConstant(static_cast<T>(0.0));
+  auto input_t = EigenTensor<T, 5>::From(input);
+
+  for (int i = 0; i < n; i++) {
+    for (int m = 0; m < out_d; m++) {
+      for (int k = 0; k < out_h; k++) {
+        for (int l = 0; l < out_w; l++) {
+          if (IsInBound3D<int>(
+                  static_cast<int>(std::nearbyint(x_t(i, m, k, l))),
+                  static_cast<int>(std::nearbyint(y_t(i, m, k, l))),
+                  static_cast<int>(std::nearbyint(z_t(i, m, k, l))),
+                  (in_w - 1),
+                  (in_h - 1),
+                  (in_d - 1))) {
+            for (int j = 0; j < c; j++) {
+              output_t(i, j, m, k, l) =
+                  input_t(i,
+                          j,
+                          static_cast<int>(std::nearbyint(z_t(i, m, k, l))),
+                          static_cast<int>(std::nearbyint(y_t(i, m, k, l))),
+                          static_cast<int>(std::nearbyint(x_t(i, m, k, l))));
             }
           }
         }

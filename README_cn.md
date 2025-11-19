@@ -14,11 +14,11 @@
 
 欢迎来到 PaddlePaddle GitHub
 
-飞桨(PaddlePaddle)以百度多年的深度学习技术研究和业务应用为基础，是中国首个自主研发、功能完备、 开源开放的产业级深度学习平台，集深度学习核心训练和推理框架、基础模型库、端到端开发套件和丰富的工具组件于一体。目前，飞桨文心开发者数量已超过2185万，服务超过67万家企业，创建的模型达到110万。飞桨助力开发者快速实现 AI 想法，快速上线 AI 业务。帮助越来越多的行业完成 AI 赋能，实现产业智能化升级。
+飞桨(PaddlePaddle)以百度多年的深度学习技术研究和业务应用为基础，是中国首个自主研发、功能完备、 开源开放的产业级深度学习平台，集深度学习核心训练和推理框架、基础模型库、端到端开发套件和丰富的工具组件于一体。目前，飞桨文心开发者数量已超过2333万，服务超过76万家企业，创建的模型达到110万。飞桨助力开发者快速实现 AI 想法，快速上线 AI 业务。帮助越来越多的行业完成 AI 赋能，实现产业智能化升级。
 
 ## 安装
 
-### PaddlePaddle 最新版本: [3.1](https://github.com/PaddlePaddle/Paddle/tree/release/3.1)
+### PaddlePaddle 最新版本: 3.2
 
 跟进 PaddlePaddle 最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
@@ -33,7 +33,7 @@ pip install paddlepaddle-gpu
 
 更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)。
 
-## 飞桨新一代框架 3.1
+## 飞桨新一代框架 3.2
 
 - **动静统一自动并行**
 

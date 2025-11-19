@@ -138,8 +138,8 @@ class SplitFunctor<XPUContext, T> {
   template class SplitFunctor<XPUContext, type>;
 
 DEFINE_XPU_FUNCTOR(float)
-DEFINE_XPU_FUNCTOR(phi::dtype::float16)
-DEFINE_XPU_FUNCTOR(phi::dtype::bfloat16)
+DEFINE_XPU_FUNCTOR(phi::float16)
+DEFINE_XPU_FUNCTOR(phi::bfloat16)
 DEFINE_XPU_FUNCTOR(int32_t)
 DEFINE_XPU_FUNCTOR(int64_t)
 DEFINE_XPU_FUNCTOR(uint8_t)

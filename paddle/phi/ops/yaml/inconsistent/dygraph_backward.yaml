@@ -354,7 +354,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
-    spmd_rule : TileGradInferSpmd
+    spmd_rule : TileGradInferSpmdDynamic
   kernel :
     func : tile_grad
   no_need_buffer : x

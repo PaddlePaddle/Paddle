@@ -20,7 +20,7 @@ import scipy
 import scipy.linalg
 
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -106,9 +106,7 @@ class TestCholeskySolveOp(OpTest):
         self.y_shape = [15, 15]
         self.x_shape = [15, 5]
         self.upper = False
-        self.dtype = (
-            np.float64
-        )  # Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
+        self.dtype = np.float64  # Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
 
     # get scipy result
     def set_output(self):
@@ -164,8 +162,8 @@ class TestCholeskySolveAPI(unittest.TestCase):
         self.place = [paddle.CPUPlace()]
         self.dtype = "float64"
         self.upper = True
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place.append(get_device_place())
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -289,8 +287,8 @@ class TestCholeskySolveAPIZeroSize(unittest.TestCase):
         self.place = [paddle.CPUPlace()]
         self.dtype = "float64"
         self.upper = True
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place.append(get_device_place())
         self.init_shape()
 
     def init_shape(self):

@@ -227,15 +227,16 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
         # just support dynamic_shape
         generate_dynamic_shape(attrs, inputs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (
-            1e-2,
-            1e-2,
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-2, 1e-2),
         )  # tol 1e-2 for half
 
     def add_skip_trt_case(self):

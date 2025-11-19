@@ -512,7 +512,7 @@ void SetTensorFromPyArrayT(
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Incompatible place type: Tensor.set() supports "
-          "CPUPlace, CUDAPlace"
+          "CPUPlace, CUDAPlace "
           "and CUDAPinnedPlace, but got %s!",
           place));
     }

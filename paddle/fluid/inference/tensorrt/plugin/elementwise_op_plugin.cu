@@ -143,13 +143,8 @@ int ElementWisePlugin::initialize() TRT_NOEXCEPT {
 
 int ElementWisePlugin::enqueue(int batch_size,
                                const void *const *inputs,
-#if IS_TRT_VERSION_LT(8000)
-                               void **outputs,
-                               void *workspace,
-#else
                                void *const *outputs,
                                void *workspace,
-#endif
                                cudaStream_t stream) TRT_NOEXCEPT {
   const float *x = reinterpret_cast<const float *>(inputs[0]);
   const float *y = reinterpret_cast<const float *>(inputs[1]);
@@ -210,9 +205,6 @@ int ElementWisePlugin::enqueue(int batch_size,
 
   return cudaGetLastError() != cudaSuccess;
 }
-
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
 
 int ElementwisePluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
@@ -347,7 +339,6 @@ int ElementwisePluginDynamic::enqueue(
 
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

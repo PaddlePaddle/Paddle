@@ -71,9 +71,5 @@ void PReluGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prelu_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::PReluGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    prelu_grad, OneDNN, ONEDNN, phi::PReluGradKernel, float, phi::bfloat16) {}

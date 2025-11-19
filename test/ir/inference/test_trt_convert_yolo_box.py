@@ -160,7 +160,6 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
     ) -> Generator[
         Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
-
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -176,13 +175,17 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-3
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-3,
+        )
 
     def add_skip_trt_case(self):
         def teller2(program_config, predictor_config):

@@ -980,15 +980,16 @@ void log_double_grad(const Tensor& x,
                      const Tensor& grad_x_grad,
                      Tensor* x_grad,
                      Tensor* grad_out_grad) {
-  // dx = -dout/x^2 * ddx
+  // For complex: dx = -dout * ddx / conj(x)^2, ddout = ddx / conj(x)
+  // For real: conj(x) == x, so formulas reduce to real ones
+  auto conj_x = conj<T>(x);
   if (x_grad) {
-    auto x_grad_tmp = -grad_out / (x * x) * grad_x_grad;
+    auto x_grad_tmp = -(grad_out * grad_x_grad) / (conj_x * conj_x);
     set_output<T>(x_grad_tmp, x_grad);
   }
 
-  // ddout = ddx / x
   if (grad_out_grad) {
-    auto grad_out_grad_tmp = grad_x_grad / x;
+    auto grad_out_grad_tmp = grad_x_grad / conj_x;
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 }

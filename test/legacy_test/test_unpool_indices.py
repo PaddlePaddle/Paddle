@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -49,12 +50,14 @@ def unpool1dmax_forward_naive(
     )
     out_lsize = output_size[0]
     out = np.zeros((s0, s1, out_lsize))
-    for nidx in range(s0):
-        for cidx in range(s1):
-            for l in range(s2):
-                index = indices[nidx, cidx, l]
-                lidx = index % out_lsize
-                out[nidx, cidx, lidx] = input[nidx, cidx, l]
+    for nidx, cidx, l in itertools.product(
+        range(s0),
+        range(s1),
+        range(s2),
+    ):
+        index = indices[nidx, cidx, l]
+        lidx = index % out_lsize
+        out[nidx, cidx, lidx] = input[nidx, cidx, l]
 
     return out
 
@@ -69,14 +72,16 @@ def unpool2dmax_forward_naive(
     out_hsize = output_size[0]
     out_wsize = output_size[1]
     out = np.zeros((s0, s1, out_hsize, out_wsize))
-    for nidx in range(s0):
-        for cidx in range(s1):
-            for h in range(s2):
-                for w in range(s3):
-                    index = indices[nidx, cidx, h, w]
-                    hidx = (index - index % out_wsize) // out_wsize
-                    widx = index % out_wsize
-                    out[nidx, cidx, hidx, widx] = input[nidx, cidx, h, w]
+    for nidx, cidx, h, w in itertools.product(
+        range(s0),
+        range(s1),
+        range(s2),
+        range(s3),
+    ):
+        index = indices[nidx, cidx, h, w]
+        hidx = (index - index % out_wsize) // out_wsize
+        widx = index % out_wsize
+        out[nidx, cidx, hidx, widx] = input[nidx, cidx, h, w]
 
     return out
 
@@ -92,22 +97,18 @@ def unpool3dmax_forward_naive(
     out_hsize = output_size[1]
     out_wsize = output_size[2]
     out = np.zeros((s0, s1, out_dsize, out_hsize, out_wsize))
-    for nidx in range(s0):
-        for cidx in range(s1):
-            for d in range(s2):
-                for h in range(s3):
-                    for w in range(s4):
-                        index = indices[nidx, cidx, d, h, w]
-                        didx = index // (out_wsize * out_hsize)
-                        hidx = (
-                            index - didx * out_hsize * out_wsize
-                        ) // out_wsize
-                        widx = (
-                            index - didx * out_hsize * out_wsize
-                        ) % out_wsize
-                        out[nidx, cidx, didx, hidx, widx] = input[
-                            nidx, cidx, d, h, w
-                        ]
+    for nidx, cidx, d, h, w in itertools.product(
+        range(s0),
+        range(s1),
+        range(s2),
+        range(s3),
+        range(s4),
+    ):
+        index = indices[nidx, cidx, d, h, w]
+        didx = index // (out_wsize * out_hsize)
+        hidx = (index - didx * out_hsize * out_wsize) // out_wsize
+        widx = (index - didx * out_hsize * out_wsize) % out_wsize
+        out[nidx, cidx, didx, hidx, widx] = input[nidx, cidx, d, h, w]
 
     return out
 
@@ -377,7 +378,6 @@ class TestUnpool1DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool1DAPI_st(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():
@@ -455,7 +455,6 @@ class TestUnpool2DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool2DAPI_st(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():
@@ -542,7 +541,6 @@ class TestUnpool3DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool3DAPI_st2(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():

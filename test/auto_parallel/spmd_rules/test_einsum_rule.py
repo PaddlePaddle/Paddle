@@ -24,7 +24,6 @@ from paddle.framework import core
 
 # case: bmm
 class TestEinsumSPMDRule(unittest.TestCase):
-
     def setUp(self):
         self.init_data()
         self.init_parallel_setting()
@@ -47,13 +46,13 @@ class TestEinsumSPMDRule(unittest.TestCase):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[0, -1, -1], [0, -1, -1]],  # input_dims_mapping
             [0, -1, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[0, -1, -1], [0, -1, -1]],  # input_dims_mapping
             [0, -1, -1],  # output_grad_dims_mapping
             [[0, -1, -1], [0, -1, -1]],  # input_grad_dims_mapping
@@ -90,14 +89,14 @@ class TestEinsumSPMDRule(unittest.TestCase):
 
         # inputs
         for input_dist_attr, excepted_dims_mapping in zip(
-            inferred_input_dist_attrs[0], self.excepted_forward[0]
+            inferred_input_dist_attrs[0], self.expected_forward[0]
         ):
             self.assertEqual(
                 input_dist_attr.dims_mapping, excepted_dims_mapping
             )
         # output
         self.assertEqual(
-            inferred_output_dist_attrs[0].dims_mapping, self.excepted_forward[1]
+            inferred_output_dist_attrs[0].dims_mapping, self.expected_forward[1]
         )
         if self.is_output_partial:
             self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
@@ -127,7 +126,7 @@ class TestEinsumSPMDRule(unittest.TestCase):
 
         # inputs
         for input_dist_attr, excepted_dims_mapping in zip(
-            inferred_input_dist_attrs[0], self.excepted_backward[0]
+            inferred_input_dist_attrs[0], self.expected_backward[0]
         ):
             self.assertEqual(
                 input_dist_attr.dims_mapping, excepted_dims_mapping
@@ -135,11 +134,11 @@ class TestEinsumSPMDRule(unittest.TestCase):
         # output_grad
         self.assertEqual(
             inferred_input_dist_attrs[1].dims_mapping,
-            self.excepted_backward[1],
+            self.expected_backward[1],
         )
         # input_grad
         for input_grad_dist_attr, excepted_dims_mapping in zip(
-            inferred_output_dist_attrs[0], self.excepted_backward[2]
+            inferred_output_dist_attrs[0], self.expected_backward[2]
         ):
             self.assertEqual(
                 input_grad_dist_attr.dims_mapping, excepted_dims_mapping
@@ -185,13 +184,13 @@ class TestEinsumBMMSPMDRule2(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {0}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, 0, -1], [-1, -1, -1]],  # input_dims_mapping
             [-1, 0, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, 0, -1], [-1, -1, -1]],  # input_dims_mapping
             [-1, 0, -1],  # output_grad_dims_mapping
             [[-1, 0, -1], [-1, -1, -1]],  # input_grad_dims_mapping
@@ -210,13 +209,13 @@ class TestEinsumBMMSPMDRule3(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, -1, 1], [-1, 1, -1]],  # input_dims_mapping
             [-1, -1, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, -1, 1], [-1, 1, -1]],  # input_dims_mapping
             [-1, -1, -1],  # output_grad_dims_mapping
             [[-1, -1, 1], [-1, 1, -1]],  # input_grad_dims_mapping
@@ -235,13 +234,13 @@ class TestEinsumBMMSPMDRule4(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, -1, -1], [-1, -1, 1]],  # input_dims_mapping
             [-1, -1, 1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, -1, -1], [-1, -1, 1]],  # input_dims_mapping
             [-1, -1, 1],  # output_grad_dims_mapping
             [[-1, -1, -1], [-1, -1, 1]],  # input_grad_dims_mapping
@@ -267,13 +266,13 @@ class TestEinsumSumSPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, 0]],  # input_dims_mapping
             [],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, 0]],  # input_dims_mapping
             [],  # output_grad_dims_mapping
             [[-1, 0]],  # input_grad_dims_mapping
@@ -299,13 +298,13 @@ class TestEinsumSumSPMDRule2(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[1, 0]],  # input_dims_mapping
             [1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[1, 0]],  # input_dims_mapping
             [1],  # output_grad_dims_mapping
             [[1, 0]],  # input_grad_dims_mapping
@@ -331,13 +330,13 @@ class TestEinsumPermutationSPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, 0]],  # input_dims_mapping
             [0, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, 0]],  # input_dims_mapping
             [0, -1],  # output_grad_dims_mapping
             [[-1, 0]],  # input_grad_dims_mapping
@@ -363,13 +362,13 @@ class TestEinsumDiagonalSPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, 1]],  # input_dims_mapping
             [-1, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, 1]],  # input_dims_mapping
             [-1, -1],  # output_grad_dims_mapping
             [[-1, 1]],  # input_grad_dims_mapping
@@ -395,13 +394,13 @@ class TestEinsumTraceSPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, 1, -1]],  # input_dims_mapping
             [-1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, 1, -1]],  # input_dims_mapping
             [-1],  # output_grad_dims_mapping
             [[-1, 1, -1]],  # input_grad_dims_mapping
@@ -427,13 +426,13 @@ class TestEinsumDotSPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[0, 1], [0, 1]],  # input_dims_mapping
             [0],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[0, 1], [0, 1]],  # input_dims_mapping
             [0],  # output_grad_dims_mapping
             [[0, 1], [0, 1]],  # input_grad_dims_mapping
@@ -459,13 +458,13 @@ class TestEinsumMulPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[0, 1], [0, 1]],  # input_dims_mapping
             [0, 1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[0, 1], [0, 1]],  # input_dims_mapping
             [0, 1],  # output_grad_dims_mapping
             [[0, 1], [0, 1]],  # input_grad_dims_mapping
@@ -491,13 +490,13 @@ class TestEinsumOuterPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {0}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, 0], [-1, -1]],  # input_dims_mapping
             [-1, 0, -1, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, 0], [-1, -1]],  # input_dims_mapping
             [-1, 0, -1, -1],  # output_grad_dims_mapping
             [[-1, 0], [-1, -1]],  # input_grad_dims_mapping
@@ -516,13 +515,13 @@ class TestEinsumOuterPMDRule2(TestEinsumOuterPMDRule):
         self.y_grad_partial_dims = {}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[-1, -1], [1, -1]],  # input_dims_mapping
             [-1, -1, 1, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[-1, -1], [1, -1]],  # input_dims_mapping
             [-1, -1, 1, -1],  # output_grad_dims_mapping
             [[-1, -1], [1, -1]],  # input_grad_dims_mapping
@@ -550,13 +549,13 @@ class TestEinsumBroadcastPMDRule(TestEinsumSPMDRule):
         self.y_grad_partial_dims = {0}
 
         # forward
-        self.excepted_forward = [
+        self.expected_forward = [
             [[0, -1, -1, 1], [-1, 1, -1]],  # input_dims_mapping
             [-1, -1, -1],  # output_dims_mapping
         ]
 
         # backward
-        self.excepted_backward = [
+        self.expected_backward = [
             [[0, -1, -1, 1], [-1, 1, -1]],  # input_dims_mapping
             [-1, -1, -1],  # output_grad_dims_mapping
             [[0, -1, -1, 1], [-1, 1, -1]],  # input_grad_dims_mapping

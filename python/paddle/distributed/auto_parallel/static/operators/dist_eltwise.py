@@ -47,13 +47,13 @@ class DistributedElementwise(DistributedOperatorImplContainer):
     def update_dims_mapping(dist_op):
         # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
         op_desc = dist_op.serial_op.desc
-        assert (
-            len(op_desc.input_arg_names()) >= 1
-        ), f"elementwise op [{op_desc.type}] has [{len(op_desc.input_arg_names())}] inputs"
+        assert len(op_desc.input_arg_names()) >= 1, (
+            f"elementwise op [{op_desc.type}] has [{len(op_desc.input_arg_names())}] inputs"
+        )
         input_arg_names = op_desc.input_arg_names()
-        assert (
-            len(op_desc.output_arg_names()) == 1
-        ), f"elementwise op [{dist_op.serial_op}] has [{len(op_desc.output_arg_names())}] outputs"
+        assert len(op_desc.output_arg_names()) == 1, (
+            f"elementwise op [{dist_op.serial_op}] has [{len(op_desc.output_arg_names())}] outputs"
+        )
         output_arg_name = op_desc.output_arg_names()[0]
         num_inputs = len(input_arg_names)
 

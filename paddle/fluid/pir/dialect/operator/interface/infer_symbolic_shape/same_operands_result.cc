@@ -195,6 +195,7 @@ OP_SAME_OPERANDS_AND_RESULT(Polygamma_)
 OP_SAME_OPERANDS_AND_RESULT(EnableCheckModelNanInf)
 OP_SAME_OPERANDS_AND_RESULT(ViewShape)
 OP_SAME_OPERANDS_AND_RESULT(Silu)
+OP_SAME_OPERANDS_AND_RESULT(Silu_)
 OP_SAME_OPERANDS_AND_RESULT(ViewDtype)
 OP_SAME_OPERANDS_AND_RESULT(FusedSoftmaxMaskUpperTriangle)
 OP_SAME_OPERANDS_AND_RESULT(Gammaln)
@@ -216,6 +217,8 @@ OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePut)
 OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePut_)
 OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePutWithTensor)
 OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePutWithTensor_)
+OP_SAME_OPERANDS_AND_RESULT(Random)
+OP_SAME_OPERANDS_AND_RESULT(Random_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {

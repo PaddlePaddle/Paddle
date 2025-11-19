@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
@@ -195,7 +193,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -650,7 +648,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 
   int iwo_group = groups;
   int c_group = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
   iwo_group = 1;
   c_group = groups;
   groups = 1;
@@ -1088,7 +1086,7 @@ void Conv3dTransposeGradGPUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using float16 = phi::dtype::float16;
+using float16 = phi::float16;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
@@ -1119,7 +1117,7 @@ PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    float,
                    double,
                    float16,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv2d_transpose_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -1127,7 +1125,7 @@ PD_REGISTER_KERNEL(conv2d_transpose_double_grad,
                    float,
                    double,
                    float16,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -1135,7 +1133,7 @@ PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    float,
                    double,
                    float16,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    GPUDNN,

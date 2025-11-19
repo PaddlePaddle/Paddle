@@ -83,7 +83,7 @@ def minimize_lbfgs(
 
             - is_converge (bool): Indicates whether found the minimum within tolerance.
             - num_func_calls (int): number of objective function called.
-            - position (Tensor): the position of the last iteration. If the search converged, this value is the argmin of the objective function regrading to the initial position.
+            - position (Tensor): the position of the last iteration. If the search converged, this value is the argmin of the objective function regarding to the initial position.
             - objective_value (Tensor): objective function value at the `position`.
             - objective_gradient (Tensor): objective function gradient at the `position`.
 

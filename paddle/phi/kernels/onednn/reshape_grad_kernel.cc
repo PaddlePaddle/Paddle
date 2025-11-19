@@ -60,4 +60,4 @@ PD_REGISTER_KERNEL(reshape_grad,
                    ONEDNN,
                    phi::ReshapeGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

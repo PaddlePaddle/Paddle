@@ -137,12 +137,8 @@ void LayerNormKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(layer_norm,
-                   OneDNN,
-                   ONEDNN,
-                   phi::LayerNormKernel,
-                   float,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    layer_norm, OneDNN, ONEDNN, phi::LayerNormKernel, float, phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
