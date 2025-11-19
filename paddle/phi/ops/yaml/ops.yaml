@@ -1628,6 +1628,7 @@
   kernel :
     func : dropout
     data_type : x
+  inplace : (x -> out)
   optional : seed_tensor
   intermediate : mask
   backward : dropout_grad
