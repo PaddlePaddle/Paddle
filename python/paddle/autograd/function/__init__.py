@@ -98,12 +98,13 @@ class FunctionMeta(_PyLayerMeta):
         from paddle.base import core
 
         class FunctionBackward(core.eager.PyLayer, FunctionCtx):
+            _forward_cls = cls
+
             def backward(self, *args):
                 return self._forward_cls.backward(self, *args)
 
-        cls._backward_function = type(
-            name + '_backward', (FunctionBackward,), {"_forward_cls": cls}
-        )
+        # Directly assign the class, don't wrap it again with type()
+        cls._backward_function = FunctionBackward
 
         # Call parent metaclass __init__
         super().__init__(name, bases, attrs)
