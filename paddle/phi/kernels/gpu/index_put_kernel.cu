@@ -130,7 +130,6 @@ void IndexPutKernel(const Context& dev_ctx,
       indices.empty(),
       false,
       common::errors::InvalidArgument("Indices cannot be empty."));
-
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
