@@ -212,7 +212,9 @@ struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
     using VecType = phi::kps::details::VectorType<Type, VecSize>;
     VecType vec_temp;
 
-    int thread_offset = threadIdx.x + blockIdx.x * blockDim.x;
+    int64_t thread_offset =
+        static_cast<int64_t>(threadIdx.x) +
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
     const VecType *__restrict__ vec_input =
         reinterpret_cast<const VecType *__restrict__>(ins[Index]);
     vec_temp = vec_input[thread_offset];

@@ -125,6 +125,10 @@ paddle::Tensor multiply_ad_func(
       egr::EagerUtils::nullable_autograd_meta(x);
   egr::AutogradMeta* y_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(y);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(x);
+  egr::CheckGradNodeAccumulation(y);
 
   // Before log info
 

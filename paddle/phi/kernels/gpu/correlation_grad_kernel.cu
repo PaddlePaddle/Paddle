@@ -36,7 +36,9 @@ __global__ void correlation_backward_input1(int64_t n,
                                             const int max_displacement,
                                             const int stride1,
                                             const int stride2) {
-  int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t thread_index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t total_hw_c = input_channel * input_height * input_width;
   if (thread_index >= total_hw_c) return;
 
@@ -117,7 +119,9 @@ __global__ void correlation_backward_input2(int64_t n,
                                             const int max_displacement,
                                             const int stride1,
                                             const int stride2) {
-  int thread_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t thread_index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t total_hw_c = input_channel * input_height * input_width;
   if (thread_index >= total_hw_c) return;
 

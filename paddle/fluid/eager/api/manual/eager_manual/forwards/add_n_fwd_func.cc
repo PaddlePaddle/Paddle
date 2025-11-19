@@ -66,6 +66,9 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
   std::vector<egr::AutogradMeta*> x_autograd_meta_vec =
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*>* x_autograd_meta = &x_autograd_meta_vec;
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(x);
   // Forward API Call
   std::string unique_api_name;
   if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {

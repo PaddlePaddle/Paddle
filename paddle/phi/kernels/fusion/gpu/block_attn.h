@@ -152,7 +152,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
   using QK_Packed_Int8_t = typename Packed_Int8_<Qk_vec, CACHE_TYPE>::Type;
 
-  // 每个 block 有一个 head 的 q 值
+  // Each block has a head's q value
   __shared__ __align__(sizeof(Qk_vec)) T q_smem[Dh_MAX];
 
   const int tid = threadIdx.x;
@@ -1089,7 +1089,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   zero(v_bias);
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     V_vec v;
-    // 读取当前的 v 到 v cache 中
+    // Load the current v into the v cache
     load_func.template load<V_vec>(
         v,
         (params.q_num_head + params.kv_num_head) * Dh + qkv_base_offset +
@@ -2049,7 +2049,9 @@ __global__ void write_pre_cache_int8_to_cache(
   LoadT src_vec;
   LoadKVT cache_vec;
 
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int hidden_size = pre_cache_length * head_size;
   const int cache_hidden_size = num_heads * hidden_size;
   const int offset = 2 * cache_hidden_size;
@@ -2136,7 +2138,9 @@ __global__ void write_pre_cache_to_cache(
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
 
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int hidden_size = pre_cache_length * head_size;
   const int cache_hidden_size = num_heads * hidden_size;
   const int offset = 2 * cache_hidden_size;
@@ -2566,7 +2570,9 @@ __global__ void VariableLengthRotaryKernel(
   LoadT src_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int hidden_size = num_head * last_dim;
   const int offset = 2 * hidden_size;
@@ -2626,7 +2632,9 @@ __global__ void NeoxVariableLengthRotaryKernel(
   LoadT right_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int hidden_size = num_head * half_lastdim;
   const int full_hidden_size = num_head * last_dim;
@@ -2746,7 +2754,9 @@ __global__ void GQAVariableLengthRotaryKernel(
   LoadT src_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int offset = (q_num_head + kv_num_head) * last_dim;
   for (int64_t linear_index = global_thread_idx * VecSize,
@@ -2806,7 +2816,9 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadT right_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int offset = (q_num_head + kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
@@ -2931,7 +2943,9 @@ __global__ void VariableLengthRotaryKernel(
   LoadScaleT out_scale_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int hidden_size = num_head * last_dim;
   const int offset = 3 * hidden_size;
@@ -3012,7 +3026,9 @@ __global__ void NeoxVariableLengthRotaryKernel(
   LoadScaleT right_out_scale_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int hidden_size = num_head * half_lastdim;
   const int full_hidden_size = num_head * last_dim;
@@ -3162,7 +3178,9 @@ __global__ void GQAVariableLengthRotaryKernel(
   LoadScaleT out_scale_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int offset = (q_num_head + 2 * kv_num_head) * last_dim;
   for (int64_t linear_index = global_thread_idx * VecSize,
@@ -3241,7 +3259,9 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadScaleT right_out_scale_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int offset = (q_num_head + 2 * kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
@@ -3385,7 +3405,9 @@ __global__ void VariableLengthRotaryKernel(
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int hidden_size = num_head * last_dim;
   const int offset = 3 * hidden_size;
@@ -3456,7 +3478,9 @@ __global__ void NeoxVariableLengthRotaryKernel(
   LoadT right_bias_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int hidden_size = num_head * half_lastdim;
   const int full_hidden_size = num_head * last_dim;
@@ -3591,7 +3615,9 @@ __global__ void GQAVariableLengthRotaryKernel(
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int offset = (q_num_head + 2 * kv_num_head) * last_dim;
   for (int64_t linear_index = global_thread_idx * VecSize,
@@ -3660,7 +3686,9 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadT right_bias_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int offset = (q_num_head + 2 * kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
@@ -3788,7 +3816,9 @@ __global__ void ShiftSmoothQuant(const T *input,
   phi::AlignedVector<T, VecSize> smooth_vec;
   phi::AlignedVector<int8_t, VecSize> out_vec;
 
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_id =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_id * VecSize < num;
        linear_id += gridDim.x * blockDim.x) {
     int idx = linear_id * VecSize;
@@ -3826,7 +3856,9 @@ __global__ void ShiftSmooth(const T *input,
   phi::AlignedVector<T, VecSize> smooth_vec;
   phi::AlignedVector<T, VecSize> out_vec;
 
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_id =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_id * VecSize < num;
        linear_id += gridDim.x * blockDim.x) {
     int idx = linear_id * VecSize;
@@ -3947,7 +3979,9 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
                                                 const int q_head_num,
                                                 const int kv_head_num,
                                                 const int size_per_head) {
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
 
@@ -4048,7 +4082,9 @@ __global__ void write_pre_cache_to_kv_buffer(
   const int32_t hidden_size = pre_cache_length * head_dim;
   const int32_t cache_hidden_size = num_head * hidden_size;
   const int32_t fused_hidden_size = 2 * cache_hidden_size;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
 
@@ -4104,7 +4140,9 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
                                                 const int kv_head_num,
                                                 const int size_per_head) {
   const int fused_hidden_size = (q_head_num + 2 * kv_head_num) * size_per_head;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
 
@@ -4365,7 +4403,7 @@ __global__ void InitOutValueKernel(T *output_data,
                                    const T init_value) {
   const int tid = threadIdx.x;
   const int bid = blockIdx.x;
-  int64_t global_thread_idx = bid * blockDim.x + tid;
+  int64_t global_thread_idx = bid * static_cast<int64_t>(blockDim.x) + tid;
 
   for (int linear_index = global_thread_idx * VecSize,
            step = gridDim.x * blockDim.x * VecSize;
@@ -4412,7 +4450,9 @@ __global__ void TransposeRemovingPadding(const T *input_data,
   // transpose and remove padding
   // [batch_size, num_head, max_len_this_time, head_dim] -> [token_num,
   // num_head, head_dim]
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int dim_embed = num_head * head_dim;
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;

@@ -136,6 +136,20 @@ def _format_item(np_var, max_width=0, signed=False):
             item_str = f'{np_var:.0f}.'
         else:
             item_str = f'{np_var:.{DEFAULT_PRINT_OPTIONS.precision}f}'
+    elif np_var.dtype == np.complex64 or np_var.dtype == np.complex128:
+        re = np.real(np_var)
+        im = np.imag(np_var)
+        prec = DEFAULT_PRINT_OPTIONS.precision
+        if DEFAULT_PRINT_OPTIONS.sci_mode:
+            if im >= 0:
+                item_str = f'({re:.{prec}e}+{im:.{prec}e}j)'
+            else:
+                item_str = f'({re:.{prec}e}{im:.{prec}e}j)'
+        else:
+            if im >= 0:
+                item_str = f'({re:.{prec}f}+{im:.{prec}f}j)'
+            else:
+                item_str = f'({re:.{prec}f}{im:.{prec}f}j)'
     else:
         item_str = f'{np_var}'
 
@@ -311,7 +325,9 @@ def _format_dense_tensor(tensor, indent):
     ):
         np_tensor = mask_xpu_bf16_tensor(np_tensor)
 
-    summary = tensor.numel() > DEFAULT_PRINT_OPTIONS.threshold
+    summary = (
+        np.prod(tensor.shape, dtype="int64") > DEFAULT_PRINT_OPTIONS.threshold
+    )
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 

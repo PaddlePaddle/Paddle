@@ -140,7 +140,7 @@ Buffer::Buffer(int rank,
 
   // Create 32 MiB workspace
   // Note(ZKK):  here we allocate more(2 * M2N_NUM_WORKSPACE) to support M2N!
-  // Later we will opitimize here!
+  // Later we will optimize here!
   CUDA_CHECK(
       cudaMalloc(&workspace, 2 * M2N_NUM_WORKSPACE * NUM_WORKSPACE_BYTES));
   CUDA_CHECK(cudaMemsetAsync(

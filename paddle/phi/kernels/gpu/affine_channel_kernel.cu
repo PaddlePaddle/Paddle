@@ -35,7 +35,9 @@ __global__ static inline void KeAffineChannelCUDA(const T* x,
                                                   const int64_t HxW,
                                                   const int64_t num,
                                                   T* y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = gid; i < num; i += stride) {
     const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
@@ -65,7 +67,10 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
 
   auto dims = x->dims();
   const int64_t num = x->numel();
-  int N = dims[0];
+  int64_t N = dims[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+
   int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = num / N / C;
 

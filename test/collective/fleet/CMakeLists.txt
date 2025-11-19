@@ -372,6 +372,21 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_sharding_parallel
                        PROPERTIES TIMEOUT "400")
 endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_sharding_parallel_chunkoffload
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "600"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21218;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_sharding_parallel_chunkoffload
+                       PROPERTIES TIMEOUT "600")
+endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_tensor_parallel

@@ -374,9 +374,9 @@ class TestLogicalOpsAPI_Compatibility(unittest.TestCase):
                     y = paddle.to_tensor(np_other)
                     # Position args (args)
                     paddle_dygraph_out.append(paddle_op(x, y))
-                    # Key words args (kwargs) for paddle
+                    # Keywords args (kwargs) for paddle
                     paddle_dygraph_out.append(paddle_op(x=x, y=y))
-                    # Key words args for torch
+                    # Keywords args for torch
                     paddle_dygraph_out.append(paddle_op(input=x, other=y))
                     # Combined args and kwargs
                     paddle_dygraph_out.append(paddle_op(x, other=y))
@@ -397,9 +397,9 @@ class TestLogicalOpsAPI_Compatibility(unittest.TestCase):
                 else:  # Unary op (logical_not)
                     # Position args (args)
                     paddle_dygraph_out.append(paddle_op(x))
-                    # Key words args (kwargs) for paddle
+                    # Keywords args (kwargs) for paddle
                     paddle_dygraph_out.append(paddle_op(x=x))
-                    # Key words args for torch
+                    # Keywords args for torch
                     paddle_dygraph_out.append(paddle_op(input=x))
                     # Tensor method args
                     paddle_dygraph_out.append(x.__getattribute__(op_str)())
@@ -449,9 +449,9 @@ class TestLogicalOpsAPI_Compatibility(unittest.TestCase):
 
                         # Position args (args)
                         fetch_list.append(paddle_op(x, y))
-                        # Key words args (kwargs) for paddle
+                        # Keywords args (kwargs) for paddle
                         fetch_list.append(paddle_op(x=x, y=y))
-                        # Key words args for torch
+                        # Keywords args for torch
                         fetch_list.append(paddle_op(input=x, other=y))
                         # Combined args and kwargs
                         fetch_list.append(paddle_op(x, other=y))
@@ -465,9 +465,9 @@ class TestLogicalOpsAPI_Compatibility(unittest.TestCase):
                     else:  # Unary op
                         # Position args (args)
                         fetch_list.append(paddle_op(x))
-                        # Key words args (kwargs) for paddle
+                        # Keywords args (kwargs) for paddle
                         fetch_list.append(paddle_op(x=x))
-                        # Key words args for torch
+                        # Keywords args for torch
                         fetch_list.append(paddle_op(input=x))
                         # Tensor method args
                         fetch_list.append(x.__getattribute__(op_str)())

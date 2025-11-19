@@ -249,7 +249,7 @@ std::vector<egr::AutogradMeta*> AttachAutoGradMeta(
 
     if (!autograd_meta->GetMutableGradNode()) {
       autograd_meta->SetGradNode(
-          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+          std::make_shared<egr::GradNodeAccumulation>(tensor));
     }
 
     result.push_back(autograd_meta);
@@ -271,6 +271,10 @@ std::vector<paddle::Tensor> run_program_ad_func(
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*> p_autograd_params =
       egr::EagerUtils::nullable_autograd_meta(params);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(x);
+  egr::CheckGradNodeAccumulation(params);
 
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(

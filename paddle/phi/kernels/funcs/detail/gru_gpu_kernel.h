@@ -128,7 +128,9 @@ __global__ void KeFastCollectiveGruGate(T *gate_value,
   T c0 = 0.0f;
   T b0[Tiled_size];
 
-  int COL = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t COL =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int Tiled_mask = ((1 << Tiled_size) - 1);
   // Tiled  matrix multiply using register shift, faster than sm.
   if (prev_output_value) {
@@ -185,7 +187,9 @@ __global__ void KeFastCollectiveGruOut(const T *gate_weight,
                                        int frame_size,
                                        ActivationType act_node,
                                        bool origin_mode) {
-  int COL = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t COL =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   T a0 = 0.0f;
   T b0[Tiled_size];

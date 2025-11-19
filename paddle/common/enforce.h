@@ -335,6 +335,16 @@ using CommonType2 = typename std::add_lvalue_reference<
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
+#define PADDLE_ENFORCE_LE_INT_MAX(var, var_name)                             \
+  PADDLE_ENFORCE_LE(var,                                                     \
+                    std::numeric_limits<int>::max(),                         \
+                    common::errors::InvalidArgument(                         \
+                        "Tensor dimension %s=%ld exceeds the maximum value " \
+                        "that int can represent (%d).",                      \
+                        var_name,                                            \
+                        var,                                                 \
+                        std::numeric_limits<int>::max()))
+
 TEST_API bool RegisterLogSimplyStr(const std::string& type,
                                    const std::string& simply);
 template <typename T>

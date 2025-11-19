@@ -259,6 +259,17 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const phi::Place& place) {
   return released_size;
 }
 
+size_t StreamSafeCUDAAllocator::CompactImpl(const phi::Place& place) {
+  std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
+  VLOG(4) << "enter StreamSafeCUDAAllocator compact!!";
+  std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
+  size_t compact_free_size = 0;
+  for (StreamSafeCUDAAllocator* allocator : allocators) {
+    compact_free_size += allocator->underlying_allocator_->Compact(place_);
+  }
+  return compact_free_size;
+}
+
 void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
   // NOTE(Ruibiao): This condition is to reduce lock completion. It does not
   // need to be thread-safe since here occasional misjudgments are permissible.

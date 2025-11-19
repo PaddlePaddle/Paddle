@@ -2169,7 +2169,7 @@ paddle::Tensor CreateTensorFromVarDesc(
 
   if (!autograd_meta->GetMutableGradNode()) {
     autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+        std::make_shared<egr::GradNodeAccumulation>(tensor));
   }
 
   return tensor;

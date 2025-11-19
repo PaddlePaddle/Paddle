@@ -228,7 +228,7 @@ PDNode* TrtQKMultiHeadMatmulPattern::operator()() {
       .LinksTo({matmul_qk_out_var});
   scale->LinksFrom({matmul_qk_out_var}).LinksTo({scale_out_var});
   softmax_qk->LinksFrom({scale_out_var}).LinksTo({softmax_qk_out_var});
-  // V  path
+  // V path
   mul2->LinksFrom({input1, mul2_w_var}).LinksTo({mul2_out_var});
   elementwise2->LinksFrom({mul2_out_var, elementwise2_w})
       .LinksTo({elementwise2_out});

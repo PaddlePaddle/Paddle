@@ -26,7 +26,7 @@
 
 namespace phi {
 
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutGradKernel(
     const phi::GPUContext& dev_ctx,
     const DenseTensor& out_grad,
@@ -78,14 +78,10 @@ void GPUIndexElementwisePutGradKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+      desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE_EQ(true,
-                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
-                    common::errors::PreconditionNotMet(
-                        "the value of N should be in [0, "
-                        "std::numeric_limits<int32_t>::max()]"));
+
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -189,7 +185,7 @@ void GPUIndexElementwisePutGradKernel(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename OffsetT = uint32_t>
 void LaunchIndexElementwisePutWithTensorGradCudaKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& indices,
@@ -204,16 +200,16 @@ void LaunchIndexElementwisePutWithTensorGradCudaKernel(
   if (x_grad && !value_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
-    GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                 out_grad,
-                                                 indices,
-                                                 input_dims,
-                                                 input_strides,
-                                                 index_dims,
-                                                 index_strides,
-                                                 slice_offset,
-                                                 x_grad,
-                                                 value_grad);
+    GPUIndexElementwisePutGradKernel<T, int64_t, OffsetT>(dev_ctx,
+                                                          out_grad,
+                                                          indices,
+                                                          input_dims,
+                                                          input_strides,
+                                                          index_dims,
+                                                          index_strides,
+                                                          slice_offset,
+                                                          x_grad,
+                                                          value_grad);
   } else if (value_grad) {
     if (x_grad) {
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
@@ -223,16 +219,16 @@ void LaunchIndexElementwisePutWithTensorGradCudaKernel(
       tmp_value_grad.Resize(common::make_ddim(input_dims));
       dev_ctx.template Alloc<T>(&tmp_value_grad);
 
-      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                   out_grad,
-                                                   indices,
-                                                   input_dims,
-                                                   input_strides,
-                                                   index_dims,
-                                                   index_strides,
-                                                   slice_offset,
-                                                   x_grad,
-                                                   &tmp_value_grad);
+      GPUIndexElementwisePutGradKernel<T, int64_t, OffsetT>(dev_ctx,
+                                                            out_grad,
+                                                            indices,
+                                                            input_dims,
+                                                            input_strides,
+                                                            index_dims,
+                                                            index_strides,
+                                                            slice_offset,
+                                                            x_grad,
+                                                            &tmp_value_grad);
 
       std::vector<int> v_dims(tmp_value_grad.dims().size());
       std::iota(v_dims.begin(), v_dims.end(), 0);
@@ -245,31 +241,31 @@ void LaunchIndexElementwisePutWithTensorGradCudaKernel(
                             value_grad);
     } else if (value_grad->dims() == common::make_ddim(input_dims)) {
       dev_ctx.template Alloc<T>(value_grad);
-      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                   out_grad,
-                                                   indices,
-                                                   input_dims,
-                                                   input_strides,
-                                                   index_dims,
-                                                   index_strides,
-                                                   slice_offset,
-                                                   x_grad,
-                                                   value_grad);
+      GPUIndexElementwisePutGradKernel<T, int64_t, OffsetT>(dev_ctx,
+                                                            out_grad,
+                                                            indices,
+                                                            input_dims,
+                                                            input_strides,
+                                                            index_dims,
+                                                            index_strides,
+                                                            slice_offset,
+                                                            x_grad,
+                                                            value_grad);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
       tmp_value_grad.Resize(common::make_ddim(input_dims));
       dev_ctx.template Alloc<T>(&tmp_value_grad);
 
-      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                   out_grad,
-                                                   indices,
-                                                   input_dims,
-                                                   input_strides,
-                                                   index_dims,
-                                                   index_strides,
-                                                   slice_offset,
-                                                   x_grad,
-                                                   &tmp_value_grad);
+      GPUIndexElementwisePutGradKernel<T, int64_t, OffsetT>(dev_ctx,
+                                                            out_grad,
+                                                            indices,
+                                                            input_dims,
+                                                            input_strides,
+                                                            index_dims,
+                                                            index_strides,
+                                                            slice_offset,
+                                                            x_grad,
+                                                            &tmp_value_grad);
 
       std::vector<int64_t> after_dims =
           common::vectorize(tmp_value_grad.dims());
@@ -307,17 +303,29 @@ void LaunchIndexElementwisePutGradCudaKernel(
     DenseTensor* x_grad) {
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-
-    GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                 out_grad,
-                                                 indices,
-                                                 input_dims,
-                                                 input_strides,
-                                                 index_dims,
-                                                 index_strides,
-                                                 slice_offset,
-                                                 x_grad,
-                                                 nullptr);
+    if (funcs::IsInUint32Range(x_grad->numel())) {
+      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
+                                                   out_grad,
+                                                   indices,
+                                                   input_dims,
+                                                   input_strides,
+                                                   index_dims,
+                                                   index_strides,
+                                                   slice_offset,
+                                                   x_grad,
+                                                   nullptr);
+    } else {
+      GPUIndexElementwisePutGradKernel<T, int64_t, uint64_t>(dev_ctx,
+                                                             out_grad,
+                                                             indices,
+                                                             input_dims,
+                                                             input_strides,
+                                                             index_dims,
+                                                             index_strides,
+                                                             slice_offset,
+                                                             x_grad,
+                                                             nullptr);
+    }
   }
 }
 
@@ -399,17 +407,30 @@ void IndexElementwisePutWithTensorGradKernel(
     }
     return;
   }
-
-  LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
-                                                                indices,
-                                                                out_grad,
-                                                                input_dims,
-                                                                input_strides,
-                                                                index_dims,
-                                                                index_strides,
-                                                                slice_offset,
-                                                                value_grad,
-                                                                x_grad);
+  if (x_grad && funcs::IsInUint32Range(x_grad->numel())) {
+    LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
+                                                                  indices,
+                                                                  out_grad,
+                                                                  input_dims,
+                                                                  input_strides,
+                                                                  index_dims,
+                                                                  index_strides,
+                                                                  slice_offset,
+                                                                  value_grad,
+                                                                  x_grad);
+  } else {
+    LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context, uint64_t>(
+        dev_ctx,
+        indices,
+        out_grad,
+        input_dims,
+        input_strides,
+        index_dims,
+        index_strides,
+        slice_offset,
+        value_grad,
+        x_grad);
+  }
 }
 
 }  // namespace phi

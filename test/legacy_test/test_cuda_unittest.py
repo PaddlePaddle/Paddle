@@ -16,6 +16,7 @@ import ctypes
 import platform
 import types
 import unittest
+import warnings
 
 import numpy as np
 from op_test import get_device, is_custom_device
@@ -35,6 +36,47 @@ from paddle.cuda import (
     stream,
     synchronize,
 )
+
+
+class TestDevice(unittest.TestCase):
+    def test_device(self):
+        tensor = paddle.tensor([1]).to(paddle.get_device())
+        tensor_device = tensor.device
+        with tensor_device:
+            new_tensor = paddle.tensor([1])
+            assert new_tensor.device == tensor_device
+
+    def test_static_device(self):
+        paddle.enable_static()
+
+        x = paddle.static.data(name="x", shape=[2, 3], dtype='float32')
+        assert x.device is None
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            _ = x.device
+
+            self.assertTrue(
+                any("device" in str(warning.message).lower() for warning in w),
+                msg=f"Expected a warning related to 'device', but got {[str(w.message) for w in w]}",
+            )
+
+
+class TestCudaIpcCollect(unittest.TestCase):
+    def test_ipc_collect(self):
+        if (
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.is_compiled_with_rocm():
+            reason = "Skip for ipc_collect function in dcu is not correct"
+            print(reason)
+            return
+        if platform.system().lower() == "windows":
+            print("Skip: ipc_collect function on Windows is not supported.")
+            return
+        device = paddle.device.get_device()
+        if device.startswith("gpu") or device.startswith("xpu"):
+            paddle.device.ipc_collect()
+            paddle.cuda.ipc_collect()
 
 
 class TestCudaCompat(unittest.TestCase):
@@ -119,6 +161,16 @@ class TestCudaCompat(unittest.TestCase):
                 self.assertIsInstance(ctx, StreamContext)
                 current = current_stream()
                 self.assertEqual(current.stream_base, s.stream_base)
+
+            s = paddle.device.Stream()
+            data1 = paddle.ones(shape=[20])
+            data2 = paddle.ones(shape=[20])
+            data3 = data1 + data2
+            with paddle.device.StreamContext(s):
+                s.wait_stream(paddle.device.current_stream())
+                data4 = data1 + data3
+                ctx = stream(s)
+                self.assertIsInstance(ctx, paddle.device.StreamContext)
 
     def test_nested_streams(self):
         if paddle.is_compiled_with_cuda():
@@ -361,11 +413,18 @@ class TestExternalStream(unittest.TestCase):
 
         # Test case 4: Verify original stream remains valid after external stream deletion
         del external_stream
-        with paddle.cuda.stream(original_stream):
+        with paddle.cuda.stream(stream=original_stream):
             current_stream = paddle.cuda.current_stream(device_none)
 
         self.assertEqual(
             current_stream.stream_base.raw_stream, original_raw_ptr
+        )
+
+        with paddle.device.stream(stream=original_stream):
+            current_device_stream = paddle.cuda.current_stream(device_none)
+
+        self.assertEqual(
+            current_device_stream.stream_base.raw_stream, original_raw_ptr
         )
 
 

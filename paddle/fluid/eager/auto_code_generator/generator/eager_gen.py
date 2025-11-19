@@ -106,6 +106,7 @@ type_promote_white_list = {
     "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
     "equal": ["x", "y"],
+    "equal_all": ["x", "y"],
     "not_equal": ["x", "y"],
     "less_than": ["x", "y"],
     "less_equal": ["x", "y"],
@@ -532,6 +533,9 @@ TEST_API {} {}({}) {{
   // Layout autotune
 {}
   // Get Input AutoGradMeta
+{}
+
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with its TensorMeta
 {}
 
  // Before log info
@@ -1913,6 +1917,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         else:
             forward_inplace_map = {}
         indent = GetIndent(1)
+        check_input_grad_node_str = ""
 
         # Get Function Args
         num_inputs = len(forward_attrs_list) + len(forward_inputs_position_map)
@@ -2328,6 +2333,17 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 outputs_autograd_meta_list.append(output_autograd_meta)
             outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
 
+            # 3. Check Input Accumulation Node
+            check_input_grad_node_str_list = []
+            for name, (_, _) in forward_inputs_position_map.items():
+                check_input_grad_node_str_list.append(
+                    f"{indent}egr::CheckGradNodeAccumulation({name});"
+                )
+            if check_input_grad_node_str_list:
+                check_input_grad_node_str = "\n".join(
+                    check_input_grad_node_str_list
+                )
+
             # Node Creation
             self.GenerateNodeCreationCodes(is_inplaced=is_inplaced)
             node_creation_str = self.node_creation_str
@@ -2595,6 +2611,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_autocast_logic_str,
                 layout_logic_str,
                 inputs_autograd_meta_str,
+                check_input_grad_node_str,
                 before_log_str,
                 compute_require_grad_args_str,
                 self.grad_node_name,

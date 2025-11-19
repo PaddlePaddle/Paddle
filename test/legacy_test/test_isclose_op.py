@@ -381,10 +381,10 @@ class TestIscloseCompatibility:
         # Position args (args)
         out1 = paddle.isclose(x, y)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.isclose(x=x, y=y)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.isclose(input=x, other=y)
         paddle_dygraph_out.append(out3)
 
@@ -410,9 +410,9 @@ class TestIscloseCompatibility:
             y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.isclose(x, y)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.isclose(x=x, y=y)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.isclose(input=x, other=y)
             # Tensor method args
             out4 = x.isclose(y)
