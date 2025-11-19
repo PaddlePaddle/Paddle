@@ -64,8 +64,8 @@ Examples:
 static const char* paddle_size_reduce_doc = R"DOC(Helper for pickling.)DOC";
 
 PyObject* Paddle_Size_NewFromInt64Array(const int64_t* data, Py_ssize_t len) {
-  PyObject* self = PyList_New(len);
-  if (!self) {
+  PyObject* out = PyList_New(len);
+  if (!out) {
     PyErr_SetString(PyExc_MemoryError, "Failed to create new PyList object.");
     return nullptr;
   }
@@ -74,14 +74,14 @@ PyObject* Paddle_Size_NewFromInt64Array(const int64_t* data, Py_ssize_t len) {
     PyObject* item = PyLong_FromLongLong(data[i]);
     if (!item) {
       PyErr_SetString(PyExc_MemoryError, "Failed to create PyLong object.");
-      Py_DECREF(self);
+      Py_DECREF(out);
       return nullptr;
     }
-    PyList_SET_ITEM(self, i, item);
+    PyList_SET_ITEM(out, i, item);
   }
 
-  reinterpret_cast<PyObject*>(self)->ob_type = &Paddle_SizeType;
-  return self;
+  reinterpret_cast<PyObject*>(out)->ob_type = &Paddle_SizeType;
+  return out;
 }
 
 static int Paddle_Size_init(PyObject* self, PyObject* args, PyObject* kwargs) {
