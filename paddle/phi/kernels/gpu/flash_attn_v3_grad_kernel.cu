@@ -1503,7 +1503,6 @@ void FlashMaskV2GradBaseKernel(
     dynload::flashmaskv2_bwd_params_set_n_block_dim(params_handle, 128);
     dynload::flashmaskv2_bwd_params_set_block_mask_ptr(
         params_handle, (block_mask.data<int32_t>()));
-    auto ptr = block_mask.data<int32_t>();
   }
 #ifdef FLASHATTENTION_DISABLE_LOCAL
   PADDLE_ENABLE_EQ(
