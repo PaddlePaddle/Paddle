@@ -29,8 +29,10 @@ constraints:
       # dims[...] / expr.dims()[...] / expr->dims()[...]
       - pattern: $E.dims[$INDEX]
       - pattern: $E.dims()[$INDEX]
+      - pattern: $E.dims($INDEX)
       - pattern: $E->dims[$INDEX]
       - pattern: $E->dims()[$INDEX]
+      - pattern: $E->dims($INDEX)
       # shape[...] / expr.shape()[...] / expr->shape()[...]
       - pattern: $E.shape[$INDEX]
       - pattern: $E.shape()[$INDEX]

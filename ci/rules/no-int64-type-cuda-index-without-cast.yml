@@ -1,13 +1,7 @@
 id: no-int64-type-cuda-index-without-cast
 language: cpp
 files:
-  - paddle/phi/kernels/**
-  # - paddle/**
-ignores:
-  - paddle/phi/kernels/legacy/**
-  - paddle/phi/kernels/xpu/**
-  - paddle/phi/kernels/custom/**
-  - paddle/phi/kernels/sparse/**
+  - paddle/**
 severity: error
 message: CUDA indexing calculation assigned to int64_t variable may overflow due to intermediate 32-bit arithmetic. If it is a false positive, please contact zrr1999 (Recommend), wanghuancoder for more information.
 note: Add static_cast<int64_t> to each CUDA built-in variable in the expression to prevent integer overflow during calculation.
