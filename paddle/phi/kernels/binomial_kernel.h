@@ -30,8 +30,8 @@ namespace phi {
  */
 template <typename T, typename Context>
 void BinomialKernel(const Context& dev_ctx,
-                     const DenseTensor& count,
-                     const DenseTensor& prob,
-                     DenseTensor* out);
+                    const DenseTensor& count,
+                    const DenseTensor& prob,
+                    DenseTensor* out);
 
 }  // namespace phi
