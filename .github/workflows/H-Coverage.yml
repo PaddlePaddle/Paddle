@@ -312,6 +312,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          apt-get update -y && apt-get install -y net-tools
           pip install build//python/dist/*.whl --no-deps
           pip install -r python/unittest_py/requirements.txt
           bash $ci_scripts/h-test.sh
