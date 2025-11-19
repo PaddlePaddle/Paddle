@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -179,6 +180,9 @@ def monkey_patch_math_tensor():
             return astype(tensor, 'uint8')
         elif self.is_complex():
             real = astype(self.real(), 'int8')
+            logging.warning(
+                "Casting complex values to real discards the imaginary part"
+            )
             return astype(real, 'uint8')
         else:
             return astype(self, 'uint8')
