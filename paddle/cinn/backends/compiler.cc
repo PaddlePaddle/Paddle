@@ -268,6 +268,64 @@ void Compiler::EndCompile() {
   engine_->AddSelfModule(GetFusionHash(), cinn_runtime_include_path);
 }
 
+void Compiler::LoadAndRegisterFromCache(const std::string& source_hash) {
+  std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
+  VLOG(5) << "YUHAN!!! LoadAndRegisterFromCache, cache_so_path = " << cache_so_path;
+  
+  // 1. 加载元数据 (恢复 Kernel 名称列表)
+  // 🚨 注意：如果 LoadKernelNamesFromMeta 依赖 source_hash，请确保它能获取到，例如修改其签名接受 source_hash。
+  // 假设 LoadKernelNamesFromMeta(); 内部已经可以根据 source_hash 找到文件
+  LoadKernelNamesFromMeta(); 
+
+  // 2. 加载共享库 (.so)
+  void* handle = dlopen(cache_so_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
+  if (!handle) {
+    LOG(FATAL) << "Failed to dlopen shared library: " << cache_so_path << " Error: " << dlerror();
+  }
+  
+  // 3. 加载 CUDA Fatbin (Device Code)
+  std::string fatbin_path = "/tmp/cinn/" + source_hash + "/cinn_cuda_kernel.fatbin"; 
+  CUmodule cu_module;
+  if (cuModuleLoad(&cu_module, fatbin_path.c_str()) != CUDA_SUCCESS) {
+      LOG(FATAL) << "Failed to load CUDA Module from " << fatbin_path;
+  }
+  // 🚨 保存 CUmodule 句柄到成员变量，以便后续销毁
+  // this->cuda_module_handle_ = cu_module; 
+
+  RuntimeSymbols symbols;
+  // 4. 遍历并注册符号
+  for (const auto& kernel_fn_name : device_fn_name_) {
+    // 4A. 查找 Host Wrapper 函数指针
+    void* fn_kernel = dlsym(handle, kernel_fn_name.c_str());
+    if (!fn_kernel) {
+        LOG(FATAL) << "Failed to dlsym kernel symbol: " << kernel_fn_name << " from " << cache_so_path << " Error: " << dlerror();
+    }
+    
+    // 4B. 注册到 ExecutionEngine (用于运行时查找 Host Wrapper 地址)
+    fn_ptr_.push_back(fn_kernel); 
+    symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
+
+    // 4C. 获取 Device 句柄，并覆盖 Host 侧指针
+    CUfunction cu_kernel_func;
+    if (cuModuleGetFunction(&cu_kernel_func, cu_module, kernel_fn_name.c_str()) != CUDA_SUCCESS) {
+        LOG(FATAL) << "Failed to get CUfunction handle for " << kernel_fn_name;
+    }
+    void* kernel_ptr_host_addr = dlsym(handle, (kernel_fn_name + "_ptr_").c_str());
+    if (!kernel_ptr_host_addr) {
+         LOG(FATAL) << "Failed to dlsym kernel pointer variable: " << kernel_fn_name + "_ptr_";
+    }
+    *static_cast<void**>(kernel_ptr_host_addr) = reinterpret_cast<void*>(cu_kernel_func); 
+  }
+
+  // 5. 注册所有运行时符号
+  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+  VLOG(3) << "Successfully registered symbols from cache .so: " << cache_so_path;
+
+  // 6. 存储句柄和路径，以便后续 dlclose/cuModuleUnload
+  dynamic_library_path_ = cache_so_path; 
+  dynamic_library_handle_ = handle;      
+}
+
 std::string Compiler::GetSourceCode(const ir::Module& module) {
   return target_.arch.Match(
       [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },

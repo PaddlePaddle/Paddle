@@ -24,6 +24,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include <fstream> // 必须包含
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
@@ -68,6 +69,149 @@ static size_t GetThreadNum(size_t task_size) {
   return thread_size;
 }
 
+// ==========================================================
+//  Helper Functions for Serialization (Placed inside namespace)
+// ==========================================================
+
+// 辅助函数：将任意基础类型写入文件
+template <typename T>
+void WriteBinary(std::ofstream& ofs, const T& value) {
+    ofs.write(reinterpret_cast<const char*>(&value), sizeof(T));
+}
+
+// 辅助函数：从文件读取任意基础类型
+template <typename T>
+bool ReadBinary(std::ifstream& ifs, T& value) {
+    if (ifs.read(reinterpret_cast<char*>(&value), sizeof(T))) {
+        return true;
+    }
+    std::cerr << "Error: Failed to read binary data of size " << sizeof(T) << std::endl;
+    return false;
+}
+
+// 保存元数据
+bool SaveKernelMetaData(const pir::CINNKernelInfo* group_info, const std::string& filepath) {
+    // 1. 打开文件流
+    std::ofstream ofs(filepath, std::ios::binary);
+    if (!ofs.is_open()) {
+        VLOG(3) << "Error: Could not open file for writing: " << filepath;
+        return false;
+    }
+
+    // ----------------------------------------------------
+    // A. 序列化 temp_space_sizes
+    // ----------------------------------------------------
+    const auto& temp_sizes = group_info->temp_space_sizes; 
+    size_t temp_size = temp_sizes.size();
+    WriteBinary(ofs, temp_size);
+    if (temp_size > 0) {
+        ofs.write(reinterpret_cast<const char*>(temp_sizes.data()), temp_size * sizeof(int64_t));
+    }
+
+    // ----------------------------------------------------
+    // B. 序列化 symbol_args_map
+    // ----------------------------------------------------
+    const auto& symbol_map = group_info->symbol_args_map;
+    size_t map_size = symbol_map.size();
+    WriteBinary(ofs, map_size);
+
+    for (const auto& [key, bind_info] : symbol_map) {
+        WriteBinary(ofs, key);
+
+        std::visit([&](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            
+            int type_index = -1;
+            
+            if constexpr (std::is_same_v<T, pir::CINNKernelInfo::ArgDimIdx>) {
+                type_index = 0;
+                WriteBinary(ofs, type_index);
+                // ArgDimIdx 只有 dim_idx
+                WriteBinary(ofs, arg.arg_idx);
+                WriteBinary(ofs, arg.dim_idx);
+            } else if constexpr (std::is_same_v<T, pir::CINNKernelInfo::ArgValueIdx>) {
+                type_index = 1;
+                WriteBinary(ofs, type_index);
+                // ArgValueIdx 有 input_idx 和 value_idx
+                WriteBinary(ofs, arg.arg_idx); 
+                WriteBinary(ofs, arg.value_idx);
+            } else {
+                 // 应该不会到达这里
+            }
+            
+        }, bind_info);
+    }
+    
+    ofs.close();
+    return true;
+}
+
+// 加载 Kernel 元数据函数
+bool LoadKernelMetaData(pir::CINNKernelInfo* group_info, const std::string& filepath) {
+    // 1. 打开文件流
+    std::ifstream ifs(filepath, std::ios::binary);
+    if (!ifs.is_open()) {
+        VLOG(3) << "Error: Could not open file for reading: " << filepath;
+        return false;
+    }
+
+    // ----------------------------------------------------
+    // A. 反序列化 temp_space_sizes
+    // ----------------------------------------------------
+    auto& temp_sizes = group_info->temp_space_sizes;
+    size_t temp_size = 0;
+    if (!ReadBinary(ifs, temp_size)) return false;
+    
+    if (temp_size > 0) {
+        temp_sizes.resize(temp_size);
+        if (!ifs.read(reinterpret_cast<char*>(temp_sizes.data()), temp_size * sizeof(int64_t))) {
+            VLOG(3) << "Error: Failed to read temp_space_sizes content.";
+            return false;
+        }
+    } else {
+        temp_sizes.clear();
+    }
+
+    // ----------------------------------------------------
+    // B. 反序列化 symbol_args_map
+    // ----------------------------------------------------
+    auto& symbol_map = group_info->symbol_args_map;
+    symbol_map.clear();
+    size_t map_size = 0;
+    if (!ReadBinary(ifs, map_size)) return false;
+
+    for (size_t i = 0; i < map_size; ++i) {
+        int key = 0;
+        int type_index = -1;
+        if (!ReadBinary(ifs, key)) return false;
+        if (!ReadBinary(ifs, type_index)) return false;
+
+        pir::CINNKernelInfo::SymbolArgBindInfo bind_info;
+
+        if (type_index == 0) { // ArgDimIdx
+            pir::CINNKernelInfo::ArgDimIdx dim_info;
+            // ArgDimIdx 只有 dim_idx (根据序列化逻辑反推)
+            if (!ReadBinary(ifs, dim_info.arg_idx)) return false;
+            if (!ReadBinary(ifs, dim_info.dim_idx)) return false;
+            bind_info = dim_info;
+        } else if (type_index == 1) { // ArgValueIdx
+            pir::CINNKernelInfo::ArgValueIdx value_info;
+            // ArgValueIdx 有 arg_idx 和 value_idx
+            if (!ReadBinary(ifs, value_info.arg_idx)) return false;
+            if (!ReadBinary(ifs, value_info.value_idx)) return false;
+            bind_info = value_info;
+        } else {
+            VLOG(3) << "Error: Unknown SymbolArgBindInfo type index: " << type_index;
+            return false;
+        }
+        
+        symbol_map.emplace(key, bind_info);
+    }
+    
+    ifs.close();
+    return true;
+}
+
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
   CompilationContextMapper ctx_mapper(target_, groups); // construct and 往compilation_results_后追加
@@ -93,11 +237,64 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
           shape_analysis_manager.constraints_manager());
       runtime::SetArchDevice(target_, device_id);
       VLOG(5) << "YUHAN!!! Before Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
-      // auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
-      // std::string source_hash = std::to_string(fusion_info_hash);
-      // std::string cache_so_path = "/tmp/cinn/" + source_hash + "/" + "cinn_cache.so";
-      // if (std::ifstream(cache_so_path).good()) {}
-      compilation_results[index] = Compile(&group_compilation_contexts[index]); //
+      auto fusion_info_hash = group_compilation_contexts[index].GetFusionHash();
+      std::string source_hash = std::to_string(fusion_info_hash);
+      std::string cache_dir = "/tmp/cinn/" + source_hash; // 建议先定义目录
+      std::string cache_so_path = cache_dir + "/cinn_cache.so";
+      std::string meta_filepath = cache_dir + "/cinn_cache.meta";
+      // 检查 .so 是否存在 (这里假设 good() 是有效的检查)
+      if (std::ifstream(cache_so_path).good()) {
+        VLOG(4) << "Cache hit for hash: " << source_hash;
+
+        // 1. 声明临时结构体
+        pir::CINNKernelInfo loaded_kernel_info; 
+        
+        // 2. 加载元数据
+        bool load_success = LoadKernelMetaData(&loaded_kernel_info, meta_filepath);
+
+        PADDLE_ENFORCE_EQ(
+            load_success,
+            true,
+            ::common::errors::Unavailable("Failed to load kernel metadata "
+                                        "from cache file: %s. Cache system is "
+                                        "broken or corrupted. Please delete the cache "
+                                        "directory and retry.", meta_filepath));
+        VLOG(4) << "Successfully loaded metadata.";
+        
+        // A. 构造 CompilationResult
+        auto result = std::make_shared<pir::CompilationResult>(
+            target_, false, fusion_info_hash);
+        
+        // B. 构造 BackendResource (使用加载的数据!)
+        auto resource = std::make_shared<pir::BackendResource>(
+            target_,
+            group_compilation_contexts[index].GetGroup()->FuncName(),
+            group_compilation_contexts[index].GetGroup()->FuncName() + "_infer_shape",
+            loaded_kernel_info.symbol_args_map,  // Load from meta
+            loaded_kernel_info.temp_space_sizes  // Load from meta
+        );
+
+        // C. Load .so
+        resource->GetBackendCompiler()->SetFusionHash(fusion_info_hash);
+        resource->GetBackendCompiler()->LoadAndRegisterFromCache(source_hash);
+        
+        result->SetBackendResource(resource);
+        compilation_results[index] = result;
+
+      } else {
+        // 编译路径
+        compilation_results[index] = Compile(&group_compilation_contexts[index]);
+        
+        // 保存元数据
+        pir::CINNKernelInfo info_to_save = compilation_results[index]->GetKernelInfo();
+        
+        // 确保目录存在 (此处略去 mkdir 逻辑，假设已由其他部分保证或手动创建)
+        // system(("mkdir -p " + cache_dir).c_str()); 
+        
+        SaveKernelMetaData(&info_to_save, meta_filepath);
+      }
+      VLOG(5) << "YUHAN!!! group_compilation_contexts[index].GetGroup()->symbol_args_map().size() = " << 
+      group_compilation_contexts[index].GetGroup()->symbol_args_map().size();
       VLOG(5) << "YUHAN!!! After Compile Parallell group_compilation_contexts[" << index << "].fusion_hash = " << group_compilation_contexts[index].GetFusionHash();
     };
     // 并行编译

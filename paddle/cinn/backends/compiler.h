@@ -152,6 +152,8 @@ class Compiler final {
    */
   size_t GetFusionHash() const { return fusion_hash_; }
 
+  void LoadAndRegisterFromCache(const std::string& source_hash);
+
   ~Compiler() {
     // 检查是否有动态库句柄需要释放
     if (dynamic_library_handle_) {
