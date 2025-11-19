@@ -1552,12 +1552,16 @@ add_doc_and_signature(
         output = wn * d_e * d_s + en * d_w * d_s
                 + ws * d_e * d_n + es * d_w * d_n
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x(Tensor): The input tensor, which is a 4-D tensor with shape
                      [N, C, H, W] or a 5-D tensor with shape [N, C, D, H, W],
                      N is the batch size, C is the channel number,
                      D, H and W is the feature depth, height and width.
                      The data type is float32 or float64.
+            alias: ``input``.
         grid(Tensor): Input grid tensor, which is a 4-D tensor with shape [N, grid_H,
                         grid_W, 2] or a 5-D tensor with shape [N, grid_D, grid_H,
                         grid_W, 3]. The data type is float32 or float64.
