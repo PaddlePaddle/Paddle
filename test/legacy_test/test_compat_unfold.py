@@ -17,6 +17,7 @@ import numpy as np
 from op_test import get_device_place, is_custom_device
 
 import paddle
+import paddle.compat.nn.functional as F_compat
 
 
 class TestCompatUnfold(unittest.TestCase):
@@ -115,6 +116,122 @@ class TestCompatUnfold(unittest.TestCase):
                 exe_res = exe.run(feed=feed)
             paddle.disable_static()
         self.assertEqual(str(cm.exception), msg_gt_4)
+
+
+class TestCompatFunctionalUnfold(unittest.TestCase):
+    def _compare_with_origin(
+        self, input_tensor, kernel_size, dilation, padding, stride
+    ):
+        out_compat = F_compat.unfold(
+            input=input_tensor,
+            kernel_size=kernel_size,
+            dilation=dilation,
+            padding=padding,
+            stride=stride,
+        )
+
+        out_origin = paddle.nn.functional.unfold(
+            x=input_tensor,
+            kernel_sizes=kernel_size
+            if not isinstance(kernel_size, paddle.Tensor)
+            else kernel_size.tolist(),
+            dilations=dilation
+            if not isinstance(dilation, paddle.Tensor)
+            else dilation.tolist(),
+            paddings=padding
+            if not isinstance(padding, paddle.Tensor)
+            else padding.tolist(),
+            strides=stride
+            if not isinstance(stride, paddle.Tensor)
+            else stride.tolist(),
+        )
+
+        expected_res = out_origin.numpy()
+        np.testing.assert_allclose(out_compat.numpy(), expected_res)
+
+        to_tensor = lambda x: x if isinstance(x, int) else paddle.to_tensor(x)
+        k_t = (
+            to_tensor(kernel_size)
+            if not isinstance(kernel_size, paddle.Tensor)
+            else kernel_size
+        )
+        d_t = (
+            to_tensor(dilation)
+            if not isinstance(dilation, paddle.Tensor)
+            else dilation
+        )
+        p_t = (
+            to_tensor(padding)
+            if not isinstance(padding, paddle.Tensor)
+            else padding
+        )
+        s_t = (
+            to_tensor(stride)
+            if not isinstance(stride, paddle.Tensor)
+            else stride
+        )
+
+        out_compat_tensor = F_compat.unfold(
+            input=input_tensor,
+            kernel_size=k_t,
+            dilation=d_t,
+            padding=p_t,
+            stride=s_t,
+        )
+        np.testing.assert_allclose(out_compat_tensor.numpy(), expected_res)
+
+    def test_compare_with_origin(self):
+        input_shape = (3, 4, 5, 6)
+        input_tensor = paddle.arange(360, dtype=paddle.float32).reshape(
+            input_shape
+        )
+        self._compare_with_origin(input_tensor, [3, 3], [1, 1], (1, 2), [1, 1])
+
+        input_shape = (5, 10, 13, 13)
+        input_tensor = paddle.ones(input_shape, dtype=paddle.float64)
+        self._compare_with_origin(input_tensor, [4, 4], [2, 2], 1, (1, 2))
+
+        input_shape = (12, 4, 10, 10)
+        input_tensor = paddle.ones(input_shape, dtype=paddle.float64)
+        self._compare_with_origin(input_tensor, 3, 2, 1, (1, 1))
+
+    def test_error_handling(self):
+        """Test whether there will be correct exception when users pass incorrect kwargs."""
+        x = paddle.randn([3, 9, 5, 5])
+
+        msg_gt_wrong_key = "paddle.compat.nn.functional.unfold() received unexpected keyword argument 'paddings'. \nDid you mean to use paddle.nn.functional.unfold() instead?"
+        msg_gt_padding_size = "The `padding` field of paddle.compat.nn.functional.unfold can only have size 1 or 2, now len=4. \nDid you mean to use paddle.nn.functional.unfold() instead?"
+        msg_gt_static_type = "paddle.compat.nn.functional.unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
+
+        with self.assertRaises(TypeError) as cm:
+            F_compat.unfold(x, [3, 3], paddings=[2, 1])
+        self.assertEqual(str(cm.exception), msg_gt_wrong_key)
+
+        with self.assertRaises(ValueError) as cm:
+            F_compat.unfold(x, [3, 3], padding=[2, 1, 2, 2])
+        self.assertEqual(str(cm.exception), msg_gt_padding_size)
+
+        with self.assertRaises(TypeError) as cm:
+            paddle.enable_static()
+            input_data = np.random.randn(2, 4, 8, 8).astype(np.float32)
+            with paddle.static.program_guard(paddle.static.Program()):
+                x_static = paddle.static.data(
+                    name='x', shape=[None, None, 8, 8], dtype='float32'
+                )
+                place = get_device_place()
+
+                result = F_compat.unfold(
+                    x_static,
+                    kernel_size=paddle.to_tensor([3, 3]),
+                    padding=paddle.to_tensor([1, 2]),
+                )
+
+                exe = paddle.static.Executor(place)
+                feed = {'x': input_data}
+            paddle.disable_static()
+        self.assertEqual(str(cm.exception), msg_gt_static_type)
+
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

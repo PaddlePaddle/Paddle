@@ -7682,6 +7682,7 @@ def index_add_(
     return _C_ops.index_add_(x, index, value, axis)
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "shape": ["sizes"]})
 def unflatten(
     x: Tensor, axis: int, shape: ShapeLike, name: str | None = None
 ) -> Tensor:
@@ -7695,13 +7696,21 @@ def unflatten(
        :alt: Illustration of unflatten
        :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
+        Alias Support: The parameter name ``sizes`` can be used as an alias for ``shape``.
+
     Args:
         x (Tensor) : An N-D Tensor. The data type is float16, float32, float64, int16, int32, int64, bool, uint16.
+            Alias: ``input``.
         axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
+            Alias: ``dim``.
         shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
             If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
             The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
             If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+            Alias: ``sizes``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
