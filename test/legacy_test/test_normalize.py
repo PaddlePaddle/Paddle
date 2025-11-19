@@ -135,6 +135,12 @@ class TestNormalizeAPI_Compatibility(unittest.TestCase):
             input=x, p=self.p, dim=self.axis, eps=self.epsilon
         )
         paddle_dygraph_out.append(out3)
+        # Key words args for out
+        out4 = paddle.zeros_like(x)
+        paddle.nn.functional.normalize(
+            x, self.p, self.axis, self.epsilon, out=out4
+        )
+        paddle_dygraph_out.append(out4)
         # Numpy reference output
         ref_out = self.np_x / np.maximum(
             np.linalg.norm(

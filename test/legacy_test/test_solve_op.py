@@ -961,6 +961,10 @@ class TestSolveAPI_Compatibility(unittest.TestCase):
         # Key words args for torch compatibility
         out3 = paddle.linalg.solve(A=A, B=B)
         paddle_dygraph_out.append(out3)
+        # Key words args for out
+        out4 = paddle.zeros_like(B)
+        paddle.linalg.solve(A, B, out=out4)
+        paddle_dygraph_out.append(out4)
         # Numpy reference output
         ref_out = np.linalg.solve(self.np_A, self.np_B)
 

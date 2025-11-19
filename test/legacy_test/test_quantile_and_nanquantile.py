@@ -558,6 +558,12 @@ class TestQuantileAPI_Compatibility(unittest.TestCase):
             interpolation=self.interpolation,
         )
         paddle_dygraph_out.append(out3)
+        # Key words args for out
+        out4 = paddle.zeros_like(x)
+        out1 = paddle.quantile(
+            x, self.q, self.axis, self.keepdim, self.interpolation, out=out4
+        )
+        paddle_dygraph_out.append(out4)
         # Numpy reference output
         ref_out = np.quantile(
             self.np_x,
