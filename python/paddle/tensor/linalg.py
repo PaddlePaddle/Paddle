@@ -28,6 +28,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    param_two_alias,
     transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -4178,7 +4179,7 @@ def _transpose_last_2dim(x):
     return x
 
 
-@ParamAliasDecorator({"x": ["A"], "y": ["B"]})
+@param_two_alias(["x", "A"], ["y", "B"])
 def solve(
     x: Tensor,
     y: Tensor,
@@ -4202,10 +4203,6 @@ def solve(
         Out = Y * X^-1
 
     Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
-
-    .. note::
-        Alias Support: The parameter name ``A`` can be used as an alias for ``x``.
-        Alias Support: The parameter name ``B`` can be used as an alias for ``y``.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be ``[*, M, M]``, where ``*`` is zero or
@@ -4245,23 +4242,23 @@ def solve(
         y = _transpose_last_2dim(y)
 
     if in_dynamic_or_pir_mode():
-        output = _C_ops.solve(x, y)
+        ret = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'solve')
         check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'solve')
-        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        ret = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(
-            type="solve", inputs={"X": x, "Y": y}, outputs={"Out": output}
+            type="solve", inputs={"X": x, "Y": y}, outputs={"Out": ret}
         )
 
     if not left:
-        output = _transpose_last_2dim(output)
+        ret = _transpose_last_2dim(ret)
     if out is not None:
-        paddle.assign(output, output=out)
-    return output
+        paddle.assign(ret, out)
+    return ret
 
 
 def triangular_solve(

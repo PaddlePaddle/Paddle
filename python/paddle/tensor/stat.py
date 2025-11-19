@@ -881,12 +881,12 @@ def _compute_quantile(
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for index in indices:
-        output = _compute_index(index)
+        ret = _compute_index(index)
         if not keepdim:
-            output = paddle.squeeze(output, axis=axis)
+            ret = paddle.squeeze(ret, axis=axis)
         else:
-            output = output.reshape(out_shape)
-        outputs.append(output)
+            ret = ret.reshape(out_shape)
+        outputs.append(ret)
 
     if len(outputs) > 1:
         outputs = paddle.stack(outputs, 0)
@@ -913,10 +913,6 @@ def quantile(
     """
     Compute the quantile of the input along the specified axis.
     If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
-
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
