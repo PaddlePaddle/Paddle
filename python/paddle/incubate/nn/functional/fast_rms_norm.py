@@ -27,7 +27,7 @@ def fast_rms_norm(
     x: Tensor,
     scale: Tensor,
     epsilon: float = 1e-5,
-):
+) -> tuple[Tensor, Tensor]:
     r"""
     Apply Fast LayerNorm kernel.
 
@@ -38,7 +38,6 @@ def fast_rms_norm(
 
     Returns:
         y: the Tensor after performing layernorm.
-        mean: the mean of input tensor
         invvar: the invert variance(scaling factor) of y
     """
     if in_dynamic_or_pir_mode():

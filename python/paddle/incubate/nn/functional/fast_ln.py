@@ -28,7 +28,7 @@ def fast_ln(
     scale: Tensor,
     bias: Tensor,
     epsilon: float = 1e-5,
-):
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Apply Fast LayerNorm kernel.
 
