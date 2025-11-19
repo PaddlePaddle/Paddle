@@ -104,29 +104,46 @@ int32_t PyObject_ToInt32(PyObject* obj) {
       PyObject_CheckDataType(obj) ||                // NOLINT
       (PyObject_CheckTensor(obj) &&
        reinterpret_cast<TensorObject*>(obj)->tensor.numel() == 1)) {
-    res = static_cast<int32_t>(PyLong_AsLong(obj));
-    if (res == -1 && PyErr_Occurred()) {
-      PyErr_Clear();
+    auto tmp_res = PyLong_AsLong(obj);
+    std::cout << "[paddle][PyObject_ToInt32] PyLong_AsLong(obj) = "
+              << PyLong_AsLong(obj) << std::endl;
+    std::cout << "[paddle][PyObject_ToInt32] "
+                 "static_cast<int32_t>(PyLong_AsLong(obj)) = "
+              << static_cast<int32_t>(PyLong_AsLong(obj)) << std::endl;
+    std::cout << "[paddle][PyObject_ToInt32] PyLong_AsLongLong(obj) = "
+              << PyLong_AsLongLong(obj) << std::endl;
+    if (tmp_res > std::numeric_limits<int32_t>::max() ||
+        tmp_res < std::numeric_limits<int32_t>::min()) {
       PADDLE_THROW(common::errors::OutOfRange(
-          "Integer value exceeds int32 range [%d, %d]",
+          "Integer value %ld exceeds int32 range [%d, %d]",
+          tmp_res,
           std::numeric_limits<int32_t>::min(),
           std::numeric_limits<int32_t>::max()));
     }
-    return res;
+    return static_cast<int32_t>(tmp_res);
   }
   std::string type_name =
       std::string(reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name);
   if (type_name.find("numpy.int") != std::string::npos) {
     auto num_obj = PyNumber_Long(obj);
-    res = static_cast<int32_t>(PyLong_AsLong(num_obj));
-    if (res == -1 && PyErr_Occurred()) {
-      PyErr_Clear();
+    auto tmp_res = PyLong_AsLong(num_obj);
+    std::cout << "[paddle][PyObject_ToInt32] PyLong_AsLong(num_obj) = "
+              << PyLong_AsLong(num_obj) << std::endl;
+    std::cout << "[paddle][PyObject_ToInt32] "
+                 "static_cast<int32_t>(PyLong_AsLong(num_obj)) = "
+              << static_cast<int32_t>(PyLong_AsLong(num_obj)) << std::endl;
+    std::cout << "[paddle][PyObject_ToInt32] PyLong_AsLongLong(num_obj) = "
+              << PyLong_AsLongLong(num_obj) << std::endl;
+    if (tmp_res > std::numeric_limits<int32_t>::max() ||
+        tmp_res < std::numeric_limits<int32_t>::min()) {
       PADDLE_THROW(common::errors::OutOfRange(
-          "Integer value exceeds int32 range [%d, %d]",
+          "Integer value %ld exceeds int32 range [%d, %d]",
+          tmp_res,
           std::numeric_limits<int32_t>::min(),
           std::numeric_limits<int32_t>::max()));
     }
     Py_DECREF(num_obj);
+    res = static_cast<int32_t>(tmp_res);
   } else {
     PADDLE_THROW(
         common::errors::InvalidType("Cannot convert %s to long", type_name));
