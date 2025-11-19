@@ -305,7 +305,7 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
 
     s_data[0][threadIdx.x] = static_cast<MT>(0);
     s_data[1][threadIdx.x] = static_cast<MT>(0);
-    int64_t remain = nthreads - (tid & (-blockDim.x));
+    int64_t remain = nthreads - (tid & (-static_cast<int64_t>(blockDim.x)));
     int64_t in_top_max_index =
         phi::funcs::BlockReduceMax(top_right_index, FINAL_MASK);
     int64_t in_bot_max_index =

@@ -625,7 +625,7 @@ void AttentionLstmInferMeta(const MetaTensor& x,
                             MetaTensor* lstm_out,
                             MetaConfig config) {
   const auto& x_dims = x.dims();
-  const int M = static_cast<int>(x_dims[1]);
+  const int64_t M = x_dims[1];
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
                     common::errors::InvalidArgument(
@@ -633,7 +633,7 @@ void AttentionLstmInferMeta(const MetaTensor& x,
                         x_dims.size()));
 
   const auto& w_dims = lstm_weight.dims();
-  const int D = static_cast<int>(w_dims[1] / 4);
+  const int64_t D = w_dims[1] / 4;
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2,
@@ -1678,7 +1678,7 @@ void LSTMInferMeta(const MetaTensor& input,
                           c_dims));
   }
 
-  int frame_size = static_cast<int>(in_dims[1] / 4);
+  int64_t frame_size = in_dims[1] / 4;
   const auto& w_dims = weight.dims();
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
@@ -1786,10 +1786,11 @@ void DecayedAdagradInferMeta(const MetaTensor& param,
   moment_out->set_dtype(param.dtype());
 }
 
-inline int ConvOutputSize(
+inline int64_t ConvOutputSize(
     int input_size, int filter_size, int dilation, int padding, int stride) {
-  const int dkernel = dilation * (filter_size - 1) + 1;
-  int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
+  const int64_t dkernel =
+      static_cast<int64_t>(dilation) * (filter_size - 1) + 1;
+  int64_t output_size = (input_size + 2 * padding - dkernel) / stride + 1;
   PADDLE_ENFORCE_GT(
       output_size,
       0,
@@ -1911,12 +1912,11 @@ void DeformableConvInferMeta(const MetaTensor& x,
         (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);
     } else {
-      output_shape.push_back(
-          ConvOutputSize(static_cast<int>(in_dims[i + 2]),
-                         static_cast<int>(filter_dims[i + 2]),
-                         dilations[i],
-                         paddings[i],
-                         strides[i]));
+      output_shape.push_back(ConvOutputSize(in_dims[i + 2],
+                                            filter_dims[i + 2],
+                                            dilations[i],
+                                            paddings[i],
+                                            strides[i]));
     }
   }
 
@@ -3034,8 +3034,8 @@ void GruInferMeta(const MetaTensor& input,
                   MetaConfig config) {
   const auto& input_dims = input.dims();
   const auto& weight_dims = weight.dims();
-  int input_size = static_cast<int>(input_dims[1]);
-  int frame_size = static_cast<int>(weight_dims[0]);
+  int64_t input_size = input_dims[1];
+  int64_t frame_size = weight_dims[0];
   if (config.is_runtime) {
     PADDLE_ENFORCE_EQ(input_size,
                       frame_size * 3,
@@ -3069,8 +3069,8 @@ void GruInferMeta(const MetaTensor& input,
   }
   if (bias.initialized()) {
     const auto& bias_dims = bias.dims();
-    int bias_height = static_cast<int>(bias_dims[0]);
-    int bias_width = static_cast<int>(bias_dims[1]);
+    int64_t bias_height = bias_dims[0];
+    int64_t bias_width = bias_dims[1];
     PADDLE_ENFORCE_EQ(
         bias_height,
         1,
@@ -3117,11 +3117,11 @@ void GruUnitInferMeta(const MetaTensor& input,
   const auto& input_dims = input.dims();
   const auto& hidden_prev_dims = hidden_prev.dims();
   const auto& weight_dims = weight.dims();
-  int batch_size = static_cast<int>(input_dims[0]);
-  int input_size = static_cast<int>(input_dims[1]);
-  int frame_size = static_cast<int>(hidden_prev_dims[1]);
-  int weight_height = static_cast<int>(weight_dims[0]);
-  int weight_width = static_cast<int>(weight_dims[1]);
+  int64_t batch_size = input_dims[0];
+  int64_t input_size = input_dims[1];
+  int64_t frame_size = hidden_prev_dims[1];
+  int64_t weight_height = weight_dims[0];
+  int64_t weight_width = weight_dims[1];
   if (config.is_runtime || input_size >= 0) {
     PADDLE_ENFORCE_EQ(input_size,
                       frame_size * 3,
@@ -3157,8 +3157,8 @@ void GruUnitInferMeta(const MetaTensor& input,
 
   if (bias.initialized()) {
     const auto& bias_dims = bias.dims();
-    int bias_height = static_cast<int>(bias_dims[0]);
-    int bias_width = static_cast<int>(bias_dims[1]);
+    int64_t bias_height = bias_dims[0];
+    int64_t bias_width = bias_dims[1];
     PADDLE_ENFORCE_EQ(
         bias_height,
         1,
@@ -3322,7 +3322,7 @@ static void Interpolate1DInferShapeCheck(
     return;
   }
 
-  int out_w_tmp = 0;
+  int64_t out_w_tmp = 0;
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
@@ -3353,9 +3353,9 @@ static void Interpolate1DInferShapeCheck(
       if (scale_w > 0.) {
         // round down
         out_w_tmp =
-            static_cast<int>(data_layout == DataLayout::kNCHW
-                                 ? static_cast<float>(dim_x[2]) * scale_w
-                                 : static_cast<float>(dim_x[1]) * scale_w);
+            static_cast<int64_t>(data_layout == DataLayout::kNCHW
+                                     ? static_cast<float>(dim_x[2]) * scale_w
+                                     : static_cast<float>(dim_x[1]) * scale_w);
         // protect when input shape is -1
         out_w_tmp = out_w_tmp > 0 ? out_w_tmp : -1;
       }
@@ -3455,7 +3455,7 @@ static void Interpolate2DInferShapeCheck(
     return;
   }
 
-  int out_h_tmp = 0, out_w_tmp = 0;
+  int64_t out_h_tmp = 0, out_w_tmp = 0;
 
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
@@ -3500,13 +3500,13 @@ static void Interpolate2DInferShapeCheck(
       if (scale_h > 0. && scale_w > 0.) {
         // round down
         out_h_tmp =
-            static_cast<int>(data_layout == DataLayout::kNCHW
-                                 ? static_cast<float>(dim_x[2]) * scale_h
-                                 : static_cast<float>(dim_x[1]) * scale_h);
+            static_cast<int64_t>(data_layout == DataLayout::kNCHW
+                                     ? static_cast<float>(dim_x[2]) * scale_h
+                                     : static_cast<float>(dim_x[1]) * scale_h);
         out_w_tmp =
-            static_cast<int>(data_layout == DataLayout::kNCHW
-                                 ? static_cast<float>(dim_x[3]) * scale_w
-                                 : static_cast<float>(dim_x[2]) * scale_w);
+            static_cast<int64_t>(data_layout == DataLayout::kNCHW
+                                     ? static_cast<float>(dim_x[3]) * scale_w
+                                     : static_cast<float>(dim_x[2]) * scale_w);
         // protect when input shape is -1
         out_h_tmp = out_h_tmp > 0 ? out_h_tmp : -1;
         out_w_tmp = out_w_tmp > 0 ? out_w_tmp : -1;
@@ -3607,7 +3607,7 @@ static void Interpolate3DInferShapeCheck(
     return;
   }
 
-  int out_d_tmp = 0, out_h_tmp = 0, out_w_tmp = 0;
+  int64_t out_d_tmp = 0, out_h_tmp = 0, out_w_tmp = 0;
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
@@ -3656,17 +3656,17 @@ static void Interpolate3DInferShapeCheck(
       if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
         // round down
         out_d_tmp =
-            static_cast<int>(data_layout == DataLayout::kNCHW
-                                 ? static_cast<float>(dim_x[2]) * scale_d
-                                 : static_cast<float>(dim_x[1]) * scale_d);
+            static_cast<int64_t>(data_layout == DataLayout::kNCHW
+                                     ? static_cast<float>(dim_x[2]) * scale_d
+                                     : static_cast<float>(dim_x[1]) * scale_d);
         out_h_tmp =
-            static_cast<int>(data_layout == DataLayout::kNCHW
-                                 ? static_cast<float>(dim_x[3]) * scale_h
-                                 : static_cast<float>(dim_x[2]) * scale_h);
+            static_cast<int64_t>(data_layout == DataLayout::kNCHW
+                                     ? static_cast<float>(dim_x[3]) * scale_h
+                                     : static_cast<float>(dim_x[2]) * scale_h);
         out_w_tmp =
-            static_cast<int>(data_layout == DataLayout::kNCHW
-                                 ? static_cast<float>(dim_x[4]) * scale_w
-                                 : static_cast<float>(dim_x[3]) * scale_w);
+            static_cast<int64_t>(data_layout == DataLayout::kNCHW
+                                     ? static_cast<float>(dim_x[4]) * scale_w
+                                     : static_cast<float>(dim_x[3]) * scale_w);
         // protect when input shape is -1
         out_d_tmp = out_d_tmp > 0 ? out_d_tmp : -1;
         out_h_tmp = out_h_tmp > 0 ? out_h_tmp : -1;
@@ -4263,16 +4263,16 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
 
-  std::vector<int> out_shape = std::vector<int>(inputs_num);
+  std::vector<int64_t> out_shape = std::vector<int64_t>(inputs_num);
 
   for (size_t i = 0; i < inputs.size(); i++) {
     if (inputs[i]->dims().size() == 0) {
       out_shape[i] = 1;
     } else {
-      out_shape[i] = static_cast<int>(inputs[i]->dims()[0]);
+      out_shape[i] = inputs[i]->dims()[0];
     }
   }
-  auto out_dims = common::make_ddim(std::vector<int>(out_shape));
+  auto out_dims = common::make_ddim(out_shape);
   for (auto& output : outputs) {
     output->set_dims(out_dims);
     output->set_dtype(inputs[0]->dtype());
@@ -4357,7 +4357,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
 
   // If the first tensor is 1D of size n view it as a row vector (1, n)
   if (first_dim.size() == 1) {
-    first_dim = common::make_ddim({1, static_cast<int>(first_dim[0])});
+    first_dim = common::make_ddim({1, first_dim[0]});
     is_vector = true;
   }
 
@@ -4371,7 +4371,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
 
   // If the last tensor is 1D of size n view it as a column vector (n, 1)
   if (last_dim.size() == 1) {
-    last_dim = common::make_ddim({static_cast<int>(last_dim[0]), 1});
+    last_dim = common::make_ddim({last_dim[0], 1});
     out_dim =
         is_vector ? common::make_ddim({}) : common::make_ddim({first_dim[0]});
   } else {
@@ -5699,17 +5699,16 @@ void WarpctcInferMeta(const MetaTensor& logits,
   if (common::product(logits_dims) == 0) {
     PADDLE_THROW(errors::InvalidArgument("The input size can not be zero."));
   }
-  int num_sequences, sequence_width, max_sequence_length;
+  int64_t num_sequences, sequence_width, max_sequence_length;
 
   if (logits_length && labels_length) {
-    max_sequence_length = static_cast<int>(logits_dims[0]);
-    num_sequences = static_cast<int>(logits_dims[1]);
-    sequence_width = static_cast<int>(logits_dims[2]);
+    max_sequence_length = logits_dims[0];
+    num_sequences = logits_dims[1];
+    sequence_width = logits_dims[2];
   } else {
     max_sequence_length = -1;
     num_sequences = -1;
-    sequence_width =
-        static_cast<int>(common::product(logits_dims) / logits_dims[0]);
+    sequence_width = common::product(logits_dims) / logits_dims[0];
   }
 
   PADDLE_ENFORCE_GE(
@@ -5742,7 +5741,7 @@ void WarprnntInferMeta(const MetaTensor& input,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad) {
   auto input_dims = input.dims();
-  int D = static_cast<int>(input_dims[3]);
+  int64_t D = input_dims[3];
 
   PADDLE_ENFORCE_GE(
       blank,
@@ -5932,7 +5931,7 @@ void YoloBoxPostInferMeta(const MetaTensor& boxes0,
                           MetaTensor* out,
                           MetaTensor* nms_rois_num,
                           MetaConfig config) {
-  int batch = image_shape.dims()[0];
+  int64_t batch = image_shape.dims()[0];
   out->set_dims(common::make_ddim({1, 6}));
   nms_rois_num->set_dims(common::make_ddim({batch}));
   out->set_dtype(DataType::FLOAT32);
@@ -6199,15 +6198,15 @@ void MoePermuteInferMeta(const MetaTensor& X,
                       phi::DataType::FLOAT32,
                       common::errors::InvalidArgument(
                           "Input XScale's dtype should be FLOAT32"));
-    const int quanted_cols = XScale.dims()[1];
+    const int64_t quanted_cols = XScale.dims()[1];
     XScale_unzipped->set_dims({-1, quanted_cols});
     XScale_unzipped->set_dtype(XScale.dtype());
   } else {
     XScale_unzipped->set_dims({0});
     XScale_unzipped->set_dtype(phi::DataType::FLOAT32);
   }
-  const int rows = X.dims()[0];
-  const int cols = X.dims()[1];
+  const int64_t rows = X.dims()[0];
+  const int64_t cols = X.dims()[1];
 
   if (do_gather) {
     X_unzipped->set_dims({-1, cols});
@@ -6242,8 +6241,8 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
       true,
       common::errors::InvalidArgument(
           "Input unzipped_token_probs's dtype should be FLOAT32"));
-  const int cols = unzipped_tokens.dims()[1];
-  const int topk = expert_routemap_topk.dims()[1];
+  const int64_t cols = unzipped_tokens.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
   zipped_tokens->set_dims({total_zipped_tokens_num, cols});
   zipped_tokens->set_dtype(unzipped_tokens.dtype());
   zipped_probs_topk->set_dims({total_zipped_tokens_num, topk});
@@ -6391,14 +6390,14 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* out,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out) {
-  int bsz = static_cast<int>(x.dims()[0]);
+  int64_t bsz = x.dims()[0];
   auto cache_kv_dims = cache_kv.dims();
-  int k_num_head = static_cast<int>(cache_kv.dims()[2]);
-  int v_num_head = k_num_head;
-  int dim_head = static_cast<int>(cache_kv.dims()[4]);
+  int64_t k_num_head = cache_kv.dims()[2];
+  int64_t v_num_head = k_num_head;
+  int64_t dim_head = cache_kv.dims()[4];
   // below's num_head is q's head actually.
-  int num_head = x.dims()[x.dims().size() - 1] / dim_head - k_num_head -
-                 v_num_head;  // NOLINT
+  int64_t num_head = x.dims()[x.dims().size() - 1] / dim_head - k_num_head -
+                     v_num_head;  // NOLINT
 
   PADDLE_ENFORCE_EQ(
       num_head % k_num_head,
@@ -6542,7 +6541,7 @@ void TopPSamplingInferMeta(const MetaTensor& x,
                            MetaTensor* topk_scores,
                            MetaTensor* topk_ids) {
   auto x_dims = x.dims();
-  int bsz = x_dims[0];
+  int64_t bsz = x_dims[0];
 
   PADDLE_ENFORCE(
       mode == "truncated" || mode == "non-truncated",

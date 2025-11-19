@@ -465,6 +465,226 @@ class TestAOAEngine(unittest.TestCase):
         result = aoa_engine.find_shard_sources(query)
         self.assertEqual(result, answer)
 
+    def test_mixed_aoa_statements(self):
+        # test fused_ffn and transposed,rename,test_get_var_mapping_chain_macro
+        s0 = ShardedWeightDesc(
+            key="layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 4),
+            global_shape=(2, 8),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        s1 = ShardedWeightDesc(
+            key="layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 4),
+            global_shape=(2, 8),
+            global_offset=(0, 4),
+            dtype="float32",
+        )
+
+        d0 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        d1 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 2),
+            dtype="float32",
+        )
+
+        d2 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 4),
+            dtype="float32",
+        )
+
+        d3 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 6),
+            dtype="float32",
+        )
+
+        source_state_shard_info = {
+            "layers.0.gate_up_fused_proj.weight": [s0, s1],
+        }
+        destination_state_shard_info = {
+            "new_name_layers.0.gate_up_fused_proj.weight": [d0, d1, d2, d3],
+        }
+
+        # find temp_var -> dst
+        aoa_statements = [
+            "layers.0.gate_up_fused_proj.weight -> temp_var, fused_ffn \n",
+            "temp_var^T -> new_name_layers.0.gate_up_fused_proj.weight \n",
+        ]
+
+        aoa_engine = AOAEngine(
+            aoa_config={"aoa_statements": aoa_statements},
+            source_state_shard_info=source_state_shard_info,
+            destination_state_shard_info=destination_state_shard_info,
+        )
+
+        # new_name_up_proj_0
+        query = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 1),
+            global_shape=(2, 8),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        target_slice_1 = ShardedWeightDesc(
+            key='new_name_layers.0.gate_up_fused_proj.weight',
+            local_shape=(1, 1),
+            global_shape=(2, 8),
+            global_offset=(0, 0),
+            dtype='float32',
+        )
+
+        target_slice_2 = ShardedWeightDesc(
+            key='new_name_layers.0.gate_up_fused_proj.weight',
+            local_shape=(1, 1),
+            global_shape=(2, 8),
+            global_offset=(1, 0),
+            dtype='float32',
+        )
+
+        src_slice_1 = ShardedWeightDesc(
+            key='layers.0.gate_up_fused_proj.weight',
+            local_shape=(1, 1),
+            global_shape=(2, 8),
+            global_offset=(0, 0),
+            dtype='float32',
+        )
+
+        src_slice_2 = ShardedWeightDesc(
+            key='layers.0.gate_up_fused_proj.weight',
+            local_shape=(1, 1),
+            global_shape=(2, 8),
+            global_offset=(0, 2),
+            dtype='float32',
+        )
+
+        shard_mapping_entry_1 = ShardMappingEntry(
+            target_slice=target_slice_1,
+            source_slice=src_slice_1,
+            postprocess_list=['[1, 0]'],
+        )
+        shard_mapping_entry_2 = ShardMappingEntry(
+            target_slice=target_slice_2,
+            source_slice=src_slice_2,
+            postprocess_list=['[1, 0]'],
+        )
+        answer = [shard_mapping_entry_1, shard_mapping_entry_2]
+
+        result = aoa_engine.find_shard_sources(query)
+        self.assertEqual(result, answer)
+
+        s0 = ShardedWeightDesc(
+            key="layers.0.gate_up_fused_proj.weight",
+            local_shape=(4, 2),
+            global_shape=(8, 2),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        s1 = ShardedWeightDesc(
+            key="layers.0.gate_up_fused_proj.weight",
+            local_shape=(4, 2),
+            global_shape=(8, 2),
+            global_offset=(4, 0),
+            dtype="float32",
+        )
+
+        d0 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        d1 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 2),
+            dtype="float32",
+        )
+
+        d2 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 4),
+            dtype="float32",
+        )
+
+        d3 = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 2),
+            global_shape=(2, 8),
+            global_offset=(0, 6),
+            dtype="float32",
+        )
+
+        source_state_shard_info = {
+            "layers.0.gate_up_fused_proj.weight": [s0, s1],
+        }
+        destination_state_shard_info = {
+            "new_name_layers.0.gate_up_fused_proj.weight": [d0, d1, d2, d3],
+        }
+
+        # find temp_var -> src
+        aoa_statements = [
+            "layers.0.gate_up_fused_proj.weight^T -> temp_var \n",
+            "temp_var -> new_name_layers.0.gate_up_fused_proj.weight,fused_ffn\n",
+        ]
+
+        aoa_engine = AOAEngine(
+            aoa_config={"aoa_statements": aoa_statements},
+            source_state_shard_info=source_state_shard_info,
+            destination_state_shard_info=destination_state_shard_info,
+        )
+
+        # new_name_up_proj_0
+        query = ShardedWeightDesc(
+            key="new_name_layers.0.gate_up_fused_proj.weight",
+            local_shape=(2, 1),
+            global_shape=(2, 8),
+            global_offset=(0, 0),
+            dtype="float32",
+        )
+
+        src_slice_1 = ShardedWeightDesc(
+            key='layers.0.gate_up_fused_proj.weight',
+            local_shape=(1, 2),
+            global_shape=(8, 2),
+            global_offset=(0, 0),
+            dtype='float32',
+        )
+
+        shard_mapping_entry_1 = ShardMappingEntry(
+            target_slice=query,
+            source_slice=src_slice_1,
+            postprocess_list=['[1, 0]'],
+        )
+
+        answer = [shard_mapping_entry_1]
+
+        result = aoa_engine.find_shard_sources(query)
+        self.assertEqual(result, answer)
+
 
 if __name__ == '__main__':
     unittest.main()

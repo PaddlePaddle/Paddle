@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import os
-import re
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -36,18 +34,6 @@ from paddle.nn.functional.flash_attention import (
 )
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def attention_naive(q, k, v, causal=False):

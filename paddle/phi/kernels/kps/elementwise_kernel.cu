@@ -100,16 +100,13 @@ void AddKernel(const Context& dev_ctx,
     return;
   }
 #ifdef PADDLE_WITH_CUDA
-  if (x.dtype() == phi::DataType::FLOAT32 &&
-      (y.dtype() == phi::DataType::BFLOAT16 ||
-       y.dtype() == phi::DataType::FLOAT16)) {
+  if (x.dtype() == DataType::FLOAT32 &&
+      (y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16)) {
     MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
-  } else {
-#endif
-    phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-#ifdef PADDLE_WITH_CUDA
+    return;
   }
 #endif
+  phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>

@@ -103,7 +103,31 @@ def _get_pyopcode_cache_size() -> dict[str, int]:
             "CALL": 3,
             "BINARY_OP": 1,
         }
-    elif sys.version_info >= (3, 14):
+    elif sys.version_info >= (3, 14) and sys.version_info < (3, 15):
+        # Cache for some opcodes, it's for Python 3.14
+        # https://github.com/python/cpython/blob/3.14/Include/internal/pycore_opcode_metadata.h#L1764-L1784
+        return {
+            "TO_BOOL": 3,
+            "STORE_SUBSCR": 1,
+            "SEND": 1,
+            "UNPACK_SEQUENCE": 1,
+            "STORE_ATTR": 4,
+            "LOAD_GLOBAL": 4,
+            "LOAD_SUPER_ATTR": 1,
+            "LOAD_ATTR": 9,
+            "COMPARE_OP": 1,
+            "CONTAINS_OP": 1,
+            "JUMP_BACKWARD": 1,
+            "POP_JUMP_IF_TRUE": 1,
+            "POP_JUMP_IF_FALSE": 1,
+            "POP_JUMP_IF_NONE": 1,
+            "POP_JUMP_IF_NOT_NONE": 1,
+            "FOR_ITER": 1,
+            "CALL": 3,
+            "CALL_KW": 3,
+            "BINARY_OP": 5,
+        }
+    elif sys.version_info >= (3, 15):
         raise NotImplementedError(
             f"Need to supplement cache operation code, for Python {sys.version_info}"
         )
@@ -117,3 +141,27 @@ PYOPCODE_CACHE_SIZE = _get_pyopcode_cache_size()
 class ExceptionHandler:
     opcode = 257
     opname = "EXCEPT_HANDLER"
+
+
+def _get_binary_op_arg_map() -> dict[str, int]:
+    if sys.version_info < (3, 11):
+        return {}
+    res = {}
+    for i, op in enumerate(opcode._nb_ops):
+        res[op[0]] = i
+    return res
+
+
+BINARY_OP_ARG_MAP: dict[str, int] = _get_binary_op_arg_map()
+
+FUSED_INSTS: dict[str, tuple[str, str]] = {
+    "LOAD_FAST_LOAD_FAST": ("LOAD_FAST", "LOAD_FAST"),
+    "LOAD_FAST_BORROW_LOAD_FAST_BORROW": (
+        "LOAD_FAST_BORROW",
+        "LOAD_FAST_BORROW",
+    ),
+    "STORE_FAST_STORE_FAST": ("STORE_FAST", "STORE_FAST"),
+    "STORE_FAST_LOAD_FAST": ("STORE_FAST", "LOAD_FAST"),
+}
+
+TO_FUSED_INSTS = {v: k for k, v in FUSED_INSTS.items()}

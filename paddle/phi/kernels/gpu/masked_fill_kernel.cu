@@ -69,7 +69,7 @@ __global__ void GPUMaskedFillKernel(const T* input,
                                     const int64_t input_len,
                                     const int64_t batch_size,
                                     T* output) {
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
   if (idx >= (input_len / VecSize)) {
     return;
@@ -161,7 +161,7 @@ void GPUMaskedFill(const phi::GPUContext& dev_ctx,
   const T* value_data = value.data<T>();
   int64_t input_len = input.numel();
   int64_t mask_len = mask.numel();
-  int batch_size = input_len / mask_len;
+  int64_t batch_size = input_len / mask_len;
 
   int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(input_data), vec_size);

@@ -14,10 +14,17 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/common/flags.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
 PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(enable_compact_mem);
+COMMON_DECLARE_int64(max_reserved_threshold_in_gb);
+COMMON_DECLARE_int64(cur_allocated_threshold_in_gb);
+COMMON_DECLARE_bool(try_allocate);
 
 #include "glog/logging.h"
 
@@ -817,6 +824,80 @@ void SetReplicatedDistAttrForOutput(
     dist_attr.set_process_mesh(process_mesh);
     out->unsafe_set_dist_attr(dist_attr);
   }
+}
+
+/* ------------------ for Allocator ----------------------- */
+void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
+                       std::string api) {
+  if (!FLAGS_enable_compact_mem) return;
+#if defined(PADDLE_WITH_CUDA)
+  const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
+  const auto max_reserved =
+      paddle::memory::DeviceMemoryStatPeakValue("Reserved", current_device_id);
+  const auto max_allocated =
+      paddle::memory::DeviceMemoryStatPeakValue("Allocated", current_device_id);
+  const auto cur_allocated = paddle::memory::DeviceMemoryStatCurrentValue(
+      "Allocated", current_device_id);
+  float divisor = 1 << 30;
+  // calculate total size by meta information
+  auto CalTensorSize = [&](const std::vector<phi::MetaTensor*>& meta_tensors)
+      -> std::pair<size_t, std::vector<size_t>> {
+    size_t req_total_size = 0;
+    size_t tensor_size = 0;
+    std::vector<size_t> sizes;
+
+    for (auto& meta_tensor : meta_tensors) {
+      if (meta_tensor->numel() == 0) continue;
+      if (meta_tensor->numel() < 0) {
+        VLOG(1) << "meta_tensor->numel():" << meta_tensor->numel()
+                << " < 0, skip this tensor in " << api;
+        continue;
+      }
+      tensor_size = meta_tensor->numel() * phi::SizeOf(meta_tensor->dtype());
+      sizes.push_back(tensor_size);
+      req_total_size += tensor_size;
+    }
+    return {req_total_size, sizes};
+  };
+  // judge whether compact is needed according to the following conditions in
+  // sequence.
+  // 1. mem_max_reserved < max_reserved_threshold ==> dont need compact
+  // 2. mem_cur_allocated < cur_allocated_threshold ==> dont need compact
+  // 3. max_free_size > req_total_size ==> dont need compact
+  // 4. large_N_free_size < req_total_size ==> need compact
+  // 5. try_allocate result ==> need compact
+  auto NeedCompact = [&](const std::vector<phi::MetaTensor*>& meta_tensors) {
+    if (max_reserved < FLAGS_max_reserved_threshold_in_gb << 30) return false;
+    if (cur_allocated < FLAGS_cur_allocated_threshold_in_gb << 30) return false;
+    const auto [max_free_size, total_free_size] =
+        paddle::memory::VmmMaxFreeSize(phi::GPUPlace(current_device_id),
+                                       meta_tensors.size());
+    const auto& [req_total_size, size_vec] = CalTensorSize(meta_tensors);
+    if (req_total_size < max_free_size) return false;
+    if (req_total_size > total_free_size) {
+      VLOG(1) << "Need Compact req_total_size: " << req_total_size
+              << ", total_free_size: " << total_free_size
+              << ", max_free_size: " << max_free_size;
+      return true;
+    }
+    if (FLAGS_try_allocate) {
+      auto alloc_succ = paddle::memory::TryAllocBatch(
+          phi::GPUPlace(current_device_id), size_vec);
+      VLOG(1) << "TryAllocBatch ret: " << !alloc_succ
+              << ", req_total_size: " << req_total_size
+              << ", total_free_size: " << total_free_size
+              << ", max_free_size: " << max_free_size;
+      return !alloc_succ;
+    }
+    return false;
+  };
+
+  if (NeedCompact(meta_tensors)) {
+    VLOG(1) << "Before Compact max_reserved: " << max_reserved / divisor
+            << ", max_allocated: " << max_allocated / divisor;
+    paddle::memory::Compact(phi::GPUPlace(current_device_id));
+  }
+#endif
 }
 
 }  // namespace paddle::experimental

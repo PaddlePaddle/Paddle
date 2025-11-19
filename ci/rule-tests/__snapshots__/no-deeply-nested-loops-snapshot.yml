@@ -1,0 +1,139 @@
+id: no-deeply-nested-loops
+snapshots:
+  ? |
+    def func():
+        for i in range(10):
+            for j in range(10):
+                for k in range(10):
+                    for m in range(10):
+                        for n in range(10):
+                            if some_condition(i, j, k, m, n):
+                                return
+                            process(i, j, k, m, n)
+  : labels:
+      - source: |-
+          for i in range(10):
+                  for j in range(10):
+                      for k in range(10):
+                          for m in range(10):
+                              for n in range(10):
+                                  if some_condition(i, j, k, m, n):
+                                      return
+                                  process(i, j, k, m, n)
+        style: primary
+        start: 16
+        end: 311
+  ? |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in list_e:
+                        process(a, b, c, d, e)
+  : labels:
+      - source: |-
+          for a in list_a:
+              for b in list_b:
+                  for c in list_c:
+                      for d in list_d:
+                          for e in list_e:
+                              process(a, b, c, d, e)
+        style: primary
+        start: 0
+        end: 167
+  ? |
+    for a in list_a:
+        for b in list_b:
+            for c in list_c:
+                for d in list_d:
+                    for e in some_var_name_has_b:
+                        process(a, b, c, d, e)
+  : labels:
+      - source: |-
+          for a in list_a:
+              for b in list_b:
+                  for c in list_c:
+                      for d in list_d:
+                          for e in some_var_name_has_b:
+                              process(a, b, c, d, e)
+        style: primary
+        start: 0
+        end: 180
+  ? |
+    for batch in [1, 2]:
+        for size in [[32, 32]]:
+            for kernel in [[3, 3]]:
+                for stride in [[1, 1], [2, 2]]:
+                    for padding in [[1, 1]]:
+                        config = create_config(batch, size, kernel, stride, padding)
+  : labels:
+      - source: |-
+          for batch in [1, 2]:
+              for size in [[32, 32]]:
+                  for kernel in [[3, 3]]:
+                      for stride in [[1, 1], [2, 2]]:
+                          for padding in [[1, 1]]:
+                              config = create_config(batch, size, kernel, stride, padding)
+        style: primary
+        start: 0
+        end: 246
+  ? |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        for p in range(10):
+                            print(i, j, k, m, n, p)
+  : labels:
+      - source: |-
+          for i in range(10):
+              for j in range(10):
+                  for k in range(10):
+                      for m in range(10):
+                          for n in range(10):
+                              for p in range(10):
+                                  print(i, j, k, m, n, p)
+        style: primary
+        start: 0
+        end: 227
+  ? |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        if some_condition(i, j, k, m, n):
+                            continue
+                        process(i, j, k, m, n)
+  : labels:
+      - source: |-
+          for i in range(10):
+              for j in range(10):
+                  for k in range(10):
+                      for m in range(10):
+                          for n in range(10):
+                              if some_condition(i, j, k, m, n):
+                                  continue
+                              process(i, j, k, m, n)
+        style: primary
+        start: 0
+        end: 269
+  ? |
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                for m in range(10):
+                    for n in range(10):
+                        print(i, j, k, m, n)
+  : labels:
+      - source: |-
+          for i in range(10):
+              for j in range(10):
+                  for k in range(10):
+                      for m in range(10):
+                          for n in range(10):
+                              print(i, j, k, m, n)
+        style: primary
+        start: 0
+        end: 180

@@ -740,7 +740,7 @@ static std::vector<paddle::Tensor> PrepareIndices(
     const paddle::Tensor& bool_2_idx,
     const paddle::Tensor& bool_index) {
   std::vector<paddle::Tensor> indices;
-  for (int j = 0; j < bool_2_idx.shape()[1]; ++j) {
+  for (int64_t j = 0; j < bool_2_idx.shape()[1]; ++j) {
     paddle::Tensor sliced_tensor =
         slice_ad_func(bool_2_idx, {1}, {j}, {j + 1}, {1}, {});
     paddle::Tensor sliced_tensor_c = sliced_tensor.contiguous();

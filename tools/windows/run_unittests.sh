@@ -127,7 +127,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_fused_matmul_bias$|\
 ^test_tensordot$|\
 ^test_cuda_graph$|\
-^test_cuda_graph_partial_graph_static_run$|\
 ^test_cuda_graph_static_mode$|\
 ^test_matrix_rank_op$|\
 ^test_sparse_pca_lowrank$|\
@@ -418,7 +417,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
-^test_cuda_graph_partial_graph_static_run$|\
 ^test_imperative_triple_grad$|\
 ^test_mul_op$|\
 ^test_quant_linear_op$|\

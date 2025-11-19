@@ -216,7 +216,7 @@ class TestDouble(TestEigOp):
 @skip_check_grad_ci(
     reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
 )
-class TestEigBatchMarices(TestEigOp):
+class TestEigBatchMatrices(TestEigOp):
     def set_dtype(self):
         self.dtype = np.float64
 

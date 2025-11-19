@@ -423,7 +423,7 @@ void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
           "Expected the rank of input(X) to be equal to or greater than 1."
           "But received rank of input(X) = %d",
           input_rank));
-  const int last_dim_size = static_cast<int>(in_dims[input_rank - 1]);
+  const int64_t last_dim_size = in_dims[input_rank - 1];
   PADDLE_ENFORCE_EQ(
       last_dim_size,
       2,
@@ -915,9 +915,8 @@ void DiagEmbedInferMeta(
                         dim1,
                         dim2));
 
-  int x_last_dim = x_dims[x_dims.size() - 1];
-  int new_dim_len =
-      (x_last_dim == -1) ? -1 : static_cast<int>(offset_ + x_last_dim);
+  int64_t x_last_dim = x_dims[x_dims.size() - 1];
+  int64_t new_dim_len = (x_last_dim == -1) ? -1 : offset_ + x_last_dim;
   auto sizes = common::vectorize(x_dims);
   sizes.pop_back();
   sizes.insert(sizes.begin() + std::min(dim1_, dim2_), new_dim_len);
@@ -1842,8 +1841,8 @@ void FoldInferMeta(const MetaTensor& x,
   int kernel_width = kernel_sizes[1];
   int dilation_height = dilations[0];
   int dilation_width = dilations[1];
-  int stride_height = strides[0];
-  int stride_width = strides[1];
+  int64_t stride_height = strides[0];
+  int64_t stride_width = strides[1];
 
   // check kernel_sizes
   PADDLE_ENFORCE_GT(kernel_height,
@@ -1910,8 +1909,7 @@ void FoldInferMeta(const MetaTensor& x,
   // batch_size
   out_dims.push_back(in_dims[0]);  // NOLINT
   // output_plane
-  int output_channels =
-      static_cast<int>(in_dims[1] / (kernel_width * kernel_height));
+  int64_t output_channels = in_dims[1] / (kernel_width * kernel_height);
   out_dims.push_back(output_channels);
 
   int blocks_height = (output_sizes[0] + 2 * paddings[0] -
@@ -2070,18 +2068,18 @@ void FrameInferMeta(const MetaTensor& x,
           "Attribute(axis) of FrameOp should 0 or -1, but got %s.", axis));
 
   std::vector<int64_t> output_shape;
-  int seq_length = 0;
-  int n_frames = 0;
+  int64_t seq_length = 0;
+  int64_t n_frames = 0;
 
   int start_axis = 0;
   int end_axis = 0;
 
   if (axis == 0) {
-    seq_length = static_cast<int>(x_dims[0]);
+    seq_length = x_dims[0];
     start_axis = 1;
     end_axis = x_rank - 1;
   } else {
-    seq_length = static_cast<int>(x_dims[x_rank - 1]);
+    seq_length = x_dims[x_rank - 1];
     start_axis = 0;
     end_axis = x_rank - 2;
   }
@@ -2675,9 +2673,9 @@ void LUInferMeta(const MetaTensor& x,
                         "The rank of input must greater than 2."));
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
-  int m = static_cast<int>(x_dims[x_rank - 1]);
-  int n = static_cast<int>(x_dims[x_rank - 2]);
-  int min_mn = std::min(m, n);
+  int64_t m = x_dims[x_rank - 1];
+  int64_t n = x_dims[x_rank - 2];
+  int64_t min_mn = std::min(m, n);
   auto dims_vec = common::vectorize(x_dims);
   PADDLE_ENFORCE_NOT_NULL(
       infos,
@@ -2713,8 +2711,8 @@ void MatrixRankInferMeta(const MetaTensor& x,
                         "The dims of input must be greater than 2."));
 
   if (hermitian && x.numel() != 0) {
-    int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
-    int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
+    int64_t rows = dim_x[dim_x.size() - 2];
+    int64_t cols = dim_x[dim_x.size() - 1];
     // if x is 0-size Tensor,ignore rows == cols check.
     PADDLE_ENFORCE_EQ(rows,
                       cols,
@@ -2798,7 +2796,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
     kernel_size_.resize(static_cast<size_t>(x_dims.size()) - 2);
     for (int i = 0; i < static_cast<int>(kernel_size_.size()); ++i) {
       paddings_[i] = 0;
-      kernel_size_[i] = static_cast<int>(x_dims[i + 2]);
+      kernel_size_[i] = x_dims[i + 2];
     }
   }
 
@@ -2833,12 +2831,11 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
       if ((!config.is_runtime) && (x_dims[i + 2] < 0)) {
         output_shape.push_back(x_dims[i + 2]);
       } else {
-        output_shape.push_back(
-            funcs::MaxPoolOutputSize(static_cast<int>(x_dims[i + 2]),
-                                     kernel_size_[i],
-                                     paddings_[i],
-                                     strides[i],
-                                     ceil_mode));
+        output_shape.push_back(funcs::MaxPoolOutputSize(x_dims[i + 2],
+                                                        kernel_size_[i],
+                                                        paddings_[i],
+                                                        strides[i],
+                                                        ceil_mode));
       }
     }
   }
@@ -3331,20 +3328,20 @@ void OverlapAddInferMeta(const MetaTensor& x,
           "Attribute(axis) of OverlapAddOp should 0 or -1, but got %s.", axis));
 
   std::vector<int64_t> output_shape;
-  int n_frames = 0;
-  int frame_length = 0;
-  int seq_length = 0;
+  int64_t n_frames = 0;
+  int64_t frame_length = 0;
+  int64_t seq_length = 0;
 
   int start_axis = 0;
   int end_axis = 0;
   if (axis == 0) {
-    n_frames = static_cast<int>(x_dims[0]);
-    frame_length = static_cast<int>(x_dims[1]);
+    n_frames = x_dims[0];
+    frame_length = x_dims[1];
     start_axis = 2;
     end_axis = x_rank - 1;
   } else {
-    n_frames = static_cast<int>(x_dims[x_rank - 1]);
-    frame_length = static_cast<int>(x_dims[x_rank - 2]);
+    n_frames = x_dims[x_rank - 1];
+    frame_length = x_dims[x_rank - 2];
     start_axis = 0;
     end_axis = x_rank - 3;
   }
@@ -3977,13 +3974,13 @@ void QrInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument("the rank of input must greater than 2"));
   bool compute_q = false;
   bool reduced_mode = false;
-  int m = static_cast<int>(x_dims[x_rank - 2]);
-  int n = static_cast<int>(x_dims[x_rank - 1]);
-  int min_mn = std::min(m, n);
+  int64_t m = x_dims[x_rank - 2];
+  int64_t n = x_dims[x_rank - 1];
+  int64_t min_mn = std::min(m, n);
   std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
 
   if (compute_q) {
-    int k = reduced_mode ? min_mn : m;
+    int64_t k = reduced_mode ? min_mn : m;
     auto q_dims_vec = common::vectorize(x_dims);
     q_dims_vec[q_dims_vec.size() - 1] = k;
     q->set_dims(common::make_ddim(q_dims_vec));
@@ -3991,7 +3988,7 @@ void QrInferMeta(const MetaTensor& x,
     q->set_dims(common::make_ddim({0}));
   }
 
-  int k = reduced_mode ? min_mn : m;
+  int64_t k = reduced_mode ? min_mn : m;
   auto r_dims_vec = common::vectorize(x_dims);
   r_dims_vec[r_dims_vec.size() - 2] = k;
   r_dims_vec[r_dims_vec.size() - 1] = n;
@@ -4353,7 +4350,7 @@ void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,
                       MetaConfig config) {
-  auto shape_data = shape.GetData();
+  std::vector<int64_t> shape_data = shape.GetData();
   PADDLE_ENFORCE_NOT_NULL(out,
                           common::errors::InvalidArgument(
                               "Output(Out) of ReshapeOp should not be null."));
@@ -4372,7 +4369,7 @@ void ReshapeInferMeta(const MetaTensor& x,
                 i,
                 in_dims.size(),
                 in_dims));
-        shape_data[i] = static_cast<int>(in_dims[static_cast<int>(i)]);
+        shape_data[i] = in_dims[static_cast<int>(i)];
       }
     }
     out->set_dims(common::make_ddim(shape_data));
@@ -5508,9 +5505,9 @@ void SvdInferMeta(const MetaTensor& x,
       in_dims.size(),
       2,
       common::errors::InvalidArgument("the rank of input must greater than 2"));
-  int m = static_cast<int>(in_dims[x_rank - 2]);
-  int n = static_cast<int>(in_dims[x_rank - 1]);
-  int k = std::min(m, n);
+  int64_t m = in_dims[x_rank - 2];
+  int64_t n = in_dims[x_rank - 1];
+  int64_t k = std::min(m, n);
   u->set_dims(!full_matrices ? UDDim(in_dims, k) : UDDim(in_dims, m));
   vh->set_dims(!full_matrices ? VHDDim(in_dims, k) : VHDDim(in_dims, n));
   s->set_dims(SDDim(in_dims, k));
@@ -6094,27 +6091,25 @@ void UnfoldInferMeta(const MetaTensor& x,
           dilations[0],
           dilations[1]));
 
-  std::vector<int> out_dims;
+  std::vector<int64_t> out_dims;
   out_dims.push_back(in_dims[0]);  // NOLINT
-  int output_channels =
-      in_dims[1] < 0
-          ? -1
-          : static_cast<int>(in_dims[1] * kernel_sizes[0] * kernel_sizes[1]);
+  int64_t output_channels =
+      in_dims[1] < 0 ? -1 : in_dims[1] * kernel_sizes[0] * kernel_sizes[1];
   out_dims.push_back(output_channels);
 
-  int output_height = phi::funcs::CalcOutputSize(static_cast<int>(in_dims[2]),
-                                                 kernel_sizes[0],
-                                                 dilations[0],
-                                                 paddings[0],
-                                                 paddings[2],
-                                                 strides[0]);
-  int output_width = phi::funcs::CalcOutputSize(static_cast<int>(in_dims[3]),
-                                                kernel_sizes[1],
-                                                dilations[1],
-                                                paddings[1],
-                                                paddings[3],
-                                                strides[1]);
-  int output_col_length = output_height * output_width;
+  int64_t output_height = phi::funcs::CalcOutputSize(in_dims[2],
+                                                     kernel_sizes[0],
+                                                     dilations[0],
+                                                     paddings[0],
+                                                     paddings[2],
+                                                     strides[0]);
+  int64_t output_width = phi::funcs::CalcOutputSize(in_dims[3],
+                                                    kernel_sizes[1],
+                                                    dilations[1],
+                                                    paddings[1],
+                                                    paddings[3],
+                                                    strides[1]);
+  int64_t output_col_length = output_height * output_width;
   if (config.is_runtime) {
     // only check output height and width in runtime
     PADDLE_ENFORCE_GT(

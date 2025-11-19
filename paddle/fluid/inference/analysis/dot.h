@@ -227,6 +227,15 @@ const std::vector<Dot::Attr> teal_box_attrs({
     Dot::Attr("color", "#148b97"),              //
     Dot::Attr("fontcolor", "#ffffff"),          //
 });
+const std::vector<Dot::Attr> orange_box_attrs({
+    Dot::Attr("style", "rounded,filled,bold"),  //
+    Dot::Attr("shape", "box"),                  //
+    Dot::Attr("color", "#FFE4B5"),              //
+    Dot::Attr("fontcolor", "#ffffff"),          //
+    Dot::Attr("width", "1.3"),                  //
+    Dot::Attr("height", "0.84"),                //
+    Dot::Attr("fontname", "Arial"),             //
+});
 
 }  // namespace analysis
 }  // namespace inference

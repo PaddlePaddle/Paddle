@@ -74,7 +74,7 @@ paddle::any PluginArgumentMappingContext::Attr(
       break;
     };
     default: {
-      LOG(ERROR) << "Can't cover op's attribute [" << attr_name
+      LOG(ERROR) << "Can't covert op's attribute [" << attr_name
                  << "] to paddle any.";
     }
   }

@@ -120,7 +120,7 @@ class TestPirAMPProgram(unittest.TestCase):
                 ):
                     out = linear(x)
                     loss = paddle.mean(out)
-                optimizer.minimize(loss)
+                    optimizer.minimize(loss)
             cast_op_count = 0
             for op in main.global_block().ops:
                 if op.name() == 'pd_op.cast':
@@ -208,7 +208,7 @@ class TestPirAMPProgram(unittest.TestCase):
                 ):
                     out = linear(x)
                     loss = paddle.mean(out)
-                optimizer.minimize(loss)
+                    optimizer.minimize(loss)
             cast_op_count = 0
             for op in main.global_block().ops:
                 if op.name() == 'pd_op.cast':

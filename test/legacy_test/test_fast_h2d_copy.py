@@ -85,5 +85,33 @@ class TestFastCPUCopy2(unittest.TestCase):
         self.check_dygraph_result(place=get_device_place())
 
 
+@unittest.skipIf(
+    not paddle.core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestFastCPUCopy3(unittest.TestCase):
+    def setUp(self):
+        src_shape = [2, 2]
+        tgt_shape = [2, 4]
+        # self.input_np_a = np.random.random((2,2)).astype(np.float32)
+        # self.input_np_b = np.random.random((2,4)).astype(np.float32)
+        self.input_dtype = 'float32'
+        paddle.device.set_device("cpu")
+        self.src_cpu = paddle.ones(src_shape, dtype="float32")
+        paddle.device.set_device("gpu:0")
+        self.dst_gpu = paddle.zeros(tgt_shape, dtype="float32")
+
+    def check_dygraph_result(self, place):
+        paddle.device.set_device("gpu:0")
+        tmp_dst_gpu = self.dst_gpu[..., :2]
+        tmp_dst_gpu.copy_(self.src_cpu)
+        tmo_dst_gpu1 = self.dst_gpu[..., 2:]
+        tmo_dst_gpu1.copy_(self.src_cpu)
+        np.testing.assert_allclose(self.dst_gpu.numpy(), 1.0)
+
+    def test_dygraph(self):
+        self.check_dygraph_result(place=get_device_place())
+
+
 if __name__ == '__main__':
     unittest.main()

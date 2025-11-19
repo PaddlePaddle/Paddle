@@ -349,7 +349,8 @@ int tensor_properties_set_stop_gradient(TensorObject* self,
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
   if (!meta->GradNode()) {
-    meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+    meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(self->tensor));
   }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG

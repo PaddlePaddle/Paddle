@@ -64,7 +64,9 @@ static __global__ void FillFlattenGrad(const T* dO,
                                        const IndType* indices,
                                        int64_t size,
                                        T* dX) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = index; i < size; i += stride) {
     dX[indices[i]] = dO[i];

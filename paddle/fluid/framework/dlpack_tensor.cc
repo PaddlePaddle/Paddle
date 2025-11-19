@@ -15,6 +15,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/utils/visit_place.h"
 
@@ -122,18 +123,23 @@ template <typename T>
   return dtype;
 }
 
+template <>
+::DLDataType GetDLDataTypeCode<phi::dtype::pstring>() {
+  ::DLDataType dtype;  // pstring is not supported in DLPack
+  return dtype;
+}
+
 static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
   static std::unordered_map<int, ::DLDataType> result;
 
-#define REG_DL_DATA_TYPE(cpp_type, proto_type) \
-  result[static_cast<int>(proto_type)] = GetDLDataTypeCode<cpp_type>()
-
-  _ForEachDataType_(REG_DL_DATA_TYPE);
+#define REG_DL_DATA_TYPE(cpp_type, data_type) \
+  result[static_cast<int>(data_type)] = GetDLDataTypeCode<cpp_type>();
+  PD_FOR_EACH_DATA_TYPE(REG_DL_DATA_TYPE);
 #undef REG_DL_DATA_TYPE
   return result;
 }
 
-static ::DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
+static ::DLDataType GetDLDataTypeFromTypeIndex(phi::DataType type) {
   static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
   auto it = type_to_dtype_map.find(static_cast<int>(type));
@@ -227,6 +233,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
           type.bits));
     case 16:
       if (type.code == kDLInt) return phi::DataType::INT16;
+      if (type.code == kDLUInt) return phi::DataType::UINT16;
       if (type.code == kDLFloat) return phi::DataType::FLOAT16;
       if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
       PADDLE_THROW(common::errors::Unimplemented(
@@ -235,6 +242,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
           type.bits));
     case 32:
       if (type.code == kDLInt) return phi::DataType::INT32;
+      if (type.code == kDLUInt) return phi::DataType::UINT32;
       if (type.code == kDLFloat) return phi::DataType::FLOAT32;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
@@ -242,6 +250,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
           type.bits));
     case 64:
       if (type.code == kDLInt) return phi::DataType::INT64;
+      if (type.code == kDLUInt) return phi::DataType::UINT64;
       if (type.code == kDLFloat) return phi::DataType::FLOAT64;
       if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
       PADDLE_THROW(common::errors::Unimplemented(
@@ -261,8 +270,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
 }
 
 ::DLDataType PhiDataTypeToDLDataType(phi::DataType dtype) {
-  return internal::GetDLDataTypeFromTypeIndex(
-      framework::TransToProtoVarType(dtype));
+  return internal::GetDLDataTypeFromTypeIndex(dtype);
 }
 
 phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
@@ -358,20 +366,19 @@ DLManagedTensorVersioned *ToDLPackVersioned(const phi::DenseTensor &src,
   return ToDLPackImpl<DLManagedTensorVersioned>(src, flags);
 }
 
-void ToDLPackNonOwningImpl(const phi::DenseTensor &tensor,
-                           ::DLTensor &out) {  // NOLINT
+void ToDLPackNonOwningImpl(const phi::DenseTensor &tensor, ::DLTensor *out) {
   // Fill in the pre-allocated DLTensor struct with direct pointers
   // This is a non-owning conversion - the caller owns the tensor
   // and must keep it alive for the duration of DLTensor usage
-  out.data = const_cast<void *>(tensor.data());
-  out.device = PlaceToDLDevice(tensor.place());
-  out.ndim = static_cast<int32_t>(tensor.dims().size());
-  out.dtype = PhiDataTypeToDLDataType(tensor.dtype());
+  out->data = const_cast<void *>(tensor.data());
+  out->device = PlaceToDLDevice(tensor.place());
+  out->ndim = static_cast<int32_t>(tensor.dims().size());
+  out->dtype = PhiDataTypeToDLDataType(tensor.dtype());
   // sizes() and strides() return pointers to TensorImpl's stable storage
   // which remains valid as long as the tensor is alive
-  out.shape = const_cast<int64_t *>(tensor.dims().Get());
-  out.strides = const_cast<int64_t *>(tensor.strides().Get());
-  out.byte_offset = 0;
+  out->shape = const_cast<int64_t *>(tensor.dims().Get());
+  out->strides = const_cast<int64_t *>(tensor.strides().Get());
+  out->byte_offset = 0;
 }
 
 template <typename T>

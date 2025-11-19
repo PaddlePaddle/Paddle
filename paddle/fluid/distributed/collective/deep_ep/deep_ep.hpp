@@ -81,9 +81,10 @@ struct Buffer {
   // After IPC/NVSHMEM synchronization, this flag will be true
   bool available = false;
 
-  // Barrier signals
-  int* barrier_signal_ptrs[NUM_MAX_NVL_PEERS] = {nullptr};
-  int** barrier_signal_ptrs_gpu = nullptr;
+  // Task fifo
+  int head = 0;
+  int* task_fifo_ptrs[NUM_MAX_NVL_PEERS] = {nullptr};
+  int** task_fifo_ptrs_gpu = nullptr;
 
   // Workspace
   void* workspace = nullptr;
@@ -99,6 +100,9 @@ struct Buffer {
   // Host-side RDMA-level MoE info
   volatile int* moe_recv_rdma_counter = nullptr;
   int* moe_recv_rdma_counter_mapped = nullptr;
+
+ private:
+  void move_fifo_slots(int num_slots = 1);
 
  public:
   Buffer(int rank,

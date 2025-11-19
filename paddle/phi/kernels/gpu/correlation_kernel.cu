@@ -141,9 +141,6 @@ void CorrelationCUDAKernel(const Context &dev_ctx,
   rinput2.Resize({N, padded_input_height, padded_input_width, C});
   dev_ctx.template Alloc<T>(&rinput2);
 
-  auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  auto *ctx =
-      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
   auto max_grid_dim = static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
 
   int64_t grid_size = (rinput1.numel() + 512 - 1) / 512;

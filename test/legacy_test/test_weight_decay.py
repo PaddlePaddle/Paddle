@@ -62,9 +62,9 @@ def bow_net(
     bow = paddle.static.nn.sequence_lod.sequence_pool(
         input=emb, pool_type='sum'
     )
-    bow_tanh = paddle.tanh(bow)
-    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
-    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
+    bow_silu = paddle.nn.functional.silu(bow)
+    fc_1 = paddle.static.nn.fc(x=bow_silu, size=hid_dim, activation="silu")
+    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="silu")
     prediction = paddle.static.nn.fc(
         x=[fc_2], size=class_dim, activation="softmax"
     )

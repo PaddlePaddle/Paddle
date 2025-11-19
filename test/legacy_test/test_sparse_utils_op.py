@@ -180,6 +180,29 @@ class TestSparseConvert(unittest.TestCase):
             dense_x.grad.numpy(), out_grad.to_dense().numpy()
         )
 
+    def test_coo_to_coo(self):
+        indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+        values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        sparse_x = paddle.sparse.sparse_coo_tensor(
+            paddle.to_tensor(indices),
+            paddle.to_tensor(values),
+            shape=[3, 4],
+            stop_gradient=False,
+        )
+        sparse_x_ = sparse_x.to_sparse_coo(2)
+        assert sparse_x is sparse_x_
+
+    def test_csr_to_csr(self):
+        crows = [0, 2, 3, 5]
+        cols = [1, 3, 2, 0, 1]
+        values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        cols = paddle.to_tensor(cols, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values)
+        sparse_x_ = sparse_x.to_sparse_csr()
+        assert sparse_x is sparse_x_
+
     def test_coo_to_dense(self):
         indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
         values = [1.0, 2.0, 3.0, 4.0, 5.0]

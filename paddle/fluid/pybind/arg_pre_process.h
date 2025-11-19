@@ -42,8 +42,8 @@ void RollPreProcess(Value* x, Value* shifts, IntVector* axis);
 void LogsumexpPreProcess(Tensor* x, std::vector<int>* axis, bool* reduce_all);
 void LogsumexpPreProcess(Value* x, std::vector<int>* axis, bool* reduce_all);
 
-void SumPreProcess(Tensor* x, IntArray* axis);
 void SumPreProcess(Value* x, Value* axis);
+void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol);
 }  // namespace pybind
 
 }  // namespace paddle

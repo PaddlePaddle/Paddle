@@ -304,6 +304,8 @@ class TestSearchSortedError(unittest.TestCase):
         )
 
     def test_check_type_error(self):
+        paddle.enable_static()
+
         def test_sortedsequence_values_type_error():
             with paddle.static.program_guard(paddle.static.Program()):
                 sorted_sequence = paddle.static.data(
@@ -315,6 +317,124 @@ class TestSearchSortedError(unittest.TestCase):
                 out = paddle.searchsorted(sorted_sequence, values)
 
         self.assertRaises(TypeError, test_sortedsequence_values_type_error)
+
+
+class TestSearchSortedAPI_Extended(unittest.TestCase):
+    def init_test_case(self):
+        self.sorted_sequence = np.array([2, 4, 6, 8, 10]).astype("float64")
+        self.values_2d = np.array([[3, 6, 9], [3, 6, 9]]).astype("float64")
+        self.values_1d = np.array([3, 6, 9]).astype("float64")
+        self.unsorted_seq = np.array([6, 2, 10, 4, 8]).astype("float64")
+        # sorter such that unsorted_seq[sorter] is sorted
+        self.sorter = np.argsort(self.unsorted_seq).astype("int64")
+
+    def setUp(self):
+        self.init_test_case()
+        self.place = get_places()
+
+    def test_dygraph_side_and_right_priority_and_out_int32(self):
+        # Test: side takes precedence over right, out_int32 controls the returned dtype
+        paddle.disable_static()
+        for place in self.place:
+            with paddle.base.dygraph.guard():
+                seq = paddle.to_tensor(self.sorted_sequence)
+                vals = paddle.to_tensor(self.values_2d)
+                # Mixed parameter passing: right=False, side='right' -> side takes precedence, should be interpreted as right=True
+                out = paddle.searchsorted(
+                    seq, vals, right=False, side="right", out_int32=True
+                )
+                ref = np.searchsorted(
+                    self.sorted_sequence, self.values_2d, side="right"
+                )
+                self.assertEqual(out.dtype, paddle.int32)
+                np.testing.assert_allclose(
+                    ref, out.numpy().astype("int64"), rtol=1e-05
+                )
+
+    def test_dygraph_out_parameter_and_return_is_out(self):
+        # Test out parameter: Pass in an existing tensor, write the function on it, and return the same Tensor
+        paddle.disable_static()
+        for place in self.place:
+            with paddle.base.dygraph.guard():
+                seq = paddle.to_tensor(self.sorted_sequence)
+                vals = paddle.to_tensor(self.values_2d)
+                out_tensor = paddle.empty(
+                    shape=self.values_2d.shape, dtype="int64"
+                )
+                ret = paddle.searchsorted(seq, vals, out=out_tensor)
+                ref = np.searchsorted(self.sorted_sequence, self.values_2d)
+                np.testing.assert_allclose(ref, out_tensor.numpy(), rtol=1e-05)
+
+    def test_dygraph_sorter_behavior(self):
+        # Test sorter parameter: When the sequence is unsorted but a sorter is given, the behavior is consistent with numpy
+        paddle.disable_static()
+        for place in self.place:
+            with paddle.base.dygraph.guard():
+                seq = paddle.to_tensor(self.unsorted_seq)
+                vals = paddle.to_tensor(self.values_1d)
+                sorter_t = paddle.to_tensor(self.sorter)
+                out = paddle.searchsorted(seq, vals, sorter=sorter_t)
+                ref = np.searchsorted(
+                    self.unsorted_seq, self.values_1d, sorter=self.sorter
+                )
+                np.testing.assert_allclose(ref, out.numpy(), rtol=1e-05)
+
+    def test_static_side_and_sorter(self):
+        # Test side parameters and sorter parameters under static images (aligned with numpy)
+        paddle.enable_static()
+        for place in self.place:
+            with paddle.static.program_guard(paddle.static.Program()):
+                seq = paddle.static.data(
+                    name="seq", shape=self.unsorted_seq.shape, dtype="float64"
+                )
+                vals = paddle.static.data(
+                    name="vals", shape=self.values_1d.shape, dtype="float64"
+                )
+                sorter = paddle.static.data(
+                    name="sorter", shape=self.sorter.shape, dtype="int64"
+                )
+
+                out_left = paddle.searchsorted(
+                    seq, vals, side="left", sorter=sorter
+                )
+                out_right = paddle.searchsorted(
+                    seq, vals, side="right", sorter=sorter
+                )
+
+                exe = paddle.static.Executor(place)
+                (res_left, res_right) = exe.run(
+                    feed={
+                        "seq": self.unsorted_seq,
+                        "vals": self.values_1d,
+                        "sorter": self.sorter,
+                    },
+                    fetch_list=[out_left, out_right],
+                )
+                ref_left = np.searchsorted(
+                    self.unsorted_seq,
+                    self.values_1d,
+                    side="left",
+                    sorter=self.sorter,
+                )
+                ref_right = np.searchsorted(
+                    self.unsorted_seq,
+                    self.values_1d,
+                    side="right",
+                    sorter=self.sorter,
+                )
+                np.testing.assert_allclose(ref_left, res_left, rtol=1e-05)
+                np.testing.assert_allclose(ref_right, res_right, rtol=1e-05)
+        paddle.disable_static()
+
+    def test_dygraph_1d_values_and_name_param(self):
+        paddle.disable_static()
+        for place in self.place:
+            with paddle.base.dygraph.guard():
+                seq = paddle.to_tensor(self.sorted_sequence)
+                vals = paddle.to_tensor(self.values_1d)
+                out = paddle.searchsorted(seq, vals, name="my_search")
+                ref = np.searchsorted(self.sorted_sequence, self.values_1d)
+                np.testing.assert_allclose(ref, out.numpy(), rtol=1e-05)
 
 
 if __name__ == '__main__':

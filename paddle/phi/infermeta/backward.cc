@@ -740,10 +740,10 @@ void GruGradInferMeta(const MetaTensor& input,
                       MetaConfig config) {
   const auto& input_dims = input.dims();
   const auto& weight_dims = weight.dims();
-  int input_size = static_cast<int>(input_dims[1]);
-  int frame_size = static_cast<int>(weight_dims[0]);
-  int weight_height = static_cast<int>(weight_dims[0]);
-  int weight_width = static_cast<int>(weight_dims[1]);
+  int64_t input_size = input_dims[1];
+  int64_t frame_size = weight_dims[0];
+  int64_t weight_height = weight_dims[0];
+  int64_t weight_width = weight_dims[1];
   PADDLE_ENFORCE_EQ(
       input_size,
       frame_size * 3,
@@ -789,8 +789,8 @@ void GruGradInferMeta(const MetaTensor& input,
   }
   if (bias.initialized()) {
     const auto& bias_dims = bias.dims();
-    int bias_height = static_cast<int>(bias_dims[0]);
-    int bias_width = static_cast<int>(bias_dims[1]);
+    int64_t bias_height = bias_dims[0];
+    int64_t bias_width = bias_dims[1];
     PADDLE_ENFORCE_EQ(
         bias_height,
         1,
@@ -836,11 +836,10 @@ void GruUnitGradInferMeta(const MetaTensor& input,
   const auto& input_dims = input.dims();
   const auto& hidden_prev_dims = hidden_prev.dims();
   const auto& weight_dims = weight.dims();
-  // int batch_size = input_dims[0];
-  int input_size = static_cast<int>(input_dims[1]);
-  int frame_size = static_cast<int>(hidden_prev_dims[1]);
-  int weight_height = static_cast<int>(weight_dims[0]);
-  int weight_width = static_cast<int>(weight_dims[1]);
+  int64_t input_size = input_dims[1];
+  int64_t frame_size = hidden_prev_dims[1];
+  int64_t weight_height = weight_dims[0];
+  int64_t weight_width = weight_dims[1];
   if (config.is_runtime || input_size >= 0) {
     PADDLE_ENFORCE_EQ(
         input_size,
@@ -876,8 +875,8 @@ void GruUnitGradInferMeta(const MetaTensor& input,
           frame_size * 3));
   if (bias.initialized()) {
     const auto& bias_dims = bias.dims();
-    int bias_height = static_cast<int>(bias_dims[0]);
-    int bias_width = static_cast<int>(bias_dims[1]);
+    int64_t bias_height = bias_dims[0];
+    int64_t bias_width = bias_dims[1];
 
     PADDLE_ENFORCE_EQ(
         bias_height,
@@ -952,7 +951,7 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The X@GRAD in InstanceNormGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  const int C = static_cast<int>(x_dims[1]);
+  const int64_t C = x_dims[1];
   x_grad->set_dims(x_dims);
   x_grad->set_dtype(x.dtype());
   x_grad->set_layout(x.layout());
@@ -989,7 +988,7 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The DX in InstanceNormDoubleGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  const int C = static_cast<int>(x_dims[1]);
+  const int64_t C = x_dims[1];
   dx->set_dims(x_dims);
   dx->set_dtype(x.dtype());
   dx->set_layout(x.layout());

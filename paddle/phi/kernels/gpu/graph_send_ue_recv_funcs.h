@@ -182,8 +182,11 @@ __global__ void ManipulateMeanGradCUDAKernelForMulX(const T* out_grad_data,
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     const T* out_grad_off = out_grad_data + src * l_len;
     const T* e_off = e_data + ty * r_len;
@@ -214,8 +217,11 @@ __global__ void ManipulateSumGradCUDAKernelForAddE(const T* out_grad_data,
 
   while (ty < index_size) {
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     T* e_grad_off = e_grad + ty * r_len;
     const T* out_grad_off = out_grad_data + dst * out_len;
@@ -248,8 +254,11 @@ __global__ void ManipulateSumGradCUDAKernelForMulE(const T* x_data,
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     const T* x_off = x_data + src * l_len;
     T* e_grad_off = e_grad + ty * r_len;
@@ -280,8 +289,11 @@ __global__ void ManipulateMeanGradCUDAKernelForAddE(const T* out_grad_data,
 
   while (ty < index_size) {
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     T* e_grad_off = e_grad + ty * r_len;
     const T* out_grad_off = out_grad_data + dst * out_len;
@@ -316,8 +328,11 @@ __global__ void ManipulateMeanGradCUDAKernelForMulE(const T* x_data,
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     const T* x_off = x_data + src * l_len;
     T* e_grad_off = e_grad + ty * r_len;
@@ -357,8 +372,11 @@ __global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     const T* x_off = x_data + dst * x_len;
     const T* e_off = e_data + ty * e_len;
@@ -403,8 +421,11 @@ __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     const T* x_off = x_data + dst * x_len;
     const T* e_off = e_data + ty * e_len;

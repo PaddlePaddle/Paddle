@@ -16,9 +16,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle._C_ops import (  # noqa: F401
+    abs,
+    asin,
     ceil,
     cos,
+    cosh,
+    exp,
+    expm1,
     floor,
+    round,
     rsqrt,
     sigmoid,
     sin,
@@ -30,13 +36,13 @@ from .. import _C_ops
 from ..base.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_or_pir_mode
 from .layer_function_generator import (
-    generate_activation_fn,
     generate_inplace_fn,
     generate_layer_fn,
 )
 
 if TYPE_CHECKING:
     from paddle import Tensor
+
 
 __inplace_unary_func__ = [
     'exp_',
@@ -75,35 +81,6 @@ for _OP in set(__inplace_unary_func__):
     func.__module__ = __name__
     _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
-
-
-def abs(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Perform elementwise abs for input `x`.
-
-    .. math::
-
-        out = |x|
-
-    Args:
-        x (Tensor): The input Tensor with data type int32, int64, float16, float32, float64, complex64 and complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor.A Tensor with the same data type and shape as :math:`x`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.abs(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.40000001, 0.20000000, 0.10000000, 0.30000001])
-    """
-    return generate_activation_fn('abs')(x, name)
 
 
 def acos(x: Tensor, name: str | None = None) -> Tensor:
@@ -211,60 +188,6 @@ def acosh(x: Tensor, name: str | None = None) -> Tensor:
         helper = LayerHelper('acosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='acosh', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def asin(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Arcsine Operator.
-
-    .. math::
-       out = sin^{-1}(x)
-
-    Args:
-        x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Same shape and dtype as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.asin(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.asin(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'asin',
-        )
-        helper = LayerHelper('asin', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='asin', inputs={"X": x}, outputs={"Out": out})
         return out
 
 
@@ -430,162 +353,6 @@ def atanh(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def cosh(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Cosh Activation Operator.
-
-    Input range `(-inf, inf)`, output range `(1, inf)`.
-
-    .. math::
-       out = \\frac{exp(x)+exp(-x)}{2}
-
-    Args:
-        x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Cosh operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.cosh(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.08107233, 1.02006674, 1.00500417, 1.04533851])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.cosh(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'cosh',
-        )
-        helper = LayerHelper('cosh', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='cosh', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def exp(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Computes exp of x element-wise with a natural number `e` as the base.
-
-    .. math::
-        out = e^x
-
-    Args:
-        x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Exp operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.exp(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.67032003, 0.81873077, 1.10517097, 1.34985888])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.exp(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'exp',
-        )
-        helper = LayerHelper('exp', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='exp', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def expm1(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
-
-    .. math::
-        out = e^x - 1
-
-    Args:
-        x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Expm1 operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.expm1(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.expm1(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'expm1',
-        )
-        helper = LayerHelper('expm1', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='expm1', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
     """
 
@@ -637,69 +404,6 @@ def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='reciprocal', inputs={"X": x}, outputs={"Out": out}
-        )
-        return out
-
-
-def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
-    """
-
-    Round the values in the input to the nearest integer value.
-
-    .. code-block:: text
-
-        input:
-          x.shape = [4]
-          x.data = [1.2, -0.9, 3.4, 0.9]
-
-        output:
-          out.shape = [4]
-          out.data = [1., -1., 3., 1.]
-
-    Args:
-        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128.
-        decimals(int): Rounded decimal place (default: 0).
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Round operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
-            >>> out = paddle.round(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0., -0.,  1.,  2.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.round(x, decimals)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'int32',
-                'int64',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'round',
-        )
-        helper = LayerHelper('round', **locals())
-        attrs = {
-            'decimals': int(decimals),
-        }
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='round', inputs={"X": x}, outputs={"Out": out}, attrs=attrs
         )
         return out
 

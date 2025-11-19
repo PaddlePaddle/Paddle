@@ -754,6 +754,94 @@ class TestCTCLossAPICase(unittest.TestCase):
 
         test_functional_api()
 
+    def test_ctc_loss_zero_infinity(self):
+        max_time = 1
+        batch = 1
+        n_class = 8
+        logits_np = np.random.randn(max_time, batch, n_class).astype("float32")
+        labels_np = np.random.randint(0, n_class - 1, (batch, 3)).astype(
+            "int32"
+        )
+        input_len_np = np.array([1], dtype=np.int64)
+        label_len_np = np.array([3], dtype=np.int64)
+
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+
+        with paddle.static.program_guard(main_program, startup_program):
+            logits = paddle.static.data(
+                name="logits_il",
+                shape=[max_time, batch, n_class],
+                dtype="float32",
+            )
+            labels = paddle.static.data(
+                name="labels_il", shape=[batch, 3], dtype="int32"
+            )
+            input_len = paddle.static.data(
+                name="input_len_il", shape=[batch], dtype="int64"
+            )
+            label_len = paddle.static.data(
+                name="label_len_il", shape=[batch], dtype="int64"
+            )
+
+            loss = paddle.nn.functional.ctc_loss(
+                log_probs=logits,
+                labels=labels,
+                input_lengths=input_len,
+                label_lengths=label_len,
+                reduction="none",
+                zero_infinity=True,
+                blank=n_class - 1,
+            )
+
+            exe = paddle.static.Executor()
+            loss_val = exe.run(
+                main_program,
+                feed={
+                    "logits_il": logits_np,
+                    "labels_il": labels_np,
+                    "input_len_il": input_len_np,
+                    "label_len_il": label_len_np,
+                },
+                fetch_list=[loss],
+            )[0]
+
+            # illegal sample -> 0
+            np.testing.assert_allclose(loss_val, [0.0], atol=1e-6)
+
+        paddle.disable_static()
+
+    def test_ctc_loss_zero_infinity_dygraph(self):
+        max_time = 1
+        batch = 1
+        n_class = 8
+
+        logits_np = np.random.randn(max_time, batch, n_class).astype("float32")
+        labels_np = np.random.randint(0, n_class - 1, (batch, 3)).astype(
+            "int32"
+        )
+        input_len_np = np.array([1], dtype=np.int64)
+        label_len_np = np.array([3], dtype=np.int64)
+
+        paddle.disable_static()
+        logits = paddle.to_tensor(logits_np)
+        labels = paddle.to_tensor(labels_np)
+        input_len = paddle.to_tensor(input_len_np)
+        label_len = paddle.to_tensor(label_len_np)
+
+        loss = paddle.nn.functional.ctc_loss(
+            log_probs=logits,
+            labels=labels,
+            input_lengths=input_len,
+            label_lengths=label_len,
+            reduction="none",
+            zero_infinity=True,
+            blank=n_class - 1,
+        )
+
+        np.testing.assert_allclose(loss.numpy(), [0.0], rtol=1e-6)
+
 
 if __name__ == "__main__":
     unittest.main()

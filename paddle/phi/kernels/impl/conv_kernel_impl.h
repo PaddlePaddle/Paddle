@@ -76,7 +76,7 @@ void ConvKernelImpl(const Context& dev_ctx,
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
-  const int batch_size = static_cast<int>(transformed_input.dims()[0]);
+  const int64_t batch_size = transformed_input.dims()[0];
 
   // filter_shape_vec:
   // {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
@@ -137,14 +137,14 @@ void ConvKernelImpl(const Context& dev_ctx,
           (transformed_output.dims()[0] * transformed_output.dims()[1])};
 
   // convolution operator: im2col(or vol2col) + gemm
-  int in_step = static_cast<int>(transformed_input.dims()[1]) / groups;
-  int out_step = static_cast<int>(transformed_output.dims()[1]) / groups;
+  int64_t in_step = transformed_input.dims()[1] / groups;
+  int64_t out_step = transformed_output.dims()[1] / groups;
 
   phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
   phi::funcs::Vol2ColFunctor<Context, T> vol2col;
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  for (int i = 0; i < batch_size; i++) {
+  for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor in_batch =
         transformed_input.Slice(i, i + 1).Resize(in_matrix_shape);
     DenseTensor out_batch =

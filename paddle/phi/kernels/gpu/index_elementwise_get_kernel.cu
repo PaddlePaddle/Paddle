@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
 void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*>& index,
@@ -63,16 +63,15 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+      desired_shape, strides_array);
 
   const int64_t N = output->numel();
-  PADDLE_ENFORCE_GE(
-      N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
-  PADDLE_ENFORCE_LE(
-      N,
-      std::numeric_limits<int32_t>::max(),
-      common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
+  PADDLE_ENFORCE_EQ(true,
+                    funcs::IsInUint32Range(N, input.numel()),
+                    common::errors::PreconditionNotMet(
+                        "the numel of input or output should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -136,15 +135,27 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 
-  GPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
-                                           x,
-                                           index,
-                                           input_dims,
-                                           input_strides,
-                                           index_dims,
-                                           index_stride,
-                                           slice_offset,
-                                           out);
+  if (funcs::IsInUint32Range(out->numel())) {
+    GPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
+                                             x,
+                                             index,
+                                             input_dims,
+                                             input_strides,
+                                             index_dims,
+                                             index_stride,
+                                             slice_offset,
+                                             out);
+  } else {
+    GPUIndexElementwiseGetKernel<T, int64_t, uint64_t>(dev_ctx,
+                                                       x,
+                                                       index,
+                                                       input_dims,
+                                                       input_strides,
+                                                       index_dims,
+                                                       index_stride,
+                                                       slice_offset,
+                                                       out);
+  }
 }
 
 }  // namespace phi

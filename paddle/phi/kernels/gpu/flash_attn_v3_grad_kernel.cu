@@ -707,8 +707,8 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  const paddle::optional<DenseTensor> &seqused_k,
                                  const DenseTensor &out_grad,
                                  float const softmax_scale,
-                                 int const max_seqlen_q,
-                                 int const max_seqlen_k,
+                                 const Scalar &max_seqlen_q,
+                                 const Scalar &max_seqlen_k,
                                  bool const causal,
                                  int const window_size_left,
                                  int const window_size_right,
@@ -756,6 +756,8 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
   DenseTensor dq_accum;
   DenseTensor dk_accum;
   DenseTensor dv_accum;
+  const int64_t max_seqlen_q_ = max_seqlen_q.to<int64_t>();
+  const int64_t max_seqlen_k_ = max_seqlen_k.to<int64_t>();
   FlashAttnV3GradBaseKernel<T, Context>(dev_ctx,
                                         out_grad,
                                         q,
@@ -770,8 +772,8 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                         cu_seqlens_k,
                                         seqused_q,
                                         seqused_k,
-                                        max_seqlen_q,
-                                        max_seqlen_k,
+                                        max_seqlen_q_,
+                                        max_seqlen_k_,
                                         softmax_scale,
                                         causal,
                                         window_size_left,
@@ -1109,20 +1111,15 @@ void FlashMaskV2GradBaseKernel(
           return {64, 64};
         }
       }
-    } else if (head_size_rounded <= 192) {
-      // umiswing: head dim > 128 is not supported now
-      PADDLE_THROW(
-          common::errors::Unimplemented("head dim is rounded to %d, which is "
-                                        "not supported in FlashMask V3 now.",
-                                        head_size_rounded));
-      return {0, 0};
     } else if (head_size_rounded <= 256) {
-      // umiswing: head dim > 128 is not supported now
-      PADDLE_THROW(
-          common::errors::Unimplemented("head dim is rounded to %d, which is "
-                                        "not supported in FlashMask V3 now.",
-                                        head_size_rounded));
-      return {0, 0};
+      // umiswing: by now, we reuse template instantiation of head dim 256 for
+      // head dim in range (128, 256], and therefore no separate dispatch for
+      // head dim in range (128, 192]
+      if (has_lt_end && has_ut_start) {
+        return {64, 32};
+      } else {
+        return {64, 64};
+      }
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("head dim is rounded to %d, which is "
@@ -1381,12 +1378,16 @@ void FlashMaskV2GradBaseKernel(
       params_handle,
       head_size);  // We don't support hdim_v being
                    // different from hdim_qk for now
+  DenseTensor tile_count_semaphore;
+  if (arch >= 90) {
+    tile_count_semaphore = phi::Full<int32_t, Context>(dev_ctx, {1}, 0);
+    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
+        params_handle, tile_count_semaphore.data<int>());
+  } else {
+    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
+                                                                  nullptr);
+  }
 
-  // auto tile_count_semaphore = (params.is_causal || params.is_local) ?
-  // paddle::zeros({1}, opts.dtype(torch::kInt32)) : torch::empty({1},
-  // opts.dtype(torch::kInt32)); params.tile_count_semaphore =
-  // tile_count_semaphore.data_ptr<int>(); Will be zero'ed out in the backward
-  // preprocess kernel
   DenseTensor dq_semaphore = phi::Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,

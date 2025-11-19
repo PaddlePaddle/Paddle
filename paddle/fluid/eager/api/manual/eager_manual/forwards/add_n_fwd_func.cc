@@ -23,6 +23,8 @@
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
 COMMON_DECLARE_bool(enable_unique_name);
+COMMON_DECLARE_string(tensor_md5_checksum_output_path);
+COMMON_DECLARE_string(dump_api_python_stack_path);
 
 #define SEPARATOR "=========================="
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
@@ -64,12 +66,21 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
   std::vector<egr::AutogradMeta*> x_autograd_meta_vec =
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*>* x_autograd_meta = &x_autograd_meta_vec;
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(x);
   // Forward API Call
   std::string unique_api_name;
   if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {
     static int64_t call_count = 0;
     call_count++;
     unique_api_name = egr::GenerateUniqueApiName("add_n", call_count);
+  }
+  // Save forward call stack to file for debug
+  if (FLAGS_call_stack_level == 3 &&
+      !FLAGS_dump_api_python_stack_path.empty()) {
+    egr::SavePythonCallStackToFile(FLAGS_dump_api_python_stack_path,
+                                   unique_api_name);
   }
   VLOG(3) << "\n"
           << SEPARATOR << "Running_C++_API: " << unique_api_name << SEPARATOR;
@@ -85,6 +96,10 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
   auto& out = api_result;
   if (VLOG_IS_ON(6) || FLAGS_enable_unique_name) {
     egr::SetTensorName(unique_api_name, "out", &out);
+  }
+  if (!FLAGS_tensor_md5_checksum_output_path.empty()) {
+    egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path,
+                                     out);
   }
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
@@ -112,6 +127,15 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
     if (FLAGS_check_nan_inf) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
+    // Set for Record Subgraph
+    if (egr::EagerBackwardSubGraphNodeRecorder::Instance()
+            .NeedCaptureSubGraph()) {
+      VLOG(3) << "Capture the grad node" << grad_node->name() << "("
+              << grad_node.get() << ")"
+              << "for subgraph.";
+      egr::EagerBackwardSubGraphNodeRecorder::Instance().AddGradNode(
+          grad_node.get());
+    }
 
     // SetAttributes if needed
 
@@ -128,6 +152,23 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
     }
     grad_node->SetGradInMeta(out, 0);
     // Set TensorWrappers for Forward Outputs if needed
+  }
+  if (VLOG_IS_ON(6)) {
+    const char* INPUT_PRINT_TEMPLATE =
+        "\nForward Debug Info {\nAPI_Name: %s \nInput: [%s]  \nOutput: [%s] } ";
+
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_X_TEMPLATE = " \n( x , %s), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+    const char* TENSOR_OUT_TEMPLATE = " \n( out , %s), ";
+    std::string output_out_str = paddle::string::Sprintf(
+        TENSOR_OUT_TEMPLATE, egr::EagerUtils::TensorStr(out));
+    output_str += output_out_str;
+    VLOG(6) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, unique_api_name, input_str, output_str);
   }
 
   if (FLAGS_check_cuda_error) [[unlikely]] {

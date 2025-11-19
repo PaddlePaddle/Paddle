@@ -1,0 +1,53 @@
+name: Remove Skip-CI Labels
+
+on:
+  pull_request_target:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  remove-skip-ci-labels:
+    name: Remove skip-ci labels on new commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR labels
+        id: get-labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const skipCiLabels = labels
+              .filter(label => label.name.startsWith('skip-ci:'))
+              .map(label => label.name);
+
+            console.log('Found skip-ci labels:', skipCiLabels);
+            core.setOutput('skip-ci-labels', JSON.stringify(skipCiLabels));
+            core.setOutput('has-skip-ci-labels', skipCiLabels.length > 0 ? 'true' : 'false');
+
+      - name: Remove skip-ci labels
+        if: steps.get-labels.outputs.has-skip-ci-labels == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const skipCiLabels = JSON.parse('${{ steps.get-labels.outputs.skip-ci-labels }}');
+
+            for (const label of skipCiLabels) {
+              console.log(`Removing label: ${label}`);
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: label
+              });
+            }
+
+            console.log(`Successfully removed ${skipCiLabels.length} skip-ci label(s)`);

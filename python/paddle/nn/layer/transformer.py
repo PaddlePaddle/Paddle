@@ -131,7 +131,7 @@ def _convert_attention_mask(attn_mask: Tensor, dtype: DTypeLike) -> Tensor:
 
 class MultiHeadAttention(Layer):
     """
-    Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention maps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
 

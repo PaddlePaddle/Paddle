@@ -1337,6 +1337,16 @@
       data_type : int64_t
       support_tensor : true
 
+- op : flash_attn_v3_varlen
+  backward : flash_attn_v3_varlen_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
+
 - op : flash_attn_varlen_qkvpacked
   backward : flash_attn_varlen_qkvpacked_grad
   scalar :

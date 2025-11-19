@@ -16,6 +16,9 @@ import unittest
 
 import collective.test_communication_api_base as test_base
 
+import paddle
+from paddle import nn
+
 TEST_CONFIGS = {
     "2_card_tests": [
         {
@@ -166,6 +169,85 @@ class TestFullParamWith4Devices(test_base.CommunicationTestDistBase):
                 "model_full_param_logic.py",
                 user_defined_envs=envs,
             )
+
+
+class TestFullParamWithSingleDevices(unittest.TestCase):
+    class SimpleMLP(nn.Layer):
+        def __init__(self, hidden_size=100, has_bias=False):
+            super().__init__()
+            self.embedding = nn.Embedding(24, hidden_size)
+            self.linear1 = nn.Linear(
+                hidden_size, hidden_size, bias_attr=has_bias
+            )
+            self.linear2 = nn.Linear(
+                hidden_size, hidden_size, bias_attr=has_bias
+            )
+            self.llm_head = nn.Linear(hidden_size, 24, bias_attr=False)
+
+        def forward(self, x):
+            x = self.embedding(x)
+            x = self.linear1(x)
+            x = self.linear2(x)
+            x = self.llm_head(x)
+            return x
+
+    def test_full_param(self):
+        self.batch_size = 2
+        self.hidden_size = 32
+        self.has_bias = True
+        model = self.SimpleMLP(
+            hidden_size=self.hidden_size, has_bias=self.has_bias
+        )
+        model = paddle.amp.decorate(
+            models=model, optimizers=None, level="O2", dtype="float16"
+        )
+        model.train()
+        model_state_dict = model.state_dict()
+
+        for k, v in model_state_dict.items():
+            ones = paddle.ones_like(v)
+            paddle.assign(ones, v)
+            if k == "linear1.weight":
+                zeros = paddle.zeros_like(v)
+                paddle.assign(zeros, v)
+
+        aoa_config = {
+            "aoa_statements": [
+                "linear1.weight, linear2.weight -> fused_weight, axis=1"
+                "embedding.weight -> embedding.weight, dtype = 'float32'"
+            ]
+        }
+
+        full_param_iter = model.full(aoa_config, None)
+        full_param = dict(full_param_iter)
+
+        param_shape = {
+            # "linear1.weight" : [32,32],
+            # "linear2.weight" : [32, 32],
+            "embedding.weight": [24, 32],
+            "linear1.bias": [32],
+            "linear2.bias": [32],
+            "llm_head.weight": [24, 32],
+            "fused_weight": [32, 64],
+        }
+
+        for name, shape in param_shape.items():
+            if name == "fused_weight":
+                continue
+            if not self.has_bias:
+                if ".bias" in name:
+                    continue
+            assert name in full_param.keys()
+            tensor = full_param[name]
+            answer = paddle.ones_like(tensor)
+            assert tensor._md5sum() == answer._md5sum()
+            if name == "embedding.weight":
+                assert tensor.dtype == paddle.float32
+        assert "fused_weight" in full_param.keys()
+        ones = paddle.ones([32, 32], 'float16')
+        zeros = paddle.zeros([32, 32], 'float16')
+        answer = paddle.concat([zeros, ones], axis=1)
+        assert full_param["fused_weight"]._md5sum() == answer._md5sum()
 
 
 if __name__ == "__main__":

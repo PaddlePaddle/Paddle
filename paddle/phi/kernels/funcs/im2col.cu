@@ -121,10 +121,21 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
         (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
     int im_width =
         (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
-    int filter_height = col->dims()[1];
-    int filter_width = col->dims()[2];
-    int col_height = col->dims()[3];
-    int col_width = col->dims()[4];
+    int64_t filter_height = col->dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t filter_width = col->dims()[2];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_height = col->dims()[3];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_width = col->dims()[4];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
 
     int num_outputs = im_channels * col_height * col_width;
     int num_thread = 1024;
@@ -256,10 +267,21 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
         (data_layout != DataLayout::kNHWC ? im->dims()[1] : im->dims()[0]);
     int im_width =
         (data_layout != DataLayout::kNHWC ? im->dims()[2] : im->dims()[1]);
-    int filter_height = col.dims()[1];
-    int filter_width = col.dims()[2];
-    int col_height = col.dims()[3];
-    int col_width = col.dims()[4];
+    int64_t filter_height = col.dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t filter_width = col.dims()[2];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_height = col.dims()[3];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_width = col.dims()[4];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] -
@@ -406,13 +428,33 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                           "the dims of tensor 'col' is [%s].",
                           col->dims()));
 
-    int im_channels = im.dims()[0];
-    int im_height = im.dims()[1];
-    int im_width = im.dims()[2];
-    int filter_height = col->dims()[3];
-    int filter_width = col->dims()[4];
-    int col_height = col->dims()[0];
-    int col_width = col->dims()[1];
+    int64_t im_channels = im.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t im_height = im.dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t im_width = im.dims()[2];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t filter_height = col->dims()[3];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t filter_width = col->dims()[4];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_height = col->dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_width = col->dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
 
     int block_dim_x = 0;
     int block_dim_y = 0;
@@ -431,7 +473,9 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     }
 
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
-    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
+    dim3 threads(block_dim_x,
+                 block_dim_y,
+                 std::min(block_dim_z, static_cast<int>(im_channels)));
     dim3 grid(col_width, col_height);
     im2colOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(im.data<T>(),
                                                          im_channels,
@@ -516,13 +560,33 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
                           "the dims of tensor 'col' is [%s].",
                           col.dims()));
 
-    int im_channels = im->dims()[0];
-    int im_height = im->dims()[1];
-    int im_width = im->dims()[2];
-    int filter_height = col.dims()[3];
-    int filter_width = col.dims()[4];
-    int col_height = col.dims()[0];
-    int col_width = col.dims()[1];
+    int64_t im_channels = im->dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t im_height = im->dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t im_width = im->dims()[2];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t filter_height = col.dims()[3];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t filter_width = col.dims()[4];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_height = col.dims()[0];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
+    int64_t col_width = col.dims()[1];
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] -
@@ -558,7 +622,9 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     }
 
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
-    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
+    dim3 threads(block_dim_x,
+                 block_dim_y,
+                 std::min(block_dim_z, static_cast<int>(im_channels)));
     dim3 grid(col_width, col_height);
     col2imOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(col.data<T>(),
                                                          im_channels,

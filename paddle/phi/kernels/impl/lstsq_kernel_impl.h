@@ -66,9 +66,12 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
                                DenseTensor* rank) {
   auto x_dims = x.dims();
   int dim_size = x_dims.size();
-  int m = x_dims[dim_size - 2];
-  int n = x_dims[dim_size - 1];
+  int64_t m = x_dims[dim_size - 2];
+  int64_t n = x_dims[dim_size - 1];
 
+  // Note(zrr1999): Although m and n are declared as int64_t, the rank tensor
+  // stores int values (see rank->data<int>() usage below), so effectively these
+  // dimensions are limited to int range in the current implementation.
   if (m > n && driver != "gelsy") {
     bool compute_residuals = true;
     if ((driver == "gelss" || driver == "gelsd") && rank->numel() != 0) {

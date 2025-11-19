@@ -21,7 +21,7 @@ template <typename T>
 __device__ __forceinline__ T local_rsqrt(T num) {
   return rsqrt(static_cast<float>(num));
 }
-#if defined(PADDLE_WITH_CUDA)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
 __device__ __forceinline__ half local_rsqrt(half num) { return hrsqrt(num); }
 #endif
 
@@ -91,7 +91,7 @@ __global__ void SkipLayerNormKernel<half, 256>(int num,
                                                const half *scale,
                                                const half *bias,
                                                half eps) {
-#if defined(PADDLE_WITH_CUDA)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
@@ -179,7 +179,7 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
                                                        const half2 *scale,
                                                        const half2 *bias,
                                                        float eps) {
-#if defined(PADDLE_WITH_CUDA)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
@@ -265,7 +265,7 @@ __global__ void SkipLayerNormSmallKernel<half, 32>(int num,
                                                    const half *scale,
                                                    const half *bias,
                                                    half eps) {
-#if defined(PADDLE_WITH_CUDA)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
@@ -292,7 +292,7 @@ __global__ void SkipLayerNormSmallKernel<half, 128>(int num,
                                                     const half *scale,
                                                     const half *bias,
                                                     half eps) {
-#if defined(PADDLE_WITH_CUDA)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
@@ -319,7 +319,7 @@ __global__ void SkipLayerNormSmallKernel<half, 384>(int num,
                                                     const half *scale,
                                                     const half *bias,
                                                     half eps) {
-#if defined(PADDLE_WITH_CUDA)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
