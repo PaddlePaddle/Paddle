@@ -404,6 +404,8 @@ class MultiheadAttention(nn.Layer):
             paddle.float16,
             paddle.bfloat16,
         ]
+        # TODO(littleherozzzx): sdpa has computation error for certain case, force math implementation temporarily, expected to be fixed in https://github.com/PaddlePaddle/Paddle/pull/76446
+        can_use_sdpa = False
 
         should_auto_gen_causal = is_causal
         if not can_use_sdpa:
@@ -497,13 +499,6 @@ class MultiheadAttention(nn.Layer):
         if not is_batched:
             attn_output = attn_output.squeeze(0 if self.batch_first else 1)
             if attn_weights is not None:
-                if average_attn_weights:
-                    attn_weights = attn_weights.squeeze(
-                        0 if self.batch_first else 1
-                    )
-                else:
-                    attn_weights = attn_weights.squeeze(
-                        0 if self.batch_first else 1
-                    )
+                attn_weights = attn_weights.squeeze(0)
 
         return attn_output, attn_weights

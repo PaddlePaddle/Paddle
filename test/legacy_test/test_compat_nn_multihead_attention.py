@@ -164,7 +164,7 @@ class TestMHA_Coverage(unittest.TestCase):
         np.random.seed(self.seed)
         paddle.seed(self.seed)
         self.atol = 1e-3
-        self.num_fuzz_iter = 20
+        self.num_fuzz_iter = 200
 
     def _extract_weights(self, layer):
         sd = layer.state_dict()
