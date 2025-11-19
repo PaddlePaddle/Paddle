@@ -90,7 +90,7 @@ class TestTorchProxyBlockedModule(unittest.TestCase):
     def test_blocked_module(self):
         with paddle.compat.use_torch_proxy_guard():
             with self.assertRaises(ModuleNotFoundError):
-                pass
+                import torch._dynamo.allow_in_graph  # noqa: F401
 
             with self.assertRaises(AttributeError):
                 import torch_proxy_blocked_module
