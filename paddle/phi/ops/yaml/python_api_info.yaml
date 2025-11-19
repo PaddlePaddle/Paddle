@@ -23,6 +23,16 @@
   args_alias :
     use_default_mapping : True
 
+- op : log10
+  name : [paddle.log10,paddle.Tensor.log10]
+  args_alias :
+    use_default_mapping : True
+
+- op : log1p
+  name : [paddle.log1p,paddle.Tensor.log1p]
+  args_alias :
+    use_default_mapping : True
+
 - op : maximum
   name : [paddle.maximum,paddle.Tensor.maximum]
   args_alias :

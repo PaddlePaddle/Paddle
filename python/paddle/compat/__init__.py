@@ -22,6 +22,7 @@ from contextlib import contextmanager
 from . import nn  # noqa: F401
 
 __all__ = [
+    'equal',
     'slogdet',
     'sort',
     'split',
@@ -48,6 +49,44 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "y"},
+    func_name="paddle.compat.equal",
+    correct_name="paddle.equal",
+)
+def equal(
+    input: Tensor,
+    other: Tensor,
+) -> bool:
+    """
+
+    ``True`` if two tensors have the same size and elements, ``False`` otherwise.
+
+    Note:
+        Tensors containing NaNs are never equal to each other. Additionally, this function does not differentiate between the data types of the tensors during comparison.
+
+    Args:
+        input (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        other (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+
+    Returns:
+        Bool: ``True`` if two tensors have the same size and elements, ``False`` otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.compat.equal(x, y)
+            >>> print(result1)
+            False
+    """
+
+    return paddle.equal_all(input, other).item()
 
 
 class MedianRetType(NamedTuple):
