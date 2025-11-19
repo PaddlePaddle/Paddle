@@ -32,10 +32,10 @@ class TestSemiAutoParallelShardingStage123:
         batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
         # shard optimizer with stage 1 fn
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
-        opt = dist.shard_optimizer(opt, dist.ShardingStage1("x", self._mesh))
         linear, opt = paddle.amp.decorate(
             linear, optimizers=opt, level='O2', master_grad=True
         )
+        opt = dist.shard_optimizer(opt, dist.ShardingStage1("x", self._mesh))
         stage_losses = []
         for _ in range(5):
             with paddle.amp.auto_cast(level='O2'):
@@ -54,10 +54,10 @@ class TestSemiAutoParallelShardingStage123:
         batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
         # shard optimizer with stage 2 fn
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
-        opt = dist.shard_optimizer(opt, dist.ShardingStage2("x", self._mesh))
         linear, opt = paddle.amp.decorate(
             linear, optimizers=opt, level='O2', master_grad=True
         )
+        opt = dist.shard_optimizer(opt, dist.ShardingStage2("x", self._mesh))
         stage_losses = []
         for _ in range(5):
             with paddle.amp.auto_cast(level='O2'):
@@ -76,10 +76,10 @@ class TestSemiAutoParallelShardingStage123:
         batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
         # shard optimizer with stage 3 fn
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
-        opt = dist.shard_optimizer(opt, dist.ShardingStage3("x", self._mesh))
         linear, opt = paddle.amp.decorate(
             linear, optimizers=opt, level='O2', master_grad=True
         )
+        opt = dist.shard_optimizer(opt, dist.ShardingStage3("x", self._mesh))
         stage_losses = []
         for _ in range(5):
             with paddle.amp.auto_cast(level='O2'):
@@ -98,9 +98,9 @@ class TestSemiAutoParallelShardingStage123:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        stage_losses3 = self.test_pure_sharding_stage_3()
-        stage_losses2 = self.test_pure_sharding_stage_2()
         stage_losses1 = self.test_pure_sharding_stage_1()
+        stage_losses2 = self.test_pure_sharding_stage_2()
+        stage_losses3 = self.test_pure_sharding_stage_3()
         assert stage_losses3 == stage_losses2
         assert stage_losses2 == stage_losses1
 

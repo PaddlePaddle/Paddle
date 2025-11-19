@@ -26,6 +26,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle import _C_ops, nn, pir
+from paddle.amp.auto_cast import amp_global_state
 from paddle.amp.grad_scaler import OptimizerState
 from paddle.autograd import PyLayer
 from paddle.base import unique_name
@@ -1176,8 +1177,8 @@ class _ShardOptimizer(Optimizer):
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
-            if paddle.amp.is_use_master_grad():
-                os.environ["skip_output_reshard"] = "1"
+            if amp_global_state().use_master_grad:
+                os.environ["skip_sharding3_output_reshard"] = "1"
                 for param in self._inner_opt._parameter_list:
                     self._shard_fn._register_hook_for_param_grad(param)
 
@@ -2093,19 +2094,16 @@ class _ShardingStageBase:
         def _comm_grad_hook(param):
             @paddle.autograd.no_grad()
             def param_hook(grad):
-                if paddle.amp.is_use_master_grad():
+                if amp_global_state().use_master_grad:
                     tmp_grad = paddle.cast(grad, paddle.float32)
-                    grad._clear_data()
-                    param.main_grad = _reshard_grad(tmp_grad)
+                    grad = _reshard_grad(tmp_grad)
                 else:
-                    grad = _reshard_grad(grad)
+                    return _reshard_grad(grad)
 
             return param_hook
 
-        if param.is_dist():
-            if paddle.amp.is_use_master_grad():
-                param.main_grad = None
-            param._register_grad_hook(_comm_grad_hook(param))
+        param._register_grad_hook(_comm_grad_hook(param))
+        amp_global_state().already_register_final_backward_hook = True
 
 
 class _ShardingStage0(_ShardingStageBase):
