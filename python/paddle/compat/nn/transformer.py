@@ -27,6 +27,66 @@ if TYPE_CHECKING:
 
 
 class MultiheadAttention(nn.Layer):
+    r"""
+    Allows the model to jointly attend to information from different representation subspaces.
+
+    Multi-Head Attention is defined as:
+
+    .. math::
+        \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1,\dots,\text{head}_h)W^O
+
+    where :math:`\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)`.
+
+    Please refer to `Attention Is All You Need <https://arxiv.org/pdf/1706.03762.pdf>`_
+    for more details.
+
+    .. note::
+        This layer will use the optimized implementation
+        :func:`paddle.nn.functional.scaled_dot_product_attention` when possible.
+        The fast path is enabled only when ``need_weights`` is ``False`` and the input
+        data type is ``float16`` or ``bfloat16``.
+
+    Parameters:
+        embed_dim (int): Total dimension of the model.
+        num_heads (int): The number of heads in multi-head attention.
+        dropout (float, optional): The dropout probability used on attention
+            weights to drop some attention targets. 0 for no dropout. Default 0.0.
+        bias (bool, optional): If specified, adds bias to input / output projection layers.
+            Default: True.
+        add_bias_kv (bool, optional): If specified, adds bias to the key and value sequences
+            at axis=0. Default: False.
+        add_zero_attn (bool, optional): If specified, adds a new batch of zeros to the
+            key and value sequences at axis=1. Default: False.
+        kdim (int, optional): Total number of features for keys. If None, assumed equal to
+            `embed_dim`. Default: None.
+        vdim (int, optional): Total number of features for values. If None, assumed equal to
+            `embed_dim`. Default: None.
+        batch_first (bool, optional): If True, then the input and output tensors are provided
+            as [batch, seq, feature]. Default: False.
+        device (PlaceLike|None, optional): The device to initialize parameters on. Default: None.
+        dtype (DTypeLike|None, optional): The data type of the parameters. Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> from paddle import nn
+
+            >>> # Example with batch_first=True
+            >>> embed_dim, num_heads = 128, 8
+            >>> multihead_attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+
+            >>> # query: [batch_size, target_seq_len, embed_dim]
+            >>> query = paddle.randn([32, 10, embed_dim])
+            >>> # key, value: [batch_size, source_seq_len, embed_dim]
+            >>> key = paddle.randn([32, 20, embed_dim])
+            >>> value = paddle.randn([32, 20, embed_dim])
+
+            >>> attn_output, attn_output_weights = multihead_attn(query, key, value)
+            >>> print(attn_output.shape)
+            [32, 10, 128]
+    """
+
     def __init__(
         self,
         embed_dim: int,
@@ -223,6 +283,44 @@ class MultiheadAttention(nn.Layer):
         average_attn_weights: bool = True,
         is_causal: bool = False,
     ) -> tuple[paddle.Tensor, paddle.Tensor | None]:
+        r"""
+        Forward pass of the MultiheadAttention layer.
+
+        Parameters:
+            query (Tensor): The query embeddings. Shape depends on `batch_first`.
+                If `batch_first` is False, shape is `[target_seq_len, batch_size, embed_dim]`.
+                If `batch_first` is True, shape is `[batch_size, target_seq_len, embed_dim]`.
+            key (Tensor): The key embeddings. Shape depends on `batch_first`.
+                If `batch_first` is False, shape is `[source_seq_len, batch_size, kdim]`.
+                If `batch_first` is True, shape is `[batch_size, source_seq_len, kdim]`.
+            value (Tensor): The value embeddings. Shape depends on `batch_first`.
+                If `batch_first` is False, shape is `[source_seq_len, batch_size, vdim]`.
+                If `batch_first` is True, shape is `[batch_size, source_seq_len, vdim]`.
+            key_padding_mask (Tensor, optional): If specified, a mask indicating which
+                elements within `key` to ignore for the purpose of attention (i.e. treat as "padding").
+                Can be a boolean mask (True indicates padding) or a float mask.
+                Shape is `[batch_size, source_seq_len]`. Default: None.
+            need_weights (bool, optional): Indicate whether to return the attention
+                weights. Default: True.
+            attn_mask (Tensor, optional): 2D or 3D mask that prevents attention to certain positions.
+                A 2D mask will be broadcasted for all batches while a 3D mask allows different masks
+                for the entries in the batch. Shape is `[target_seq_len, source_seq_len]` or
+                `[batch_size * num_heads, target_seq_len, source_seq_len]`. Default: None.
+            average_attn_weights (bool, optional): If True, indicates that the returned
+                `attn_weights` should be averaged across heads. Default: True.
+            is_causal (bool, optional): If True, implies that a causal mask is applied to
+                the attention implementation. Default: False.
+
+        Returns:
+            tuple[Tensor, Tensor|None]:
+                - **attn_output** (Tensor): The output of the attention mechanism.
+                  Shape matches `query` (based on `batch_first`).
+                - **attn_output_weights** (Tensor|None): The attention weights. Returns None if
+                  `need_weights` is False. Shape is `[batch_size, target_seq_len, source_seq_len]`
+                  if `average_attn_weights` is True.
+                  If `average_attn_weights` is False, shape is
+                  `[batch_size, num_heads, target_seq_len, source_seq_len]`.
+        """
         is_batched = query.dim() == 3
         if not is_batched:
             query = query.unsqueeze(1)
