@@ -1345,13 +1345,16 @@ class _ShardOptimizer(Optimizer):
                         slice_buffer, self.param_storage[i]
                     ).wait()
         else:
-            if isinstance(parameters_and_grads, list):
-                for p, _ in parameters_and_grads:
-                    self._reset_placements(p)
-            else:
-                # reset the parameter and grad to right placements
-                for p, _ in parameters_and_grads['params']:
-                    self._reset_placements(p)
+            if not isinstance(parameters_and_grads, list):
+                parameters_and_grads = parameters_and_grads['params']
+
+            # reset the parameter and grad to right placements
+            for p, _ in parameters_and_grads:
+                if amp_global_state().use_master_grad and isinstance(
+                    self._shard_fn, (ShardingStage2, ShardingStage3)
+                ):
+                    p.main_grad = None
+                self._reset_placements(p)
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
@@ -2093,7 +2096,10 @@ class _ShardingStageBase:
         def _main_grad_hook(grad):
             tmp_grad = paddle.cast(grad, paddle.float32)
             grad._clear_data()
-            param.main_grad = _reshard_grad(tmp_grad)
+            if param.main_grad is None:
+                param.main_grad = _reshard_grad(tmp_grad)
+            else:
+                param.main_grad.add_(_reshard_grad(tmp_grad))
 
         if amp_global_state().use_master_grad:
             param.main_grad = None

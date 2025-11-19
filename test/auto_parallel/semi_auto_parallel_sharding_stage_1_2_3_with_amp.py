@@ -23,6 +23,7 @@ class TestSemiAutoParallelShardingStage123:
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self.gradient_accumulation_steps = 2
 
     def test_pure_sharding_stage_1(self):
         paddle.seed(self._seed)
@@ -37,13 +38,18 @@ class TestSemiAutoParallelShardingStage123:
         )
         opt = dist.shard_optimizer(opt, dist.ShardingStage1("x", self._mesh))
         stage_losses = []
-        for _ in range(5):
+        tr_loss_add = float(0)
+        for step in range(6):
             with paddle.amp.auto_cast(level='O2'):
-                loss = linear(batch)
-                loss.backward()
-                opt.step()
-                opt.clear_grad()
-                stage_losses.append(loss._md5sum())
+                tr_loss = linear(batch)
+                tr_loss.backward()
+                tr_loss_add += tr_loss
+                if (step + 1) % self.gradient_accumulation_steps == 0:
+                    tr_loss_add /= self.gradient_accumulation_steps
+                    tr_loss = tr_loss_add
+                    opt.step()
+                    opt.clear_grad()
+                stage_losses.append(tr_loss._md5sum())
         return stage_losses
 
     def test_pure_sharding_stage_2(self):
@@ -59,13 +65,18 @@ class TestSemiAutoParallelShardingStage123:
         )
         opt = dist.shard_optimizer(opt, dist.ShardingStage2("x", self._mesh))
         stage_losses = []
-        for _ in range(5):
+        tr_loss_add = float(0)
+        for step in range(6):
             with paddle.amp.auto_cast(level='O2'):
-                loss = linear(batch)
-                loss.backward()
-                opt.step()
-                opt.clear_grad()
-                stage_losses.append(loss._md5sum())
+                tr_loss = linear(batch)
+                tr_loss.backward()
+                tr_loss_add += tr_loss
+                if (step + 1) % self.gradient_accumulation_steps == 0:
+                    tr_loss_add /= self.gradient_accumulation_steps
+                    tr_loss = tr_loss_add
+                    opt.step()
+                    opt.clear_grad()
+                stage_losses.append(tr_loss._md5sum())
         return stage_losses
 
     def test_pure_sharding_stage_3(self):
@@ -81,13 +92,18 @@ class TestSemiAutoParallelShardingStage123:
         )
         opt = dist.shard_optimizer(opt, dist.ShardingStage3("x", self._mesh))
         stage_losses = []
-        for _ in range(5):
+        tr_loss_add = float(0)
+        for step in range(6):
             with paddle.amp.auto_cast(level='O2'):
-                loss = linear(batch)
-                loss.backward()
-                opt.step()
-                opt.clear_grad()
-                stage_losses.append(loss._md5sum())
+                tr_loss = linear(batch)
+                tr_loss.backward()
+                tr_loss_add += tr_loss
+                if (step + 1) % self.gradient_accumulation_steps == 0:
+                    tr_loss_add /= self.gradient_accumulation_steps
+                    tr_loss = tr_loss_add
+                    opt.step()
+                    opt.clear_grad()
+                stage_losses.append(tr_loss._md5sum())
         os.environ["skip_sharding3_output_reshard"] = "0"
         return stage_losses
 
@@ -99,11 +115,11 @@ class TestSemiAutoParallelShardingStage123:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        stage_losses1 = self.test_pure_sharding_stage_1()
-        stage_losses2 = self.test_pure_sharding_stage_2()
-        stage_losses3 = self.test_pure_sharding_stage_3()
-        assert stage_losses3 == stage_losses2
-        assert stage_losses2 == stage_losses1
+        losses_stage_1 = self.test_pure_sharding_stage_1()
+        losses_stage_2 = self.test_pure_sharding_stage_2()
+        losses_stage_3 = self.test_pure_sharding_stage_3()
+        assert losses_stage_1 == losses_stage_2
+        assert losses_stage_2 == losses_stage_3
 
 
 if __name__ == '__main__':
