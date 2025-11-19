@@ -18,12 +18,6 @@ import paddle
 from paddle.audio.functional.window import get_window
 
 
-def _has_cuda():
-    return (
-        paddle.is_compiled_with_cuda() and "gpu" in paddle.device.get_device()
-    )
-
-
 class TestWindowFunctions(unittest.TestCase):
     def setUp(self):
         paddle.set_device("cpu")
@@ -67,7 +61,6 @@ class TestWindowFunctions(unittest.TestCase):
         self.assertTrue(w.stop_gradient)
         self.assertEqual(list(w.shape), [N])
 
-    @unittest.skipUnless(_has_cuda(), "GPU not available")
     def test_hamming_device_gpu_pin_memory(self):
         if paddle.is_compiled_with_cuda():
             N = 12
