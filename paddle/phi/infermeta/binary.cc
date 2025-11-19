@@ -521,8 +521,6 @@ void CompareInferMeta(const MetaTensor& x,
 void CompareAllInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out) {
-  auto dim_x = x.dims();
-  auto dim_y = y.dims();
   out->share_lod(x);
   out->set_dims(common::make_ddim({}));
 }
