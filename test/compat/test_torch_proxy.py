@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.compat.proxy import create_fake_class, create_fake_function
 
 
 def use_torch_inside_inner_function():
@@ -102,6 +103,17 @@ class TestTorchProxyBlockedModule(unittest.TestCase):
 
             # Use torch specific function out of execute module stage
             torch_proxy_blocked_module.use_torch_specific_fn()
+
+
+class TestFakeInterface(unittest.TestCase):
+    def test_fake_interface(self):
+        FakeGenerator = create_fake_class(
+            "torch.Generator",
+            {"manual_seed": create_fake_function("manual_seed")},
+        )
+
+        fake_gen = FakeGenerator()
+        self.assertTrue(hasattr(fake_gen, "manual_seed"))
 
 
 if __name__ == "__main__":
