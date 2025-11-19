@@ -122,13 +122,13 @@ def normalize(
 
     if in_dygraph_mode():
         eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
-        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
-        output = x / _C_ops.maximum(out, eps)
+        output = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        output = x / _C_ops.maximum(output, eps)
 
     elif in_pir_mode():
         eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
-        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
-        output = paddle.divide(x, _C_ops.maximum(out, eps), name=name)
+        output = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        output = paddle.divide(x, _C_ops.maximum(output, eps), name=name)
 
     else:
         check_type(p, 'p', (float, int), 'normalize')
@@ -148,16 +148,17 @@ def normalize(
             'epsilon': epsilon,
         }
         helper = LayerHelper('p_norm', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
+            type='p_norm', inputs={'X': x}, outputs={'Out': output}, attrs=attrs
         )
-        eps = out.block.create_var(dtype=out.dtype)
-        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
-        output = paddle.divide(x, paddle.maximum(out, eps), name=name)
+        eps = output.block.create_var(dtype=output.dtype)
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=output.dtype)
+        output = paddle.divide(x, paddle.maximum(output, eps), name=name)
 
     if out is not None:
-        paddle.assign(output, output=out)
+        paddle.assign(output, out)
+        return out
     return output
 
 

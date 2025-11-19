@@ -881,12 +881,12 @@ def _compute_quantile(
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for index in indices:
-        out = _compute_index(index)
+        output = _compute_index(index)
         if not keepdim:
-            out = paddle.squeeze(out, axis=axis)
+            output = paddle.squeeze(output, axis=axis)
         else:
-            out = out.reshape(out_shape)
-        outputs.append(out)
+            output = output.reshape(out_shape)
+        outputs.append(output)
 
     if len(outputs) > 1:
         outputs = paddle.stack(outputs, 0)
@@ -894,7 +894,8 @@ def _compute_quantile(
         outputs = outputs[0]
 
     if out is not None:
-        paddle.assign(outputs, output=out)
+        paddle.assign(outputs, out)
+        return out
     return outputs
 
 
