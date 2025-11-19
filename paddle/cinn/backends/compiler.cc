@@ -763,51 +763,29 @@ void Compiler::ExportObject(const std::string& path) {
   engine_->ExportObject(path);
 }
 
+// 位于 paddle/cinn/backends/compiler.cc
+
 void* Compiler::Lookup(std::string_view fn_name) {
-  if (cinn_kernel_cache_) {
-    // 存在场景.so已经存在，但是还没有dlopen所以没有dynamic_library_handle_
-    // 这里需要
-    if (dynamic_library_handle_ ==  nullptr) {
-      std::string cache_so_path = "/tmp/cinn/" + std::to_string(fusion_hash_) + "/" + "cinn_cache.so";
-      if (std::ifstream(cache_so_path).good()) {
-        VLOG(3) << "YUHAN!!! " << cache_so_path << " already exist!!";
-        // Find Loading symbols from .so...
-        // Step 1: 加载共享库 (dlopen)
-        // RTLD_LAZY: 延迟解析符号。RTLD_LOCAL: 符号不导出给其他 dlopen 的库。
-        void* handle = dlopen(cache_so_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
-        if (!handle) {
-          // 严重错误，dlerror() 给出详细信息
-          LOG(FATAL) << "Failed to dlopen shared library: " << cache_so_path << " Error: " << dlerror();
-        }
-        dynamic_library_path_ = cache_so_path; // 存储路径
-        dynamic_library_handle_ = handle; 
-      } else {
-        LOG(FATAL) << "dynamic_library_handle_ is nullptr and " << cache_so_path << " not exist!";
-        return nullptr;
+  // 1. 检查是否已通过 Cache 加载了动态库
+  // 这个 dynamic_library_handle_ 只有在 LoadAndRegisterFromCache 被调用时才会赋值
+  // 即：只有在“缓存命中”路径下，它才不为空。
+  if (cinn_kernel_cache_ && dynamic_library_handle_) {
+      void* func_ptr = dlsym(dynamic_library_handle_, fn_name.data());
+      if (func_ptr) {
+          VLOG(4) << "Lookup symbol " << fn_name << " from cached .so success.";
+          return func_ptr;
       }
-    }
-    VLOG(3) << "Lookup symbol in cached .so: " << fn_name;
-    
-    // 使用 dlsym 从共享库句柄中查找主入口 Host 函数
-    void* func_ptr = dlsym(dynamic_library_handle_, fn_name.data());
-    
-    if (!func_ptr) {
-      // 找不到主入口函数是致命错误
-      LOG(FATAL) << "Failed to dlsym host function: " << fn_name 
-                << " from " << dynamic_library_path_ << ". Error: " << dlerror();
-    }
-    
-    VLOG(3) << "Successfully looked up host function: " << fn_name;
-    return func_ptr;
-
+      LOG(WARNING) << "Kernel cache is enabled but symbol " << fn_name << " not found in .so";
   }
-  
 
-  PADDLE_ENFORCE_NOT_NULL(
-      engine_, ::common::errors::InvalidArgument("Sorry, engine_ is nullptr"));
-  if (engine_->Lookup(fn_name) != nullptr) {
+  // 2. 如果没有动态库句柄（说明是第一次编译），或者 .so 里找不到
+  // 则回退到 JIT 引擎查找
+  if (engine_) {
+    // 注意：不要在 Cache Hit 且 dlsym 失败后盲目调这个，因为 engine_ 可能是空的
+    // 但只要代码逻辑正确，First Run 时 engine_ 一定有值。
     return engine_->Lookup(fn_name);
   }
+
   return nullptr;
 }
 

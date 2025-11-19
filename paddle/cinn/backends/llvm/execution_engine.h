@@ -80,7 +80,7 @@ class ExecutionEngine {
 
   void ExportObject(const std::string &path);
 
-  bool compileLLVMIR(std::unique_ptr<llvm::Module> module, size_t fusionHash=0);
+  bool compileLLVMIR(llvm::Module* module, size_t fusionHash=0);
 
   bool linkSharedLibrary(const size_t fusionHash=0, const std::vector<std::string> &cinn_runtime_include_path = {}); 
 

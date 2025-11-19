@@ -225,7 +225,7 @@ void ExecutionEngine::Link<CodeGenGpuHost>(const ir::Module &module) {
 }
 
 // 使用 LLVM C++ API 将 .ll 文件编译为 .o 文件
-bool ExecutionEngine::compileLLVMIR(std::unique_ptr<llvm::Module> module, size_t fusionHash) {
+bool ExecutionEngine::compileLLVMIR(llvm::Module* module, size_t fusionHash) {
   std::error_code EC;
 
   // 1. 查找当前平台的目标
@@ -296,15 +296,15 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
                                 const std::vector<std::string> &cinn_runtime_include_path) {
   utils::RecordEvent("ExecutionEngine AddModule", utils::EventType::kOrdinary);
   module->setDataLayout(jit_->getDataLayout());
-  // if (VLOG_IS_ON(5)) {
-  //   VLOG(5) << "======= dump jit lib ==========";
-  //   std::string buffer;
-  //   llvm::raw_string_ostream os(buffer);
-  //   module->print(os, {});
-  //   // main_jd_->dump(os);
-  //   os.flush();
-  //   VLOG(5) << buffer;
-  // }
+  if (VLOG_IS_ON(5)) {
+    VLOG(5) << "======= dump jit lib ==========";
+    std::string buffer;
+    llvm::raw_string_ostream os(buffer);
+    module->print(os, {});
+    // main_jd_->dump(os);
+    os.flush();
+    VLOG(5) << buffer;
+  }
 
   std::error_code EC;
   std::string source_hash = std::to_string(fusionHash);
@@ -324,7 +324,7 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
       return true;
     } else {
       // Compiling LLVM IR with LLVM API
-      if (!compileLLVMIR(std::move(module), fusionHash)) {
+      if (!compileLLVMIR(module.get(), fusionHash)) {
         std::cerr << "Error: LLVM IR compilation failed.\n";
         return false;
       }
@@ -334,14 +334,12 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
         std::cerr << "Error: Linking object files into shared library failed.\n";
         return false;
       }
-      return true;
     }
-  } else {
-    llvm::orc::ThreadSafeContext tsc(std::move(context));
-    llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
-    llvm::cantFail(jit_->addIRModule(std::move(tsm))); // todo
-    return true;
   }
+  llvm::orc::ThreadSafeContext tsc(std::move(context));
+  llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
+  llvm::cantFail(jit_->addIRModule(std::move(tsm))); // todo
+  return true;
 }
 
 void ExecutionEngine::RegisterModuleRuntimeSymbols(
