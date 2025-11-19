@@ -115,7 +115,7 @@ def can_use_flash_attn(query, key, attn_mask, dropout, is_causal) -> bool:
         return False
     if query.ndim != 4:
         return False
-    if query.shape[-1] > 256:
+    if query.shape[-1] > 256 or query.shape[-1] % 8 != 0:
         return False
     if _get_arch_info() < 80:
         return False
@@ -138,6 +138,8 @@ def can_use_efficient(query) -> bool:
     if _get_arch_info() < 50 and _get_arch_info() > 90:
         return False
     if query.ndim != 4:
+        return False
+    if query.shape[-1] % 8 != 0:
         return False
     return True
 

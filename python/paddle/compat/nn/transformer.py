@@ -495,11 +495,15 @@ class MultiheadAttention(nn.Layer):
             attn_weights = None
 
         if not is_batched:
-            attn_output = attn_output.squeeze(1)
+            attn_output = attn_output.squeeze(0 if self.batch_first else 1)
             if attn_weights is not None:
                 if average_attn_weights:
-                    attn_weights = attn_weights.squeeze(0)
+                    attn_weights = attn_weights.squeeze(
+                        0 if self.batch_first else 1
+                    )
                 else:
-                    attn_weights = attn_weights.squeeze(0)
+                    attn_weights = attn_weights.squeeze(
+                        0 if self.batch_first else 1
+                    )
 
         return attn_output, attn_weights
