@@ -210,12 +210,41 @@ def _clear_torch_modules():
             del sys.modules[name]
 
 
-def enable_torch_proxy():
+def enable_torch_proxy() -> None:
+    """
+    Enable the PyTorch proxy by adding the TorchProxyMetaFinder to sys.meta_path.
+    This allows importing 'torch' modules that are actually proxies to PaddlePaddle.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
+            >>> import torch  # This will import paddle as torch
+            >>> assert torch.sin is paddle.sin
+    """
     _clear_torch_modules()
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
 
-def disable_torch_proxy():
+def disable_torch_proxy() -> None:
+    """
+    Disable the PyTorch proxy by removing the TorchProxyMetaFinder from sys.meta_path.
+    This prevents 'torch' imports from being proxied to PaddlePaddle.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
+            >>> import torch  # This will import paddle as torch
+            >>> assert torch.sin is paddle.sin
+            >>> paddle.compat.disable_torch_proxy()  # Disable torch proxy
+            >>> try:
+            ...     import torch  # This will raise ModuleNotFoundError
+            ... except ModuleNotFoundError:
+            ...     print("PyTorch proxy is disabled.")
+    """
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
         _clear_torch_modules()
@@ -226,23 +255,35 @@ def disable_torch_proxy():
 @contextmanager
 def use_torch_proxy_guard(enable: bool = True):
     """
-    Context manager to temporarily enable or disable the Torch proxy.
+    Context manager to temporarily enable or disable the PyTorch proxy.
 
-    When `enable` is True (default), the Torch proxy is enabled for the duration
+    When `enable` is True (default), the PyTorch proxy is enabled for the duration
     of the context and restored to its previous state afterwards. When `enable`
-    is False, the Torch proxy is disabled for the duration of the context and
+    is False, the PyTorch proxy is disabled for the duration of the context and
     restored afterwards.
 
     Args:
-        enable (bool): If True, enable the Torch proxy within the context.
-                       If False, disable it within the context.
+        enable (bool, optional): Whether to enable or disable the PyTorch proxy
+            within the context. Defaults to True.
 
-    Usage:
-        with use_torch_proxy_guard(enable=True):
-            # code that requires the Torch proxy to be enabled
+    Example:
+        .. code-block:: python
 
-        with use_torch_proxy_guard(enable=False):
-            # code that requires the Torch proxy to be disabled
+            >>> import paddle
+
+            >>> with paddle.compat.use_torch_proxy_guard():
+            ...     # code that requires the Torch proxy to be enabled
+            ...     import torch
+            ...     assert torch.sin is paddle.sin
+            ...     # Temporarily disable the Torch proxy
+            ...     with paddle.compat.use_torch_proxy_guard(enable=False):
+            ...         try:
+            ...             import torch
+            ...         except ModuleNotFoundError:
+            ...             print("Torch proxy is disabled within this block.")
+            ...     # Torch proxy is re-enabled here
+            ...     import torch
+            ...     assert torch.sin is paddle.sin
     """
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     if enable == already_has_torch_proxy:
@@ -263,12 +304,21 @@ def use_torch_proxy_guard(enable: bool = True):
 
 
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
-    """Add modules to the torch proxy blocked list.
+    """Add modules to the PyTorch proxy blocked list.
 
-    Modules in the blocked list will not use torch proxy when imported,
-    and their functions will not trigger torch proxy when called.
+    Modules in the blocked list will not use PyTorch proxy when imported,
+    and their functions will not trigger PyTorch proxy when called.
 
     Args:
-        modules: An iterable of module names to block from torch proxy.
+        modules(Iterable[str]): An iterable of module names to block from PyTorch proxy.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.compat.enable_torch_proxy()  # Enable torch proxy globally
+            >>> # Add 'my_custom_module' to the blocked list
+            >>> paddle.compat.extend_torch_proxy_blocked_modules(['my_custom_module'])
+            >>> import my_custom_module  # This import will not use torch proxy
     """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
