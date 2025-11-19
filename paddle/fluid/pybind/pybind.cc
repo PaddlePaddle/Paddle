@@ -140,6 +140,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -3622,7 +3623,9 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
-  m.def("vmm_compact", [] { platform::VmmCompact(); });
+  m.def("vmm_compact", [] { paddle::memory::VmmCompact(); });
+  m.def("vmm_free_block_info",
+        [] { return paddle::memory::FreeBlockInfoOfVmmAllocator(); });
   m.def(
       "get_device_properties",
       [](int id) -> const gpuDeviceProp & {
@@ -3672,7 +3675,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #if defined(PADDLE_WITH_CUDA)
   m.def("vmm_max_free_size", [] {
-    memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()), 1);
+    return memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()),
+                                  1);
   });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
