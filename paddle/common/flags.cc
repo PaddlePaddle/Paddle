@@ -1146,7 +1146,7 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_deny_cinn_ops
+ * Name: FLAGS_enable_cinn_compile_cache
  * Since Version: 3.0 Beta
  * Value Range: bool, default=true
  * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
@@ -1158,7 +1158,7 @@ PHI_DEFINE_EXPORTED_bool(
     "It controls whether to enable cinn compilation cache.");
 /*
  * CINN related FLAG
- * Name: FLAGS_deny_cinn_ops
+ * Name: FLAGS_cinn_compile_thread_num
  * Since Version: 3.0 Beta
  * Value Range: bool, default=-1
  * Example: FLAGS_cinn_compile_thread_num=8

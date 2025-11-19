@@ -279,7 +279,8 @@ __global__ void GetDstEdgeCUDAKernel(const int64_t num_rows,
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
-  int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
+  int64_t out_row = static_cast<int64_t>(blockIdx.x) * TILE_SIZE +
+                    static_cast<int64_t>(threadIdx.y);
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
 

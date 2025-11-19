@@ -111,7 +111,7 @@ def graph_khop_sampler(
 
     Examples:
         .. code-block:: python
-            >>> # doctest: +SKIP('Number of sample edges dismatch, the sample kernel has error.')
+            >>> # doctest: +SKIP('Number of sample edges mismatch, the sample kernel has error.')
             >>> import paddle
 
             >>> row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]

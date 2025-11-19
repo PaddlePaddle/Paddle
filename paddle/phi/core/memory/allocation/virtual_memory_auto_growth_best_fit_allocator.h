@@ -22,6 +22,7 @@
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/mem_utils.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
@@ -43,7 +44,15 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
       size_t alignment,
       const phi::GPUPlace &place);
 
+  std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
+    return underlying_allocator_;
+  }
+  std::pair<size_t, size_t> SumLargestFreeBlockSizes(int32_t n) const;
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
+
   bool IsAllocThreadSafe() const override { return true; }
+  void PreAlloc() override;
+  void PreAllocate(size_t size);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
@@ -68,6 +77,32 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::list<AllocationPtr> allocations_;
   phi::Place place_;
   SpinLock spinlock_;
+};
+
+/**
+ * VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator is a multi-scale
+ * allocator that combines the virtual memory management technology of
+ * VirtualMemoryAutoGrowthBestFitAllocator and the multi-scale pooling strategy
+ * of MultiScalePoolAllocator.
+ */
+class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
+    : public MultiScalePoolAllocator {
+ public:
+  VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator(
+      const std::shared_ptr<VirtualMemoryAutoGrowthBestFitAllocator>
+          &small_allocator,
+      const std::shared_ptr<VirtualMemoryAutoGrowthBestFitAllocator>
+          &large_allocator,
+      size_t alignment,
+      const phi::GPUPlace &place)
+      : MultiScalePoolAllocator(
+            small_allocator, large_allocator, alignment, place) {}
+  bool IsAllocThreadSafe() const override { return true; }
+  void PreAlloc() override;
+
+ private:
+  // Determine if the request size is a small request.
+  bool IsSmallRequest(size_t size) override;
 };
 
 }  // namespace allocation

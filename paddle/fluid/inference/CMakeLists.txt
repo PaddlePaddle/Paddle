@@ -104,14 +104,11 @@ else()
 endif()
 if(WITH_GPU OR WITH_ROCM)
   if(WIN32)
-    list(
-      APPEND
-      SHARED_INFERENCE_DEPS
-      dynload_cuda
-      cuda_graph_lib
-      dynload_tensorrt
-      dynload_cudnn
-      dynload_cublas)
+    list(APPEND SHARED_INFERENCE_DEPS dynload_cuda cuda_graph_lib dynload_cudnn
+         dynload_cublas)
+    if(TENSORRT_FOUND)
+      list(APPEND SHARED_INFERENCE_DEPS dynload_tensorrt)
+    endif()
   else()
     list(APPEND SHARED_INFERENCE_DEPS phi_gpu phi_core)
   endif()

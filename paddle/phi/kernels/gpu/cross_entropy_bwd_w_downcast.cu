@@ -56,7 +56,9 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelVectorized(
   using VecT = typename phi::AlignedVector<LogitT, VEC_SIZE>;
   using SoftmaxVecT = typename phi::AlignedVector<T, VEC_SIZE>;
 
-  int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t vec_id = tid * VEC_SIZE;
 
   // Ensure we don't exceed bounds
@@ -143,11 +145,11 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelWarp(
 
   // Process multiple elements per thread using warp-level parallelism
   int64_t elements_per_thread =
-      (n * dim * d + gridDim.x * threads_per_block - 1) /
-      (gridDim.x * threads_per_block);
+      (n * dim * d + static_cast<int64_t>(gridDim.x) * threads_per_block - 1) /
+      (static_cast<int64_t>(gridDim.x) * threads_per_block);
 
   for (int e = 0; e < elements_per_thread; ++e) {
-    int64_t idx = tid + e * gridDim.x * threads_per_block;
+    int64_t idx = tid + e * static_cast<int64_t>(gridDim.x) * threads_per_block;
     if (idx >= n * dim * d) break;
 
     int64_t idx_n = idx / (d * dim);

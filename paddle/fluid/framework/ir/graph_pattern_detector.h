@@ -374,8 +374,8 @@ class GraphPatternDetector {
   void ValidateByNodeRole(std::vector<subgraph_t>* subgraphs);
 
 #ifdef PADDLE_WITH_TESTING
-  FRIEND_TEST(GraphPatternDetecter, MarkPDNodesInGraph);
-  FRIEND_TEST(GraphPatternDetecter, DetectPatterns);
+  FRIEND_TEST(GraphPatternDetector, MarkPDNodesInGraph);
+  FRIEND_TEST(GraphPatternDetector, DetectPatterns);
 #endif
 
  private:
