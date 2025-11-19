@@ -122,6 +122,8 @@ void HostMemoryStatResetPeakValue(const std::string& stat_type, int dev_id) {
 
 void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name) {
   if (FLAGS_log_memory_stats && phi::is_gpu_place(place)) {
+    size_t actual_avail, actual_total;
+    cudaMemGetInfo(&actual_avail, &actual_total);
     VLOG(0) << "After launching op_name: " << op_name << ", "
             << "memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
@@ -142,6 +144,10 @@ void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name) {
             << static_cast<double>(memory::DeviceMemoryStatPeakValue(
                    "Reserved", place.device)) /
                    1024 / 1024
+            << " MB, "
+            << "actual_avail: " << static_cast<double>(actual_avail) / (1 << 20)
+            << " MB, "
+            << "actual_total: " << static_cast<double>(actual_total) / (1 << 20)
             << " MB";
   }
 }
