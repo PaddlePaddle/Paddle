@@ -94,6 +94,9 @@ class FunctionMeta(_PyLayerMeta):
     """Metaclass for Function that uses FunctionCtx instead of PyLayerContext."""
 
     def __init__(cls, name, bases, attrs):
+        # Call parent metaclass __init__ first to ensure basic setup
+        super().__init__(name, bases, attrs)
+
         # Create backward function with FunctionCtx
         from paddle.base import core
 
@@ -103,11 +106,8 @@ class FunctionMeta(_PyLayerMeta):
             def backward(self, *args):
                 return self._forward_cls.backward(self, *args)
 
-        # Directly assign the class, don't wrap it again with type()
+        # Directly assign the class, overwriting the one set by PyLayerMeta
         cls._backward_function = FunctionBackward
-
-        # Call parent metaclass __init__
-        super().__init__(name, bases, attrs)
 
 
 class Function(_PyLayer, metaclass=FunctionMeta):
