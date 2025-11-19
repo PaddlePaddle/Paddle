@@ -40,6 +40,7 @@ function get_quickly_disable_ut() {
 }
 
 serial_list="^test_parallel_dygraph_control_flow$|\
+^test_parallel_dygraph_transformer$|\
 ^test_eager_dist_api$|\
 ^test_collective_process_group$|\
 ^test_parallel_dygraph_sparse_embedding$|\
@@ -122,7 +123,6 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_orthogonal_strategy$|\
 ^test_comm_group_num$|\
 ^test_parallel_margin_cross_entropy$|\
-^test_parallel_dygraph_transformer$|\
 ^test_parallel_dygraph_mp_layers$|\
 ^test_tcp_store$|\
 ^test_dygraph_sharding_stage3_for_eager$|\
