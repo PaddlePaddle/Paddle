@@ -61,7 +61,13 @@ class ReferenceImplementation:
         need_weights=True,
         average_attn_weights=True,
     ):
+        is_batched = query.ndim == 3
+        if not is_batched:
+            query = query.reshape([1, *query.shape])
+            key = key.reshape([1, *key.shape])
+            value = value.reshape([1, *value.shape])
         B, L, E = query.shape
+
         head_dim = E // num_heads
         scale = head_dim**-0.5
 
@@ -144,7 +150,10 @@ class ReferenceImplementation:
                 attn_weights = np.mean(attn_weights, axis=1)
         else:
             attn_weights = None
-
+        if not is_batched:
+            output = output.reshape(output.shape[1:])
+            if attn_weights is not None:
+                attn_weights = attn_weights.reshape(attn_weights.shape[1:])
         return output, attn_weights
 
 
@@ -240,6 +249,11 @@ class TestMHA_Coverage(unittest.TestCase):
         k_shape = [B, S, kdim] if batch_first else [S, B, kdim]
         v_shape = [B, S, vdim] if batch_first else [S, B, vdim]
 
+        if B == 1 and random.random() < 0.5:
+            q_shape = [L, D]
+            k_shape = [S, kdim]
+            v_shape = [S, vdim]
+
         q_pd = paddle.randn(q_shape).cast(pd_dtype)
         k_pd = paddle.randn(k_shape).cast(pd_dtype) if is_cross else q_pd
         v_pd = paddle.randn(v_shape).cast(pd_dtype) if is_cross else q_pd
@@ -267,7 +281,7 @@ class TestMHA_Coverage(unittest.TestCase):
         k_np = k_pd.cast('float32').numpy()
         v_np = v_pd.cast('float32').numpy()
 
-        if not batch_first:
+        if not batch_first and len(q_np.shape) == 3:
             q_np = q_np.transpose(1, 0, 2)
             k_np = k_np.transpose(1, 0, 2)
             v_np = v_np.transpose(1, 0, 2)
@@ -302,7 +316,7 @@ class TestMHA_Coverage(unittest.TestCase):
             average_attn_weights=avg_weights,
         )
 
-        if not batch_first:
+        if len(q_np.shape) == 3 and not batch_first:
             out_ref = out_ref.transpose(1, 0, 2)
 
         current_atol = 1e-3 if dtype_str == 'float16' else self.atol

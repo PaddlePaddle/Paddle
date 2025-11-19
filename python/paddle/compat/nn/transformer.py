@@ -323,9 +323,9 @@ class MultiheadAttention(nn.Layer):
         """
         is_batched = query.dim() == 3
         if not is_batched:
-            query = query.unsqueeze(1)
-            key = key.unsqueeze(1)
-            value = value.unsqueeze(1)
+            query = query.unsqueeze(0 if self.batch_first else 1)
+            key = key.unsqueeze(0 if self.batch_first else 1)
+            value = value.unsqueeze(0 if self.batch_first else 1)
 
         if not self.batch_first:
             query = query.transpose([1, 0, 2])
