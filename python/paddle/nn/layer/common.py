@@ -824,6 +824,7 @@ class Dropout(Layer):
 
     Parameters:
         p (float|int, optional): Probability of setting units to zero. Default: 0.5
+        inplace (bool, optional): If set to ``True``, will do this operation in-place. Default: ``False``
         axis (int|list|tuple|None, optional): The axis along which the dropout is performed. Default: None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
@@ -874,6 +875,7 @@ class Dropout(Layer):
     def __init__(
         self,
         p: float = 0.5,
+        inplace: bool = False,
         axis: int | Sequence[int] | None = None,
         mode: _DropoutMode = "upscale_in_train",
         name: str | None = None,
@@ -881,6 +883,7 @@ class Dropout(Layer):
         super().__init__()
 
         self.p = p
+        self.inplace = inplace
         self.axis = axis
         self.mode = mode
         self.name = name
@@ -891,6 +894,7 @@ class Dropout(Layer):
             p=self.p,
             axis=self.axis,
             training=self.training,
+            inplace=self.inplace,
             mode=self.mode,
             name=self.name,
         )
@@ -898,7 +902,7 @@ class Dropout(Layer):
 
     def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
-        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}'
+        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}, inplace={self.inplace}'
 
 
 class Dropout2D(Layer):

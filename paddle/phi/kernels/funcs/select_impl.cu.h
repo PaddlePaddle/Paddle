@@ -449,7 +449,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   IntArray dims_array(dims_vec);
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
-  // 1.3 launch CountKernl
+  // 1.3 launch CountKernel
   switch (kVecSize) {
     CALL_GET_BLOCK_COUNT_KERNEL(4)
     CALL_GET_BLOCK_COUNT_KERNEL(2)
@@ -562,7 +562,7 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   IntArray dims_array(dims_vec);
   DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
-  // 1.3 launch CountKernl
+  // 1.3 launch CountKernel
   GetBlockCountKernel<MT, CT, kVecSize>
       <<<grid, block, 0, stream>>>(cond_data, count_data, numel, main_offset);
   // 2.1 alloc cumsum data for CoutBlock prefix

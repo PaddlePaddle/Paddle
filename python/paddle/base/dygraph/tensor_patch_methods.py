@@ -1374,6 +1374,32 @@ def monkey_patch_tensor():
             raise ValueError(f"Unsupported tensor place: {place}")
 
     @property
+    def device(self: Tensor) -> str:
+        """
+        Return the device descriptor string indicating where the tensor is located.
+
+        Returns:
+            str: A string representing the device where the tensor resides.
+                 Possible formats include:
+                 - 'cpu' for CPU tensors
+                 - 'cuda:{device_id}' for GPU tensors (e.g., 'cuda:0')
+                 - 'xpu:{device_id}' for XPU tensors (e.g., 'xpu:0')
+                 - '{device_type}:{device_id}' for custom device tensors
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> # CPU tensor
+                >>> cpu_tensor = paddle.to_tensor([1, 2, 3]).to("cpu")
+                >>> print(cpu_tensor.device)
+                'cpu'
+        """
+        place = self.place
+        return paddle.device(place)
+
+    @property
     def __cuda_array_interface__(self):
         """Array view description for cuda tensors.
 
@@ -1591,6 +1617,7 @@ def monkey_patch_tensor():
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
         ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

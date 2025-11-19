@@ -20,7 +20,9 @@ namespace funcs {
 template <typename T>
 __global__ void KeDequantize(
     const T* in, const T* scale, T max_range, int64_t num, T* out) {
-  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     out[i] = in[i] * scale[0] / max_range;
   }
@@ -69,7 +71,9 @@ __global__ void DequantizeOneScaleQuantAxisN(const T* in,
                                              const int n_scales,
                                              const int quant_stride,
                                              T* out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     T s = scale[(i / quant_stride) % n_scales];
     out[i] = in[i] * s / max_range;
@@ -85,7 +89,9 @@ __global__ void DequantizeTwoScale(const T* in,
                                    int n_scales,
                                    int quant_stride,
                                    T* out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     int scale_index = (i / quant_stride) % n_scales;
     T s = scale_one[scale_index] * scale_two[0];
