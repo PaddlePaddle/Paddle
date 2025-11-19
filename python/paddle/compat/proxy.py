@@ -121,17 +121,27 @@ class TorchProxyMetaFinder:
     def _find_spec_for_torch_proxy_blocked_module(self, fullname: str):
         # Return a special loader that imports the blocked module without torch proxy
         with use_torch_proxy_guard(False):
-            original_spec = importlib.util.find_spec(fullname)
-            if original_spec is None:
+            spec = importlib.util.find_spec(fullname)
+            if spec is None:
                 return None
-            original_loader = original_spec.loader
+            original_loader = spec.loader
             if original_loader is None:
                 return None
 
             class TorchBlockedModuleLoader(importlib.abc.Loader):
                 def create_module(self, spec):
-                    with use_torch_proxy_guard(False):
-                        return original_loader.create_module(spec)
+                    mod = original_loader.create_module(spec)
+                    if mod is None:
+                        # If original loader returns None, create default module
+                        # and ensure it has necessary attributes from spec
+                        mod = types.ModuleType(spec.name)
+                        mod.__spec__ = spec
+                        mod.__loader__ = self
+                        if spec.origin is not None:
+                            mod.__file__ = spec.origin
+                        if spec.submodule_search_locations is not None:
+                            mod.__path__ = list(spec.submodule_search_locations)
+                    return mod
 
                 def exec_module(self, module):
                     # Import the real module with torch proxy disabled
@@ -140,17 +150,7 @@ class TorchProxyMetaFinder:
                     # Mark module as torch proxy disabled
                     module.__dict__["__disable_torch_proxy__"] = True
 
-        spec = importlib.util.spec_from_loader(
-            fullname,
-            TorchBlockedModuleLoader(),
-            origin=original_spec.origin,
-            is_package=original_spec.submodule_search_locations is not None,
-        )
-        # Copy submodule_search_locations to preserve __path__
-        spec.submodule_search_locations = (
-            original_spec.submodule_search_locations
-        )
-
+        spec.loader = TorchBlockedModuleLoader()
         return spec
 
     def _find_spec_for_torch_module(self, fullname: str):
