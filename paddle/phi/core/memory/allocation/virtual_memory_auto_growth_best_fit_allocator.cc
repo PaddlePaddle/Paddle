@@ -211,7 +211,6 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
     VLOG(4) << "Do Memory Compact allocate size and compact " << size;
     size_t compact_free_size = memory_compactor_->Compact(
         all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
-    if (compact_free_size < 0) throw;
     VLOG(4) << "Memory Compacted Size: " << compact_free_size;
     auto free_block = std::prev(all_blocks_.end());
     if (free_block->is_free_ && free_block->size_ < size) {
