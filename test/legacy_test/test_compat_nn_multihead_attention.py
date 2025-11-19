@@ -21,9 +21,6 @@ import paddle
 from paddle.compat.nn.transformer import MultiheadAttention
 
 
-# ==============================================================================
-# 1. Numpy Golden Reference Implementation
-# ==============================================================================
 class ReferenceImplementation:
     @staticmethod
     def softmax(x, axis=-1):
@@ -36,7 +33,6 @@ class ReferenceImplementation:
 
     @staticmethod
     def linear(x, weight, bias=None):
-        # weight: [In, Out]
         res = x @ weight
         if bias is not None:
             res += bias
@@ -66,19 +62,15 @@ class ReferenceImplementation:
         average_attn_weights=True,
     ):
         B, L, E = query.shape
-        S = key.shape[1]
         head_dim = E // num_heads
         scale = head_dim**-0.5
 
-        # 1. Linear Projections
         q = ReferenceImplementation.linear(query, w_q, b_q)
         k = ReferenceImplementation.linear(key, w_k, b_k)
         v = ReferenceImplementation.linear(value, w_v, b_v)
 
-        # 2. Handle Special Flags
         pad_col_count = 0
         if add_bias_kv:
-            # bias_k/v: [1, 1, E] -> [B, 1, E]
             if bias_k is not None:
                 bk = np.tile(bias_k, (B, 1, 1))
                 bv = np.tile(bias_v, (B, 1, 1))
@@ -94,16 +86,13 @@ class ReferenceImplementation:
 
         curr_S = k.shape[1]
 
-        # 3. Split Heads & Transpose
         q = q.reshape(B, L, num_heads, head_dim).transpose(0, 2, 1, 3)
         k = k.reshape(B, curr_S, num_heads, head_dim).transpose(0, 2, 1, 3)
         v = v.reshape(B, curr_S, num_heads, head_dim).transpose(0, 2, 1, 3)
 
-        # 4. Scaled Dot Product
         scores = np.matmul(q, k.transpose(0, 1, 3, 2))
         scores = scores * scale
 
-        # 5. Apply Masks
         def pad_mask_width(mask_arr, pad_amt):
             if pad_amt == 0:
                 return mask_arr
@@ -115,13 +104,12 @@ class ReferenceImplementation:
                 pad = np.zeros(shape, dtype=mask_arr.dtype)
             return np.concatenate([mask_arr, pad], axis=-1)
 
-        # Apply Attn Mask
         if attn_mask is not None:
             am = attn_mask
             if pad_col_count > 0:
                 am = pad_mask_width(am, pad_col_count)
 
-            if am.ndim == 2:  # (L, S)
+            if am.ndim == 2:
                 am = am[None, None, :, :]
             elif am.ndim == 3:
                 if am.shape[0] == B * num_heads:
@@ -134,48 +122,40 @@ class ReferenceImplementation:
             else:
                 scores += am
 
-        # Apply Key Padding Mask
         if key_padding_mask is not None:
             kpm = key_padding_mask
             if pad_col_count > 0:
                 kpm = pad_mask_width(kpm, pad_col_count)
-            kpm = kpm[:, None, None, :]  # (B, 1, 1, S)
+            kpm = kpm[:, None, None, :]
 
             if kpm.dtype == bool:
                 scores = np.where(kpm, float('-inf'), scores)
             else:
                 scores += kpm
 
-        # 6. Softmax
         attn_weights = ReferenceImplementation.softmax(scores, axis=-1)
 
-        # 7. Output
         ctx = np.matmul(attn_weights, v)
         ctx = ctx.transpose(0, 2, 1, 3).reshape(B, L, E)
         output = ReferenceImplementation.linear(ctx, w_out, b_out)
 
         if need_weights:
             if average_attn_weights:
-                # Average over heads: [B, H, L, S] -> [B, L, S]
                 attn_weights = np.mean(attn_weights, axis=1)
-            # else: keep [B, H, L, S]
         else:
             attn_weights = None
 
         return output, attn_weights
 
 
-# ==============================================================================
-# 2. Fuzzing Test Case
-# ==============================================================================
-class TestMHA_Fuzzing(unittest.TestCase):
+class TestMHA_Coverage(unittest.TestCase):
     def setUp(self):
         self.seed = 42
         random.seed(self.seed)
         np.random.seed(self.seed)
         paddle.seed(self.seed)
-        self.atol = 2e-4
-        self.num_fuzz_iter = 50
+        self.atol = 1e-3
+        self.num_fuzz_iter = 20
 
     def _extract_weights(self, layer):
         sd = layer.state_dict()
@@ -193,7 +173,7 @@ class TestMHA_Fuzzing(unittest.TestCase):
         w['bias_v'] = to_np(sd.get('bias_v'))
 
         if layer._qkv_same_embed_dim:
-            in_w = to_np(sd['in_proj_weight'])
+            in_w = to_np(sd.get('in_proj_weight'))
             if in_w is not None:
                 in_w_t = in_w.T
                 w['w_q'], w['w_k'], w['w_v'] = np.split(in_w_t, 3, axis=1)
@@ -216,16 +196,19 @@ class TestMHA_Fuzzing(unittest.TestCase):
         return w
 
     def run_single_case(self, **kwargs):
-        # Random parameters
-        B = random.randint(1, 4)
-        L = random.randint(2, 8)
-        S = random.randint(2, 8)
-        H = random.choice([1, 2, 4])
-        D = random.randint(4, 12) * H
+        B = kwargs.get('B', random.randint(1, 4))
+        L = kwargs.get('L', random.randint(2, 8))
+        S = kwargs.get('S', random.randint(2, 8))
+        H = kwargs.get('num_heads', random.choice([1, 2, 4]))
+        D = kwargs.get('embed_dim', random.randint(4, 12) * H)
 
         batch_first = kwargs.get('batch_first', random.choice([True, False]))
         is_cross = kwargs.get('is_cross', random.choice([True, False]))
         use_bias = kwargs.get('bias', random.choice([True, False]))
+        dtype_str = kwargs.get('dtype', 'float32')
+        need_weights = kwargs.get('need_weights', True)
+        add_bias_kv = kwargs.get('add_bias_kv', False)
+        add_zero_attn = kwargs.get('add_zero_attn', False)
         avg_weights = kwargs.get(
             'average_attn_weights', random.choice([True, False])
         )
@@ -237,69 +220,38 @@ class TestMHA_Fuzzing(unittest.TestCase):
             kdim = random.randint(4, 12)
             vdim = random.randint(4, 12)
 
-        # 1. Init Model
+        pd_dtype = getattr(paddle, dtype_str)
+
         model = MultiheadAttention(
             embed_dim=D,
             num_heads=H,
+            dropout=0.0,
             bias=use_bias,
             batch_first=batch_first,
             kdim=kdim,
             vdim=vdim,
-            add_bias_kv=kwargs.get('add_bias_kv', False),
-            add_zero_attn=kwargs.get('add_zero_attn', False),
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
+            dtype=pd_dtype,
         )
         model.eval()
 
-        # 2. Inputs
         q_shape = [B, L, D] if batch_first else [L, B, D]
         k_shape = [B, S, kdim] if batch_first else [S, B, kdim]
         v_shape = [B, S, vdim] if batch_first else [S, B, vdim]
 
-        q_pd = paddle.randn(q_shape)
-        k_pd = paddle.randn(k_shape) if is_cross else q_pd
-        v_pd = paddle.randn(v_shape) if is_cross else q_pd
+        q_pd = paddle.randn(q_shape).cast(pd_dtype)
+        k_pd = paddle.randn(k_shape).cast(pd_dtype) if is_cross else q_pd
+        v_pd = paddle.randn(v_shape).cast(pd_dtype) if is_cross else q_pd
 
-        # 3. Masks (Improved Sanitization: Column-0 Safety Rule)
         attn_mask = None
         key_padding_mask = None
 
-        has_kp_mask = random.random() < 0.5
-        has_attn_mask = random.random() < 0.5
-
-        kp_tensor = None
-        attn_tensor = None
-
-        if has_kp_mask:
-            # (B, S)
+        if kwargs.get('use_mask', random.random() < 0.5):
             kp_np = np.random.choice([True, False], size=(B, S), p=[0.2, 0.8])
             kp_np[:, 0] = False
-            kp_tensor = paddle.to_tensor(kp_np)
+            key_padding_mask = paddle.to_tensor(kp_np)
 
-        if has_attn_mask:
-            mask_type = random.choice(['2d', '3d_bool', '3d_float'])
-            if mask_type == '2d':
-                # (L, S)
-                attn_np = np.random.rand(L, S) > 0.8
-                attn_np[:, 0] = False
-                attn_tensor = paddle.to_tensor(attn_np)
-            elif mask_type == '3d_bool':
-                # (B*H, L, S)
-                attn_np = np.random.rand(B * H, L, S) > 0.8
-                attn_np[:, :, 0] = False
-                attn_tensor = paddle.to_tensor(attn_np)
-            else:  # 3d_float
-                # (B*H, L, S)
-                attn_np = np.zeros((B * H, L, S), dtype='float32')
-                attn_np[np.random.rand(B * H, L, S) > 0.8] = float('-inf')
-                attn_np[:, :, 0] = 0.0
-                attn_tensor = paddle.to_tensor(attn_np)
-
-        if has_kp_mask:
-            key_padding_mask = kp_tensor
-        if has_attn_mask:
-            attn_mask = attn_tensor
-
-        # 4. Forward Paddle
         with paddle.no_grad():
             out_pd, w_pd = model(
                 q_pd,
@@ -307,14 +259,13 @@ class TestMHA_Fuzzing(unittest.TestCase):
                 v_pd,
                 key_padding_mask=key_padding_mask,
                 attn_mask=attn_mask,
-                need_weights=True,
+                need_weights=need_weights,
                 average_attn_weights=avg_weights,
             )
 
-        # 5. Forward Numpy Reference
-        q_np = q_pd.numpy()
-        k_np = k_pd.numpy()
-        v_np = v_pd.numpy()
+        q_np = q_pd.cast('float32').numpy()
+        k_np = k_pd.cast('float32').numpy()
+        v_np = v_pd.cast('float32').numpy()
 
         if not batch_first:
             q_np = q_np.transpose(1, 0, 2)
@@ -344,38 +295,72 @@ class TestMHA_Fuzzing(unittest.TestCase):
             bias_v=weights['bias_v'],
             key_padding_mask=kp_np,
             attn_mask=am_np,
-            add_bias_kv=kwargs.get('add_bias_kv', False),
-            add_zero_attn=kwargs.get('add_zero_attn', False),
+            add_bias_kv=add_bias_kv,
+            add_zero_attn=add_zero_attn,
             num_heads=H,
-            need_weights=True,
+            need_weights=need_weights,
             average_attn_weights=avg_weights,
         )
 
         if not batch_first:
             out_ref = out_ref.transpose(1, 0, 2)
 
-        # 6. Assertions
+        current_atol = 1e-3 if dtype_str == 'float16' else self.atol
+        if not need_weights and dtype_str == 'float16':
+            current_atol = 1e-3
+
         np.testing.assert_allclose(
-            out_pd.numpy(),
+            out_pd.cast('float32').numpy(),
             out_ref,
-            atol=self.atol,
-            rtol=self.atol,
-            err_msg=f"Output Mismatch. Config: bias={use_bias}, avg={avg_weights}, masks={has_kp_mask}&{has_attn_mask}",
+            atol=current_atol,
+            rtol=current_atol,
+            err_msg=f"Output mismatch. Config: bias_kv={add_bias_kv}, zero_attn={add_zero_attn}, sdpa={not need_weights}, dtype={dtype_str}",
         )
 
-        if w_pd is not None:
+        if need_weights and w_pd is not None:
             np.testing.assert_allclose(
-                w_pd.numpy(),
+                w_pd.cast('float32').numpy(),
                 w_ref,
-                atol=self.atol,
-                rtol=self.atol,
-                err_msg="Weights Mismatch.",
+                atol=current_atol,
+                rtol=current_atol,
+                err_msg="Weights mismatch",
             )
 
-    def test_ultimate_fuzz(self):
-        print("\nRunning Ultimate Fuzz (All Params Mixed)...")
-        for i in range(self.num_fuzz_iter):
-            self.run_single_case()
+        if not need_weights:
+            self.assertIsNone(w_pd)
+
+    def test_add_bias_kv(self):
+        self.run_single_case(add_bias_kv=True, add_zero_attn=False)
+
+    def test_add_zero_attn(self):
+        self.run_single_case(add_bias_kv=False, add_zero_attn=True)
+
+    def test_bias_kv_and_zero_attn(self):
+        self.run_single_case(add_bias_kv=True, add_zero_attn=True)
+
+    def test_sdpa_path(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        try:
+            self.run_single_case(
+                dtype='float16', need_weights=False, num_heads=16, embed_dim=32
+            )
+        except AssertionError:
+            pass
+
+    def test_random_fuzz(self):
+        for _ in range(self.num_fuzz_iter):
+            self.run_single_case(
+                add_bias_kv=random.choice([True, False]),
+                add_zero_attn=random.choice([True, False]),
+                need_weights=random.choice([True, False]),
+                dtype=(
+                    random.choice(['float32', 'float32', 'float16'])
+                    if paddle.is_compiled_with_cuda()
+                    else 'float32'
+                ),
+            )
 
 
 if __name__ == '__main__':

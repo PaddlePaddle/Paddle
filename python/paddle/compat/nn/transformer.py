@@ -319,13 +319,12 @@ class MultiheadAttention(nn.Layer):
                 ),
                 diagonal=1,
             )
+            final_mask = raw_causal_mask
 
             if self.add_bias_kv:
-                final_mask = self._pad_mask(raw_causal_mask, pad_amt=1)
-            elif self.add_zero_attn:
-                final_mask = self._pad_mask(raw_causal_mask, pad_amt=1)
-            else:
-                final_mask = raw_causal_mask
+                final_mask = self._pad_mask(final_mask, pad_amt=1)
+            if self.add_zero_attn:
+                final_mask = self._pad_mask(final_mask, pad_amt=1)
 
         if attn_mask is not None:
             if attn_mask.dim() == 2:
@@ -349,6 +348,10 @@ class MultiheadAttention(nn.Layer):
 
         sdpa_is_causal = is_causal if final_mask is None else False
         if can_use_sdpa:
+            if final_mask is not None and final_mask.dtype == paddle.bool:
+                final_mask = self._convert_bool_mask_to_float(
+                    final_mask, q.dtype
+                )
             attn_output = F.scaled_dot_product_attention(
                 q.transpose([0, 2, 1, 3]),
                 k.transpose([0, 2, 1, 3]),
