@@ -88,6 +88,7 @@ class TestSemiAutoParallelShardingStage123:
                 opt.step()
                 opt.clear_grad()
                 stage_losses.append(loss._md5sum())
+        os.environ["skip_sharding3_output_reshard"] = "0"
         return stage_losses
 
     def run_test_case(self):

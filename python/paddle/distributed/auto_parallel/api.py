@@ -1177,10 +1177,9 @@ class _ShardOptimizer(Optimizer):
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
-            if amp_global_state().use_master_grad:
-                os.environ["skip_sharding3_output_reshard"] = "1"
-                for param in self._inner_opt._parameter_list:
-                    self._shard_fn._register_hook_for_param_grad(param)
+            for param in self._inner_opt._parameter_list:
+                self._shard_fn._register_hook_for_param_grad(param)
+            os.environ["skip_sharding3_output_reshard"] = "1"
 
         self.fuse_param_view = []
         self.param_storage = []
@@ -2091,19 +2090,17 @@ class _ShardingStageBase:
                     return reshard(grad, grad.process_mesh, new_placements)
             return grad
 
-        def _comm_grad_hook(param):
-            @paddle.autograd.no_grad()
-            def param_hook(grad):
-                if amp_global_state().use_master_grad:
-                    tmp_grad = paddle.cast(grad, paddle.float32)
-                    grad = _reshard_grad(tmp_grad)
-                else:
-                    return _reshard_grad(grad)
+        def _main_grad_hook(grad):
+            tmp_grad = paddle.cast(grad, paddle.float32)
+            grad._clear_data()
+            param.main_grad = _reshard_grad(tmp_grad)
 
-            return param_hook
-
-        param._register_grad_hook(_comm_grad_hook(param))
-        amp_global_state().already_register_final_backward_hook = True
+        if amp_global_state().use_master_grad:
+            param.main_grad = None
+            param.register_hook(_main_grad_hook)
+            amp_global_state().already_register_final_backward_hook = True
+        else:
+            param.register_hook(_reshard_grad)
 
 
 class _ShardingStage0(_ShardingStageBase):
