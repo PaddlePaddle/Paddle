@@ -5619,6 +5619,7 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({'y': ['other']})
 def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``gcd`` API, the output Tensor will be inplaced with input ``x``.
@@ -5722,6 +5723,7 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
+@ParamAliasDecorator({'y': ['other']})
 def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``lcm`` API, the output Tensor will be inplaced with input ``x``.

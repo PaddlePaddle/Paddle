@@ -2709,3 +2709,119 @@ def abs(
 # zhanrongrun
 
 # other
+
+add_doc_and_signature(
+    "gcd_",
+    r"""
+    An inplace version of ``gcd``.
+
+    Computes the greatest common divisor (GCD) of the elements in `x` and `y`
+    element-wise, modifies `x` in-place, and returns the modified `x`.
+
+    Note:
+        - Broadcasting is supported; see `Introduction to Tensor`_ for broadcasting rules.
+          .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        - This is an in-place operation. It mutates `x`. Use with care in dynamic graph / autograd
+          scenarios as it may affect gradients and the computation graph.
+        - Alias Support:
+          1. The parameter name ``other`` can be used as an alias for ``y``.
+
+    Args:
+        x (Tensor): The input tensor to be modified in-place. Supported integer dtypes:
+            uint8, int8, int16, int32, int64.
+        y (Tensor|None, optional): The tensor whose values are used to compute the GCD with `x`.
+            Must have a dtype compatible with `x`. Broadcasting with `x` is supported.
+        other (Tensor|None, optional): Alias for ``y``. Do not set both ``y`` and ``other``.
+        name (str|None, optional): Name for the operation (optional, default is None). Typically not required.
+
+    Returns:
+        Tensor: The modified tensor `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([12, 18, 24], dtype='int32')
+            >>> y = paddle.to_tensor([20, 24, 36], dtype='int32')
+            >>> x1 = x.clone()
+            >>> paddle.gcd_(x1, y)       # in-place
+            >>> print(x1)
+            Tensor(shape=[3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [4, 6, 12])
+
+            >>> other = paddle.to_tensor([20, 24, 36], dtype='int32')
+            >>> x2 = x.clone()
+            >>> paddle.gcd_(x2, other=other)    # alias
+            >>> print(x2)
+            Tensor(shape=[3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [4, 6, 12])
+    """,
+    """
+def gcd_(
+    x: Tensor,
+    y: Tensor | None = None,
+    *,
+    other: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "lcm_",
+    r"""
+    An inplace version of ``lcm``.
+
+    Computes the least common multiple (LCM) of the elements in `x` and `y`
+    element-wise, modifies `x` in-place, and returns the modified `x`.
+
+    Note:
+        - Broadcasting is supported; see `Introduction to Tensor`_ for broadcasting rules.
+          .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        - This is an in-place operation. It mutates `x`. Use with care in dynamic graph / autograd
+          scenarios as it may affect gradients and the computation graph.
+        - Alias Support:
+          1. The parameter name ``other`` can be used as an alias for ``y``.
+
+    Args:
+        x (Tensor): The input tensor to be modified in-place. Supported integer dtypes:
+            uint8, int8, int16, int32, int64.
+        y (Tensor|None, optional): The tensor whose values are used to compute the LCM with `x`.
+            Must have a dtype compatible with `x`. Broadcasting with `x` is supported.
+        other (Tensor|None, optional): Alias for ``y``. Do not set both ``y`` and ``other``.
+        name (str|None, optional): Name for the operation (optional, default is None). Typically not required.
+
+    Returns:
+        Tensor: The modified tensor `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([12, 18, 24], dtype='int32')
+            >>> y = paddle.to_tensor([20, 24, 36], dtype='int32')
+            >>> x1 = x.clone()
+            >>> paddle.lcm_(x1, y)       # in-place
+            >>> print(x1)
+            Tensor(shape=[3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [60, 72, 72])
+
+            >>> other = paddle.to_tensor([20, 24, 36], dtype='int32')
+            >>> x2 = x.clone()
+            >>> paddle.lcm_(x2, other=other)    # alias
+            >>> print(x2)
+            Tensor(shape=[3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [60, 72, 72])
+    """,
+    """
+def lcm_(
+    x: Tensor,
+    y: Tensor | None = None,
+    *,
+    other: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor
+""",
+)
