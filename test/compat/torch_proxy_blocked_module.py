@@ -27,7 +27,7 @@ def use_torch_specific_fn():
 
     if torch is None:
         return
-    # torch._dynamo.allow_in_graph is a torch specific function, it shouldn't be access via proxy
+    # torch._dynamo.allow_in_graph is a torch specific function, it shouldn't be accessed via proxy
     torch._dynamo.allow_in_graph(lambda x: x)
 
 

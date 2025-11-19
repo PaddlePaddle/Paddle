@@ -225,8 +225,28 @@ def disable_torch_proxy():
 
 @contextmanager
 def use_torch_proxy_guard(enable: bool = True):
+    """
+    Context manager to temporarily enable or disable the Torch proxy.
+
+    When `enable` is True (default), the Torch proxy is enabled for the duration
+    of the context and restored to its previous state afterwards. When `enable`
+    is False, the Torch proxy is disabled for the duration of the context and
+    restored afterwards.
+
+    Args:
+        enable (bool): If True, enable the Torch proxy within the context.
+                       If False, disable it within the context.
+
+    Usage:
+        with use_torch_proxy_guard(enable=True):
+            # code that requires the Torch proxy to be enabled
+
+        with use_torch_proxy_guard(enable=False):
+            # code that requires the Torch proxy to be disabled
+    """
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     if enable == already_has_torch_proxy:
+        yield
         return
     if enable:
         enable_torch_proxy()
@@ -243,4 +263,12 @@ def use_torch_proxy_guard(enable: bool = True):
 
 
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]):
+    """Add modules to the torch proxy blocked list.
+
+    Modules in the blocked list will not use torch proxy when imported,
+    and their functions will not trigger torch proxy when called.
+
+    Args:
+        modules: An iterable of module names to block from torch proxy.
+    """
     TORCH_PROXY_BLOCKED_MODULES.update(modules)
