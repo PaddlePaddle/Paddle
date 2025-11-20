@@ -309,6 +309,7 @@ jobs:
           '
 
       - name: Test
+        id: unit_test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -318,6 +319,7 @@ jobs:
           '
 
       - name: FA Test
+        if: (success() || failure()) && steps.unit_test.conclusion != 'skipped'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
