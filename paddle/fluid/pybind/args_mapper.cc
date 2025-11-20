@@ -92,7 +92,7 @@ void ArgMaxMinMapper(PyObject* args,
       phi::errors::InvalidArgument("the value of 'dtype' in argmax and argmin "
                                    "could not be None, but received None"));
   *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 
   return;
@@ -152,7 +152,7 @@ void ArgMaxMinMapper(PyObject* args,
                                    "could not be None, but received None"));
   *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
 
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
   return;
 }
@@ -213,7 +213,7 @@ void ArgSumMapper(PyObject* args,
     }
   }
 
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 void ArgSumMapper(PyObject* args,
@@ -323,7 +323,7 @@ void GeluMapper(PyObject* args,
     *approximate = CastPyArg2Boolean(approximate_obj, "gelu", 1, false);
   }
 
-  // Check Reminding Params validity if needed
+  // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 void GeluMapper(PyObject* args,
