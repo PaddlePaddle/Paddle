@@ -139,7 +139,6 @@ class TestSpectralNormOp2(TestSpectralNormOp):
 
 
 class TestSpectralNormOpError(unittest.TestCase):
-
     def test_static_errors(self):
         with program_guard(Program(), Program()):
 

@@ -14,8 +14,6 @@
 
 #include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -59,6 +57,24 @@ void FloorDivideKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  int axis = -1;
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {  // NOLINT
+    funcs::ElementwiseCompute<funcs::TruncDivideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::TruncDivideFunctor<T>(), out, axis);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseTruncDivideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::InverseTruncDivideFunctor<T>(), out, axis);
+  }
+}
+
+template <typename T, typename Context>
 void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
@@ -74,8 +90,15 @@ void HeavisideKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
-  funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
-      dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
+  } else {
+    funcs::ElementwiseCompute<funcs::ElementwiseInverseHeavisideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::ElementwiseInverseHeavisideFunctor<T>(), out);
+  }
 }
 
 template <typename T, typename Context>
@@ -83,6 +106,10 @@ void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -95,13 +122,31 @@ void CopySignKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    funcs::ElementwiseCompute<funcs::NextafterFunctor<T>, T>(
+        dev_ctx, x, y, funcs ::NextafterFunctor<T>(), out);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseNextafterFunctor<T>, T>(
+        dev_ctx, x, y, funcs::InverseNextafterFunctor<T>(), out);
+  }
+}
+
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::phi::dtype::bfloat16;
+// using bfloat16 = ::phi::bfloat16;
 
 PD_REGISTER_KERNEL(
     fmax, CPU, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
@@ -117,7 +162,7 @@ PD_REGISTER_KERNEL(maximum,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(minimum,
                    CPU,
                    ALL_LAYOUT,
@@ -126,7 +171,7 @@ PD_REGISTER_KERNEL(minimum,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(remainder,
                    CPU,
                    ALL_LAYOUT,
@@ -134,11 +179,26 @@ PD_REGISTER_KERNEL(remainder,
                    float,
                    double,
                    int,
+                   phi::complex64,
+                   phi::complex128,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide,
                    CPU,
                    ALL_LAYOUT,
                    phi::FloorDivideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int32_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(trunc_divide,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TruncDivideKernel,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -156,7 +216,9 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(heaviside,
                    CPU,
                    ALL_LAYOUT,
@@ -178,5 +240,8 @@ PD_REGISTER_KERNEL(copysign,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    nextafter, CPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}

@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from typing import Dict, List
 
-import paddle
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
     EnvironmentVariable,
@@ -28,7 +26,7 @@ from paddle.utils.environments import (
 )
 
 
-class PEP508LikeEnvironmentVariable(EnvironmentVariable[Dict[str, List[str]]]):
+class PEP508LikeEnvironmentVariable(EnvironmentVariable[dict[str, list[str]]]):
     """
     Environment variable parser following PEP 508 extras specification syntax.
     https://peps.python.org/pep-0508/
@@ -53,12 +51,12 @@ class PEP508LikeEnvironmentVariable(EnvironmentVariable[Dict[str, List[str]]]):
 
     def convert_to_string(self, value: dict[str, list[str]]) -> str:
         assert isinstance(value, dict), "The input must be a dict"
-        assert all(
-            isinstance(x, str) for x in value.keys()
-        ), "Keys must be a string"
-        assert all(
-            isinstance(x, list) for x in value.values()
-        ), "Values must be a list"
+        assert all(isinstance(x, str) for x in value.keys()), (
+            "Keys must be a string"
+        )
+        assert all(isinstance(x, list) for x in value.values()), (
+            "Values must be a list"
+        )
 
         env_list = []
         for k, v in value.items():
@@ -122,8 +120,8 @@ ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
 ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 ENV_SOT_ALLOW_DYNAMIC_SHAPE = BooleanEnvironmentVariable(
     "SOT_ALLOW_DYNAMIC_SHAPE",
-    # Enable SOT dynamic shape as default in PIR mode only
-    paddle.framework.use_pir_api(),
+    # Enable SOT dynamic shape as default in PIR mode
+    True,
 )
 ENV_SOT_ENABLE_FASTER_GUARD = BooleanEnvironmentVariable(
     "SOT_ENABLE_FASTER_GUARD",
@@ -137,7 +135,6 @@ ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
     "SOT_ENABLE_GUARD_TREE",
     False,
 )
-ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
     "ENABLE_SOT_STEP_PROFILER", False
 )
@@ -151,6 +148,15 @@ ENV_SOT_FORCE_FALLBACK_SIR_IDS = StringEnvironmentVariable(
     "SOT_FORCE_FALLBACK_SIR_IDS", ""
 )
 ENV_SOT_TRACE_NUMPY = BooleanEnvironmentVariable("ENV_SOT_TRACE_NUMPY", True)
+ENV_SOT_UNSAFE_CACHE_FASTPATH = BooleanEnvironmentVariable(
+    "SOT_UNSAFE_CACHE_FASTPATH", False
+)
+ENV_SOT_ENABLE_0_SIZE_FALLBACK = BooleanEnvironmentVariable(
+    "SOT_ENABLE_0_SIZE_FALLBACK", True
+)
+ENV_SOT_SPECIALIZED_DIM_NUMBERS = StringEnvironmentVariable(
+    "SOT_SPECIALIZED_DIM_NUMBERS", "0"
+)
 
 
 def update_ce_flags():
@@ -214,4 +220,16 @@ def guard_tree_guard(value: bool):
 @contextmanager
 def sot_step_profiler_guard(value: bool):
     with EnvironmentVariableGuard(ENV_ENABLE_SOT_STEP_PROFILER, value):
+        yield
+
+
+@contextmanager
+def specialized_dim_numbers_guard(value: str):
+    with EnvironmentVariableGuard(ENV_SOT_SPECIALIZED_DIM_NUMBERS, value):
+        yield
+
+
+@contextmanager
+def enable_0_size_fallback_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_ENABLE_0_SIZE_FALLBACK, value):
         yield

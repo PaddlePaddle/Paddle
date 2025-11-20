@@ -432,17 +432,9 @@ bool GetSupportsCooperativeLaunchImpl(NVGPUArch) {
   return supportsCoopLaunch != 0;
 }
 
-bool GetSupportsCooperativeLaunchImpl(HygonDCUArchHIP) {
-  CINN_NOT_IMPLEMENTED
-  LOG(FATAL)
-      << "The target is not GPU! Cannot get supports cooperative launch.";
-}
+bool GetSupportsCooperativeLaunchImpl(HygonDCUArchHIP) { return false; }
 
-bool GetSupportsCooperativeLaunchImpl(HygonDCUArchSYCL) {
-  CINN_NOT_IMPLEMENTED
-  LOG(FATAL)
-      << "The target is not GPU! Cannot get supports cooperative launch.";
-}
+bool GetSupportsCooperativeLaunchImpl(HygonDCUArchSYCL) { return false; }
 
 bool GetSupportsCooperativeLaunch(Arch arch) {
   return std::visit(

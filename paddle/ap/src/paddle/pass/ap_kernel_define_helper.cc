@@ -23,7 +23,7 @@
 #include "paddle/ap/include/paddle/pir_node_descriptor.h"
 #include "paddle/ap/include/paddle/pir_node_method_class.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 namespace adt = ap::adt;
 
@@ -63,4 +63,4 @@ adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
   return m;
 }
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle

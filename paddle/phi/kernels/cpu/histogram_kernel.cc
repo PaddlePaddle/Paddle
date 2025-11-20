@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/utils/optional.h"
@@ -37,6 +38,11 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
   auto input_numel = input.numel();
+  if (input_numel == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    return;
+  }
 
   if (input_data == nullptr) return;
 

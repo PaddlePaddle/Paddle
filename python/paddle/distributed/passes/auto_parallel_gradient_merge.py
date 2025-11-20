@@ -89,9 +89,9 @@ def _pir_append_gradient_merge_backward_op(
         if grad is None:
             continue
 
-        assert (
-            not param.is_selected_row_type()
-        ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+        assert not param.is_selected_row_type(), (
+            "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+        )
 
         grad_dtype = grad.dtype
         grad_type = grad.type()
@@ -214,9 +214,9 @@ def _insert_scale_op_after(target_value, optimizer_op, scale, bias=0.0):
     scale_op.op_role = int(OpRole.Optimize)
 
     full_op = scale_op.operand_source(1).get_defining_op()
-    assert (
-        full_op.name() == "pd_op.full"
-    ), f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
+    assert full_op.name() == "pd_op.full", (
+        f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
+    )
     full_op.op_role = int(OpRole.Optimize)
 
     if "adam" in optimizer_op.name():
@@ -237,9 +237,9 @@ def _append_scale_op_before_comm(block, new_params_to_grads, k_steps):
             scale_op.op_role = int(OpRole.Optimize)
 
             full_op = scale_op.operand_source(1).get_defining_op()
-            assert (
-                full_op.name() == "pd_op.full"
-            ), f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
+            assert full_op.name() == "pd_op.full", (
+                f"The defining op of the scale value should be `pd_op.full`, but got {full_op.name()}"
+            )
             full_op.op_role = int(OpRole.Optimize)
     paddle.pir.set_insertion_point_to_block_end(block)
 
@@ -255,9 +255,9 @@ def _append_scale_op_after_comm(block, optimizer_ops, k_steps):
             raise NotImplementedError(
                 f"We yet support adamw, adam and sgd, but got {optimizer_op.name()}"
             )
-        assert (
-            target_value is not None
-        ), "target_value is not expected to be None"
+        assert target_value is not None, (
+            "target_value is not expected to be None"
+        )
         insertion_point = target_value.get_defining_op()
         if insertion_point is None:
             # target_value is a gradient_merge_var, which hasn't defining_op

@@ -154,12 +154,12 @@ class GpuAndCpuSearchSortedCompute {
 template <typename Context, typename T1, typename OutType>
 class SearchSortedFunctor {
  public:
-  SearchSortedFunctor(const Context& context,
+  SearchSortedFunctor(const Context& dev_ctx,
                       const DenseTensor* sorted_sequence,
                       const DenseTensor* value,
                       bool right,
                       OutType* out_data)
-      : context_(context),
+      : dev_ctx_(dev_ctx),
         sorted_sequence_(sorted_sequence),
         value_(value),
         right_(right),
@@ -186,7 +186,7 @@ class SearchSortedFunctor {
       seq_size = 1;
     }
 
-    funcs::ForRange<Context> for_range(context_, value_->numel());
+    funcs::ForRange<Context> for_range(dev_ctx_, value_->numel());
     GpuAndCpuSearchSortedCompute<T1, T2, OutType>
         gpu_and_cpu_search_sorted_compute(sequence_data,
                                           value_data,
@@ -199,7 +199,7 @@ class SearchSortedFunctor {
   }
 
  private:
-  const Context& context_;
+  const Context& dev_ctx_;
   const DenseTensor* sorted_sequence_;
   const DenseTensor* value_;
   bool right_;
@@ -217,9 +217,9 @@ void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
   } else if (type == DataType::INT64) {
     visitor.template apply<int64_t>();
   } else if (type == DataType::FLOAT16) {
-    visitor.template apply<phi::dtype::float16>();
+    visitor.template apply<phi::float16>();
   } else if (type == DataType::BFLOAT16) {
-    visitor.template apply<phi::dtype::bfloat16>();
+    visitor.template apply<phi::bfloat16>();
   } else {
     PADDLE_THROW(errors::InvalidArgument(
         "The received values data type %s can not meet input requirements. "
@@ -232,23 +232,29 @@ void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
 }
 
 template <typename T, typename Context>
-void SearchsortedKernel(const Context& ctx,
+void SearchsortedKernel(const Context& dev_ctx,
                         const DenseTensor& sorted_sequence,
                         const DenseTensor& value,
                         bool out_int32,
                         bool right,
                         DenseTensor* out) {
   if (out_int32) {
-    ctx.template Alloc<int>(out);
+    dev_ctx.template Alloc<int>(out);
+    if (out && out->numel() == 0) {
+      return;
+    }
     int* out_data = out->data<int>();
     SearchSortedFunctor<Context, T, int> functor(
-        ctx, &sorted_sequence, &value, right, out_data);
+        dev_ctx, &sorted_sequence, &value, right, out_data);
     VisitDataTypeForSearchSorted(value.dtype(), functor);
   } else {
-    ctx.template Alloc<int64_t>(out);
+    dev_ctx.template Alloc<int64_t>(out);
+    if (out && out->numel() == 0) {
+      return;
+    }
     int64_t* out_data = out->data<int64_t>();
     SearchSortedFunctor<Context, T, int64_t> functor(
-        ctx, &sorted_sequence, &value, right, out_data);
+        dev_ctx, &sorted_sequence, &value, right, out_data);
     VisitDataTypeForSearchSorted(value.dtype(), functor);
   }
 }

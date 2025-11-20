@@ -22,6 +22,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
@@ -105,7 +106,7 @@ void GraphSendUERecvMinMaxCpuKernel(const BroadCastInfo& bcast,
 }
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
+void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
                                          const DenseTensor& x,
                                          const DenseTensor& y,
                                          const DenseTensor& src_index,
@@ -129,7 +130,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
     memset_size *= dim;
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   memset(out_data, 0, memset_bytes);
@@ -165,7 +166,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
     if (reduce_op == "MEAN") {
       int64_t input_size = out_size <= 0 ? x.dims()[0] : out_size;
       dst_count->Resize({input_size});
-      int* dst_count_data = ctx.template Alloc<int>(dst_count);
+      int* dst_count_data = dev_ctx.template Alloc<int>(dst_count);
       memset(dst_count_data, 0, input_size * sizeof(int));
       for (int i = 0; i < index_size; i++) {
         IndexT dst_idx = d_index[i];
@@ -244,7 +245,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SendUERecvKernel(const Context& ctx,
+void SendUERecvKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& src_index,
@@ -256,8 +257,32 @@ void SendUERecvKernel(const Context& ctx,
                       DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
   auto& out_size_data = out_size.GetData();
+
+  if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
+      dst_index.numel() == 0) {
+    std::vector<int64_t> dims_ = common::vectorize(out->dims());
+    if (out_size_data[0] <= 0) {
+      dims_[0] = x.dims()[0];
+    } else {
+      dims_[0] = out_size_data[0];
+    }
+    if (reduce_op == "MEAN") {
+      int64_t input_size =
+          out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
+      dst_count->Resize({input_size});
+    }
+    out->Resize(common::make_ddim(dims_));
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    phi::Full<int, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dst_count->dims())),
+                            0,
+                            dst_count);
+    return;
+  }
+
   if (index_type == phi::DataType::INT32) {
-    GraphSendUERecvOpKernelLaunchHelper<Context, T, int32_t>(ctx,
+    GraphSendUERecvOpKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                              x,
                                                              y,
                                                              src_index,
@@ -268,7 +293,7 @@ void SendUERecvKernel(const Context& ctx,
                                                              out,
                                                              dst_count);
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendUERecvOpKernelLaunchHelper<Context, T, int64_t>(ctx,
+    GraphSendUERecvOpKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
                                                              x,
                                                              y,
                                                              src_index,

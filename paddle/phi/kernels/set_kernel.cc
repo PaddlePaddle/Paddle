@@ -13,7 +13,7 @@
 // limitations under the License.
 #include "paddle/phi/kernels/set_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,6 +28,17 @@ void SetKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
+  if (x.numel() == 0 || source.numel() == 0) {
+    if (source.numel() != 0) {
+      out->clear();
+      *out = DenseTensor{source.Holder(), meta};
+    } else if (x.numel() == 0) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    }
+    out->ShareInplaceVersionCounterWith(x);
+    return;
+  }
   if (x.IsSharedWith(source)) {
     out->set_meta(meta);
   } else {
@@ -52,10 +63,10 @@ PD_REGISTER_KERNEL(set,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(set,
@@ -70,8 +81,8 @@ PD_REGISTER_KERNEL(set,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif

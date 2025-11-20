@@ -21,16 +21,19 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnfoldGradKernel(const Context& ctx,
+void UnfoldGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
-                      const std::vector<int>& kernel_sizes,
-                      const std::vector<int>& strides,
-                      const std::vector<int>& paddings,
-                      const std::vector<int>& dilations,
+                      const std::vector<int>& kernel_sizes_,
+                      const std::vector<int>& strides_,
+                      const std::vector<int>& paddings_,
+                      const std::vector<int>& dilations_,
                       DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) {
+    return;
+  }
   const std::string data_format = common::DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
@@ -39,37 +42,41 @@ void UnfoldGradKernel(const Context& ctx,
                         "Unfold grad op only supports datalayout == NCHW"));
 
   auto x_dims = x_grad->dims();
-  int n = static_cast<int>(x_dims[0]);
-  int c = static_cast<int>(x_dims[1]);
-  int h = static_cast<int>(x_dims[2]);
-  int w = static_cast<int>(x_dims[3]);
+  int64_t n = x_dims[0];
+  int64_t c = x_dims[1];
+  int64_t h = x_dims[2];
+  int64_t w = x_dims[3];
+  std::vector<int64_t> kernel_sizes(kernel_sizes_.begin(), kernel_sizes_.end());
+  std::vector<int64_t> strides(strides_.begin(), strides_.end());
+  std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
+  std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());
 
-  int out_height = phi::funcs::CalcOutputSize(x_dims[2],
-                                              kernel_sizes[0],
-                                              dilations[0],
-                                              paddings[0],
-                                              paddings[2],
-                                              strides[0]);
-  int out_width = phi::funcs::CalcOutputSize(x_dims[3],
-                                             kernel_sizes[1],
-                                             dilations[1],
-                                             paddings[1],
-                                             paddings[3],
-                                             strides[1]);
+  int64_t out_height = phi::funcs::CalcOutputSize(x_dims[2],
+                                                  kernel_sizes[0],
+                                                  dilations[0],
+                                                  paddings[0],
+                                                  paddings[2],
+                                                  strides[0]);
+  int64_t out_width = phi::funcs::CalcOutputSize(x_dims[3],
+                                                 kernel_sizes[1],
+                                                 dilations[1],
+                                                 paddings[1],
+                                                 paddings[3],
+                                                 strides[1]);
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   XPUType* out_grad_trans =
       RAII_GUARD.alloc_l3_or_gm<XPUType>(out_grad.numel());
 
   int r = xpu::transpose(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),
       out_grad_trans,
       {n, c, kernel_sizes[0], kernel_sizes[1], out_height, out_width},
       {0, 4, 5, 1, 2, 3});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
-  r = xpu::col2im(ctx.x_context(),
+  r = xpu::col2im(dev_ctx.x_context(),
                   out_grad_trans,
                   reinterpret_cast<XPUType*>(x_grad->data<T>()),
                   n,
@@ -86,9 +93,5 @@ void UnfoldGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(unfold_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::UnfoldGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    unfold_grad, XPU, ALL_LAYOUT, phi::UnfoldGradKernel, float, phi::float16) {}

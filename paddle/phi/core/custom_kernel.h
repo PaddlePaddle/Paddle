@@ -22,7 +22,7 @@ namespace phi {
  * Note:
  * Used to store kernels' info before registered to KernelFactory.
  */
-class CustomKernelMap {
+class PADDLE_API CustomKernelMap {
  public:
   static CustomKernelMap& Instance();
 

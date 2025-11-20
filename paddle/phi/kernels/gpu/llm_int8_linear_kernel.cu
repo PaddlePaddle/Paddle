@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/impl/llm_int8_matmul_kernel_impl.h"
 #endif
 
@@ -33,7 +33,7 @@ void llm_int8_compute(const Context& dev_ctx,
                       const DenseTensor& weight_scale,
                       const float threshold,
                       DenseTensor* out) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA)
   DenseTensor cublaslt_workspace;
   cublaslt_workspace.Resize({{3000000}});
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace);
@@ -81,5 +81,5 @@ PD_REGISTER_KERNEL(llm_int8_linear,
                    GPU,
                    ALL_LAYOUT,
                    phi::LLMInt8LinearKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -108,14 +108,14 @@ struct PADDLE_ALIGN(256) PointerArray<T, SegmentedArraySize::kVariableLength> {
 template <typename Context>
 struct ArraySetterBase {
  protected:
-  void* AllocAndCopy(const Context& ctx,
+  void* AllocAndCopy(const Context& dev_ctx,
                      void* src,
                      size_t num_bytes,
                      bool use_cuda_graph = false) {
     auto allocation = phi::memory_utils::Alloc(
-        ctx.GetPlace(),
+        dev_ctx.GetPlace(),
         num_bytes,
-        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
     int8_t* restored = reinterpret_cast<int8_t*>(src);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -128,7 +128,7 @@ struct ArraySetterBase {
                                        restored,
                                        num_bytes,
                                        phi::gpuMemcpyHostToDevice,
-                                       ctx.stream());
+                                       dev_ctx.stream());
 
     auto ptr = allocation->ptr();
     allocations.emplace_back(std::move(allocation));
@@ -143,7 +143,7 @@ struct ConstPointerArraySetter : public ArraySetterBase<Context> {
  public:
   ConstPointerArray<T, Size> array;
 
-  ConstPointerArraySetter(const Context& ctx,
+  ConstPointerArraySetter(const Context& dev_ctx,
                           const std::vector<const DenseTensor*>& t) {
     ptrs.resize(t.size());
     for (int i = 0; i < t.size(); ++i) {
@@ -154,7 +154,7 @@ struct ConstPointerArraySetter : public ArraySetterBase<Context> {
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = t.size() * sizeof(T*);
       dev_ptr = reinterpret_cast<const T**>(this->AllocAndCopy(
-          ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
+          dev_ctx, reinterpret_cast<void*>(ptrs.data()), num_bytes));
     }
 
     array.Set(ptrs, dev_ptr);
@@ -173,7 +173,7 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
   // use_cuda_graph: tensor data shall be captured by cuda_graph or not.
   // pre_alloc_host_buf: tensor data is temporarily stored by pinned memory or
   // not.
-  PointerArraySetter(const Context& ctx,
+  PointerArraySetter(const Context& dev_ctx,
                      std::vector<DenseTensor*>* t,
                      bool need_alloc = false,
                      bool use_cuda_graph = false,
@@ -187,8 +187,8 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
 #endif
     for (int i = 0; i < t->size(); ++i) {
       if (t->at(i) && (t->at(i)->numel() > 0)) {
-        data_ptr[i] =
-            need_alloc ? ctx.template Alloc<T>(t->at(i)) : t->at(i)->data<T>();
+        data_ptr[i] = need_alloc ? dev_ctx.template Alloc<T>(t->at(i))
+                                 : t->at(i)->data<T>();
       } else {
         data_ptr[i] = nullptr;
       }
@@ -197,8 +197,11 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
     T** dev_ptr = nullptr;
     if (Size == SegmentedArraySize::kVariableLength) {
       size_t num_bytes = t->size() * sizeof(T*);
-      dev_ptr = reinterpret_cast<T**>(this->AllocAndCopy(
-          ctx, reinterpret_cast<void*>(data_ptr), num_bytes, use_cuda_graph));
+      dev_ptr = reinterpret_cast<T**>(
+          this->AllocAndCopy(dev_ctx,
+                             reinterpret_cast<void*>(data_ptr),
+                             num_bytes,
+                             use_cuda_graph));
     }
     array.Set(data_ptr, t->size(), dev_ptr);
   }

@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void CudnnLSTMGradKernel(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &x,
     const DenseTensor &init_h,
     const DenseTensor &init_c,
@@ -59,15 +59,15 @@ void CudnnLSTMGradKernel(
   bool continuous = is_continuous<T, std::vector<const phi::DenseTensor *>>(
       running_weight_list);
 
-  auto handle = ctx.cudnn_handle();
-  auto place = ctx.GetPlace();
-  auto stream = ctx.stream();
+  auto handle = dev_ctx.cudnn_handle();
+  auto place = dev_ctx.GetPlace();
+  auto stream = dev_ctx.stream();
   phi::DenseTensor weight_whole;
   T *weight_data = nullptr;
 
   if (!continuous) {
     weight_whole.Resize({weight_numel});
-    ctx.template Alloc<T>(&weight_whole);
+    dev_ctx.template Alloc<T>(&weight_whole);
     weight_to_tensor<T>(place, stream, running_weight_list, &weight_whole);
     weight_data = weight_whole.data<T>();
   } else {
@@ -77,8 +77,8 @@ void CudnnLSTMGradKernel(
   phi::DenseTensor weight_grad;
   phi::funcs::SetConstant<phi::GPUContext, T> zero;
   weight_grad.Resize({weight_numel});
-  ctx.template Alloc<T>(&weight_grad);
-  zero(ctx, &weight_grad, static_cast<T>(0.0));
+  dev_ctx.template Alloc<T>(&weight_grad);
+  zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
   T *weight_grad_data = weight_grad.data<T>();
 
   int offset = 0;
@@ -93,18 +93,18 @@ void CudnnLSTMGradKernel(
   }
 
   x_grad->Resize(input_dims);
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   auto *in_grad_data = x_grad->data<T>();
 
   if (init_h_grad) {
     init_h_grad->Resize(init_h_dims);
-    ctx.template Alloc<T>(init_h_grad);
+    dev_ctx.template Alloc<T>(init_h_grad);
   }
   auto *init_h_grad_data = init_h_grad ? init_h_grad->data<T>() : nullptr;
 
   if (init_c_grad) {
     init_c_grad->Resize(init_c_dims);
-    ctx.template Alloc<T>(init_c_grad);
+    dev_ctx.template Alloc<T>(init_c_grad);
   }
   auto *init_c_grad_data = init_c_grad ? init_c_grad->data<T>() : nullptr;
 
@@ -134,7 +134,7 @@ void CudnnLSTMGradKernel(
                     is_bidirec);
 
   rnn.Create<T>(handle,
-                ctx.GetPlace(),
+                dev_ctx.GetPlace(),
                 SequenceLength,
                 &workspace_size,
                 &reserve_size,
@@ -142,7 +142,7 @@ void CudnnLSTMGradKernel(
 
   phi::DenseTensor workspace_data_;
   workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
-  ctx.template Alloc<uint8_t>(&workspace_data_);
+  dev_ctx.template Alloc<uint8_t>(&workspace_data_);
   const uint8_t *reserve_data = reserve.data<uint8_t>();
 
 #if CUDNN_VERSION >= 90000

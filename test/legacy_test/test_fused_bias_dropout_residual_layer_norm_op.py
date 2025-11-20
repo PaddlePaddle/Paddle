@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
@@ -74,7 +74,7 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         )
 
     def GetBaselineOut(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
 
         if self.tensor_linear_bias is not None:
             out = self.tensor_x + self.tensor_linear_bias
@@ -100,7 +100,7 @@ class TestFusedBiasDropoutResidualLayerNormOp(OpTest):
         )
 
     def GetFusedBiasDropoutResidualLayerNormOut(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
 
         ln_scale = paddle.to_tensor(self.norm1.weight, stop_gradient=False)
         ln_bias = paddle.to_tensor(self.norm1.bias, stop_gradient=False)
@@ -176,6 +176,21 @@ class TestFusedBiasDropoutResidualLayerNormOpFp16(
         super().config()
         self.x_type = np.float16
         self.atol = 1e-1
+
+
+class TestFusedBiasDropoutResidualLayerNormOp_ZeroSize(
+    TestFusedBiasDropoutResidualLayerNormOp
+):
+    def config(self):
+        self.x_type = np.float32
+        self.atol = 1e-4
+        self.training = True
+        self.batch_size = 0
+        self.query_length = 128
+        self.embed_dim = 1024
+        self.dropout_prob = 0.0
+        self.weight_attr = None
+        self.bias_attr = None
 
 
 if __name__ == "__main__":

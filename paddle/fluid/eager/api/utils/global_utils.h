@@ -18,6 +18,7 @@
 #include <atomic>
 #include <memory>
 
+#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/type_defs.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -101,7 +102,13 @@ class Controller {
   void MergeOpMetaInfoMap(
       const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
           map) {
-    op_meta_info_map_.insert(map.begin(), map.end());
+    for (const auto& [key, value] : map) {
+      if (op_meta_info_map_.count(key)) {
+        VLOG(3) << "Replacing existing OpMetaInfo for op: " << key;
+      }
+      VLOG(3) << "Merging OpMetaInfo for op: " << key;
+      op_meta_info_map_[key] = value;
+    }
   }
 
   std::unordered_map<std::string,
@@ -171,6 +178,42 @@ class EagerBackwardStateGuard {
   EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(true); }
 
   ~EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(false); }
+};
+class EagerBackwardSubGraphNodeRecorder {
+ public:
+  /**
+   * @brief Get the singleton instance of EagerBackwardSubGraphNodeRecorder
+   * @return Reference to the singleton instance
+   *
+   * Uses static local variable for thread-safe singleton initialization
+   * (C++11 guarantee). The instance is created on first call and destroyed
+   * automatically at program termination.
+   */
+  static EagerBackwardSubGraphNodeRecorder& Instance() {
+    static EagerBackwardSubGraphNodeRecorder instance;
+    return instance;
+  }
+
+ public:
+  void AddGradNode(const GradNodeBase* node) { set_.insert(node); }
+  void RemoveGradNode(const GradNodeBase* node) { set_.erase(node); }
+  bool ContainsGradNode(const GradNodeBase* node) { return set_.count(node); }
+  bool NeedCaptureSubGraph() { return need_capture_subgraph_; }
+  void StartCaptureSubGraph() { need_capture_subgraph_ = true; }
+  void EndCaptureSubGraph() { need_capture_subgraph_ = false; }
+  void SetDumpDirPath(const std::string& path) { dump_dir_path_ = path; }
+  const std::string& GetDumpDirPath() { return dump_dir_path_; }
+  void SetNeedDumpGradTensors(bool need_dump) {
+    need_dump_grad_tensors_ = need_dump;
+  }
+  bool GetNeedDumpGradTensors() { return need_dump_grad_tensors_; }
+  bool HasCapturedSubgraph() { return !set_.empty(); }
+
+ private:
+  std::unordered_set<const GradNodeBase*> set_;
+  std::string dump_dir_path_;
+  bool need_dump_grad_tensors_ = false;
+  bool need_capture_subgraph_ = false;
 };
 
 }  // namespace egr

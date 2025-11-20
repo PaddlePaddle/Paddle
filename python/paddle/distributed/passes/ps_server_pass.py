@@ -61,9 +61,9 @@ class AddLrDecayTablePass(PassBase):
         tensor_table_dict[feed_var_name]["fetch_var_name"] = fetch_var_name
         tensor_table_dict[feed_var_name]["startup_program"] = startup_program
         tensor_table_dict[feed_var_name]["main_program"] = main_program
-        tensor_table_dict[feed_var_name][
-            "tensor_table_class"
-        ] = tensor_table_class
+        tensor_table_dict[feed_var_name]["tensor_table_class"] = (
+            tensor_table_class
+        )
         attrs['tensor_table'] = tensor_table_dict
 
     def _get_lr_scheduler_program(self, lr_scheduler, lr_decay_steps):

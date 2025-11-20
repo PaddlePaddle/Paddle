@@ -48,6 +48,8 @@ namespace paddle::pybind {
 
 namespace py = pybind11;
 
+static void RegisterGlobalVarGetterSetter();
+
 class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   DISABLE_COPY_AND_ASSIGN(GlobalVarGetterSetterRegistry);
 
@@ -186,8 +188,24 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   void Set(const std::string &name, const py::object &value) const {
-    VLOG(4) << "set " << name << " to " << value;
+    VLOG(7) << "set " << name << " to " << value;
     SetterMethod(name)(value);
+  }
+  /**
+   * Update the value of linked variables
+   *
+   * @param name Name of the variable currently being modified
+   * @param value New value of the variable being modified
+   *
+   * This function updates the values of variables linked to the current
+   * modified variable by calling paddle::flags::UpdateLinkedFlags method.
+   */
+  void UpdateLinkedVars(const std::string &name, const std::string &value) {
+    bool is_updated = paddle::flags::UpdateLinkedFlags(name, value);
+    if (!is_updated) {
+      LOG(WARNING) << "Failed to update linked flags for variable name: "
+                   << name << " value " << value;
+    }
   }
 
   bool HasGetterMethod(const std::string &name) const {
@@ -199,6 +217,9 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   bool IsPublic(const std::string &name) const {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    RegisterGlobalVarGetterSetter();
+#endif
     return var_infos_.count(name) > 0 && var_infos_.at(name).is_public;
   }
 
@@ -219,8 +240,6 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
 GlobalVarGetterSetterRegistry GlobalVarGetterSetterRegistry::instance_;
 
-static void RegisterGlobalVarGetterSetter();
-
 void BindGlobalValueGetterSetter(pybind11::module *module) {
   RegisterGlobalVarGetterSetter();
 
@@ -237,7 +256,11 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
       .def("get",
            &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,
            py::arg("key"),
-           py::arg("default") = py::cast<py::none>(Py_None));
+           py::arg("default") = py::cast<py::none>(Py_None))
+      .def("update_linked_vars",
+           &GlobalVarGetterSetterRegistry::UpdateLinkedVars,
+           py::arg("key"),
+           py::arg("value"));
 
   module->def("globals",
               &GlobalVarGetterSetterRegistry::Instance,
@@ -290,7 +313,27 @@ struct RegisterGetterSetterVisitor {
   bool is_writable_;
   void *value_ptr_;
 };
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+static void RegisterGlobalVarGetterSetter() {
+  static std::unordered_set<std::string> registered_flags;
+  const auto &flag_map = phi::GetExportedFlagInfoMap();
+  for (const auto &pair : flag_map) {
+    const std::string &name = pair.second.name;
 
+    if (registered_flags.count(name)) {
+      continue;
+    }
+    registered_flags.insert(name);
+
+    bool is_writable = pair.second.is_writable;
+    void *value_ptr = pair.second.value_ptr;
+    const auto &default_value = pair.second.default_value;
+    RegisterGetterSetterVisitor visitor(
+        "FLAGS_" + name, is_writable, value_ptr);
+    paddle::visit(visitor, default_value);
+  }
+}
+#else
 static void RegisterGlobalVarGetterSetter() {
   const auto &flag_map = phi::GetExportedFlagInfoMap();
   for (const auto &pair : flag_map) {
@@ -303,5 +346,5 @@ static void RegisterGlobalVarGetterSetter() {
     paddle::visit(visitor, default_value);
   }
 }
-
+#endif
 }  // namespace paddle::pybind

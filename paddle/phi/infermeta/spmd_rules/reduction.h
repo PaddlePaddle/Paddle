@@ -55,6 +55,9 @@ SpmdInfo ReductionMinInferSpmdDynamic(const DistMetaTensor& x,
 SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
                                       const IntArray& axis,
                                       bool keep_dim);
+SpmdInfo ReductionAnyInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim);
 
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,

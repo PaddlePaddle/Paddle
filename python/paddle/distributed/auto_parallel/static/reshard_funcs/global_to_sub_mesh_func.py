@@ -23,7 +23,6 @@ from .nd_mesh_reshard_func import NdMeshReshardFunction
 
 class GlobalToSubMeshFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
-
         # NOTE we could allow the src_dist_attr is not replicated and reshard it as replicated before go through the global_to_sub logic
         # but the dst_dist_attr should be replicated otherwise there will be un-defined result when change the mesh.
         if not is_replicated(dst_dist_attr):
@@ -39,7 +38,6 @@ class GlobalToSubMeshFunction(ReshardFunction):
             return out_mesh in sub_meshes
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
-
         # reshard operand as replicated before change the mesh.
         if not is_replicated(src_dist_attr):
             tmp_dist_attr = (

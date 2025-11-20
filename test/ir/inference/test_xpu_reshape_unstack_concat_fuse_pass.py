@@ -21,16 +21,20 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 class TestReshapeUnstackConcatFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, [
-            "reshape2",
-            "slice",
-            "reshape2",
-            "unstack",
-            "concat",
-            "reshape2",
-            "transpose2",
-            "split",
-        ], (1e-3, 1e-3)
+        yield (
+            config,
+            [
+                "reshape2",
+                "slice",
+                "reshape2",
+                "unstack",
+                "concat",
+                "reshape2",
+                "transpose2",
+                "split",
+            ],
+            (1e-3, 1e-3),
+        )
 
     def sample_program_config(self, draw):
         reshape_x_shape = [4, 48, 2, 16, 4096]
@@ -150,7 +154,7 @@ class TestReshapeUnstackConcatFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=1,
             min_success_num=1,

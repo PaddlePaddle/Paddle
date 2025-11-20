@@ -34,9 +34,6 @@ def addmm(
     name: str | None = None,
 ) -> Tensor:
     """
-    Note:
-        This API is only supported from ``CUDA 11.0`` .
-
     Applies matrix multiplication for `x` and `y` , `input` is added to
     the final result. The equation is:
 
@@ -93,7 +90,7 @@ def addmm(
             >>> out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
 
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_addmm(input, x, y, beta, alpha)

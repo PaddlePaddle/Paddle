@@ -238,9 +238,9 @@ class LRScheduler:
                 continue
             value = self.__dict__[key]
             if isinstance(value, Tensor):
-                assert (
-                    value.size == 1
-                ), "numel of Tensor in state_dict must be 1"
+                assert value.size == 1, (
+                    "numel of Tensor in state_dict must be 1"
+                )
                 value = float(value)
             state_dict[key] = value
 
@@ -598,9 +598,9 @@ class NaturalExpDecay(LRScheduler):
         last_epoch: int = -1,
         verbose: bool = False,
     ) -> None:
-        assert (
-            gamma > 0.0
-        ), " 'gamma' must be a positive number so that the learning rate will decay."
+        assert gamma > 0.0, (
+            " 'gamma' must be a positive number so that the learning rate will decay."
+        )
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
 
@@ -812,14 +812,14 @@ class PolynomialDecay(LRScheduler):
         last_epoch: int = -1,
         verbose: bool = False,
     ):
-        assert decay_steps > 0 and isinstance(
-            decay_steps, int
-        ), " 'decay_steps' must be a positive integer."
+        assert decay_steps > 0 and isinstance(decay_steps, int), (
+            " 'decay_steps' must be a positive integer."
+        )
         self.decay_steps = decay_steps
         self.end_lr = end_lr
-        assert (
-            power > 0.0
-        ), " 'power' must be greater than 0.0 so that the learning rate will decay."
+        assert power > 0.0, (
+            " 'power' must be greater than 0.0 so that the learning rate will decay."
+        )
         self.power = power
         self.cycle = cycle
         super().__init__(learning_rate, last_epoch, verbose)
@@ -955,15 +955,15 @@ class LinearWarmup(LRScheduler):
                 f"the type of learning_rate should be [int, float or LRScheduler], the current type is {learning_rate}"
             )
         self.learning_rate = learning_rate
-        assert warmup_steps > 0 and isinstance(
-            warmup_steps, int
-        ), " 'warmup_steps' must be a positive integer."
+        assert warmup_steps > 0 and isinstance(warmup_steps, int), (
+            " 'warmup_steps' must be a positive integer."
+        )
         self.warmup_steps = warmup_steps
         self.start_lr = start_lr
         self.end_lr = end_lr
-        assert (
-            end_lr > start_lr
-        ), f"end_lr {end_lr} must be greater than start_lr {start_lr}"
+        assert end_lr > start_lr, (
+            f"end_lr {end_lr} must be greater than start_lr {start_lr}"
+        )
         super().__init__(start_lr, last_epoch, verbose)
 
     def state_dict(self) -> _LRStateDict:
@@ -1085,9 +1085,9 @@ class ExponentialDecay(LRScheduler):
         last_epoch: int = -1,
         verbose: bool = False,
     ) -> None:
-        assert (
-            gamma > 0.0 and gamma < 1.0
-        ), " 'gamma' must be in interval (0.0, 1.0) so that the learning rate will decay."
+        assert gamma > 0.0 and gamma < 1.0, (
+            " 'gamma' must be in interval (0.0, 1.0) so that the learning rate will decay."
+        )
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
 
@@ -1321,9 +1321,9 @@ class StepDecay(LRScheduler):
         if gamma >= 1.0:
             raise ValueError('gamma should be < 1.0.')
 
-        assert step_size > 0 and isinstance(
-            step_size, int
-        ), " 'step_size' must be a positive integer."
+        assert step_size > 0 and isinstance(step_size, int), (
+            " 'step_size' must be a positive integer."
+        )
         self.step_size = step_size
         self.gamma = gamma
         super().__init__(learning_rate, last_epoch, verbose)
@@ -1784,9 +1784,9 @@ class CosineAnnealingDecay(LRScheduler):
             raise TypeError(
                 f"The type of 'eta_min' in 'CosineAnnealingDecay' must be 'float, int', but received {type(eta_min)}."
             )
-        assert T_max > 0 and isinstance(
-            T_max, int
-        ), " 'T_max' must be a positive integer."
+        assert T_max > 0 and isinstance(T_max, int), (
+            " 'T_max' must be a positive integer."
+        )
         self.T_max = T_max
         self.eta_min = float(eta_min)
         super().__init__(learning_rate, last_epoch, verbose)

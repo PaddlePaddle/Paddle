@@ -26,6 +26,7 @@
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 COMMON_DECLARE_string(trt_engine_serialized_path);
+COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle {
 namespace framework {
@@ -480,6 +481,10 @@ void TensorRTEngineInstruction::BindInputTensor(
                         "index=%d >= total inputs and outputs=%d",
                         bind_index,
                         num_bindings));
+  bool support_int64 = false;
+#if IS_TRT_VERSION_GE(10000)
+  support_int64 = true;
+#endif
 #if IS_TRT_VERSION_GE(8500)
   if (trt_engine_->engine()->isShapeInferenceIO(input_name.c_str()) &&
       trt_engine_->engine()->getTensorIOMode(input_name.c_str()) ==
@@ -492,7 +497,14 @@ void TensorRTEngineInstruction::BindInputTensor(
                               input_tensor.data<int32_t>(),
                               input_tensor.numel() * sizeof(int),
                               nullptr);
-    } else if (input_tensor.dtype() == phi::DataType::INT64) {
+    } else if (input_tensor.dtype() == phi::DataType::INT64 && support_int64) {
+      phi::memory_utils::Copy(phi::CPUPlace(),
+                              shape_v.data(),
+                              input_tensor.place(),
+                              input_tensor.data<int64_t>(),
+                              input_tensor.numel() * sizeof(int64_t),
+                              nullptr);
+    } else if (input_tensor.dtype() == phi::DataType::INT64 && !support_int64) {
       std::string x_t = input_name + "_cast_to_INT32";
       if (scope.FindVar(x_t) == nullptr) {
         const_cast<framework::Scope *>(&scope)->Var(x_t);
@@ -555,7 +567,10 @@ void TensorRTEngineInstruction::BindInputTensor(
                           input_tensor,
                           phi::DataType::FLOAT32);
     buffers[bind_index] = static_cast<void *>(fp32_tensor->data<float>());
-  } else if (input_tensor.dtype() == phi::DataType::INT64) {
+  } else if (input_tensor.dtype() == phi::DataType::INT64 && support_int64) {
+    buffers[bind_index] = static_cast<void *>(
+        const_cast<int64_t *>(input_tensor.data<int64_t>()));
+  } else if (input_tensor.dtype() == phi::DataType::INT64 && !support_int64) {
     std::string x_t = input_name + "_cast_to_INT32";
     if (scope.FindVar(x_t) == nullptr) {
       const_cast<framework::Scope *>(&scope)->Var(x_t);
@@ -602,6 +617,18 @@ void TensorRTEngineInstruction::BindOutputTensor(
         std::string(trt_engine_->engine()->getIOTensorName(i))) {
       bind_index = i + binding_offset;
       break;
+    }
+  }
+  // output_name and getIOTensorName may be different, use output_index
+  if (bind_index < 0) {
+    for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+      const char *name = trt_engine_->engine()->getIOTensorName(i);
+      nvinfer1::TensorIOMode mode =
+          trt_engine_->engine()->getTensorIOMode(name);
+      if (mode == nvinfer1::TensorIOMode::kOUTPUT) {
+        bind_index = i + output_index + binding_offset;
+        break;
+      }
     }
   }
   PADDLE_ENFORCE_GE(
@@ -749,6 +776,19 @@ void TensorRTEngineInstruction::RunTrt() {
   trt_engine_->Execute(runtime_batch, &buffers, stream);
 
   VLOG(4) << "End running trt engine and deal with output";
+  bool support_int64 = false;
+  int output_offset = 0;
+#if IS_TRT_VERSION_GE(10000)
+  for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+    const char *name = trt_engine_->engine()->getIOTensorName(i);
+    nvinfer1::TensorIOMode mode = trt_engine_->engine()->getTensorIOMode(name);
+    if (mode == nvinfer1::TensorIOMode::kOUTPUT) {
+      output_offset = i;
+      break;
+    }
+  }
+  support_int64 = true;
+#endif
   for (const auto &index_name_pair : output_names_) {
     size_t i = index_name_pair.first;
     auto type = outputs_dtype_[i];
@@ -766,7 +806,12 @@ void TensorRTEngineInstruction::RunTrt() {
         break;
       }
     }
-
+#if IS_TRT_VERSION_GE(10000)
+    // output_name and getIOTensorName may be different
+    if (bind_index < 0) {
+      bind_index = index_name_pair.first + output_offset + binding_offset;
+    }
+#endif
     auto trt_output_name = trt_engine_->engine()->getIOTensorName(bind_index);
     auto trt_dims = trt_engine_->context()->getTensorShape(trt_output_name);
     // find the tmp tensor(Allocated extra memory space for unknown dim) and
@@ -793,13 +838,23 @@ void TensorRTEngineInstruction::RunTrt() {
                                 sizeof(float) * output_tensor->numel(),
                                 nullptr);
       } else if (type == phi::DataType::INT64 || type == phi::DataType::INT32) {
-        auto *mutable_output = output_tensor->data<int32_t>();
-        phi::memory_utils::Copy(phi::GPUPlace(),
-                                mutable_output,
-                                phi::GPUPlace(),
-                                output_tensor_tmp->data<int32_t>(),
-                                sizeof(int32_t) * output_tensor->numel(),
-                                nullptr);
+        if (type == phi::DataType::INT64 && support_int64) {
+          auto *mutable_output = output_tensor->data<int64_t>();
+          phi::memory_utils::Copy(phi::GPUPlace(),
+                                  mutable_output,
+                                  phi::GPUPlace(),
+                                  output_tensor_tmp->data<int64_t>(),
+                                  sizeof(int64_t) * output_tensor->numel(),
+                                  nullptr);
+        } else {
+          auto *mutable_output = output_tensor->data<int32_t>();
+          phi::memory_utils::Copy(phi::GPUPlace(),
+                                  mutable_output,
+                                  phi::GPUPlace(),
+                                  output_tensor_tmp->data<int32_t>(),
+                                  sizeof(int32_t) * output_tensor->numel(),
+                                  nullptr);
+        }
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported data type: %d when deal with output", type));
@@ -808,7 +863,7 @@ void TensorRTEngineInstruction::RunTrt() {
 #endif
 
     // Type transformation for INT64 and FLOAT64
-    if (type == phi::DataType::INT64) {
+    if (type == phi::DataType::INT64 && !support_int64) {
       auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
       auto *fluid_t =
@@ -847,6 +902,10 @@ void TensorRTEngineInstruction::RunTrt() {
 }
 
 void TensorRTEngineInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " begin");
+  }
+
 #if IS_TRT_VERSION_LT(8500)
   PADDLE_THROW(
       common::errors::Unimplemented("PIR-TRT only support TensorRT "
@@ -856,6 +915,10 @@ void TensorRTEngineInstruction::Run() {
 #endif
   InputsCheck();
   RunTrt();
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " finish");
+  }
 }
 
 std::string TensorRTEngineInstruction::ReadBinaryFileToString(

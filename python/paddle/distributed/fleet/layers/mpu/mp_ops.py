@@ -28,6 +28,7 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.jit.marker import unified
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
@@ -74,6 +75,7 @@ class c_split_eager(PyLayer):
         return out
 
 
+@unified
 def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
     """
     Return a copy of the tensor, mainly used with model parallel.
@@ -119,6 +121,7 @@ def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
         return out
 
 
+@unified
 def _c_concat(tensor, group=None):
     """
     Return allgather of the tensor, mainly used with model parallel.
@@ -169,6 +172,7 @@ def _c_concat(tensor, group=None):
         return out
 
 
+@unified
 def _c_split(tensor, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
@@ -256,6 +260,7 @@ class mp_allreduce_eager(PyLayer):
             return _C_ops.c_identity(dy, ctx.ring_id, True, True)
 
 
+@unified
 def _mp_allreduce(
     tensor,
     op=ReduceOp.SUM,
@@ -307,6 +312,7 @@ def _mp_allreduce(
         return out
 
 
+@unified
 def _c_lookup_table(table, index, start_index=0, vocab_size=-1, name=None):
     """
     Lookup table according to index.
@@ -382,6 +388,7 @@ class _Linear(Layer):
         return f'in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, dtype={self._dtype}{name_str}'
 
 
+@unified
 def _c_softmax_with_cross_entropy(
     logits,
     label,
@@ -449,6 +456,7 @@ def _c_softmax_with_cross_entropy(
         return loss
 
 
+@unified
 def _c_softmax_with_multi_label_cross_entropy(
     logits,
     label,
@@ -537,6 +545,7 @@ def _c_softmax_with_multi_label_cross_entropy(
         return loss
 
 
+@unified
 def _linear(x, weight, bias=None, name=None):
     """
     Function Linear
@@ -560,9 +569,9 @@ def _linear(x, weight, bias=None, name=None):
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
-        assert (
-            len(x.shape) < 4
-        ), "X latitude is not supported greater than 3 now."
+        assert len(x.shape) < 4, (
+            "X latitude is not supported greater than 3 now."
+        )
 
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'linear'
@@ -891,14 +900,13 @@ def split(
 
     """
     assert isinstance(size, (list, tuple)), (
-        "The type of size for "
-        "paddle.distributed.split must be list or tuple."
+        "The type of size for paddle.distributed.split must be list or tuple."
     )
     assert len(size) == 2, (
-        "Number of elements in size of " "paddle.distributed.split must be two."
+        "Number of elements in size of paddle.distributed.split must be two."
     )
     assert isinstance(operation, str), (
-        "The type of operation for " "paddle.distributed.split must be str."
+        "The type of operation for paddle.distributed.split must be str."
     )
     supported_operations = [
         'linear',

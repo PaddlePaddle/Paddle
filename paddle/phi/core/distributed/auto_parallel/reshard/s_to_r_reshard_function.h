@@ -19,7 +19,7 @@
 namespace phi {
 namespace distributed {
 
-class SToRReshardFunction final : public ReshardFunction {
+class PADDLE_API SToRReshardFunction final : public ReshardFunction {
  public:
   SToRReshardFunction() = default;
   ~SToRReshardFunction() = default;
@@ -35,7 +35,7 @@ class SToRReshardFunction final : public ReshardFunction {
   std::string Name() override { return "SToRReshard"; }
 };
 
-class SToRReshardFunctionCrossMesh final : public ReshardFunction {
+class PADDLE_API SToRReshardFunctionCrossMesh final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;

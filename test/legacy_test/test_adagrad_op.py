@@ -13,12 +13,18 @@
 # limitations under the License.
 
 import math
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    get_devices,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -205,16 +211,7 @@ class TestSparseAdagradOp(unittest.TestCase):
         )
 
     def test_sparse_adagrad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
 
@@ -231,11 +228,11 @@ class TestAdagradOpMultiPrecision(unittest.TestCase):
         optimizer = paddle.optimizer.Adagrad(0.1, parameters=model.parameters())
         optimizer._multi_precision = use_amp
         for idx in range(2):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -251,22 +248,8 @@ class TestAdagradOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
         paddle.enable_static()
 
-    def _get_places(self):
-        import paddle
-
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
-        for place in self._get_places():
+        for place in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_adagrad_op_dygraph_place_amp(place, use_amp)
@@ -276,7 +259,7 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
     def dygraph_adagrad_mp(self, mp, use_amp):
         paddle.disable_static()
         paddle.seed(100)
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.Adagrad(0.5, parameters=model.parameters())
@@ -307,7 +290,7 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adagrad(0.1)
@@ -354,7 +337,7 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
         return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_adagrad_mp(use_amp=True, mp=True)

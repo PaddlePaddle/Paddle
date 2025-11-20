@@ -75,10 +75,10 @@ enum class SplitKStyle {
   SPLIT_K_SERIAL,
   // SPLIT_K_PARALLEL // Not supported yet
 };
-
+// NOTE: (changwenbin) split_k_serial is turned on by default here.
 struct CutlassGemmConfig {
   CutlassTileConfig tile_config = CutlassTileConfig::ChooseWithHeuristic;
-  SplitKStyle split_k_style = SplitKStyle::NO_SPLIT_K;
+  SplitKStyle split_k_style = SplitKStyle::SPLIT_K_SERIAL;
   int split_k_factor = -1;
   int stages = -1;
 };

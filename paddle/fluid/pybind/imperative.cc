@@ -15,10 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
@@ -741,7 +737,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(common::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, IPUPlace, XPUPinnedPlace"
+                  "CPUPlace, IPUPlace, XPUPinnedPlace "
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -765,7 +761,7 @@ void BindImperative(py::module *m_ptr) {
                  allow_ops);
              imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
                  block_ops);
-             VLOG(5) << "AMP operators changed, "
+             VLOG(7) << "AMP operators changed, "
                      << imperative::AmpOperators::Instance();
            })
       .def("_get_amp_op_list",

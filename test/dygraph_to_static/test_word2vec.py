@@ -195,14 +195,11 @@ def build_batch(dataset, batch_size, epoch_num):
                 eval_word_batch.append([random.randint(0, vocab_size - 1)])
 
             if len(center_word_batch) == batch_size:
-                yield np.array(center_word_batch).astype("int64"), np.array(
-                    target_word_batch
-                ).astype("int64"), np.array(label_batch).astype(
-                    "float32"
-                ), np.array(
-                    eval_word_batch
-                ).astype(
-                    "int64"
+                yield (
+                    np.array(center_word_batch).astype("int64"),
+                    np.array(target_word_batch).astype("int64"),
+                    np.array(label_batch).astype("float32"),
+                    np.array(eval_word_batch).astype("int64"),
                 )
                 center_word_batch = []
                 target_word_batch = []
@@ -210,12 +207,11 @@ def build_batch(dataset, batch_size, epoch_num):
                 eval_word_batch = []
 
     if len(center_word_batch) > 0:
-        yield np.array(center_word_batch).astype("int64"), np.array(
-            target_word_batch
-        ).astype("int64"), np.array(label_batch).astype("float32"), np.array(
-            eval_word_batch
-        ).astype(
-            "int64"
+        yield (
+            np.array(center_word_batch).astype("int64"),
+            np.array(target_word_batch).astype("int64"),
+            np.array(label_batch).astype("float32"),
+            np.array(eval_word_batch).astype("int64"),
         )
 
 

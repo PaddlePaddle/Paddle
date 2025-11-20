@@ -16,8 +16,8 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -27,6 +27,12 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
+
   auto* input = &x;
   const T* input_data = input->data<T>();
   auto input_dim = common::vectorize(input->dims());
@@ -99,6 +105,6 @@ PD_REGISTER_KERNEL(diagonal,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::complex64,
+                   phi::complex128,
                    bool) {}

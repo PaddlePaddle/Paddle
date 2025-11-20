@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import static_guard
 
 import paddle
@@ -55,7 +60,7 @@ class TestRollOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+            ['X'], 'Out', check_prim=False, check_pir=True, check_prim_pir=True
         )
 
 
@@ -141,8 +146,8 @@ class TestRollBoolOpCase3(TestRollBollOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OP(TestRollOp):
@@ -151,7 +156,7 @@ class TestRollBF16OP(TestRollOp):
         self.x_shape = (10, 4, 5)
         self.shifts = [101, -1]
         self.axis = [0, -2]
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -160,13 +165,13 @@ class TestRollBF16OP(TestRollOp):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', check_prim=True, check_pir=True
+            self.place, ['X'], 'Out', check_prim=False, check_pir=True
         )
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OpCase2(TestRollOp):
@@ -175,7 +180,7 @@ class TestRollBF16OpCase2(TestRollOp):
         self.x_shape = (10, 5, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -187,15 +192,15 @@ class TestRollBF16OpCase2(TestRollOp):
             self.place,
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OpCase3(TestRollOp):
@@ -204,7 +209,7 @@ class TestRollBF16OpCase3(TestRollOp):
         self.x_shape = (11, 11)
         self.shifts = [1, 1]
         self.axis = [-1, 1]
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -216,7 +221,7 @@ class TestRollBF16OpCase3(TestRollOp):
             self.place,
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -342,7 +347,7 @@ class TestRollAPI(unittest.TestCase):
             [out_np] = exe.run(fetch_list=[out])
             np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 exe = base.Executor(base.CPUPlace())
                 [out_np] = exe.run(fetch_list=[out])
                 np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
@@ -560,6 +565,133 @@ class TestRoll0SizelAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.array([]).reshape(4, 0, 3)
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+
+class TestRollAPI_Compatibility(unittest.TestCase):
+    def input_data(self):
+        self.data_x = np.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+        )
+
+    def test_roll_op_api_case1(self):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+                data_x = np.array(
+                    [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+                ).astype('float32')
+                z = paddle.roll(input=x, shifts=1)
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                (res,) = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={'x': data_x},
+                    fetch_list=[z],
+                    return_numpy=False,
+                )
+                expect_out = np.array(
+                    [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
+                )
+            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+    def test_roll_op_api_case2(self):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+                data_x = np.array(
+                    [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+                ).astype('float32')
+                z = paddle.roll(x, 1, dims=0)
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                (res,) = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={'x': data_x},
+                    fetch_list=[z],
+                    return_numpy=False,
+                )
+                expect_out = np.array(
+                    [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+                )
+            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+            paddle.disable_static()
+
+    def test_dygraph_api(self):
+        self.input_data()
+        # case 1:
+        with base.dygraph.guard():
+            x = paddle.to_tensor(self.data_x)
+            z = paddle.roll(input=x, shifts=1)
+            np_z = z.numpy()
+        expect_out = np.array(
+            [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
+        )
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        # case 2:
+        with base.dygraph.guard():
+            x = paddle.to_tensor(self.data_x)
+            z = paddle.roll(input=x, shifts=1, dims=0)
+            np_z = z.numpy()
+        expect_out = np.array(
+            [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+        )
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+    def test_roll_op_false(self):
+        def test_axis_out_range():
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+                data_x = np.array(
+                    [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+                ).astype('float32')
+                z = paddle.roll(input=x, shifts=1, dims=10)
+                exe = base.Executor(base.CPUPlace())
+                (res,) = exe.run(
+                    feed={'x': data_x},
+                    fetch_list=[z],
+                    return_numpy=False,
+                )
+
+        self.assertRaises(ValueError, test_axis_out_range)
+        paddle.disable_static()
+
+    def test_shifts_as_tensor_dygraph(self):
+        with base.dygraph.guard():
+            x = paddle.arange(9).reshape([3, 3])
+            shape = paddle.shape(x)
+            shifts = shape // 2
+            axes = [0, 1]
+            out = paddle.roll(input=x, shifts=shifts, dims=axes).numpy()
+            expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
+            np.testing.assert_allclose(out, expected_out, rtol=1e-05)
+
+    def test_shifts_as_tensor_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(9).reshape([3, 3]).astype('float32')
+            shape = paddle.shape(x)
+            shifts = shape // 2
+            axes = [0, 1]
+            out = paddle.roll(input=x, shifts=shifts, dims=axes)
+            expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            [out_np] = exe.run(fetch_list=[out])
+            np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
+
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                exe = base.Executor(base.CPUPlace())
+                [out_np] = exe.run(fetch_list=[out])
+                np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

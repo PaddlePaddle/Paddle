@@ -29,7 +29,7 @@ limitations under the License. */
 namespace phi {
 
 #define MAGIC_RANDOM_SEED 34342423252
-class Generator {
+class PADDLE_API Generator {
  public:
   struct GeneratorState {
     int64_t device;
@@ -144,21 +144,23 @@ class Generator {
 };
 
 // The DefaultCPUGenerator is used in manual_seed()
-const std::shared_ptr<Generator>& DefaultCPUGenerator();
+PADDLE_API const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
-const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id = -1);
+PADDLE_API const std::shared_ptr<Generator>& DefaultCUDAGenerator(
+    int64_t device_id = -1);
 
-const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id = -1);
+PADDLE_API const std::shared_ptr<Generator>& DefaultXPUGenerator(
+    int64_t device_id = -1);
 
-const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
+PADDLE_API const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
     const phi::CustomPlace& place);
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 
-const std::shared_ptr<Generator>& SetRandomSeedGenerator(
+PADDLE_API const std::shared_ptr<Generator>& SetRandomSeedGenerator(
     const std::string& name, uint64_t seed);
 
-const std::shared_ptr<Generator>& GetRandomSeedGenerator(
+PADDLE_API const std::shared_ptr<Generator>& GetRandomSeedGenerator(
     const std::string& name);
 
 }  // namespace phi

@@ -16,31 +16,16 @@
 
 #include <list>
 #include <map>
+#include <optional>
 #include <set>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-struct Block {
-  Block(void *ptr, size_t size, bool is_free)
-      : ptr_(ptr), size_(size), is_free_(is_free) {}
-
-  void *ptr_;
-  size_t size_;
-  bool is_free_;
-};
-
-struct BlockAllocation : public Allocation {
-  explicit BlockAllocation(const std::list<Block>::iterator &it,
-                           phi::Place place)
-      : Allocation(it->ptr_, it->size_, place), block_it_(it) {}
-
-  std::list<Block>::iterator block_it_;
-};
 
 /**
  * Like AutoGrowthBestFitAllocator, VirtualMemoryAutoGrowthBestFitAllocator will
@@ -66,11 +51,16 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   void FreeImpl(phi::Allocation *allocation) override;
 
  private:
+  // AllocateOrCompact will try to allocate memory from free blocks first, if
+  // OOM happens, it will try to compact memory.
+  std::optional<AllocationPtr> AllocateOrCompact(size_t size);
   phi::Allocation *AllocFromFreeBlocks(size_t size);
-  void ExtendAndMerge(size_t size);
+  void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
+  void DumpInfo(std::string phase) const;
 
   std::shared_ptr<Allocator> underlying_allocator_;
+  std::unique_ptr<MemoryCompactionStrategy> memory_compactor_;
   size_t alignment_;
 
   std::map<std::pair<size_t, void *>, std::list<Block>::iterator> free_blocks_;

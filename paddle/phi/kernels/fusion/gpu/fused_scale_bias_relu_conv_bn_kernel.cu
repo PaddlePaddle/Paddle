@@ -610,7 +610,7 @@ PD_REGISTER_KERNEL(fused_scale_bias_relu_conv_bn,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedScaleBiasReluConvBnKernel,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);

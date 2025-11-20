@@ -86,7 +86,9 @@ class UniformInitializer(Initializer):
         """
         assert not (
             isinstance(var, framework.EagerParamBase) and var.is_dist()
-        ), "Currently, uniform initializer not support lazy init for dist param."
+        ), (
+            "Currently, uniform initializer not support lazy init for dist param."
+        )
         block = self._check_block(block)
 
         assert isinstance(block, (framework.Block, pir.Block))
@@ -124,7 +126,7 @@ class UniformInitializer(Initializer):
                 self._low,
                 self._high,
                 self._seed,
-                _current_expected_place(),
+                var.place if var.place._type() else _current_expected_place(),
             )
             if var.dtype == core.VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, var.dtype)

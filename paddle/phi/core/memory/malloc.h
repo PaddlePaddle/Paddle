@@ -22,6 +22,11 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/stream.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "xpu/runtime.h"
+#include "xpu/runtime_ex.h"
+#endif
+
 namespace paddle {
 namespace memory {
 
@@ -29,38 +34,53 @@ using allocation::AllocationPtr;
 using allocation::Allocator;
 using phi::Allocation;
 
-extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
-                                               size_t size);
+PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
+    const phi::Place& place, size_t size);
 
-TEST_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
+PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
-extern uint64_t Release(const phi::Place& place);
+PADDLE_API extern uint64_t Release(const phi::Place& place);
 
-extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
-                                               size_t size,
-                                               const phi::Stream& stream);
+PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
+    const phi::Place& place, size_t size, const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const phi::Place& place,
-                           size_t size,
-                           const phi::Stream& stream);
+PADDLE_API extern AllocationPtr Alloc(const phi::Place& place,
+                                      size_t size,
+                                      const phi::Stream& stream);
 
-extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                         const phi::Stream& stream);
+PADDLE_API extern bool InSameStream(
+    const std::shared_ptr<Allocation>& allocation, const phi::Stream& stream);
 
-extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
+PADDLE_API extern void* GetBasePtr(
+    const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
+PADDLE_API extern uint64_t Release(const phi::GPUPlace& place,
+                                   gpuStream_t stream);
 
-bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
+PADDLE_API bool RecordStream(std::shared_ptr<Allocation> allocation,
+                             gpuStream_t stream);
 
 void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
+PADDLE_API gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
+
+#ifdef PADDLE_WITH_XPU
+bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
+#endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+extern uint64_t Release(const phi::CustomPlace& place,
+                        phi::stream::stream_t stream);
+
 bool RecordStream(std::shared_ptr<Allocation> allocation,
                   phi::stream::stream_t stream);
+
+void EraseStream(std::shared_ptr<Allocation> allocation,
+                 phi::stream::stream_t stream);
+
+phi::stream::stream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 
 template <typename StreamType>

@@ -27,9 +27,11 @@ def program_scope_guard():
     place.set_place(paddle.CPUPlace())
     new_scope = paddle.static.Scope()
     main_program = paddle.static.Program()
-    with paddle.static.scope_guard(new_scope):
-        with paddle.static.program_guard(main_program):
-            yield main_program
+    with (
+        paddle.static.scope_guard(new_scope),
+        paddle.static.program_guard(main_program),
+    ):
+        yield main_program
 
 
 def walk_block(block, fn):
@@ -406,9 +408,10 @@ class TestCSEDenyFullInCinn(unittest.TestCase, AssertOpCountEqualMixin):
     CINN_FLAG_NAME = "FLAGS_use_cinn"
 
     def test_replace_full_without_cinn(self):
-        with flag_guard(
-            self.CINN_FLAG_NAME, False
-        ), program_scope_guard() as main_program:
+        with (
+            flag_guard(self.CINN_FLAG_NAME, False),
+            program_scope_guard() as main_program,
+        ):
             # Inputs
             x1 = paddle.full([2], 1.0, dtype="float32")
             x2 = paddle.full([2], 1.0, dtype="float32")
@@ -418,9 +421,10 @@ class TestCSEDenyFullInCinn(unittest.TestCase, AssertOpCountEqualMixin):
             self.assert_op_count_equal(main_program, {"pd_op.full": 1})
 
     def test_replace_full_with_cinn(self):
-        with flag_guard(
-            self.CINN_FLAG_NAME, True
-        ), program_scope_guard() as main_program:
+        with (
+            flag_guard(self.CINN_FLAG_NAME, True),
+            program_scope_guard() as main_program,
+        ):
             # Inputs
             x1 = paddle.full([2], 1.0, dtype="float32")
             x2 = paddle.full([2], 1.0, dtype="float32")

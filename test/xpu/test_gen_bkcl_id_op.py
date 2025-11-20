@@ -19,6 +19,7 @@ from multiprocessing import Process
 from launch_function_helper import _find_free_port, wait
 
 os.environ['GLOG_vmodule'] = "gen_bkcl_id_op*=10,gen_comm_id*=10"
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 import paddle
 from paddle.base import core

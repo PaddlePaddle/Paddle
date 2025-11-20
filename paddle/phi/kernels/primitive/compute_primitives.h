@@ -140,7 +140,7 @@ __device__ __forceinline__ void Swap(T* first_value, T* second_value) {
 }
 
 /**
- * @brief Swap data according to  monotonic_type.
+ * @brief Swap data according to monotonic_type.
  */
 template <typename T>
 __device__ __forceinline__ void Comparator(T* first_value,
@@ -152,7 +152,7 @@ __device__ __forceinline__ void Comparator(T* first_value,
 }
 
 /**
- * @brief Swap data and data index according to  monotonic_type.
+ * @brief Swap data and data index according to monotonic_type.
  */
 template <typename T, typename IndexType>
 __device__ __forceinline__ void ComparatorWithIndex(T* first_value,
@@ -236,7 +236,7 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  *
  * @param：
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * NY.
+ * in1: The register pointer of first input, size is NX * NY.
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
@@ -281,7 +281,7 @@ __device__ __forceinline__ void ElementwiseBinary(
  *
  * @param
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * NY.
+ * in1: The register pointer of first input, size is NX * NY.
  * in2: The register pointer of second input, size is NX * NY.
  * in3: The register pointer of third input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
@@ -355,7 +355,7 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  *
  * @param
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * 1.
+ * in1: The register pointer of first input, size is NX * 1.
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
@@ -417,7 +417,7 @@ __device__ __forceinline__ void Reduce(T* out,
     // split into multiple threads
     if (block_reduce_y) {
 #pragma unroll
-      for (int i = 0; i < NY * NX; i++) {  // reduce along blockdim.y
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.y
         out[i] = details::BlockYReduce<T, ReduceFunctor>(out[i], reducer);
       }
     }
@@ -486,7 +486,7 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
  *     struct XxxFunctor {
  *       HOSTDEVICE InT operator()(StateType state)
  * const {
- *         return ranomd(state);  // Returns ReturnsCount random numbers with
+ *         return random(state);  // Returns ReturnsCount random numbers with
  * data type T
  *       }
  *     };
@@ -509,7 +509,7 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
 
 /*
  * @brief Complete the prefix and in the block, each thread calculates 2 data,
- * the size of out and in is 2, and BlockDim.x must be less then 512.
+ * the size of out and in is 2, and blockDim.x must be less then 512.
  *
  * @template paraments
  * InT: the type of input register.
@@ -569,7 +569,7 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 
 /*
  * @brief Sort data in this block, each thread calculates 2 data, the size of
- * out and in is 2, and BlockDim.x must be less then 512.
+ * out and in is 2, and blockDim.x must be less then 512.
  *
  * @template paraments
  * InT: the type of input register.
@@ -624,7 +624,7 @@ __device__ __forceinline__ void Sort(OutT* out,
 
 /*
  * @brief Sort data with data_index in this block, each thread calculates 2
- * data, the size of out and in is 2, and BlockDim.x must be less then 512.
+ * data, the size of out and in is 2, and blockDim.x must be less then 512.
  *
  * @template paraments
  * InT: The type of input register.

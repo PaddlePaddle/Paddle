@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from numpy.random import random as rand
+from op_test import get_places
 
 import paddle
 import paddle.base.dygraph as dg
-from paddle import base
 
 paddle_apis = {
     "add": paddle.add,
@@ -33,15 +32,7 @@ paddle_apis = {
 class TestComplexElementwiseLayers(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]
-        self._places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self._places.append(paddle.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self._places.append(paddle.CUDAPlace(0))
+        self._places = get_places()
 
     def paddle_calc(self, x, y, op, place):
         with dg.guard(place):

@@ -34,10 +34,11 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_cast_to_elementwise_add_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/convert_fa_to_qkvmha_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/convert_memory_effec_attn_to_flash_attn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/convert_memory_effect_attn_to_flash_attn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_full_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
@@ -172,6 +173,8 @@ void ApplyCinnPreprocessPass(
   if (has_dynamic_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreatePdOpToDynamicShapeCinnOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
   pass_manager->Run(program);
@@ -196,6 +199,7 @@ void ApplyGroupOpPass(::pir::Program* program,
 
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateAddCastToElementwiseAddPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
@@ -232,15 +236,15 @@ void ApplyApGenericDrrPass(
     pir::IrPrinter(LOG(ERROR) << "before ConvertPdFacadeToApFacadePass:\n")
         .PrintProgram(program);
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-    pass_manager->AddPass(CreateConvertPdFacadeToApFacadePass());
+    pass_manager->AddPass(ap::paddle::CreateConvertPdFacadeToApFacadePass());
     pass_manager->Run(program);
     pir::IrPrinter(LOG(ERROR) << "after ConvertPdFacadeToApFacadePass:\n")
         .PrintProgram(program);
   }
   ap::memory::Guard guard{};
-  if (auto pass = CreateApGenericClassicDrrPass(guard.circlable_ref_list())) {
+  if (auto pass = ap::paddle::CreateApGenericClassicDrrPass(
+          guard.circlable_ref_list())) {
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-    pass_manager->AddPass(CreateConvertPdFacadeToApFacadePass());
     pass_manager->AddPass(std::move(pass.value()));
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pir::IrPrinter(LOG(ERROR) << "before ApGenericClassicDrrPass:\n")
@@ -249,7 +253,8 @@ void ApplyApGenericDrrPass(
     pir::IrPrinter(LOG(ERROR) << "after ApGenericClassicDrrPass:\n")
         .PrintProgram(program);
   }
-  if (auto pass = CreateApGenericAbstractDrrPass(guard.circlable_ref_list())) {
+  if (auto pass = ap::paddle::CreateApGenericAbstractDrrPass(
+          guard.circlable_ref_list())) {
     std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
     pass_manager->AddPass(std::move(pass.value()));
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());

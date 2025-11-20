@@ -95,6 +95,18 @@ BINARY_OPS = INPLACE_BINARY_OPS | NON_INPLACE_BINARY_OPS
 UNARY_OPS = set(UNARY_OPS_TO_MAGIC_NAMES.keys())
 
 
+# NOTE: Both operator.pow and operator.ipow should be considered for inclusion in this list,
+# as they raise ZeroDivisionError when evaluating 0^n where n < 0 (division by zero).
+NEED_GUARD_ZERO_DIVISION_ERROR_OPS: list[BinaryOp] = [
+    operator.floordiv,
+    operator.truediv,
+    operator.mod,
+    operator.ifloordiv,
+    operator.itruediv,
+    operator.imod,
+]
+
+
 @dataclass
 class MagicMethod:
     name: str

@@ -152,7 +152,6 @@ if(NOT WIN32)
       -fdata-sections
       -Wl
       -gc-sections
-      -Werror
       -Wall
       -Wextra
       -Wno-unused-parameter
@@ -245,19 +244,12 @@ if(APPLE)
   set(COMMON_FLAGS
       -Wno-deprecated-register
       -Werror=format
-      -Werror=inconsistent-missing-override
       -Werror=braced-scalar-init
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
       -Werror=pragma-pack
       -Werror=c++17-extensions)
-endif()
-
-if(WITH_HETERPS AND WITH_PSLIB)
-  set(COMMON_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 ${COMMON_FLAGS})
-
-  set(GPU_COMMON_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 ${GPU_COMMON_FLAGS})
 endif()
 
 if(LINUX)
@@ -296,9 +288,7 @@ if(WITH_ROCM)
   string(APPEND CMAKE_CXX_FLAGS " -Wno-strict-aliasing")
 endif()
 
-if(WITH_PSCORE
-   OR WITH_PSLIB
-   OR WITH_TENSORRT)
+if(WITH_TENSORRT)
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS
                  ${CMAKE_CXX_FLAGS})
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS

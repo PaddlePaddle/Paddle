@@ -17,6 +17,8 @@ limitations under the License. */
 
 namespace phi::distributed {
 
+using phi::distributed::auto_parallel::str_join;
+
 std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrs(
     const DistMetaTensor& x, const DistMetaTensor& y) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
@@ -42,11 +44,43 @@ std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrs(
   return {x_dist_attr_dst, y_dist_attr_dst};
 }
 
+std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrsWithShape(
+    const DistMetaTensor& x, const std::vector<int64_t>& target_shape) {
+  EXTRACT_SHAPE_AND_DIST_ATTR(x);
+  std::vector<int64_t> out_dims_mapping(target_shape.size());
+  int dims_diff = target_shape.size() - x_ndim;
+  for (int i = target_shape.size() - 1; i >= dims_diff; --i) {
+    if (target_shape[i] != x_shape[i - dims_diff]) {
+      out_dims_mapping[i] = -1;
+    } else {
+      out_dims_mapping[i] = x_dims_mapping_src[i - dims_diff];
+    }
+  }
+  for (int i = 0; i < dims_diff; i++) {
+    out_dims_mapping[i] = -1;
+  }
+  TensorDistAttr out_dist_attr_dst =
+      CopyTensorDistAttrForOutput(x_dist_attr_src);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+  VLOG(4) << "x";
+  VLOG(4) << "shape: [" << str_join(x_shape) << "] "
+          << "src_dist_attr: [" << x_dist_attr_src.to_string() << "] "
+          << "dst_dist_attr: [" << x_dist_attr_src.to_string() << "]";
+  LOG_SPMD_OUTPUT(out_dist_attr_dst);
+  return {{x_dist_attr_src}, {out_dist_attr_dst}};
+}
+
 SpmdInfo ExpandAsInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& y,
                            const std::vector<int64_t>& target_shape) {
-  auto [x_dist_attr, y_dist_attr] = AlignExpandAsDistAttrs(x, y);
-  return {{x_dist_attr, y_dist_attr}, {y_dist_attr}};
+  if (y.initialized()) {
+    auto [x_dist_attr, y_dist_attr] = AlignExpandAsDistAttrs(x, y);
+    return {{x_dist_attr, y_dist_attr}, {y_dist_attr}};
+  } else {
+    auto [x_dist_attr, out_dist_attr] =
+        AlignExpandAsDistAttrsWithShape(x, target_shape);
+    return {{x_dist_attr, TensorDistAttr()}, {out_dist_attr}};
+  }
 }
 
 SpmdInfo ExpandAsInferSpmdReverse(const DistMetaTensor& x,

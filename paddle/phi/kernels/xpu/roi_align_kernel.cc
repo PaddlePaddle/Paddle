@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -40,8 +40,9 @@ void RoiAlignKernel(const Context& dev_ctx,
 
   int rois_num = boxes.dims()[0];
 
-  if (rois_num == 0) {
-    dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0 || boxes.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
 

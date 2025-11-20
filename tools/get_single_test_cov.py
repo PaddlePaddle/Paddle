@@ -67,14 +67,14 @@ def getFNDAFile(rootPath, test):
 
 def analysisFNDAFile(rootPath, test):
     related_ut_map_file = f'{rootPath}/build/ut_map/{test}/related_{test}.txt'
-    notrelated_ut_map_file = (
+    not_related_ut_map_file = (
         f'{rootPath}/build/ut_map/{test}/notrelated_{test}.txt'
     )
     os.system(f'touch {related_ut_map_file}')
-    os.system(f'touch {notrelated_ut_map_file}')
+    os.system(f'touch {not_related_ut_map_file}')
 
     if os.path.isfile(related_ut_map_file) and os.path.isfile(
-        notrelated_ut_map_file
+        not_related_ut_map_file
     ):
         print(
             f"make {related_ut_map_file} and {related_ut_map_file} successfully"
@@ -117,14 +117,14 @@ def analysisFNDAFile(rootPath, test):
                 related_file_list.append(clazz_filename)
                 os.system(f'echo {clazz_filename} >> {related_ut_map_file}')
             else:
-                os.system(f'echo {clazz_filename} >> {notrelated_ut_map_file}')
+                os.system(f'echo {clazz_filename} >> {not_related_ut_map_file}')
         else:
             if clazz_filename != '':
                 if (
                     clazz_filename not in related_file_list
                 ):  # xx.pb.cc in RELATED xx.pb.h not in RELATED
                     os.system(
-                        f'echo {clazz_filename} >> {notrelated_ut_map_file}'
+                        f'echo {clazz_filename} >> {not_related_ut_map_file}'
                     )
     f.close()
 

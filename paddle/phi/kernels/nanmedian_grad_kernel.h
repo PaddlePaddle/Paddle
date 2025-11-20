@@ -22,6 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void NanmedianGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
+                         const DenseTensor& median_data,
                          const DenseTensor& median_index,
                          const DenseTensor& out_grad,
                          const IntArray& axes,

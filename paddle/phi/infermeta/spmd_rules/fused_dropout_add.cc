@@ -31,12 +31,13 @@ SpmdInfo FusedDropoutAddSpmdBase(const DistMetaTensor& x,
 
   TensorDistAttr seed_offset_dist_attr({2});
   seed_offset_dist_attr.set_process_mesh(x.dist_attr().process_mesh());
-  seed_offset_dist_attr.set_dims_mapping({-1});
+  seed_offset_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
 
   VLOG(4) << "x dist_attr: [" << x.dist_attr().to_string() << "]";
   VLOG(4) << "y dist_attr: [" << y.dist_attr().to_string() << "]";
   VLOG(4) << "out dist_attr: ["
-          << paddle::get<0>(out_info.second[0]).to_string() << "]";
+          << PADDLE_GET_CONST(TensorDistAttr, out_info.second[0]).to_string()
+          << "]";
   VLOG(4) << "seed_offset dist_attr: [" << seed_offset_dist_attr.to_string()
           << "]";
   return {{x.dist_attr(), y.dist_attr()},
@@ -51,9 +52,11 @@ SpmdInfo FusedDropoutAddSpmdReverseBase(const DistMetaTensor& x,
 
   VLOG(4) << "out dist_attr: [" << out.dist_attr().to_string() << "]";
   VLOG(4) << "x dist_attr: ["
-          << paddle::get<0>(reverse_info.first[0]).to_string() << "]";
+          << PADDLE_GET_CONST(TensorDistAttr, reverse_info.first[0]).to_string()
+          << "]";
   VLOG(4) << "y dist_attr: ["
-          << paddle::get<0>(reverse_info.first[1]).to_string() << "]";
+          << PADDLE_GET_CONST(TensorDistAttr, reverse_info.first[1]).to_string()
+          << "]";
   return {reverse_info.first,
           {reverse_info.second[0], seed_offset.dist_attr()}};
 }

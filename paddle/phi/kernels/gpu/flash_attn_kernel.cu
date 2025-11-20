@@ -48,7 +48,7 @@ struct ZeroFunctor {
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedBaseKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& q,
     const DenseTensor& k,
     const DenseTensor& v,
@@ -70,17 +70,18 @@ void FlashAttnUnpaddedBaseKernel(
     DenseTensor* seed_offset,
     bool varlen_padded) {
 #ifdef PADDLE_WITH_FLASHATTN
-  if (!out->IsInitialized()) ctx.template Alloc<T>(out);
+  if (!out->IsInitialized()) dev_ctx.template Alloc<T>(out);
   if (varlen_padded) {
     std::vector<const DenseTensor*> inputs{};
     std::vector<DenseTensor*> outputs{out};
 
-    phi::funcs::ElementwiseKernel<T>(ctx, inputs, &outputs, ZeroFunctor<T>());
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, inputs, &outputs, ZeroFunctor<T>());
   }
 #ifdef PADDLE_WITH_HIP
-  hipStream_t stream = ctx.stream();
+  hipStream_t stream = dev_ctx.stream();
 #else
-  cudaStream_t stream = ctx.stream();
+  cudaStream_t stream = dev_ctx.stream();
 #endif
 
   // q, k, v [total_q/k/v, num_heads, head_dim]
@@ -117,7 +118,7 @@ void FlashAttnUnpaddedBaseKernel(
   int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
 
   FlashAttnFwdParamsV2<T> params =
-      FlashAttnFwdParamsV2<T>(ctx,
+      FlashAttnFwdParamsV2<T>(dev_ctx,
                               /*version=*/2,
                               batch_size,
                               max_seqlen_q,
@@ -192,7 +193,7 @@ void FlashAttnUnpaddedBaseKernel(
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& q,
     const DenseTensor& k,
     const DenseTensor& v,
@@ -213,7 +214,7 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
-  FlashAttnUnpaddedBaseKernel<T>(ctx,
+  FlashAttnUnpaddedBaseKernel<T>(dev_ctx,
                                  q,
                                  k,
                                  v,
@@ -271,7 +272,7 @@ static void sliceFlattenView(const DenseTensor& in,
 }
 template <typename T, typename Context>
 void FlashAttnVarlenQKVPackedKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& qkv,
     const DenseTensor& cu_seqlens_q,
     const DenseTensor& cu_seqlens_k,
@@ -296,7 +297,7 @@ void FlashAttnVarlenQKVPackedKernel(
   sliceFlattenView(qkv, &q, 1, 0, head_groupnum - 2);
   sliceFlattenView(qkv, &k, 1, head_groupnum - 2, 1);
   sliceFlattenView(qkv, &v, 1, head_groupnum - 1, 1);
-  FlashAttnUnpaddedBaseKernel<T>(ctx,
+  FlashAttnUnpaddedBaseKernel<T>(dev_ctx,
                                  q,
                                  k,
                                  v,
@@ -324,7 +325,7 @@ void FlashAttnVarlenQKVPackedKernel(
 
 template <typename T, typename Context>
 void FlashAttnBaseKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& q,
     const DenseTensor& k,
     const DenseTensor& v,
@@ -382,7 +383,7 @@ void FlashAttnBaseKernel(
               (head_size == 64 || head_size == 128 || head_size == 256)
           ? FLAGS_flash_attn_version
           : 2;
-  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
+  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(dev_ctx,
                                                            version,
                                                            batch_size,
                                                            seqlen_q,
@@ -415,7 +416,7 @@ void FlashAttnBaseKernel(
     VLOG(10) << "[FlashAttn Forward" << version << "] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
   }
-  if (!out->IsInitialized()) ctx.template Alloc<T>(out);
+  if (!out->IsInitialized()) dev_ctx.template Alloc<T>(out);
 
   DenseTensor flashmask_maxmin, downstart_row_indices, upend_row_indices,
       downend_row_indices, upstart_row_indices;
@@ -440,38 +441,38 @@ void FlashAttnBaseKernel(
     flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32 * 8;
     flashmask_maxmin.set_type(phi::DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
-    ctx.template Alloc<T>(&flashmask_maxmin);
+    dev_ctx.template Alloc<T>(&flashmask_maxmin);
 
     downstart_row_indices =
-        phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {0}, {1});
+        phi::Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
     downstart_row_indices_data = downstart_row_indices.data();
     if (startend_row_indices->dims()[3] == 2) {
       if (!causal) {
-        upend_row_indices =
-            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+        upend_row_indices = phi::Slice<int32_t>(
+            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         upend_row_indices_data = upend_row_indices.data();
       } else {
-        downend_row_indices =
-            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+        downend_row_indices = phi::Slice<int32_t>(
+            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
     } else if (startend_row_indices->dims()[3] == 4) {
-      upend_row_indices =
-          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices = phi::Slice<int32_t>(
+          dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
       upend_row_indices_data = upend_row_indices.data();
-      downend_row_indices =
-          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices = phi::Slice<int32_t>(
+          dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
       downend_row_indices_data = downend_row_indices.data();
-      upstart_row_indices =
-          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices = phi::Slice<int32_t>(
+          dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
       upstart_row_indices_data = upstart_row_indices.data();
     }
   }
 
 #ifdef PADDLE_WITH_HIP
-  hipStream_t stream = ctx.stream();
+  hipStream_t stream = dev_ctx.stream();
 #else
-  cudaStream_t stream = ctx.stream();
+  cudaStream_t stream = dev_ctx.stream();
 #endif
 
 #ifdef PADDLE_WITH_HIP
@@ -524,7 +525,7 @@ void FlashAttnBaseKernel(
 #else
   bool succ;
   int arch =
-      backends::gpu::GetGPUComputeCapability(ctx.GetPlace().GetDeviceId());
+      backends::gpu::GetGPUComputeCapability(dev_ctx.GetPlace().GetDeviceId());
 
   if (arch == 80 && version == 3) {
     RaiseNotSupportedError(3);
@@ -537,7 +538,7 @@ void FlashAttnBaseKernel(
           "FlashMask or Dense Mask is unsupported in FlashAttention V3"));
     }
 
-    FlashAttnV3Kernel<T, Context>(ctx,
+    FlashAttnV3Kernel<T, Context>(dev_ctx,
                                   q,
                                   k,
                                   v,
@@ -617,7 +618,7 @@ void FlashAttnBaseKernel(
 }
 
 template <typename T, typename Context>
-void FlashAttnKernel(const Context& ctx,
+void FlashAttnKernel(const Context& dev_ctx,
                      const DenseTensor& q,
                      const DenseTensor& k,
                      const DenseTensor& v,
@@ -632,7 +633,32 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
-  FlashAttnBaseKernel<T, Context>(ctx,
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    }
+    if (softmax) {
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(softmax->dims())),
+                       0,
+                       softmax);
+    }
+    if (softmax_lse) {
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(softmax_lse->dims())),
+                       0,
+                       softmax_lse);
+    }
+    if (seed_offset) {
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(seed_offset->dims())),
+                       0,
+                       seed_offset);
+    }
+    return;
+  }
+  FlashAttnBaseKernel<T, Context>(dev_ctx,
                                   q,
                                   k,
                                   v,
@@ -652,7 +678,7 @@ void FlashAttnKernel(const Context& ctx,
 
 template <typename T, typename Context>
 void FlashAttnQKVPackedKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& qkv,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
@@ -671,7 +697,7 @@ void FlashAttnQKVPackedKernel(
   sliceFlattenView(qkv, &q, 2, 0, head_groupnum - 2);
   sliceFlattenView(qkv, &k, 2, head_groupnum - 2, 1);
   sliceFlattenView(qkv, &v, 2, head_groupnum - 1, 1);
-  FlashAttnBaseKernel<T, Context>(ctx,
+  FlashAttnBaseKernel<T, Context>(dev_ctx,
                                   q,
                                   k,
                                   v,
@@ -693,7 +719,7 @@ void FlashAttnQKVPackedKernel(
 }
 
 template <typename T, typename Context>
-void FlashMaskKernel(const Context& ctx,
+void FlashMaskKernel(const Context& dev_ctx,
                      const DenseTensor& q,
                      const DenseTensor& k,
                      const DenseTensor& v,
@@ -708,7 +734,7 @@ void FlashMaskKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
-  FlashAttnBaseKernel<T, Context>(ctx,
+  FlashAttnBaseKernel<T, Context>(dev_ctx,
                                   q,
                                   k,
                                   v,
@@ -732,8 +758,8 @@ PD_REGISTER_KERNEL(flash_attn_unpadded,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnUnpaddedKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(5).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -742,8 +768,8 @@ PD_REGISTER_KERNEL(flash_attn_varlen_qkvpacked,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnVarlenQKVPackedKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -752,8 +778,8 @@ PD_REGISTER_KERNEL(flash_attn,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -762,8 +788,8 @@ PD_REGISTER_KERNEL(flash_attn_qkvpacked,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnQKVPackedKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(1).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
@@ -772,8 +798,8 @@ PD_REGISTER_KERNEL(flashmask_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashMaskKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(4).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

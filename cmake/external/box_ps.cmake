@@ -52,7 +52,7 @@ file(
 
 file(
   WRITE ${BOX_PS_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(BOX_PS)\n" "cmake_minimum_required(VERSION 3.0)\n"
+  "PROJECT(BOX_PS)\n" "cmake_minimum_required(VERSION 3.5)\n"
   "install(DIRECTORY ./include ./lib \n"
   "        DESTINATION ${BOX_PS_DST_DIR})\n")
 ExternalProject_Add(

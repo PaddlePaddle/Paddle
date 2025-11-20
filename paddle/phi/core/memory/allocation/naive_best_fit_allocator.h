@@ -28,7 +28,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class NaiveBestFitAllocator : public Allocator {
+class PADDLE_API NaiveBestFitAllocator : public Allocator {
  public:
   explicit NaiveBestFitAllocator(const phi::Place &p) : place_(p) {}
 

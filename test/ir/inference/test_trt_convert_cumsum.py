@@ -156,7 +156,6 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
             if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7220:
@@ -179,14 +178,18 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
         self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-2
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-2,
+        )
 
     def test(self):
         self.run_test(run_pir=True)

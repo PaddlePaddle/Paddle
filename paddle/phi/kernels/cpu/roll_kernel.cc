@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/roll_kernel.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -30,7 +29,6 @@ void RollKernel(const Context& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DenseTensor* out) {
   if (x.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -93,5 +91,5 @@ PD_REGISTER_KERNEL(roll,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

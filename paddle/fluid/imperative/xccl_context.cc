@@ -36,7 +36,7 @@ namespace imperative {
 
 static void XcclAllReduce(const phi::DenseTensor &src,
                           phi::DenseTensor *dst,
-                          const phi::stream::Stream &stream,
+                          const phi::stream::stream_t &stream,
                           const phi::ccl::CCLComm &comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
@@ -171,7 +171,7 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   platform::XCCLComm *comm =
       platform::XCCLCommContext::Instance(place.GetDeviceType())
           .Get(ring_id, place);
-  auto stream = use_calc_stream ? dev_ctx->GetStream() : comm->stream();
+  auto stream = use_calc_stream ? dev_ctx->stream() : comm->stream();
 
   if (src.IsType<phi::DenseTensor>()) {
     if (!dst->IsType<phi::DenseTensor>()) {
@@ -179,7 +179,7 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
     }
     XcclAllReduce(src.Get<phi::DenseTensor>(),
                   dst->GetMutable<phi::DenseTensor>(),
-                  *stream,
+                  stream,
                   comm->comm());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -207,7 +207,7 @@ void XCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
                                    src_tensor->dtype(),
                                    0,
                                    comm->comm(),
-                                   *stream);
+                                   stream);
 }
 
 phi::DeviceContext *XCCLParallelContext::GetDeviceContext(int ring_id) {
@@ -235,7 +235,7 @@ void XCCLParallelContext::WaitCompute(int ring_id) {
                             ->GetStream();
   auto comm_stream = platform::XCCLCommContext::Instance(place_.GetDeviceType())
                          .Get(ring_id, place_)
-                         ->stream();
+                         ->GetStream();
   auto event = compute_events_[ring_id].get();
 
   // compute_stream-->event-->comm_stream
@@ -261,7 +261,7 @@ void XCCLParallelContext::WaitComm(int ring_id) {
                             ->GetStream();
   auto comm_stream = platform::XCCLCommContext::Instance(place_.GetDeviceType())
                          .Get(ring_id, place_)
-                         ->stream();
+                         ->GetStream();
   auto event = comm_events_[ring_id].get();
 
   // comm_stream-->event-->compute_stream

@@ -52,6 +52,7 @@ HLIR_DCL_UNARY_PE(Log2);
 HLIR_DCL_UNARY_PE(Log10);
 HLIR_DCL_UNARY_PE(Floor);
 HLIR_DCL_UNARY_PE(Ceil);
+HLIR_DCL_UNARY_PE(Rint);
 HLIR_DCL_UNARY_PE(Round);
 HLIR_DCL_UNARY_PE(Trunc);
 HLIR_DCL_UNARY_PE(Cos);
@@ -151,8 +152,8 @@ ir::Tensor Store(const ir::Tensor& A,
 ir::Tensor Arange(
     Expr start,
     Expr step,
+    Expr size,
     const Type& dtype,
-    const int64_t arange_size,
     const std::string& name = UniqName("T_Elementwise_Arange_out"));
 
 ir::Tensor Tril(const ir::Tensor& A,

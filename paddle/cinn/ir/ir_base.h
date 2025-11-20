@@ -32,6 +32,7 @@ namespace ir {
 using cinn::common::BFloat16;
 using cinn::common::Float;
 using cinn::common::Float16;
+using cinn::common::Float8e4m3;
 using cinn::common::Int;
 using cinn::common::Type;
 using cinn::common::type_of;
@@ -446,6 +447,8 @@ struct Expr : public IrNodeRef {
 
   explicit Expr(cinn::common::bfloat16 x)
       : IrNodeRef(new FloatImm(BFloat16(), x)) {}
+  explicit Expr(cinn::common::float8e4m3 x)
+      : IrNodeRef(new FloatImm(Float8e4m3(), x)) {}
   explicit Expr(cinn::common::float16 x)
       : IrNodeRef(new FloatImm(Float16(), x)) {}
   explicit Expr(float x) : IrNodeRef(new FloatImm(Float(32), x)) {}

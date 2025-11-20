@@ -14,3 +14,4 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS pybind.cc
     DEPS phi common)
 endif()
+cc_library(md5 SRCS md5.cc)

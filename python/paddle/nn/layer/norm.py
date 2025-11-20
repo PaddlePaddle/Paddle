@@ -12,19 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import annotations
 
 import numbers
@@ -94,9 +81,9 @@ class _InstanceNormBase(Layer):
         super().__init__()
 
         if weight_attr is False or bias_attr is False:
-            assert (
-                weight_attr == bias_attr
-            ), "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
+            assert weight_attr == bias_attr, (
+                "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
+            )
         self._momentum = momentum
         self._epsilon = epsilon
         self._weight_attr = weight_attr
@@ -1919,9 +1906,9 @@ class SpectralNorm(Layer):
         self._dtype = dtype
 
         self._weight_shape = list(weight_shape)
-        assert (
-            np.prod(self._weight_shape) > 0
-        ), "Any dimension of `weight_shape` cannot be equal to 0."
+        assert np.prod(self._weight_shape) > 0, (
+            "Any dimension of `weight_shape` cannot be equal to 0."
+        )
         assert dim < len(self._weight_shape), (
             "The input `dim` should be less than the "
             "length of `weight_shape`, but received dim="

@@ -75,21 +75,21 @@ struct MatDescriptor {
  *
  * @param trans: True if the matrix is transposed.
  */
-extern MatDescriptor CreateMatrixDescriptor(const DDim& tensor_dim,
-                                            int num_flatten_cols,
-                                            bool trans);
+extern PADDLE_API MatDescriptor CreateMatrixDescriptor(const DDim& tensor_dim,
+                                                       int num_flatten_cols,
+                                                       bool trans);
 
 template <typename DeviceContext>
 class Blas {
  public:
-  explicit Blas(const DeviceContext& context) : context_(context) {}
+  explicit Blas(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
 
   template <typename T>
   void GEMM(CBLAS_TRANSPOSE transA,
             CBLAS_TRANSPOSE transB,
-            int M,
-            int N,
-            int K,
+            int64_t M,
+            int64_t N,
+            int64_t K,
             T alpha,
             const T* A,
             const T* B,
@@ -99,9 +99,9 @@ class Blas {
   template <typename T, typename U = T>
   void GEMM(CBLAS_TRANSPOSE transA,
             CBLAS_TRANSPOSE transB,
-            int M,
-            int N,
-            int K,
+            int64_t M,
+            int64_t N,
+            int64_t K,
             U alpha,
             const T* A,
             const T* B,
@@ -181,7 +181,7 @@ class Blas {
              const T* alpha,
              const char* matdescra,
              const T* val,
-             const int* indx,
+             const int* index,
              const int* pntrb,
              const int* pntre,
              const T* b,
@@ -284,6 +284,10 @@ class Blas {
   T DOT(int n, const T* x, const T* y) const;
 
   template <typename T>
+  void CUDOT(
+      int n, const T* x, int incx, const T* y, int incy, T* result) const;
+
+  template <typename T>
   void SCAL(int n, const T a, T* x) const;
 
   template <typename T>
@@ -292,30 +296,30 @@ class Blas {
   template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA,
                    CBLAS_TRANSPOSE transB,
-                   int M,
-                   int N,
-                   int K,
+                   int64_t M,
+                   int64_t N,
+                   int64_t K,
                    T alpha,
                    const T* A,
                    const T* B,
                    T beta,
                    T* C,
-                   int batchCount,
+                   int64_t batchCount,
                    int64_t strideA,
                    int64_t strideB) const;
 
   template <typename T, typename U = T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA,
                    CBLAS_TRANSPOSE transB,
-                   int M,
-                   int N,
-                   int K,
+                   int64_t M,
+                   int64_t N,
+                   int64_t K,
                    U alpha,
                    const T* A,
                    const T* B,
                    U beta,
                    T* C,
-                   int batchCount,
+                   int64_t batchCount,
                    int64_t strideA,
                    int64_t strideB) const;
 
@@ -436,7 +440,7 @@ class Blas {
 #endif
 
  private:
-  const DeviceContext& context_;
+  const DeviceContext& dev_ctx_;
 };
 
 template <typename DeviceContext, typename T>
@@ -541,6 +545,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   T DOT(ARGS... args) const {
     return Base()->template DOT<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void CUDOT(ARGS... args) const {
+    Base()->template CUDOT<T>(args...);
   }
 
   template <typename... ARGS>

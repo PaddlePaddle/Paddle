@@ -16,14 +16,14 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
 void GridSampleGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& grid,
-                          const DenseTensor& out_grid,
+                          const DenseTensor& out_grad,
                           const std::string& mode,
                           const std::string& padding_mode,
                           bool align_corners,
@@ -35,6 +35,19 @@ void GridSampleGradKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           ("XPU is only support input_dims == 4 in grid_sample_grad op.")));
 
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (grid_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(grid_grad->dims())),
+                            0,
+                            grid_grad);
+    }
+    return;
+  }
   const int64_t n = grid.dims()[0];
   const int64_t out_h = grid.dims()[1];
   const int64_t out_w = grid.dims()[2];
@@ -65,7 +78,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
   int r = xpu::grid_sample_grad<T>(dev_ctx.x_context(),
                                    x.data<T>(),
                                    grid.data<T>(),
-                                   out_grid.data<T>(),
+                                   out_grad.data<T>(),
                                    x_grad_ptr,
                                    grid_grad_ptr,
                                    n,

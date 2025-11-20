@@ -29,7 +29,7 @@ namespace phi {
 
 template <typename T>
 struct LRNGradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const phi::DenseTensor& x,
                   const phi::DenseTensor& out,
                   const phi::DenseTensor& mid,

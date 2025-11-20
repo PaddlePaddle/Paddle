@@ -77,7 +77,7 @@ std::string json_vector(
 }
 
 template <>
-std::string json_vector<std::string>(
+PADDLE_API std::string json_vector<std::string>(
     const std::vector<std::string> type_vector);
 
 template <typename type>
@@ -113,9 +113,9 @@ static int64_t nsToUs(uint64_t end_ns, uint64_t start_ns = 0) {
   return (end_ns - start_ns) / 1000;
 }
 
-const char* StringTracerMemEventType(phi::TracerMemEventType type);
+PADDLE_API const char* StringTracerMemEventType(phi::TracerMemEventType type);
 
-const char* StringTracerEventType(phi::TracerEventType type);
+PADDLE_API const char* StringTracerEventType(phi::TracerEventType type);
 
 static float nsToUsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
   return static_cast<float>(end_ns - start_ns) / 1000;

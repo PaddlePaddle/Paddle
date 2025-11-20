@@ -70,6 +70,7 @@ from .io import async_save, clear_async_save_task_queue  # noqa: F401
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
 from ..base.dygraph.math_op_patch import monkey_patch_math_tensor  # noqa: F401
+
 from ..base.layers.math_op_patch import monkey_patch_variable  # noqa: F401
 
 # isort: on

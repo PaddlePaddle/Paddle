@@ -115,6 +115,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       "Ampere"
       "Hopper"
       "All"
+      "Ada Lovelace"
       "Manual")
   set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")
@@ -241,6 +242,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
     string(APPEND nvcc_archs_readable " compute_${arch}")
   endforeach()
 
+  string(APPEND nvcc_flags " -Xfatbin -compress-all")
   string(REPLACE ";" " " nvcc_archs_readable "${nvcc_archs_readable}")
   string(REGEX MATCHALL "[0-9()]+" nvcc_archs_bin_list "${nvcc_archs_bin_list}")
   string(JOIN "," nvcc_real_archs ${nvcc_archs_bin_list})
@@ -284,10 +286,6 @@ elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 13.0) # CUDA 12.0+
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
-endif()
-
-if(NOT ${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0)
-  add_definitions("-DTRT_PLUGIN_FP16_AVAILABLE")
 endif()
 
 add_definitions("-DCUDA_VERSION_MAJOR=\"${CUDA_VERSION_MAJOR}\"")

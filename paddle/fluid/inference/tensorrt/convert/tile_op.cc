@@ -21,7 +21,6 @@ class TileOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(7000)
     VLOG(3) << "convert a tile op to tensorrt tile layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -103,7 +102,6 @@ class TileOpConverter : public OpConverter {
     layer->setMode(nvinfer1::SliceMode::kWRAP);
 #endif
     ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
-#endif
   }
 };
 

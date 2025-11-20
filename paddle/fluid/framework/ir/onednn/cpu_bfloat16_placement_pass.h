@@ -28,7 +28,7 @@ class CPUBfloat16PlacementPass : public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
-  int SetMkldnnDataType(ir::Graph* graph) const;
+  int SetOnednnDataType(ir::Graph* graph) const;
   int RemoveOrphanedOperators(ir::Graph* graph) const;
   int RemoveUnsupportedOperators(ir::Graph* graph) const;
 };

@@ -37,10 +37,10 @@ class TestReductionApiForSemiAutoParallel:
     ):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
-        is_op_func_all = op_func == paddle.all
+        is_op_func_all_or_any = op_func == paddle.all or op_func == paddle.any
 
         x = paddle.randn(x_shape, self._dtype)
-        if is_op_func_all:
+        if is_op_func_all_or_any:
             x = x > 0
         x.stop_gradient = False
 
@@ -52,7 +52,7 @@ class TestReductionApiForSemiAutoParallel:
         self.check_tensor_eq(out, dist_out)
         np.testing.assert_equal(dist_out.shape, out_shape, verbose=True)
 
-        if not is_op_func_all:
+        if not is_op_func_all_or_any:
             dist_out.backward()
             out.backward()
             self.check_tensor_eq(x.grad, dist_x.grad)
@@ -137,6 +137,26 @@ class TestReductionApiForSemiAutoParallel:
             op_func=paddle.all,
         )
 
+    def test_any_x_shard(self):
+        self.test_body(
+            x_shape=[4, 8, 6],
+            out_shape=[4, 6],
+            x_placements=[dist.Shard(0)],
+            axis=1,
+            keepdim=False,
+            op_func=paddle.any,
+        )
+
+    def test_any_x_shard_on_axis(self):
+        self.test_body(
+            x_shape=[4, 8, 6],
+            out_shape=[4, 6],
+            x_placements=[dist.Shard(1)],
+            axis=1,
+            keepdim=False,
+            op_func=paddle.any,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -153,6 +173,8 @@ class TestReductionApiForSemiAutoParallel:
         self.test_max_x_shard_on_axis()
         self.test_all_x_shard()
         self.test_all_x_shard_on_axis()
+        self.test_any_x_shard()
+        self.test_any_x_shard_on_axis()
 
 
 if __name__ == '__main__':

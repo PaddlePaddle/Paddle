@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename DeviceContext, typename T>
 struct SparseAdagradFunctor {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
@@ -32,7 +32,7 @@ struct SparseAdagradFunctor {
 
 template <typename DeviceContext, typename T>
 struct DenseAdagradFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
@@ -46,21 +46,21 @@ struct DenseAdagradFunctor {
 };
 
 template <typename DeviceContext, typename T>
-phi::SelectedRows SquareSelectedRows(const DeviceContext& context,
+phi::SelectedRows SquareSelectedRows(const DeviceContext& dev_ctx,
                                      const phi::SelectedRows& input) {
   phi::SelectedRows out;
   out.set_rows(input.rows());
   out.set_height(input.height());
   out.mutable_value()->Resize(input.value().dims());
-  context.template Alloc<T>(out.mutable_value());
+  dev_ctx.template Alloc<T>(out.mutable_value());
   auto e_out = EigenVector<T>::Flatten(*(out.mutable_value()));
   auto e_in = EigenVector<T>::Flatten(input.value());
-  e_out.device(*context.eigen_device()) = e_in.square();
+  e_out.device(*dev_ctx.eigen_device()) = e_in.square();
   return out;
 }
 
 template <typename T, typename Context>
-void AdagradDenseKernel(const Context& ctx,
+void AdagradDenseKernel(const Context& dev_ctx,
                         const DenseTensor& param_t,
                         const DenseTensor& grad_t,
                         const DenseTensor& moment_t,
@@ -72,7 +72,7 @@ void AdagradDenseKernel(const Context& ctx,
                         DenseTensor* moment_out_tensor,
                         DenseTensor* master_param_outs) {
   DenseAdagradFunctor<Context, T> functor;
-  functor(ctx,
+  functor(dev_ctx,
           param_t,
           grad_t,
           moment_t,
@@ -86,7 +86,7 @@ void AdagradDenseKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void AdagradSparseKernel(const Context& ctx,
+void AdagradSparseKernel(const Context& dev_ctx,
                          const DenseTensor& param_t,
                          const SelectedRows& grad_t,
                          const DenseTensor& moment_t,
@@ -101,8 +101,8 @@ void AdagradSparseKernel(const Context& ctx,
   auto* param_out_tensor = param_out;
   auto* moment_out_tensor = moment_out;
 
-  ctx.template Alloc<T>(param_out_tensor);
-  ctx.template Alloc<T>(moment_out_tensor);
+  dev_ctx.template Alloc<T>(param_out_tensor);
+  dev_ctx.template Alloc<T>(moment_out_tensor);
 
   T epsilon = static_cast<T>(epsilon_t);
 
@@ -119,8 +119,12 @@ void AdagradSparseKernel(const Context& ctx,
                         "the input moment not equal with output moment"));
 
   SparseAdagradFunctor<Context, T> functor;
-  functor(
-      ctx, grad_t, learning_rate, epsilon, moment_out_tensor, param_out_tensor);
+  functor(dev_ctx,
+          grad_t,
+          learning_rate,
+          epsilon,
+          moment_out_tensor,
+          param_out_tensor);
 }
 
 }  // namespace phi

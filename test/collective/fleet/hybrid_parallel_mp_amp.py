@@ -27,13 +27,12 @@ class TestMPClipGrad(TestDistMPTraining):
             learning_rate=0.001, gamma=0.999, verbose=True
         )
         optimizer = paddle.optimizer.SGD(
-            scheduler,
+            learning_rate=scheduler,
             grad_clip=grad_clip,
             parameters=[
                 {
                     'params': model.parameters(),
                     'weight_decay': 0.001,
-                    'learning_rate': 0.1,
                 }
             ],
         )

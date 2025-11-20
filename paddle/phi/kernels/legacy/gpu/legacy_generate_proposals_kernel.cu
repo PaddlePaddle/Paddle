@@ -30,7 +30,7 @@ namespace phi {
 namespace {
 template <typename T>
 static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
-    const phi::GPUContext &ctx,
+    const phi::GPUContext &dev_ctx,
     const phi::DenseTensor &im_info,
     const phi::DenseTensor &anchors,
     const phi::DenseTensor &variances,
@@ -43,7 +43,7 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
     float eta) {
   // 1. pre nms
   phi::DenseTensor scores_sort, index_sort;
-  phi::funcs::SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
+  phi::funcs::SortDescending<T>(dev_ctx, scores, &scores_sort, &index_sort);
   int num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
                                                                 : pre_nms_top_n;
@@ -53,10 +53,10 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   // 2. box decode and clipping
   phi::DenseTensor proposals;
   proposals.Resize({pre_nms_num, 4});
-  ctx.Alloc<T>(&proposals);
+  dev_ctx.Alloc<T>(&proposals);
 
   {
-    phi::funcs::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
+    phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx, pre_nms_num);
     for_range(phi::funcs::BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                                      bbox_deltas.data<T>(),
                                                      variances.data<T>(),
@@ -69,10 +69,10 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   phi::DenseTensor keep_index, keep_num_t;
   keep_index.Resize({pre_nms_num});
   keep_num_t.Resize({1});
-  ctx.Alloc<int>(&keep_index);
-  ctx.Alloc<int>(&keep_num_t);
+  dev_ctx.Alloc<int>(&keep_index);
+  dev_ctx.Alloc<int>(&keep_num_t);
   min_size = std::max(min_size, 1.0f);
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   phi::funcs::FilterBBoxes<T, 512>
       <<<1, 512, 0, stream>>>(proposals.data<T>(),
                               im_info.data<T>(),
@@ -81,14 +81,14 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
                               keep_num_t.data<int>(),
                               keep_index.data<int>());
   int keep_num;
-  const auto gpu_place = ctx.GetPlace();
+  const auto gpu_place = dev_ctx.GetPlace();
   phi::memory_utils::Copy(phi::CPUPlace(),
                           &keep_num,
                           gpu_place,
                           keep_num_t.data<int>(),
                           sizeof(int),
-                          ctx.stream());
-  ctx.Wait();
+                          dev_ctx.stream());
+  dev_ctx.Wait();
   keep_index.Resize({keep_num});
 
   phi::DenseTensor scores_filter, proposals_filter;
@@ -97,18 +97,18 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
     phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     proposals_filter.Resize({1, 4});
     scores_filter.Resize({1, 1});
-    ctx.Alloc<T>(&proposals_filter);
-    ctx.Alloc<T>(&scores_filter);
-    set_zero(ctx, &proposals_filter, static_cast<T>(0));
-    set_zero(ctx, &scores_filter, static_cast<T>(0));
+    dev_ctx.Alloc<T>(&proposals_filter);
+    dev_ctx.Alloc<T>(&scores_filter);
+    set_zero(dev_ctx, &proposals_filter, static_cast<T>(0));
+    set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(proposals_filter, scores_filter);
   }
   proposals_filter.Resize({keep_num, 4});
   scores_filter.Resize({keep_num, 1});
-  ctx.Alloc<T>(&proposals_filter);
-  ctx.Alloc<T>(&scores_filter);
-  phi::funcs::GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
-  phi::funcs::GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
+  dev_ctx.Alloc<T>(&proposals_filter);
+  dev_ctx.Alloc<T>(&scores_filter);
+  phi::funcs::GPUGather<T>(dev_ctx, proposals, keep_index, &proposals_filter);
+  phi::funcs::GPUGather<T>(dev_ctx, scores_sort, keep_index, &scores_filter);
 
   if (nms_thresh <= 0) {
     return std::make_pair(proposals_filter, scores_filter);
@@ -116,7 +116,8 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
 
   // 4. nms
   phi::DenseTensor keep_nms;
-  phi::funcs::NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
+  phi::funcs::NMS<T>(
+      dev_ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
   }
@@ -124,10 +125,10 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   phi::DenseTensor scores_nms, proposals_nms;
   proposals_nms.Resize({keep_nms.numel(), 4});
   scores_nms.Resize({keep_nms.numel(), 1});
-  ctx.Alloc<T>(&proposals_nms);
-  ctx.Alloc<T>(&scores_nms);
-  phi::funcs::GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
-  phi::funcs::GPUGather<T>(ctx, scores_filter, keep_nms, &scores_nms);
+  dev_ctx.Alloc<T>(&proposals_nms);
+  dev_ctx.Alloc<T>(&scores_nms);
+  phi::funcs::GPUGather<T>(dev_ctx, proposals_filter, keep_nms, &proposals_nms);
+  phi::funcs::GPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_nms);
 
   return std::make_pair(proposals_nms, scores_nms);
 }

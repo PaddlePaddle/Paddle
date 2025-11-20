@@ -20,31 +20,31 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DataKernel(const Context& ctx,
+void DataKernel(const Context& dev_ctx,
                 const std::string& name,
                 const phi::IntArray& shape,
                 phi::DataType data_type,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void ShadowOutputKernel(const Context& ctx,
+void ShadowOutputKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         DenseTensor* out);
 
 template <typename Context>
-void ShadowFeedKernel(const Context& ctx,
+void ShadowFeedKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int dst_place_type,
                       DenseTensor* out);
 
 template <typename Context>
-void ShadowFeedTensorsKernel(const Context& ctx,
+void ShadowFeedTensorsKernel(const Context& dev_ctx,
                              const std::vector<const DenseTensor*>& xs,
                              int dst_place_type,
                              std::vector<DenseTensor*> outs);
 
 template <typename Context>
-void PrintKernel(const Context& ctx,
+void PrintKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int first_n,
                  const std::string& message,

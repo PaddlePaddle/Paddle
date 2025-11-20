@@ -54,11 +54,11 @@ HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
 
 inline void ExtractNCDWH(const DDim& dims,
                          const DataLayout& data_layout,
-                         int* N,
-                         int* C,
-                         int* D,
-                         int* H,
-                         int* W) {
+                         int64_t* N,
+                         int64_t* C,
+                         int64_t* D,
+                         int64_t* H,
+                         int64_t* W) {
   *N = dims[0];
 
   if (dims.size() == 3) {
@@ -183,13 +183,13 @@ inline std::vector<T> get_new_data_from_tensor(
 
 struct FastDivModForInterpolate {
  public:
-  FastDivMod<int> channels_div;
-  FastDivMod<int> output_w_div;
-  FastDivMod<int> output_wc_div;
+  FastDivMod<int64_t> channels_div;
+  FastDivMod<int64_t> output_w_div;
+  FastDivMod<int64_t> output_wc_div;
 
-  explicit HOSTDEVICE FastDivModForInterpolate(const int channels,
-                                               const int output_w,
-                                               const int output_wc)
+  explicit HOSTDEVICE FastDivModForInterpolate(const int64_t channels,
+                                               const int64_t output_w,
+                                               const int64_t output_wc)
       : channels_div(channels),
         output_w_div(output_w),
         output_wc_div(output_wc) {}

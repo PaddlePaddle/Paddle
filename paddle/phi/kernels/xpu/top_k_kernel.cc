@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/xpu/xpu_mem_util.h"
 namespace phi {
@@ -30,6 +31,13 @@ void TopkKernel(const Context& dev_ctx,
                 DenseTensor* out,
                 DenseTensor* indices) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  using XPUTypeINT64 = typename XPUTypeTrait<int64_t>::Type;
+
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
+  }
 
   const auto& in_dims = x.dims();
   if (in_dims.size() == 0) {
@@ -44,13 +52,8 @@ void TopkKernel(const Context& dev_ctx,
     axis += in_dims.size();
   }
 
-  int k = k_scalar.to<int>();
-  PADDLE_ENFORCE_GE(
-      x.numel(),
-      k,
-      errors::InvalidArgument(
-          "x has only %d element, can not find %d top values.", x.numel(), k));
-
+  int64_t k = k_scalar.to<int64_t>();
+  // out shape [-1]
   if (k_scalar.FromTensor()) {
     auto out_dims_ = out->dims();
     // according to axis to set K value in the dim
@@ -58,6 +61,18 @@ void TopkKernel(const Context& dev_ctx,
     out->Resize(out_dims_);
     indices->Resize(out_dims_);
   }
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    return;
+  }
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
 
   const T* in_data = x.data<T>();
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
@@ -74,32 +89,24 @@ void TopkKernel(const Context& dev_ctx,
   if (axis < 0) axis += in_dims.size();
 
   if (axis + 1 == in_dims.size()) {
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    int32_t* indices_int_data =
-        RAII_GUARD.alloc_l3_or_gm<int32_t>(indices->numel());
-    PADDLE_ENFORCE_XDNN_NOT_NULL(indices_int_data);
-
-    const size_t row =
+    const int64_t row =
         common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
-    const size_t col = in_dims[in_dims.size() - 1];
-    int r = xpu::sorted_topk<XPUType>(dev_ctx.x_context(),
-                                      reinterpret_cast<const XPUType*>(in_data),
-                                      reinterpret_cast<XPUType*>(output_data),
-                                      indices_int_data,
-                                      row,
-                                      col,
-                                      k,
-                                      largest);
+    const int64_t col = in_dims[in_dims.size() - 1];
+
+    int r =
+        xpu::sorted_topk<XPUType>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(in_data),
+                                  reinterpret_cast<XPUType*>(output_data),
+                                  reinterpret_cast<XPUTypeINT64*>(indices_data),
+                                  row,
+                                  col,
+                                  k,
+                                  largest);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
-    r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
-                                    (const int32_t*)indices_int_data,
-                                    indices_data,
-                                    indices->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
     // do transpose if axis is not the last dim of input
-    std::vector<int> trans_axes;
+    std::vector<int64_t> trans_axes;
     for (int i = 0; i < axis; i++) {
       trans_axes.emplace_back(i);
     }
@@ -115,7 +122,7 @@ void TopkKernel(const Context& dev_ctx,
       trans_out_dims[i] = out_dims[trans_axes[i]];
     }
 
-    std::vector<int> x_shape_host(in_dims.size(), 0);
+    std::vector<int64_t> x_shape_host(in_dims.size(), 0);
     for (int i = 0; i < in_dims.size(); ++i) {
       x_shape_host[i] = in_dims[i];
     }
@@ -138,32 +145,25 @@ void TopkKernel(const Context& dev_ctx,
     int64_t* trans_idx_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(out->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(trans_idx_data);
 
-    int32_t* trans_idx_int32_data =
-        RAII_GUARD.alloc_l3_or_gm<int32_t>(out->numel());
-    PADDLE_ENFORCE_XDNN_NOT_NULL(trans_idx_int32_data);
-    const size_t row = common::product(
+    const int64_t row = common::product(
         common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
-    const size_t col = trans_dims[trans_dims.size() - 1];
+    const int64_t col = trans_dims[trans_dims.size() - 1];
 
     // Do top k on transposed input
     r = xpu::sorted_topk<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(trans_in_data),
         reinterpret_cast<XPUType*>(trans_out_data),
-        trans_idx_int32_data,
+        reinterpret_cast<XPUTypeINT64*>(trans_idx_data),
         row,
         col,
         k,
         largest);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
-    r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
-                                    (const int32_t*)trans_idx_int32_data,
-                                    trans_idx_data,
-                                    indices->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     // Transpose back to original dims
-    std::vector<int> trans_back_axes;
+    std::vector<int64_t> trans_back_axes;
     for (int i = 0; i < axis; i++) {
       trans_back_axes.emplace_back(i);
     }
@@ -172,7 +172,7 @@ void TopkKernel(const Context& dev_ctx,
       trans_back_axes.emplace_back(i);
     }
 
-    std::vector<int> trans_out_shape_host(trans_back_axes.size(), 0);
+    std::vector<int64_t> trans_out_shape_host(trans_back_axes.size(), 0);
     for (size_t i = 0; i < trans_back_axes.size(); ++i) {
       trans_out_shape_host[i] = trans_out_dims[i];
     }
@@ -203,11 +203,11 @@ void TopkV1Kernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    topk, XPU, ALL_LAYOUT, phi::TopkKernel, float, phi::dtype::float16) {
+    topk, XPU, ALL_LAYOUT, phi::TopkKernel, float, phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
 
 PD_REGISTER_KERNEL(
-    topk_v1, XPU, ALL_LAYOUT, phi::TopkV1Kernel, float, phi::dtype::float16) {
+    topk_v1, XPU, ALL_LAYOUT, phi::TopkV1Kernel, float, phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

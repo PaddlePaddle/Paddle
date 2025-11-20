@@ -56,6 +56,27 @@ TEST(ExpandAsInferSpmd, Ctor) {
       PADDLE_GET_CONST(TensorDistAttr, spmdinfo.second[0]).is_partial(), false);
   VLOG(4) << "Test ExpandAsInferSpmd" << std::endl << std::endl << std::endl;
 
+  // test info forward without y
+  // x [1, 48], target [2, 32, 48]: [-1, -1] -> [-1, -1, -1]
+  spmdinfo = ExpandAsInferSpmd(x, phi::distributed::DistMetaTensor(), y_shape);
+  EXPECT_EQ(spmdinfo.first.size(), 2UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({-1, -1}));
+  const phi::distributed::ArgDistAttr& attr = spmdinfo.first[1];
+  if (paddle::holds_alternative<phi::distributed::TensorDistAttr>(attr)) {
+    EXPECT_EQ(paddle::get<phi::distributed::TensorDistAttr>(attr),
+              phi::distributed::TensorDistAttr());
+  } else {
+    FAIL() << "forward_info.first[1] is not TensorDistAttr";
+  }
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, -1, -1}));
+  EXPECT_DOUBLE_EQ(
+      PADDLE_GET_CONST(TensorDistAttr, spmdinfo.second[0]).is_partial(), false);
+  VLOG(4) << "Test ExpandAsInferSpmd" << std::endl << std::endl << std::endl;
+
   // test info reverse
   spmdinfo = ExpandAsInferSpmdReverse(x, y, y, y_shape);
   EXPECT_EQ(spmdinfo.first.size(), 2UL);

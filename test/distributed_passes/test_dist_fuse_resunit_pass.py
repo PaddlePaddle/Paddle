@@ -257,7 +257,7 @@ class TestFuseResUnitPass(DistPassTestBase):
             np.random.seed(seed + rank)
             for _ in range(10):
                 image_np = np.random.random(size=image.shape).astype('float32')
-                yield image_np,
+                yield (image_np,)
 
         main_program = paddle.static.default_main_program()
         startup_program = paddle.static.default_startup_program()

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 from paddle.base import core
@@ -28,8 +28,8 @@ def np_cal_batchfc(input, w, bias):
     for slot in range(slot_pairs_num):
         res[slot, :] = np.dot(input[slot, :], w[slot, :])
     for slot in range(slot_pairs_num):
-        for bindx in range(out_dim):
-            res[slot, :, bindx] += bias[slot, bindx]
+        for b_index in range(out_dim):
+            res[slot, :, b_index] += bias[slot, b_index]
     return res
 
 
@@ -64,14 +64,12 @@ class TestBatchFCOp(OpTest):
         self.outputs = {"Out": np_out}
 
     def test_check_output_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(get_device_place())
 
     def test_check_grad_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0), ["Bias", "W", "Input"], "Out"
-            )
+        self.check_grad_with_place(
+            get_device_place(), ["Bias", "W", "Input"], "Out"
+        )
 
 
 class TestBatchFCOp1(OpTest):

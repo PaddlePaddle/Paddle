@@ -47,8 +47,22 @@ void UnStackKernel(const Context &dev_ctx,
   }
   int pre = 1;
   for (int i = 0; i < axis; ++i) pre *= dy->dims()[i];
-  int total_num = dy->numel();
-  int post = total_num / (n * pre);
+  int64_t total_num = dy->numel();
+  int64_t post = total_num / (n * pre);
+
+  // TODO(large-tensor): StackGradFunctorForRange uses int for indexing, not
+  // int64_t
+  PADDLE_ENFORCE_LE(
+      total_num,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "The total number of elements in UnStack is %d, which exceeds the "
+          "maximum supported value %d. StackGradFunctorForRange uses int type "
+          "for indexing and does not support tensors with more than %d "
+          "elements.",
+          total_num,
+          std::numeric_limits<int>::max(),
+          std::numeric_limits<int>::max()));
 
 #if defined(__NVCC__) || defined(__HIPCC__)
   thrust::device_vector<T *> device_dx_vec(dx_datas);

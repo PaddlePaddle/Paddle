@@ -34,7 +34,8 @@ set(standalone_executor_deps
     garbage_collector
     executor_gc_helper
     phi
-    common)
+    common
+    supplement_tracing)
 
 if(WITH_CINN)
   set(standalone_executor_deps

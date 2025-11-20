@@ -51,6 +51,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
 
+COMMON_DECLARE_bool(merge_all_horizontal_groups);
 REGISTER_FILE_SYMBOLS(sub_graph_detector);
 namespace pir {
 std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
@@ -782,7 +783,7 @@ void SubgraphDetector::SubgraphFusion() {
   auto subgraph_list = GetSubgraphList();
   VLOG(4) << "Merge non-related subgraphs (size=" << subgraph_list.size()
           << ")";
-  if (subgraph_list.size() > 2048) return;
+  if (subgraph_list.size() > 2048 && !FLAGS_merge_all_horizontal_groups) return;
   for (size_t i = 0; i < subgraph_list.size(); ++i) {
     auto lhs = subgraph_list[i];
     if (!lhs->substitute) continue;

@@ -17,8 +17,8 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -27,6 +27,11 @@ void DistKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 float p,
                 DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   auto t = Subtract<T, Context>(dev_ctx, x, y);
   PNormKernel<T, Context>(dev_ctx, t, p, -1, 1e-12, false, true, out);
 }

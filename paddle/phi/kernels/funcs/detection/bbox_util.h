@@ -161,13 +161,13 @@ static void AppendProposals(phi::DenseTensor* dst,
 }
 
 template <class T>
-void ClipTiledBoxes(const phi::DeviceContext& ctx,
+void ClipTiledBoxes(const phi::DeviceContext& dev_ctx,
                     const phi::DenseTensor& im_info,
                     const phi::DenseTensor& input_boxes,
                     phi::DenseTensor* out,
                     bool is_scale = true,
                     bool pixel_offset = true) {
-  T* out_data = ctx.Alloc<T>(out);
+  T* out_data = dev_ctx.Alloc<T>(out);
   const T* im_info_data = im_info.data<T>();
   const T* input_boxes_data = input_boxes.data<T>();
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
@@ -195,7 +195,7 @@ void ClipTiledBoxes(const phi::DeviceContext& ctx,
 
 // Filter the box with small area
 template <class T>
-void FilterBoxes(const phi::DeviceContext& ctx,
+void FilterBoxes(const phi::DeviceContext& dev_ctx,
                  const phi::DenseTensor* boxes,
                  float min_size,
                  const phi::DenseTensor& im_info,
@@ -206,7 +206,7 @@ void FilterBoxes(const phi::DeviceContext& ctx,
   const T* boxes_data = boxes->data<T>();
   keep->Resize({boxes->dims()[0]});
   min_size = std::max(min_size, 1.0f);
-  int* keep_data = ctx.Alloc<int>(keep);
+  int* keep_data = dev_ctx.Alloc<int>(keep);
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
 
   int keep_len = 0;
@@ -236,13 +236,13 @@ void FilterBoxes(const phi::DeviceContext& ctx,
 }
 
 template <class T>
-static void BoxCoder(const phi::DeviceContext& ctx,
+static void BoxCoder(const phi::DeviceContext& dev_ctx,
                      phi::DenseTensor* all_anchors,
                      phi::DenseTensor* bbox_deltas,
                      phi::DenseTensor* variances,
                      phi::DenseTensor* proposals,
                      const bool pixel_offset = true) {
-  T* proposals_data = ctx.Alloc<T>(proposals);
+  T* proposals_data = dev_ctx.Alloc<T>(proposals);
 
   int64_t row = all_anchors->dims()[0];
   int64_t len = all_anchors->dims()[1];

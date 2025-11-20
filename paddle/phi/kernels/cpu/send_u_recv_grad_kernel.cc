@@ -19,6 +19,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -71,7 +72,7 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
 
 template <typename Context, typename T, typename IndexT>
 void GraphSendRecvGradOpKernelLaunchHelper(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& out_grad,
     const DenseTensor& x,
     const DenseTensor& src_index,
@@ -82,7 +83,7 @@ void GraphSendRecvGradOpKernelLaunchHelper(
     const DenseTensor* out = nullptr) {
   const int& index_size = dst_index.dims()[0];  // NOLINT
 
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
@@ -118,7 +119,7 @@ void GraphSendRecvGradOpKernelLaunchHelper(
 }
 
 template <typename T, typename Context>
-void SendURecvGradKernel(const Context& ctx,
+void SendURecvGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
@@ -128,9 +129,17 @@ void SendURecvGradKernel(const Context& ctx,
                          const std::string& reduce_op,
                          DenseTensor* x_grad) {
   auto index_type = src_index.dtype();
+
+  if (out_grad.numel() == 0 || x.numel() == 0 || src_index.numel() == 0 ||
+      dst_index.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
+
   if (index_type == phi::DataType::INT32) {
     GraphSendRecvGradOpKernelLaunchHelper<Context, T, int32_t>(
-        ctx,
+        dev_ctx,
         out_grad,
         x,
         src_index,
@@ -141,7 +150,7 @@ void SendURecvGradKernel(const Context& ctx,
         out.get_ptr());
   } else if (index_type == phi::DataType::INT64) {
     GraphSendRecvGradOpKernelLaunchHelper<Context, T, int64_t>(
-        ctx,
+        dev_ctx,
         out_grad,
         x,
         src_index,

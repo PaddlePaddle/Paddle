@@ -568,9 +568,9 @@ def save_pir(program, model_path, protocol=4, **configs):
     """
 
     base_name = os.path.basename(model_path)
-    assert (
-        base_name != ""
-    ), "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    assert base_name != "", (
+        "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    )
     if 'pickle_protocol' in configs:
         protocol = configs['pickle_protocol']
         warnings.warn(
@@ -614,8 +614,10 @@ def save_pir(program, model_path, protocol=4, **configs):
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path + ".pdparams", 'wb') as f:
             max_bytes = 2**30
-            for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i : i + max_bytes])
+            f.writelines(
+                pickle_bytes[i : i + max_bytes]
+                for i in range(0, len(pickle_bytes), max_bytes)
+            )
     else:
         with open(model_path + ".pdparams", 'wb') as f:
             pickle.dump(param_dict, f, protocol=protocol)
@@ -625,9 +627,7 @@ def save_pir(program, model_path, protocol=4, **configs):
         pickle.dump(opt_dict, f, protocol=protocol)
 
     # save program
-    paddle.core.serialize_pir_program(
-        program, model_path + ".json", 1, True, False, True
-    )
+    paddle.core.serialize_pir_program(program, model_path + ".json")
 
 
 @static_only
@@ -672,16 +672,16 @@ def load_pir(program, model_prefix, executor=None, var_list=None):
         load_dict = _pack_loaded_dict(load_dict)
     for var in parameter_list:
         if var.persistable:
-            assert (
-                var.name in load_dict
-            ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+            assert var.name in load_dict, (
+                f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+            )
             set_var(var.name, load_dict[var.name])
 
     if len(optimizer_param_list) > 0:
         opt_file_name = model_prefix + ".pdopt"
-        assert os.path.exists(
-            opt_file_name
-        ), f"Optimizer file [{opt_file_name}] not exits"
+        assert os.path.exists(opt_file_name), (
+            f"Optimizer file [{opt_file_name}] not exits"
+        )
 
         if executor:
             paddle.base.libpaddle.pir.create_loaded_parameter(
@@ -692,9 +692,9 @@ def load_pir(program, model_prefix, executor=None, var_list=None):
             load_dict = _safe_load_pickle(f, encoding='latin1')
         for var in optimizer_param_list:
             if var.persistable:
-                assert (
-                    var.name in load_dict
-                ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
+                assert var.name in load_dict, (
+                    f"Can not find [{var.name}] in model file [{opt_file_name}]"
+                )
                 set_var(var.name, load_dict[var.name])
 
 
@@ -766,7 +766,6 @@ def save_inference_model_pir(
             if kwargs.get('separate_parameters', False)
             else model_path
         ),
-        1,
         True,
         readable,
         trainable,
@@ -872,7 +871,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_filename, program, 1)
+        paddle.base.core.deserialize_pir_program(model_filename, program)
 
         params, opts = get_pir_parameters(program)
         vars = params + opts
@@ -926,7 +925,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
-        paddle.base.core.deserialize_pir_program(model_path, program, 1)
+        paddle.base.core.deserialize_pir_program(model_path, program)
         # load parameters
         params, opts = get_pir_parameters(program)
         vars = params + opts

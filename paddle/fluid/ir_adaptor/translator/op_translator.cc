@@ -262,10 +262,11 @@ inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
   }
 #ifdef PADDLE_WITH_DNNL
   if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+      op_desc.GetAttrIfExists<bool>("use_onednn") ||
       paddle::dialect::IsOneDNNOnlyOp(op_desc.Type())) {
     if (!HasOpInfo(ctx, op_desc, kOneDNNTargetDialectPrefix)) {
       VLOG(3) << op_desc.Type()
-              << "'s use_mkldnn == True, but PIR not support OneDNN for this "
+              << "'s use_onednn == True, but PIR not support OneDNN for this "
                  "op right now.";
       return kTargetDialectPrefix;
     } else {
@@ -1075,7 +1076,47 @@ struct CastOpTranscriber : public OpTranscriber {
       attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
           ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
     }
+    if (op_desc.HasAttr("onednn_data_type")) {  // NOLINT
+      attribute_map["onednn_data_type"] = pir::StrAttribute::get(
+          ctx, op_desc.GetAttrIfExists<std::string>("onednn_data_type"));
+    }
 #endif
+    return attribute_map;
+  }
+};
+
+struct LeakyReLUOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (legacy_attr_name == "alpha") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      }
+    }
+
     return attribute_map;
   }
 };
@@ -1660,12 +1701,16 @@ struct SplitOpTranscriber : public OpTranscriber {
       return attribute_map;
     }
 #ifdef PADDLE_WITH_DNNL
-    else if (op_desc.HasAttr("mkldnn_data_type")) {  // NOLINT
-      pir::AttributeMap attribute_map = {
-          {"mkldnn_data_type",
-           pir::StrAttribute::get(
-               ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"))},
-      };
+    else {  // NOLINT
+      pir::AttributeMap attribute_map = {};
+      if (op_desc.HasAttr("mkldnn_data_type")) {
+        attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
+            ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
+      }
+      if (op_desc.HasAttr("onednn_data_type")) {
+        attribute_map["onednn_data_type"] = pir::StrAttribute::get(
+            ctx, op_desc.GetAttrIfExists<std::string>("onednn_data_type"));
+      }
       return attribute_map;
     }
 #endif
@@ -1838,7 +1883,8 @@ struct MulOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+        op_desc.GetAttrIfExists<bool>("use_onednn")) {
       return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
           ctx,
           param_map,
@@ -2015,7 +2061,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+        op_desc.GetAttrIfExists<bool>("use_onednn")) {
       return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
           ctx,
           param_map,
@@ -3910,6 +3957,117 @@ struct SyncCommStreamOpTranscriber : public OpTranscriber {
   }
 };
 
+struct SoftPlusOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (legacy_attr_name == "beta" || legacy_attr_name == "threshold") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      } else {
+        this->HandleNonexistentAttribute(ctx, &attribute_map, info);
+      }
+    }
+    return attribute_map;
+  }
+};
+
+struct LogitOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (legacy_attr_name == "eps") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      } else {
+        this->HandleNonexistentAttribute(ctx, &attribute_map, info);
+      }
+    }
+    return attribute_map;
+  }
+};
+
+struct Pad3dOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (info.name == "pad_value") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      } else {
+        this->HandleNonexistentAttribute(ctx, &attribute_map, info);
+      }
+    }
+    return attribute_map;
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -3922,6 +4080,8 @@ OpTranslator::OpTranslator() {
   special_handlers["batch_norm"] = BatchNormOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
+  special_handlers["leaky_relu"] = LeakyReLUOpTranscriber();
+  special_handlers["leaky_relu_grad"] = LeakyReLUOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
   special_handlers["conv3d"] = Conv3dOpTranscriber();
   special_handlers["cross_entropy_with_softmax"] =
@@ -4022,5 +4182,11 @@ OpTranslator::OpTranslator() {
       WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
 
   special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
+  special_handlers["softplus"] = SoftPlusOpTranscriber();
+  special_handlers["softplus_grad"] = SoftPlusOpTranscriber();
+  special_handlers["logit"] = LogitOpTranscriber();
+  special_handlers["logit_grad"] = LogitOpTranscriber();
+  special_handlers["pad3d"] = Pad3dOpTranscriber();
+  special_handlers["pad3d_grad"] = Pad3dOpTranscriber();
 }
 }  // namespace paddle::translator

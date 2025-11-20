@@ -35,8 +35,9 @@ namespace imperative {
 class VarBase;
 class VariableWrapper;
 
-void InitializeVariable(paddle::framework::Variable* var,
-                        paddle::framework::proto::VarType::Type var_type);
+PADDLE_API void InitializeVariable(
+    paddle::framework::Variable* var,
+    paddle::framework::proto::VarType::Type var_type);
 template <typename VarType>
 const phi::Place& GetPlace(const std::shared_ptr<VarType>& var);
 template <typename VarType>

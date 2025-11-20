@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/mode_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/mode.h"
@@ -33,19 +31,31 @@ void ModeKernel(const Context& dev_ctx,
   // get the input dims
   const auto& in_dims = x.dims();
   for (int i = 0; i < in_dims.size(); i++) {
-    PADDLE_ENFORCE_LT(0,
-                      in_dims[i],
-                      errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
+    PADDLE_ENFORCE_LE(
+        0,
+        in_dims[i],
+        errors::InvalidArgument(
+            "The dims of Input(X) should be greater than or equal to 0."));
   }
   // calculate the real axis
   if (axis < 0) axis += in_dims.size();
+  if (keepdim) {
+    PADDLE_ENFORCE_GT(
+        in_dims[axis],
+        0,
+        errors::InvalidArgument(
+            "If keepdim is True, in_dims[axis] should be greater than 0."));
+  }
 
   auto out_dims = out->dims();
 
   const T* input_data = x.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+  // out and indices have the same numel.
+  if (out->numel() == 0) {
+    return;
+  }
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
@@ -139,7 +149,7 @@ PD_REGISTER_KERNEL(mode,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

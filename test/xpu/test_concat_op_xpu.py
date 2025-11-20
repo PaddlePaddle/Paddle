@@ -84,6 +84,15 @@ class XPUTestConcatOp(XPUOpTestWrapper):
                 self.check_grad_with_place(place, ['x1'], 'Out')
                 self.check_grad_with_place(place, ['x2'], 'Out')
 
+    class TestConcatOpZeroDimXPU(TestConcatOp):
+        def set_inputs(self):
+            self.x0 = np.random.random((5, 0, 4, 5)).astype(self.dtype)
+            self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
+            self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
+
+        def init_axis(self):
+            self.axis = 1
+
     class TestConcatOpAxis0XPU(TestConcatOp):
         def init_axis(self):
             self.axis = 0

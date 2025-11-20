@@ -16,7 +16,13 @@ import platform
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -380,8 +386,8 @@ class TestLinearInterpOpFP16(TestLinearInterpOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLinearInterpOpBF16(OpTest):
@@ -440,11 +446,11 @@ class TestLinearInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -528,47 +534,47 @@ class TestResizeLinearOpUint8(OpTest):
 
 
 class TestLinearInterpOpError(unittest.TestCase):
-
     def test_error(self):
-        with paddle_static_guard():
-            with paddle.static.program_guard(
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
+            ),
+        ):
 
-                def input_shape_error():
-                    x1 = paddle.static.data(
-                        name="x1", shape=[1], dtype="float32"
-                    )
-                    out1 = paddle.nn.Upsample(
-                        size=[256], data_format='NCW', mode='linear'
-                    )
-                    out1_res = out1(x1)
+            def input_shape_error():
+                x1 = paddle.static.data(name="x1", shape=[1], dtype="float32")
+                out1 = paddle.nn.Upsample(
+                    size=[256], data_format='NCW', mode='linear'
+                )
+                out1_res = out1(x1)
 
-                def data_format_error():
-                    x2 = paddle.static.data(
-                        name="x2", shape=[1, 3, 128], dtype="float32"
-                    )
-                    out2 = paddle.nn.Upsample(
-                        size=[256], data_format='NHWCD', mode='linear'
-                    )
-                    out2_res = out2(x2)
+            def data_format_error():
+                x2 = paddle.static.data(
+                    name="x2", shape=[1, 3, 128], dtype="float32"
+                )
+                out2 = paddle.nn.Upsample(
+                    size=[256], data_format='NHWCD', mode='linear'
+                )
+                out2_res = out2(x2)
 
-                def out_shape_error():
-                    x3 = paddle.static.data(
-                        name="x3", shape=[1, 3, 128], dtype="float32"
-                    )
-                    out3 = paddle.nn.Upsample(
-                        size=[256, 256], data_format='NHWC', mode='linear'
-                    )
-                    out3_res = out3(x3)
+            def out_shape_error():
+                x3 = paddle.static.data(
+                    name="x3", shape=[1, 3, 128], dtype="float32"
+                )
+                out3 = paddle.nn.Upsample(
+                    size=[256, 256], data_format='NHWC', mode='linear'
+                )
+                out3_res = out3(x3)
 
-                self.assertRaises(ValueError, input_shape_error)
-                self.assertRaises(ValueError, data_format_error)
-                self.assertRaises(ValueError, out_shape_error)
+            self.assertRaises(ValueError, input_shape_error)
+            self.assertRaises(ValueError, data_format_error)
+            self.assertRaises(ValueError, out_shape_error)
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

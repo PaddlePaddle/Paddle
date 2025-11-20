@@ -17,8 +17,8 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
-
 namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename Context>
@@ -28,6 +28,11 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   auto* input = &x;
   const auto* input_data = input->data<T>();
   auto input_dim = input->dims().Get();
@@ -57,7 +62,8 @@ void DiagonalKernel(const Context& dev_ctx,
   int64_t out_numel = out->numel();
 
   int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (out_numel + threads - 1) / threads;
+  int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((out_numel + threads - 1) / threads, blocks_max);
 
   switch (input_dim_size) {
     case 2:
@@ -173,7 +179,7 @@ PD_REGISTER_KERNEL(diagonal,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

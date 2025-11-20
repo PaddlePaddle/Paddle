@@ -93,9 +93,10 @@ class DatasetCtrReader(fleet.MultiSlotDataGenerator):
                 dnn_input = load_dnn_input_record(fs[0])
                 lr_input = load_lr_input_record(fs[1])
                 click = [int(fs[2])]
-                yield ("dnn_data", dnn_input), ("lr_data", lr_input), (
-                    "click",
-                    click,
+                yield (
+                    ("dnn_data", dnn_input),
+                    ("lr_data", lr_input),
+                    ("click", click),
                 )
 
         return iter
@@ -112,9 +113,9 @@ def prepare_data():
         lines = f.readlines()
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
-    assert (
-        'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1]
-    ), err_info
+    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1], (
+        err_info
+    )
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
     dnn_input_dim = res[0]

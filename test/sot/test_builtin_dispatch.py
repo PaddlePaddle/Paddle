@@ -173,6 +173,11 @@ def test_builtin_type_check_eq():
     return eq_results, ne_results
 
 
+@check_no_breakgraph
+def test_is(x, y):
+    return x is y
+
+
 class TestBuiltinDispatch(TestCaseBase):
     def test_dispatch_len(self):
         self.assert_results(dispatch_len, paddle.to_tensor([1, 2, 3]))
@@ -343,6 +348,20 @@ class TestBuiltinDispatch(TestCaseBase):
         self.assert_results(test_all, d_false)
         self.assert_results(test_all_iter, l_true_and_false)
 
+    def test_dispatch_is(self):
+        x = paddle.ones(shape=[1, 2])
+        y = paddle.ones(shape=[1, 2])
+        # TODO(wangmingkai02): support comparison of same tensor object
+        # self.assert_results(test_is, x, x)
+        # self.assert_results(test_is, [x], [x])
+        self.assert_results(test_is, x, y)
+        self.assert_results(test_is, x, None)
+        self.assert_results(test_is, [x], x)
+        self.assert_results(test_is, None, x)
+        self.assert_results(test_is, [x], None)
+        self.assert_results(test_is, None, [x])
+        self.assert_results(test_is, None, None)
+
 
 def run_getattr(x: paddle.Tensor):
     attr = 'dtype'
@@ -439,7 +458,10 @@ def test_native_code_function():
     res5 = paddle.base.libpaddle.is_compiled_with_custom_device("npu")
     res6 = paddle.base.libpaddle.is_compiled_with_ipu()
     res7 = paddle.base.libpaddle.is_compiled_with_xpu()
-    res8 = paddle.base.libpaddle.is_compiled_with_mkldnn()
+    res8_deprecated = (
+        paddle.base.libpaddle.is_compiled_with_mkldnn()
+    )  # Paddle 3.3 deprecated
+    res8 = paddle.base.libpaddle.is_compiled_with_onednn()
     res9 = paddle.base.libpaddle.is_compiled_with_nccl()
     res10 = paddle.base.libpaddle.is_compiled_with_mpi()
     res11 = paddle.base.libpaddle.is_compiled_with_mpi_aware()
@@ -455,6 +477,7 @@ def test_native_code_function():
         res5,
         res6,
         res7,
+        res8_deprecated,
         res8,
         res9,
         res10,

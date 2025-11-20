@@ -322,7 +322,7 @@ class TestPirAmpPromoteStats(AmpTestBase):
 )
 @unittest.skipIf(
     core.is_compiled_with_cuda()
-    and not paddle.device.cuda.get_device_capability()[0] < 7.0,
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
 @unittest.skipIf(

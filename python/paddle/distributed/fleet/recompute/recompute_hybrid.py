@@ -27,6 +27,7 @@ from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from ..meta_parallel.pp_utils import utils
 from .recompute import (
     check_recompute_necessary,
+    custom_state_manager,
     detach_variable,
     switch_rng_state_tracker,
 )
@@ -56,9 +57,9 @@ def _split_activation(tensor, mp_group):
 
     tensor_numel = paddle.numel(tensor)
     assert tensor_numel != 0, "can't recompute zero element"
-    assert (
-        tensor_numel % mp_degree == 0
-    ), f"The capacity of the activation ({tensor_numel}) cannot be divisible by mp_degree({mp_degree})"
+    assert tensor_numel % mp_degree == 0, (
+        f"The capacity of the activation ({tensor_numel}) cannot be divisible by mp_degree({mp_degree})"
+    )
 
     # use inplace operation to save memory
     data = tensor.flatten_()
@@ -101,6 +102,8 @@ class _HPRecomputeFunction(PyLayer):
         mp_group,
         offload,
         partition,
+        custom_get_state_func,
+        custom_set_state_func,
         *args,
         **kwargs,
     ):
@@ -114,6 +117,9 @@ class _HPRecomputeFunction(PyLayer):
         ctx.fwd_rng_state_tracker = get_rng_state_tracker().get_states_tracker()
         ctx.fwd_numpy_state = np.random.get_state()
         ctx.fwd_random_state = random.getstate()
+        ctx.fwd_custom_state = custom_get_state_func()
+        ctx.custom_get_state_func = custom_get_state_func
+        ctx.custom_set_state_func = custom_set_state_func
 
         # save config info
         ctx.mp_group = mp_group
@@ -223,6 +229,9 @@ class _HPRecomputeFunction(PyLayer):
                 ctx.fwd_rng_state_tracker,
                 ctx.fwd_numpy_state,
                 ctx.fwd_random_state,
+                ctx.fwd_custom_state,
+                ctx.custom_get_state_func,
+                ctx.custom_set_state_func,
             ):
                 if ctx.is_fw_autocast:
                     with paddle.amp.auto_cast(
@@ -297,9 +306,9 @@ def recompute_hybrid(
 
     """
     mp_group = ctx.get('mp_group', None)
-    assert (
-        mp_group is not None
-    ), "ctx must contains mp_group and mp_group can not be None."
+    assert mp_group is not None, (
+        "ctx must contains mp_group and mp_group can not be None."
+    )
 
     offload = ctx.get('offload', False)
     partition = ctx.get('partition', False)
@@ -307,9 +316,25 @@ def recompute_hybrid(
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
 
+    if custom_state_manager.custom_get_state_func is None:
+        assert custom_state_manager.custom_set_state_func is None
+        custom_get_state_func = lambda x=None: None
+        custom_set_state_func = lambda x=None: None
+    else:
+        custom_get_state_func = custom_state_manager.custom_get_state_func
+        custom_set_state_func = custom_state_manager.custom_set_state_func
+
     all_outputs = []
     _HPRecomputeFunction.apply(
-        function, all_outputs, mp_group, offload, partition, *args, **kwargs
+        function,
+        all_outputs,
+        mp_group,
+        offload,
+        partition,
+        custom_get_state_func,
+        custom_set_state_func,
+        *args,
+        **kwargs,
     )
 
     if len(all_outputs) == 1:

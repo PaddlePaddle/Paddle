@@ -17,7 +17,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -90,8 +90,10 @@ class TestShuffleBatchOp2(TestShuffleBatchOpBase):
 class TestShuffleBatchAPI(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if not os.name == 'nt' and paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if not os.name == 'nt' and (
+            paddle.is_compiled_with_cuda() or is_custom_device()
+        ):
+            self.places.append(get_device_place())
         paddle.enable_static()
 
     def tearDown(self):

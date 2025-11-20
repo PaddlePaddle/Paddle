@@ -58,4 +58,4 @@ PD_REGISTER_KERNEL(squeeze_grad,
                    ONEDNN,
                    phi::SqueezeGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

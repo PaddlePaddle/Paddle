@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -91,8 +96,8 @@ class TestAddMMFP16Op(TestAddMMOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestAddMMBF16Op(OpTest):
@@ -114,7 +119,7 @@ class TestAddMMBF16Op(OpTest):
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype_type(self):
         self.dtype = np.uint16
@@ -511,6 +516,60 @@ class TestAddMMAPI(unittest.TestCase):
         )
 
         paddle.enable_static()
+
+
+class TestAddmmOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "addmm"
+        self.python_api = paddle.addmm
+        self.public_python_api = paddle.addmm
+        self.init_dtype_type()
+        self.init_input()
+        self.attrs = {
+            'Alpha': 0.5,
+            'Beta': 2.0,
+        }
+        self.outputs = {
+            'Out': self.attrs['Beta'] * self.inputs['Input']
+            + self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])
+        }
+
+    def init_input(self):
+        # result shape: [20, 100]
+        self.inputs = {
+            'Input': np.random.random(100).astype(self.dtype),
+            'X': np.random.random((20, 0)).astype(self.dtype),
+            'Y': np.random.random((0, 100)).astype(self.dtype),
+        }
+
+    def init_dtype_type(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input', 'X', 'Y'], 'Out', check_pir=True)
+
+
+class TestAddmmOp_ZeroSize2(TestAddmmOp_ZeroSize):
+    def init_input(self):
+        # result shape: [20, 0]
+        self.inputs = {
+            'Input': np.random.random(0).astype(self.dtype),
+            'X': np.random.random((20, 100)).astype(self.dtype),
+            'Y': np.random.random((100, 0)).astype(self.dtype),
+        }
+
+
+class TestAddmmOp_ZeroSize3(TestAddmmOp_ZeroSize):
+    def init_input(self):
+        # result shape: [0, 0]
+        self.inputs = {
+            'Input': np.random.random(0).astype(self.dtype),
+            'X': np.random.random((0, 100)).astype(self.dtype),
+            'Y': np.random.random((100, 0)).astype(self.dtype),
+        }
 
 
 if __name__ == "__main__":

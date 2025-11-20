@@ -22,7 +22,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class CUDAAllocator : public Allocator {
+class PADDLE_API CUDAAllocator : public Allocator {
  public:
   explicit CUDAAllocator(const phi::GPUPlace& place) : place_(place) {}
 

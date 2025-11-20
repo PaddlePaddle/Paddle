@@ -52,9 +52,9 @@ def get_current_device_type():
                 device_type = current_device.get_device_type()
             except:
                 device_type = "unknown"
-        assert (
-            device_type in alignment.keys()
-        ), f"tensor fusion helper now only support {alignment.keys()}, but got device {device_type} instead."
+        assert device_type in alignment.keys(), (
+            f"tensor fusion helper now only support {alignment.keys()}, but got device {device_type} instead."
+        )
         __current_device_type__ = device_type
     return __current_device_type__
 
@@ -210,13 +210,13 @@ class FusionStorageHelper:
         merged_model_params_meta,
         buffer_ipc_meta,
     ):
-        assert isinstance(
-            accumulators_meta, dict
-        ), "accumulators_meta must be a dict"
+        assert isinstance(accumulators_meta, dict), (
+            "accumulators_meta must be a dict"
+        )
         self.accumulators_meta = accumulators_meta
-        assert isinstance(
-            master_weights_meta, dict
-        ), "master_weights_meta must be a dict"
+        assert isinstance(master_weights_meta, dict), (
+            "master_weights_meta must be a dict"
+        )
         self.master_weights_meta = master_weights_meta
         assert (
             isinstance(merged_model_params_meta, dict)
@@ -242,9 +242,9 @@ class FusionStorageHelper:
         assert isinstance(start, int), "start must be an integer"
         assert isinstance(end, int), "end must be an integer"
         assert start >= 0, "start must be non-negative"
-        assert (
-            end <= self.buffer_length
-        ), "end must be less than or equal to the total buffer length"
+        assert end <= self.buffer_length, (
+            "end must be less than or equal to the total buffer length"
+        )
         task = async_offload_with_offset(
             src_tensor=self.buffer,
             dst_tensor=self.cpu_buffer,

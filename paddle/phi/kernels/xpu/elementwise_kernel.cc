@@ -18,6 +18,15 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#ifdef PADDLE_WITH_XPU_FFT
+#include "fft/cuComplex.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+namespace xfft_internal::xpu {
+int RemainderFunctor(int N, float2* input_x, float2* input_y, float2* output);
+}
+#endif
 
 namespace phi {
 
@@ -54,13 +63,17 @@ void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& y,
                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_mod<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_mod<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
@@ -75,6 +88,72 @@ void ElementwisePowKernel(const Context& dev_ctx,
   ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                 const DenseTensor& x,
+                                                 const DenseTensor& y,
+                                                 DenseTensor* out) {
+  using T = phi::complex64;
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
+  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
+  std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
+
+  auto complex_expand = [](const XPUContext& dev_ctx,
+                           const DenseTensor& x,
+                           const std::vector<int64_t>& out_dims_vec,
+                           DenseTensor* out) {
+    DenseTensor real_out, imag_out;
+    real_out.Resize(out->dims());
+    imag_out.Resize(out->dims());
+    dev_ctx.template Alloc<float>(&real_out);
+    dev_ctx.template Alloc<float>(&imag_out);
+    const DenseTensor real = Real<T, XPUContext>(dev_ctx, x);
+    const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, x);
+    ExpandKernel<float, XPUContext>(
+        dev_ctx, real, phi::IntArray(out_dims_vec), &real_out);
+    ExpandKernel<float, XPUContext>(
+        dev_ctx, imag, phi::IntArray(out_dims_vec), &imag_out);
+    phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
+  };
+
+  DenseTensor broadcasted_x, broadcasted_y;
+  T* x_data = nullptr;
+  T* y_data = nullptr;
+
+  if (x_dims == out_dims) {
+    x_data = const_cast<T*>(x.data<T>());
+  } else {
+    broadcasted_x.Resize(out_dims);
+    dev_ctx.template Alloc<T>(&broadcasted_x);
+    complex_expand(dev_ctx, x, out_dims_vec, &broadcasted_x);
+    x_data = broadcasted_x.data<T>();
+  }
+
+  if (y_dims == out_dims) {
+    y_data = const_cast<T*>(y.data<T>());
+  } else {
+    broadcasted_y.Resize(out_dims);
+    dev_ctx.template Alloc<T>(&broadcasted_y);
+    complex_expand(dev_ctx, y, out_dims_vec, &broadcasted_y);
+    y_data = broadcasted_y.data<T>();
+  }
+
+  dev_ctx.template Alloc<T>(out);
+  int r = xfft_internal::xpu::RemainderFunctor(
+      out->numel(),
+      reinterpret_cast<cuFloatComplex*>(x_data),
+      reinterpret_cast<cuFloatComplex*>(y_data),
+      reinterpret_cast<cuFloatComplex*>(out->data<T>()));
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
+}
+#endif
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(floor_divide,
@@ -82,8 +161,8 @@ PD_REGISTER_KERNEL(floor_divide,
                    ALL_LAYOUT,
                    phi::FloorDivideKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t,
                    int64_t) {}
 PD_REGISTER_KERNEL(maximum,
@@ -91,8 +170,8 @@ PD_REGISTER_KERNEL(maximum,
                    ALL_LAYOUT,
                    phi::MaximumKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t,
                    int64_t) {}
 PD_REGISTER_KERNEL(minimum,
@@ -100,8 +179,8 @@ PD_REGISTER_KERNEL(minimum,
                    ALL_LAYOUT,
                    phi::MinimumKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t,
                    int64_t) {}
 PD_REGISTER_KERNEL(remainder,
@@ -109,13 +188,17 @@ PD_REGISTER_KERNEL(remainder,
                    ALL_LAYOUT,
                    phi::RemainderKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::complex64,
+#endif
                    int32_t,
-                   int64_t) {}
+                   int64_t) {
+}
 PD_REGISTER_KERNEL(elementwise_pow,
                    XPU,
                    ALL_LAYOUT,
                    phi::ElementwisePowKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

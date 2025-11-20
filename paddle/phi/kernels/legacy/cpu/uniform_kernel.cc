@@ -67,4 +67,4 @@ PD_REGISTER_KERNEL(uniform_raw,
                    phi::UniformRawKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

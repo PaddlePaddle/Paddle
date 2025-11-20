@@ -92,7 +92,7 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
                                            const MT rescale_grad,
                                            const int tid,
                                            const int grid_stride,
-                                           const int numel,
+                                           const int64_t numel,
                                            MT* master_param_out = nullptr) {
   using VecType = phi::AlignedVector<T, VecSize>;
   using VecMType = phi::AlignedVector<MT, VecSize>;
@@ -133,7 +133,7 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
     }
   }
 
-  for (int i = tid + tail_offset; i < numel; i += grid_stride) {
+  for (int64_t i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad_val = static_cast<MT>(grad[i]) * rescale_grad;
     MT param_val = param[i];
     MT velocity_tmp =
@@ -309,7 +309,9 @@ __global__ void MergedMomentumLarsKernel(LarsParamWrapper<T, MT> lars_wrapper,
                                          const MT rescale_grad,
                                          const bool is_amp) {
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   for (int i = 0; i < op_num; ++i) {
     int numel = lars_wrapper.numel_arr[i];
@@ -369,7 +371,9 @@ __global__ void MomentumLarsKernel(const T* param,
                                    const int thresh,
                                    const int64_t numel,
                                    const bool is_amp) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
 #if CUDA_VERSION >= 11000
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
@@ -493,7 +497,8 @@ void LarsMomentumKernel(
   using MT = MultiPrecisionType<T>;
   int num_blocks_per_sm = 0;
   int sm_num = dev_ctx.GetSMCount();
-  // phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+  // phi::DenseTensor tmp_buffer_t = dev_ctx.AllocateTmpTensor<MT,
+  // phi::GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
   phi::DenseTensor tmp_buffer_t;
   tmp_buffer_t.Resize({LARS_BLOCK_SIZE << 1});
@@ -513,7 +518,7 @@ void LarsMomentumKernel(
         op_num,
         LARS_MAX_MERGED_OPS,
         errors::InvalidArgument(
-            "The maximum number of merged-ops supported is (%d), but"
+            "The maximum number of merged-ops supported is (%d), but "
             "lars op required for training this model is (%d)\n",
             LARS_MAX_MERGED_OPS,
             op_num));
@@ -677,7 +682,7 @@ PD_REGISTER_KERNEL(lars_momentum,
                    phi::LarsMomentumKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

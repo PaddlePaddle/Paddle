@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import gc
 import os
 import time
 import unittest
+
+from op_test import get_device, is_custom_device
 
 import paddle
 import paddle.incubate.multiprocessing as mp
@@ -164,7 +165,7 @@ class TestMultiprocessingBase(unittest.TestCase):
             self.assertTrue(data[0].equal(5).all())
             self.assertTrue(data[1].equal(5).all())
 
-            process.join(1 if device != "gpu" else 10)
+            process.join(1 if device != get_device() else 10)
             self.assertFalse(process.is_alive())
 
         def test_receive():
@@ -185,7 +186,7 @@ class TestMultiprocessingBase(unittest.TestCase):
             del t1, t2
 
             event.set()
-            process.join(1 if device != "gpu" else 10)
+            process.join(1 if device != get_device() else 10)
             self.assertFalse(process.is_alive())
 
         with leak_checker(self) as lc:
@@ -219,18 +220,18 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):
     @unittest.skipIf(
-        not paddle.base.core.is_compiled_with_cuda(),
+        not (paddle.base.core.is_compiled_with_cuda() or is_custom_device()),
         "core is not compiled with CUDA",
     )
     def func_test_pass_tensor(self):
-        paddle.set_device("gpu")
-        self._test_sharing(mp.get_context("spawn"), "gpu")
+        paddle.set_device(get_device())
+        self._test_sharing(mp.get_context("spawn"), get_device())
 
     def test_pass_tensor(self):
         self.func_test_pass_tensor()
 
     def test_ipc_tensor(self):
-        paddle.device.set_device("gpu")
+        paddle.device.set_device(get_device())
         initial_tensor = paddle.to_tensor([1, 2, 3])
         bonus = paddle.to_tensor([2])
         ipc_metas = initial_tensor.value().get_tensor()._share_cuda()

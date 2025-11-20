@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiplexKernel(const Context& ctx,
+void MultiplexKernel(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& ins,
                      const DenseTensor& ids,
                      DenseTensor* out);

@@ -80,7 +80,7 @@ void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   auto* pattern = gpd.mutable_pattern();
   pattern->NewNode("depthwise_conv")
       ->assert_is_op("depthwise_conv2d")
-      ->assert_op_attr("use_mkldnn", true);
+      ->assert_op_attr_or("use_mkldnn", "use_onednn", true);
 
   int found_depthwise_conv_onednn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,

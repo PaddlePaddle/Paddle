@@ -14,8 +14,14 @@ limitations under the License. */
 #pragma once
 #ifndef _WIN32
 #include <cuda.h>
+#ifndef NVTX_SUPPRESS_V2_DEPRECATION_WARNING
+#define NVTX_SUPPRESS_V2_DEPRECATION_WARNING
+#endif
+#if (CUDA_VERSION >= 13000)
+#include <nvtx3/nvToolsExt.h>
+#else
 #include <nvToolsExt.h>
-
+#endif
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"

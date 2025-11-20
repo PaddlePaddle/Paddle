@@ -126,11 +126,13 @@ void GradTensorHolder::add(size_t slot_id,
       // to make DistTensor's global shape and DistAttr information flow.
       // Skip grad accumulation will cause GradTensor disconnect to next
       // GradNode.
-      VLOG(3) << "Do accumulate for uninitialized Tensor " << t.name()
+      VLOG(3) << "GradTensorHolder: Do accumulate for uninitialized Tensor "
+              << t.name()
               << " as it's DistTensor and it needs computation clip for "
                  "pipeline parallel.";
     } else {
-      VLOG(3) << "No need to do accumulate for uninitialized t.";
+      VLOG(3)
+          << "GradTensorHolder: No need to do accumulate for uninitialized t.";
       return;
     }
   }  // TODO(jiabin): Remove this when we fix all kernel.
@@ -140,7 +142,7 @@ void GradTensorHolder::add(size_t slot_id,
       common::errors::Fatal("Invalid slot_id for GradTensorHolder::add() "
                             "which exceeds size of buffer"));
   if (buffer_[slot_id].empty()) {
-    VLOG(6) << "Pass add Tensor for buffer_ slot: " << slot_id
+    VLOG(6) << "GradTensorHolder: Pass add Tensor for buffer_ slot: " << slot_id
             << " since its buffer_ is empty ";
     return;
   }
@@ -161,11 +163,11 @@ void GradTensorHolder::add(size_t slot_id,
   // framework::Variable is initialized.
   if ((!buffer_tensor.defined() || !buffer_tensor.has_allocation())) {
     // Simply copy tensor->impl
-    VLOG(6) << "Move Tensor for buffer_ slot: " << slot_id
+    VLOG(7) << "GradTensorHolder: Move Tensor for buffer_ slot: " << slot_id
             << ", size: " << buffer_[slot_id].size();
     buffer_tensor = t;
   } else {
-    VLOG(6) << "Add Tensor for buffer_ slot: " << slot_id
+    VLOG(7) << "GradTensorHolder: Add Tensor for buffer_ slot: " << slot_id
             << ", size: " << buffer_[slot_id].size();
     // Accumulation
     PADDLE_ENFORCE_EQ(
@@ -184,6 +186,8 @@ void GradTensorHolder::add(size_t slot_id,
         } else {
           paddle::imperative::TensorAdd<paddle::Tensor>(t, &buffer_tensor);
         }
+      } else if (buffer_tensor.is_dist_tensor()) {
+        buffer_tensor = add_ad_func(t, buffer_tensor);
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with

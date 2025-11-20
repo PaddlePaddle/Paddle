@@ -18,7 +18,7 @@ import unittest
 
 import cv2
 import numpy as np
-from op_test import paddle_static_guard
+from op_test import get_device_place, is_custom_device, paddle_static_guard
 
 import paddle
 from paddle.vision.ops import decode_jpeg, read_file
@@ -35,7 +35,7 @@ class TestReadFileWithDynamic(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_read_file_decode_jpeg_dynamic(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         img_bytes = read_file(self.img_path)
         img = decode_jpeg(img_bytes, mode='gray')
@@ -57,26 +57,28 @@ class TestReadFileWithStatic(unittest.TestCase):
 
     def test_read_file_decode_jpeg_static(self):
         paddle.enable_static()
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
-        place = paddle.CUDAPlace(0)
-        with paddle_static_guard():
-            with paddle.static.program_guard(
+        place = get_device_place()
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                img_bytes = read_file(self.img_path)
-                img = decode_jpeg(img_bytes, mode='gray')
-                img = decode_jpeg(img_bytes, mode='rgb')
-                img = decode_jpeg(img_bytes)
-                img_cv2 = cv2.imread(self.img_path)
-                exe = paddle.static.Executor(place)
-                out = exe.run(
-                    paddle.static.default_main_program(), fetch_list=[img]
-                )
+            ),
+        ):
+            img_bytes = read_file(self.img_path)
+            img = decode_jpeg(img_bytes, mode='gray')
+            img = decode_jpeg(img_bytes, mode='rgb')
+            img = decode_jpeg(img_bytes)
+            img_cv2 = cv2.imread(self.img_path)
+            exe = paddle.static.Executor(place)
+            out = exe.run(
+                paddle.static.default_main_program(), fetch_list=[img]
+            )
 
-                np.testing.assert_equal(
-                    out[0].shape, img_cv2.transpose(2, 0, 1).shape
-                )
+            np.testing.assert_equal(
+                out[0].shape, img_cv2.transpose(2, 0, 1).shape
+            )
         paddle.disable_static()
 
 

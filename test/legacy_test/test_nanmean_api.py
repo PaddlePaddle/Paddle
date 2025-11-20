@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
-from paddle.base import core
 
 np.random.seed(10)
 
@@ -32,11 +32,7 @@ class TestNanmeanAPI(unittest.TestCase):
         self.x_grad = np.array(
             [[np.nan, np.nan, 3.0], [0.0, np.nan, 2.0]]
         ).astype(np.float32)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -131,6 +127,51 @@ class TestNanmeanAPI(unittest.TestCase):
         test_case(self.x_grad, 0, keepdim=True)
         test_case(self.x_grad, 1)
         test_case(self.x_grad, (0, 1))
+        paddle.enable_static()
+
+
+class TestNanmeanAPI_ZeroSize(unittest.TestCase):
+    # test paddle.tensor.math.nanmean
+
+    def setUp(self):
+        self.x_shape = [2, 0, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.x[0, :, :, :] = np.nan
+        self.place = get_device_place()
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+
+        def test_case(x, axis=None, keepdim=False):
+            x_tensor = paddle.to_tensor(x)
+            out = paddle.nanmean(x_tensor, axis, keepdim)
+            if isinstance(axis, list):
+                axis = tuple(axis)
+                if len(axis) == 0:
+                    axis = None
+
+            out_ref = np.nanmean(x, axis, keepdims=keepdim)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
+
+        test_case(self.x)
+        paddle.enable_static()
+
+    def test_api_dygraph_grad(self):
+        paddle.disable_static(self.place)
+
+        def test_case(x, axis=None, keepdim=False):
+            if isinstance(axis, list):
+                axis = list(axis)
+                if len(axis) == 0:
+                    axis = None
+            x_tensor = paddle.to_tensor(x, stop_gradient=False)
+            x_tensor.stop_gradient = False
+            y = paddle.nanmean(x_tensor, axis, keepdim)
+            loss = paddle.sum(y)
+            loss.backward()
+            np.testing.assert_allclose(x_tensor.grad.shape, x_tensor.shape)
+
+        test_case(self.x)
         paddle.enable_static()
 
 

@@ -16,10 +16,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fc_kernel_impl.h"
 
-PD_REGISTER_KERNEL(fc,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::fusion::FCKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    fc, GPU, ALL_LAYOUT, phi::fusion::FCKernel, float, double, phi::float16) {}

@@ -159,9 +159,9 @@ def max_converter(network, paddle_op, inputs):
     input_shape = input_tensor.shape
     keepdim = paddle_op.attrs()["keepdim"]
     if network.has_implicit_batch_dimension:
-        assert (
-            axis != 0
-        ), "can't reduce on axis == 0 when network has implicit batch dimension"
+        assert axis != 0, (
+            "can't reduce on axis == 0 when network has implicit batch dimension"
+        )
     output_shape = []
     if len(axis) == 0:
         axis = list(range(len(input_shape)))
@@ -199,12 +199,11 @@ def multiply_converter(network, paddle_op, inputs):
     )
 
 
-@converter_registry.register("pd_op.clip", trt_version="8.x")
+@converter_registry.register("pd_op.clip")
 def clip_converter(network, paddle_op, inputs):
     def _get_constant_or_expand_tensor(
         value, constant_inputs, input_shape_tensor, rank, name=None
     ):
-
         if value is not None:
             return fill_constant_layer(
                 network,
@@ -276,8 +275,8 @@ def pow_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.remainder", trt_version="8.x")
-@converter_registry.register("pd_op.remainder_", trt_version="8.x")
+@converter_registry.register("pd_op.remainder")
+@converter_registry.register("pd_op.remainder_")
 def remainder_converter(network, paddle_op, inputs):
     from paddle.tensorrt.util import support_fp32_mix_precision
 
@@ -333,36 +332,36 @@ def remainder_converter(network, paddle_op, inputs):
     return remainder
 
 
-@converter_registry.register("pd_op.min", trt_version="8.x")
+@converter_registry.register("pd_op.min")
 def min_converter(network, paddle_op, inputs):
     return add_reduce_layer(network, paddle_op, inputs, trt.ReduceOperation.MIN)
 
 
-@converter_registry.register("pd_op.sum", trt_version="8.x")
+@converter_registry.register("pd_op.sum")
 def sum_converter(network, paddle_op, inputs):
     return add_reduce_layer(network, paddle_op, inputs, trt.ReduceOperation.SUM)
 
 
-@converter_registry.register("pd_op.mean", trt_version="8.x")
+@converter_registry.register("pd_op.mean")
 def mean_converter(network, paddle_op, inputs):
     return add_reduce_layer(network, paddle_op, inputs, trt.ReduceOperation.AVG)
 
 
-@converter_registry.register("pd_op.any", trt_version="8.x")
+@converter_registry.register("pd_op.any")
 def any_converter(network, paddle_op, inputs):
     return add_cast_reduce_layer(
         network, paddle_op, inputs, trt.ReduceOperation.MAX
     )
 
 
-@converter_registry.register("pd_op.all", trt_version="8.x")
+@converter_registry.register("pd_op.all")
 def all_converter(network, paddle_op, inputs):
     return add_cast_reduce_layer(
         network, paddle_op, inputs, trt.ReduceOperation.MIN
     )
 
 
-@converter_registry.register("pd_op.cumsum", trt_version="8.x")
+@converter_registry.register("pd_op.cumsum")
 def cumsum_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     dtype = input_tensor.dtype
@@ -493,14 +492,14 @@ def cumsum_converter(network, paddle_op, inputs):
     return loop_out.get_output(0)
 
 
-@converter_registry.register("pd_op.floor_divide", trt_version="8.x")
+@converter_registry.register("pd_op.floor_divide")
 def floor_divide_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.FLOOR_DIV
     )
 
 
-@converter_registry.register("pd_op.log", trt_version="8.x")
+@converter_registry.register("pd_op.log")
 def log_converter(network, paddle_op, inputs):
     input_tensor = trt_cast(
         network, inputs[0], trt.float32, name=[paddle_op.name(), 'input_tensor']
@@ -510,14 +509,14 @@ def log_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.elementwise_pow", trt_version="8.x")
+@converter_registry.register("pd_op.elementwise_pow")
 def elementwise_pow_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.POW
     )
 
 
-@converter_registry.register("pd_op.isnan", trt_version="8.x")
+@converter_registry.register("pd_op.isnan")
 def isnan_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     equal_tensor = trt_equal(
@@ -531,7 +530,7 @@ def isnan_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.minimum", trt_version="8.x")
+@converter_registry.register("pd_op.minimum")
 def minimum_converter(network, paddle_op, inputs):
     min_layer = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.MIN
@@ -539,7 +538,7 @@ def minimum_converter(network, paddle_op, inputs):
     return min_layer
 
 
-@converter_registry.register("pd_op.maximum", trt_version="8.x")
+@converter_registry.register("pd_op.maximum")
 def maximum_converter(network, paddle_op, inputs):
     max_layer = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.MAX
@@ -547,8 +546,8 @@ def maximum_converter(network, paddle_op, inputs):
     return max_layer
 
 
-@converter_registry.register("pd_op.greater_equal", trt_version="8.x")
-@converter_registry.register("pd_op.greater_equal_", trt_version="8.x")
+@converter_registry.register("pd_op.greater_equal")
+@converter_registry.register("pd_op.greater_equal_")
 def greater_equal_converter(network, paddle_op, inputs):
     greater_layer_output = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.GREATER
@@ -565,8 +564,8 @@ def greater_equal_converter(network, paddle_op, inputs):
     return or_layer
 
 
-@converter_registry.register("pd_op.less_equal", trt_version="8.x")
-@converter_registry.register("pd_op.less_equal_", trt_version="8.x")
+@converter_registry.register("pd_op.less_equal")
+@converter_registry.register("pd_op.less_equal_")
 def less_equal_converter(network, paddle_op, inputs):
     less_layer_output = add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.LESS

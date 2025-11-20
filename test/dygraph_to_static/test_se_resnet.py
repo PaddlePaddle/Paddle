@@ -29,7 +29,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -229,9 +228,9 @@ class SeResNeXt(paddle.nn.Layer):
 
         self.layers = layers
         supported_layers = [50, 101, 152]
-        assert (
-            layers in supported_layers
-        ), f"supported layers are {supported_layers} but input layer is {layers}"
+        assert layers in supported_layers, (
+            f"supported layers are {supported_layers} but input layer is {layers}"
+        )
 
         if layers == 50:
             cardinality = 32
@@ -445,10 +444,7 @@ class TestSeResnet(Dy2StTestBase):
                     step_idx += 1
                     if step_idx == STEP_NUM:
                         if to_static:
-                            if use_pir_api():
-                                output_spec = [0]
-                            else:
-                                output_spec = [pred]
+                            output_spec = [0]
 
                             paddle.jit.save(
                                 se_resnext,
@@ -477,29 +473,26 @@ class TestSeResnet(Dy2StTestBase):
             )
 
     def predict_dygraph(self, data):
-        with enable_to_static_guard(False):
-            with base.dygraph.guard(place):
-                se_resnext = SeResNeXt()
+        with (
+            enable_to_static_guard(False),
+            base.dygraph.guard(place),
+        ):
+            se_resnext = SeResNeXt()
 
-                model_dict = paddle.load(
-                    self.dy_state_dict_save_path + '.pdparams'
-                )
-                se_resnext.set_dict(model_dict)
-                se_resnext.eval()
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
+            se_resnext.set_dict(model_dict)
+            se_resnext.eval()
 
-                label = np.random.random([1, 1]).astype("int64")
-                img = paddle.to_tensor(data)
-                label = paddle.to_tensor(label)
-                pred_res, _, _, _ = se_resnext(img, label)
+            label = np.random.random([1, 1]).astype("int64")
+            img = paddle.to_tensor(data)
+            label = paddle.to_tensor(label)
+            pred_res, _, _, _ = se_resnext(img, label)
 
-                return pred_res.numpy()
+            return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
 
         exe = base.Executor(place)
         [
@@ -531,10 +524,8 @@ class TestSeResnet(Dy2StTestBase):
             return pred_res.numpy()
 
     def predict_analysis_inference(self, data):
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
+
         output = PredictorTools(
             self.model_save_dir,
             model_filename,

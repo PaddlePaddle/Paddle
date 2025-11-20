@@ -19,29 +19,29 @@
 namespace phi {
 
 template <typename T>
-void Unnormalize(const CPUContext& ctx,
+void Unnormalize(const CPUContext& dev_ctx,
                  DenseTensor* grid_slice,
                  const int max_val,  // height-1 or width-1
                  bool align_corners) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 3>::From(*grid_slice);
 
-  if (!align_corners) {
+  if (align_corners) {
+    auto factor = static_cast<T>(max_val * 0.5);
+    grid_slice_t.device(place) = (grid_slice_t + static_cast<T>(1)) * factor;
+  } else {
     auto factor = static_cast<T>((max_val + 1) * 0.5);
     grid_slice_t.device(place) =
         (grid_slice_t + static_cast<T>(1)) * factor - static_cast<T>(0.5);
-  } else {
-    auto factor = static_cast<T>(max_val * 0.5);
-    grid_slice_t.device(place) = (grid_slice_t + static_cast<T>(1)) * factor;
   }
 }
 
 template <typename T>
-void Unnormalize3D(const CPUContext& ctx,
+void Unnormalize3D(const CPUContext& dev_ctx,
                    DenseTensor* grid_slice,
                    const int max_val,  // height-1 or width-1
                    bool align_corners) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto grid_slice_t = EigenTensor<T, 4>::From(*grid_slice);
 
   if (!align_corners) {
@@ -89,14 +89,15 @@ void GetGridPointValue(const DenseTensor& input,
   for (int i = 0; i < n; i++) {
     for (int k = 0; k < out_h; k++) {
       for (int l = 0; l < out_w; l++) {
-        if (IsInBound(
-                x_t(i, k, l), y_t(i, k, l), (T)(in_w - 1), (T)(in_h - 1))) {
+        if (IsInBound<int>(static_cast<int>(x_t(i, k, l)),
+                           static_cast<int>(y_t(i, k, l)),
+                           (in_w - 1),
+                           (in_h - 1))) {
           for (int j = 0; j < c; j++) {
-            output_t(i, j, k, l) =
-                input_t(i,
-                        j,
-                        static_cast<int>(round(y_t(i, k, l))),
-                        static_cast<int>(round(x_t(i, k, l))));
+            output_t(i, j, k, l) = input_t(i,
+                                           j,
+                                           static_cast<int>(y_t(i, k, l)),
+                                           static_cast<int>(x_t(i, k, l)));
           }
         }
       }
@@ -105,7 +106,43 @@ void GetGridPointValue(const DenseTensor& input,
 }
 
 template <typename T>
-void AllNeighbors(const CPUContext& ctx,
+void GetGridPointValue_nearest(const DenseTensor& input,
+                               DenseTensor* output,
+                               const DenseTensor& x,
+                               const DenseTensor& y) {
+  const int n = input.dims()[0];
+  const int c = input.dims()[1];
+  const int in_h = input.dims()[2];
+  const int in_w = input.dims()[3];
+  const int out_h = x.dims()[1];
+  const int out_w = x.dims()[2];
+  auto x_t = EigenTensor<T, 3>::From(x);
+  auto y_t = EigenTensor<T, 3>::From(y);
+  auto output_t = EigenTensor<T, 4>::From(*output).setConstant((T)0);
+  auto input_t = EigenTensor<T, 4>::From(input);
+
+  for (int i = 0; i < n; i++) {
+    for (int k = 0; k < out_h; k++) {
+      for (int l = 0; l < out_w; l++) {
+        if (IsInBound<int>(static_cast<int>(std::nearbyint(x_t(i, k, l))),
+                           static_cast<int>(std::nearbyint(y_t(i, k, l))),
+                           (in_w - 1),
+                           (in_h - 1))) {
+          for (int j = 0; j < c; j++) {
+            output_t(i, j, k, l) =
+                input_t(i,
+                        j,
+                        static_cast<int>(std::nearbyint(y_t(i, k, l))),
+                        static_cast<int>(std::nearbyint(x_t(i, k, l))));
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+void AllNeighbors(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* grid_x,
                   DenseTensor* grid_y,
@@ -121,7 +158,7 @@ void AllNeighbors(const CPUContext& ctx,
                   DenseTensor* v_en,
                   DenseTensor* v_ws,
                   DenseTensor* v_es) {  // values
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   const int c = input.dims()[1];
   const int n = grid_x->dims()[0];
@@ -132,10 +169,10 @@ void AllNeighbors(const CPUContext& ctx,
   x_e->Resize({n, out_h, out_w});
   y_n->Resize({n, out_h, out_w});
   y_s->Resize({n, out_h, out_w});
-  ctx.Alloc<T>(x_w);
-  ctx.Alloc<T>(x_e);
-  ctx.Alloc<T>(y_n);
-  ctx.Alloc<T>(y_s);
+  dev_ctx.Alloc<T>(x_w);
+  dev_ctx.Alloc<T>(x_e);
+  dev_ctx.Alloc<T>(y_n);
+  dev_ctx.Alloc<T>(y_s);
   auto x_w_t = EigenTensor<T, 3>::From(*x_w);
   auto x_e_t = EigenTensor<T, 3>::From(*x_e);
   auto y_n_t = EigenTensor<T, 3>::From(*y_n);
@@ -154,10 +191,10 @@ void AllNeighbors(const CPUContext& ctx,
   d_e->Resize({n, out_h, out_w});
   d_n->Resize({n, out_h, out_w});
   d_s->Resize({n, out_h, out_w});
-  ctx.Alloc<T>(d_w);
-  ctx.Alloc<T>(d_e);
-  ctx.Alloc<T>(d_n);
-  ctx.Alloc<T>(d_s);
+  dev_ctx.Alloc<T>(d_w);
+  dev_ctx.Alloc<T>(d_e);
+  dev_ctx.Alloc<T>(d_n);
+  dev_ctx.Alloc<T>(d_s);
   auto d_w_t = EigenTensor<T, 3>::From(*d_w);
   auto d_e_t = EigenTensor<T, 3>::From(*d_e);
   auto d_n_t = EigenTensor<T, 3>::From(*d_n);
@@ -172,10 +209,10 @@ void AllNeighbors(const CPUContext& ctx,
   v_en->Resize({n, c, out_h, out_w});
   v_ws->Resize({n, c, out_h, out_w});
   v_es->Resize({n, c, out_h, out_w});
-  ctx.Alloc<T>(v_wn);
-  ctx.Alloc<T>(v_en);
-  ctx.Alloc<T>(v_ws);
-  ctx.Alloc<T>(v_es);
+  dev_ctx.Alloc<T>(v_wn);
+  dev_ctx.Alloc<T>(v_en);
+  dev_ctx.Alloc<T>(v_ws);
+  dev_ctx.Alloc<T>(v_es);
   GetGridPointValue<T>(input, v_wn, *x_w, *y_n);
   GetGridPointValue<T>(input, v_en, *x_e, *y_n);
   GetGridPointValue<T>(input, v_ws, *x_w, *y_s);
@@ -207,19 +244,19 @@ void Get3DGridPointValue(const DenseTensor& input,
     for (int m = 0; m < out_d; m++) {
       for (int k = 0; k < out_h; k++) {
         for (int l = 0; l < out_w; l++) {
-          if (IsInBound3D(x_t(i, m, k, l),
-                          y_t(i, m, k, l),
-                          z_t(i, m, k, l),
-                          (T)(in_w - 1),
-                          (T)(in_h - 1),
-                          (T)(in_d - 1))) {
+          if (IsInBound3D<int>(static_cast<int>(x_t(i, m, k, l)),
+                               static_cast<int>(y_t(i, m, k, l)),
+                               static_cast<int>(z_t(i, m, k, l)),
+                               (in_w - 1),
+                               (in_h - 1),
+                               (in_d - 1))) {
             for (int j = 0; j < c; j++) {
               output_t(i, j, m, k, l) =
                   input_t(i,
                           j,
-                          static_cast<int>(round(z_t(i, m, k, l))),
-                          static_cast<int>(round(y_t(i, m, k, l))),
-                          static_cast<int>(round(x_t(i, m, k, l))));
+                          static_cast<int>(z_t(i, m, k, l)),
+                          static_cast<int>(y_t(i, m, k, l)),
+                          static_cast<int>(x_t(i, m, k, l)));
             }
           }
         }
@@ -229,7 +266,54 @@ void Get3DGridPointValue(const DenseTensor& input,
 }
 
 template <typename T>
-void All3DNeighbors(const CPUContext& ctx,
+void Get3DGridPointValue_nearest(const DenseTensor& input,
+                                 DenseTensor* output,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& z) {
+  const int n = input.dims()[0];
+  const int c = input.dims()[1];
+  const int in_d = input.dims()[2];
+  const int in_h = input.dims()[3];
+  const int in_w = input.dims()[4];
+  const int out_d = x.dims()[1];
+  const int out_h = x.dims()[2];
+  const int out_w = x.dims()[3];
+  auto x_t = EigenTensor<T, 4>::From(x);
+  auto y_t = EigenTensor<T, 4>::From(y);
+  auto z_t = EigenTensor<T, 4>::From(z);
+  auto output_t =
+      EigenTensor<T, 5>::From(*output).setConstant(static_cast<T>(0.0));
+  auto input_t = EigenTensor<T, 5>::From(input);
+
+  for (int i = 0; i < n; i++) {
+    for (int m = 0; m < out_d; m++) {
+      for (int k = 0; k < out_h; k++) {
+        for (int l = 0; l < out_w; l++) {
+          if (IsInBound3D<int>(
+                  static_cast<int>(std::nearbyint(x_t(i, m, k, l))),
+                  static_cast<int>(std::nearbyint(y_t(i, m, k, l))),
+                  static_cast<int>(std::nearbyint(z_t(i, m, k, l))),
+                  (in_w - 1),
+                  (in_h - 1),
+                  (in_d - 1))) {
+            for (int j = 0; j < c; j++) {
+              output_t(i, j, m, k, l) =
+                  input_t(i,
+                          j,
+                          static_cast<int>(std::nearbyint(z_t(i, m, k, l))),
+                          static_cast<int>(std::nearbyint(y_t(i, m, k, l))),
+                          static_cast<int>(std::nearbyint(x_t(i, m, k, l))));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+void All3DNeighbors(const CPUContext& dev_ctx,
                     const DenseTensor& input,
                     DenseTensor* grid_x,
                     DenseTensor* grid_y,
@@ -254,7 +338,7 @@ void All3DNeighbors(const CPUContext& ctx,
                     DenseTensor* v_ben,
                     DenseTensor* v_bws,
                     DenseTensor* v_bes) {  // values
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   const int c = input.dims()[1];
   const int n = grid_x->dims()[0];
@@ -268,12 +352,12 @@ void All3DNeighbors(const CPUContext& ctx,
   y_s->Resize({n, out_d, out_h, out_w});
   z_t->Resize({n, out_d, out_h, out_w});
   z_b->Resize({n, out_d, out_h, out_w});
-  ctx.Alloc<T>(x_w);
-  ctx.Alloc<T>(x_e);
-  ctx.Alloc<T>(y_n);
-  ctx.Alloc<T>(y_s);
-  ctx.Alloc<T>(z_t);
-  ctx.Alloc<T>(z_b);
+  dev_ctx.Alloc<T>(x_w);
+  dev_ctx.Alloc<T>(x_e);
+  dev_ctx.Alloc<T>(y_n);
+  dev_ctx.Alloc<T>(y_s);
+  dev_ctx.Alloc<T>(z_t);
+  dev_ctx.Alloc<T>(z_b);
   auto x_w_t = EigenTensor<T, 4>::From(*x_w);
   auto x_e_t = EigenTensor<T, 4>::From(*x_e);
   auto y_n_t = EigenTensor<T, 4>::From(*y_n);
@@ -299,12 +383,12 @@ void All3DNeighbors(const CPUContext& ctx,
   d_s->Resize({n, out_d, out_h, out_w});
   d_t->Resize({n, out_d, out_h, out_w});
   d_b->Resize({n, out_d, out_h, out_w});
-  ctx.Alloc<T>(d_w);
-  ctx.Alloc<T>(d_e);
-  ctx.Alloc<T>(d_n);
-  ctx.Alloc<T>(d_s);
-  ctx.Alloc<T>(d_t);
-  ctx.Alloc<T>(d_b);
+  dev_ctx.Alloc<T>(d_w);
+  dev_ctx.Alloc<T>(d_e);
+  dev_ctx.Alloc<T>(d_n);
+  dev_ctx.Alloc<T>(d_s);
+  dev_ctx.Alloc<T>(d_t);
+  dev_ctx.Alloc<T>(d_b);
   auto d_w_t = EigenTensor<T, 4>::From(*d_w);
   auto d_e_t = EigenTensor<T, 4>::From(*d_e);
   auto d_n_t = EigenTensor<T, 4>::From(*d_n);
@@ -327,14 +411,14 @@ void All3DNeighbors(const CPUContext& ctx,
   v_ben->Resize({n, c, out_d, out_h, out_w});
   v_bws->Resize({n, c, out_d, out_h, out_w});
   v_bes->Resize({n, c, out_d, out_h, out_w});
-  ctx.Alloc<T>(v_twn);
-  ctx.Alloc<T>(v_ten);
-  ctx.Alloc<T>(v_tws);
-  ctx.Alloc<T>(v_tes);
-  ctx.Alloc<T>(v_bwn);
-  ctx.Alloc<T>(v_ben);
-  ctx.Alloc<T>(v_bws);
-  ctx.Alloc<T>(v_bes);
+  dev_ctx.Alloc<T>(v_twn);
+  dev_ctx.Alloc<T>(v_ten);
+  dev_ctx.Alloc<T>(v_tws);
+  dev_ctx.Alloc<T>(v_tes);
+  dev_ctx.Alloc<T>(v_bwn);
+  dev_ctx.Alloc<T>(v_ben);
+  dev_ctx.Alloc<T>(v_bws);
+  dev_ctx.Alloc<T>(v_bes);
   Get3DGridPointValue<T>(input, v_twn, *x_w, *y_n, *z_t);
   Get3DGridPointValue<T>(input, v_ten, *x_e, *y_n, *z_t);
   Get3DGridPointValue<T>(input, v_tws, *x_w, *y_s, *z_t);

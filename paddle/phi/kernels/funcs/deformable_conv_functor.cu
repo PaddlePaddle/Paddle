@@ -21,47 +21,47 @@ namespace funcs {
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+static inline int64_t NumBlocks(const int64_t N) {
+  return std::min<int64_t>((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
+                           kNumMaximumNumBlocks);
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 __global__ void ModulatedDeformableIm2colGpuKernel(
-    const int nthreads,
+    const IndexT nthreads,
     const T* data_im,
     const T* data_offset,
     const T* data_mask,
-    const int height,
-    const int width,
-    const int kernel_h,
-    const int kernel_w,
-    const int pad_h,
-    const int pad_w,
-    const int stride_h,
-    const int stride_w,
-    const int dilation_h,
-    const int dilation_w,
-    const int channel_per_deformable_group,
-    const int batch_size,
-    const int num_channels,
-    const int deformable_group,
-    const int height_col,
-    const int width_col,
+    const IndexT height,
+    const IndexT width,
+    const IndexT kernel_h,
+    const IndexT kernel_w,
+    const IndexT pad_h,
+    const IndexT pad_w,
+    const IndexT stride_h,
+    const IndexT stride_w,
+    const IndexT dilation_h,
+    const IndexT dilation_w,
+    const IndexT channel_per_deformable_group,
+    const IndexT batch_size,
+    const IndexT num_channels,
+    const IndexT deformable_group,
+    const IndexT height_col,
+    const IndexT width_col,
     T* data_col) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
-    const int w_col = i % width_col;
-    const int h_col = (i / width_col) % height_col;
-    const int b_col = (i / width_col) / height_col % batch_size;
-    const int c_im = (i / width_col / height_col) / batch_size;
-    const int c_col = c_im * kernel_h * kernel_w;
+  IndexT index = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexT offset = blockDim.x * static_cast<IndexT>(gridDim.x);
+  for (IndexT i = index; i < nthreads; i += offset) {
+    const IndexT w_col = i % width_col;
+    const IndexT h_col = (i / width_col) % height_col;
+    const IndexT b_col = (i / width_col) / height_col % batch_size;
+    const IndexT c_im = (i / width_col / height_col) / batch_size;
+    const IndexT c_col = c_im * kernel_h * kernel_w;
 
-    const int deformable_group_index = c_im / channel_per_deformable_group;
+    const IndexT deformable_group_index = c_im / channel_per_deformable_group;
 
-    const int h_in = h_col * stride_h - pad_h;
-    const int w_in = w_col * stride_w - pad_w;
+    const IndexT h_in = h_col * stride_h - pad_h;
+    const IndexT w_in = w_col * stride_w - pad_w;
 
     T* data_col_ptr =
         data_col +
@@ -77,11 +77,11 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
                               kernel_h * kernel_w * height_col * width_col
             : nullptr;
 
-    for (int i = 0; i < kernel_h; ++i) {
-      for (int j = 0; j < kernel_w; ++j) {
-        const int data_offset_h_ptr =
+    for (IndexT i = 0; i < kernel_h; ++i) {
+      for (IndexT j = 0; j < kernel_w; ++j) {
+        const IndexT data_offset_h_ptr =
             ((2 * (i * kernel_w + j)) * height_col + h_col) * width_col + w_col;
-        const int data_offset_w_ptr =
+        const IndexT data_offset_w_ptr =
             ((2 * (i * kernel_w + j) + 1) * height_col + h_col) * width_col +
             w_col;
 
@@ -96,7 +96,7 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
         }
         *data_col_ptr = val;
         if (data_mask_ptr) {
-          const int data_mask_hw_ptr =
+          const IndexT data_mask_hw_ptr =
               ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
           const T mask = data_mask_ptr[data_mask_hw_ptr];
           *data_col_ptr *= mask;
@@ -107,7 +107,7 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableIm2col(const Context& dev_ctx,
                                const T* data_im,
                                const T* data_offset,
@@ -120,13 +120,13 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
                                const std::vector<int>& dilations,
                                const int deformable_groups,
                                T* data_col) {
-  int channel_per_deformable_group = im_shape[0] / deformable_groups;
-  int num_kernels = im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
+  int64_t channel_per_deformable_group = im_shape[0] / deformable_groups;
+  int64_t num_kernels =
+      im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
-  int blocks = NumBlocks(num_kernels);
-  int threads = kNumCUDAThreads;
-
-  ModulatedDeformableIm2colGpuKernel<T>
+  int64_t blocks = NumBlocks(num_kernels);
+  int64_t threads = kNumCUDAThreads;
+  ModulatedDeformableIm2colGpuKernel<T, IndexT>
       <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
                                                  data_im,
                                                  data_offset,
@@ -150,7 +150,7 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
                                                  data_col);
 }
 
-template void ModulatedDeformableIm2col(
+template void ModulatedDeformableIm2col<float, phi::GPUContext, int>(
     const phi::GPUContext& dev_ctx,
     const float* data_im,
     const float* data_offset,
@@ -164,7 +164,35 @@ template void ModulatedDeformableIm2col(
     const int deformable_groups,
     float* data_col);
 
-template void ModulatedDeformableIm2col(
+template void ModulatedDeformableIm2col<float, phi::GPUContext, int64_t>(
+    const phi::GPUContext& dev_ctx,
+    const float* data_im,
+    const float* data_offset,
+    const float* data_mask,
+    const std::vector<int64_t>& im_shape,
+    const std::vector<int64_t>& col_shape,
+    const std::vector<int64_t>& filter_shape,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<int>& dilations,
+    const int deformable_groups,
+    float* data_col);
+
+template void ModulatedDeformableIm2col<double, phi::GPUContext, int>(
+    const phi::GPUContext& dev_ctx,
+    const double* data_im,
+    const double* data_offset,
+    const double* data_mask,
+    const std::vector<int64_t>& im_shape,
+    const std::vector<int64_t>& col_shape,
+    const std::vector<int64_t>& filter_shape,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<int>& dilations,
+    const int deformable_groups,
+    double* data_col);
+
+template void ModulatedDeformableIm2col<double, phi::GPUContext, int64_t>(
     const phi::GPUContext& dev_ctx,
     const double* data_im,
     const double* data_offset,

@@ -22,19 +22,20 @@
 namespace phi {
 
 template <typename Context, typename T>
-void ExpandAs(const Context& context,
+void ExpandAs(const Context& dev_ctx,
               const DenseTensor& x,
-              const std::vector<int>& target_shape,
+              const std::vector<int64_t>& target_shape_,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto vec_in_dims = common::vectorize<int>(x.dims());
+  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> target_shape(target_shape_.begin(), target_shape_.end());
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(target_shape[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     if (vec_in_dims[i] != 1) {
       PADDLE_ENFORCE_EQ(
           vec_in_dims[i],
@@ -50,9 +51,9 @@ void ExpandAs(const Context& context,
   if (target_shape.size() == 0) {
     phi::DDim out_dims = common::make_ddim(target_shape);
     out->Resize(out_dims);
-    context.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
 
-    int r = xpu::copy<XPUType>(context.x_context(),
+    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
                                reinterpret_cast<XPUType*>(out->data<T>()),
                                x.numel());
@@ -62,9 +63,9 @@ void ExpandAs(const Context& context,
 
   phi::DDim out_dims = common::make_ddim(target_shape);
   out->Resize(out_dims);
-  context.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  auto out_shape = common::vectorize<int>(out_dims);
+  auto out_shape = common::vectorize<int64_t>(out_dims);
 
   int r = 0;
 
@@ -72,22 +73,26 @@ void ExpandAs(const Context& context,
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
     auto out_data = reinterpret_cast<int8_t*>(out->data<T>());
     r = xpu::broadcast<int8_t>(
-        context.x_context(), x_data, out_data, x_shape, out_shape);
+        dev_ctx.x_context(), x_data, out_data, x_shape, out_shape);
   } else {
     auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
     auto out_data = reinterpret_cast<XPUType*>(out->data<T>());
     r = xpu::broadcast<XPUType>(
-        context.x_context(), x_data, out_data, x_shape, out_shape);
+        dev_ctx.x_context(), x_data, out_data, x_shape, out_shape);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 }
 
 template <typename T, typename Context>
-void ExpandAsKernel(const Context& ctx,
+void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
@@ -111,7 +116,7 @@ void ExpandAsKernel(const Context& ctx,
                         "expand_as_v2 op must be less than or equal to %d.",
                         target_rank,
                         MAX_RANK_SUPPORTED));
-  ExpandAs<Context, T>(ctx, x, target_shape, out);
+  ExpandAs<Context, T>(dev_ctx, x, target_shape, out);
 }
 }  // namespace phi
 
@@ -121,8 +126,8 @@ PD_REGISTER_KERNEL(expand_as,
                    phi::ExpandAsKernel,
                    double,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    bool,
                    int,
                    int64_t) {}

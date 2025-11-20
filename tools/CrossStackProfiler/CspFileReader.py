@@ -180,7 +180,7 @@ class FileReader:
                 newFileList.append(file)
             else:
                 raise NotImplementedError(
-                    f"[{file}] is repeated by id, we don not how to process it!"
+                    f"[{file}] is repeated by id, we do not know how to process it!"
                 )
 
         if not self._fileList:
@@ -211,7 +211,7 @@ class FileReader:
     def _getId(self, fileName, organizeForm, sed="."):
         if self._organizeForm != organizeForm:
             raise TypeError(
-                f"Can not get rank id when organizer form is not {organizeForm}!"
+                f"Can not get rank id when organize form is not {organizeForm}!"
             )
 
         if not os.path.isfile(fileName):
@@ -275,7 +275,7 @@ class FileReader:
         return self.getFileName("opinfo", groupId, gpuId, tmpPath)
 
     def getPipeLineInfoFileName(self, groupId, gpuId, tmpPath="./tmp"):
-        return self.getFileName("pipilineinfo", groupId, gpuId, tmpPath)
+        return self.getFileName("pipelineinfo", groupId, gpuId, tmpPath)
 
     def getDCGMInfoFileName(self, groupId, gpuId, tmpPath="./tmp"):
         return self.getFileName("dcgm", groupId, gpuId, tmpPath)

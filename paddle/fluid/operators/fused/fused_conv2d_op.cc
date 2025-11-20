@@ -53,13 +53,13 @@ TODO: Documentation of conv2d op.
  protected:
   void Apply() {
     AddInput("Bias",
-             "(Tensor) Bias to be added to each output of filter application."
-             "The format of output tensor is X (one-dimensional) of size equal"
+             "(Tensor) Bias to be added to each output of filter application. "
+             "The format of output tensor is X (one-dimensional) of size equal "
              "to the number of output channels. Only used with MKL-DNN.")
         .AsDispensable();
     AddInput("ResidualData",
              "(Tensor) Tensor with residual data "
-             "to which convolution output will be added."
+             "to which convolution output will be added. "
              "Used with fuse_residual_connection fusion.")
         .AsDispensable();
     AddAttr<std::string>("fuse_activation",

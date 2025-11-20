@@ -43,7 +43,7 @@ class IR_API IntArrayAttribute : public pir::Attribute {
   static std::string name() { return "a_intarray"; }
 };
 
-class ScalarAttribute : public pir::Attribute {
+class IR_API ScalarAttribute : public pir::Attribute {
  public:
   using Attribute::Attribute;
 
@@ -84,7 +84,7 @@ class IR_API DataTypeAttribute : public pir::Attribute {
   static std::string name() { return "a_dtype"; }
 };
 
-class PlaceAttribute : public pir::Attribute {
+class IR_API PlaceAttribute : public pir::Attribute {
  public:
   using Attribute::Attribute;
 
@@ -98,7 +98,7 @@ class PlaceAttribute : public pir::Attribute {
   static std::string name() { return "a_place"; }
 };
 
-class DataLayoutAttribute : public pir::Attribute {
+class IR_API DataLayoutAttribute : public pir::Attribute {
  public:
   using Attribute::Attribute;
 

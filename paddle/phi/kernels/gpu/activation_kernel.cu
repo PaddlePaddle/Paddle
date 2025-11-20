@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -34,6 +32,9 @@ void ActivationGPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
@@ -73,6 +74,19 @@ void ActivationGPUImpl(const Context& dev_ctx,
         dev_ctx, x, out, functor);                                      \
   }
 
+#define DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(name, functor_class, attr) \
+  template <typename T, typename Context>                                      \
+  void name##Kernel(const Context& dev_ctx,                                    \
+                    const DenseTensor& x,                                      \
+                    double attr,                                               \
+                    DenseTensor* out) {                                        \
+    funcs::functor_class<T> functor;                                           \
+    auto attrs = functor.GetAttrs();                                           \
+    *(attrs[0].second) = attr;                                                 \
+    ActivationGPUImpl<T, Context, funcs::functor_class<T>>(                    \
+        dev_ctx, x, out, functor);                                             \
+  }
+
 #define DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(               \
     name, functor_class, attr1, attr2)                      \
   template <typename T, typename Context>                   \
@@ -80,6 +94,22 @@ void ActivationGPUImpl(const Context& dev_ctx,
                     const DenseTensor& x,                   \
                     float attr1,                            \
                     float attr2,                            \
+                    DenseTensor* out) {                     \
+    funcs::functor_class<T> functor;                        \
+    auto attrs = functor.GetAttrs();                        \
+    *(attrs[0].second) = attr1;                             \
+    *(attrs[1].second) = attr2;                             \
+    ActivationGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, x, out, functor);                          \
+  }
+
+#define DEFINE_GPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(        \
+    name, functor_class, attr1, attr2)                      \
+  template <typename T, typename Context>                   \
+  void name##Kernel(const Context& dev_ctx,                 \
+                    const DenseTensor& x,                   \
+                    double attr1,                           \
+                    double attr2,                           \
                     DenseTensor* out) {                     \
     funcs::functor_class<T> functor;                        \
     auto attrs = functor.GetAttrs();                        \
@@ -113,6 +143,7 @@ DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Floor, CudaFloorFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Ceil, CudaCeilFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Rint, CudaRintFunctor)
 
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, CudaLogFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, CudaLog2Functor)
@@ -121,8 +152,10 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, CudaLog1pFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, CudaExpFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
+                                            CudaLeakyReluFunctor,
+                                            alpha)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
@@ -136,10 +169,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
                                      t_min,
                                      t_max)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
-DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
-                                     CudaSoftplusFunctor,
-                                     beta,
-                                     threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_DOUBLE_ATTRS(Softplus,
+                                            CudaSoftplusFunctor,
+                                            beta,
+                                            threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      CudaHardSigmoidFunctor,
                                      slope,
@@ -205,19 +238,63 @@ void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
                DenseTensor* out) {
-  if (factor.to<float>() == 0) {
+  if constexpr (std::is_integral<T>::value) {
+    PADDLE_ENFORCE_GE(
+        factor.to<double>(),
+        0,
+        common::errors::InvalidArgument(
+            "Integers to negative integer powers are not allowed."));
+  } else {
+    if (factor.to<double>() == 0.5) {
+      funcs::CudaSqrtFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaSqrtFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<double>() == -0.5) {
+      funcs::CudaRsqrtFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaRsqrtFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<double>() == -1) {
+      funcs::CudaReciprocalFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaReciprocalFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<double>() == -2) {
+      funcs::CudaRsquareFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaRsquareFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+  }
+  if (factor.to<double>() == 0) {
     std::vector<int64_t> vec_dims = common::vectorize(out->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
     return;
   }
-  if (factor.to<float>() == 1) {
+  if (factor.to<double>() == 1) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
+  if (factor.to<double>() == 2) {
+    funcs::CudaSquareFunctor<T> functor;
+    ActivationGPUImpl<T, Context, funcs::CudaSquareFunctor<T>>(
+        dev_ctx, x, out, functor);
+    return;
+  }
+  if (factor.to<double>() == 3) {
+    funcs::CudaCubeFunctor<T> functor;
+    ActivationGPUImpl<T, Context, funcs::CudaCubeFunctor<T>>(
+        dev_ctx, x, out, functor);
+    return;
+  }
+
   funcs::CudaPowFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
+  functor.SetFactor(factor.to<double>());
   ActivationGPUImpl<T, Context, funcs::CudaPowFunctor<T>>(
       dev_ctx, x, out, functor);
 }
@@ -225,13 +302,8 @@ void PowKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(relu,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ReluKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    relu, GPU, ALL_LAYOUT, phi::ReluKernel, float, double, phi::float16) {}
 #else
 PD_REGISTER_KERNEL(relu,
                    GPU,
@@ -239,8 +311,8 @@ PD_REGISTER_KERNEL(relu,
                    phi::ReluKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
@@ -250,8 +322,8 @@ PD_REGISTER_KERNEL(relu,
                      phi::func,                   \
                      float,                       \
                      double,                      \
-                     phi::dtype::float16,         \
-                     phi::dtype::bfloat16) {}
+                     phi::float16,                \
+                     phi::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(name, func) \
   PD_REGISTER_KERNEL(name,                                     \
@@ -260,10 +332,10 @@ PD_REGISTER_KERNEL(relu,
                      phi::func,                                \
                      float,                                    \
                      double,                                   \
-                     phi::dtype::float16,                      \
-                     phi::dtype::bfloat16,                     \
-                     phi::dtype::complex<float>,               \
-                     phi::dtype::complex<double>) {}
+                     phi::float16,                             \
+                     phi::bfloat16,                            \
+                     phi::complex64,                           \
+                     phi::complex128) {}
 
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sin, SinKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(cos, CosKernel)
@@ -296,10 +368,10 @@ PD_REGISTER_KERNEL(exp,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(expm1,
                    GPU,
                    ALL_LAYOUT,
@@ -308,10 +380,10 @@ PD_REGISTER_KERNEL(expm1,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(square,
                    GPU,
                    ALL_LAYOUT,
@@ -320,10 +392,10 @@ PD_REGISTER_KERNEL(square,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
@@ -336,12 +408,20 @@ PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
 PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(selu, SeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logit, LogitCUDAKernel)
 
+PD_REGISTER_KERNEL(rint,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RintKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(round,
                    GPU,
                    ALL_LAYOUT,
@@ -350,10 +430,10 @@ PD_REGISTER_KERNEL(round,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(log,
                    GPU,
                    ALL_LAYOUT,
@@ -362,10 +442,10 @@ PD_REGISTER_KERNEL(log,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(log2,
                    GPU,
                    ALL_LAYOUT,
@@ -374,10 +454,10 @@ PD_REGISTER_KERNEL(log2,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(log10,
                    GPU,
                    ALL_LAYOUT,
@@ -386,10 +466,10 @@ PD_REGISTER_KERNEL(log10,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(log1p,
                    GPU,
                    ALL_LAYOUT,
@@ -398,10 +478,10 @@ PD_REGISTER_KERNEL(log1p,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(pow,
                    GPU,
                    ALL_LAYOUT,
@@ -410,7 +490,33 @@ PD_REGISTER_KERNEL(pow,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+PD_REGISTER_KERNEL(ceil,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CeilKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(floor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FloorKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -1,0 +1,23 @@
+id: no-assert-with-numpy-testing
+language: python
+severity: error
+message: |
+  It is recommended to use 'np.testing.assert_allclose' and 'np.testing.assert_array_equal'
+  instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.
+  Please read the specification: https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background
+  If it is a false positive, please contact SigureMo (Recommend) or zrr1999 for more information.
+note: Use np.testing methods for more informative assertion messages
+files:
+  - test/**
+
+rule:
+  any:
+    - pattern: self.assertTrue($NP.$CHECK_EQ($$$ARGS) $$$_)
+    - pattern: self.assertEqual($ARG1, $NP.$CHECK_EQ($$$ARGS) $$$_)
+    - pattern: self.assertEqual($NP.$CHECK_EQ($$$ARGS), $ARG2 $$$_)
+    - pattern: assert $NP.$CHECK_EQ($$$ARGS)
+constraints:
+  NP:
+    regex: (np|numpy)
+  CHECK_EQ:
+    regex: (allclose|array_equal)

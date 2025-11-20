@@ -1,0 +1,4 @@
+ruleDirs:
+  - ci/rules
+testConfigs:
+  - testDir: ci/rule-tests

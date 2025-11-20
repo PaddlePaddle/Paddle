@@ -28,7 +28,6 @@ from predictor_utils import PredictorTools
 import paddle
 from paddle.base import ParamAttr
 from paddle.base.framework import unique_name
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -801,10 +800,7 @@ class TestTrain(Dy2StTestBase):
     def predict_static(self, data):
         with static_guard():
             exe = paddle.static.Executor(self.place)
-            if use_pir_api():
-                model_filename = self.pir_model_filename
-            else:
-                model_filename = self.model_filename
+            model_filename = self.pir_model_filename
             # load inference model
             [
                 inference_program,
@@ -834,10 +830,7 @@ class TestTrain(Dy2StTestBase):
         return pred_res
 
     def predict_analysis_inference(self, data):
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
 
         output = PredictorTools(
             self.model_save_dir,

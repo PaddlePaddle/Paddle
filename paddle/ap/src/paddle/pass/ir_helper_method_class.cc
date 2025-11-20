@@ -46,12 +46,12 @@ struct PirHelperMethodClass {
     if (args.at(0).template CastableTo<std::string>()) {
       ADT_LET_CONST_REF(drr_pass_tag_name,
                         args.at(0).template CastTo<std::string>());
-      opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
-          interpreter->circlable_ref_list(),
-          drr_pass_tag_name,
-          /*steps_limit=*/std::nullopt);
+      opt_pass =
+          ap::paddle::CreateAccessTopoDrrPass(interpreter->circlable_ref_list(),
+                                              drr_pass_tag_name,
+                                              /*steps_limit=*/std::nullopt);
     } else {
-      opt_pass = cinn::dialect::ir::CreateCustomAccessTopoDrrPass(
+      opt_pass = ap::paddle::CreateCustomAccessTopoDrrPass(
           interpreter->circlable_ref_list(),
           args.at(0),
           /*steps_limit=*/std::nullopt,
@@ -76,17 +76,17 @@ struct PirHelperMethodClass {
     if (args->at(0).template CastableTo<std::string>()) {
       ADT_LET_CONST_REF(drr_pass_tag_name,
                         args->at(0).template CastTo<std::string>());
-      opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
-          interpreter->circlable_ref_list(),
-          drr_pass_tag_name,
-          /*steps_limit=*/1);
+      opt_pass =
+          ap::paddle::CreateAccessTopoDrrPass(interpreter->circlable_ref_list(),
+                                              drr_pass_tag_name,
+                                              /*steps_limit=*/1);
     } else {
       std::optional<axpr::Value> matched_pattern_mut_list{
           kwargs->OptGet("matched_pattern_mut_list")};
       if (!matched_pattern_mut_list.has_value()) {
         matched_pattern_mut_list = adt::Nothing{};
       }
-      opt_pass = cinn::dialect::ir::CreateCustomAccessTopoDrrPass(
+      opt_pass = ap::paddle::CreateCustomAccessTopoDrrPass(
           interpreter->circlable_ref_list(),
           args->at(0),
           /*steps_limit=*/1,
@@ -335,10 +335,9 @@ struct PirHelperMethodClass {
                                                args.at(1)};
     ADT_LET_CONST_REF(lambda, This{}.GetDrrCtxMaker());
     axpr::Function<axpr::SerializableValue> function{lambda, std::nullopt};
-    ADT_LET_CONST_REF(
-        drr_ctx,
-        cinn::dialect::ir::ApDrrHelper{interpreter->circlable_ref_list()}
-            .InterpretDrrCtxMaker(function, src_ptn_func_args));
+    ADT_LET_CONST_REF(drr_ctx,
+                      ap::paddle::ApDrrHelper{interpreter->circlable_ref_list()}
+                          .InterpretDrrCtxMaker(function, src_ptn_func_args));
     ADT_CHECK(drr_ctx->source_pattern_ctx.has_value());
     ap::paddle::PackedIrOpInnerSourcePatternHelper src_pattern_helper{};
     ADT_LET_CONST_REF(

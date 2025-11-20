@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SparseWeightEmbeddingKernel(const Context& ctx,
+void SparseWeightEmbeddingKernel(const Context& dev_ctx,
                                  const DenseTensor& inputx,
                                  const SelectedRows& weight,
                                  int64_t padding_idx,

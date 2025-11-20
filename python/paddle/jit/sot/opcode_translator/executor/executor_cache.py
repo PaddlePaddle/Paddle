@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import gc
 import traceback
-from typing import TYPE_CHECKING, List, Tuple
+from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import paddle
-from paddle.base.dygraph.base import sot_simulation_mode_guard
 
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
@@ -27,6 +27,7 @@ from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
+    ENV_SOT_UNSAFE_CACHE_FASTPATH,
     BreakGraphError,
     CompileCountInfo,
     ConditionalFallbackError,
@@ -49,10 +50,10 @@ from .virtual_frame import VirtualFrame
 if TYPE_CHECKING:
     import types
 
-GuardedFunction = Tuple[CustomCode, Guard]
-GuardedFunctions = List[GuardedFunction]
-GuardChain = List[paddle.framework.core.GuardNodeBase]
-GuardChainList = List[GuardChain]
+GuardedFunction = tuple[CustomCode, Guard]
+GuardedFunctions = list[GuardedFunction]
+GuardChain = list[paddle.framework.core.GuardNodeBase]
+GuardChainList = list[GuardChain]
 
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
@@ -74,18 +75,21 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     MAX_COMPILE_TIME_PER_CODE = 40
     MAX_COMPILE_TIME_TOTAL = 15 * 60
+    CACHE_HIT_FASTPATH_THRESHOLD = 32
     cache: dict[
         types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
     ]
     translate_count: int
     code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
     compile_time_stats: dict[types.CodeType, float]
+    consecutive_cache_hit_count: defaultdict[types.CodeType, int]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
         self.code_symbolic_inputs = {}
         self.compile_time_stats = {}
+        self.consecutive_cache_hit_count = defaultdict(int)
 
     def get_symbolic_inputs(
         self, code: types.CodeType
@@ -142,6 +146,14 @@ class OpcodeExecutorCache(metaclass=Singleton):
             **kwargs,
         )
 
+    def is_fastpath_threshold_reached(self, code):
+        # Returns True if the number of consecutive cache hits for the given code
+        # exceeds the UNSAFE_CACHE_FASTPATH threshold.
+        return (
+            self.consecutive_cache_hit_count.get(code, 0)
+            >= self.CACHE_HIT_FASTPATH_THRESHOLD
+        )
+
     @event_register("lookup")
     def lookup(
         self,
@@ -162,6 +174,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         Returns:
             CustomCode: The custom code object if a matching guard function is found, otherwise None.
         """
+        code: types.CodeType = frame.f_code
 
         if len(guarded_fns) >= self.MAX_CACHE_SIZE:
             log(2, "[Cache] Exceed max cache size, skip it\n")
@@ -169,6 +182,17 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
+        enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
+
+        if enable_unsafe_cache_fastpath and (
+            self.is_fastpath_threshold_reached(code)
+        ):
+            # NOTE: In inference scenarios, cache misses are generally rare, so we can enable this unsafe short path.
+            log(
+                2,
+                "[Cache] The CACHE_HIT_FASTPATH_THRESHOLD has been reached, so fast path is now enabled\n",
+            )
+            return guarded_fns[0][0]
 
         cache_index = None
         if enable_strict_guard or enable_guard_tree:
@@ -218,7 +242,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
             try:
                 with EventGuard("try guard"):
                     guard_result = guard_fn(frame)
-                if enable_strict_guard:
+                if enable_strict_guard and (not enable_unsafe_cache_fastpath):
                     assert mirror_guard_result == guard_result, (
                         "faster guard result is not equal to guard result, "
                         f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
@@ -229,10 +253,26 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         2,
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
-                    # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
-                    assert (
-                        cache_index is None or index == cache_index
-                    ), f"cache_index({cache_index}) is not equal to index({index})"
+                    if not enable_unsafe_cache_fastpath:
+                        # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
+                        assert cache_index is None or index == cache_index, (
+                            f"cache_index({cache_index}) is not equal to index({index})"
+                        )
+
+                    if enable_unsafe_cache_fastpath:
+                        if index == 0:
+                            self.consecutive_cache_hit_count[code] += 1
+                        else:
+                            # Move the current hit to the front
+                            # Note: Be cautious when modifying the order of elements in a list during iteration,
+                            # as it can lead to unexpected behavior.
+                            guarded_fns[:] = [
+                                guarded_fns[index],
+                                *guarded_fns[:index],
+                                *guarded_fns[index + 1 :],
+                            ]
+                            self.consecutive_cache_hit_count[code] = 0
+
                     return custom_code
                 else:
                     log_do(
@@ -257,7 +297,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     2,
                     self.analyse_guard_error(guard_fn, frame),
                 )
-                if enable_strict_guard:
+                if enable_strict_guard and (not enable_unsafe_cache_fastpath):
                     assert type(e) == type(mirror_guard_error) and str(
                         e
                     ) == str(mirror_guard_error), (
@@ -363,11 +403,12 @@ def start_translate(
         simulator = OpcodeExecutor(vframe, graph)
         simulator.check_code_simulatable()
         InfoCollector().attach(CompileCountInfo, frame.f_code)
-        with sot_simulation_mode_guard(True):
-            new_custom_code, guard_fn = simulator.transform(frame)
-            if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
-                assert guard_fn(frame)
-                assert guard_fn.mirror_guard(frame)
+
+        new_custom_code, guard_fn = simulator.transform(frame)
+        if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+            assert guard_fn(frame)
+            assert guard_fn.mirror_guard(frame)
+
         if not simulator._graph.need_cache:
             return (
                 CustomCode(None, True),
@@ -410,6 +451,13 @@ def start_translate(
             guard_chain,
         )
     except SotCapturedException as e:
+        log(
+            1,
+            "Note: This fallback may be triggered by user code, or it could result from an internal "
+            "SOT exception being incorrectly captured. Please investigate carefully.\n",
+        )
+        if is_strict_mode():
+            raise
         dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
         return (CustomCode(None, True), dummy_guard, dummy_guard_chain)
     except Exception as e:

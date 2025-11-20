@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest
-
-sys.path.append("../deprecated/legacy_test")
 from test_lstm_op import ACTIVATION, lstm
 
 
@@ -71,7 +68,7 @@ class TestFusionLSTMOp(OpTest):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.set_conf()
 
         T = sum(self.lod[0])
@@ -137,7 +134,7 @@ class TestFusionLSTMOp(OpTest):
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
-            'use_mkldnn': self.use_mkldnn,
+            'use_onednn': self.use_onednn,
         }
 
     def test_check_output(self):

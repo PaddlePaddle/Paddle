@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <xft/xdnn_plugin.h>
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -46,8 +45,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<float>(&bias_fp32);
     int r = baidu::xpu::api::cast<XPUType, float>(
         dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(
-            bias.get().data<phi::dtype::float16>()),
+        reinterpret_cast<const XPUType*>(bias.get().data<phi::float16>()),
         bias_fp32.data<float>(),
         n);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
@@ -61,6 +59,26 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
       input_y, nullptr, m, n, n, false};
   baidu::xpu::xblas::FcFusionTensor<XPUType> tensor_y{
       input_y, nullptr, m, n, n, false};
+  DenseTensor weight_scale_fp32;
+  if (weight_scale.dtype() != phi::DataType::FLOAT32 &&
+      weight_scale.dims().size() != 0) {
+    weight_scale_fp32.Resize(weight_scale.dims());
+    dev_ctx.template Alloc<float>(&weight_scale_fp32);
+    int r = baidu::xpu::api::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(weight_scale.data<T>()),
+        weight_scale_fp32.data<float>(),
+        weight_scale.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  }
+  const float* weight_scale_ptr = nullptr;
+  if (weight_scale.dims().size() != 0) {
+    if (weight_scale.dtype() == phi::DataType::FLOAT32) {
+      weight_scale_ptr = weight_scale.data<float>();
+    } else {
+      weight_scale_ptr = weight_scale_fp32.data<float>();
+    }
+  }
   baidu::xpu::xblas::FcFusionEpilogue<float, float> epilogue{
       api::Activation_t::LINEAR,
       bias.is_initialized() ? (bias.get().dtype() == phi::DataType::FLOAT16
@@ -68,7 +86,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                                    : bias.get().data<float>())
                             : nullptr,
       nullptr,
-      weight_scale.dims().size() != 0 ? weight_scale.data<float>() : nullptr,
+      weight_scale_ptr,
       0,
       1,
       nullptr};
@@ -137,5 +155,5 @@ PD_REGISTER_KERNEL(weight_only_linear,
                    XPU,
                    ALL_LAYOUT,
                    phi::WeightOnlyLinearKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

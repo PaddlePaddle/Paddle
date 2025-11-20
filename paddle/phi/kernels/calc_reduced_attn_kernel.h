@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CalcReducedAttnScoresKernel(const Context& ctx,
+void CalcReducedAttnScoresKernel(const Context& dev_ctx,
                                  const DenseTensor& q,
                                  const DenseTensor& k,
                                  const DenseTensor& softmax_lse,

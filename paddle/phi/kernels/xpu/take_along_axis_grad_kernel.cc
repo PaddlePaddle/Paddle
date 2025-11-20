@@ -29,6 +29,10 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
 
+  if (x_grad->numel() == 0) {
+    return;
+  }
+
   const auto& index_dtype = index.dtype();
   bool index_dtype_match =
       index_dtype == DataType::INT32 || index_dtype == DataType::INT64;
@@ -88,5 +92,5 @@ PD_REGISTER_KERNEL(take_along_axis_grad,
                    ALL_LAYOUT,
                    phi::TakeAlongAxisGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

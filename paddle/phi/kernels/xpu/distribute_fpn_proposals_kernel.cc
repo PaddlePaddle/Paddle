@@ -75,7 +75,7 @@ void DistributeFpnProposalsKernel(
     PADDLE_ENFORCE_EQ(
         fpn_rois.lod().size(),
         1UL,
-        errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
+        errors::InvalidArgument("DistributeFpnProposalsOp needs LoD "
                                 "with one level"));
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -106,7 +106,7 @@ void DistributeFpnProposalsKernel(
     rois_lod_vec[i] = static_cast<int>(fpn_rois_lod[i]);
   }
   xpu::VectorParam<int> rois_lod = {
-      rois_lod_vec.data(), static_cast<int>(rois_lod_vec.size()), nullptr};
+      rois_lod_vec.data(), static_cast<int64_t>(rois_lod_vec.size()), nullptr};
 
   int r = xpu::distribute_fpn_proposals_helper<XPUType, int>(
       dev_ctx.x_context(),

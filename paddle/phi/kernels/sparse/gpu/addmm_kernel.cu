@@ -62,11 +62,11 @@ void AddmmKernelImpl(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(input_dim[i],
                       x_dim[i],
                       common::errors::InvalidArgument(
-                          "input.dim[%d] and x.dim[%d] must be eaqul.", i, i));
+                          "input.dim[%d] and x.dim[%d] must be equal.", i, i));
     PADDLE_ENFORCE_EQ(input_dim[i],
                       y_dim[i],
                       common::errors::InvalidArgument(
-                          "input.dim[%d] and y.dim[%d] must be eaqul.", i, i));
+                          "input.dim[%d] and y.dim[%d] must be equal.", i, i));
   }
 
   PADDLE_ENFORCE_GE(
@@ -74,21 +74,21 @@ void AddmmKernelImpl(const Context& dev_ctx,
       x_dim[rank - 2],
       common::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(x) is not suitable for matmul "
-          "opetation, input_dim[-2] must be equal to x_dim[-2]."));
+          "operation, input_dim[-2] must be equal to x_dim[-2]."));
 
   PADDLE_ENFORCE_GE(
       input_dim[rank - 1],
       y_dim[rank - 1],
       common::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(y) is not suitable for matmul "
-          "opetation, input_dim[-1] must be equal to y_dim[-1]."));
+          "operation, input_dim[-1] must be equal to y_dim[-1]."));
 
   PADDLE_ENFORCE_GE(
       x_dim[rank - 1],
       y_dim[rank - 2],
       common::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be equal to y_dim[-2]."));
+          "operation, x_dim[-1] must be equal to y_dim[-2]."));
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 
@@ -133,7 +133,7 @@ PD_REGISTER_KERNEL(addmm_coo_dense,
                    phi::sparse::AddmmCooDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -143,6 +143,6 @@ PD_REGISTER_KERNEL(addmm_csr_dense,
                    phi::sparse::AddmmCsrDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

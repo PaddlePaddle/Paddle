@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddGradKernel(const Context& ctx,
+void IndexAddGradKernel(const Context& dev_ctx,
                         const DenseTensor& index,
                         const DenseTensor& add_value,
                         const DenseTensor& out_grad,

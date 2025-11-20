@@ -20,7 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void DistributeFpnProposalsKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& fpn_rois,
     const paddle::optional<DenseTensor>& rois_num,
     int min_level,

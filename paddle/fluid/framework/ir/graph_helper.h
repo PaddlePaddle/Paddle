@@ -41,31 +41,32 @@ struct NodeComp {
 };
 
 // Test if the graph contains circle.
-bool HasCircle(const Graph &graph);
+PADDLE_API bool HasCircle(const Graph &graph);
 
 // Check if the var desc of node is consistency.
 // The graph may have the same name node, for example, parameter
 // is the input of operator and it also is the output of optimizer.
 // For the persistable variable, the var_desc of the nodes with
 // the same node name should be equal.
-bool VarDescIsConsistency(const Graph &graph);
+PADDLE_API bool VarDescIsConsistency(const Graph &graph);
 
 // Find All Circles for debugging,
 // store all subgraph in circles.
-bool FindCircleSubGraph(const Graph &graph,
-                        std::vector<std::vector<ir::Node *>> *circles);
+PADDLE_API bool FindCircleSubGraph(
+    const Graph &graph, std::vector<std::vector<ir::Node *>> *circles);
 
-size_t GraphNum(const Graph &graph);
+PADDLE_API size_t GraphNum(const Graph &graph);
 
 // Topology Sort the operations in the graph from inputs to outputs.
 // `graph` cannot contain circle.
-std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
+PADDLE_API std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 
 // Check whether the topological order of graph ops is unique
-bool IsTopologySortOperationsUnique(const Graph &graph);
+PADDLE_API bool IsTopologySortOperationsUnique(const Graph &graph);
 
 // Topological sort, but try to DFS.
-std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph);
+PADDLE_API std::vector<ir::Node *> TopologyDfsSortOperations(
+    const Graph &graph);
 
 // Different kinds to sort the operators in a graph to a sequence.
 enum class SortKind {
@@ -76,10 +77,11 @@ enum class SortKind {
 };
 
 // Several kinds of topological sort.
-std::vector<Node *> TopologyVariantSort(const Graph &graph, SortKind sort_kind);
+PADDLE_API std::vector<Node *> TopologyVariantSort(const Graph &graph,
+                                                   SortKind sort_kind);
 
 // Clean the nodes that doesn't connect to others.
-void CleanIndividualNodes(Graph *graph);
+PADDLE_API void CleanIndividualNodes(Graph *graph);
 
 // Build an in-link adjacency list of operations for the `graph`.
 template <class NodeComparator = ir::NodeComp>
@@ -120,11 +122,12 @@ std::vector<T *> FilterByNodeWrapper(const Graph &graph) {
   return ret;
 }
 
-std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph);
+PADDLE_API std::vector<ir::Node *> TopologySortGraphByDescOrder(
+    const Graph &graph);
 
-void GraphToProgram(const Graph &graph,
-                    ProgramDesc *p_program,
-                    const SortKind *sort_kind = nullptr);
+PADDLE_API void GraphToProgram(const Graph &graph,
+                               ProgramDesc *p_program,
+                               const SortKind *sort_kind = nullptr);
 
 std::vector<std::vector<std::vector<ir::Node::Dep>>> GetOpDependencies(
     const ProgramDesc &program);

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/sequence_expand_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/impl/sequence_expand_kernel_impl.h"
-
 namespace phi {
 
 template <typename T>
-static inline int ExpandByMemoryCopy(const phi::GPUContext& context,
+static inline int ExpandByMemoryCopy(const phi::GPUContext& dev_ctx,
                                      const DenseTensor& x,
                                      DenseTensor* out,
                                      const phi::Vector<size_t>& x_lod,
@@ -27,31 +27,31 @@ static inline int ExpandByMemoryCopy(const phi::GPUContext& context,
   auto out_data = out->data<T>();
   auto x_data = x.data<T>();
 
-  const auto& gpu_place = context.GetPlace();
+  const auto& gpu_place = dev_ctx.GetPlace();
 
-  int x_item_length = x.numel() / x.dims()[0];
-  int out_offset = 0;
-  int num_copies = 0;
+  int64_t x_item_length = x.numel() / x.dims()[0];
+  size_t out_offset = 0;
+  size_t num_copies = 0;
   for (size_t i = 1; i < ref_lod.size(); ++i) {
-    int repeat_num = ref_lod[i] - ref_lod[i - 1];
-    int x_start = x_lod[i - 1];
-    int x_end = x_lod[i];
-    int x_seq_len = x_end - x_start;
+    size_t repeat_num = ref_lod[i] - ref_lod[i - 1];
+    size_t x_start = x_lod[i - 1];
+    size_t x_end = x_lod[i];
+    size_t x_seq_len = x_end - x_start;
     if (repeat_num > 0) {
       if (do_copy) {
-        int out_start = out_offset;
+        size_t out_start = out_offset;
         if (out->lod().size() == 1) {
           out_start = out->lod()[0][out_offset];
         }
-        for (int j = 0; j < repeat_num; j++) {
-          for (int k = 0; k < x_seq_len; k++) {
+        for (size_t j = 0; j < repeat_num; j++) {
+          for (size_t k = 0; k < x_seq_len; k++) {
             phi::memory_utils::Copy(
                 gpu_place,
                 out_data + (out_start + j * x_seq_len + k) * x_item_length,
                 gpu_place,
                 x_data + (x_start + k) * x_item_length,
                 sizeof(T) * x_item_length,
-                context.stream());
+                dev_ctx.stream());
           }
         }
       } else {
@@ -76,13 +76,14 @@ inline __global__ void sequence_expand_kernel(const T* x_data,
   int bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
 
-  int x_item_count = x_lod[bid + 1] - x_lod[bid];
-  int repeats = ref_lod[bid + 1] - ref_lod[bid];
-  int out_offset = static_cast<int>(offset[bid]);
-  int x_offset = x_lod[bid];
-  for (int tid_z = threadIdx.z; tid_z < repeats; tid_z += blockDim.z) {
-    for (int tid_y = threadIdx.y; tid_y < x_item_count; tid_y += blockDim.y) {
-      for (int tid_x = threadIdx.x; tid_x < x_item_length;
+  size_t x_item_count = x_lod[bid + 1] - x_lod[bid];
+  size_t repeats = ref_lod[bid + 1] - ref_lod[bid];
+  size_t out_offset = offset[bid];
+  size_t x_offset = x_lod[bid];
+  for (size_t tid_z = threadIdx.z; tid_z < repeats; tid_z += blockDim.z) {
+    for (size_t tid_y = threadIdx.y; tid_y < x_item_count;
+         tid_y += blockDim.y) {
+      for (size_t tid_x = threadIdx.x; tid_x < x_item_length;
            tid_x += blockDim.x) {
         out_data[(out_offset + tid_z * x_item_count + tid_y) * x_item_length +
                  tid_x] = x_data[(x_offset + tid_y) * x_item_length + tid_x];
@@ -93,18 +94,18 @@ inline __global__ void sequence_expand_kernel(const T* x_data,
 
 template <typename T>
 struct SequenceExpandFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
                   DenseTensor* out) {
     int num_copies =
-        ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, false);
+        ExpandByMemoryCopy<T>(dev_ctx, x, out, x_lod, ref_lod, false);
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
     if (num_copies < 5) {
-      ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, true);
+      ExpandByMemoryCopy<T>(dev_ctx, x, out, x_lod, ref_lod, true);
     } else {
-      int x_item_length = x.numel() / x.dims()[0];
+      size_t x_item_length = x.numel() / x.dims()[0];
       size_t x_lod_size = x_lod.size();
       phi::Vector<size_t> out_offset(x_lod_size * 2 + ref_lod.size());
       GetOutputOffset(x_lod, ref_lod, &out_offset);
@@ -118,7 +119,7 @@ struct SequenceExpandFunctor<phi::GPUContext, T> {
 
       phi::MixVector<size_t> mixv_out_offset(&out_offset);
       const size_t* out_offset_data =
-          mixv_out_offset.CUDAData(context.GetPlace());
+          mixv_out_offset.CUDAData(dev_ctx.GetPlace());
       const size_t* x_lod_data = out_offset_data + x_lod_size;
       const size_t* ref_lod_data = out_offset_data + 2 * x_lod_size;
 
@@ -130,14 +131,14 @@ struct SequenceExpandFunctor<phi::GPUContext, T> {
       dim3 block_size(thread_x, thread_y, thread_z);
       dim3 grid_size(block_x, 1);
 
-      sequence_expand_kernel<<<grid_size, block_size, 0, context.stream()>>>(
+      sequence_expand_kernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
           x.data<T>(),
           x_lod_data,
           ref_lod_data,
           out_offset_data,
           x_lod_size,
           x_item_length,
-          context.template Alloc<T>(out));
+          dev_ctx.template Alloc<T>(out));
     }
   }
 };

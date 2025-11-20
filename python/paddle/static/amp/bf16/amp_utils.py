@@ -148,9 +148,9 @@ def _insert_cast_post_op(
     if target_var.type not in _valid_types or target_var.dtype == dest_dtype:
         return num_cast_ops
 
-    assert (
-        target_var.dtype == src_dtype
-    ), f"The real dtype({_dtype_to_str(target_var.dtype)}) is not equal to the src dtype({_dtype_to_str(src_dtype)})"
+    assert target_var.dtype == src_dtype, (
+        f"The real dtype({_dtype_to_str(target_var.dtype)}) is not equal to the src dtype({_dtype_to_str(src_dtype)})"
+    )
 
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)

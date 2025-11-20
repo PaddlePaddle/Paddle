@@ -401,7 +401,6 @@ class TestElementwiseDivFP16Op(OpTest):
 
 # test mean op
 class TestFP16MeanOp(OpTest):
-
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
@@ -441,7 +440,6 @@ class TestFP16MeanOp(OpTest):
 
 # test scale op
 class TestScaleFp16Op(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -466,21 +464,20 @@ class TestScaleFp16Op(OpTest):
 
 # test sum op
 class TestAFP16SumOp(OpTest):
-
     def setUp(self):
         self.op_type = "sum"
         self.python_api = paddle.add_n
         self.public_python_api = paddle.add_n
         self.prim_op_type = "comp"
         self.init_kernel_type()
-        self.use_mkldnn = False
+        self.use_onednn = False
         x0 = np.random.random((3, 40)).astype(self.dtype)
         x1 = np.random.random((3, 40)).astype(self.dtype)
         x2 = np.random.random((3, 40)).astype(self.dtype)
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
     def init_kernel_type(self):
         self.dtype = np.float16
@@ -528,7 +525,6 @@ class TestAnyOp(OpTest):
 
 # test add, add_grad op
 class TestFP16ElementwiseAddOp(OpTest):
-
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
@@ -545,14 +541,14 @@ class TestFP16ElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def check_dygraph(self):
-        return not self.use_mkldnn and self.axis == -1
+        return not self.use_onednn and self.axis == -1
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -612,7 +608,6 @@ class TestFP16ElementwiseAddOp(OpTest):
 
 # test multiply, multiply_grad op
 class TestElementwiseMulOpFp16(OpTest):
-
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
@@ -631,10 +626,10 @@ class TestElementwiseMulOpFp16(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -653,7 +648,7 @@ class TestElementwiseMulOpFp16(OpTest):
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output(
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -662,10 +657,10 @@ class TestElementwiseMulOpFp16(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -675,10 +670,10 @@ class TestElementwiseMulOpFp16(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -688,10 +683,10 @@ class TestElementwiseMulOpFp16(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -791,7 +786,6 @@ class TestAdamW(OpTest):
 
 # test matmul, matmul_grad op
 class TestMatMulV2Op(OpTest):
-
     def config(self):
         self.x_shape = (100,)
         self.y_shape = (100,)

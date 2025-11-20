@@ -154,6 +154,9 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.Alloc(out, x.dtype());
+  }
   auto x_dims = x.dims();
   ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
@@ -171,11 +174,11 @@ void ReshapeWithXShapeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    reshape, OneDNN, ONEDNN, phi::ReshapeKernel, float, phi::dtype::bfloat16) {}
+    reshape, OneDNN, ONEDNN, phi::ReshapeKernel, float, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(reshape_with_xshape,
                    OneDNN,
                    ONEDNN,
                    phi::ReshapeWithXShapeKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

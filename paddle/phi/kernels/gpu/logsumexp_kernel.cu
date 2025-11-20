@@ -15,12 +15,11 @@
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 #include "paddle/phi/kernels/gpu/logsumexp_function.cu.h"
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
@@ -36,12 +35,12 @@ struct ComputeType {
 };
 
 template <>
-struct ComputeType<phi::dtype::float16> {
+struct ComputeType<phi::float16> {
   using type = float;
 };
 
 template <>
-struct ComputeType<phi::dtype::bfloat16> {
+struct ComputeType<phi::bfloat16> {
   using type = float;
 };
 
@@ -89,6 +88,11 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), -INFINITY, out);
+    return;
+  }
   std::vector<int64_t> axis;
   axis.reserve(axis_in.size());
   std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
@@ -176,5 +180,5 @@ PD_REGISTER_KERNEL(logsumexp,
                    phi::LogsumexpKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

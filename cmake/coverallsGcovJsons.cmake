@@ -32,7 +32,7 @@
 # https://coveralls.io/docs/api
 #
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 # Since it's not possible to pass a CMake list properly in the
 # "1;2;3" format to an external process, we have replaced the

@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import tempfile
 import unittest
 
 import numpy
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -61,7 +61,7 @@ class TestOptimizerDtype(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
@@ -153,7 +153,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
         return loss.numpy()
 
     def test_with_state_dict(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             with base.dygraph.guard():
                 out_use_state_dict = self.check_with_opt_state_dict(
                     use_save_load=True

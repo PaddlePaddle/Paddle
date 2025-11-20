@@ -702,6 +702,99 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0])
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0])
 
+    def test_multi_mesh_dim_with_partial(self):
+        process_mesh = auto.ProcessMesh([[0, 1, 2], [3, 4, 5]])
+        self.multiply_rule = core.get_phi_spmd_rule("multiply")
+        x_shape = [96, 24, 48]
+        y_shape = [24, 48]
+
+        # [0, -1, -1] partial_dim=[1], [-1, 1] --> [0, -1, 1] partial_dim=[], [-1, 1], [0, -1, 1] partial_dim=[]
+        x_tensor_dist_attr = TensorDistAttr()
+        x_tensor_dist_attr.process_mesh = process_mesh
+        x_tensor_dist_attr.dims_mapping = [0, -1, -1]
+        x_tensor_dist_attr._set_partial_dims([1])
+        x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+
+        y_tensor_dist_attr = TensorDistAttr()
+        y_tensor_dist_attr.process_mesh = process_mesh
+        y_tensor_dist_attr.dims_mapping = [-1, 1]
+        y_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
+
+        resulted_dist_attrs = self.multiply_rule.infer_forward(
+            x_dist_tensor_spec, y_dist_tensor_spec
+        )
+        inferred_input_dist_attrs = resulted_dist_attrs[0]
+        inferred_output_dist_attrs = resulted_dist_attrs[1]
+
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1, 1])
+
+        self.assertEqual(inferred_input_dist_attrs[0]._is_partial(), False)
+        self.assertEqual(inferred_input_dist_attrs[1]._is_partial(), False)
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
+
+        # [-1, -1, -1], [-1, 1] partial_dim=[0] --> [-1, -1, 1], [-1, 1] partial_dim=[0], [-1, -1, 1] partial_dim=[0]
+        x_tensor_dist_attr = TensorDistAttr()
+        x_tensor_dist_attr.process_mesh = process_mesh
+        x_tensor_dist_attr.dims_mapping = [-1, -1, -1]
+        x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+
+        y_tensor_dist_attr = TensorDistAttr()
+        y_tensor_dist_attr.process_mesh = process_mesh
+        y_tensor_dist_attr.dims_mapping = [-1, 1]
+        y_tensor_dist_attr._set_partial_dims([0])
+        y_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
+
+        resulted_dist_attrs = self.multiply_rule.infer_forward(
+            x_dist_tensor_spec, y_dist_tensor_spec
+        )
+        inferred_input_dist_attrs = resulted_dist_attrs[0]
+        inferred_output_dist_attrs = resulted_dist_attrs[1]
+
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, -1, 1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, 1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, 1]
+        )
+
+        self.assertEqual(inferred_input_dist_attrs[0]._is_partial(), False)
+        self.assertEqual(inferred_input_dist_attrs[1]._is_partial(), True)
+        self.assertEqual(inferred_input_dist_attrs[1]._partial_dims(), {0})
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
+        self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {0})
+
+        # [-1, 0, -1] partial_dim=[1], [-1, 0] partial_dim=[1] --> [-1, 0, -1] partial_dim=[1], [0, -1] partial_dim=[], [-1, 0, -1] partial_dim=[1]
+        x_tensor_dist_attr = TensorDistAttr()
+        x_tensor_dist_attr.process_mesh = process_mesh
+        x_tensor_dist_attr.dims_mapping = [-1, 0, -1]
+        x_tensor_dist_attr._set_partial_dims([1])
+        x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+
+        y_tensor_dist_attr = TensorDistAttr()
+        y_tensor_dist_attr.process_mesh = process_mesh
+        y_tensor_dist_attr.dims_mapping = [-1, 0]
+        y_tensor_dist_attr._set_partial_dims([1])
+        y_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
+
+        resulted_dist_attrs = self.multiply_rule.infer_forward(
+            x_dist_tensor_spec, y_dist_tensor_spec
+        )
+        inferred_input_dist_attrs = resulted_dist_attrs[0]
+        inferred_output_dist_attrs = resulted_dist_attrs[1]
+
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, 0, -1])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [-1, 0, -1]
+        )
+
+        self.assertEqual(inferred_input_dist_attrs[0]._is_partial(), True)
+        self.assertEqual(inferred_input_dist_attrs[0]._partial_dims(), {1})
+        self.assertEqual(inferred_input_dist_attrs[1]._is_partial(), False)
+        self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
+        self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {1})
+
 
 if __name__ == "__main__":
     unittest.main()

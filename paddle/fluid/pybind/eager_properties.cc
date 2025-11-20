@@ -10,10 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <vector>
@@ -233,8 +229,8 @@ Examples:
 )DOC");
 PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
   EAGER_TRY
-  Py_INCREF(self);
-  return reinterpret_cast<PyObject*>(self);
+  paddle::Tensor new_tensor(self->tensor.impl());
+  return ToPyObject(new_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -315,8 +311,8 @@ int tensor_properties_set_grad(TensorObject* self,
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(
       grad != nullptr,
-      common::errors::Fatal("Detected NULL grad"
-                            "Please check if you have manually cleared"
+      common::errors::Fatal("Detected NULL grad. "
+                            "Please check if you have manually cleared "
                             "the grad inside autograd_meta"));
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
@@ -338,8 +334,8 @@ int tensor_properties_set_grad_(TensorObject* self,
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(
       grad != nullptr,
-      common::errors::Fatal("Detected NULL grad"
-                            "Please check if you have manually cleared"
+      common::errors::Fatal("Detected NULL grad. "
+                            "Please check if you have manually cleared "
                             "the grad inside autograd_meta"));
   *grad = src;
   return 0;

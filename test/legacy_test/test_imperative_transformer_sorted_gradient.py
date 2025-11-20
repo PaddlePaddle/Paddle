@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -1066,9 +1066,9 @@ class TransFormer(Layer):
         self._label_smooth_eps = label_smooth_eps
         self._trg_vocab_size = trg_vocab_size
         if weight_sharing:
-            assert (
-                src_vocab_size == trg_vocab_size
-            ), "Vocabularies in source and target should be same for weight sharing."
+            assert src_vocab_size == trg_vocab_size, (
+                "Vocabularies in source and target should be same for weight sharing."
+            )
         self._wrap_encoder_layer = WrapEncoderLayer(
             src_vocab_size,
             max_length,
@@ -1105,9 +1105,7 @@ class TransFormer(Layer):
         )
 
         if weight_sharing:
-            self._wrap_decoder_layer._prepare_decoder_layer._input_emb.weight = (
-                self._wrap_encoder_layer._prepare_encoder_layer._input_emb.weight
-            )
+            self._wrap_decoder_layer._prepare_decoder_layer._input_emb.weight = self._wrap_encoder_layer._prepare_encoder_layer._input_emb.weight
 
     def forward(self, enc_inputs, dec_inputs, label, weights):
         enc_output = self._wrap_encoder_layer(enc_inputs)
@@ -1260,8 +1258,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             )
             exe = base.Executor(
                 base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
+                if not (core.is_compiled_with_cuda() or is_custom_device())
+                else get_device_place()
             )
             optimizer = paddle.optimizer.SGD(learning_rate=0.003)
 

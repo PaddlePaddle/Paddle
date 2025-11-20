@@ -698,9 +698,17 @@ class TestUtilsMapAndPack(unittest.TestCase):
 
         dfs(nested_list_copy, nested_list_copy_pack_back)
 
+        dict_x = {
+            "a": paddle.to_tensor([1.0]),
+            "b": paddle.to_tensor([2.0]),
+            "c": paddle.to_tensor([3.0]),
+        }
+        dict_y = copy.deepcopy(dict_x)
+        dict_z = paddle.utils.pack_sequence_as(dict_x, dict_y)
+        dfs(dict_x, dict_z)
+
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
-
     def test_dict_input(self):
         # NOTE: This net cannot be executed, it is just
         # a special case for exporting models in model validation
@@ -756,7 +764,6 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
 
 
 class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
-
     def test_dict_input(self):
         net = LinearNetWithDictInputNoPrune(8, 8)
         temp_dir = tempfile.TemporaryDirectory()

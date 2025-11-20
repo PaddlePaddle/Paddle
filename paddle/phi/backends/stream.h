@@ -35,7 +35,7 @@ class Event;
 namespace stream {
 using stream_t = STREAM_TYPE;
 using StreamId = uint64_t;
-class Stream {
+class PADDLE_API Stream {
  public:
   enum class Priority : uint8_t {
     kNull = 0x0,

@@ -25,6 +25,10 @@ template <typename T, typename Context>
 void RealStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+    return;
+  }
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -50,6 +54,10 @@ template <typename T, typename Context>
 void ImagStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+    return;
+  }
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -77,8 +85,8 @@ PD_REGISTER_KERNEL(real,
                    CPU,
                    STRIDED,
                    phi::RealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -86,8 +94,8 @@ PD_REGISTER_KERNEL(imag,
                    CPU,
                    STRIDED,
                    phi::ImagStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -96,8 +104,8 @@ PD_REGISTER_KERNEL(real,
                    GPU,
                    STRIDED,
                    phi::RealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -105,19 +113,19 @@ PD_REGISTER_KERNEL(imag,
                    GPU,
                    STRIDED,
                    phi::ImagStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(real,
                    Custom,
                    STRIDED,
                    phi::RealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -125,8 +133,8 @@ PD_REGISTER_KERNEL(imag,
                    Custom,
                    STRIDED,
                    phi::ImagStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif

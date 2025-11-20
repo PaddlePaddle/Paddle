@@ -20,9 +20,9 @@
 #include <vector>
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 namespace phi {
 
 template <typename Context, typename T, size_t D>
@@ -57,6 +57,12 @@ void CropGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const IntArray& offsets,
                     DenseTensor* x_grad) {
+  // x[3, 5], shape[2, 0], out[2, 0]
+  if (out_grad.numel() == 0 && x_grad != nullptr) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   size_t rank = out_grad.dims().size();
   PADDLE_ENFORCE_GE(
       rank,

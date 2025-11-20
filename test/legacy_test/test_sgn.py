@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 from utils import static_guard
 
 import paddle
@@ -103,7 +103,7 @@ class TestSignAPI(unittest.TestCase):
 
     def test_float_dynamic(self):
         dtype_list = ['float32', 'float64']
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             dtype_list.append('float16')
         for dtype in dtype_list:
             np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
@@ -115,7 +115,7 @@ class TestSignAPI(unittest.TestCase):
 
     def test_float_static_and_pir(self):
         dtype_list = ['float32', 'float64']
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             dtype_list.append('float16')
         with static_guard():
             for dtype in dtype_list:
@@ -142,6 +142,37 @@ class TestSignAPI(unittest.TestCase):
                 (z,) = exe.run(train_program, feed={"X": np_x}, fetch_list=[z])
                 z_expected = np_sgn(np_x)
                 np.testing.assert_allclose(z, z_expected, rtol=1e-05)
+
+    def test_zero_size_complex_dynamic(self):
+        for dtype in ['complex64', 'complex128']:
+            np_x = np.empty((0, 4), dtype=dtype)  # 空张量 shape=[0, 4]
+            x = paddle.to_tensor(np_x)
+            z = paddle.sgn(x)
+            np_z = z.numpy()
+            z_expected = np_sgn(np_x)
+            np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
+            np.testing.assert_equal(np_z.shape, (0, 4))
+
+    def test_zero_size_complex_static_and_pir(self):
+        with static_guard():
+            for dtype in ['complex64', 'complex128']:
+                exe = paddle.static.Executor()
+                train_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with paddle.static.program_guard(
+                    train_program, startup_program
+                ):
+                    x = paddle.static.data(name='X', shape=[0, 4], dtype=dtype)
+                    z = paddle.sgn(x)
+
+                exe.run(startup_program)
+                x_np = np.empty((0, 4), dtype=dtype)
+                (z_out,) = exe.run(
+                    train_program, feed={"X": x_np}, fetch_list=[z]
+                )
+                z_expected = np_sgn(x_np)
+                np.testing.assert_allclose(z_out, z_expected, rtol=1e-05)
+                np.testing.assert_equal(z_out.shape, (0, 4))
 
 
 if __name__ == "__main__":

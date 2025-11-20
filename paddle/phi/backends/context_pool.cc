@@ -16,12 +16,16 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 
+COMMON_DECLARE_bool(use_default_stream);
+
 namespace phi {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 bool allow_tf32_cublas = true;
 void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
 bool AllowTF32Cublas() { return allow_tf32_cublas; }
@@ -108,7 +112,8 @@ DeviceContextPool::DeviceContextPool(const std::vector<phi::Place>& places) {
       &device_contexts_,
       places,
       /*disable_setting_default_stream_for_allocator=*/false,
-      /*stream_priority=*/0);
+      /*stream_priority=*/0,
+      FLAGS_use_default_stream);
 }
 
 }  // namespace phi

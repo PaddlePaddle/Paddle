@@ -42,11 +42,9 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
     case phi::DataType::INT8:
       nv_type = nvinfer1::DataType::kINT8;
       break;
-#if IS_TRT_VERSION_GE(7000)
     case phi::DataType::BOOL:
       nv_type = nvinfer1::DataType::kBOOL;
       break;
-#endif
     default:
       common::errors::InvalidArgument(
           "Paddle-TRT loads weights failed, found not supported data type %s.",
@@ -521,7 +519,7 @@ bool TensorRTEngine::SetRefitWeights(
 bool TensorRTEngine::FinalizeRefit() {
   PADDLE_ENFORCE_NOT_NULL(
       infer_refitter_,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Refit is not initialize.Make sure you enabled refit."));
   int missing_count = infer_refitter_->getMissingWeights(0, nullptr);
   VLOG(3) << "missing_count" << missing_count;
@@ -916,7 +914,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
                         "twice in TRT OP converter.",
                         name_with_suffix));
 
-  if (weight_tensor.place() == PlaceType::kGPU ||
+  if (phi::is_gpu_place(weight_tensor.place()) ||
       weight_tensor.dtype() != phi::DataType::FLOAT32) {
     weight_map[name_with_suffix].reset(new phi::DenseTensor());
     weight_map[name_with_suffix]->Resize(weight_tensor.dims());
@@ -956,7 +954,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     weight.SetDataType(phi::DataType::INT32);
     weight.SetValues(int32_data);
   } else {
-    if (weight_tensor.place() == PlaceType::kGPU) {
+    if (phi::is_gpu_place(weight_tensor.place())) {
       paddle::framework::TensorCopySync(
           weight_tensor, cpu_place, weight_map[name_with_suffix].get());
       weight.SetDataType(weight_tensor.dtype());

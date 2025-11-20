@@ -432,4 +432,4 @@ PD_REGISTER_KERNEL(fused_attention,
                    ALL_LAYOUT,
                    phi::FusedAttentionKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

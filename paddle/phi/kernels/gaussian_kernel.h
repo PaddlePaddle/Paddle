@@ -21,16 +21,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& ctx,
-                    const IntArray& shape,
-                    float mean,
-                    float std,
-                    int seed,
-                    DataType dtype,
-                    DenseTensor* out);
+PADDLE_API void GaussianKernel(const Context& dev_ctx,
+                               const IntArray& shape,
+                               float mean,
+                               float std,
+                               int seed,
+                               DataType dtype,
+                               DenseTensor* out);
 
 template <typename T, typename Context>
-void GaussianInplaceKernel(const Context& ctx,
+void GaussianInplaceKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            float mean,
                            float std,

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -52,6 +53,11 @@ void ConcatGradKernel(const Context& dev_ctx,
       ptrs[j] = reinterpret_cast<XPUType*>(outs[j]->data<T>());
     }
   }
+  // if the out_grad.numel() == 0 ,the all x and x_grad must be zero size
+  // tensor, so just return
+  if (out_grad.numel() == 0) {
+    return;
+  }
   PADDLE_ENFORCE_GE(axis,
                     0,
                     common::errors::InvalidArgument(
@@ -83,14 +89,25 @@ void ConcatGradKernel(const Context& dev_ctx,
   }
   xdims_list[axis] = total_length;
 
-  int r =
-      xpu::split<XPUType>(dev_ctx.x_context(),
-                          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-                          ptrs,
-                          xdims_list,
-                          split_list,
-                          axis);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat_grad");
+  std::vector<XPUType*> ptrs_nozero;
+  std::vector<int64_t> split_list_nozero;
+  for (size_t i = 0; i < x.size(); i++) {
+    if (split_list[i] != 0) {
+      ptrs_nozero.push_back(ptrs[i]);
+      split_list_nozero.push_back(split_list[i]);
+    }
+  }
+
+  if (ptrs_nozero.size() != 0) {
+    int r = xpu::split<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        ptrs_nozero,
+        xdims_list,
+        split_list_nozero,
+        axis);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat_grad");
+  }
 }
 
 }  // namespace phi
@@ -100,5 +117,5 @@ PD_REGISTER_KERNEL(concat_grad,
                    ALL_LAYOUT,
                    phi::ConcatGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -20,7 +20,7 @@ namespace paddle {
 namespace platform {
 
 // Used to restore the initial value at the end of the scope.
-class ScopedRestoreFlushDenormalState {
+class PADDLE_API ScopedRestoreFlushDenormalState {
  public:
   ScopedRestoreFlushDenormalState();
   ~ScopedRestoreFlushDenormalState();
@@ -31,7 +31,7 @@ class ScopedRestoreFlushDenormalState {
   DISABLE_COPY_AND_ASSIGN(ScopedRestoreFlushDenormalState);
 };
 
-class ScopedFlushDenormal {
+class PADDLE_API ScopedFlushDenormal {
  public:
   ScopedFlushDenormal();
 

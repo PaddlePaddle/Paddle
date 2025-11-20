@@ -39,6 +39,10 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   scale->Resize({static_cast<int64_t>(n)});
 
   dev_ctx.template Alloc<float>(scale);
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<int8_t>(out);
+    return;
+  }
 
   if (algo == "weight_only_int8") {
     out->Resize({static_cast<int64_t>(k), static_cast<int64_t>(n)});
@@ -69,5 +73,5 @@ PD_REGISTER_KERNEL(weight_quantize,
                    XPU,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

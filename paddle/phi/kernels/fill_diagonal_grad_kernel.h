@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FillDiagonalGradKernel(const Context& ctx,
+void FillDiagonalGradKernel(const Context& dev_ctx,
                             const DenseTensor& out_grad,
                             float value,
                             int offset,

@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 from scipy import special
 
 import paddle
-from paddle.base import core
 
 np.random.seed(42)
 paddle.seed(42)
@@ -45,18 +43,9 @@ class Testi1API(unittest.TestCase):
 
     def setUp(self):
         self.x = np.array(self.DATA).astype(self.DTYPE)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
-
         def run(place):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
@@ -154,6 +143,27 @@ class TestI1Op(OpTest):
         self.case = np.concatenate([zero_case, rand_case, over_eight_case])
         self.inputs = {'x': self.case}
         self.target = reference_i1(self.inputs['x'])
+
+
+class TestI1Op_ZeroSize(OpTest):
+    def setUp(self) -> None:
+        self.__class__.op_type = "i1"
+        self.op_type = "i1"
+        self.python_api = paddle.i1
+        self.init_config()
+        x = np.random.randn(3, 4, 0)
+        self.inputs = {'x': x.astype(self.dtype)}
+        self.attrs = {}
+        self.outputs = {'out': special.i1(x)}
+
+    def init_config(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['x'], 'out')
 
 
 if __name__ == "__main__":

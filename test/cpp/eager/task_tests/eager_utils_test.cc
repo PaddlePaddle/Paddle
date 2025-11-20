@@ -429,5 +429,123 @@ TEST(EagerUtils, FillZeroForEmptyOptionalGradInput) {
   EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0], slot_metas[0]);
   eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
+TEST(EagerUtils, SetTensorName) {
+  std::string unique_api_name = "Test";
+  std::string var_name = "out";
+  phi::DDim ddim = common::make_ddim({2, 4, 4, 4});
+  std::vector<paddle::Tensor> tensors = {CreateTestCPUTensor(1.0f, ddim),
+                                         CreateTestCPUTensor(2.0f, ddim)};
+  paddle::optional<paddle::Tensor> optional_t;
+  optional_t = tensors[0];
+  paddle::Tensor* t = &(optional_t.get());
 
+  auto generate_tensor_name = [](const std::string& unique_api_name,
+                                 const std::string& var_name,
+                                 const paddle::Tensor* t) {
+    std::ostringstream oss;
+    oss << unique_api_name << "_" << var_name << "_" << t->dtype() << "_";
+    for (int i = 0; i < t->dims().size(); ++i) {
+      if (i != 0) {
+        oss << "x";
+      }
+      oss << t->dims()[i];
+    }
+    return oss.str();
+  };
+  // Gen refer name
+  std::string refer_name = generate_tensor_name(unique_api_name, var_name, t);
+  // test paddle::optional<paddle::Tensor>* tensor
+  egr::SetTensorName(unique_api_name, var_name, &optional_t);
+  ASSERT_TRUE(t->name() == refer_name);
+  refer_name =
+      generate_tensor_name(unique_api_name, var_name + std::to_string(0), t);
+  // test std::vector<paddle::Tensor>* tensors
+  egr::SetTensorName(unique_api_name, var_name, &tensors);
+  ASSERT_TRUE(tensors[0].name() == refer_name);
+  // test paddle::optional<std::vector<paddle::Tensor>>* tensors
+  paddle::optional<std::vector<paddle::Tensor>> opt_tensors = tensors;
+  egr::SetTensorName(unique_api_name, var_name, &opt_tensors);
+  ASSERT_TRUE(tensors[0].name() == refer_name);
+}
+TEST(EagerUtils, SetGradTensorName) {
+  phi::DDim ddim = common::make_ddim({2, 4});
+  std::vector<paddle::Tensor> tensors = {CreateTestCPUTensor(1.0f, ddim)};
+  paddle::small_vector<std::vector<GradSlotMeta>, egr::kSlotSmallVectorSize>
+      slot_metas = {std::vector<GradSlotMeta>(1)};
+
+  phi::DenseTensorMeta tensor_meta;
+  tensor_meta.dtype = phi::DataType::FLOAT32;
+  tensor_meta.dims = {2, 4};
+  slot_metas[0][0].SetTensorMeta(tensor_meta);
+  slot_metas[0][0].SetPlace(phi::CPUPlace());
+
+  egr::SetGradTensorName(&tensors, 0, slot_metas);
+  std::string refer_name = "@Grad";
+  ASSERT_TRUE(tensors[0].name() == refer_name);
+}
+
+TEST(EagerUtils, SaveTensorMD5CheckSumToFile) {
+#define EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(t)              \
+  try {                                                         \
+    egr::SaveTensorMD5CheckSumToFile("", t);                    \
+    FAIL() << "Expected std::exception";                        \
+  } catch (const std::exception& e) {                           \
+    std::string error_str = e.what();                           \
+    EXPECT_NE(error_str.find("Cannot open file  for writing."), \
+              std::string::npos);                               \
+  } catch (...) {                                               \
+    FAIL() << "Unexpected error";                               \
+  }
+
+#define EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(t)                \
+  try {                                                           \
+    egr::SaveTensorMD5CheckSumToFile("test_md5_checksum.txt", t); \
+  } catch (const std::exception& e) {                             \
+    FAIL() << "Unexpected error: " << e.what();                   \
+  } catch (...) {                                                 \
+    FAIL() << "Unexpected error";                                 \
+  }
+
+  // Test the invalid file name
+  phi::DDim ddim = common::make_ddim({20, 40});
+  paddle::Tensor t = CreateTestCPUTensor(1.0f, ddim);
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(t)
+  paddle::optional<paddle::Tensor> optional_t;
+  optional_t = CreateTestCPUTensor<double>(1.0, ddim);
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(optional_t)
+  // Test the vector input
+  std::vector<paddle::Tensor> tensors = {CreateTestCPUTensor<int64_t>(1, ddim),
+                                         CreateTestCPUTensor<int64_t>(1, ddim)};
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(tensors)
+  paddle::optional<std::vector<paddle::Tensor>> opt_tensors =
+      std::vector<paddle::Tensor>{CreateTestCPUTensor<bool>(true, ddim),
+                                  CreateTestCPUTensor<bool>(false, ddim)};
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(opt_tensors)
+  // test the different data type
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(CreateTestCPUTensor<int>(1, ddim))
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
+      CreateTestCPUTensor<phi::float16>(static_cast<phi::float16>(1), ddim))
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
+      CreateTestCPUTensor<int32_t>(static_cast<int32_t>(1), ddim))
+#if defined(PADDLE_WITH_CUDA)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
+      CreateTestCPUTensor<phi::bfloat16>(static_cast<phi::bfloat16>(1), ddim))
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(
+      CreateTestCPUTensor<phi::float8_e4m3fn>(
+          static_cast<phi::float8_e4m3fn>(1), ddim))
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_FAILURE(CreateTestCPUTensor<phi::float8_e5m2>(
+      static_cast<phi::float8_e5m2>(1), ddim))
+#endif
+
+#ifndef _WIN32
+  // test save to file
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(t)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(optional_t)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(tensors)
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(opt_tensors)
+  // test Fake dist tensor
+  t.set_impl(std::make_shared<phi::distributed::DistTensor>());
+  EXPECT_SAVE_TENSOR_MD5_CHECKSUM_SUCCESS(t)
+#endif
+}
 }  // namespace egr

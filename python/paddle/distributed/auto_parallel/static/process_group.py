@@ -89,9 +89,9 @@ def new_process_group(
 class ProcessGroup:
     def __init__(self, group_id, ranks, group_type=None):
         if group_id == 0 and get_process_group(0) is not None:
-            assert (
-                group_id != 0
-            ), "Process group id 0 is reserved for all ranks."
+            assert group_id != 0, (
+                "Process group id 0 is reserved for all ranks."
+            )
         self._group_id = group_id
         self._ranks = ranks
         # Add the current ranks into group 0
@@ -121,9 +121,9 @@ class ProcessGroup:
         if set(new_ranks) <= set(self.ranks):
             return
         else:
-            assert (
-                not self.is_instantiate()
-            ), "Cannot add new ranks after instantiating the process group"
+            assert not self.is_instantiate(), (
+                "Cannot add new ranks after instantiating the process group"
+            )
         self._ranks.extend(new_ranks)
         self._ranks = list(set(self.ranks))
 

@@ -50,6 +50,11 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
+  if (in_process_ids.size() == 1) {
+    SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
+    return;
+  }
   const auto& in_partial_status = in_dist_attr.partial_status();
   auto in_reduce_type = in_partial_status.at(0);
   bool reduce_mean = false;

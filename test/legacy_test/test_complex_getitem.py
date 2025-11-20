@@ -12,27 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 import paddle.base.dygraph as dg
-from paddle import base
 
 
 class TestComplexGetitemLayer(unittest.TestCase):
     def setUp(self):
-        self._places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self._places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self._places.append(base.CUDAPlace(0))
+        self._places = get_places()
 
     def test_case1(self):
         x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)

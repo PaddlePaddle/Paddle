@@ -24,14 +24,18 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 class TestGatherAddTransposePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, [
-            "transpose2",
-            "gather",
-            "transpose2",
-            "gather",
-            "squeeze2",
-            "squeeze2",
-        ], (1e-3, 1e-3)
+        yield (
+            config,
+            [
+                "transpose2",
+                "gather",
+                "transpose2",
+                "gather",
+                "squeeze2",
+                "squeeze2",
+            ],
+            (1e-3, 1e-3),
+        )
 
     def sample_program_config(self, draw):
         x_shape = draw(
@@ -97,7 +101,7 @@ class TestGatherAddTransposePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, max_examples=25, passes=["gather_squeeze_pass"]
         )
 

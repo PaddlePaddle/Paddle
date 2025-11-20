@@ -253,6 +253,17 @@ CreateGroupShapeOrDataExprs(
     InferSymbolicShapeForOperation(op, &local_shape_analysis);
   }
 
+  auto broadcast_contains = [](const symbol::DimExpr& dimexpr,
+                               const symbol::DimExpr& target) {
+    auto broadcast =
+        std::get_if<symbol::Broadcast<symbol::DimExpr>>(&dimexpr.variant());
+    if (broadcast == nullptr) return false;
+    for (const auto& operand : *(broadcast->operands)) {
+      if (operand == target) return true;
+    }
+    return false;
+  };
+
   // Add shape constraints after infer.
   auto& mut_substitute_dimexpr_map = group->mut_substitute_dimexpr_map();
   for (auto* op : group->ops()) {
@@ -264,7 +275,9 @@ CreateGroupShapeOrDataExprs(
       if (global_result_shape.size() != local_result_shape.size()) continue;
       for (size_t i = 0; i < global_result_shape.size(); ++i) {
         if (global_result_shape[i] != local_result_shape[i] &&
-            !global_result_shape[i].isa<std::int64_t>()) {
+            !global_result_shape[i].isa<std::int64_t>() &&
+            !broadcast_contains(local_result_shape[i],
+                                global_result_shape[i])) {
           mut_substitute_dimexpr_map[global_result_shape[i]] =
               local_result_shape[i];
         }

@@ -37,6 +37,8 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
@@ -227,9 +229,9 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
     }
   }
 
-  // Step3: Mark is_run_mkldnn_kernel=true
+  // Step3: Mark is_run_onednn_kernel=true
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
-  new_config.is_run_mkldnn_kernel = true;
+  new_config.is_run_onednn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
 
   // Step4: Handle skip_transform_inputs
@@ -258,6 +260,11 @@ OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
 }
 
 void OneDNNLegacyKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNLegacyKernelInstruction " + legacy_op_name_ +
+                   " begin");
+  }
+
   // Step1. TransLayout
   auto inputs = kernel_context_->InNameList();
   for (auto& input_name : inputs) {
@@ -311,5 +318,10 @@ void OneDNNLegacyKernelInstruction::Run() {
   // Step3. Run kernel
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNLegacyKernelInstruction " + legacy_op_name_ +
+                   " finish");
+  }
 }
 }  // namespace paddle::framework

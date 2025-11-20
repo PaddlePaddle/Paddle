@@ -20,8 +20,13 @@ os.environ['FLAGS_new_einsum'] = "0"
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
-from test_sparse_attention_op import get_cuda_version
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.incubate.nn.functional as F
@@ -30,7 +35,8 @@ from paddle.base import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "Paddle is not compiled with CUDA",
 )
 class TestFusedGateAttentionOp(OpTest):
     def setUp(self):
@@ -115,7 +121,7 @@ class TestFusedGateAttentionOp(OpTest):
         return outputs
 
     def get_reference_out(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
 
         query = paddle.to_tensor(self.query, stop_gradient=False)
         key = (
@@ -230,7 +236,7 @@ class TestFusedGateAttentionOp(OpTest):
         )
 
     def get_fused_gate_attention_out(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
 
         query = paddle.to_tensor(self.query, stop_gradient=False)
         if self.merge_qkv:
@@ -391,7 +397,7 @@ class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
         self.dtype = "float16"
 
     def test_output_and_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_and_grad(atol=1e-1, rtol=1e-5)
 
@@ -404,7 +410,7 @@ class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11000
+    or paddle.is_compiled_with_rocm()
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
@@ -474,7 +480,7 @@ class TestFusedGateAttentionApi(unittest.TestCase):
         ]
 
     def test_api(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             pass
 
         query = paddle.rand(shape=self.query_shape, dtype="float32")

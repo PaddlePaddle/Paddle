@@ -52,6 +52,14 @@ Result<axpr::Value> ForEach(axpr::InterpreterBase<axpr::Value>* interpreter,
                             const axpr::Value&,
                             const std::vector<axpr::Value>& args);
 
+Result<axpr::Value> GetRegistry(axpr::InterpreterBase<axpr::Value>* interpreter,
+                                const axpr::Value&,
+                                const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> Sorted(axpr::InterpreterBase<axpr::Value>* interpreter,
+                           const axpr::Value&,
+                           const std::vector<axpr::Value>& args);
+
 Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
                         const axpr::Value&,
                         const std::vector<axpr::Value>& args);
@@ -76,9 +84,6 @@ Result<axpr::Value> Reduce(axpr::InterpreterBase<axpr::Value>* interpreter,
                            const std::vector<axpr::Value>& args);
 
 Result<axpr::Value> Max(const axpr::Value&,
-                        const std::vector<axpr::Value>& args);
-
-Result<axpr::Value> Min(const axpr::Value&,
                         const std::vector<axpr::Value>& args);
 
 Result<axpr::Value> Min(const axpr::Value&,

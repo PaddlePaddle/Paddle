@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/cinn/backends/extern_func_jit_register.h"
-// todo : hip bf16 and fp16
+#include "paddle/cinn/common/float16.h"
 // #define CINN_HIP_BF16
-// #define CINN_HIP_FP16
+#define CINN_HIP_FP16
+
+using cinn::common::float16;
 
 CINN_REGISTER_HELPER(hip_intrinsics_reduce) {
   auto target = cinn::common::DefaultHygonDcuHipTarget();

@@ -119,7 +119,7 @@ class TestAccuracy(unittest.TestCase):
         acc_np = acc_np[0] if len(acc_np) == 1 else acc_np
 
         # check shape and results
-        self.assertEqual(correct.shape, list(x_np.shape)[:-1] + [max(k)])
+        self.assertEqual(correct.shape, [*list(x_np.shape)[:-1], max(k)])
         self.assertEqual(m.update(correct), acc_np)
         self.assertEqual(m.accumulate(), acc_np)
 

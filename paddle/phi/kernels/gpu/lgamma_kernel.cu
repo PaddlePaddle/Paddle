@@ -34,6 +34,9 @@ void LgammaKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   // XKTODO( add gpu kernel implementation. )
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaLgammaFunctor<T>();
@@ -47,5 +50,5 @@ PD_REGISTER_KERNEL(lgamma,
                    phi::LgammaKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

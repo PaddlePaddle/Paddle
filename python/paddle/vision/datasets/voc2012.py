@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import io
 import tarfile
-from typing import TYPE_CHECKING, Any, Literal, Tuple
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from PIL import Image
@@ -51,7 +51,7 @@ CACHE_DIR = 'voc2012'
 MODE_FLAG_MAP = {'train': 'trainval', 'test': 'train', 'valid': "val"}
 
 
-class VOC2012(Dataset[Tuple["_ImageDataType", "npt.NDArray[Any]"]]):
+class VOC2012(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
     """
     Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset.
 
@@ -152,9 +152,9 @@ class VOC2012(Dataset[Tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert (
-                download
-            ), "data_file is not set and downloading automatically is disabled"
+            assert download, (
+                "data_file is not set and downloading automatically is disabled"
+            )
             self.data_file = _check_exists_and_download(
                 data_file, VOC_URL, VOC_MD5, CACHE_DIR, download
             )

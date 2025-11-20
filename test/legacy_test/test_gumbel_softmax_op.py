@@ -13,7 +13,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 import paddle.nn.functional as F
@@ -146,10 +146,10 @@ class TestGumbelSoftmaxFP16OP5(TestGumbelSoftmaxOp):
 class TestGumbelSoftmaxOpSampleDistribution(OpTest):
     def softmax(self, x):
         x_row_max = x.max(axis=-1)
-        x_row_max = x_row_max.reshape(list(x.shape)[:-1] + [1])
+        x_row_max = x_row_max.reshape([*list(x.shape)[:-1], 1])
         x = x - x_row_max
         x_exp = np.exp(x)
-        x_exp_row_sum = x_exp.sum(axis=-1).reshape(list(x.shape)[:-1] + [1])
+        x_exp_row_sum = x_exp.sum(axis=-1).reshape([*list(x.shape)[:-1], 1])
         softmax = x_exp / x_exp_row_sum
         return softmax
 
@@ -226,11 +226,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
         self.count_expected = 24
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_check_api(self):
         # test static api

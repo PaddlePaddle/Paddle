@@ -22,16 +22,16 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void I0eGradKernel(const Context& ctx,
+void I0eGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& out,
                    const DenseTensor& out_grad,
                    DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   std::vector<const DenseTensor*> ins = {&x, &out, &out_grad};
   std::vector<DenseTensor*> outs = {x_grad};
   auto functor = CudaI0eGradFunctor<T>();
-  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

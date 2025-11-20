@@ -47,21 +47,21 @@ static const char kScaleAndZeroPointParamAttr[] =
 
 enum FuseOptions {
   DO_NOT_FUSE,  // fusing will not be done
-  FUSE_NATIVE,  // fusing will be done without MKL-DNN
-  FUSE_MKLDNN   // fusing will be done with MKL-DNN
+  FUSE_NATIVE,  // fusing will be done without ONE-DNN
+  FUSE_ONEDNN   // fusing will be done with ONE-DNN
 };
 
 class FusePassBase : public OpCompatSensiblePass {
  public:
-  void Init(const std::string& repr, Graph* graph) const;
-  Scope* param_scope() const;
-  void AddStatis(int count_of_fused) const;
+  PADDLE_API void Init(const std::string& repr, Graph* graph) const;
+  PADDLE_API Scope* param_scope() const;
+  PADDLE_API void AddStatis(int count_of_fused) const;
 
   virtual ~FusePassBase() {}
 
  protected:
-  virtual FuseOptions FindFuseOption(const Node& node1,
-                                     const Node& node2) const;
+  PADDLE_API virtual FuseOptions FindFuseOption(const Node& node1,
+                                                const Node& node2) const;
 
   mutable Graph* graph_;
   mutable std::string repr_;

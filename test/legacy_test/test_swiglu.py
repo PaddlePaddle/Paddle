@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    check_cudnn_version_and_compute_capability,
+    get_device,
+    is_custom_device,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -47,7 +52,7 @@ def swiglu(x, y, out_grad):
     need_convert = False
     assert dtype == y.dtype
     output_dtype = dtype
-    if paddle.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda() or is_custom_device():
         if dtype in [paddle.float16, paddle.bfloat16]:
             output_dtype = paddle.float32
             x = x.astype(output_dtype)
@@ -76,7 +81,7 @@ def fused_swiglu(x, y, out_grad):
     out.backward(out_grad)
 
     output_dtype = x.dtype
-    if paddle.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda() or is_custom_device():
         if x.dtype in [paddle.float16, paddle.bfloat16]:
             output_dtype = paddle.float32
     ret = [
@@ -123,13 +128,14 @@ class TestSwiGLUDygraph(unittest.TestCase):
 
     def check_dygraph(self, shape):
         metas = [('cpu', paddle.float32), ('cpu', paddle.float64)]
-        if paddle.is_compiled_with_cuda():
-            metas.append(('gpu', paddle.float32))
-            metas.append(('gpu', paddle.float64))
-            metas.append(('gpu', paddle.float16))
-            prop = paddle.device.cuda.get_device_properties()
-            if prop.major >= 8:
-                metas.append(('gpu', paddle.bfloat16))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            metas.append((get_device(), paddle.float32))
+            metas.append((get_device(), paddle.float64))
+            metas.append((get_device(), paddle.float16))
+            if check_cudnn_version_and_compute_capability(
+                min_device_capability=8
+            ):
+                metas.append((get_device(), paddle.bfloat16))
 
         for device, dtype in metas:
             origin_device = paddle.get_device()
@@ -232,7 +238,7 @@ class TestSwigluOp2(TestSwigluOp):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_dist(),
+    not (paddle.base.core.is_compiled_with_dist() or is_custom_device()),
     "The spmd rule is should be tested with distributed=ON",
 )
 class TestSwigluSpmd(unittest.TestCase):
@@ -279,7 +285,8 @@ class TestSwigluSpmd(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "mamtul 0 size only with in cuda"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "mamtul 0 size only with in cuda",
 )
 class TestSwiglu0SizeDygraph(unittest.TestCase):
     def test_swiglu(self):
@@ -295,6 +302,59 @@ class TestSwiglu0SizeDygraph(unittest.TestCase):
 
         self.assertEqual(out[0].shape, x.shape)
         self.assertEqual(out[1].shape, y.shape)
+
+
+class TestSwigluOp_ZeroSize(OpTest):
+    def config(self):
+        self.x_shape = (0, 128)
+        self.y_shape = (1, 128)
+        self.out_shape = (0, 128)
+
+    def setUp(self):
+        self.config()
+        self.op_type = "swiglu"
+        self.python_api = fused_swiglu_impl
+        self.public_python_api = fused_swiglu_impl
+        x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        y = np.random.uniform(-1, 1, self.y_shape).astype("float64")
+        out_grad = np.random.uniform(-1, 1, self.out_shape).astype("float64")
+        res = swiglu(x, y, out_grad)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': res[0].numpy()}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x', 'y'],
+            'out',
+        )
+
+
+class TestSwigluOp_ZeroSize2(TestSwigluOp_ZeroSize):
+    def config(self):
+        self.x_shape = (1, 128)
+        self.y_shape = (0, 128)
+        self.out_shape = (0, 128)
+
+
+class TestSwigluOp_ZeroSize3(TestSwigluOp_ZeroSize):
+    def config(self):
+        self.x_shape = (0, 128)
+        self.y_shape = (0, 128)
+        self.out_shape = (0, 128)
+
+
+class TestSwigluGradOp(unittest.TestCase):
+    def test_swiglu_grad(self):
+        x = paddle.randn([10, 2]).astype("float32")
+        out_grad = paddle.randn([10, 2]).astype("float32")
+        x_grad, y_grad = paddle._C_ops.swiglu_grad(x, None, out_grad)
+        self.assertFalse(
+            paddle.all(x_grad == 0).item(), "x_grad should not be all zero"
+        )
+        # y_grad is not initialized when y is none
 
 
 if __name__ == "__main__":

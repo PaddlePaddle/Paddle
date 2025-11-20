@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -28,7 +28,7 @@ def paddle_dropout_add(x, y, p=0.5, training=True, mode="upscale_in_train"):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA ",
 )
 class TestFusedDropoutAdd(unittest.TestCase):
@@ -89,7 +89,8 @@ class TestFusedDropoutAdd(unittest.TestCase):
 
 def create_test_class(parent, dtype, mode, training, p, seed):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestFusedDropoutAddCase(parent):
         def setUp(self):
@@ -116,11 +117,12 @@ for dtype in ["float64", "float32", "float16"]:
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA ",
 )
 class TestFusedDropoutAddStatic(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 80, 8, 2)
         self.dtype = 'float16'
 

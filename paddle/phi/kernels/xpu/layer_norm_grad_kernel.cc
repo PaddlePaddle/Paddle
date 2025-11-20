@@ -16,11 +16,12 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
 template <typename T, typename TW, typename Context>  // TW for scale and bias
-void LayerNormGradImpl(const Context& ctx,
+void LayerNormGradImpl(const Context& dev_ctx,
                        const DenseTensor& x,
                        const paddle::optional<DenseTensor>& scale,
                        const paddle::optional<DenseTensor>& bias,
@@ -32,6 +33,21 @@ void LayerNormGradImpl(const Context& ctx,
                        DenseTensor* x_grad,
                        DenseTensor* scale_grad,
                        DenseTensor* bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (scale_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(scale_grad->dims())),
+          0,
+          scale_grad);
+    if (bias_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
+    return;
+  }
   const auto* scale_ptr = scale.get_ptr();
   using XPUType = typename XPUTypeTrait<T>::Type;
   using XPUTypeTW = typename XPUTypeTrait<TW>::Type;
@@ -44,28 +60,28 @@ void LayerNormGradImpl(const Context& ctx,
   const auto* mean_data = mean.data<float>();
   const auto* variance_data = variance.data<float>();
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   T* x_grad_data = nullptr;
   const TW* scale_data = nullptr;
   TW* scale_grad_data = nullptr;
   TW* bias_grad_data = nullptr;
   if (x_grad != nullptr) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     x_grad_data = x_grad->data<T>();
   }
   if (scale_ptr != nullptr) {
     scale_data = scale_ptr->data<TW>();
     if (scale_grad != nullptr) {
-      ctx.template Alloc<TW>(scale_grad);
+      dev_ctx.template Alloc<TW>(scale_grad);
       scale_grad_data = scale_grad->data<TW>();
     }
   }
   if (bias_grad != nullptr) {
-    ctx.template Alloc<TW>(bias_grad);
+    dev_ctx.template Alloc<TW>(bias_grad);
     bias_grad_data = bias_grad->data<TW>();
   }
-  int r = xpu::layer_norm_grad(ctx.x_context(),
+  int r = xpu::layer_norm_grad(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x_data),
                                reinterpret_cast<const XPUType*>(out_grad_data),
                                reinterpret_cast<XPUType*>(x_grad_data),
@@ -81,7 +97,7 @@ void LayerNormGradImpl(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void LayerNormGradKernel(const Context& ctx,
+void LayerNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& scale,
                          const paddle::optional<DenseTensor>& bias,
@@ -116,7 +132,7 @@ void LayerNormGradKernel(const Context& ctx,
   }
 
   if (is_scale_bias_same_dtype_with_x) {
-    LayerNormGradImpl<T, T, Context>(ctx,
+    LayerNormGradImpl<T, T, Context>(dev_ctx,
                                      x,
                                      scale,
                                      bias,
@@ -129,7 +145,7 @@ void LayerNormGradKernel(const Context& ctx,
                                      scale_grad,
                                      bias_grad);
   } else {
-    LayerNormGradImpl<T, float, Context>(ctx,
+    LayerNormGradImpl<T, float, Context>(dev_ctx,
                                          x,
                                          scale,
                                          bias,
@@ -150,8 +166,8 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    ALL_LAYOUT,
                    phi::LayerNormGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

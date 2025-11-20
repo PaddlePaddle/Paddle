@@ -58,9 +58,6 @@ function do_cpython_build {
     find / -name 'libpython*.so*'
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as bin/python.
-    if [ -e ${prefix}/bin/python3.8 ]; then
-        ln -s python3.8 ${prefix}/bin/python
-    fi
     if [ -e ${prefix}/bin/python3.9 ]; then
         ln -s python3.9 ${prefix}/bin/python
     fi
@@ -115,7 +112,7 @@ function build_cpythons {
 
 PYTHON_DOWNLOAD_URL=https://www.python.org/ftp/python
 GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py
-CPYTHON_VERSIONS="3.13.0 3.12.0 3.11.0 3.10.0 3.9.0 3.8.0"
+CPYTHON_VERSIONS="3.13.0 3.12.0 3.11.0 3.10.0 3.9.0"
 
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS
@@ -123,7 +120,6 @@ build_cpythons $CPYTHON_VERSIONS
 
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS
-#PY38_BIN=/opt/python/cp38-cp38/bin
 #PY39_BIN=/opt/python/cp39-cp39/bin
 #PY310_BIN=/opt/python/cp310-cp310/bin
 #PY311_BIN=/opt/python/cp311-cp311/bin

@@ -33,9 +33,15 @@ __global__ void YoloBoxHeadCudaKernel(const T* input,
                                       const int grid_size_y,
                                       const int class_num,
                                       const int anchors_num) {
-  int x_id = blockIdx.x * blockDim.x + threadIdx.x;
-  int y_id = blockIdx.y * blockDim.y + threadIdx.y;
-  int z_id = blockIdx.z * blockDim.z + threadIdx.z;
+  int64_t x_id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
+  int64_t y_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+      static_cast<int64_t>(threadIdx.y);
+  int64_t z_id =
+      static_cast<int64_t>(blockIdx.z) * static_cast<int64_t>(blockDim.z) +
+      static_cast<int64_t>(threadIdx.z);
   if ((x_id >= grid_size_x) || (y_id >= grid_size_y) || (z_id >= anchors_num)) {
     return;
   }

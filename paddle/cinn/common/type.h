@@ -21,6 +21,8 @@
 #include "paddle/cinn/common/bfloat16.h"
 #include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/common/float16_bfloat16_utils.h"
+#include "paddle/cinn/common/float8e4m3.h"
+#include "paddle/cinn/common/float8e4m3_utils.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
@@ -58,8 +60,8 @@ struct Type {
     FP16,
     BF16,
     // for FP8 in future
-    // E5M2,
-    // E4M3,
+    // F8E5M2,
+    F8E4M3,
   };
 
   //! type decorators in C++, the different code can used together.
@@ -89,6 +91,8 @@ struct Type {
   CINN_NODISCARD bool is_scalar() const;
   CINN_NODISCARD bool is_float(
       int bits = -1, specific_type_t st = specific_type_t::None) const;
+  CINN_NODISCARD bool is_float8e4m3() const;
+  CINN_NODISCARD bool is_float8e5m2() const;
   CINN_NODISCARD bool is_float16() const;
   CINN_NODISCARD bool is_bfloat16() const;
   CINN_NODISCARD bool is_int(int bits = -1) const;
@@ -175,6 +179,9 @@ inline Type UInt(int bits, int lanes = 1) {
 inline Type BFloat16(int lanes = 1) {
   return Type(Type::type_t ::Float, 16, lanes, Type::specific_type_t::BF16);
 }
+inline Type Float8e4m3(int lanes = 1) {
+  return Type(Type::type_t ::Float, 8, lanes, Type::specific_type_t::F8E4M3);
+}
 inline Type Float16(int lanes = 1) {
   return Type(Type::type_t ::Float, 16, lanes, Type::specific_type_t::FP16);
 }
@@ -189,6 +196,13 @@ inline Type Float(int bits,
                           "When creating a 16-bit Float, the specific_type_t "
                           "must be FP16 or BF16."));
   }
+  if (bits == 8) {
+    PADDLE_ENFORCE_EQ((st == Type::specific_type_t::F8E4M3),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "When creating a 8-bit Float, the specific_type_t "
+                          "must be F8E4M3."));
+  }
   return Type(Type::type_t ::Float, bits, lanes, st);
 }
 inline Type Bool(int lanes = 1) { return Type(Type::type_t ::UInt, 1, lanes); }
@@ -197,6 +211,7 @@ inline Type String() { return Type(Type::type_t::String, 1, 1); }
 //! Builtin native types as global singletons.
 // @{
 const Type& BF16();
+const Type& F8E4M3();
 const Type& F16();
 const Type& F32();
 const Type& F64();
@@ -219,6 +234,7 @@ Type type_of();
 template <> inline Type type_of<void>() { return Void(); }
 
 template <> inline Type type_of<bfloat16>() { return BF16(); }
+template <> inline Type type_of<float8e4m3>() { return F8E4M3(); }
 template <> inline Type type_of<float16>() { return F16(); }
 template <> inline Type type_of<float>() { return F32(); }
 template <> inline Type type_of<double>() { return F64(); }
@@ -303,6 +319,12 @@ inline Type type_of<float*>() {
 template <>
 inline Type type_of<double*>() {
   Type x = type_of<double>();
+  x.set_cpp_handle();
+  return x;
+}
+template <>
+inline Type type_of<float8e4m3*>() {
+  Type x = type_of<float8e4m3>();
   x.set_cpp_handle();
   return x;
 }

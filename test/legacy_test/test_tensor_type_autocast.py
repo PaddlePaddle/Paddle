@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 
@@ -22,9 +23,7 @@ import paddle
 class TestAutocastBase(unittest.TestCase):
     def setUp(self):
         self.set_api_and_dtypes()
-        self.places = [paddle.CPUPlace()]
-        if paddle.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def set_api_and_dtypes(self):
         pass

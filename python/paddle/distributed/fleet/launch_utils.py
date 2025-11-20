@@ -111,9 +111,9 @@ class Cluster:
         r = []
         for pod in self.pods:
             ep = f"{pod.addr}:{pod.port}"
-            assert (
-                pod.port is not None and pod.addr is not None
-            ), f"{ep} not a valid endpoint"
+            assert pod.port is not None and pod.addr is not None, (
+                f"{ep} not a valid endpoint"
+            )
             r.append(ep)
         return r
 
@@ -274,9 +274,9 @@ def get_cluster(
 
         cur_node_endpoints = trainer_endpoints[node_rank]
         # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
-        assert len(cur_node_endpoints) >= len(
-            devices_per_proc
-        ), "current trainer_endpoints size should be greater equal than accelerators size."
+        assert len(cur_node_endpoints) >= len(devices_per_proc), (
+            "current trainer_endpoints size should be greater equal than accelerators size."
+        )
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
             if device_mode == DeviceMode.GPU:
@@ -761,9 +761,9 @@ def get_device_proc_info(args):
     if device_mode == DeviceMode.GPU:
         gpus = get_gpus(args.gpus)
         if args.nproc_per_node is not None:
-            assert (
-                len(gpus) % int(args.nproc_per_node)
-            ) == 0, f"gpus' number:{len(gpus)} mod args.nproc_per_node:{args.nproc_per_node} must == 0"
+            assert (len(gpus) % int(args.nproc_per_node)) == 0, (
+                f"gpus' number:{len(gpus)} mod args.nproc_per_node:{args.nproc_per_node} must == 0"
+            )
 
             n = int(len(gpus) / int(args.nproc_per_node))
             devices_per_proc = [gpus[i : i + n] for i in range(0, len(gpus), n)]
@@ -772,9 +772,9 @@ def get_device_proc_info(args):
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
-            assert (
-                len(xpus) % int(args.nproc_per_node)
-            ) == 0, f"xpus' number:{len(xpus)} mod args.nproc_per_node:{args.nproc_per_node} must == 0"
+            assert (len(xpus) % int(args.nproc_per_node)) == 0, (
+                f"xpus' number:{len(xpus)} mod args.nproc_per_node:{args.nproc_per_node} must == 0"
+            )
 
             n = int(len(xpus) / int(args.nproc_per_node))
             devices_per_proc = [xpus[i : i + n] for i in range(0, len(xpus), n)]
@@ -868,9 +868,9 @@ def get_mapped_cluster_without_rank_mapping(
     node_ips, node_ip, trainer_endpoints, device_mode, node_ranks
 ):
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
-    assert (
-        device_mode == DeviceMode.GPU
-    ), "Only support get mapped cluster for gpu now."
+    assert device_mode == DeviceMode.GPU, (
+        "Only support get mapped cluster for gpu now."
+    )
     cluster = Cluster(hdfs=None)
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
@@ -894,9 +894,9 @@ def get_mapped_cluster_without_rank_mapping(
 
 
 def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
-    assert (
-        device_mode == DeviceMode.GPU
-    ), "Only support get mapped cluster for gpu now."
+    assert device_mode == DeviceMode.GPU, (
+        "Only support get mapped cluster for gpu now."
+    )
     gpus_num = framework.core.get_cuda_device_count()
 
     # parse ip-ranks json file
@@ -918,14 +918,14 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
         else:
             _, node_ip = get_host_name_ip()
 
-    assert (
-        node_ip in node_ips
-    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
+    assert node_ip in node_ips, (
+        f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
+    )
     node_rank = node_ips.index(node_ip)
 
-    assert len(node_ranks) == len(
-        node_ips
-    ), "ranks length should be equal to ips length."
+    assert len(node_ranks) == len(node_ips), (
+        "ranks length should be equal to ips length."
+    )
 
     logger.debug(
         f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} "
@@ -965,9 +965,9 @@ def get_mapped_cluster_with_rank_mapping(
     node_rank_mappings,
 ):
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
-    assert (
-        device_mode == DeviceMode.GPU
-    ), "Only support get mapped cluster for gpu now."
+    assert device_mode == DeviceMode.GPU, (
+        "Only support get mapped cluster for gpu now."
+    )
 
     def get_relative_gpu_id(gpu_id):
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
@@ -997,9 +997,9 @@ def get_mapped_cluster_with_rank_mapping(
             local_device_ids = cur_node_rank_mapping["ranks"][
                 str(ranks_per_node[i])
             ]
-            assert (
-                len(local_device_ids) == 1
-            ), "Only support one process to one device mapping"
+            assert len(local_device_ids) == 1, (
+                "Only support one process to one device mapping"
+            )
             trainer.accelerators.append(
                 get_relative_gpu_id(local_device_ids[0])
             )
@@ -1013,9 +1013,9 @@ def get_mapped_cluster_with_rank_mapping(
 
 
 def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
-    assert (
-        device_mode == DeviceMode.GPU
-    ), "Only support get mapped cluster for gpu now."
+    assert device_mode == DeviceMode.GPU, (
+        "Only support get mapped cluster for gpu now."
+    )
     gpus_num = framework.core.get_cuda_device_count()
 
     # parse ip-ranks json file
@@ -1048,17 +1048,17 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         else:
             _, node_ip = get_host_name_ip()
 
-    assert (
-        node_ip in node_ips
-    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
+    assert node_ip in node_ips, (
+        f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
+    )
     node_rank = node_ips.index(node_ip)
 
-    assert (
-        len(node_ranks[node_rank]) <= gpus_num
-    ), "number of ranks mapped to one node should not exceed the available ones."
-    assert len(node_ranks) == len(
-        node_ips
-    ), "ranks length should be equal to ips length."
+    assert len(node_ranks[node_rank]) <= gpus_num, (
+        "number of ranks mapped to one node should not exceed the available ones."
+    )
+    assert len(node_ranks) == len(node_ips), (
+        "ranks length should be equal to ips length."
+    )
 
     logger.debug(
         f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} "
@@ -1135,10 +1135,10 @@ class ParameterServerLauncher:
         if args.server_num:
             self.server_num = args.server_num
             if args.servers:
-                assert (
-                    len(args.servers.split(",")) == self.server_num
-                ), "The server_num and servers doesn't match. Expect servers endpoints num equal to server_num, but received servers endpoint num: {} and server_num {}".format(
-                    len(args.servers.split(",")), self.server_num
+                assert len(args.servers.split(",")) == self.server_num, (
+                    "The server_num and servers doesn't match. Expect servers endpoints num equal to server_num, but received servers endpoint num: {} and server_num {}".format(
+                        len(args.servers.split(",")), self.server_num
+                    )
                 )
                 self.server_endpoints = args.servers
             else:
@@ -1147,9 +1147,9 @@ class ParameterServerLauncher:
                     ["127.0.0.1:" + str(x) for x in ports]
                 )
         else:
-            assert (
-                args.servers != ""
-            ), "The setting of Parameter-Server must has server_num or servers."
+            assert args.servers != "", (
+                "The setting of Parameter-Server must has server_num or servers."
+            )
             self.server_endpoints = args.servers
             self.server_num = len(self.server_endpoints.split(","))
 
@@ -1157,10 +1157,10 @@ class ParameterServerLauncher:
         if args.worker_num:
             self.worker_num = args.worker_num
             if args.workers:
-                assert (
-                    len(args.workers.split(",")) == self.worker_num
-                ), "The worker_num and workers doesn't match. Expect workers endpoints num equal to worker_num, but received workers endpoint num: {} and worker_num {}".format(
-                    len(args.workers.split(",")), self.worker_num
+                assert len(args.workers.split(",")) == self.worker_num, (
+                    "The worker_num and workers doesn't match. Expect workers endpoints num equal to worker_num, but received workers endpoint num: {} and worker_num {}".format(
+                        len(args.workers.split(",")), self.worker_num
+                    )
                 )
 
                 self.worker_endpoints = args.workers
@@ -1170,9 +1170,9 @@ class ParameterServerLauncher:
                     ["127.0.0.1:" + str(x) for x in ports]
                 )
         else:
-            assert (
-                args.workers != ""
-            ), "The setting of Parameter-Server must has worker_num or workers."
+            assert args.workers != "", (
+                "The setting of Parameter-Server must has worker_num or workers."
+            )
             worker_endpoints_ips = [
                 x.strip().split(":")[0] for x in args.workers.split(",")
             ]
@@ -1211,8 +1211,10 @@ class ParameterServerLauncher:
             if args.coordinators:
                 assert (
                     len(args.coordinators.split(",")) == self.coordinator_num
-                ), "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num equal to coordinator_num, but received coordinator endpoint num: {} and coordinator_num {}".format(
-                    len(args.coordinators.split(",")), self.coordinator_num
+                ), (
+                    "The coordinator_num and coordinators doesn't match. Expect coordinators endpoints num equal to coordinator_num, but received coordinator endpoint num: {} and coordinator_num {}".format(
+                        len(args.coordinators.split(",")), self.coordinator_num
+                    )
                 )
 
                 self.coordinator_endpoints = args.coordinators
@@ -1225,9 +1227,9 @@ class ParameterServerLauncher:
 
         # get heter worker envs
         if self.distribute_mode == DistributeMode.PS_HETER:
-            assert (
-                args.heter_devices != ""
-            ), "The setting of Parameter-Server heter mode must has heter_devices."
+            assert args.heter_devices != "", (
+                "The setting of Parameter-Server heter mode must has heter_devices."
+            )
             self.stage_device_map[1] = "cpu"  # for cpu trainer
             heter_devices_list = args.heter_devices.split(";")
             for i in range(len(heter_devices_list)):
@@ -1244,9 +1246,11 @@ class ParameterServerLauncher:
                 if args.heter_workers:
                     assert len(args.heter_workers.split(";")) == len(
                         self.stage_heter_trainer_num
-                    ), "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num equal to heter_worker_num stage, but received heter_workers endpoint stage num: {} and heter_worker_num stage {}".format(
-                        len(args.heter_workers.split(";")),
-                        len(self.stage_heter_trainer_num),
+                    ), (
+                        "The stage_num and heter_workers doesn't match. Expect heter_workers endpoints stage num equal to heter_worker_num stage, but received heter_workers endpoint stage num: {} and heter_worker_num stage {}".format(
+                            len(args.heter_workers.split(";")),
+                            len(self.stage_heter_trainer_num),
+                        )
                     )
                     heter_worker_endpoints_list = args.heter_workers.split(";")
                     self.heter_worker_endpoints = ""
@@ -1259,7 +1263,9 @@ class ParameterServerLauncher:
                         assert (
                             len(heter_worker_endpoints)
                             == self.stage_heter_trainer_num[i]
-                        ), f"The heter trainer num in stage {i} is not equal in args.heter_worker_num and args.heter_workers"
+                        ), (
+                            f"The heter trainer num in stage {i} is not equal in args.heter_worker_num and args.heter_workers"
+                        )
 
                         heter_worker_endpoints_ips = [
                             x.strip().split(":")[0]
@@ -1320,9 +1326,9 @@ class ParameterServerLauncher:
                             self.heter_worker_endpoints += ","
                         self.heter_worker_endpoints += ip_port_list
             else:
-                assert (
-                    args.heter_workers != ""
-                ), "The setting of Parameter-Server heter mode must has heter_worker_num or heter_workers."
+                assert args.heter_workers != "", (
+                    "The setting of Parameter-Server heter mode must has heter_worker_num or heter_workers."
+                )
                 self.stage_heter_trainer_num = []
                 heter_worker_endpoints_list = args.heter_workers.split(";")
                 self.heter_worker_endpoints = ""
@@ -1445,9 +1451,9 @@ class ParameterServerLauncher:
             else:
                 self.current_node_ip = pod_ip
             if not self.distribute_mode == DistributeMode.PS_HETER:
-                assert (
-                    self.current_node_ip in self.node_ips
-                ), f"Can't find your local ip {{{self.current_node_ip}}} in args.servers and args.workers ips: {{{self.node_ips}}}"
+                assert self.current_node_ip in self.node_ips, (
+                    f"Can't find your local ip {{{self.current_node_ip}}} in args.servers and args.workers ips: {{{self.node_ips}}}"
+                )
         if self.current_node_ip in self.node_ips:
             self.node_rank = self.node_ips.index(self.current_node_ip)
             logger.debug(

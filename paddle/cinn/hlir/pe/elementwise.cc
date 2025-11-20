@@ -71,6 +71,7 @@ HLIR_MKL_IMP_UNARY_PE(Log2, log2);
 HLIR_MKL_IMP_UNARY_PE(Log10, log10);
 HLIR_MKL_IMP_UNARY_PE(Floor, floor);
 HLIR_MKL_IMP_UNARY_PE(Ceil, ceil);
+HLIR_MKL_IMP_UNARY_PE(Rint, rint);
 HLIR_MKL_IMP_UNARY_PE(Round, round);
 HLIR_MKL_IMP_UNARY_PE(Tanh, tanh);
 HLIR_MKL_IMP_UNARY_PE(Trunc, trunc);
@@ -94,6 +95,7 @@ HLIR_IMP_UNARY_PE(Log2);
 HLIR_IMP_UNARY_PE(Log10);
 HLIR_IMP_UNARY_PE(Floor);
 HLIR_IMP_UNARY_PE(Ceil);
+HLIR_IMP_UNARY_PE(Rint);
 HLIR_IMP_UNARY_PE(Round);
 HLIR_IMP_UNARY_PE(Trunc);
 HLIR_IMP_UNARY_PE(Cos);
@@ -309,11 +311,11 @@ ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
 
 ir::Tensor Arange(Expr start,
                   Expr step,
+                  Expr size,
                   const Type& dtype,
-                  const int64_t size,
                   const std::string& output_name) {
   ir::Tensor res = lang::Compute(
-      {Expr(size)},
+      {size},
       [=](const std::vector<ir::Expr>& indices) {
         return ir::Cast::Make(dtype,
                               start + step * ir::Cast::Make(dtype, indices[0]));

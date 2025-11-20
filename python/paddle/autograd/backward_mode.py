@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle.base import core, framework
 from paddle.base.backward import gradients_with_optimizer  # noqa: F401
+from paddle.utils.download import check_and_create_dir
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -34,6 +35,8 @@ def backward(
     tensors: Tensor | Sequence[Tensor],
     grad_tensors: Tensor | Sequence[Tensor | None] | None = None,
     retain_graph: bool = False,
+    *,
+    dump_backward_graph_path: str | None = None,
 ) -> None:
     """
     Compute the backward gradients of given tensors.
@@ -50,7 +53,9 @@ def backward(
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
             :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
             Defaults to False.
-
+        dump_backward_graph_path(str, optional): Specifies the directory path for storing the debug file.
+            If this parameter is specified, the backward-related graph (in dot format)
+            and the debugging call stack information will be generated in this directory.
     Returns:
         NoneType: None
 
@@ -102,21 +107,21 @@ def backward(
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
-                assert isinstance(
-                    each_var, paddle.Tensor
-                ), f"Elements of {name} must be paddle.Tensor"
+                assert isinstance(each_var, paddle.Tensor), (
+                    f"Elements of {name} must be paddle.Tensor"
+                )
             return in_out_list
         else:
-            assert isinstance(
-                in_out_list, paddle.Tensor
-            ), f"{name} must be Tensor or list of Tensor"
+            assert isinstance(in_out_list, paddle.Tensor), (
+                f"{name} must be Tensor or list of Tensor"
+            )
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")
 
-    assert len(tensors) == len(
-        set(tensors)
-    ), "The argument 'tensors' of paddle.autograd.backward contains duplicate paddle.Tensor object."
+    assert len(tensors) == len(set(tensors)), (
+        "The argument 'tensors' of paddle.autograd.backward contains duplicate paddle.Tensor object."
+    )
 
     if grad_tensors is not None:
         if not isinstance(grad_tensors, (list, tuple)):
@@ -124,17 +129,19 @@ def backward(
 
         for each_tensor in grad_tensors:
             if each_tensor is not None:
-                assert isinstance(
-                    each_tensor, paddle.Tensor
-                ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
+                assert isinstance(each_tensor, paddle.Tensor), (
+                    "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
+                )
     else:
         grad_tensors = []
 
     if len(grad_tensors) > 0:
-        assert len(tensors) == len(
-            grad_tensors
-        ), "The length of grad_tensors must be equal to tensors"
+        assert len(tensors) == len(grad_tensors), (
+            "The length of grad_tensors must be equal to tensors"
+        )
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
-
-    core.eager.run_backward(tensors, grad_tensors, retain_graph)
+    check_and_create_dir(dump_backward_graph_path)
+    core.eager.run_backward(
+        tensors, grad_tensors, retain_graph, dump_backward_graph_path
+    )

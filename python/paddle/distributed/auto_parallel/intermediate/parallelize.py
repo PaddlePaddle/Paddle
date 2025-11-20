@@ -97,8 +97,14 @@ def parallelize(
                 can be list these:  {"split_spec": "llama.layers", "global_spec": "llama.global_layer"}
                 or {"split_spec": {"llama.layers.1": SplitPoint.END}}.
 
+            cp_config (dict): a dict specifying the context parallel config. The keys of `cp_config` is
+                `parallelize_plan`. The value of `parallelize_plan` is another dict, mapping a layer name or a param
+                name to a specific parallel plan. All valid parallel plan is `ContextParallel` and `PrepareContextParallel`.
+                A valid cp_config can be like this: {"llama": dist.PrepareContextParallel('p2p'),
+                "llama.sdpa": dist.ContextParallel('p2p')}.
+
     Note:
-        If the mesh is `None` or neither of `dp_config`, `mp_config` and `pp_config` is in the config, this
+        If the mesh is `None` or neither of `dp_config`, `mp_config`, `pp_config` and `cp_config` is in the config, this
         api will do nothing but return the model and optimizer passed in.
 
     Returns:
@@ -254,9 +260,9 @@ def parallelize(
         return model, optimizer
     assert isinstance(config, dict)
     if mesh is not None:
-        assert isinstance(
-            mesh, core.ProcessMesh
-        ), "The mesh must be an instance of paddle.distributed.ProcessMesh."
+        assert isinstance(mesh, core.ProcessMesh), (
+            "The mesh must be an instance of paddle.distributed.ProcessMesh."
+        )
         g_mesh = fleet.auto.get_mesh()
         if g_mesh is not None and g_mesh != mesh:
             warnings.warn(
@@ -267,6 +273,7 @@ def parallelize(
     pp_config = config.get('pp_config')
     mp_config = config.get('mp_config')
     dp_config = config.get('dp_config')
+    cp_config = config.get('cp_config')
     if pp_config is not None:
         assert isinstance(pp_config, dict)
         model, optimizer = pipeline_parallel(
@@ -276,7 +283,19 @@ def parallelize(
         )
     if mp_config is not None:
         assert isinstance(mp_config, dict)
+        if cp_config is not None:
+            assert isinstance(cp_config, dict)
+            assert "parallelize_plan" in cp_config.keys()
+            assert "parallelize_plan" in mp_config.keys()
+            mp_config['parallelize_plan'].update(cp_config['parallelize_plan'])
         model, optimizer = tensor_parallel(model, optimizer, mp_config)
+    elif cp_config is not None:
+        assert isinstance(cp_config, dict)
+        model, optimizer = tensor_parallel(
+            model,
+            optimizer,
+            cp_config,
+        )
     if dp_config is not None:
         assert isinstance(dp_config, dict)
         if 'sharding_level' not in dp_config.keys():
@@ -303,9 +322,9 @@ def parallelize_model(model, mesh=None, config=None):
         return model
     assert isinstance(config, dict)
     if mesh is not None:
-        assert isinstance(
-            mesh, core.ProcessMesh
-        ), "The mesh must be an instance of paddle.distributed.ProcessMesh."
+        assert isinstance(mesh, core.ProcessMesh), (
+            "The mesh must be an instance of paddle.distributed.ProcessMesh."
+        )
         g_mesh = fleet.auto.get_mesh()
         if g_mesh is not None and g_mesh != mesh:
             warnings.warn(
@@ -327,9 +346,9 @@ def parallelize_optimizer(optimizer, mesh=None, config=None):
         return optimizer
     assert isinstance(config, dict)
     if mesh is not None:
-        assert isinstance(
-            mesh, core.ProcessMesh
-        ), "The mesh must be an instance of paddle.distributed.ProcessMesh."
+        assert isinstance(mesh, core.ProcessMesh), (
+            "The mesh must be an instance of paddle.distributed.ProcessMesh."
+        )
         g_mesh = fleet.auto.get_mesh()
         if g_mesh is not None and g_mesh != mesh:
             warnings.warn(
@@ -339,21 +358,21 @@ def parallelize_optimizer(optimizer, mesh=None, config=None):
         fleet.auto.set_mesh(mesh)
 
     global has_parallelized_model
-    assert (
-        has_parallelized_model
-    ), "Please parallelize the model before parallelize optimizer."
+    assert has_parallelized_model, (
+        "Please parallelize the model before parallelize optimizer."
+    )
     param_list = optimizer._parameter_list
     if isinstance(param_list[0], dict):
         for param_group in param_list:
             for param in param_group['params']:
-                assert (
-                    param.is_dist()
-                ), "Please use model after parallelize to create optimizer."
+                assert param.is_dist(), (
+                    "Please use model after parallelize to create optimizer."
+                )
     else:
         for param in param_list:
-            assert (
-                param.is_dist()
-            ), "Please use model after parallelize to create optimizer."
+            assert param.is_dist(), (
+                "Please use model after parallelize to create optimizer."
+            )
 
     dp_config = config.get('dp_config')
     level = None

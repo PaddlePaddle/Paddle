@@ -228,10 +228,7 @@ class TestNestedListWithTensor(Dy2StTestBase):
         paddle.enable_static()
         x = paddle.to_tensor(1)
         y = paddle.to_tensor([[x]])
-        if paddle.framework.use_pir_api():
-            self.assertEqual(y.shape, [1, 1])
-        else:
-            self.assertEqual(y.shape, (1, 1))
+        self.assertEqual(y.shape, [1, 1])
         self.assertEqual(y.dtype, paddle.int64)
 
 

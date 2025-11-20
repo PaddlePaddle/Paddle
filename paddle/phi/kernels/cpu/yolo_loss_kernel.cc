@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/yolo_loss_kernel.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -56,7 +57,7 @@ static inline Box<T> GetYoloBox(const T* x,
                                 int an_idx,
                                 int grid_size,
                                 int input_size,
-                                int index,
+                                int64_t index,
                                 int stride,
                                 float scale,
                                 float bias) {
@@ -94,7 +95,7 @@ static void CalcBoxLocationLoss(T* loss,
                                 Box<T> gt,
                                 std::vector<int> anchors,
                                 int an_idx,
-                                int box_idx,
+                                int64_t box_idx,
                                 int gi,
                                 int gj,
                                 int grid_size,
@@ -116,7 +117,7 @@ static void CalcBoxLocationLoss(T* loss,
 template <typename T>
 static inline void CalcLabelLoss(T* loss,
                                  const T* input,
-                                 const int index,
+                                 const int64_t index,
                                  const int label,
                                  const int class_num,
                                  const int stride,
@@ -253,7 +254,7 @@ void YoloLossKernel(const Context& dev_ctx,
         for (int l = 0; l < w; l++) {
           // each predict box find a best match gt box, if overlap is bigger
           // then ignore_thresh, ignore the objectness loss.
-          int box_idx =
+          int64_t box_idx =
               GetEntryIndex(i, j, k * w + l, mask_num, an_stride, stride, 0);
           Box<T> pred = GetYoloBox(input_data,
                                    anchors,
@@ -323,7 +324,7 @@ void YoloLossKernel(const Context& dev_ctx,
       gt_match_mask_data[i * b + t] = mask_idx;
       if (mask_idx >= 0) {
         T score = gt_score_data[i * b + t];
-        int box_idx = GetEntryIndex(
+        int64_t box_idx = GetEntryIndex(
             i, mask_idx, gj * w + gi, mask_num, an_stride, stride, 0);
         CalcBoxLocationLoss<T>(loss_data + i,
                                input_data,
@@ -342,7 +343,7 @@ void YoloLossKernel(const Context& dev_ctx,
         obj_mask_data[obj_idx] = score;
 
         int label = gt_label_data[i * b + t];
-        int label_idx = GetEntryIndex(
+        int64_t label_idx = GetEntryIndex(
             i, mask_idx, gj * w + gi, mask_num, an_stride, stride, 5);
         CalcLabelLoss<T>(loss_data + i,
                          input_data,

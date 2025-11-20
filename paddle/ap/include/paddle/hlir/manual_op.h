@@ -42,6 +42,23 @@ class IR_API FacadeOp
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
+class IR_API AddOp
+    : public pir::Op<AddOp,
+                     pir::ImmutableLayoutTrait,
+                     ::paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "ap_op.add"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value lhs,
+                    pir::Value rhs);
+  void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+};
+
 class IR_API UpSpiderOp
     : public pir::Op<UpSpiderOp,
                      pir::SideEffectTrait,
@@ -152,6 +169,7 @@ class IR_API StoreToGlobalOp
 }  // namespace ap::dialect
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::FacadeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::AddOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadFromRegisterOp);

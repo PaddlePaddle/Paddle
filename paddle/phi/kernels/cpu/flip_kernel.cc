@@ -42,6 +42,9 @@ void FlipKernel(const Context& dev_ctx,
   auto numel = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
@@ -73,5 +76,5 @@ PD_REGISTER_KERNEL(flip,
                    int32_t,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

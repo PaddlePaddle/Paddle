@@ -30,9 +30,7 @@ struct Value;
 
 }
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace ap::paddle {
 
 std::optional<std::unique_ptr<::pir::Pass>> CreateApGenericAbstractDrrPass(
     const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list);
@@ -50,6 +48,4 @@ std::optional<std::unique_ptr<::pir::Pass>> CreateCustomAccessTopoDrrPass(
     std::optional<int64_t> steps_limit,
     const ap::axpr::Value& mut_matched_pattern_as_programs);
 
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+}  // namespace ap::paddle

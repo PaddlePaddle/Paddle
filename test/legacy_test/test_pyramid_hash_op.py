@@ -23,6 +23,7 @@ from paddle.incubate.layers.nn import search_pyramid_hash
 
 class TestPyramidHashOpApi(unittest.TestCase):
     def test_api(self):
+        paddle.enable_static()
         num_voc = 128
         embed_dim = 64
         x_shape, x_lod = [16, 10], [[3, 5, 2, 6]]

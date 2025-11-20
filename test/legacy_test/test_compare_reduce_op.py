@@ -96,12 +96,32 @@ def create_test_dim1_class(op_type, typename, callback):
     globals()[cls_name] = Cls
 
 
+def create_test_equal_class_zero_size(op_type, typename, callback):
+    class Cls(op_test.OpTest):
+        def setUp(self):
+            x = np.random.random(size=(0, 7)).astype(typename)
+            y = np.random.random(size=(0, 7)).astype(typename)
+            z = callback(x, y)
+            self.python_api = paddle.tensor.equal_all
+            self.inputs = {'X': x, 'Y': y}
+            self.outputs = {'Out': z}
+            self.op_type = op_type
+
+        def test_output(self):
+            self.check_output(check_pir=True)
+
+    cls_name = "{}_{}_{}".format(op_type, typename, 'equal_all_zero_size')
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
+
+
 np_equal = lambda _x, _y: np.array(np.array_equal(_x, _y))
 
 for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
     create_test_not_equal_class('equal_all', _type_name, np_equal)
     create_test_equal_class('equal_all', _type_name, np_equal)
     create_test_dim1_class('equal_all', _type_name, np_equal)
+    create_test_equal_class_zero_size('equal_all', _type_name, np_equal)
 
 
 class TestEqualReduceAPI(unittest.TestCase):

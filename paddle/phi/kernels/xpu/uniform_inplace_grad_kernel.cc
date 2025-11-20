@@ -18,7 +18,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void XPUUniformRandomInplaceGradKernel(const Context& ctx,
+void XPUUniformRandomInplaceGradKernel(const Context& dev_ctx,
                                        const DenseTensor& out_grad,
                                        float min UNUSED,
                                        float max UNUSED,
@@ -29,13 +29,13 @@ void XPUUniformRandomInplaceGradKernel(const Context& ctx,
                                        DenseTensor* x_grad) {
   auto* dx = x_grad;
   if (dx) {
-    T* data = ctx.template Alloc<T>(dx);
+    T* data = dev_ctx.template Alloc<T>(dx);
     int64_t size = dx->numel();
     std::unique_ptr<T[]> data_cpu(new T[size]);
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = T(0);
     }
-    phi::memory_utils::Copy(ctx.GetPlace(),
+    phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             data,
                             phi::CPUPlace(),
                             reinterpret_cast<void*>(data_cpu.get()),

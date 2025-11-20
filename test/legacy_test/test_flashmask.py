@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-import re
 import unittest
 
 import numpy as np
+from op_test import get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -25,27 +23,14 @@ from paddle.nn.functional.flash_attention import (
     flashmask_attention,
 )
 
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
-
 is_sm8x = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
 is_sm90 = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 9
     and paddle.device.cuda.get_device_capability()[1] == 0
 )
@@ -55,7 +40,7 @@ is_sm_supported = is_sm8x or is_sm90
 
 def is_flashattn_supported():
     if (
-        not core.is_compiled_with_cuda()
+        not (core.is_compiled_with_cuda() or is_custom_device())
         or get_cuda_version() < 11040
         or not is_sm_supported
     ):
@@ -123,6 +108,74 @@ def gen_random_flashmask(bz, num_head, seqlen, has_end, causal):
     return paddle.to_tensor(m, dtype="int32")
 
 
+def gen_casual_document_mask(bz, num_head, seqlen, has_end, causal):
+    mask_num = 1
+    assert causal
+    assert not has_end
+    rng = np.random.default_rng()
+    sample_indices = rng.choice(seqlen, size=(int)(seqlen / 10), replace=False)
+    sample_indices.sort()
+    m = np.zeros((bz, num_head, seqlen, mask_num))
+    m[:, :, : sample_indices[0], :] = sample_indices[0]
+    for i in range(sample_indices.shape[0] - 1):
+        idx0 = sample_indices[i]
+        idx1 = sample_indices[i + 1]
+        m[:, :, idx0:idx1, 0] = idx1
+    m[:, :, sample_indices[-1] :, 0] = seqlen - 1
+    diag = np.arange(seqlen).reshape((1, 1, seqlen))
+    m[:, :, :, 0] = np.maximum(diag + 1, m[:, :, :, 0])
+
+    return paddle.to_tensor(m, dtype="int32")
+
+
+def gen_slide_window_mask(bz, num_head, seqlen, has_end, causal):
+    mask_num = 1
+    assert causal
+    assert not has_end
+    window_size = np.random.randint(1, 50)
+    window_size = np.minimum(window_size, seqlen)
+    m = np.zeros((bz, num_head, seqlen, mask_num))
+    for i in range(seqlen - window_size):
+        m[:, :, i, 0] = i + window_size + 1
+    for i in range(seqlen - window_size, seqlen):
+        m[:, :, i, 0] = seqlen
+    diag = np.arange(seqlen).reshape((1, 1, seqlen))
+    m[:, :, :, 0] = np.maximum(diag + 1, m[:, :, :, 0])
+
+    return paddle.to_tensor(m, dtype="int32")
+
+
+def gen_global_slide_window_mask(bz, num_head, seqlen, has_end, causal):
+    mask_num = 4
+    assert not causal
+    assert has_end
+    window_size = np.random.randint(1, 50)
+    window_size = np.minimum(window_size, (int)(seqlen / 4))
+    m = np.zeros((bz, num_head, seqlen, mask_num))
+    for i in range(window_size):
+        m[:, :, i, 0:2] = seqlen
+        m[:, :, i, 2:4] = 0
+    for i in range(window_size, 2 * window_size):
+        m[:, :, i, 0] = i + window_size
+        m[:, :, i, 1] = seqlen
+        m[:, :, i, 2] = 0
+        m[:, :, i, 3] = 0
+    for i in range(2 * window_size, seqlen - window_size):
+        m[:, :, i, 0] = i + window_size
+        m[:, :, i, 1] = seqlen
+        m[:, :, i, 2] = window_size
+        m[:, :, i, 3] = i - window_size + 1
+    for i in range(seqlen - window_size, seqlen):
+        m[:, :, i, 0] = seqlen
+        m[:, :, i, 1] = seqlen
+        m[:, :, i, 2] = window_size
+        m[:, :, i, 3] = i - window_size + 1
+    diag = np.arange(seqlen).reshape((1, 1, seqlen))
+    m[:, :, :, 0] = np.maximum(diag + 1, m[:, :, :, 0])
+
+    return paddle.to_tensor(m, dtype="int32")
+
+
 @unittest.skipIf(
     not is_flashattn_supported(),
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -130,16 +183,17 @@ def gen_random_flashmask(bz, num_head, seqlen, has_end, causal):
 )
 class TestFlashMaskAttentionAPI(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = True
         self.has_end = False
         self.mask_broadcast = True
+        self.mask_func = gen_random_flashmask
 
     def get_flashmask(self):
-        self.startend_row_indices = gen_random_flashmask(
+        self.startend_row_indices = self.mask_func(
             self.shape[0],
             1 if self.mask_broadcast else self.shape[2],
             self.shape[1],
@@ -225,65 +279,111 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
 
 class TestFlashMaskAttentionFP16API1(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = True
         self.has_end = False
         self.mask_broadcast = True
+        self.mask_func = gen_random_flashmask
 
 
 class TestFlashMaskAttentionBF16API1(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 128)
         self.dtype = 'bfloat16'
         self.dropout = 0.0
         self.causal = True
         self.has_end = False
         self.mask_broadcast = True
+        self.mask_func = gen_random_flashmask
 
 
 class TestFlashMaskAttentionFP16API2(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.has_end = False
         self.mask_broadcast = True
+        self.mask_func = gen_random_flashmask
 
 
 class TestFlashMaskAttentionBF16API2(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'bfloat16'
         self.dropout = 0.0
         self.causal = False
         self.has_end = False
         self.mask_broadcast = True
+        self.mask_func = gen_random_flashmask
 
 
 class TestFlashMaskAttentionFP16API3(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 2048, 16, 96)
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = True
         self.has_end = False
         self.mask_broadcast = False
+        self.mask_func = gen_random_flashmask
 
 
 class TestFlashMaskAttentionBF16API3(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 2048, 16, 96)
         self.dtype = 'bfloat16'
         self.dropout = 0.0
         self.causal = True
         self.has_end = False
         self.mask_broadcast = False
+        self.mask_func = gen_random_flashmask
+
+
+class TestFlashMaskAttentionFP16API4(TestFlashMaskAttentionAPI):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (1, 2048 * 4, 16, 96)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = True
+        self.has_end = False
+        self.mask_broadcast = False
+        self.mask_func = gen_casual_document_mask
+
+
+class TestFlashMaskAttentionFP16API5(TestFlashMaskAttentionAPI):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (1, 2048 * 4, 16, 96)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = True
+        self.has_end = False
+        self.mask_broadcast = False
+        self.mask_func = gen_slide_window_mask
+
+
+class TestFlashMaskAttentionFP16API6(TestFlashMaskAttentionAPI):
+    def setUp(self):
+        self.place = get_device_place()
+        self.shape = (1, 2048, 16, 96)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = False
+        self.has_end = True
+        self.mask_broadcast = False
+        self.mask_func = gen_global_slide_window_mask
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -95,13 +95,13 @@ struct GroupNormNDHWCParams {
 
   // The number of activations per instance (d * h * w) and the number of
   // activations per block.
-  int32_t dhw, dhwPerBlock;
+  int64_t dhw, dhwPerBlock;
   // The number of channels per group and blocks per activation in the C
   // dimension.
   int32_t cPerBlock, cPerGroup;
 
   // The precomputed stride between instances.
-  int32_t dhwc;
+  int64_t dhwc;
   // The inverse of dhwc in floats (to compute mean/var).
   float invDHWC;
   // The precomputed number of groups per block.

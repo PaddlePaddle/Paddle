@@ -39,12 +39,12 @@ template <typename Context, typename T>
 void MatrixPowerFunction(const DenseTensor* X,
                          const int n,
                          DenseTensor* Out,
-                         const Context& ctx) {
+                         const Context& dev_ctx) {
   const auto& x_dims = X->dims();
   const int x_ndim = x_dims.size();
-  T* out_data = ctx.template Alloc<T>(Out);
+  T* out_data = dev_ctx.template Alloc<T>(Out);
 
-  phi::funcs::ForRange<Context> for_range(ctx, X->numel());
+  phi::funcs::ForRange<Context> for_range(dev_ctx, X->numel());
 
   if (n == 0) {
     // Out = Identity Matrix
@@ -53,24 +53,24 @@ void MatrixPowerFunction(const DenseTensor* X,
     return;
   }
 
-  auto blas = phi::funcs::GetBlas<Context, T>(ctx);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   DenseTensor new_x;
   new_x.Resize(X->dims());
-  ctx.template Alloc<T>(&new_x);
+  dev_ctx.template Alloc<T>(&new_x);
   int new_n = n;
   if (n > 0) {
     // newX = X
-    phi::Copy(ctx, *X, ctx.GetPlace(), false, &new_x);
+    phi::Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
   } else {
     // newX = X^{-1}, n = -n
     phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
-    mat_inv(ctx, *X, &new_x);
+    mat_inv(dev_ctx, *X, &new_x);
     new_n = -n;
   }
 
   if (new_n == 1) {
-    phi::Copy(ctx, new_x, ctx.GetPlace(), false, Out);
+    phi::Copy(dev_ctx, new_x, dev_ctx.GetPlace(), false, Out);
     return;
   }
 
@@ -78,7 +78,7 @@ void MatrixPowerFunction(const DenseTensor* X,
 
   if (new_n == 2) {
     // Out = newX * newX
-    ctx.template Alloc<T>(Out);
+    dev_ctx.template Alloc<T>(Out);
     blas.MatMul(new_x,
                 no_trans_desc,
                 new_x,
@@ -94,7 +94,7 @@ void MatrixPowerFunction(const DenseTensor* X,
     // undefined behavior is expected.
     DenseTensor temp;
     temp.Resize(X->dims());
-    ctx.template Alloc<T>(&temp);
+    dev_ctx.template Alloc<T>(&temp);
     blas.MatMul(new_x,
                 no_trans_desc,
                 new_x,
@@ -114,7 +114,7 @@ void MatrixPowerFunction(const DenseTensor* X,
     // Out = (newX * newX) * (newX * newX)
     DenseTensor temp;
     temp.Resize(X->dims());
-    ctx.template Alloc<T>(&temp);
+    dev_ctx.template Alloc<T>(&temp);
     blas.MatMul(new_x,
                 no_trans_desc,
                 new_x,
@@ -138,10 +138,10 @@ void MatrixPowerFunction(const DenseTensor* X,
   bool out_inited = false;
   DenseTensor temp_out;
   temp_out.Resize(X->dims());
-  ctx.template Alloc<T>(&temp_out);
+  dev_ctx.template Alloc<T>(&temp_out);
   DenseTensor temp_z;
   temp_z.Resize(X->dims());
-  ctx.template Alloc<T>(&temp_z);
+  dev_ctx.template Alloc<T>(&temp_z);
   while (new_n > 0) {
     bit = new_n & 0x1;
     new_n >>= 1;
@@ -153,11 +153,11 @@ void MatrixPowerFunction(const DenseTensor* X,
                   static_cast<T>(1),
                   &temp_z,
                   static_cast<T>(0));
-      phi::Copy(ctx, temp_z, ctx.GetPlace(), false, &z);
+      phi::Copy(dev_ctx, temp_z, dev_ctx.GetPlace(), false, &z);
     } else {
       z.Resize(X->dims());
-      ctx.template Alloc<T>(&z);
-      phi::Copy(ctx, new_x, ctx.GetPlace(), false, &z);
+      dev_ctx.template Alloc<T>(&z);
+      phi::Copy(dev_ctx, new_x, dev_ctx.GetPlace(), false, &z);
     }
     if (bit == 1) {
       if (out_inited == true) {
@@ -168,9 +168,9 @@ void MatrixPowerFunction(const DenseTensor* X,
                     static_cast<T>(1),
                     &temp_out,
                     static_cast<T>(0));
-        phi::Copy(ctx, temp_out, ctx.GetPlace(), false, Out);
+        phi::Copy(dev_ctx, temp_out, dev_ctx.GetPlace(), false, Out);
       } else {
-        phi::Copy(ctx, z, ctx.GetPlace(), false, Out);
+        phi::Copy(dev_ctx, z, dev_ctx.GetPlace(), false, Out);
         out_inited = true;
       }
     }
@@ -179,7 +179,7 @@ void MatrixPowerFunction(const DenseTensor* X,
 }
 
 template <typename T, typename Context>
-void MatrixPowerKernel(const Context& ctx,
+void MatrixPowerKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        int n,
                        DenseTensor* out) {
@@ -198,11 +198,11 @@ void MatrixPowerKernel(const Context& ctx,
           x_dims[x_ndim - 1]));
   if (x.numel() == 0) {
     Out->Resize(X->dims());
-    ctx.template Alloc<T>(Out);
+    dev_ctx.template Alloc<T>(Out);
     return;
   }
 
-  MatrixPowerFunction<Context, T>(X, n, Out, ctx);
+  MatrixPowerFunction<Context, T>(X, n, Out, dev_ctx);
 }
 
 }  // namespace phi

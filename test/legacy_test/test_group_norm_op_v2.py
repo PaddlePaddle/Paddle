@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, get_places, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -35,7 +35,11 @@ def group_norm_naive_for_general_dimension(
     input_shape = x.shape
     N, C = x.shape[0], x.shape[1]
     G = groups
-    x = x.reshape((N * G, -1))
+    if 0 in x.shape:
+        # output will reshape to input_shape
+        x = x.reshape((N * G, 0))
+    else:
+        x = x.reshape((N * G, -1))
     mean = np.mean(x, axis=1, keepdims=True)
     var = np.var(x, axis=1, keepdims=True)
     output = (x - mean) / np.sqrt(var + epsilon)
@@ -60,17 +64,7 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
             (2, 6, 6, 6, 2, 3),
         ]
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             for shape in shapes:
                 scale = np.array([1]).astype("float32")
                 bias = np.array([0]).astype("float32")
@@ -87,8 +81,8 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 data_pd = paddle.to_tensor(data)
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
-                self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
-                self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
+                np.testing.assert_allclose(result1, expect_res1, atol=1e-5)
+                np.testing.assert_allclose(result2, expect_res2, atol=1e-5)
 
 
 class TestGroupNormAPIV2_With_NCL(unittest.TestCase):
@@ -96,17 +90,8 @@ class TestGroupNormAPIV2_With_NCL(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 6, 4)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
 
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -136,17 +121,7 @@ class TestGroupNormAPIV2_With_NCDHW(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 6, 4, 2, 2)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -177,8 +152,10 @@ class TestGroupNormAPIV2_With_NLC(unittest.TestCase):
         shape = (2, 4, 6)
         np.random.seed(10)
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and core.op_support_gpu("group_norm"):
+            places.append(get_device_place())
 
         for place in places:
             paddle.disable_static(place)
@@ -210,17 +187,7 @@ class TestGroupNormAPIV2_With_NHWC(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 4, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -250,17 +217,7 @@ class TestGroupNormAPIV2_With_NDHWC(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 4, 2, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -288,7 +245,7 @@ class TestGroupNormAPIV2_With_NDHWC(unittest.TestCase):
 class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
         # fp16 only supported in cuda
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shapes = [
@@ -299,17 +256,7 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
             (2, 6, 6, 6, 256, 3),
         ]
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             for shape in shapes:
                 scale = np.array([1]).astype("float32")
                 bias = np.array([0]).astype("float32")
@@ -341,22 +288,12 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NCL_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 6, 4)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -392,22 +329,12 @@ class TestGroupNormAPIV2_With_NCL_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NCDHW_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 6, 4, 2, 2)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -443,22 +370,12 @@ class TestGroupNormAPIV2_With_NCDHW_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NLC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 4, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -494,22 +411,12 @@ class TestGroupNormAPIV2_With_NLC_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NHWC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 4, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -545,22 +452,12 @@ class TestGroupNormAPIV2_With_NHWC_fp16(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_NDHWC_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         shape = (2, 4, 2, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -592,6 +489,66 @@ class TestGroupNormAPIV2_With_NDHWC_fp16(unittest.TestCase):
             np.testing.assert_allclose(
                 result2, expect_res2, rtol=1e-2, atol=1e-2
             )
+
+
+class TestGroupNormAPIV2_ZeroSize(unittest.TestCase):
+    def test_numerical_accuracy(self):
+        paddle.disable_static()
+        shape_groups = [
+            [(2, 4, 3, 2, 0), 4],
+            [(0, 1, 0, 0, 1), 1],
+        ]
+        np.random.seed(10)
+        for place in get_places():
+            paddle.disable_static(place)
+            for shape_group in shape_groups:
+                shape = shape_group[0]
+                group = shape_group[1]
+                scale = np.array([1]).astype("float32")
+                bias = np.array([0]).astype("float32")
+                data = np.random.random(shape).astype("float32")
+                expect_res1 = group_norm_naive_for_general_dimension(
+                    data,
+                    scale,
+                    bias,
+                    epsilon=1e-5,
+                    groups=group,
+                )
+
+                data_pd = paddle.to_tensor(data)
+                data_pd.stop_gradient = False
+                scale_ = paddle.ones(
+                    shape[1]
+                )  # shape[1] is the number of channels
+                scale_.stop_gradient = False
+                bias_ = paddle.zeros(shape[1])
+                bias_.stop_gradient = False
+                result1 = paddle.nn.functional.group_norm(
+                    data_pd,
+                    group,
+                    data_format='NCDHW',
+                    weight=scale_,
+                    bias=bias_,
+                )
+                np.testing.assert_allclose(
+                    result1.numpy(), expect_res1, atol=1e-5
+                )
+
+                loss = paddle.sum(result1)
+                loss.backward()
+                np.testing.assert_allclose(
+                    data_pd.grad.shape,
+                    data_pd.shape,
+                )
+                # If batch is 0, scale grad is 0, or else nan.
+                if data_pd.shape[0] == 0:
+                    scale2 = paddle.zeros(scale_.shape)
+                else:
+                    scale2 = paddle.full(scale_.shape, paddle.nan)
+                np.testing.assert_allclose(scale_.grad.numpy(), scale2.numpy())
+                np.testing.assert_allclose(
+                    bias_.grad.numpy(), paddle.zeros(bias_.shape).numpy()
+                )
 
 
 class TestGroupNormDimException(unittest.TestCase):
@@ -659,6 +616,131 @@ class TestGroupNormWithOptionalgradX(unittest.TestCase):
             np.testing.assert_equal(dw.numpy(), dw_ref.numpy())
             np.testing.assert_equal(db.numpy(), db_ref.numpy())
             np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
+
+
+class TestGroupNormParam(unittest.TestCase):
+    def setUp(self):
+        self.x_tensor = paddle.randn([2, 6, 4, 4], dtype='float32')
+        self.weight_tensor = paddle.randn([6], dtype='float32')
+        self.bias_tensor = paddle.randn([6], dtype='float32')
+
+    def test_alias_input_for_x(self):
+        """test parameter alias input/x"""
+        out_with_input = paddle.nn.functional.group_norm(
+            input=self.x_tensor,
+            num_groups=3,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+            eps=1e-5,
+        )
+        out_with_x = paddle.nn.functional.group_norm(
+            x=self.x_tensor,
+            num_groups=3,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+            eps=1e-5,
+        )
+
+        np.testing.assert_array_equal(
+            out_with_input.numpy(), out_with_x.numpy()
+        )
+
+    def test_params_consistency(self):
+        """test both paddle and torch formats works."""
+        out_old = paddle.nn.functional.group_norm(
+            self.x_tensor,
+            3,
+            1e-5,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+        )
+
+        out_new = paddle.nn.functional.group_norm(
+            x=self.x_tensor,
+            num_groups=3,
+            weight=self.weight_tensor,
+            bias=self.bias_tensor,
+            eps=1e-5,
+        )
+
+        np.testing.assert_array_equal(out_old.numpy(), out_new.numpy())
+
+    def test_params_1(self):
+        """test all args with torch format"""
+        try:
+            out = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                self.weight_tensor,
+                self.bias_tensor,
+                1e-5,
+            )
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_2(self):
+        """test all kwargs with torch format"""
+        try:
+            out = paddle.nn.functional.group_norm(
+                input=self.x_tensor,
+                num_groups=3,
+                weight=self.weight_tensor,
+                bias=self.bias_tensor,
+                epsilon=1e-5,
+            )
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_3(self):
+        """test of passing both args and kwargs parameters"""
+        try:
+            out1 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                weight=self.weight_tensor,
+                bias=self.bias_tensor,
+                epsilon=1e-5,
+            )
+            out2 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                1e-5,
+                weight=self.weight_tensor,
+                bias=self.bias_tensor,
+            )
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_4(self):
+        """test default parameters"""
+        try:
+            out1 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                3,
+                self.weight_tensor,
+            )
+            out2 = paddle.nn.functional.group_norm(self.x_tensor, 3, 1e-5)
+            self.assertTrue(True, "Function call succeeded without error")
+        except Exception as e:
+            self.fail(f"Function raised an unexpected exception: {e}")
+
+    def test_params_5(self):
+        """test duplicate parameters"""
+        with self.assertRaises(TypeError):
+            out_1 = paddle.nn.functional.group_norm(
+                x=self.x_tensor,
+                input=self.x_tensor,
+                num_groups=3,
+            )
+        with self.assertRaises(TypeError):
+            out_2 = paddle.nn.functional.group_norm(
+                self.x_tensor,
+                input=self.x_tensor,
+                num_groups=3,
+            )
 
 
 if __name__ == '__main__':

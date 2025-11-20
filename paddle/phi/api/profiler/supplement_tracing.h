@@ -25,7 +25,7 @@ namespace phi {
 
 class RecordOpInfoSupplement {
  public:
-  static bool IsEnabled();
+  PADDLE_API static bool IsEnabled();
 
   RecordOpInfoSupplement() = default;
 

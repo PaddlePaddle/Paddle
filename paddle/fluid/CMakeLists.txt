@@ -12,5 +12,13 @@ add_subdirectory(pir)
 add_subdirectory(ir_adaptor)
 add_subdirectory(primitive)
 add_subdirectory(sub_graph)
+# NOTE: Only compile FP8-related modules under CUDA 12.9 and above, and Hopper architecture.
+string(FIND "${COMPILED_CUDA_ARCHS}" "90" ARCH_BIN_CONTAINS_90)
+if(WITH_GPU
+   AND (ARCH_BIN_CONTAINS_90 GREATER -1)
+   AND (CUDA_VERSION GREATER_EQUAL 12.9))
+  add_subdirectory(fp8)
+  message(STATUS "To compile FP8-related modules, deep_gemm and kitchen.")
+endif()
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)

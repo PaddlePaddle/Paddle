@@ -136,6 +136,61 @@ class ParameterChecks(unittest.TestCase):
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
 
+    def test_parambase_to_vector_zero(self):
+        with guard():
+            initializer = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(3.0)
+            )
+            linear1 = paddle.nn.Linear(0, 15, initializer)
+
+            vec = paddle.nn.utils.parameters_to_vector(linear1.parameters())
+            self.assertEqual(linear1.weight.shape, [0, 15])
+            self.assertEqual(linear1.bias.shape, [15])
+            self.assertTrue(isinstance(vec, Variable))
+            self.assertEqual(vec.shape, [15])
+
+
+class TestVectorToParam(unittest.TestCase):
+    def test_vector_to_param_zerosize(self):
+        # test the case that the parameters contains zero size tensor
+        with guard():
+            vec = paddle.randn([18], dtype='float32')
+            param1 = paddle.empty([5], dtype='float32')
+            param2 = paddle.empty([5], dtype='float32')
+            param3 = paddle.empty([8], dtype='float32')
+            param4 = paddle.empty([0], dtype='float32')
+            params = [param1, param2, param3, param4]
+            paddle.nn.utils.vector_to_parameters(vec, params)
+            # concat the parameters and get the original vector
+            vec_ = paddle.concat(params, axis=0)
+            np.testing.assert_array_equal(vec_.numpy(), vec.numpy())
+
+    def test_vector_to_param1(self):
+        # test the case that the sum of parameter's elements less than vector elements
+        with guard():
+            vec = paddle.randn([18], dtype='float32')
+            param1 = paddle.empty([5], dtype='float32')
+            param2 = paddle.empty([5], dtype='float32')
+            param3 = paddle.empty([7], dtype='float32')
+            params = [param1, param2, param3]
+            paddle.nn.utils.vector_to_parameters(vec, params)
+            # concat the parameters and get the original vector
+            vec_ = paddle.concat(params, axis=0)
+            np.testing.assert_array_equal(vec_.numpy(), vec[:17].numpy())
+
+    def test_vector_to_param2(self):
+        # test the case that the sum of parameter's elements grater than vector elements
+        def _test_vector_to_param():
+            with guard():
+                vec = paddle.randn([18], dtype='float32')
+                param1 = paddle.empty([5], dtype='float32')
+                param2 = paddle.empty([5], dtype='float32')
+                param3 = paddle.empty([9], dtype='float32')
+                params = [param1, param2, param3]
+                paddle.nn.utils.vector_to_parameters(vec, params)
+
+        self.assertRaises(ValueError, _test_vector_to_param)
+
 
 if __name__ == '__main__':
     unittest.main()

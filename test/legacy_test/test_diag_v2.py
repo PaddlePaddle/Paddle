@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base, static
@@ -106,7 +111,6 @@ class TestDiagV2OpCase4(TestDiagV2Op):
 
 
 class TestDiagV2Error(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main = static.Program()
@@ -251,7 +255,7 @@ class TestDiagV2API(unittest.TestCase):
             result12 = paddle.diag(x5, offset=-1)
             result13 = paddle.diag(x6, offset=-1)
 
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        place = get_device_place() if use_gpu else base.CPUPlace()
         exe = static.Executor(place)
         exe.run(sp)
         [
@@ -317,10 +321,10 @@ class TestDiagV2API(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
         self.run_static(use_gpu=True)
@@ -332,8 +336,8 @@ class TestDiagV2FP16OP(TestDiagV2Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDiagV2BF16OP(OpTest):
@@ -357,12 +361,12 @@ class TestDiagV2BF16OP(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X'], 'Out', check_pir=True, check_prim_pir=True
         )
@@ -398,6 +402,44 @@ class TestDiagV2Complex128OP(TestDiagV2Op):
             + 1j * np.random.randint(-10, 10, size=(10, 10))
         ).astype(self.dtype)
         self.out = np.diag(self.x, self.offset)
+
+
+class TestDiagV2Op_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "diag_v2"
+        self.python_api = paddle.diag
+        self.public_python_api = paddle.diag
+
+        self.init_dtype()
+        self.init_attrs()
+        self.init_input_output()
+        self.set_input_output()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_attrs(self):
+        self.offset = 1
+        self.padding_value = 0.0
+
+    def init_input_output(self):
+        self.x = np.random.rand(10, 0).astype(self.dtype)
+        self.out = np.diag(self.x, self.offset)
+
+    def set_input_output(self):
+        self.attrs = {
+            'offset': self.offset,
+            'padding_value': self.padding_value,
+        }
+
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 if __name__ == "__main__":

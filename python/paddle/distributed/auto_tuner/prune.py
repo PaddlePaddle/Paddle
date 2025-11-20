@@ -295,7 +295,7 @@ def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
                 cfg["vpp_degree"] > vpp_degree
                 and cfg.get("max_mem_usage") == "OOM"
             ):
-                pruned_reason = f"vpp_degree {vpp_degree} may cause oom because { cfg['vpp_degree']} already oom."
+                pruned_reason = f"vpp_degree {vpp_degree} may cause oom because {cfg['vpp_degree']} already oom."
                 log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
                 cur_cfg["max_mem_usage"] = "OOM"
                 return True
@@ -464,7 +464,7 @@ def prune_by_sharding_history(
                 cfg["sharding_stage"] < sharding_stage
                 and cfg.get("time", -1) > 0
             ):
-                pruned_reason = f"sharding_stage {sharding_stage} may be slower because {cfg['sharding_stage'] } has been already runnable."
+                pruned_reason = f"sharding_stage {sharding_stage} may be slower because {cfg['sharding_stage']} has been already runnable."
                 log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
                 cur_cfg["time"] = cfg["time"]
                 return True

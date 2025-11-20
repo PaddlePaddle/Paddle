@@ -16,13 +16,14 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 
 namespace phi {
-inline int getBlockSize(int col) {
+inline int getBlockSize(int64_t col) {
   if (col > 512)
     return 1024;
   else if (col > 256 && col <= 512)
@@ -40,7 +41,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                   const DenseTensor* input_tensor,
                   const int64_t num_cols,
                   const int64_t num_rows,
-                  const int k,
+                  const int64_t k,
                   DenseTensor* out_tensor,
                   DenseTensor* indices_tensor) {
   auto cu_stream = dev_ctx.stream();
@@ -102,7 +103,8 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   }
 #endif
   DenseTensor temp_storage;
-  temp_storage.Resize({static_cast<int>(temp_storage_bytes / sizeof(uint8_t))});
+  temp_storage.Resize(
+      {static_cast<int64_t>(temp_storage_bytes / sizeof(uint8_t))});
   uint8_t* temp_storage_data = dev_ctx.template Alloc<uint8_t>(&temp_storage);
 
   err = cub::DeviceSegmentedRadixSort::SortPairs(temp_storage_data,
@@ -139,7 +141,8 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
   auto e_tmp_indices =
       EigenMatrix<int64_t>::From(static_cast<const DenseTensor>(temp_indices));
-  std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(1)};
+
+  std::vector<int64_t> odims = {num_rows, 1};
   dim = common::make_ddim(odims);
   auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
   auto e_tmp_values =
@@ -155,11 +158,19 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
 template <typename T, typename Context>
 void KthvalueKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    int k,
+                    int64_t k,
                     int axis,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    return;
+  }
+
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();
@@ -172,7 +183,7 @@ void KthvalueKernel(const Context& dev_ctx,
                       1,
                       common::errors::InvalidArgument(
                           "the k in the kthvalue must less equal than the "
-                          "elements number of the input X, but received %d .",
+                          "elements number of the input X, but received %lld .",
                           k));
 
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
@@ -186,13 +197,24 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
     const T* input_data = x.data<T>();
-    funcs::LaunchGatherKthValue<T>(dev_ctx,
-                                   input_data,
-                                   input_width,
-                                   input_height,
-                                   k,
-                                   output_data,
-                                   indices_data);
+    if (input_width > std::numeric_limits<int32_t>::max() / input_height) {
+      funcs::LaunchGatherKthValue<T, int64_t>(dev_ctx,
+                                              input_data,
+                                              input_width,
+                                              input_height,
+                                              k,
+                                              output_data,
+                                              indices_data);
+    } else {
+      funcs::LaunchGatherKthValue<T, int32_t>(
+          dev_ctx,
+          input_data,
+          static_cast<int32_t>(input_width),
+          static_cast<int32_t>(input_height),
+          static_cast<int32_t>(k),
+          output_data,
+          indices_data);
+    }
 #else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(
@@ -200,7 +222,6 @@ void KthvalueKernel(const Context& dev_ctx,
         true,
         common::errors::External("KthvalueOP: Error when use cub sorting"));
 #endif
-
     return;
   } else {
     std::vector<int> trans;
@@ -248,13 +269,24 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
-    funcs::LaunchGatherKthValue<T>(dev_ctx,
-                                   tran_input_data,
-                                   input_width,
-                                   input_height,
-                                   k,
-                                   tran_output_data,
-                                   tran_indices_data);
+    if (input_width > std::numeric_limits<int32_t>::max() / input_height) {
+      funcs::LaunchGatherKthValue<T, int64_t>(dev_ctx,
+                                              tran_input_data,
+                                              input_width,
+                                              input_height,
+                                              k,
+                                              tran_output_data,
+                                              tran_indices_data);
+    } else {
+      funcs::LaunchGatherKthValue<T, int32_t>(
+          dev_ctx,
+          tran_input_data,
+          static_cast<int32_t>(input_width),
+          static_cast<int32_t>(input_height),
+          static_cast<int32_t>(k),
+          tran_output_data,
+          tran_indices_data);
+    }
 #else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(dev_ctx,
@@ -287,7 +319,7 @@ PD_REGISTER_KERNEL(kthvalue,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

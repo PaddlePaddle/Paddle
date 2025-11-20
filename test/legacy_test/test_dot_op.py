@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -173,7 +178,6 @@ class DotOpBatch(DotOp):
 
 
 class TestDotOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -182,7 +186,13 @@ class TestDotOpError(unittest.TestCase):
             # float16 only can be set on GPU place
             x1 = paddle.static.data(name='x1', shape=[-1, 120], dtype="uint8")
             y1 = paddle.static.data(name='y1', shape=[-1, 120], dtype="uint8")
-            self.assertRaises(Exception, paddle.dot, x1, y1)
+            self.assertRaisesRegex(
+                TypeError,
+                r"Check data type error for op: dot",
+                paddle.dot,
+                x1,
+                y1,
+            )
 
             x2 = paddle.static.data(
                 name='x2', shape=[-1, 2, 3], dtype="float32"
@@ -190,13 +200,25 @@ class TestDotOpError(unittest.TestCase):
             y2 = paddle.static.data(
                 name='y2', shape=[-1, 2, 3], dtype="float32"
             )
-            self.assertRaises(Exception, paddle.dot, x2, y2)
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"ShapeError: The dimensions of input ",
+                paddle.dot,
+                x2,
+                y2,
+            )
 
             x3 = paddle.static.data(name='x3', shape=[-1, 3], dtype="float32")
             y3 = paddle.static.data(
                 name='y3', shape=[-1, 2, 3], dtype="float32"
             )
-            self.assertRaises(Exception, paddle.dot, x2, y3)
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"ShapeError: The dimensions of input",
+                paddle.dot,
+                x2,
+                y3,
+            )
 
 
 class TestDygraph(unittest.TestCase):
@@ -248,7 +270,8 @@ class TestComplex128DotOp(TestComplex64DotOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestDotFP16Op(OpTest):
     def setUp(self):
@@ -268,30 +291,30 @@ class TestDotFP16Op(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=0.125, check_pir=True)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ['X', 'Y'], 'Out', check_pir=True
                 )
 
     def test_check_grad_ignore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ['Y'], 'Out', no_grad_set=set("X"), check_pir=True
                 )
 
     def test_check_grad_ignore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ['X'], 'Out', no_grad_set=set("Y"), check_pir=True
@@ -304,7 +327,8 @@ class TestDotFP16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class DotFP16OpBatch(TestDotFP16Op):
     def init_input_output(self):
@@ -320,8 +344,8 @@ class DotFP16OpBatch(TestDotFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDotBF16Op(OpTest):
@@ -342,14 +366,14 @@ class TestDotBF16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place, atol=0.5, check_pir=True)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -360,8 +384,8 @@ class TestDotBF16Op(OpTest):
                 )
 
     def test_check_grad_ignore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -373,8 +397,8 @@ class TestDotBF16Op(OpTest):
                 )
 
     def test_check_grad_ignore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -392,8 +416,8 @@ class TestDotBF16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class DotBF16OpBatch(TestDotBF16Op):
@@ -409,8 +433,8 @@ class DotBF16OpBatch(TestDotBF16Op):
         self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -424,8 +448,8 @@ class DotBF16OpBatch(TestDotBF16Op):
                 )
 
     def test_check_grad_ignore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -437,8 +461,8 @@ class DotBF16OpBatch(TestDotBF16Op):
                 )
 
     def test_check_grad_ignore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -448,6 +472,130 @@ class DotBF16OpBatch(TestDotBF16Op):
                     user_defined_grads=[self.y / self.y.shape[0]],
                     check_pir=True,
                 )
+
+
+class DotOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "dot"
+        self.python_api = paddle.dot
+        self.public_python_api = paddle.dot
+        self.init_shape()
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        self.y = np.random.uniform(1, 3, self.shape).astype(self.dtype)
+        self.out = np.dot(self.x, self.y).astype(self.dtype)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_shape(self):
+        # return shape []
+        self.shape = [0]
+
+
+def get_places():
+    places = []
+    if base.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
+    places.append(paddle.CPUPlace())
+    return places
+
+
+class TestDotAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = get_places()
+        self.shape = [50]
+        self.dtype = "float64"
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_y = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.dot(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.dot(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch compatibility
+        out3 = paddle.dot(input=x, tensor=y)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.dot(x, tensor=y)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.dot(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.dot(tensor=y)
+        paddle_dygraph_out.append(out6)
+        # Test 'out' parameter for torch compatibility
+        out7 = paddle.empty([], dtype=x.dtype)
+        paddle.dot(x, y, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference output
+        ref_out = np.dot(self.np_x, self.np_y)
+        # Check all dygraph results
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            # Define static data placeholders
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.dot(x, y)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.dot(x=x, y=y)
+            # Key words args for torch compatibility
+            out3 = paddle.dot(input=x, tensor=y)
+            # Combined args and kwargs
+            out4 = paddle.dot(x, tensor=y)
+            # Tensor method args
+            out5 = x.dot(y)
+            # Tensor method kwargs
+            out6 = x.dot(tensor=y)
+            # Do not support out in static
+            # Numpy reference output
+            ref_out = np.dot(self.np_x, self.np_y)
+            fetch_list = [out1, out2, out3, out4, out5, out6]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x, "y": self.np_y},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

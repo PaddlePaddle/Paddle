@@ -21,7 +21,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianInplaceGradKernel(const Context& ctx,
+void GaussianInplaceGradKernel(const Context& dev_ctx,
                                const DenseTensor& out_grad,
                                float mean,
                                float std,
@@ -29,7 +29,7 @@ void GaussianInplaceGradKernel(const Context& ctx,
                                DenseTensor* x_grad) {
   auto dims = common::vectorize(x_grad->dims());
   float value = static_cast<float>(0.0f);
-  phi::FullKernel<T>(ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
+  phi::FullKernel<T>(dev_ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
 }
 
 }  // namespace phi
@@ -40,7 +40,7 @@ PD_REGISTER_KERNEL(gaussian_inplace_grad,
                    phi::GaussianInplaceGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

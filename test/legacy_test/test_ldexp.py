@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, get_devices, get_places
 
 import paddle
-from paddle.base import core
 
 
 def _run_ldexp_dynamic(x, y, device='cpu'):
@@ -48,9 +47,7 @@ def _run_ldexp_static(x, y, device='cpu'):
             x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
             y_ = y
             res = paddle.ldexp(x_, y_)
-            place = (
-                paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
-            )
+            place = paddle.CPUPlace() if device == 'cpu' else get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -66,9 +63,7 @@ def _run_ldexp_static(x, y, device='cpu'):
             x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
             y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
             res = paddle.ldexp(x_, y_)
-            place = (
-                paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
-            )
+            place = paddle.CPUPlace() if device == 'cpu' else get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -87,15 +82,7 @@ def check_dtype(input, desired_dtype):
 
 class TestLdexpAPIWithDynamic(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append('cpu')
-        if core.is_compiled_with_cuda():
-            self.places.append('gpu')
+        self.places = get_devices()
 
     def test_ldexp_dynamic(self):
         np.random.seed(7)
@@ -145,15 +132,7 @@ class TestLdexpAPIWithDynamic(unittest.TestCase):
 
 class TestLdexpAPIWithStatic(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append('cpu')
-        if core.is_compiled_with_cuda():
-            self.places.append('gpu')
+        self.places = get_devices()
 
     def test_ldexp_static(self):
         np.random.seed(7)
@@ -218,6 +197,28 @@ class TestLdexpError(unittest.TestCase):
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.randint(-10, 10, dims)).astype(np.int32)
         self.assertRaises(TypeError, paddle.ldexp, paddle.to_tensor(x), y)
+
+
+class TestLdexpAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_ldexp_dynamic(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                dims = [2, 0]
+                x = np.random.rand(*dims) * 10
+                y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+                x_ = paddle.to_tensor(x)
+                y_ = paddle.to_tensor(y)
+                x_.stop_gradient = False
+                y_.stop_gradient = False
+                res = paddle.ldexp(x_, y_)
+                np.testing.assert_allclose(res, np.ldexp(x, y))
+
+                loss = paddle.sum(res)
+                loss.backward()
+                np.testing.assert_allclose(x_.grad.shape, x_.shape)
 
 
 if __name__ == '__main__':

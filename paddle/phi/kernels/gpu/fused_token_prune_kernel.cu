@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/fused_token_prune_kernel.h"
 #include <limits>
 
 #ifdef __NVCC__
@@ -43,8 +44,8 @@ struct AttnMaskFunctor {
 };
 
 __global__ void FillIndex(int64_t* indices, int num_raws, int num_cols) {
-  int num_threads = num_raws * num_cols;
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t num_threads = static_cast<int64_t>(num_raws) * num_cols;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {
@@ -61,8 +62,8 @@ __global__ void TakeAlongAxis(const T* src,
                               int src_num_cols,
                               int dst_num_cols,
                               int num_elements) {
-  int num_threads = num_raws * dst_num_cols;
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t num_threads = static_cast<int64_t>(num_raws) * dst_num_cols;
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {
@@ -78,7 +79,9 @@ __global__ void TakeAlongAxis(const T* src,
 template <typename T>
 __global__ void MaximumFirst(T* mat, int num_raws, int num_cols, T max_value) {
   int num_threads = num_raws;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {

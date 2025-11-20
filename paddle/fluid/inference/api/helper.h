@@ -15,7 +15,10 @@
 #pragma once
 #include <glog/logging.h>
 #include <sys/stat.h>
-
+#ifdef _WIN32
+#include <windows.h>
+#include <codecvt>
+#endif
 #include <fstream>
 #if !defined(_WIN32)
 #include <sys/time.h>
@@ -425,13 +428,26 @@ static void PrintTime(int batch_size,
 }
 
 static bool IsFileExists(const std::string &path) {
-  std::ifstream file(path);
+#ifdef _WIN32
+  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+  std::wstring wpath = converter.from_bytes(path);
+  std::ifstream file(wpath, std::ios::binary);
+#else
+  std::ifstream file(path, std::ios::binary);
+#endif
   bool exists = file.is_open();
   file.close();
   return exists;
 }
 
 static bool IsDirectory(const std::string &path) {
+#ifdef _WIN32
+  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+  std::wstring wpath = converter.from_bytes(path);
+  DWORD attr = GetFileAttributesW(wpath.c_str());
+  if (attr == INVALID_FILE_ATTRIBUTES) return false;
+  return (attr & FILE_ATTRIBUTE_DIRECTORY);
+#else
   struct stat info;
   if (stat(path.c_str(), &info) != 0) {
     return false;
@@ -439,6 +455,7 @@ static bool IsDirectory(const std::string &path) {
     return true;
   }
   return false;
+#endif
 }
 
 void RegisterAllCustomOperator(bool use_pir);

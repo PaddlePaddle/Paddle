@@ -90,6 +90,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
 
     ConvertToFusedOp(op->Op());
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
+    op->Op()->SetAttr("onednn_data_type", std::string(""));
   };
   gpd(graph, handler);
 }

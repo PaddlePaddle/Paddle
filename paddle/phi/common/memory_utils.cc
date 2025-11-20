@@ -14,6 +14,13 @@
 
 #include "paddle/phi/common/memory_utils.h"
 
+namespace phi {
+MemoryUtils& MemoryUtils::Instance() {
+  static MemoryUtils g_memory_utils;
+  return g_memory_utils;
+}
+}  // namespace phi
+
 namespace phi::memory_utils {
 
 Allocator::AllocationPtr Alloc(const phi::Place& place,
@@ -80,12 +87,14 @@ void EmplaceDeviceContexts(
         place_to_device_context,
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority) {
+    int stream_priority,
+    bool set_to_default_stream) {
   MemoryUtils::Instance().EmplaceDeviceContexts(
       place_to_device_context,
       places,
       disable_setting_default_stream_for_allocator,
-      stream_priority);
+      stream_priority,
+      set_to_default_stream);
 }
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \

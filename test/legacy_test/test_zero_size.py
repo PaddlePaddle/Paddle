@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.framework import core
@@ -24,10 +25,9 @@ class TestZeroSizeParameter(unittest.TestCase):
             "cpu",
         ]
         if (
-            paddle.device.is_compiled_with_cuda()
-            and paddle.device.cuda.device_count() > 0
-        ):
-            self.places.append("gpu")
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.cuda.device_count() > 0:
+            self.places.append(get_device())
 
         self.parameter_dtypes = [
             'float16',
@@ -92,10 +92,9 @@ class TestZeroSizeForward(unittest.TestCase):
             "cpu",
         ]
         if (
-            paddle.device.is_compiled_with_cuda()
-            and paddle.device.cuda.device_count() > 0
-        ):
-            self.places.append("gpu")
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.cuda.device_count() > 0:
+            self.places.append(get_device())
 
         self.dtypes = [
             'bool',
@@ -225,10 +224,9 @@ class TestZeroSizeBackward(unittest.TestCase):
             "cpu",
         ]
         if (
-            paddle.device.is_compiled_with_cuda()
-            and paddle.device.cuda.device_count() > 0
-        ):
-            self.places.append("gpu")
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.cuda.device_count() > 0:
+            self.places.append(get_device())
 
         # Only floating and complex needs gradient
         self.dtypes = [
@@ -351,10 +349,9 @@ class TestZeroSizeBackwardWithGradientAccumulation(unittest.TestCase):
             "cpu",
         ]
         if (
-            paddle.device.is_compiled_with_cuda()
-            and paddle.device.cuda.device_count() > 0
-        ):
-            self.places.append("gpu")
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.cuda.device_count() > 0:
+            self.places.append(get_device())
 
         # Only floating and complex needs gradient
         self.dtypes = [

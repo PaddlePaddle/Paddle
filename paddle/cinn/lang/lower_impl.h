@@ -35,14 +35,9 @@
 #include "paddle/cinn/optim/replace_call_with_expr.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
-#include "paddle/cinn/poly/ast_gen.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
-
-namespace poly {
-class Stage;
-}  // namespace poly
 
 namespace lang {
 namespace detail {
@@ -87,11 +82,6 @@ class LowerImpl {
 
   std::vector<ir::Argument> GenFuncArgForSplitKernel(
       Expr func_iterator, std::vector<ir::Tensor> temp_tensors);
-
-  /**
-   * \brief generate the body expression of the final output function.
-   */
-  std::vector<Expr> GenerateFunctionBody(const poly::Schedule* schedule);
 
  private:
   /**
@@ -150,12 +140,6 @@ class LowerImpl {
 
   bool support_ir_schedule_ = false;
 };
-
-/**
- * \brief Tell whether a tensor contains some GPU related information, such some
- * schedule.
- */
-bool TensorContainsGPUInfo(ir::Tensor t, poly::Stage* stage);
 
 /**
  * Mark the PolyFor as Vectorized if it is scheduled Vectorize in Stage.

@@ -26,16 +26,17 @@ inline __global__ void sequence_expand_grad_kernel(const T* dout_data,
                                                       the instance length*/
                                                    const int x_item_length,
                                                    T* dx_data) {
-  int bid = blockIdx.x;
+  size_t bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
-  int x_item_count = dx_lod[bid + 1] - dx_lod[bid];
-  int repeats = ref_lod[bid + 1] - ref_lod[bid];
-  int out_offset = static_cast<int>(offset[bid]);
+  size_t x_item_count = dx_lod[bid + 1] - dx_lod[bid];
+  size_t repeats = ref_lod[bid + 1] - ref_lod[bid];
+  size_t out_offset = offset[bid];
   int x_offset = dx_lod[bid];
 
-  for (int tid_z = threadIdx.z; tid_z < repeats; tid_z += blockDim.z) {
-    for (int tid_y = threadIdx.y; tid_y < x_item_count; tid_y += blockDim.y) {
-      for (int tid_x = threadIdx.x; tid_x < x_item_length;
+  for (size_t tid_z = threadIdx.z; tid_z < repeats; tid_z += blockDim.z) {
+    for (size_t tid_y = threadIdx.y; tid_y < x_item_count;
+         tid_y += blockDim.y) {
+      for (size_t tid_x = threadIdx.x; tid_x < x_item_length;
            tid_x += blockDim.x) {
         phi::CudaAtomicAdd(
             &dx_data[(x_offset + tid_y) * x_item_length + tid_x],
@@ -49,7 +50,7 @@ inline __global__ void sequence_expand_grad_kernel(const T* dout_data,
 
 template <typename T>
 struct SequenceExpandGradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand based lod*/
@@ -57,7 +58,14 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
     int x_item_length = common::product(dx->dims()) / dx->dims()[0];
     phi::Vector<size_t> out_offset(x_lod.size());
     GetOutputOffset(x_lod, ref_lod, &out_offset);
-
+    // big tensor currently not supported
+    PADDLE_ENFORCE_LE(ref_lod.size(),
+                      dev_ctx.GetCUDAMaxGridDimSize()[0],
+                      ::common::errors::PreconditionNotMet(
+                          "ref_lod.size's numel too large, allowed size is "
+                          "%lld elements, but got %lld",
+                          dev_ctx.GetCUDAMaxGridDimSize()[0],
+                          ref_lod.size()));
     int thread_x = std::min(32, std::max(static_cast<int>(ref_lod.size()), 16));
     int thread_y = 16;
     int thread_z = 1024 / thread_x / thread_y;
@@ -67,14 +75,14 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
     phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     phi::MixVector<size_t> mixv_x_lod(&x_lod);
     phi::MixVector<size_t> mixv_out_offset(&out_offset);
-    sequence_expand_grad_kernel<<<grid_size, block_size, 0, context.stream()>>>(
+    sequence_expand_grad_kernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
         dout.data<T>(),
-        mixv_ref_lod.CUDAData(context.GetPlace()),
-        mixv_x_lod.CUDAData(context.GetPlace()),
-        mixv_out_offset.CUDAData(context.GetPlace()),
+        mixv_ref_lod.CUDAData(dev_ctx.GetPlace()),
+        mixv_x_lod.CUDAData(dev_ctx.GetPlace()),
+        mixv_out_offset.CUDAData(dev_ctx.GetPlace()),
         ref_lod.size(),
         x_item_length,
-        context.template Alloc<T>(dx));
+        dev_ctx.template Alloc<T>(dx));
   }
 };
 

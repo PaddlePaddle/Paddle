@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_XPU
-
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/impl/sequence_conv_kernel_impl.h"
 
@@ -65,7 +63,7 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
   phi::DDim col_shape = {in->dims()[0], context_length * sequence_width};
   xpu::ctx_guard RAII_GUARD(xpu_context);
-  int col_numel = col_shape[0] * col_shape[1];
+  int64_t col_numel = col_shape[0] * col_shape[1];
   T* col_data = RAII_GUARD.alloc_l3_or_gm<T>(col_numel);
   PADDLE_ENFORCE_NOT_NULL(col_data,
                           common::errors::Fatal("XPU memory is not enough"));
@@ -85,7 +83,7 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
     cpu_lodx[i] = lod_level_0[i];
   }
   xpu::VectorParam<int> lodx = {
-      cpu_lodx.data(), static_cast<int>(cpu_lodx.size()), nullptr};
+      cpu_lodx.data(), static_cast<int64_t>(cpu_lodx.size()), nullptr};
 
   int r = xpu::sequence_context_projection<T, int>(xpu_context,
                                                    in->data<T>(),
@@ -101,10 +99,10 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
 
   bool trans_a = false;
   bool trans_b = false;
-  int m = col_shape[0];
-  int k = col_shape[1];
-  int k1 = filter.dims()[0];
-  int n = filter.dims()[1];
+  int64_t m = col_shape[0];
+  int64_t k = col_shape[1];
+  int64_t k1 = filter.dims()[0];
+  int64_t n = filter.dims()[1];
   PADDLE_ENFORCE_EQ(k,
                     k1,
                     common::errors::InvalidArgument(
@@ -113,9 +111,9 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
                         "But expect k == k1",
                         k,
                         k1));
-  int lda = (!trans_a) ? k : m;
-  int ldb = (!trans_b) ? n : k;
-  int ldc = n;
+  int64_t lda = (!trans_a) ? k : m;
+  int64_t ldb = (!trans_b) ? n : k;
+  int64_t ldc = n;
   T alpha = static_cast<T>(1.0);
   T beta = static_cast<T>(0.0);
   const T* data_a = col_data;
@@ -150,5 +148,3 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     sequence_conv, XPU, ALL_LAYOUT, phi::SequenceConvXPUKernel, float) {}
-
-#endif

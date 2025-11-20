@@ -287,9 +287,9 @@ class ClipHelper:
                 rank = sizes.index(min(sizes))
                 mapping[rank].append(param.name)
                 numel = reduce(lambda x, y: x * y, param.shape, 1)
-                assert (
-                    numel > 0
-                ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
+                assert numel > 0, (
+                    f"param [{param.name}] should larger than 0, but it is [{numel}]"
+                )
                 sizes[rank] += numel
         return mapping
 
@@ -510,13 +510,13 @@ class ClipGradByGlobalNormPass(PassBase):
                                 prior_op = block.ops[j]
                                 break
                             j -= 1
-                        assert (
-                            prior_op is not None
-                        ), "Unexpected: ClipByGlobalNorm could not find priory depend op"
+                        assert prior_op is not None, (
+                            "Unexpected: ClipByGlobalNorm could not find priory depend op"
+                        )
                         prior_var = block.vars[prior_op.output_arg_names[0]]
-                        assert (
-                            prior_var is not None
-                        ), "Unexpected: ClipByGlobalNorm could not find priory depend var"
+                        assert prior_var is not None, (
+                            "Unexpected: ClipByGlobalNorm could not find priory depend var"
+                        )
                         insert_dependencies_for_vars(
                             block,
                             idx,

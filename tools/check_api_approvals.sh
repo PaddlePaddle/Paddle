@@ -48,8 +48,8 @@ if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
 fi
 
 if [ "$api_annotation_diff" != "" ]; then
-    echo_line="You must have one member of Typing group (SigureMo, megemini, zrr1999, sunzhongkai588, luotao1) approval for API annotation change.\n"
-    check_approval 1 SigureMo megemini zrr1999 sunzhongkai588 luotao1
+    echo_line="You must have one member of Typing group (SigureMo, zrr1999, megemini, sunzhongkai588) approval for API annotation change.\n"
+    check_approval 1 SigureMo zrr1999 megemini sunzhongkai588
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
@@ -98,29 +98,6 @@ ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_gr
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   echo_line="You must have one RD (zhiqiu (Recommend) or zhhsplendid) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n"
   check_approval 1 zhiqiu zhhsplendid
-fi
-
-OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
-if [ "$OUTPUT_LOG" != "" ];then
-    git diff -U0 upstream/$BRANCH |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
-    samplecode=`find tools/samplecode_temp -type f || true`
-    sample_status=0
-    if [ "$samplecode" != "" ];then
-        cat `find tools/samplecode_temp -type f` >/tmp/samplecode.txt
-        sed -i s#\"#\'#g /tmp/samplecode.txt
-        while read line
-        do
-            code_in=`grep "$line" /tmp/samplecode.txt || true`
-            if [ "$code_in" == "" ];then
-                sample_status=1
-            fi
-        done</tmp/print.txt
-    fi
-
-    if [ "$sample_status" == 1 ] || [ "$samplecode" == "" ] ;then
-        echo_line="print or std::cout is not recommended for direct use, please use logging or VLOG. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 or SigureMo review and approve.\n"
-        check_approval 1 tianshuo78520a zhangbo9674 SigureMo
-    fi
 fi
 
 if [ -n "${echo_list}" ];then

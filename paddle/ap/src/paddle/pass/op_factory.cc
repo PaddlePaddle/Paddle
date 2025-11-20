@@ -36,6 +36,17 @@ adt::Result<pir::Operation*> ConstructPdOpSum(
   return op;
 }
 
+adt::Result<pir::Operation*> ConstructAddOp(
+    pir::Builder* builder,
+    const std::vector<pir::Value>& inputs,
+    const pir::AttributeMap& attrs) {
+  ADT_CHECK(inputs.size() == 2) << adt::errors::TypeError{
+      std::string() + "'ap_op.add' op takes 2 arguments, but " +
+      std::to_string(inputs.size()) + " were given"};
+  auto op = builder->Build<ap::dialect::AddOp>(inputs.at(0), inputs.at(1));
+  return op;
+}
+
 adt::Result<pir::Operation*> ConstructUpSpiderOp(
     pir::Builder* builder,
     const std::vector<pir::Value>& inputs,
@@ -184,6 +195,10 @@ adt::Result<std::optional<pir::Operation*>> CreateOperation(
   }
   if (op_name == "builtin.shadow_output") {
     ADT_LET_CONST_REF(ret, ConstructShadowOutputOp(builder, inputs, attrs));
+    return ret;
+  }
+  if (op_name == "ap_op.add") {
+    ADT_LET_CONST_REF(ret, ConstructAddOp(builder, inputs, attrs));
     return ret;
   }
   if (op_name == "ap_op.up_spider") {

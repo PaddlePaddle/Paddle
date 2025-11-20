@@ -46,7 +46,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
     regularization_coeff = 0.0f;
   }
 
-  // int momentum(Context* ctx, const T* param, const T* velocity, const T*
+  // int momentum(Context* xpu_ctx, const T* param, const T* velocity, const T*
   // grad, T* param_out, T* velocity_out, int len, const float* lr, int
   // use_nesterov, float mu, float l2_weight_decay);
   int r = xpu::momentum(dev_ctx.x_context(),
@@ -64,9 +64,5 @@ void MomentumDenseKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(momentum,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MomentumDenseKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    momentum, XPU, ALL_LAYOUT, phi::MomentumDenseKernel, float, phi::float16) {}

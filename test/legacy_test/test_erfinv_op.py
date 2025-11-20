@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from scipy.special import erfinv
 
 import paddle
@@ -31,7 +37,7 @@ class TestErfinvOp(OpTest):
         self.op_type = "erfinv"
         self.python_api = paddle.erfinv
         self.init_dtype()
-        self.shape = [11, 17]
+        self.init_shape()
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
         self.res_ref = erfinv(self.x).astype(self.dtype)
         self.grad_out = np.ones(self.shape, self.dtype)
@@ -40,6 +46,9 @@ class TestErfinvOp(OpTest):
         )
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.res_ref}
+
+    def init_shape(self):
+        self.shape = [11, 17]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -62,6 +71,11 @@ class TestErfinvFP64Op(TestErfinvOp):
         self.dtype = np.float64
 
 
+class TestErfinvOp_ZeroSize(TestErfinvOp):
+    def init_shape(self):
+        self.shape = [0, 17]
+
+
 class TestErfinvAPIOp(unittest.TestCase):
     def init_dtype(self):
         self.dtype = 'float32'
@@ -70,15 +84,7 @@ class TestErfinvAPIOp(unittest.TestCase):
         self.init_dtype()
         self.x = np.random.rand(5).astype(self.dtype)
         self.res_ref = erfinv(self.x)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_static_api(self):
         paddle.enable_static()
@@ -124,8 +130,8 @@ class TestErfinvFP16Op(TestErfinvOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestErfinvBF16Op(OpTest):
@@ -150,13 +156,13 @@ class TestErfinvBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out_ref)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 

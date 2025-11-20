@@ -106,7 +106,7 @@ std::string PerformanceReporter::Report(
   ss << "Call Count = " << durations.size()
      << "\t Total Time = " << total_time.count() << unit
      << "\t Mean Time = " << mean_time.count() << unit
-     << "\t TrimMean Time = " << trim_mean_time.count() << unit
+     << "\t Trim Mean Time = " << trim_mean_time.count() << unit
      << "\t Max Time = " << max_time.count() << unit
      << "\t Min Time = " << min_time.count() << unit << "\n";
 

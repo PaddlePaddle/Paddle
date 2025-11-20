@@ -159,9 +159,10 @@ set +x
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
             pip install -e .
+            pip install numpy==1.24.4 pypdfium2
 
             #install paddle x dependency
-            paddlex --install PaddleClas
+            paddlex --install PaddleClas -y
 
             #download paddle dataset
             wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
@@ -177,15 +178,12 @@ set +x
             echo "Training Resnet50 completed!"
 
             #inference Reset50
-            IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
-            echo ${DEVICES[0]}
-
             echo "Starting to predict ResNet50 model..."
             python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
                 -o Global.mode=predict \
                 -o Predict.model_dir="./resnet50_output/best_model/inference" \
                 -o Predict.input="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
-                -o Global.device="xpu:${DEVICES[0]}"
+                -o Global.device="xpu:0"
             echo "Predicting Resnet50 completed!"
             cd ..
             export FLAGS_enable_pir_api=1

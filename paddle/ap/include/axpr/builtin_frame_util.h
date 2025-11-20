@@ -20,6 +20,7 @@
 #include "paddle/ap/include/axpr/builtin_symbol.h"
 #include "paddle/ap/include/axpr/exception_method_class.h"
 #include "paddle/ap/include/axpr/module_mgr_helper.h"
+#include "paddle/ap/include/fs/builtin_functions.h"
 
 namespace ap::axpr {
 
@@ -38,9 +39,14 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   Yield("setattr", &SetAttr);
   ForEachExceptionConstructor(Yield);
   Yield("raise", &Raise);
+  Yield("__builtin__raise", &Raise);
   Yield("__builtin_not__", &BuiltinNot);
 
+  Yield("__builtin__sorted", &Sorted);
   Yield("__builtin__foreach", &ForEach);
+  Yield("__builtin__registry", &GetRegistry);
+  Yield("__builtin__dirname", &fs::DirName);
+  Yield("__builtin__basename", &fs::BaseName);
 
   auto YieldTwice = [&](const auto& name, const auto& value) {
     Yield(name, value);

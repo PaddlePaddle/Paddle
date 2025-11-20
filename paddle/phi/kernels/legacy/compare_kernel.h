@@ -19,42 +19,42 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void LessThanRawKernel(const Context& ctx,
+void LessThanRawKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        int axis,
                        DenseTensor* out);
 
 template <typename T, typename Context>
-void LessEqualRawKernel(const Context& ctx,
+void LessEqualRawKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         int axis,
                         DenseTensor* out);
 
 template <typename T, typename Context>
-void GreaterThanRawKernel(const Context& ctx,
+void GreaterThanRawKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           int axis,
                           DenseTensor* out);
 
 template <typename T, typename Context>
-void GreaterEqualRawKernel(const Context& ctx,
+void GreaterEqualRawKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
                            int axis,
                            DenseTensor* out);
 
 template <typename T, typename Context>
-void EqualRawKernel(const Context& ctx,
+void EqualRawKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     int axis,
                     DenseTensor* out);
 
 template <typename T, typename Context>
-void NotEqualRawKernel(const Context& ctx,
+void NotEqualRawKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        int axis,

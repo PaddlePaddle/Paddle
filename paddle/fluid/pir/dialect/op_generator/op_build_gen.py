@@ -72,6 +72,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'AddNInferMeta',
     'ApVariadicInferMeta',
     'ApFacadeInferMeta',
+    'ApTrivialFusionBeginInferMeta',
+    'ApTrivialFusionEndInferMeta',
     'AddNTensorArrayInferMeta',
     'AttentionLstmInferMeta',
     'AucInferMeta',
@@ -92,8 +94,10 @@ _INFERMETA_NEED_META_CONFIG = {
     'LegacyInterpolateInferMeta',
     'NceInferMeta',
     'PyramidHashInferMeta',
+    'RmsNormInferMeta',
     'SigmoidCrossEntropyWithLogitsInferMeta',
     'StackInferMeta',
+    'WeightOnlyLinearInferMeta',
     'YoloBoxPostInferMeta',
     'FusedConvInferMeta',
     # nullary.h
@@ -131,6 +135,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'KthvalueInferMeta',
     'MaxPoolWithIndexInferMeta',
     'MaxPoolV2InferMeta',
+    'MinMaxWithIndexInferMeta',
     'MultinomialInferMeta',
     'OverlapAddInferMeta',
     'PadInferMeta',
@@ -139,6 +144,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'Pool2DInferMeta',
     'ReduceIntArrayAxisInferMetaBase',
     'ReduceIntArrayAxisInferMeta',
+    'StrictReduceIntArrayAxisInferMetaBase',
+    'StrictReduceIntArrayAxisInferMeta',
     'ReshapeInferMeta',
     'ReshapeWithXShapeInferMeta',
     'ReverseInferMeta',
@@ -916,7 +923,7 @@ def gen_build_func_str(
     if op_info.class_name in LOGIC_OP_LIST:
         build_outputs_str += "::pir::TrueStopGradientsDefaultly(argument);\n"
     else:
-        build_outputs_str += "::pir::PassStopGradientsDefaultly(argument);" ""
+        build_outputs_str += "::pir::PassStopGradientsDefaultly(argument);"
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
   PADDLE_ENFORCE_NE(

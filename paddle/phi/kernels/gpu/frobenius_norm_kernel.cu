@@ -28,6 +28,11 @@ void FrobeniusNormKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    phi::funcs::SetConstant<Context, T>()(dev_ctx, out, static_cast<T>(0));
+    return;
+  }
   reduce_all = recompute_reduce_all(x, dims.GetData(), reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::AddFunctor, kps::SquareFunctor>(
@@ -38,5 +43,11 @@ void FrobeniusNormKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    frobenius_norm, GPU, ALL_LAYOUT, phi::FrobeniusNormKernel, float, double) {}
+PD_REGISTER_KERNEL(frobenius_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FrobeniusNormKernel,
+                   float,
+                   double,
+                   phi::complex64,
+                   phi::complex128) {}

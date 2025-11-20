@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "paddle/common/macros.h"
 #include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/utils/test_macros.h"
 
@@ -109,10 +110,10 @@ TypeId TypeId::get() {
   namespace pir {                               \
   namespace detail {                            \
   template <>                                   \
-  class TEST_API TypeIdResolver<TYPE_CLASS> {   \
+  class TypeIdResolver<TYPE_CLASS> {            \
    public:                                      \
     static TypeId Resolve() { return id_; }     \
-    static UniqueingId id_;                     \
+    PADDLE_API static UniqueingId id_;          \
   };                                            \
   }                                             \
   }  // namespace pir
@@ -121,19 +122,19 @@ TypeId TypeId::get() {
   namespace pir {                                      \
   namespace detail {                                   \
   template <>                                          \
-  class IR_API TypeIdResolver<TYPE_CLASS> {            \
+  class TypeIdResolver<TYPE_CLASS> {                   \
    public:                                             \
     static TypeId Resolve() { return id_; }            \
-    static UniqueingId id_;                            \
+    PADDLE_API static UniqueingId id_;                 \
   };                                                   \
   }                                                    \
   }  // namespace pir
 
-#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
-  namespace pir {                                   \
-  namespace detail {                                \
-  UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
-  }                                                 \
+#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)                     \
+  namespace pir {                                                  \
+  namespace detail {                                               \
+  PADDLE_EXP_API UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
+  }                                                                \
   }  // namespace pir
 
 }  // namespace pir

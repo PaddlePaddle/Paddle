@@ -18,11 +18,11 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-
 namespace phi {
 
 template <typename T>
@@ -143,7 +143,7 @@ static __global__ void SimpleElemwiseAddGradCUDAKernel(
 }
 
 template <typename T>
-void DefaultElementwiseAddGrad(const GPUContext &ctx,
+void DefaultElementwiseAddGrad(const GPUContext &dev_ctx,
                                const DenseTensor &x,
                                const DenseTensor &y,
                                const DenseTensor &out,
@@ -155,10 +155,10 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
 
   // dx
   if (dx != nullptr) {
-    auto *dx_data = ctx.template Alloc<T>(dx);
+    auto *dx_data = dev_ctx.template Alloc<T>(dx);
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
+        phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -166,51 +166,51 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       if (dx->IsSharedBufferWith(dout)) {
         dx->clear();
         dx->Resize(x.dims());
-        ctx.template Alloc<T>(dx);
+        dev_ctx.template Alloc<T>(dx);
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
       phi::SumKernel<T, GPUContext>(
-          ctx, dout, reduce_dims, dout.dtype(), false, dx);
+          dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
   // dy
   if (dy != nullptr) {
-    auto *dy_data = ctx.template Alloc<T>(dy);
+    auto *dy_data = dev_ctx.template Alloc<T>(dy);
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
-        phi::Copy(ctx, dout, ctx.GetPlace(), false, dy);
+        phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
       }
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
       phi::SumKernel<T, GPUContext>(
-          ctx, dout, reduce_dims, dout.dtype(), false, dy);
+          dev_ctx, dout, reduce_dims, dout.dtype(), false, dy);
     }
   }
 }
 
 template <typename T>
-void ElementwiseAddGrad(const GPUContext &ctx,
+void ElementwiseAddGrad(const GPUContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
                         const DenseTensor &out,
                         const DenseTensor &dout,
                         DenseTensor *dx,
                         DenseTensor *dy) {
-  ctx.template Alloc<T>(dx);
-  ctx.template Alloc<T>(dy);
+  dev_ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dy);
   auto *dx_data = dx->data<T>();
   auto *dy_data = dy->data<T>();
   auto *dout_data = dout.data<T>();
   if (dx_data == dout_data && dy_data != dout_data) {
     VLOG(4) << "Special case when dx_data is the same as dout_data, "
                "only need copy dout to dy";
-    phi::Copy(ctx, dout, ctx.GetPlace(), false, dy);
+    phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   } else if (dx_data != dout_data && dy_data == dout_data) {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "only need copy dout to dx";
-    phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
+    phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x.numel();
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
@@ -220,11 +220,12 @@ void ElementwiseAddGrad(const GPUContext &ctx,
                  PREDEFINED_BLOCK_SIZE,
              1);
     SimpleElemwiseAddGradCUDAKernel<T>
-        <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
-                                                     size,
-                                                     vec_size,
-                                                     ctx.template Alloc<T>(dx),
-                                                     ctx.template Alloc<T>(dy));
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+            dout.data<T>(),
+            size,
+            vec_size,
+            dev_ctx.template Alloc<T>(dx),
+            dev_ctx.template Alloc<T>(dy));
   } else {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "and dx_data is the same as dout_data, do not need "
@@ -243,19 +244,19 @@ static __global__ void SimpleElemwiseSubGradCUDAKernel(const T *dout,
                                                        int64_t size,
                                                        T *dx,
                                                        T *dy) {
-  int col = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
+  int64_t col = static_cast<int64_t>(BLOCK_ID_X) * BLOCK_NUM_X + THREAD_ID_X;
 
   while (col < size) {
     if (dx != nullptr) {
       dx[col] = dout[col];
     }
     dy[col] = -dout[col];
-    col += BLOCK_NUM_X * GRID_NUM_X;
+    col += static_cast<int64_t>(BLOCK_NUM_X) * GRID_NUM_X;
   }
 }
 
 template <typename T>
-void default_elementwise_sub_grad(const GPUContext &ctx,
+void default_elementwise_sub_grad(const GPUContext &dev_ctx,
                                   const DenseTensor &x,
                                   const DenseTensor &y,
                                   const DenseTensor &out,
@@ -266,10 +267,10 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
   auto *dout_data = dout.data<T>();
   // dx
   if (dx != nullptr) {
-    auto *dx_data = ctx.template Alloc<T>(dx);
+    auto *dx_data = dev_ctx.template Alloc<T>(dx);
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
+        phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -277,17 +278,17 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       if (dx->IsSharedBufferWith(dout)) {
         dx->clear();
         dx->Resize(x.dims());
-        ctx.template Alloc<T>(dx);
+        dev_ctx.template Alloc<T>(dx);
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
       phi::SumKernel<T, GPUContext>(
-          ctx, dout, reduce_dims, dout.dtype(), false, dx);
+          dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
   // dy
   if (dy != nullptr) {
-    auto *dy_data = ctx.template Alloc<T>(dy);
+    auto *dy_data = dev_ctx.template Alloc<T>(dy);
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
         dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
@@ -295,20 +296,20 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
         dim3 grid_size =
             dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
         SimpleElemwiseSubGradCUDAKernel<T>
-            <<<grid_size, block_size, 0, ctx.stream()>>>(
-                dout.data<T>(), size, nullptr, ctx.template Alloc<T>(dy));
+            <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+                dout.data<T>(), size, nullptr, dev_ctx.template Alloc<T>(dy));
       }
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
       funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
+          dev_ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
     }
   }
 }
 
 template <typename T>
-void elementwise_sub_grad(const GPUContext &ctx,
+void elementwise_sub_grad(const GPUContext &dev_ctx,
                           const DenseTensor &x,
                           const DenseTensor &y,
                           const DenseTensor &out,
@@ -320,10 +321,11 @@ void elementwise_sub_grad(const GPUContext &ctx,
   dim3 grid_size =
       dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
   SimpleElemwiseSubGradCUDAKernel<T>
-      <<<grid_size, block_size, 0, ctx.stream()>>>(dout.data<T>(),
-                                                   size,
-                                                   ctx.template Alloc<T>(dx),
-                                                   ctx.template Alloc<T>(dy));
+      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+          dout.data<T>(),
+          size,
+          dev_ctx.template Alloc<T>(dx),
+          dev_ctx.template Alloc<T>(dy));
 }
 /*
 ******************************
@@ -376,6 +378,26 @@ void ElementwiseMulGrad(const GPUContext &dev_ctx,
                         DenseTensor *dy,
                         int axis) {
   const auto place = dev_ctx.GetPlace();
+
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, GPUContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, GPUContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
 
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor *> ins = {&dout, &y, &x};

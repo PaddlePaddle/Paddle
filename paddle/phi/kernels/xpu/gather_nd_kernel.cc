@@ -16,18 +16,34 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/tile_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdKernel(const Context &ctx,
+void GatherNdKernel(const Context &dev_ctx,
                     const DenseTensor &x,
                     const DenseTensor &index,
                     DenseTensor *out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   if (x.numel() == 0 || out->numel() == 0) return;
+  // The result dims is
+  //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  // If the last dimension of index is 0, set it to 1 and tile x.
+  auto index_dims = index.dims();
+  std::vector<int64_t> out_dims;
+  if (index_dims[index_dims.size() - 1] == 0) {
+    for (int i = 0; i < index_dims.size() - 1; ++i) {
+      out_dims.emplace_back(index_dims[i]);
+    }
+    for (int i = 0; i < x.dims().size(); ++i) {
+      out_dims.emplace_back(1);
+    }
+    phi::TileKernel<T, Context>(dev_ctx, x, phi::IntArray(out_dims), out);
+    return;
+  }
   if (index.dims()[0] == 0 && index.numel() == 0) return;
 
   if (index.numel() == 0) {
@@ -54,9 +70,9 @@ void GatherNdKernel(const Context &ctx,
             remain_numel,
             y_numel));
 
-    // int broadcast(Context* ctx, const T* x, T* y, const std::vector<int64_t>&
-    // xshape, const std::vector<int64_t>& yshape)
-    int r = xpu::broadcast(ctx.x_context(),
+    // int broadcast(Context* dev_ctx, const T* x, T* y, const
+    // std::vector<int64_t>& xshape, const std::vector<int64_t>& yshape)
+    int r = xpu::broadcast(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType *>(x.data<T>()),
                            reinterpret_cast<XPUType *>(out->data<T>()),
                            {1, x_numel},
@@ -77,19 +93,19 @@ void GatherNdKernel(const Context &ctx,
                         DataType::INT32,
                         DataType::INT64));
 
-  auto x_shape = common::vectorize<int>(x.dims());
-  auto index_shape = common::vectorize<int>(index.dims());
+  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto index_shape = common::vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
   }
-  xpu::VectorParam<int> x_vec = {
-      x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
+  xpu::VectorParam<int64_t> x_vec = {
+      x_shape.data(), static_cast<int64_t>(x_shape.size()), nullptr};
 
   int ret = 0;
 #ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_type == DataType::INT32) {
     ret = xpu::gather_nd<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int>(),
         reinterpret_cast<XPUType *>(out->data<T>()),
@@ -97,7 +113,7 @@ void GatherNdKernel(const Context &ctx,
         index_shape);
   } else {
     ret = xpu::gather_nd<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int64_t>(),
         reinterpret_cast<XPUType *>(out->data<T>()),
@@ -108,7 +124,7 @@ void GatherNdKernel(const Context &ctx,
 #else
   if (index_type == DataType::INT32) {
     ret = xpu::plugin::fast_gather_nd<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int>(),
         reinterpret_cast<XPUType *>(out->data<T>()),
@@ -116,7 +132,7 @@ void GatherNdKernel(const Context &ctx,
         index_shape);
   } else {
     ret = xpu::plugin::fast_gather_nd<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         index.data<int64_t>(),
         reinterpret_cast<XPUType *>(out->data<T>()),
@@ -136,5 +152,5 @@ PD_REGISTER_KERNEL(gather_nd,
                    float,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

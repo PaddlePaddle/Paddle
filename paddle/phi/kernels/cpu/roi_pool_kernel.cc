@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -37,8 +38,11 @@ void RoiPoolKernel(const Context& dev_ctx,
   int width = static_cast<int>(x_dims[3]);
   int rois_num = static_cast<int>(boxes.dims()[0]);
 
-  if (rois_num == 0) {
-    dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0 || boxes.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(arg_max->dims())), 0, arg_max);
     return;
   }
 

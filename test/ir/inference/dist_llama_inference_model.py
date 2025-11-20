@@ -191,9 +191,9 @@ class FusedMultiTransformerBase(nn.Layer):
 
         self.embed_dim = config.embed_dim
         self.head_dim = config.embed_dim // config.num_heads
-        assert (
-            self.head_dim * config.num_heads == config.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * config.num_heads == config.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
 
         # tensor model parallel
         if config.nranks > 1:
@@ -406,9 +406,9 @@ class FusedMultiTransformerBase(nn.Layer):
 
     def get_attr(self, attrs, idx):
         if isinstance(attrs, (list, tuple)):
-            assert (
-                len(attrs) == self.num_layers
-            ), f"length of attrs is {len(attrs)} is not equal to self.num_layers {self.num_layers}"
+            assert len(attrs) == self.num_layers, (
+                f"length of attrs is {len(attrs)} is not equal to self.num_layers {self.num_layers}"
+            )
             return attrs[idx]
         return attrs
 

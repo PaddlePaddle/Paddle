@@ -1,0 +1,25 @@
+name: CI-Windows
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop, release/**]
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.event.pull_request.number }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  cancel:
+    name: Cancel CI-Windows for ${{ github.event.pull_request.number }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel CI-Windows
+        run: |
+          exit 0

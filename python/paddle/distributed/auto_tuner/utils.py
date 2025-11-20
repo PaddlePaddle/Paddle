@@ -1820,7 +1820,9 @@ def load_configs_from_csv(configs_csv):
             recompute_granularity == ""
             or recompute_granularity.lower()
             in __SUPPORTED_RECOMPUTE_GRANULARITY__
-        ), f"{recompute_granularity} must be one of {__SUPPORTED_RECOMPUTE_GRANULARITY__}, but got {recompute_granularity}."
+        ), (
+            f"{recompute_granularity} must be one of {__SUPPORTED_RECOMPUTE_GRANULARITY__}, but got {recompute_granularity}."
+        )
         config["recompute_granularity"] = (
             recompute_granularity if recompute_granularity != "" else None
         )

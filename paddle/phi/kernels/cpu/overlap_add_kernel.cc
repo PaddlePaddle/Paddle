@@ -37,7 +37,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       (axis == 0) ? out->dims()[0]
                   : out->dims()[static_cast<int>(out_rank) - 1]);
 
-  // auto& dev_ctx = ctx.device_context<Context>();
+  // auto& dev_ctx = dev_ctx.device_context<Context>();
 
   DenseTensor x_(x.type());
   x_ = x;
@@ -154,5 +154,5 @@ PD_REGISTER_KERNEL(overlap_add,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

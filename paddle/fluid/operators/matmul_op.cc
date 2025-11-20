@@ -82,7 +82,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     // For NHWC execution output shape needs to be
     // computed like instead x*y we are to do y*x
     bool channelwise_onednn =
-        context->IsRunMKLDNNKernel() &&
+        context->IsRunONEDNNKernel() &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
          phi::DataLayout::kNHWC);
     if (channelwise_onednn) {

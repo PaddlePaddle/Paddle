@@ -104,7 +104,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   NameVarBaseMap ins = {x_pair, y_pair};
   NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_onednn"] = false;
 
   // add VariableWrapper hook
   x->GradVarBase()->AddVariableWrapperHook(
@@ -211,7 +211,7 @@ void GradVarLeafBackwardHookWithGradAccumulatedTest() {
   NameVarBaseMap ins = {x_pair, y_pair};
   NameVarBaseMap outs = {out_xy_pair};
   framework::AttributeMap mul_attr_map;
-  mul_attr_map["use_mkldnn"] = false;
+  mul_attr_map["use_onednn"] = false;
   tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   var_pair z_pair = var_pair("Y", vb_vector(1, z));

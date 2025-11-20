@@ -64,7 +64,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
         wx_dims[i][0],
         x_mat_dims[1],
         common::errors::InvalidArgument(
-            "The first dimension of flattened WeightX #%d"
+            "The first dimension of flattened WeightX #%d "
             "should equal to last dimension of flattened input X, but "
             "received fattened WeightX dimension is:%d, flattened X dimension "
             "is:%d",
@@ -205,7 +205,7 @@ void MultiGRUOpMaker::Make() {
                "Number of stacked GRU layers.")
       .SetDefault(1);
   AddAttr<bool>("origin_mode",
-                "bool"
+                "bool "
                 "use origin mode in article https://arxiv.org/abs/1412.3555")
       .SetDefault(false);
   AddAttr<std::string>(

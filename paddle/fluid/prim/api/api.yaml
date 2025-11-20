@@ -44,6 +44,7 @@
 - put_along_axis
 - sin
 - cos
+- conj
 - where
 - split
 - reshape
@@ -57,3 +58,4 @@
 - isfinite
 - take_along_axis
 - variance
+- masked_fill

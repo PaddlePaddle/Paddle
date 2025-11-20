@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/lookup_table_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
@@ -30,7 +30,8 @@ __global__ void LookupTableGrad(T *table,
                                 const int64_t K,
                                 const int64_t D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int64_t idy = static_cast<int64_t>(blockIdx.x) +
+                static_cast<int64_t>(threadIdx.y) * GridDimX;
 
   while (idy < K) {
     int64_t id = ids[idy];
@@ -48,7 +49,7 @@ __global__ void LookupTableGrad(T *table,
         id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
-    for (int i = idx; i < D; i += BlockDimX) {
+    for (int64_t i = idx; i < D; i += BlockDimX) {
       phi::CudaAtomicAdd(&tab[i], out[i]);
     }
     idy += BlockDimY * GridDimX;
@@ -189,7 +190,7 @@ PD_REGISTER_KERNEL(lookup_table_grad,
                    phi::LookupTableGradCUDAKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(lookup_table_sparse_grad,
                    GPU,
@@ -197,4 +198,4 @@ PD_REGISTER_KERNEL(lookup_table_sparse_grad,
                    phi::LookupTableSparseGradCUDAKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

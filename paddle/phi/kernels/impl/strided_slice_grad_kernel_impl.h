@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/strided_slice_grad_kernel.h"
 

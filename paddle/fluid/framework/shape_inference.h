@@ -114,7 +114,7 @@ class InferShapeContext {
 
   virtual bool IsRuntime() const = 0;
 
-  virtual bool IsRunMKLDNNKernel() const = 0;
+  virtual bool IsRunONEDNNKernel() const = 0;
 
   virtual paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
   GetInputVarPtrs(const std::string &name) const = 0;

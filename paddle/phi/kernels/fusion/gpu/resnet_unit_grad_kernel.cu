@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"
@@ -215,7 +214,7 @@ PD_REGISTER_KERNEL(resnet_unit_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ResNetUnitGradKernel,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 namespace phi {
 
@@ -267,5 +266,5 @@ PD_REGISTER_KERNEL(resnet_unit_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ResNetUnitGradEmptyKernel,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

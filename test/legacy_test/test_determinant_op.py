@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 
@@ -132,6 +132,22 @@ class TestDeterminantOpCase8(TestDeterminantOp):
         self.case = np.vectorize(complex)(
             np.random.rand(5, 3, 10, 10), np.random.rand(5, 3, 10, 10)
         ).astype('complex128')
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOp_ZeroSize(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 10, 10)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOp_ZeroSize2(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 0, 0)
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 
@@ -324,6 +340,22 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
         self.target = np.array(np.linalg.slogdet(self.case))
 
 
+class TestSlogDeterminantOp_ZeroSize(TestSlogDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 5, 5).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.target = np.array(np.linalg.slogdet(self.case))
+
+
+class TestSlogDeterminantOp_ZeroSize2(TestSlogDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(0, 0, 0).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.target = np.array(np.linalg.slogdet(self.case))
+
+
 class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
@@ -398,9 +430,7 @@ class TestSlogDeterminantAPIComplex(unittest.TestCase):
         self.x = np.vectorize(complex)(
             np.random.random(self.shape), np.random.random(self.shape)
         ).astype(self.dtype)
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.out_grad = (
             np.array([1 + 0j, 1 + 0j] * 3 * 3)
             .reshape(2, 3, 3)
@@ -470,9 +500,7 @@ class TestSlogDeterminantAPIComplex2(TestSlogDeterminantAPIComplex):
         self.x = np.vectorize(complex)(
             np.random.random(self.shape), np.random.random(self.shape)
         ).astype(self.dtype)
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.out_grad = np.array([3 + 0j, 3 + 0j] * 6).reshape(2, 6)
         self.x_grad_ref_dy = self.get_numeric_grad(
             self.x, self.shape, self.out_grad

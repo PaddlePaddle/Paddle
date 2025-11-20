@@ -35,9 +35,7 @@
 #include <cmath>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -95,7 +93,9 @@ __global__ void apply_per_channel_scale(
   using HALF_2_TYPE = typename CUDA_HALF_2_TYPE_TARIS<T>::type;
   static constexpr int kElems = sizeof(AccessType) / sizeof(T);
   T scale[kElems], act_vec[kElems];
-  int col_offset = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t col_offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int row_offset = blockIdx.y;
   if (col_offset * kElems >= cols || row_offset * kProcessRows >= rows) return;
   act += row_offset * kProcessRows * cols;
@@ -202,5 +202,5 @@ PD_REGISTER_KERNEL(apply_per_channel_scale,
                    GPU,
                    ALL_LAYOUT,
                    phi::ApplyPerChannelScaleKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

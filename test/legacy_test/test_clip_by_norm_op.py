@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -79,8 +84,8 @@ class TestClipByNormOpFp16(TestClipByNormOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=0.001, check_pir=True)
 
@@ -104,8 +109,8 @@ class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestClipByNormBF16Op(OpTest):
@@ -131,7 +136,7 @@ class TestClipByNormBF16Op(OpTest):
 
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_pir=True)
@@ -188,17 +193,7 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
         )
 
     def test_clip_by_norm_with_selected_ros(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
     def config_test_case(self):

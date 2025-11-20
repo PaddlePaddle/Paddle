@@ -202,4 +202,4 @@ PD_REGISTER_KERNEL(fused_transpose,
                    float,
                    uint8_t,
                    int8_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

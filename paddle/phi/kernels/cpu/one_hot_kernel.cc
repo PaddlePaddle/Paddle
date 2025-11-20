@@ -25,20 +25,20 @@ struct OneHotV2OpFunctor {
   const DenseTensor* in_;
   DenseTensor* out_;
   int depth_;
-  const DeviceContext& ctx_;
+  const DeviceContext& dev_ctx_;
 
   OneHotV2OpFunctor(const DenseTensor* in,
                     DenseTensor* out,
                     int depth,
-                    const DeviceContext& ctx)
-      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
+                    const DeviceContext& dev_ctx)
+      : in_(in), out_(out), depth_(depth), dev_ctx_(dev_ctx) {}
 
   template <typename OutT>
   void apply() const {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
-    auto* p_out_data = ctx_.template Alloc<OutT>(out_);
-    funcs::set_constant(ctx_, out_, static_cast<OutT>(0.0));
+    auto* p_out_data = dev_ctx_.template Alloc<OutT>(out_);
+    funcs::set_constant(dev_ctx_, out_, static_cast<OutT>(0.0));
 
     for (int i = 0; i < numel; ++i) {
       PADDLE_ENFORCE_GE(

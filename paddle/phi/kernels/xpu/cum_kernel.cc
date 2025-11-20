@@ -28,6 +28,10 @@ void CumsumKernel(const Context& dev_ctx,
                   bool reverse,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
 
   if (x.numel() == 1) {
@@ -66,7 +70,7 @@ void CumsumKernel(const Context& dev_ctx,
     }
   }
 
-  // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T*
+  // template<typename T> DLL_EXPORT int cumsum(Context* xpu_ctx, const T* x, T*
   // y, const std::vector<int>& xshape, bool reverse, bool exclusive, int
   // axis);
   int r = xpu::cumsum<XPUType>(dev_ctx.x_context(),
@@ -88,5 +92,5 @@ PD_REGISTER_KERNEL(cumsum,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

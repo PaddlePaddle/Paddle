@@ -17,8 +17,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/expand_kernel.h"
@@ -259,7 +257,7 @@ void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
   auto* y_data = y.data<T>();
   auto* out_data = out.data<T>();
   auto* ddout_data = ddout->data<T>();
-  for (int i = 0; i < out_numel; i++) {
+  for (int64_t i = 0; i < out_numel; i++) {
     ddout_data[i] = dout_op(ddx_data[i], ddy_data[i], y_data[i], out_data[i]);
   }
 }
@@ -283,7 +281,7 @@ void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
   auto* out_data = out.data<T>();
   auto* ddout_data = ddout->data<T>();
   std::vector<int> index_array(max_dim, 0);
-  for (int i = 0; i < out_numel; i++) {
+  for (int64_t i = 0; i < out_numel; i++) {
     int x_index = phi::funcs::GetElementwiseIndex(
         x_dims_array, max_dim, index_array.data());
     int y_index = phi::funcs::GetElementwiseIndex(
@@ -381,9 +379,9 @@ __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
                                                       const T* y_data,
                                                       const T* out_data,
                                                       T* ddout_data,
-                                                      int numel,
+                                                      int64_t numel,
                                                       DDout_OP dout_op) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (tid >= numel) return;
   ddout_data[tid] =
       dout_op(ddx_data[tid], ddy_data[tid], y_data[tid], out_data[tid]);
@@ -418,16 +416,16 @@ __global__ void ComputeDDoutWithBroadcastGPUKernel(
     const T* y_data,
     const T* out_data,
     T* ddout_data,
-    int numel,
+    int64_t numel,
     const CudaIntArray x_dims_array,
     const CudaIntArray y_dims_array,
     const CudaIntArray out_dims_array,
     const int max_dim,
     DDout_OP dout_op) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (tid >= numel) return;
-  int x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
-      out_index = tid, dim_index;
+  int64_t x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
+          out_index = tid, dim_index;
   for (int64_t i = max_dim - 1; i >= 0; i--) {
     if (out_index == 0) break;
     dim_index = out_index % out_dims_array[i];
@@ -746,6 +744,27 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
   auto x_dim = x.dims();
   auto y_dim = y.dims();
   int axis = -1;
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(x_grad->dims())),
+                              0,
+                              x_grad);
+      }
+    }
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (y_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(y_grad->dims())),
+                              0,
+                              y_grad);
+      }
+    }
+    return;
+  }
   if (x.dims() == y.dims()) {
     funcs::ElemwiseGradComputeNoBroadcast<Context,
                                           T,
@@ -791,6 +810,27 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
                                DenseTensor* y_grad) {
   funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   auto out = out_grad;  // Fake out, not used
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(x_grad->dims())),
+                              0,
+                              x_grad);
+      }
+    }
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (y_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(y_grad->dims())),
+                              0,
+                              y_grad);
+      }
+    }
+    return;
+  }
   auto x_dim = x.dims();
   auto y_dim = y.dims();
   int axis = -1;
@@ -1379,45 +1419,49 @@ void HeavisideGradKernel(const Context& dev_ctx,
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
-  return dout * y *
-         std::pow(static_cast<double>(x), static_cast<double>(y - 1));
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
+  return dout * y * pow(static_cast<double>(x), static_cast<double>(y - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * y_val *
-                        std::pow(x_val, y_val - 1));
+  return dout * static_cast<T>(y_val * pow(x_val, y_val - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
-  return dout * std::log(static_cast<double>(x)) *
-         std::pow(static_cast<double>(x), static_cast<double>(y));
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
+  return dout * log(static_cast<double>(x)) *
+         pow(static_cast<double>(x), static_cast<double>(y));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
-                        std::pow(x_val, y_val));
+  return dout * static_cast<T>(log(x_val) * pow(x_val, y_val));
 }
 #else
 template <typename T, typename MPType>
 HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * y_val *
-                        std::pow(x_val, y_val - 1));
+  return dout * static_cast<T>(y_val * std::pow(x_val, y_val - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
-                        std::pow(x_val, y_val));
+  return dout * static_cast<T>(std::log(x_val) * std::pow(x_val, y_val));
 }
 #endif
 
@@ -1437,6 +1481,43 @@ struct PowGradDY {
   }
 };
 
+template <typename T>
+struct PowGradDX<phi::dtype::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return conj(dout * y * pow(x, y - phi::dtype::complex<T>(1, 0)));
+#else
+    return conj(
+        dout * y *
+        static_cast<phi::dtype::complex<T>>(std::pow(
+            static_cast<std::complex<T>>(x),
+            static_cast<std::complex<T>>(y - phi::dtype::complex<T>(1, 0)))));
+#endif
+  }
+};
+
+template <typename T>
+struct PowGradDY<phi::dtype::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return conj(dout * log(x) * pow(x, y));
+#else
+    return conj(dout * static_cast<phi::dtype::complex<T>>(
+                           std::log(static_cast<std::complex<T>>(x)) *
+                           std::pow(static_cast<std::complex<T>>(x),
+                                    static_cast<std::complex<T>>(y))));
+#endif
+  }
+};
+
 template <typename T, typename Context>
 void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
@@ -1444,6 +1525,21 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               DenseTensor* dx,
                               DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(x.dims())),
+                            static_cast<T>(0),
+                            dx);
+    }
+    if (dy) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(y.dims())),
+                            static_cast<T>(0),
+                            dy);
+    }
+    return;
+  }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
   phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
@@ -1468,7 +1564,12 @@ struct RemainderGradDx {
 template <typename T, typename Enable = void>
 struct RemainderGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return -dout * (std::floor(static_cast<double>(x / y)));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    auto x_ = static_cast<MPType>(x);
+    auto y_ = static_cast<MPType>(y);
+    auto dout_ = static_cast<MPType>(dout);
+    return static_cast<T>(
+        -dout_ * static_cast<MPType>(std::floor(static_cast<double>(x_ / y_))));
   }
 };
 template <typename T>
@@ -1479,7 +1580,8 @@ struct RemainderGradDy<
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
-    return static_cast<T>(-static_cast<MPType>(dout) * (std::floor((x_ / y_))));
+    auto dout_ = static_cast<MPType>(dout);
+    return static_cast<T>(-dout_ * static_cast<MPType>(std::floor((x_ / y_))));
   }
 };
 template <typename T>
@@ -1495,9 +1597,9 @@ struct RemainderGradDy<
       const auto quot = x / y;
       const auto rem = x % y;
       auto ret = rem ? quot - 1 : quot;
-      return -dout * ret;
+      return static_cast<T>(-dout * static_cast<T>(ret));
     }
-    return -dout * (x / y);
+    return static_cast<T>(-dout * static_cast<T>(x / y));
   }
 };
 /*

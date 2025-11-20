@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
@@ -34,7 +34,7 @@ struct SequenceExpandFunctor {
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandGradFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/

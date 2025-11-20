@@ -366,17 +366,17 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     float epsilon =
         PADDLE_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
 
-    bool is_mkldnn = fuse_option == FUSE_MKLDNN;
+    bool is_onednn = fuse_option == FUSE_ONEDNN;
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                         input_names.end() &&
                     !conv->Op()->Input("Bias").empty();
-    bool mkldnn_with_bias = is_mkldnn && has_bias;
+    bool onednn_with_bias = is_onednn && has_bias;
 
     // Create eltwise_y (conv bias) variable
     phi::DenseTensor* eltwise_y_in_tensor = nullptr;
     Node* eltwise_y_in_node = nullptr;
-    if (!mkldnn_with_bias) {
+    if (!onednn_with_bias) {
       VarDesc eltwise_y_in_desc(
           patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
       eltwise_y_in_desc.SetShape(common::vectorize(bn_bias_tensor->dims()));
@@ -413,13 +413,13 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // with MKL-DNN fuse conv+bn into conv with bias
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
-    if (is_mkldnn) {
+    if (is_onednn) {
       if (conv->Op()->Type() == "conv2d" ||
           conv->Op()->Type() == "depthwise_conv2d" ||
           conv->Op()->Type() == "conv2d_transpose") {
         ConvertToFusedOp(conv->Op());
       }
-      if (mkldnn_with_bias) {
+      if (onednn_with_bias) {
         // reuse existing conv bias node
         auto conv_bias_names = conv->Op()->Input("Bias");
         PADDLE_ENFORCE_EQ(

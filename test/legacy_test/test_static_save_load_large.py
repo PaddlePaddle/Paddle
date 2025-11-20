@@ -28,7 +28,6 @@ LARGE_PARAM = 2**26
 
 
 class TestStaticSaveLoadLargeParameters(unittest.TestCase):
-
     def test_large_parameters_static_save(self):
         # enable static graph mode
         paddle.enable_static()

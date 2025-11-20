@@ -20,6 +20,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_types.h"
 
 namespace phi {
@@ -30,7 +31,7 @@ namespace gpu {
 int DnnVersion();
 
 //! Get the total number of GPU devices in system.
-int GetGPUDeviceCount();
+PADDLE_API int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
 int GetGPUComputeCapability(int id);
@@ -42,7 +43,7 @@ int GetGPURuntimeVersion(int id);
 int GetGPUDriverVersion(int id);
 
 //! Whether the current device support TensorCore
-bool TensorCoreAvailable();
+PADDLE_API bool TensorCoreAvailable();
 
 //! Get the MultiProcessors of the ith GPU.
 int GetGPUMultiProcessors(int id);
@@ -54,7 +55,7 @@ int GetGPUMaxThreadsPerMultiProcessor(int id);
 int GetGPUMaxThreadsPerBlock(int id);
 
 //! Get the current GPU device id in system.
-int GetCurrentDeviceId();
+PADDLE_API int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
 std::array<unsigned int, 3> GetGpuMaxGridDimSize(int);
@@ -65,10 +66,10 @@ std::pair<int, int> GetGpuStreamPriorityRange();
 std::vector<int> GetSelectedDevices();
 
 //! Get the properties of the ith GPU device.
-const gpuDeviceProp &GetDeviceProperties(int id);
+PADDLE_API const gpuDeviceProp &GetDeviceProperties(int id);
 
 //! Set the GPU device id for next execution.
-void SetDeviceId(int device_id);
+PADDLE_API void SetDeviceId(int device_id);
 
 //! Get the available memory to allocate, which is the size of available gpu
 //! minus reserving.

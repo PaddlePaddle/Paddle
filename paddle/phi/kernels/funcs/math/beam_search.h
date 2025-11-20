@@ -145,7 +145,7 @@ class BeamSearchFunctor {
    * Return false if all the input tensor is empty, in machine translation task
    * that means no candidates is provided, and the task will stop running.
    */
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor* pre_ids,
                   const phi::DenseTensor* pre_scores,
                   const phi::DenseTensor* ids,

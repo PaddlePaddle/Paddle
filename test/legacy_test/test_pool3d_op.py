@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -426,11 +426,13 @@ class TestPool3D_Op(OpTest):
             self.python_api = pool3d_wrapper_not_use_cudnn
 
     def has_cudnn(self):
-        return core.is_compiled_with_cuda() and self.use_cudnn
+        return (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and self.use_cudnn
 
     def test_check_output(self):
         if self.has_cudnn():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, atol=1e-5, check_pir=True)
         else:
             self.check_output(check_pir=True)
@@ -439,7 +441,7 @@ class TestPool3D_Op(OpTest):
         if (
             self.has_cudnn() or self.dtype == np.uint16
         ) and self.pool_type != "max":
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_compiled_with_rocm():
                 self.check_grad_with_place(
                     place, {'X'}, 'Out', max_relative_error=1e-2, check_pir=True
@@ -546,7 +548,8 @@ class TestCase5(TestCase2):
 
 def create_test_cudnn_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNCase(parent):
         def init_kernel_type(self):
@@ -567,7 +570,8 @@ create_test_cudnn_class(TestCase5)
 
 def create_test_cudnn_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNFp16Case(parent):
         def init_kernel_type(self):
@@ -575,8 +579,8 @@ def create_test_cudnn_fp16_class(parent):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     if core.is_compiled_with_rocm():
                         self.check_output_with_place(
@@ -594,7 +598,8 @@ def create_test_cudnn_fp16_class(parent):
 
 def create_test_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestFp16Case(parent):
         def init_kernel_type(self):
@@ -602,8 +607,8 @@ def create_test_fp16_class(parent):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place, atol=1e-2, check_pir=True
@@ -616,8 +621,8 @@ def create_test_fp16_class(parent):
 
 def create_test_cudnn_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestCUDNNBf16Case(parent):
@@ -626,7 +631,7 @@ def create_test_cudnn_bf16_class(parent):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "CUDNNBf16Op")
@@ -636,8 +641,8 @@ def create_test_cudnn_bf16_class(parent):
 
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestBf16Case(parent):
@@ -646,7 +651,7 @@ def create_test_bf16_class(parent):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "Bf16Op")
@@ -686,7 +691,8 @@ create_test_bf16_class(TestCase5)
 # ---- test ceil mode ------
 def create_test_cudnn_use_ceil_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPool3DUseCeilCase(parent):
         def init_kernel_type(self):
@@ -724,7 +730,8 @@ class TestAvgInclude(TestCase2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNAvgInclude(TestCase2):
     def init_kernel_type(self):
@@ -861,7 +868,8 @@ class TestAvgInclude_AsyPadding(TestCase2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNAvgInclude_AsyPadding(TestCase2):
     def init_kernel_type(self):
@@ -956,7 +964,7 @@ class TestCase5_Max(TestCase2):
         if self.dtype == np.float16:
             return
         if self.has_cudnn() and self.pool_type == "max":
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place, {'X'}, 'Out', max_relative_error=1.00, check_pir=True
             )
@@ -984,7 +992,8 @@ class TestAvgInclude_channel_last(TestCase2_channel_last):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNAvgInclude_channel_last(TestCase2_channel_last):
     def init_kernel_type(self):
@@ -1068,7 +1077,8 @@ class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCUDNNAvgInclude_AsyPadding_channel_last(
     TestCUDNNAvgInclude_AsyPadding
@@ -1116,7 +1126,8 @@ create_test_padding_SAME_class(TestCase5_channel_last)
 
 def create_test_cudnn_padding_SAME_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingSAMECase(parent):
         def init_kernel_type(self):
@@ -1174,7 +1185,8 @@ create_test_padding_VALID_class(TestCase5_channel_last)
 
 def create_test_cudnn_padding_VALID_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingVALIDCase(parent):
         def init_kernel_type(self):

@@ -20,24 +20,24 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void ShapeKernel(const Context& ctx,
+void ShapeKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  DenseTensor* out) {
   auto& in_dims = input.dims();
   out->Resize({in_dims.size()});
-  auto out_data = ctx.template HostAlloc<int32_t>(out);
+  auto out_data = dev_ctx.template HostAlloc<int32_t>(out);
   for (int i = 0; i < in_dims.size(); ++i) {
     out_data[i] = in_dims[i];
   }
 }
 
 template <typename T, typename Context>
-void Shape64Kernel(const Context& ctx,
+void Shape64Kernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    DenseTensor* out) {
   auto& in_dims = input.dims();
   out->Resize({in_dims.size()});
-  auto out_data = ctx.template HostAlloc<int64_t>(out);
+  auto out_data = dev_ctx.template HostAlloc<int64_t>(out);
   for (int i = 0; i < in_dims.size(); ++i) {
     out_data[i] = in_dims[i];
   }
@@ -56,8 +56,8 @@ PD_REGISTER_KERNEL(shape,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
@@ -75,10 +75,10 @@ PD_REGISTER_KERNEL(shape,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
@@ -95,15 +95,15 @@ PD_REGISTER_KERNEL(shape,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(shape,
                    Custom,
                    ALL_LAYOUT,
@@ -115,10 +115,10 @@ PD_REGISTER_KERNEL(shape,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
@@ -136,10 +136,10 @@ PD_REGISTER_KERNEL(shape64,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
@@ -157,11 +157,11 @@ PD_REGISTER_KERNEL(shape64,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn) {
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
@@ -178,15 +178,15 @@ PD_REGISTER_KERNEL(shape64,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(shape64,
                    Custom,
                    ALL_LAYOUT,
@@ -198,10 +198,10 @@ PD_REGISTER_KERNEL(shape64,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);

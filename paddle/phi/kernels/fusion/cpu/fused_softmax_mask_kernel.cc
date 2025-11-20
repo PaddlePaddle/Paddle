@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_softmax_mask_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
@@ -35,7 +36,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 
   // dim of x and mask must be equal
   for (size_t idx = 0; idx < 4; ++idx) {
-    if (idx == 1) continue;
+    if (idx == 1 || x_dim[idx] == 0) continue;
     PADDLE_ENFORCE_EQ(
         x_dim[idx],
         mask_dim[idx],

@@ -15,13 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 from paddle.base import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFusionTransposeFlattenConcationOp(OpTest):
     def setUp(self):
@@ -53,7 +54,7 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, 1e-6, check_dygraph=False)
 
     def init_test_case(self):
@@ -64,7 +65,8 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCase1(TestFusionTransposeFlattenConcationOp):
     def init_test_case(self):
@@ -75,7 +77,8 @@ class TestCase1(TestFusionTransposeFlattenConcationOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCase2(TestFusionTransposeFlattenConcationOp):
     def init_test_case(self):
@@ -86,7 +89,8 @@ class TestCase2(TestFusionTransposeFlattenConcationOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCase3(TestFusionTransposeFlattenConcationOp):
     def init_test_case(self):
@@ -97,7 +101,8 @@ class TestCase3(TestFusionTransposeFlattenConcationOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCase4(TestFusionTransposeFlattenConcationOp):
     def init_test_case(self):
@@ -108,7 +113,8 @@ class TestCase4(TestFusionTransposeFlattenConcationOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestCase5(TestFusionTransposeFlattenConcationOp):
     def init_test_case(self):

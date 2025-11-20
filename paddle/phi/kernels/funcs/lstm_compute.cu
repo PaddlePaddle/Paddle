@@ -21,7 +21,7 @@ namespace funcs {
 
 template <class T>
 struct LstmUnitFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext& context,
+  static void compute(const phi::GPUContext& dev_ctx,
                       LstmMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -30,7 +30,7 @@ struct LstmUnitFunctor<phi::GPUContext, T> {
                       const phi::funcs::detail::ActivationType& cell_act,
                       const phi::funcs::detail::ActivationType& cand_act,
                       bool old_api_version = true) {
-    detail::gpu_lstm_forward<T>(context,
+    detail::gpu_lstm_forward<T>(dev_ctx,
                                 phi::funcs::detail::forward::lstm<T>(),
                                 value,
                                 frame_size,
@@ -44,7 +44,7 @@ struct LstmUnitFunctor<phi::GPUContext, T> {
 
 template <class T>
 struct LstmUnitGradFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext& context,
+  static void compute(const phi::GPUContext& dev_ctx,
                       LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad,
                       int frame_size,
@@ -54,7 +54,7 @@ struct LstmUnitGradFunctor<phi::GPUContext, T> {
                       const phi::funcs::detail::ActivationType& cell_act,
                       const phi::funcs::detail::ActivationType& cand_act,
                       bool old_api_version = true) {
-    detail::gpu_lstm_backward(context,
+    detail::gpu_lstm_backward(dev_ctx,
                               phi::funcs::detail::backward::lstm<T>(),
                               value,
                               grad,

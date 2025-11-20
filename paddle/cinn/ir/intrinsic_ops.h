@@ -67,7 +67,7 @@ class IntrinsicOp : public IrNode {
     return input_types_;
   }
   const llvm::SmallVectorImpl<Type>& output_types() const {
-    return input_types_;
+    return output_types_;
   }
 
   //! Verify the \p input_types and \p output_types matches the signature of

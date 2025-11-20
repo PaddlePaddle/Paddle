@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -30,12 +35,16 @@ class TestTruncOp(OpTest):
         self.python_api = paddle.trunc
         self.public_python_api = paddle.trunc
         self.init_dtype_type()
+        self.init_shape()
         np.random.seed(2021)
-        self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.outputs = {'Out': (np.trunc(self.inputs['X']))}
 
     def init_dtype_type(self):
         self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = (20, 20)
 
     def test_check_output(self):
         self.check_output(
@@ -68,6 +77,11 @@ class TestIntTruncOp(TestTruncOp):
 
     def test_check_grad(self):
         pass
+
+
+class TestTruncOp_ZeroSize(TestTruncOp):
+    def init_shape(self):
+        self.shape = (20, 0)
 
 
 class TestTruncAPI(unittest.TestCase):
@@ -107,8 +121,8 @@ class TestTruncFP16OP(TestTruncOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTruncBF16OP(OpTest):
@@ -123,13 +137,13 @@ class TestTruncBF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X'], 'Out', numeric_grad_delta=1e-5, check_pir=True
         )

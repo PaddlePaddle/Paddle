@@ -160,7 +160,7 @@ class TestGatherAddTransposePass1(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["qk_qkv_attention_xpu_fuse_pass"],
@@ -308,7 +308,7 @@ class TestGatherAddTransposePass2(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=25,
             passes=["qk_qkv_attention_xpu_fuse_pass"],

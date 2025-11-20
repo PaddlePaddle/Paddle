@@ -113,20 +113,20 @@ class AutoParallelSyncSharedParamsPass(PassBase):
                     )
 
                     # Add shared parameter builtin.parameter with "shared_" prefix.
-                    with auto_complete_op_role(main_program, OpRole.Forward):
-                        with paddle.static.program_guard(
+                    with (
+                        auto_complete_op_role(main_program, OpRole.Forward),
+                        paddle.static.program_guard(
                             main_program, startup_program
-                        ):
-                            shared_param = paddle.pir.core.create_parameter(
-                                dtype=param.dtype,
-                                shape=param.shape,
-                                name="shared_" + param_name,
-                                process_mesh=dst_mesh,
-                                placements=src_dist_attr.placements,
-                                initializer=paddle.nn.initializer.Constant(
-                                    value=0
-                                ),
-                            )
+                        ),
+                    ):
+                        shared_param = paddle.pir.core.create_parameter(
+                            dtype=param.dtype,
+                            shape=param.shape,
+                            name="shared_" + param_name,
+                            process_mesh=dst_mesh,
+                            placements=src_dist_attr.placements,
+                            initializer=paddle.nn.initializer.Constant(value=0),
+                        )
                     main_program.set_parameters_from(startup_program)
 
                     # Record new shared parameter.
@@ -140,9 +140,9 @@ class AutoParallelSyncSharedParamsPass(PassBase):
                         if tmp_param.name == param_name:
                             dy_param = tmp_param
                             break
-                    assert (
-                        dy_param is not None
-                    ), f"The parameter {param_name} was not found in the concrete_degram"
+                    assert dy_param is not None, (
+                        f"The parameter {param_name} was not found in the concrete_degram"
+                    )
 
                     new_dist_attr = TensorDistAttr()
                     new_dist_attr.process_mesh = dst_mesh
@@ -230,9 +230,9 @@ class AutoParallelSyncSharedParamsPass(PassBase):
 
         # Only support one shared parameter.
         # TODO: support more shared parameters
-        assert (
-            len(self.params_maybe_shared) == 1
-        ), "Currently, only one shared parameter is supported, and it cannot support more at the moment."
+        assert len(self.params_maybe_shared) == 1, (
+            "Currently, only one shared parameter is supported, and it cannot support more at the moment."
+        )
 
         cur_rank = paddle.distributed.get_rank()
 
@@ -256,9 +256,9 @@ class AutoParallelSyncSharedParamsPass(PassBase):
                 if p_param.is_same(param_value):
                     grad_idx = p_idx
                     break
-            assert (
-                grad_idx is not None
-            ), f"Parameter {param_name} not found in params_grades, unable to find corresponding gradient value."
+            assert grad_idx is not None, (
+                f"Parameter {param_name} not found in params_grades, unable to find corresponding gradient value."
+            )
             grad_value = params_grads[p_idx][1]
 
             # Create allreduce op comm group.

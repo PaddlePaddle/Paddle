@@ -417,14 +417,17 @@ T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
 }
 
 #define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
-  template TEST_API dtype* DeviceContext::Alloc(                     \
+  template PADDLE_API dtype* DeviceContext::Alloc(                   \
       TensorBase* tensor, size_t requested_size, bool pinned) const; \
-  template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
-                                           size_t requested_size) const;
+  template PADDLE_API dtype* DeviceContext::HostAlloc(               \
+      TensorBase* tensor, size_t requested_size) const;
 
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(bool)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int8_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(uint8_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(uint16_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(uint32_t)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(uint64_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int16_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int32_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int64_t)

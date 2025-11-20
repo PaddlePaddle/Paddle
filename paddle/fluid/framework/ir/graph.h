@@ -375,12 +375,12 @@ class Graph {
     return node;
   }
 
-  void ResolveHazard(
+  PADDLE_API void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
 
   // Create a new and duplicated graph.
   // WARN: The method only clones the graph structure, not its attributes.
-  std::shared_ptr<Graph> Clone();
+  PADDLE_API std::shared_ptr<Graph> Clone();
 
   bool IsMainGraph() const { return main_graph_ == nullptr; }
 

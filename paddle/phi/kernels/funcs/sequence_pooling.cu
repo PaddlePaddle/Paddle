@@ -33,14 +33,14 @@ struct MaxPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       T max_val = static_cast<T>(-FLT_MAX);
       int max_index = -1;
       if (start == end) {
         output[tid] = pad_value;
         index[tid] = -1;
       } else {
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           if (max_val < input[item_dim * i + tid]) {
             max_val = input[item_dim * i + tid];
             max_index = i;
@@ -62,12 +62,12 @@ struct AvgPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
         T val = static_cast<T>(0);
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           val += input[item_dim * i + tid];
         }
         // end, start is lod, so end - start != 0
@@ -86,12 +86,12 @@ struct SumPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
         T val = static_cast<T>(0);
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           val += input[item_dim * i + tid];
         }
         output[tid] = val;
@@ -109,12 +109,12 @@ struct SqrtPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
         T val = static_cast<T>(0);
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
           val += input[item_dim * i + tid];
         }
         // end, start is lod, so end - start != 0
@@ -133,7 +133,7 @@ struct LastPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
@@ -152,7 +152,7 @@ struct FirstPoolFunctor {
                              const size_t item_dim,
                              T* output,
                              int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
       } else {
@@ -191,7 +191,7 @@ __global__ void sequence_pool_kernel(Range_OP op,
 template <typename T>
 class SequencePoolFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const std::string pooltype,
                   T pad_value,
                   const phi::DenseTensor& input,
@@ -206,69 +206,69 @@ class SequencePoolFunctor<phi::GPUContext, T> {
     phi::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_kernel<T, MaxPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               MaxPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_kernel<T, AvgPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               AvgPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_kernel<T, SumPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SumPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_kernel<T, SqrtPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SqrtPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_kernel<T, LastPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               LastPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_kernel<T, FirstPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               FirstPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else {
       PADDLE_THROW(errors::InvalidArgument(
@@ -287,8 +287,8 @@ struct MaxPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         if (i == index[tid]) {
           in_grad[item_dim * i + tid] = out_grad[tid];
         } else {
@@ -307,8 +307,8 @@ struct AvgPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] = out_grad[tid] / (end - start);
       }
     }
@@ -323,8 +323,8 @@ struct SumPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] = out_grad[tid];
       }
     }
@@ -339,8 +339,8 @@ struct SqrtPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] =
             out_grad[tid] / (sqrt(static_cast<T>(end - start)));
       }
@@ -356,8 +356,8 @@ struct LastPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         if (i == end - 1) {
           in_grad[item_dim * i + tid] = out_grad[tid];
         } else {
@@ -376,8 +376,8 @@ struct FirstPoolGradFunctor {
                              const size_t item_dim,
                              T* in_grad,
                              const int* index) {
-    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
-      for (int i = start; i < end; ++i) {
+    for (size_t tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      for (size_t i = start; i < end; ++i) {
         if (i == start) {
           in_grad[item_dim * i + tid] = out_grad[tid];
         } else {
@@ -410,7 +410,7 @@ __global__ void sequence_pool_grad_kernel(Range_OP op,
 template <typename T>
 class SequencePoolGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const std::string pooltype,
                   const phi::DenseTensor& out_grad,
                   phi::DenseTensor* in_grad,
@@ -424,63 +424,63 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
     phi::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_grad_kernel<T, MaxPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               MaxPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_grad_kernel<T, AvgPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               AvgPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_grad_kernel<T, SumPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SumPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_grad_kernel<T, SqrtPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SqrtPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_grad_kernel<T, LastPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               LastPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_grad_kernel<T, FirstPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               FirstPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
 
     } else {
@@ -495,7 +495,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
 // sequence pooling
 template class SequencePoolFunctor<phi::GPUContext, float>;
 template class SequencePoolFunctor<phi::GPUContext, double>;
-template class SequencePoolGradFunctor<phi::GPUContext, float>;
+template class PADDLE_API SequencePoolGradFunctor<phi::GPUContext, float>;
 template class SequencePoolGradFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs

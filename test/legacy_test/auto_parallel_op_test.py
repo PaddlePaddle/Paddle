@@ -191,12 +191,12 @@ def get_test_info_and_generated_test_path(
 
 
 def check_auto_parallel_info(op_test):
-    assert hasattr(
-        op_test, 'python_api'
-    ), "If you want to check auto parallel, please set python_api in setUp function."
-    assert hasattr(
-        op_test, 'placements'
-    ), "If you want to check auto parallel, please set placements in setUp function."
+    assert hasattr(op_test, 'python_api'), (
+        "If you want to check auto parallel, please set python_api in setUp function."
+    )
+    assert hasattr(op_test, 'placements'), (
+        "If you want to check auto parallel, please set placements in setUp function."
+    )
 
 
 def dump_test_info(
@@ -769,9 +769,9 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
         return eager_vs
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
-        assert len(api_outputs) <= len(
-            outputs_sig
-        ), f"forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {len(api_outputs)} and {len(outputs_sig)}"
+        assert len(api_outputs) <= len(outputs_sig), (
+            f"forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {len(api_outputs)} and {len(outputs_sig)}"
+        )
         output_dict = {}
         for i in range(len(api_outputs)):
             output_name = outputs_sig[i]
@@ -843,7 +843,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                 xs.append(inputs_dict[self.inputs_to_check])
             vs = self.gen_eager_grad_outputs()
             no_grad_vars = self.gen_no_grad_set(
-                var_dict={**inputs_dict, **outputs_dict}
+                var_dict=inputs_dict | outputs_dict
             )
             grad_res = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars

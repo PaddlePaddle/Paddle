@@ -23,7 +23,7 @@ import sys
 import traceback
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from typing_extensions import TypeAlias, get_overloads
 
@@ -44,25 +44,6 @@ MemberType: TypeAlias = Literal[
     "attribute",
     "method",
 ]
-
-
-class AnnoConverter(Protocol):
-    """
-    convert bad annotation, e.g.:
-
-    "Literal[('raise', 'wrap', 'clip')]" -> "Literal['raise', 'wrap', 'clip']"
-    """
-
-    def convert(self, input: str) -> str: ...
-
-
-class LiteralConverter(AnnoConverter):
-    pattern = re.compile(
-        r"(?P<lit_start>Literal\[)\((?P<content>.*?)\)(?P<lit_end>\])"
-    )
-
-    def convert(self, input: str) -> str:
-        return self.pattern.sub(r'\g<lit_start>\g<content>\g<lit_end>', input)
 
 
 @dataclass
@@ -86,9 +67,27 @@ def _slot_pattern(slot_name: str) -> re.Pattern:
     )
 
 
-class TensorGen:
-    _converters: list[AnnoConverter] = [LiteralConverter()]
+@lru_cache
+def create_builtin_annotation_renamer():
+    # NOTE(ooooo-create): Rename built-in types to avoid naming conflicts
+    builtin_types = ["int", "bool", "str", "float", "complex", "bytes"]
+    regex_string = "|".join([rf"\b{t}\b" for t in builtin_types])
+    regex = re.compile(regex_string)
 
+    def renamer(annotations):
+        if annotations is inspect.Signature.empty:
+            return annotations
+        return regex.sub(lambda m: f"_{m.group(0)}", annotations)
+
+    return renamer
+
+
+def rename_builtin_annotation(annotation):
+    renamer = create_builtin_annotation_renamer()
+    return renamer(annotation)
+
+
+class TensorGen:
     def __init__(self, template: str = '', prefix: str = 'tensor'):
         self._template = template
         self._template_codes: list[tuple[int, int, str]] = []
@@ -280,9 +279,6 @@ class TensorGen:
 
         _content = header + ''.join(_template)
 
-        for converter in cls._converters:
-            _content = converter.convert(_content)
-
         return _content
 
 
@@ -449,6 +445,17 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
         )
         try:
             sig = inspect.signature(member)
+            sig = sig.replace(
+                parameters=[
+                    p.replace(
+                        annotation=rename_builtin_annotation(p.annotation)
+                    )
+                    for p in sig.parameters.values()
+                ],
+                return_annotation=rename_builtin_annotation(
+                    sig.return_annotation
+                ),
+            )
             # TODO: classmethod
             member_signature = f"{name}{sig}"
 
@@ -517,6 +524,17 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
             _overloads = get_overloads(member)
             for f in _overloads:
                 _sig = inspect.signature(f)
+                _sig = _sig.replace(
+                    parameters=[
+                        p.replace(
+                            annotation=rename_builtin_annotation(p.annotation)
+                        )
+                        for p in _sig.parameters.values()
+                    ],
+                    return_annotation=rename_builtin_annotation(
+                        _sig.return_annotation
+                    ),
+                )
                 all_signatures.append(
                     [
                         id(f),
@@ -593,7 +611,6 @@ def generate_stub_file(input_file=None, output_file=None):
 
         # Generate the Tensor stub
         tensor_gen = TensorGen(tensor_template, prefix)
-
         for member_id, member in tensor_members.items():
             if member_id in all_members:
                 continue

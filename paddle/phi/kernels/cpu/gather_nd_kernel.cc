@@ -17,16 +17,32 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.h"
+#include "paddle/phi/kernels/tile_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdKernel(const Context &ctx,
+void GatherNdKernel(const Context &dev_ctx,
                     const DenseTensor &x,
                     const DenseTensor &index,
                     DenseTensor *out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0 || out->numel() == 0) return;
+  // The result dims is
+  //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  // If the last dimension of index is 0, set it to 1 and tile x.
+  auto index_dims = index.dims();
+  std::vector<int64_t> out_dims;
+  if (index_dims[index_dims.size() - 1] == 0) {
+    for (int i = 0; i < index_dims.size() - 1; ++i) {
+      out_dims.emplace_back(index_dims[i]);
+    }
+    for (int i = 0; i < x.dims().size(); ++i) {
+      out_dims.emplace_back(1);
+    }
+    phi::TileKernel<T, Context>(dev_ctx, x, phi::IntArray(out_dims), out);
+    return;
+  }
   if (index.dims()[0] == 0 && index.numel() == 0) return;
   auto index_type = index.dtype();
   bool index_type_match =
@@ -40,9 +56,9 @@ void GatherNdKernel(const Context &ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::CPUGatherNd<T, int>(ctx, x, index, out);
+    phi::funcs::CPUGatherNd<T, int>(dev_ctx, x, index, out);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::CPUGatherNd<T, int64_t>(ctx, x, index, out);
+    phi::funcs::CPUGatherNd<T, int64_t>(dev_ctx, x, index, out);
   }
 }
 
@@ -60,5 +76,5 @@ PD_REGISTER_KERNEL(gather_nd,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

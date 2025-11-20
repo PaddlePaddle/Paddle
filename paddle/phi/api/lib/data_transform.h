@@ -154,9 +154,9 @@ void TransDataBackend(const phi::SelectedRows* tensor,
                       Backend target_backend,
                       phi::SelectedRows* out);
 
-phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
+PADDLE_API phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
 
-void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
+PADDLE_API void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
 
 phi::DenseTensor CheckAndTrans2NewContiguousTensor(
     const phi::DenseTensor& tensor);

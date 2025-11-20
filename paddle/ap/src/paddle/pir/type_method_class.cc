@@ -15,6 +15,7 @@
 #include "paddle/ap/include/paddle/pir/type_method_class.h"
 #include "paddle/ap/include/axpr/callable_helper.h"
 #include "paddle/ap/include/axpr/data_type_util.h"
+#include "paddle/ap/include/axpr/value_method_class.h"
 #include "paddle/ap/include/paddle/pir/type_adt_type_id.h"
 
 namespace ap::paddle {

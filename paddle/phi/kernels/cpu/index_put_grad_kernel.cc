@@ -182,6 +182,18 @@ void IndexPutGradKernel(const Context& dev_ctx,
                         bool accumulate,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad) {
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    // Fill value_grad with 0.
+    if (value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(value_grad->dims())),
+          0,
+          value_grad);
+    }
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),
@@ -243,7 +255,7 @@ PD_REGISTER_KERNEL(index_put_grad,
                    int16_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

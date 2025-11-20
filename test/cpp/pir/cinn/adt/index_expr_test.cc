@@ -52,6 +52,7 @@ class TestIndexExpr : public ::testing::Test {
 
   ir::Var S4, S5, S6, S7, S8, S9, f;
 };
+
 TEST_F(TestIndexExpr, IndexExpr_0) {
   ir::IndexExpr a(14);
   ir::IndexExpr b(7);
@@ -643,10 +644,11 @@ TEST_F(TestIndexExpr, MatchPattern) {
   EXPECT_EQ(result9->at("x"), x);
   EXPECT_EQ(result9->at("y"), y);
 }
+
 TEST_F(TestIndexExpr, BoundSimplify) {
   ir::Var S0 = ir::Var("S0");
-  ir::Var i = ir::Var(ir::Expr(0), ir::Expr(5), "i");
-  ir::Var j = ir::Var(ir::Expr(0), S0, "j");
+  ir::Var i = ir::Var(ir::Expr(0), ir::Expr(5), "i");  // i ∈ [0, 5)
+  ir::Var j = ir::Var(ir::Expr(0), S0, "j");           // j ∈ [0, S0)
 
   ir::Expr q0 = i / Expr(5);
   ir::Expr q1 = i / Expr(4);

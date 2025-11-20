@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_device, get_devices
 
 import paddle
 from paddle import _C_ops
@@ -133,7 +133,11 @@ class TestMergedAdam(unittest.TestCase):
     def prepare_data(self, shapes, multi_precision, seed, place):
         np.random.seed(seed)
         mp_dtype = np.float32
-        dtype = np.float16 if multi_precision and place == 'gpu' else np.float32
+        dtype = (
+            np.float16
+            if multi_precision and place == get_device()
+            else np.float32
+        )
         params = self.gen_rand_data(shapes, dtype)
         grads = self.gen_rand_data(shapes, dtype)
         lrs = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
@@ -203,21 +207,9 @@ class TestMergedAdam(unittest.TestCase):
                         value1[i], value2[i], rtol=1e-05, atol=1e-07
                     )
 
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
         for multi_precision in [False, True]:
-            for place in self.get_places():
+            for place in get_devices():
                 self.check_with_place(place, multi_precision)
 
 

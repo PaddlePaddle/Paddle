@@ -31,5 +31,14 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& scatter_index,
                                 const DistMetaTensor& grad_y);
 
+SpmdInfo MoECombineInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& combine_weights,
+                             const DistMetaTensor& scatter_index);
+
+SpmdInfo MoECombineGradInferSpmd(const DistMetaTensor& x,
+                                 const DistMetaTensor& combine_weights,
+                                 const DistMetaTensor& scatter_index,
+                                 const DistMetaTensor& grad_y);
+
 }  // namespace distributed
 }  // namespace phi

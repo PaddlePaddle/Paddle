@@ -26,4 +26,4 @@ if(WITH_PYTHON AND EXISTS ${PADDLE_BINARY_DIR})
   endif()
 endif()
 
-collect_srcs(api_srcs SRCS device_tracer.cc profiler.cc)
+collect_srcs(api_srcs SRCS device_tracer.cc event.cc profiler.cc)

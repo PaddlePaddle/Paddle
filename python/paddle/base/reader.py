@@ -655,9 +655,9 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def __iter__(self):
         assert self.iterable, "DataLoader is not iterable"
-        assert (
-            self._batch_reader is not None
-        ), "Data source of DataLoader has not set yet"
+        assert self._batch_reader is not None, (
+            "Data source of DataLoader has not set yet"
+        )
 
         self._init_iterable()
         self._start()
@@ -797,9 +797,9 @@ class DygraphGeneratorLoader(DataLoaderBase):
         if places is None:
             places = _current_expected_place()
         self._places = _convert_places(places)
-        assert (
-            len(self._places) == 1
-        ), "Number of places must be 1 in imperative mode"
+        assert len(self._places) == 1, (
+            "Number of places must be 1 in imperative mode"
+        )
         return self
 
 
@@ -972,9 +972,9 @@ class GeneratorLoader(DataLoaderBase):
 
     def __iter__(self):
         assert self.iterable, "DataLoader is not iterable"
-        assert (
-            self._tensor_reader is not None
-        ), "Data source of DataLoader has not set yet"
+        assert self._tensor_reader is not None, (
+            "Data source of DataLoader has not set yet"
+        )
 
         self._init_iterable()
         self._start()
@@ -995,15 +995,15 @@ class GeneratorLoader(DataLoaderBase):
             raise
 
     def start(self):
-        assert (
-            not self._iterable
-        ), "start() cannot be called when DataLoader is iterable"
+        assert not self._iterable, (
+            "start() cannot be called when DataLoader is iterable"
+        )
         self._start()
 
     def reset(self):
-        assert (
-            not self._iterable
-        ), "reset() cannot be called when DataLoader is iterable"
+        assert not self._iterable, (
+            "reset() cannot be called when DataLoader is iterable"
+        )
         self._reset()
 
     def _start(self):
@@ -1118,9 +1118,9 @@ class GeneratorLoader(DataLoaderBase):
             places = _get_paddle_place(places)
         self._tensor_reader = reader
         if self._iterable:
-            assert (
-                places is not None
-            ), "Places cannot be None when DataLoader is iterable"
+            assert places is not None, (
+                "Places cannot be None when DataLoader is iterable"
+            )
             self._places = _convert_places(places)
         else:
             if places is not None:
@@ -1623,9 +1623,9 @@ class DatasetLoader(DataLoaderBase):
         assert isinstance(
             dataset, paddle.distributed.fleet.dataset.DatasetBase
         ), "dataset must be type of DatasetBase"
-        assert (
-            not in_dygraph_mode()
-        ), "DatasetLoader is not supported in dygraph mode yet"
+        assert not in_dygraph_mode(), (
+            "DatasetLoader is not supported in dygraph mode yet"
+        )
         if isinstance(places, (list, tuple)):
             places = _get_paddle_place_list(places)
         else:
@@ -1633,9 +1633,9 @@ class DatasetLoader(DataLoaderBase):
 
         thread_num = len(places)
 
-        assert (
-            len(dataset.filelist) >= thread_num
-        ), f"Filelist number of dataset {len(dataset.filelist)} must be not less than place number {thread_num}"
+        assert len(dataset.filelist) >= thread_num, (
+            f"Filelist number of dataset {len(dataset.filelist)} must be not less than place number {thread_num}"
+        )
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
             logging.warning(

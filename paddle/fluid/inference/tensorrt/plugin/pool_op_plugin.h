@@ -137,15 +137,9 @@ class PoolPlugin : public PluginTensorRT {
                                      const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
   int initialize() TRT_NOEXCEPT override { return 0; }
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batchSize,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batchSize,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 
@@ -180,7 +174,6 @@ class PoolPluginCreator : public TensorRTPluginCreator {
 };
 REGISTER_TRT_PLUGIN_V2(PoolPluginCreator);
 
-#if IS_TRT_VERSION_GE(6000)
 class PoolPluginDynamic : public DynamicPluginTensorRT {
  public:
   PoolPluginDynamic() {}
@@ -356,7 +349,6 @@ class PIRPoolPluginDynamicCreator : public TensorRTPluginCreator {
 
 REGISTER_TRT_PLUGIN_V2(PoolPluginDynamicCreator);
 REGISTER_TRT_PLUGIN_V2(PIRPoolPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

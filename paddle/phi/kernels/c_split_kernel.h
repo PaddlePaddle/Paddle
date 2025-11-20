@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CSplitKernel(const Context& ctx,
+void CSplitKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int rank,
                   int nranks,

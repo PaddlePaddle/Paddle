@@ -137,9 +137,9 @@ class LookAhead(Optimizer):
         name: str | None = None,
     ) -> None:
         assert inner_optimizer is not None, "inner optimizer can not be None"
-        assert (
-            0.0 <= alpha <= 1.0
-        ), "alpha should be larger or equal to 0.0, and less or equal than 1.0"
+        assert 0.0 <= alpha <= 1.0, (
+            "alpha should be larger or equal to 0.0, and less or equal than 1.0"
+        )
         assert isinstance(k, int) and k > 0, "k should be a positive integer"
 
         self.inner_optimizer = inner_optimizer
@@ -338,9 +338,9 @@ class LookAhead(Optimizer):
                 >>> lookahead.clear_grad()
 
         """
-        assert isinstance(
-            loss, (Variable, paddle.pir.Value)
-        ), "The loss should be an Tensor."
+        assert isinstance(loss, (Variable, paddle.pir.Value)), (
+            "The loss should be an Tensor."
+        )
 
         # Apply inner optimizer to the main_program
         optimize_ops, params_grads = self.inner_optimizer.minimize(

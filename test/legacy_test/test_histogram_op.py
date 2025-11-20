@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -32,8 +32,8 @@ class TestHistogramOpAPI(unittest.TestCase):
             )
             output = paddle.histogram(inputs, bins=5, min=1, max=5)
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
             res = exe.run(feed={'input': img}, fetch_list=[output])
@@ -196,8 +196,8 @@ class TestHistogram(unittest.TestCase):
                     density=self.density,
                 )
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             if self.is_weight:
                 res = exe.run(
@@ -310,6 +310,54 @@ class TestHistogramOpAPIWithFloatminMax(TestHistogram):
         self.max = 4.5
         self.density = False
         self.is_weight = False
+
+
+class TestHistogram_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init_test_case()
+        self.input_np = np.random.uniform(
+            low=0.0, high=20.0, size=self.in_shape
+        ).astype(np.float32)
+        self.weight_np = np.random.uniform(
+            low=0.0, high=1.0, size=self.in_shape
+        ).astype(np.float32)
+
+    def init_test_case(self):
+        self.in_shape = (0, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = False
+        self.is_weight = True
+
+    def test_dygraph(self):
+        with base.dygraph.guard():
+            inputs_np = np.random.uniform(
+                low=0.0, high=20.0, size=self.in_shape
+            ).astype(np.float32)
+            inputs = paddle.to_tensor(inputs_np)
+            weight_np = np.random.uniform(
+                low=0.0, high=1.0, size=self.in_shape
+            ).astype(np.float32)
+            weight = paddle.to_tensor(weight_np)
+            actual = paddle.histogram(
+                inputs,
+                bins=5,
+                min=1,
+                max=5,
+                weight=weight if self.is_weight else None,
+                density=self.density,
+            )
+            Out, _ = np.histogram(
+                inputs_np,
+                bins=5,
+                range=(1, 5),
+                weights=weight_np if self.is_weight else None,
+                density=self.density,
+            )
+            np.testing.assert_allclose(
+                actual.numpy(), Out, rtol=1e-58, atol=1e-5
+            )
 
 
 if __name__ == "__main__":

@@ -17,10 +17,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from typing_extensions import TypeAlias
+
     from .mutable_data import DataGetter, MutableData
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase
 
+    IdGetter: TypeAlias = Callable[[Any], int]
     MutableDataT = TypeVar("MutableDataT", bound=MutableData)
 
 
@@ -51,8 +56,9 @@ class SideEffects:
         proxy_type: type[MutableDataT],
         data: Any,
         getter: DataGetter,
+        id_getter: IdGetter = id,
     ) -> MutableDataT:
-        data_id = id(data)
+        data_id = id_getter(data)
         if data_id not in self.data_id_to_proxy:
             self.data_id_to_proxy[data_id] = proxy_type(data, getter)
         return self.data_id_to_proxy[data_id]  # type: ignore

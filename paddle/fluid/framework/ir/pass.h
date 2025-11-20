@@ -66,7 +66,7 @@ constexpr char kFusedMultiTransformerDecoderFusionCount[] =
 constexpr char kPrelnEmbEltwiseLayernormPass[] =
     "preln_embedding_eltwise_layernorm_fuse_pass_flag";
 
-class Pass {
+class PADDLE_API Pass {
  public:
   Pass() = default;
   virtual ~Pass() {
@@ -81,7 +81,7 @@ class Pass {
 
   std::string Type() const { return type_; }
 
-  TEST_API Graph *Apply(Graph *graph) const;
+  Graph *Apply(Graph *graph) const;
 
   // Get a reference to the attributed previously set.
   template <typename AttrType>
@@ -348,7 +348,7 @@ struct PassRegistrar : public Registrar {
       "REGISTER_PASS must be called in global namespace");  \
   static ::paddle::framework::ir::PassRegistrar<pass_class> \
       __pass_registrar_##pass_type##__(#pass_type);         \
-  int TouchPassRegistrar_##pass_type() {                    \
+  PADDLE_EXP_API int TouchPassRegistrar_##pass_type() {     \
     __pass_registrar_##pass_type##__.Touch();               \
     return 0;                                               \
   }                                                         \

@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -42,15 +47,7 @@ class TestSincAPI(unittest.TestCase):
             'float32',
             'float64',
         ]
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
         self.shapes = [[6], [16, 64]]
 
     def test_dtype(self):
@@ -173,15 +170,7 @@ class TestSincInplaceAPI(unittest.TestCase):
             'float32',
             'float64',
         ]
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
         self.shapes = [[6], [16, 64]]
 
     def test_inplace(self):
@@ -207,15 +196,15 @@ class TestSincInplaceAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestSincAPIFP16(unittest.TestCase):
     def setUp(self):
         self.shapes = [[6], [16, 64]]
         self.dtype = 'float16'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_dtype(self):
         def run_static(place):
@@ -283,15 +272,15 @@ class TestSincAPIFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSincAPIBF16(unittest.TestCase):
     def setUp(self):
         self.shapes = [[6], [16, 64]]
         self.dtype = 'uint16'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_dtype(self):
         def run(place):
@@ -362,6 +351,36 @@ class TestSincAPIBF16(unittest.TestCase):
                 )
 
         run(self.place)
+
+
+class TestSincAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.support_dtypes = [
+            'float32',
+            'float64',
+        ]
+        self.place = get_places()
+        self.shapes = [[0], [16, 0]]
+
+    def test_dygraph(self):
+        def run_dygraph(place):
+            paddle.disable_static(place)
+            for dtype in self.support_dtypes:
+                for shape in self.shapes:
+                    x_data = np.random.rand(*shape).astype(dtype)
+                    x = paddle.to_tensor(x_data)
+                    x.stop_gradient = False
+                    out = paddle.sinc(x)
+                    out_expected = np_sinc(x_data)
+                    np.testing.assert_allclose(
+                        out.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                    )
+                    loss = paddle.sum(out)
+                    loss.backward()
+                    np.testing.assert_allclose(x.grad.shape, x.shape)
+
+        for place in self.place:
+            run_dygraph(place)
 
 
 if __name__ == "__main__":

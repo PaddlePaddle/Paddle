@@ -37,38 +37,38 @@ class InferMetaContext {
   InferMetaContext() = default;
   explicit InferMetaContext(MetaConfig config) : config_(config) {}
 
-  void SetMetaConfig(MetaConfig config);
-  TEST_API const MetaConfig& GetMetaConfig() const;
+  PADDLE_API void SetMetaConfig(MetaConfig config);
+  PADDLE_API const MetaConfig& GetMetaConfig() const;
 
-  void EmplaceBackInput(MetaTensor input);
-  TEST_API void EmplaceBackOutput(MetaTensor output);
-  TEST_API void EmplaceBackAttr(Attribute attr);
+  PADDLE_API void EmplaceBackInput(MetaTensor input);
+  PADDLE_API void EmplaceBackOutput(MetaTensor output);
+  PADDLE_API void EmplaceBackAttr(Attribute attr);
 
-  void EmplaceBackInputs(
+  PADDLE_API void EmplaceBackInputs(
       paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs);
-  void EmplaceBackOutputs(
+  PADDLE_API void EmplaceBackOutputs(
       paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
   void UpdataInput(size_t idx, MetaTensor input) { inputs_[idx] = input; }
 
-  TEST_API virtual const MetaTensor& InputAt(size_t idx) const;
+  PADDLE_API virtual const MetaTensor& InputAt(size_t idx) const;
 
-  TEST_API virtual std::vector<const MetaTensor*> InputsBetween(
+  PADDLE_API virtual std::vector<const MetaTensor*> InputsBetween(
       size_t start, size_t end) const;
-  TEST_API virtual paddle::optional<std::vector<const MetaTensor*>>
+  PADDLE_API virtual paddle::optional<std::vector<const MetaTensor*>> PADDLE_API
   OptionalInputsBetween(size_t start, size_t end) const;
 
-  TEST_API virtual MetaTensor* MutableOutputAt(size_t idx);
-  TEST_API virtual std::vector<MetaTensor*> MutableOutputBetween(size_t start,
-                                                                 size_t end);
+  PADDLE_API virtual MetaTensor* MutableOutputAt(size_t idx);
+  PADDLE_API virtual std::vector<MetaTensor*> MutableOutputBetween(size_t start,
+                                                                   size_t end);
 
   template <typename AttrType>
-  TEST_API const AttrType& AttrAt(size_t idx) const;
+  PADDLE_API const AttrType& AttrAt(size_t idx) const;
 
-  TEST_API const Attribute& AttrAt(size_t idx) const;
+  PADDLE_API const Attribute& AttrAt(size_t idx) const;
 
-  const std::pair<int, int>& InputRangeAt(size_t idx) const;
-  TEST_API const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+  PADDLE_API const std::pair<int, int>& InputRangeAt(size_t idx) const;
+  PADDLE_API const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
   size_t InputsSize() const { return inputs_.size(); }
   size_t OutputsSize() const { return outputs_.size(); }

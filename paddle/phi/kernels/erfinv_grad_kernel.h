@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ErfinvGradKernel(const Context& ctx,
+void ErfinvGradKernel(const Context& dev_ctx,
                       const DenseTensor& out,
                       const DenseTensor& out_grad,
                       DenseTensor* x_grad);

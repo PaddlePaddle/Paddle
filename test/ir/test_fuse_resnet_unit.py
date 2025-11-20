@@ -38,16 +38,18 @@ class TestFuseResNetUnit(unittest.TestCase):
         with paddle.pir_utils.OldIrGuard():
             program = paddle.static.Program()
             startup_program = paddle.static.Program()
-            with paddle.static.amp.fp16_guard():
-                with paddle.static.program_guard(program, startup_program):
-                    x = paddle.static.data("x", [1, 64, 64, 8], dtype="float16")
-                    conv2d = paddle.nn.Conv2D(
-                        8, 32, 1, bias_attr=False, data_format='NHWC'
-                    )
-                    batch_norm = paddle.nn.BatchNorm(
-                        32, act='relu', data_layout='NHWC'
-                    )
-                    out = batch_norm(conv2d(x))
+            with (
+                paddle.static.amp.fp16_guard(),
+                paddle.static.program_guard(program, startup_program),
+            ):
+                x = paddle.static.data("x", [1, 64, 64, 8], dtype="float16")
+                conv2d = paddle.nn.Conv2D(
+                    8, 32, 1, bias_attr=False, data_format='NHWC'
+                )
+                batch_norm = paddle.nn.BatchNorm(
+                    32, act='relu', data_layout='NHWC'
+                )
+                out = batch_norm(conv2d(x))
             graph = core.Graph(program.desc)
             core.get_pass("fuse_resnet_unit").apply(graph)
             after_program = paddle.base.framework.IrGraph(graph).to_program()

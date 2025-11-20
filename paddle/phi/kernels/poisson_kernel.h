@@ -26,6 +26,8 @@ namespace phi {
  *               dtype with input. Each element corresponds to input tensor
  */
 template <typename T, typename Context>
-void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
+void PoissonKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out);
 
 }  // namespace phi

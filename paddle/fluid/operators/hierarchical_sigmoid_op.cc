@@ -88,18 +88,18 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
              "(phi::DenseTensor, required), The parameters of hierarchical "
              "sigmoid operator, each of them is a 2-D tensor, the shape is"
              "[K, D]. Which K is the num of non-leaf node in Path Tree");
-    AddInput("Label",
-             "(phi::DenseTensor, required), The labels of training data. It's a"
-             "tensor with shape [N, 1].");
     AddInput(
-        "PathTable",
-        "(phi::DenseTensor, optional), The Path Table from root to current word"
-        "it should have shape like [N, L], L is the length of the Path")
+        "Label",
+        "(phi::DenseTensor, required), The labels of training data. It's a "
+        "tensor with shape [N, 1].");
+    AddInput("PathTable",
+             "(phi::DenseTensor, optional), The Path Table from root to "
+             "current word, it should have shape like [N, L], L is the length "
+             "of the Path")
         .AsDispensable();
     AddInput("PathCode",
              "(phi::DenseTensor, optional), The Code on each Node of the Path "
-             "from root "
-             "to current word"
+             "from root to current word, "
              "it should have shape like [N, L], L is the length of the Path")
         .AsDispensable();
     AddInput("Bias",
@@ -118,8 +118,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput("W_Out",
               "(phi::DenseTensor, optional) using input 'W' as Output to make "
-              "it mutable"
-              "When we are using prefetch")
+              "it mutable when we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
         .SetDefault(2);

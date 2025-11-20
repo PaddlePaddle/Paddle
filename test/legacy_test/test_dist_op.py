@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 from paddle import base
@@ -236,6 +236,39 @@ class TestDistFP16OpCase5(TestDistFP16Op):
         self.p = 1.5
 
 
+class TestDistOp_ZeroSize1(TestDistOp):
+    def setUp(self):
+        self.op_type = 'dist'
+        self.python_api = paddle.dist
+        self.attrs = {}
+        self.init_case()
+        self.init_data_type()
+        self.inputs = {
+            "X": np.random.random(self.x_shape).astype(self.data_type),
+            "Y": np.random.random(self.y_shape).astype(self.data_type),
+        }
+
+        self.attrs["p"] = self.p
+        self.outputs = {
+            "Out": dist(self.inputs["X"], self.inputs["Y"], self.attrs["p"])
+        }
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Y"], "Out", check_pir=True)
+
+    def init_case(self):
+        self.x_shape = (0, 1, 5, 6)
+        self.y_shape = (0, 5, 6)
+        self.p = 1.0
+
+
+class TestDistOp_ZeroSize2(TestDistOp_ZeroSize1):
+    def init_case(self):
+        self.x_shape = (0, 1, 5, 6)
+        self.y_shape = (1, 5, 6)
+        self.p = 1.0
+
+
 class TestDistAPI(unittest.TestCase):
     def init_data_type(self):
         self.data_type = (
@@ -257,11 +290,7 @@ class TestDistAPI(unittest.TestCase):
             x_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             out = exe.run(
                 main_program,

@@ -208,7 +208,6 @@ class Pool2dOpConverter : public OpConverter {
           engine_, Reduce, *input1, reduce_operation, 12, true);
       layer = reduce_layer;
     } else {
-#if IS_TRT_VERSION_GE(6000)
       plugin::PoolPluginDynamic *plugin =
           new plugin::PoolPluginDynamic(ceil_mode,
                                         pool_type,
@@ -220,7 +219,6 @@ class Pool2dOpConverter : public OpConverter {
                                         dilations,
                                         global_pooling);
       layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
-#endif
     }
     auto output_name = op_desc.Output("Out")[0];
     layer->setName(("pool2d (Output: " + output_name + ")").c_str());

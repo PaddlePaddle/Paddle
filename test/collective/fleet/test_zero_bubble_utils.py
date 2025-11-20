@@ -107,6 +107,8 @@ class TestZuroBubble(unittest.TestCase):
         o = splitbw_linear(input)
         o.mean().backward()
 
+        np.testing.assert_equal(splitbw_linear.weight.grad, None)
+
         zero_bubble_utils.WeightGradStore.flush()
         zero_bubble_utils.WeightGradStore.pop()
 

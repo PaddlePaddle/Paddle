@@ -109,7 +109,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("entry_config",
                          "embedding sparse feature entry config, "
                          " probability entry / counting "
-                         " this can only be used in distributed training"
+                         " this can only be used in distributed training "
                          "entry")
         .SetDefault("");
 

@@ -22,11 +22,11 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -44,6 +44,29 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(d_x);
+    if (d_scale) {
+      // If batch dim is 0, we should set d_scale to zero, or else NAN
+      if (x.dims().size() > 0 && x.dims()[0] == 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(d_scale->dims())),
+                              0,
+                              d_scale);
+
+      } else {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(d_scale->dims())),
+                              NAN,
+                              d_scale);
+      }
+    }
+    if (d_bias) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(d_bias->dims())), 0, d_bias);
+    }
+    return;
+  }
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();

@@ -41,9 +41,9 @@ class PipelineZeroBubblePipelinePass(PipelineZeroBubbleBase):
         pp_degree = self.get_attr("pp_degree")
 
         job_list = []
-        assert (
-            pp_degree <= num_micro_batches
-        ), "Num of micro batches should larger than or equal to pp degree."
+        assert pp_degree <= num_micro_batches, (
+            "Num of micro batches should larger than or equal to pp degree."
+        )
 
         micro_batch_in_warmup = pp_degree - pp_stage
         micro_batch_in_zero_bubble = num_micro_batches - pp_degree
@@ -134,9 +134,9 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         assert num_micro_batches % pp_degree == 0
 
         # TODO(luchang): Fix the gradient explosion issue when  num_model_chunks(accumulate steps) > pp_degree
-        assert (
-            num_micro_batches <= pp_degree
-        ), "zbvpp now only supports accumulate steps <= pp degree. It will cause gradient exploitation when accumulate steps > pp degree."
+        assert num_micro_batches <= pp_degree, (
+            "zbvpp now only supports accumulate steps <= pp degree. It will cause gradient exploitation when accumulate steps > pp degree."
+        )
 
         program_runtimes = self.get_attr("program_runtimes")
 

@@ -37,7 +37,7 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
   int r = 0;
   switch (x.dtype()) {
     case phi::DataType::FLOAT16: {
-      using XPUType = typename XPUTypeTrait<phi::dtype::float16>::Type;
+      using XPUType = typename XPUTypeTrait<phi::float16>::Type;
       int n = weight.dims()[0];
       int k = weight.dims()[1];
       int m = x.numel() / k;
@@ -47,13 +47,11 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
       if (weight_scale.dtype() == phi::DataType::FLOAT16) {
         DenseTensor max_value_fp16;
         max_value_fp16.Resize(weight_scale.dims());
-        dev_ctx.template Alloc<phi::dtype::float16>(&max_value_fp16);
+        dev_ctx.template Alloc<phi::float16>(&max_value_fp16);
         r = baidu::xpu::api::scale(
             xpu_ctx->x_context(),
-            reinterpret_cast<const XPUType*>(
-                weight_scale.data<phi::dtype::float16>()),
-            reinterpret_cast<XPUType*>(
-                max_value_fp16.data<phi::dtype::float16>()),
+            reinterpret_cast<const XPUType*>(weight_scale.data<phi::float16>()),
+            reinterpret_cast<XPUType*>(max_value_fp16.data<phi::float16>()),
             weight_scale.numel(),
             false,
             weight_dtype == "int8" ? 127.f : 7.f,
@@ -62,7 +60,7 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
         r = baidu::xpu::api::cast<XPUType, float>(
             xpu_ctx->x_context(),
             reinterpret_cast<const XPUType*>(
-                max_value_fp16.data<phi::dtype::float16>()),
+                max_value_fp16.data<phi::float16>()),
             max_value.data<float>(),
             max_value.numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
@@ -87,8 +85,7 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<float>(&bias_fp32);
         r = baidu::xpu::api::cast<XPUType, float>(
             xpu_ctx->x_context(),
-            reinterpret_cast<const XPUType*>(
-                bias.get().data<phi::dtype::float16>()),
+            reinterpret_cast<const XPUType*>(bias.get().data<phi::float16>()),
             bias_fp32.data<float>(),
             n);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
@@ -96,9 +93,9 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
       if (weight_dtype == "int8") {
         r = baidu::xpu::api::gpt_fc_fusion<XPUType, int8_t, XPUType, int8_wo_t>(
             xpu_ctx->x_context(),
-            reinterpret_cast<const XPUType*>(x.data<phi::dtype::float16>()),
+            reinterpret_cast<const XPUType*>(x.data<phi::float16>()),
             weight.data<int8_t>(),
-            reinterpret_cast<XPUType*>(out->data<phi::dtype::float16>()),
+            reinterpret_cast<XPUType*>(out->data<phi::float16>()),
             m,
             n,
             k,
@@ -135,5 +132,5 @@ PD_REGISTER_KERNEL(weight_only_linear_xpu,
                    XPU,
                    ALL_LAYOUT,
                    phi::WeightOnlyLinearXpuKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

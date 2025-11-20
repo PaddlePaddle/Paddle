@@ -20,7 +20,6 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -31,7 +30,7 @@ namespace phi {
 
 template <typename DeviceContext, typename T>
 struct AccuracyCheckFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
@@ -43,7 +42,7 @@ struct AccuracyCheckFunctor {
 
 template <typename T>
 struct AccuracyCheckFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
@@ -53,7 +52,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, T> {
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
     auto* in_b = other.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     auto num = in.numel();
     // *out_data = true;
     for (int i = 0; i < num; i++) {
@@ -92,7 +91,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, T> {
 
 template <typename T>
 struct AccuracyCheckFunctor<phi::CPUContext, phi::dtype::complex<T>> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
@@ -102,13 +101,13 @@ struct AccuracyCheckFunctor<phi::CPUContext, phi::dtype::complex<T>> {
                   DenseTensor* output) {
     auto* in_a = in.data<phi::dtype::complex<T>>();
     auto* in_b = other.data<phi::dtype::complex<T>>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     auto num = in.numel();
     // *out_data = true;
     for (int i = 0; i < num; i++) {
       out_data[i] = true;
     }
-    bool val;
+    bool val = false;
     int res_index = -1;
     for (int i = 0; i < num; i++) {
       const phi::dtype::complex<T> a = in_a[i], b = in_b[i];
@@ -143,12 +142,12 @@ __global__ void AccuracyCheckCUDAKernel(const T* in_data,
                                         const double rtol,
                                         const double atol,
                                         bool equal_nan,
-                                        int num,
+                                        int64_t num,
                                         bool* out_data) {
-  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     const double a = static_cast<MPType>(in_data[i]);
     const double b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
@@ -167,19 +166,19 @@ __global__ void AccuracyCheckCUDAKernel(const T* in_data,
   }
 }
 template <>
-__global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<float>>(
-    const phi::dtype::complex<float>* in_data,
-    const phi::dtype::complex<float>* other_data,
+__global__ void AccuracyCheckCUDAKernel<phi::complex64>(
+    const phi::complex64* in_data,
+    const phi::complex64* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
-    int num,
+    int64_t num,
     bool* out_data) {
-  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const phi::dtype::complex<float> a = in_data[i];
-    const phi::dtype::complex<float> b = other_data[i];
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::complex64 a = in_data[i];
+    const phi::complex64 b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
@@ -197,19 +196,19 @@ __global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<float>>(
 }
 
 template <>
-__global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<double>>(
-    const phi::dtype::complex<double>* in_data,
-    const phi::dtype::complex<double>* other_data,
+__global__ void AccuracyCheckCUDAKernel<phi::complex128>(
+    const phi::complex128* in_data,
+    const phi::complex128* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
-    int num,
+    int64_t num,
     bool* out_data) {
-  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const phi::dtype::complex<double> a = in_data[i];
-    const phi::dtype::complex<double> b = other_data[i];
+  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::complex128 a = in_data[i];
+    const phi::complex128 b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
@@ -236,12 +235,12 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
                   const double atol,
                   bool equal_nan,
                   DenseTensor* output) {
-    int num = in.numel();
+    int64_t num = in.numel();
     const T* in_data = in.data<T>();
     const T* other_data = other.data<T>();
     bool* out_data = dev_ctx.template Alloc<bool>(output);
     int block = 1024;
-    int grid = (block - 1 + num) / block;
+    int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
 #ifdef PADDLE_WITH_HIP
     hipMemset(out_data, true, num * sizeof(bool));

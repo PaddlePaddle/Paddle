@@ -59,11 +59,13 @@ class TestJitBackend(unittest.TestCase):
                 )
 
     def test_phi_backend_with_outer_state(self):
-        with flag_guard(PRIM_DYNAMIC_FLAG_NAME, True):
-            with backend_guard(Backend.PHI):
-                # In PHI backend, backend guard should not affect prim dynamic shape.
-                # It will use the outer state
-                self.assertTrue(core._enable_prim_dynamic_shape())
+        with (
+            flag_guard(PRIM_DYNAMIC_FLAG_NAME, True),
+            backend_guard(Backend.PHI),
+        ):
+            # In PHI backend, backend guard should not affect prim dynamic shape.
+            # It will use the outer state
+            self.assertTrue(core._enable_prim_dynamic_shape())
 
 
 if __name__ == '__main__':

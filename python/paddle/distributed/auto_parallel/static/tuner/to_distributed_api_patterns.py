@@ -553,7 +553,6 @@ class ScaleDotProductPattern(BasePattern):
         value_states,
         attention_mask,
     ):
-
         bsz, q_len, num_heads, head_dim = query_states.shape
         _, kv_seq_len, _, _ = value_states.shape
 
@@ -1263,7 +1262,6 @@ class MLP2Pattern(BasePattern):
 
 
 def match_pattern(pattern, program):
-
     def _compare_op_node(src, tgt):
         """Compare whether two op nodes are equivalent."""
         if src.name() != tgt.name():

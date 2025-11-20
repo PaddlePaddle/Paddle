@@ -42,33 +42,30 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
   dist_attr.set_process_mesh(process_mesh);
 
   // Step2: set dim_mapping
-  int64_t ndim = dims.size();
-  std::vector<int64_t> dim_map(ndim, -1);
+  std::vector<std::vector<int64_t>> dim_mapping(dims.size());
   for (size_t i = 0; i < placements.size(); i++) {
-    auto& placement = placements[i];
-    if (placement->is_shard()) {
-      auto shard_dim = dynamic_cast<const Shard&>(*placement).get_dim();
-      if (dim_map[shard_dim] != -1) {
-        LOG(WARNING) << "WARNING: Tensor dim " << shard_dim
-                     << " is already sharded on "
-                     << "mesh dim" << dim_map[shard_dim]
-                     << ". Sharding a tensor dim with "
-                     << "multiple mesh dim is not supported yet.";
-      }
-      // PADDLE_ENFORCE_EQ(
-      //     dim_map[shard_dim],
-      //     -1,
-      //     common::errors::InvalidArgument(
-      //         "Tensor dim %lld is already sharded on mesh dim %lld,"
-      //         " DistTensor operator implementation does not support things "
-      //         "like hybrid"
-      //         " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
-      //         shard_dim,
-      //         dim_map[shard_dim]));
-      dim_map[shard_dim] = i;
+    const auto& cur_placement = placements[i];
+    if (!cur_placement->is_shard()) {
+      continue;
+    }
+    const auto& shard = dynamic_cast<const Shard&>(*cur_placement);
+    dim_mapping[shard.get_dim()].push_back(i);
+    dist_attr.set_split_factor(i, shard.get_split_factor());
+  }
+
+  auto compare_functor = [&](size_t a, size_t b) {
+    const auto& shard_a = dynamic_cast<const Shard&>(*placements[a]);
+    const auto& shard_b = dynamic_cast<const Shard&>(*placements[b]);
+    return shard_a.get_co_shard_order() < shard_b.get_co_shard_order();
+  };
+
+  for (size_t i = 0; i < dim_mapping.size(); i++) {
+    auto& mesh_dims = dim_mapping[i];
+    if (mesh_dims.size() > 1) {
+      std::sort(mesh_dims.begin(), mesh_dims.end(), compare_functor);
     }
   }
-  dist_attr.set_dims_mapping(dim_map);
+  dist_attr.set_dims_mapping(dim_mapping);
 
   // Step3: set partial_status
   paddle::flat_hash_map<int64_t, ReduceType> partial_status;
@@ -96,24 +93,33 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
     placements[pair.first] = std::make_shared<Partial>(pair.second);
   }
 
-  auto& dim_mapping = dist_attr.dims_mapping();
-  for (size_t i = 0; i < dim_mapping.size(); ++i) {
-    auto& mesh_id = dim_mapping[i];
-    if (mesh_id >= 0) {
-      auto& p = placements[mesh_id];
+  const std::vector<std::vector<int64_t>>& dim_mapping =
+      dist_attr.multi_dims_mapping();
+  for (size_t t_dim = 0; t_dim < dim_mapping.size(); t_dim++) {
+    auto m_dims = dim_mapping[t_dim];
+
+    bool is_co_shard = m_dims.size() > 1;
+
+    for (size_t idx = 0; idx < m_dims.size(); idx++) {
+      int64_t mesh_dim = m_dims[idx];
+      int64_t split_factor = dist_attr.get_split_factor(mesh_dim);
+      auto& p = placements.at(mesh_dim);
 
       if (p->is_shard()) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension can't be mapped to two  dimension of the "
             "same tensor: {%d} and {%d}",
-            i,
+            t_dim,
             dynamic_cast<Shard&>(*p).get_dim()));
       } else if (p->is_partial()) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
-            mesh_id));
+            mesh_dim));
       }
-      placements[mesh_id] = std::make_shared<Shard>(i);
+      // TODO(lfw): add mesh_dim >= 0 check
+      placements[mesh_dim] = is_co_shard
+                                 ? std::make_shared<CoShard>(t_dim, idx)
+                                 : std::make_shared<Shard>(t_dim, split_factor);
     }
   }
   return placements;

@@ -214,7 +214,7 @@ class ReverseRollPass(PassAutoScanTest):
         if sys.platform == "win32":
             max_examples = 5
             min_success_num = 5
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=max_examples,
             passes=["reverse_roll_fuse_pass"],
@@ -396,7 +396,7 @@ class ReverseRoll2Pass(PassAutoScanTest):
         if sys.platform == "win32":
             max_examples = 5
             min_success_num = 5
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=max_examples,
             passes=["reverse_roll_fuse_pass"],

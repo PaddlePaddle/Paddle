@@ -31,7 +31,7 @@ namespace phi {
 template <typename T, bool IsFoundInfOnCPU>
 class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const phi::CPUContext& ctx UNUSED,
+  void operator()(const phi::CPUContext& dev_ctx UNUSED,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,

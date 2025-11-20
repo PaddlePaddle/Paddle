@@ -26,12 +26,13 @@ void test_moe_gate_dispatch_spmd(
     int64_t k,
     int64_t capacity,
     bool use_pad,
-    bool test_bwd_spmd = false) {
+    bool test_bwd_spmd = false,
+    bool optional = true) {
   size_t num_inputs = 0;
   if (test_bwd_spmd) {
     num_inputs = 5;
   } else {
-    num_inputs = 2;
+    num_inputs = 3;
   }
 
   EXPECT_EQ(input_shapes.size(), num_inputs)
@@ -68,17 +69,23 @@ void test_moe_gate_dispatch_spmd(
   phi::distributed::SpmdInfo spmd_info;
   if (test_bwd_spmd) {
     spmd_info =
-        phi::distributed::MoEGateDispatchBwdInferSpmd(dist_meta_tensors[0],
-                                                      dist_meta_tensors[1],
-                                                      dist_meta_tensors[2],
-                                                      dist_meta_tensors[3],
-                                                      dist_meta_tensors[4],
-                                                      k,
-                                                      capacity,
-                                                      use_pad);
+        phi::distributed::MoEGateDispatchGradInferSpmd(dist_meta_tensors[0],
+                                                       dist_meta_tensors[1],
+                                                       dist_meta_tensors[2],
+                                                       dist_meta_tensors[3],
+                                                       dist_meta_tensors[4],
+                                                       k,
+                                                       capacity,
+                                                       use_pad);
   } else {
-    spmd_info = phi::distributed::MoEGateDispatchFwdInferSpmd(
-        dist_meta_tensors[0], dist_meta_tensors[1], k, capacity, use_pad);
+    phi::distributed::DistMetaTensor uninitialized_tensor;
+    spmd_info = phi::distributed::MoEGateDispatchInferSpmd(
+        dist_meta_tensors[0],
+        dist_meta_tensors[1],
+        optional ? dist_meta_tensors[2] : uninitialized_tensor,
+        k,
+        capacity,
+        use_pad);
   }
 
   for (size_t i = 0; i < 2; ++i) {
@@ -106,17 +113,18 @@ void test_moe_gate_dispatch_spmd(
 TEST(MoECombineSPMDRule, test_moe_gate_dispatch_spmd) {
   int64_t s = 1024, h = 512, k = 2, e = 8, capacity = 1024;
   bool use_pad = true;
-  const std::vector<std::vector<int64_t>>& forward_input_shapes = {{s, h},
-                                                                   {s, e}};
+  const std::vector<std::vector<int64_t>>& forward_input_shapes = {
+      {s, h}, {s, e}, {e}};
   const std::vector<std::vector<int64_t>>& backward_input_shapes = {
       {s, k}, {k, s}, {s, k}, {e, capacity, h}, {s, k}};
 
   // replicated case, forward
-  std::vector<std::vector<int64_t>> input_dims_mappings = {{-1, -1}, {-1, -1}};
+  std::vector<std::vector<int64_t>> input_dims_mappings = {
+      {-1, -1}, {-1, -1}, {-1}};
   std::pair<std::vector<std::vector<int64_t>>,
             std::vector<std::vector<int64_t>>>
       expected_dims_mappings = {
-          {{-1, -1}, {-1, -1}},
+          {{-1, -1}, {-1, -1}, {-1}},
           {{-1, -1, -1}, {-1, -1}, {-1, -1}, {-1}, {-1, -1}}};
   test_moe_gate_dispatch_spmd(forward_input_shapes,
                               input_dims_mappings,
@@ -139,8 +147,8 @@ TEST(MoECombineSPMDRule, test_moe_gate_dispatch_spmd) {
                               true);
 
   // ep case, forward
-  input_dims_mappings = {{0, -1}, {-1, -1}};
-  expected_dims_mappings = {{{0, -1}, {0, -1}},
+  input_dims_mappings = {{0, -1}, {-1, -1}, {-1}};
+  expected_dims_mappings = {{{0, -1}, {0, -1}, {-1}},
                             {{-1, 0, -1}, {0, -1}, {-1, 0}, {-1}, {0, -1}}};
   test_moe_gate_dispatch_spmd(forward_input_shapes,
                               input_dims_mappings,
@@ -160,6 +168,19 @@ TEST(MoECombineSPMDRule, test_moe_gate_dispatch_spmd) {
                               capacity,
                               use_pad,
                               true);
+
+  // ep, corr_bias is none case, forward
+  input_dims_mappings = {{0, -1}, {-1, -1}, {-1}};
+  expected_dims_mappings = {{{0, -1}, {0, -1}, {}},
+                            {{-1, 0, -1}, {0, -1}, {-1, 0}, {-1}, {0, -1}}};
+  test_moe_gate_dispatch_spmd(forward_input_shapes,
+                              input_dims_mappings,
+                              expected_dims_mappings,
+                              k,
+                              capacity,
+                              use_pad,
+                              false,
+                              false);
 }
 
 }  // namespace auto_parallel

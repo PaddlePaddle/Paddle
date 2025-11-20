@@ -19,11 +19,15 @@ limitations under the License. */
 #include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/utils/flat_hash_map.h"
+#if defined(PADDLE_WITH_XPU)
+#include "paddle/phi/core/xpu_cuda_stream.h"
+#endif
 
 namespace phi {
 class DeviceContext;
 class CPUContext;
 class GPUContext;
+class CustomContext;
 class Allocator;
 class CUDAStream;
 }  // namespace phi
@@ -42,6 +46,11 @@ struct DefaultDeviceContextType<AllocationType::CPU> {
 template <>
 struct DefaultDeviceContextType<AllocationType::GPU> {
   using TYPE = phi::GPUContext;
+};
+
+template <>
+struct DefaultDeviceContextType<AllocationType::CUSTOM> {
+  using TYPE = phi::CustomContext;
 };
 
 /**
@@ -103,6 +112,11 @@ PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place);
  * Get the current CUDA stream for the passed CUDA device.
  */
 PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place);
+#elif defined(PADDLE_WITH_XPU)
+/**
+ * Get the current XPUCUDA stream for the passed XPU device.
+ */
+PADDLE_API cudaStream_t GetCurrentCUDAStream(const phi::Place& place);
 #endif
 
 }  // namespace paddle

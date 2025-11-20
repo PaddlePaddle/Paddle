@@ -33,11 +33,7 @@ namespace funcs {
                                const phi::dtype::complex<T> b) const {      \
       if (isnan(a.real) || isnan(a.imag) || isnan(b.real) || isnan(b.imag)) \
         return false;                                                       \
-      T ar = a.real;                                                        \
-      T br = b.real;                                                        \
-      T ai = a.imag;                                                        \
-      T bi = b.imag;                                                        \
-      return (ar op br) || (ar == br && ai op bi);                          \
+      return (a.real op b.real) || (a.real == b.real && a.imag op b.imag);  \
     }                                                                       \
   };
 
@@ -48,11 +44,8 @@ namespace funcs {
                                const phi::dtype::complex<T> b) const {      \
       if (isnan(a.real) || isnan(a.imag) || isnan(b.real) || isnan(b.imag)) \
         return false;                                                       \
-      T ar = a.real;                                                        \
-      T br = b.real;                                                        \
-      T ai = a.imag;                                                        \
-      T bi = b.imag;                                                        \
-      return (ar op br) || (ar == br && ai op_equal bi);                    \
+      return (a.real op b.real) ||                                          \
+             (a.real == b.real && a.imag op_equal b.imag);                  \
     }                                                                       \
   };
 
@@ -74,6 +67,25 @@ template <typename InT, typename OutT = bool>
 struct EqualFunctor {
   HOSTDEVICE OutT operator()(const InT a, const InT b) const {
     if (std::is_floating_point<InT>::value) {
+      if (isnan(static_cast<float>(a)) || isnan(static_cast<float>(b))) {
+        return static_cast<OutT>(false);
+      }
+      if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b))) {
+        return static_cast<OutT>(a == b);
+      }
+      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-15);
+    } else {
+      return static_cast<OutT>(a == b);
+    }
+  }
+};
+template <typename InT, typename OutT = bool>
+struct NanEqualFunctor {
+  HOSTDEVICE OutT operator()(const InT a, const InT b) const {
+    if (std::is_floating_point<InT>::value) {
+      if (isnan(static_cast<float>(a)) && isnan(static_cast<float>(b))) {
+        return static_cast<OutT>(true);
+      }
       if (isnan(static_cast<float>(a)) || isnan(static_cast<float>(b))) {
         return static_cast<OutT>(false);
       }

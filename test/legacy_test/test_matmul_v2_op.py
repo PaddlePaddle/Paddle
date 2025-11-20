@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_numeric_gradient,
+    get_places,
+    is_custom_device,
+)
 from testsuite import create_op
 
 import paddle
@@ -432,15 +438,16 @@ class TestMatMulV2OpAutoParallel(OpTest):
 
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestMatMulOpFp16Case(parent):
         def init_kernel_type(self):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
@@ -454,7 +461,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -498,9 +505,9 @@ create_test_fp16_class(TestMatMulOpBroadcast2)
 
 def create_test_bf16_class(parent, atol=0.01):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
+        not (core.is_compiled_with_cuda() or is_custom_device())
         or paddle.is_compiled_with_rocm()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestMatMulOpBf16Case(parent):
@@ -518,7 +525,7 @@ def create_test_bf16_class(parent, atol=0.01):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place,
                 atol=atol,
@@ -529,7 +536,7 @@ def create_test_bf16_class(parent, atol=0.01):
             )
 
         def test_check_grad_x(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'X')
             self.check_grad_with_place(
                 place,
@@ -547,7 +554,7 @@ def create_test_bf16_class(parent, atol=0.01):
             )
 
         def test_check_grad_y(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'Y')
             self.check_grad_with_place(
                 place,
@@ -593,15 +600,7 @@ create_test_bf16_class(TestMatMulOp17)
 
 class TestMatMulV2API(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -642,8 +641,8 @@ class TestMatMulV2API(unittest.TestCase):
                 result = paddle.matmul(x, y)
 
     def test_dygraph_fp16(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 with base.dygraph.guard(place):
                     input_x = np.random.random([4, 3]).astype("float16")
@@ -653,8 +652,8 @@ class TestMatMulV2API(unittest.TestCase):
                     result = paddle.matmul(x, y)
 
     def test_compute_type_fp32(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 with base.dygraph.guard(place):
                     paddle.set_flags(
@@ -679,8 +678,8 @@ class TestMatMulV2API(unittest.TestCase):
                     )
 
     def test_compute_type_fp16_nan(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 with base.dygraph.guard(place):
                     paddle.set_flags(
@@ -717,7 +716,7 @@ class TestComplexMatMulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -770,7 +769,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -832,7 +831,7 @@ class TestInt32MatmulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -858,7 +857,7 @@ class TestInt32MatMulOpBroadcast(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -884,7 +883,7 @@ class TestInt64MatmulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -910,7 +909,7 @@ class TestInt64MatMulOpBroadcast(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -941,6 +940,85 @@ class TestMatmulop(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
+
+
+class TestMatMulOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.matmul
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.out = np.matmul(self.x, self.y)
+        self.attrs = {'axis': -1, 'use_onednn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.random.random((1, 1, 2, 3))
+        self.y = np.random.random((1, 0, 3, 2))
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
+class TestMatMulOp_ZeroSize2(TestMatMulOp_ZeroSize):
+    def init_input_output(self):
+        self.x = np.random.random((0, 3, 2, 3))
+        self.y = np.random.random((1, 3, 3, 2))
+
+
+class TestMatMulOp_trans_y(TestMatMulV2Op):
+    # y is 1-D and trans_y is True
+    def config(self):
+        self.x_shape = (2, 100)
+        self.y_shape = (100,)
+        self.trans_x = False
+        self.trans_y = True
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.public_python_api = paddle.tensor.matmul
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        y = np.random.random(self.y_shape).astype(self.dtype)
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
+        result = reference_matmul(x, y, self.trans_x, self.trans_y)
+        result = result.astype(self.dtype)
+        self.inputs = {
+            'X': x,
+            'Y': y,
+        }
+        self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
 
 
 if __name__ == "__main__":

@@ -53,10 +53,6 @@ class Location:
 
 
 def ast_to_source_code(node: ast.AST):
-    if sys.version_info < (3, 9):
-        raise NotImplementedError(
-            "ast.unparse is only available in Python 3.9 and later"
-        )
     ast.fix_missing_locations(node)
     return ast.unparse(node)
 

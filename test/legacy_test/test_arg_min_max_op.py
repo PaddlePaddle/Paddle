@@ -19,7 +19,12 @@ import unittest
 sys.path.append("../../legacy_test")
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -30,7 +35,7 @@ from paddle.framework import in_pir_mode
 class BaseTestCase(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
+        self.python_api = paddle.Tensor.argmin
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
         self.axis = 0
@@ -52,7 +57,7 @@ class BaseTestCase(OpTest):
 class TestCase0(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
         self.axis = 0
@@ -61,7 +66,7 @@ class TestCase0(BaseTestCase):
 class TestCase1(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
+        self.python_api = paddle.Tensor.argmin
         self.dims = (3, 4)
         self.dtype = 'float64'
         self.axis = 1
@@ -70,43 +75,46 @@ class TestCase1(BaseTestCase):
 class TestCase2(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (3, 4)
         self.dtype = 'int64'
         self.axis = 0
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestCase0FP16(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (3, 4, 5)
         self.dtype = np.float16
         self.axis = 0
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestCase1FP16(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
+        self.python_api = paddle.Tensor.argmin
         self.dims = (3, 4)
         self.dtype = np.float16
         self.axis = 1
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "BFP16 test runs only on GPU",
 )
 class TestArgMinBF16OP(OpTest):
     def initTestType(self):
         self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
+        self.python_api = paddle.Tensor.argmin
 
     def initTestCase(self):
         self.initTestType()
@@ -126,13 +134,13 @@ class TestArgMinBF16OP(OpTest):
             self.outputs = {'Out': np.argmax(x, axis=self.axis)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
 
 class TestArgMaxBF16OP(TestArgMinBF16OP):
     def initTestType(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
 
 
 class TestArgMinMaxTypeCheck(unittest.TestCase):
@@ -145,7 +153,7 @@ class TestArgMinMaxTypeCheck(unittest.TestCase):
 
     def test_bfp16(self):
         # in static mode
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         with program_guard(Program(), Program()):
             x = paddle.zeros(name='x', shape=[100, 10], dtype='uint16')
@@ -156,7 +164,7 @@ class TestArgMinMaxTypeCheck(unittest.TestCase):
 class TestCase2_1(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (3, 4)
         self.dtype = 'int64'
         self.axis = -1
@@ -165,7 +173,7 @@ class TestCase2_1(BaseTestCase):
 class TestCase3(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (3,)
         self.dtype = 'int64'
         self.axis = 0
@@ -174,7 +182,7 @@ class TestCase3(BaseTestCase):
 class TestCase4(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
+        self.python_api = paddle.Tensor.argmin
         self.dims = (1,)
         self.dtype = 'int32'
         self.axis = 0
@@ -183,7 +191,7 @@ class TestCase4(BaseTestCase):
 class TestCase3_(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (3,)
         self.axis = 0
 
@@ -191,7 +199,7 @@ class TestCase3_(BaseTestCase):
 class BaseTestComplex1_1(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -215,7 +223,7 @@ class BaseTestComplex1_1(OpTest):
 class BaseTestComplex1_2(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
+        self.python_api = paddle.Tensor.argmin
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -239,7 +247,7 @@ class BaseTestComplex1_2(OpTest):
 class BaseTestComplex2_1(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
+        self.python_api = paddle.Tensor.argmax
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -268,7 +276,7 @@ class BaseTestComplex2_1(OpTest):
 class BaseTestComplex2_2(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
+        self.python_api = paddle.Tensor.argmin
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -343,7 +351,6 @@ class TestArgMaxTensorAxis(UnittestBase):
 
 
 class TestArgMinTensorAxis(TestArgMaxTensorAxis):
-
     def test_static(self):
         main_prog = paddle.base.Program()
         startup_prog = paddle.base.Program()
@@ -381,6 +388,24 @@ class TestArgMinTensorAxis(TestArgMaxTensorAxis):
         axis = paddle.assign(1)
         out = paddle.argmin(x, axis, keepdim=True)
         return out
+
+
+class TestArgmax_ZeroSize(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.python_api = paddle.Tensor.argmax
+        self.dims = (3, 0, 5)
+        self.dtype = 'float32'
+        self.axis = 0
+
+
+class TestArgmin_ZeroSize(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.python_api = paddle.Tensor.argmin
+        self.dims = (3, 0, 5)
+        self.dtype = 'float32'
+        self.axis = 0
 
 
 if __name__ == '__main__':

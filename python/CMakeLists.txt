@@ -1,23 +1,3 @@
-if(WITH_CINN)
-  file(GLOB_RECURSE CINN_PY_FILES ${PROJECT_SOURCE_DIR}/python/cinn/*.py)
-
-  if(WITH_GPU)
-    set(PACKAGE_NAME "cinn-gpu")
-  else()
-    set(PACKAGE_NAME "cinn")
-  endif()
-  set(SETUP_LOG_FILE "setup.py.log")
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup_cinn.py.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/setup_cinn.py)
-
-  if(NOT PYTHON_EXECUTABLE)
-    find_package(PythonInterp ${PY_VERSION} REQUIRED)
-    find_package(PythonLibs ${PY_VERSION} REQUIRED)
-  endif()
-
-  message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
-endif()
-
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
 file(GLOB_RECURSE FLUID_PY_FILES ./paddle/base/*.py)
 set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})

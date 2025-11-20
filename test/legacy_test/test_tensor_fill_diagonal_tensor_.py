@@ -12,27 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_device, get_places
 
 import paddle
-from paddle import base
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
     def setUp(self):
         self.typelist = ['float32', 'float64', 'int32', 'int64']
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dim2(self):
         expected_np = np.array(
@@ -46,7 +37,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.ones((3,), dtype=dtype)
                 var = np.random.random() + 1
@@ -78,7 +69,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.ones((3,), dtype=dtype)
                 var = np.random.random() + 1
@@ -110,7 +101,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.ones((2,), dtype=dtype)
                 var = np.random.random() + 1
@@ -168,7 +159,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.to_tensor(
                     np.arange(12).reshape(2, 2, 3), dtype=dtype
@@ -195,7 +186,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         if len(self.places) > 1:
             bsdim = 1024
             fsdim = 128
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.arange(bsdim * fsdim, dtype=dtype).reshape(
                     (bsdim, fsdim)

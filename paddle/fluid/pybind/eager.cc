@@ -12,10 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <vector>
@@ -834,7 +830,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   SetPythonStack();
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
-  if (kwargs) flag_kwargs = true;
+  if (kwargs && PyList_Size(PyDict_Keys(kwargs))) flag_kwargs = true;
 
   // all kwargs
   PyObject* kw_zero_copy = nullptr;
@@ -905,7 +901,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       true,
       common::errors::PreconditionNotMet(
           "Could not parse args and kwargs successfully, "
-          "please check your input first and make"
+          "please check your input first and make "
           "sure you are on the right way. "
           "The expected arguments as follow: ("
           "value, place, persistable, zero_copy, "
@@ -1311,7 +1307,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                     true,
                     common::errors::PreconditionNotMet(
                         "Could not parse args and kwargs successfully, "
-                        "please check your input first and make"
+                        "please check your input first and make "
                         "sure you are on the right way. "
                         "The expected arguments as follow: ("
                         "value, zero_copy, name, dims)"));

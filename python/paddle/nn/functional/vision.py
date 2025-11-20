@@ -100,10 +100,17 @@ def affine_grid(
             False  # ROCM platform do not have MIOPEN kernel for affine_grid
         )
 
+    if paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+        "FLAGS_use_accuracy_compatible_kernel", False
+    ):
+        use_cudnn = False
+
     if in_dynamic_mode():
         _out_shape = (
             out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
         )
+        if isinstance(_out_shape, paddle.Tensor) and _out_shape.size == 0:
+            raise ValueError("The out_shape cannot be empty.")
         theta = theta._use_gpudnn(use_cudnn)
         return _C_ops.affine_grid(theta, _out_shape, align_corners)
     elif in_pir_mode():
@@ -118,10 +125,10 @@ def affine_grid(
             theta, 'theta', ['float32', 'float64'], 'affine_grid'
         )
         out = helper.create_variable_for_type_inference(dtype=theta.dtype)
-        ipts = {'Theta': theta}
+        inputs = {'Theta': theta}
         attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
         if isinstance(out_shape, Variable):
-            ipts['OutputShape'] = out_shape
+            inputs['OutputShape'] = out_shape
             check_variable_and_dtype(
                 out_shape, 'out_shape', ['int32'], 'affine_grid'
             )
@@ -130,7 +137,7 @@ def affine_grid(
 
         helper.append_op(
             type='affine_grid',
-            inputs=ipts,
+            inputs=inputs,
             outputs={'Output': out},
             attrs=None if len(attrs) == 0 else attrs,
         )
@@ -317,7 +324,7 @@ def grid_sample(
         check_variable_and_dtype(
             grid, 'grid', ['float32', 'float64'], 'grid_sample'
         )
-        ipts = {'X': x, 'Grid': grid}
+        inputs = {'X': x, 'Grid': grid}
         attrs = {
             'mode': mode,
             'padding_mode': padding_mode,
@@ -327,7 +334,7 @@ def grid_sample(
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='grid_sampler',
-            inputs=ipts,
+            inputs=inputs,
             attrs=attrs,
             outputs={'Output': out},
         )

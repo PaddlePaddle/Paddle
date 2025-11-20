@@ -60,7 +60,7 @@ paddle::optional<paddle::Tensor> optional_tensor(bool return_option = false) {
   return t;
 }
 
-PYBIND11_MODULE(custom_cpp_extension, m) {
+PYBIND11_MODULE(PADDLE_EXTENSION_NAME, m) {
   m.def("custom_add", &custom_add, "exp(x) + exp(y)");
   m.def("custom_optional_add", &custom_optional_add, "exp(x) + optional(y)");
   m.def("custom_sub", &custom_sub, "exp(x) - exp(y)");

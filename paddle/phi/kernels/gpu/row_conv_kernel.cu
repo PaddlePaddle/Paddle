@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/row_conv_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+
 namespace phi {
 
 namespace {
@@ -74,7 +76,9 @@ __global__ void RowConvForward(const T *in,
                                int future_context,
                                const size_t *batch_indices,
                                T *out) {
-  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int64_t d =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
 

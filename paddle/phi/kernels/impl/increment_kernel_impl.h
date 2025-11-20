@@ -26,6 +26,9 @@ void IncrementKernel(const Context& dev_ctx,
                      float value,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    return;
+  }
   auto& dev = *dev_ctx.eigen_device();
   funcs::EigenAdd<std::decay_t<decltype(dev)>, T>::Eval(
       dev,

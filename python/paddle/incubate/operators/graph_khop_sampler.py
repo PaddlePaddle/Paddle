@@ -130,7 +130,7 @@ def graph_khop_sampler(
         if return_eids:
             if sorted_eids is None:
                 raise ValueError(
-                    "`sorted_eid` should not be None " "if return_eids is True."
+                    "`sorted_eid` should not be None if return_eids is True."
                 )
             (
                 edge_src,
@@ -171,7 +171,7 @@ def graph_khop_sampler(
     if return_eids:
         if sorted_eids is None:
             raise ValueError(
-                "`sorted_eid` should not be None " "if return_eids is True."
+                "`sorted_eid` should not be None if return_eids is True."
             )
         check_variable_and_dtype(
             sorted_eids, "Eids", ("int32", "int64"), "graph_khop_sampler"

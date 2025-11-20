@@ -84,9 +84,9 @@ def create_lod_tensor(data, recursive_seq_lens, place):
             new_recursive_seq_lens.append(len(seq))
             converter.feed(seq)
 
-        assert [
-            new_recursive_seq_lens
-        ] == recursive_seq_lens, "data and recursive_seq_lens do not match"
+        assert [new_recursive_seq_lens] == recursive_seq_lens, (
+            "data and recursive_seq_lens do not match"
+        )
 
         arr = np.array(converter.data)
 

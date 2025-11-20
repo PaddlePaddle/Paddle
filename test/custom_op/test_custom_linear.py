@@ -54,56 +54,56 @@ def linear_dynamic(func, device, dtype, np_x, np_weight, np_bias):
 def linear_static(func, device, dtype, np_x, np_weight, np_bias):
     paddle.enable_static()
     paddle.set_device(device)
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
-            weight = static.data(
-                name="weight", shape=np_weight.shape, dtype=dtype
-            )
-            bias = static.data(name="bias", shape=np_bias.shape, dtype=dtype)
-            x.stop_gradient = False
-            weight.stop_gradient = False
-            bias.stop_gradient = False
-            out = func(x, weight, bias)
-            mean_out = paddle.mean(out)
-            static.append_backward(mean_out)
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+        weight = static.data(name="weight", shape=np_weight.shape, dtype=dtype)
+        bias = static.data(name="bias", shape=np_bias.shape, dtype=dtype)
+        x.stop_gradient = False
+        weight.stop_gradient = False
+        bias.stop_gradient = False
+        out = func(x, weight, bias)
+        mean_out = paddle.mean(out)
+        static.append_backward(mean_out)
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
 
-            if paddle.framework.in_pir_mode():
-                ops = static.default_main_program().global_block().ops
-                if func.__name__ == "custom_linear":
-                    fetch_list = [
-                        out,
-                        ops[-1].result(0),  # x_grad
-                        ops[-1].result(1),  # weight_grad
-                        ops[-1].result(2),
-                    ]  # bias_grad
-                else:
-                    fetch_list = [
-                        out,
-                        ops[-1].result(0),  # x_grad
-                        ops[-1].result(1),  # weight_grad
-                        ops[-2].result(1),
-                    ]  # bias_grad
+        if paddle.framework.in_pir_mode():
+            ops = static.default_main_program().global_block().ops
+            if func.__name__ == "custom_linear":
+                fetch_list = [
+                    out,
+                    ops[-1].result(0),  # x_grad
+                    ops[-1].result(1),  # weight_grad
+                    ops[-1].result(2),
+                ]  # bias_grad
             else:
                 fetch_list = [
-                    out.name,
-                    x.name + "@GRAD",
-                    weight.name + "@GRAD",
-                    bias.name + "@GRAD",
-                ]
+                    out,
+                    ops[-1].result(0),  # x_grad
+                    ops[-1].result(1),  # weight_grad
+                    ops[-2].result(1),
+                ]  # bias_grad
+        else:
+            fetch_list = [
+                out.name,
+                x.name + "@GRAD",
+                weight.name + "@GRAD",
+                bias.name + "@GRAD",
+            ]
 
-            out_v, x_grad_v, weight_grad_v, bias_grad_v = exe.run(
-                static.default_main_program(),
-                feed={
-                    "x": np_x.astype(dtype),
-                    "weight": np_weight.astype(dtype),
-                    "bias": np_bias.astype(dtype),
-                },
-                fetch_list=fetch_list,
-            )
+        out_v, x_grad_v, weight_grad_v, bias_grad_v = exe.run(
+            static.default_main_program(),
+            feed={
+                "x": np_x.astype(dtype),
+                "weight": np_weight.astype(dtype),
+                "bias": np_bias.astype(dtype),
+            },
+            fetch_list=fetch_list,
+        )
     paddle.disable_static()
     return out_v, x_grad_v, weight_grad_v, bias_grad_v
 

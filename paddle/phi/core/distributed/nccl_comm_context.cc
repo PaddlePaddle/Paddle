@@ -29,21 +29,25 @@ namespace phi::distributed {
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
-NCCLCommContext::NCCLCommContext(int rank,
-                                 int size,
-                                 ncclUniqueId nccl_id,
-                                 int nccl_comm_init_option)
+NCCLCommContext::NCCLCommContext(
+    int rank,
+    int size,
+    ncclUniqueId nccl_id,
+    int nccl_comm_init_option,
+    std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr)
     : CommContext(rank, size),
       nccl_version_(0),
       nccl_comm_(nullptr),
       nranks(size_),
       myrank(rank_),
       param(nccl_comm_init_option) {
-  this->CreateNCCLComm(nccl_id);
+  this->CreateNCCLComm(nccl_id, nccl_config_ptr);
   NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
 }
 
-void NCCLCommContext::CreateNCCLComm(ncclUniqueId nccl_id) {
+void NCCLCommContext::CreateNCCLComm(
+    ncclUniqueId nccl_id,
+    std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr) {
   if (param > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
@@ -52,8 +56,22 @@ void NCCLCommContext::CreateNCCLComm(ncclUniqueId nccl_id) {
     if (param > 0) {
       LOG(WARNING) << "ncclCommInitRank2 is not supported.";
     }
-    NCCL_CHECK(
-        phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
+    if (nccl_config_ptr != nullptr &&
+        phi::dynload::ncclCommInitRankConfigMemOpt.IsValid()) {
+      NCCL_CHECK(phi::dynload::ncclCommInitRankConfigMemOpt(
+          &nccl_comm_,
+          nranks,
+          nccl_id,
+          myrank,
+          nccl_config_ptr->GetOrigin(),
+          nccl_config_ptr->GetMemOpt()));
+    } else {
+      if (nccl_config_ptr != nullptr) {
+        LOG(WARNING) << "ncclCommInitRankConfigMemOpt is not supported.";
+      }
+      NCCL_CHECK(
+          phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
+    }
   }
 }
 

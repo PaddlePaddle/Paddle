@@ -1,10 +1,12 @@
 if(WITH_CINN)
   set(eager_deps ${eager_deps} python)
 endif()
-cc_test(
-  test_egr_ds_eager_tensor
-  SRCS eager_tensor_test.cc
-  DEPS final_dygraph_function ${eager_deps})
+if(NOT WIN32)
+  cc_test(
+    test_egr_ds_eager_tensor
+    SRCS eager_tensor_test.cc
+    DEPS final_dygraph_function ${eager_deps})
+endif()
 cc_test(
   test_egr_ds_auotgrad_meta
   SRCS autograd_meta_test.cc

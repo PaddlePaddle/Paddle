@@ -88,7 +88,7 @@ __global__ void im2col(const T* data_im,
 template <class DeviceContext, class T>
 class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -107,6 +107,13 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
                           "The dimension of tensor 'col' should be 5. But got "
                           "the dims of tensor 'col' is [%s].",
                           col->dims()));
+    // big tensor currently not supported
+    PADDLE_ENFORCE_LE(im.numel(),
+                      (1LL << 31) - 1,
+                      ::common::errors::PreconditionNotMet(
+                          "im's numel too large, allowed size is 2 ^ 31 - 1 "
+                          "elements, but got %lld",
+                          im.numel()));
 
     int im_channels =
         (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
@@ -122,14 +129,14 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
     int num_outputs = im_channels * col_height * col_width;
     int num_thread = 1024;
 #ifdef WITH_NV_JETSON
-    phi::backends::gpu::ChangeThreadNum(context, &num_thread);
+    phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
     int blocks = (num_outputs + num_thread - 1) / num_thread;
     int block_x = 512;
     int block_y = (blocks + 512 - 1) / 512;
     dim3 threads(num_thread, 1);
     dim3 grid(block_x, block_y);
-    im2col<T><<<grid, threads, 0, context.stream()>>>(im.data<T>(),
+    im2col<T><<<grid, threads, 0, dev_ctx.stream()>>>(im.data<T>(),
                                                       num_outputs,
                                                       im_height,
                                                       im_width,
@@ -223,7 +230,7 @@ __global__ void col2im(int n,
 template <class DeviceContext, class T>
 class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -275,7 +282,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
 
     int num_thread = 1024;
 #ifdef WITH_NV_JETSON
-    phi::backends::gpu::ChangeThreadNum(context, &num_thread);
+    phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
     size_t blocks = (num_kernels + num_thread - 1) / num_thread;
     size_t block_x = 512;
@@ -285,7 +292,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
 
     // To avoid involving atomic operations, we will launch one kernel per
     // bottom dimension, and then in the kernel add up the top dimensions.
-    col2im<T><<<grid, threads, 0, context.stream()>>>(num_kernels,
+    col2im<T><<<grid, threads, 0, dev_ctx.stream()>>>(num_kernels,
                                                       col.data<T>(),
                                                       im_height,
                                                       im_width,
@@ -304,42 +311,32 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
   }
 };
 
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             float>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             double>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::complex<float>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::complex<double>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::float16>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::bfloat16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             float>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             double>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::complex<float>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::complex<double>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::float16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
-                             phi::GPUContext,
-                             phi::dtype::bfloat16>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, float>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, double>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, phi::complex64>;
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+                                        phi::GPUContext,
+                                        phi::complex128>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, phi::float16>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, phi::bfloat16>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, float>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, double>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, phi::complex64>;
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+                                        phi::GPUContext,
+                                        phi::complex128>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, phi::float16>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, phi::bfloat16>;
 
 template <class T>
 __global__ void im2colOCF(const T* im_data,
@@ -389,7 +386,7 @@ __global__ void im2colOCF(const T* im_data,
 template <class DeviceContext, class T>
 class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -436,7 +433,7 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
     dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
     dim3 grid(col_width, col_height);
-    im2colOCF<T><<<grid, threads, 0, context.stream()>>>(im.data<T>(),
+    im2colOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(im.data<T>(),
                                                          im_channels,
                                                          im_height,
                                                          im_width,
@@ -499,7 +496,7 @@ __global__ void col2imOCF(const T* col_data,
 template <class DeviceContext, class T>
 class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -563,7 +560,7 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
     int block_dim_z = 1024 / block_dim_x / block_dim_y;
     dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
     dim3 grid(col_width, col_height);
-    col2imOCF<T><<<grid, threads, 0, context.stream()>>>(col.data<T>(),
+    col2imOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(col.data<T>(),
                                                          im_channels,
                                                          im_height,
                                                          im_width,
@@ -579,42 +576,32 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
   }
 };
 
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             float>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             double>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::complex<float>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::complex<double>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::float16>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::bfloat16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             float>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             double>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::complex<float>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::complex<double>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::float16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
-                             phi::GPUContext,
-                             phi::dtype::bfloat16>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, float>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, double>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, phi::complex64>;
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                                        phi::GPUContext,
+                                        phi::complex128>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, phi::float16>;
+template class PADDLE_API
+    Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, phi::bfloat16>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, float>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, double>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, phi::complex64>;
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                                        phi::GPUContext,
+                                        phi::complex128>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, phi::float16>;
+template class PADDLE_API
+    Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, phi::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

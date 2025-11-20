@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import tempfile
 import unittest
 from io import BytesIO
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -407,8 +407,11 @@ class TestSaveLoadAny(unittest.TestCase):
             loss = paddle.mean(z)
             place = (
                 base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
+                if not (
+                    paddle.base.core.is_compiled_with_cuda()
+                    or is_custom_device()
+                )
+                else get_device_place()
             )
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
@@ -453,34 +456,39 @@ class TestSaveLoadAny(unittest.TestCase):
             state_dict_dy = layer.state_dict()
             paddle.save(state_dict_dy, path)
         paddle.enable_static()
-        with paddle.pir_utils.IrGuard():
-            with new_program_scope():
-                layer = LinearNet()
-                data = paddle.static.data(
-                    name='x_static_save',
-                    shape=(None, IMAGE_SIZE),
-                    dtype='float32',
+        with (
+            paddle.pir_utils.IrGuard(),
+            new_program_scope(),
+        ):
+            layer = LinearNet()
+            data = paddle.static.data(
+                name='x_static_save',
+                shape=(None, IMAGE_SIZE),
+                dtype='float32',
+            )
+            y_static = layer(data)
+            program = paddle.static.default_main_program()
+            place = (
+                base.CPUPlace()
+                if not (
+                    paddle.base.core.is_compiled_with_cuda()
+                    or is_custom_device()
                 )
-                y_static = layer(data)
-                program = paddle.static.default_main_program()
-                place = (
-                    base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else base.CUDAPlace(0)
+                else get_device_place()
+            )
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            state_dict = paddle.load(path, keep_name_table=True)
+            paddle.pir.core.set_state_dict(
+                program, state_dict, paddle.static.global_scope()
+            )
+            state_dict_param = program.state_dict(
+                "param", paddle.static.global_scope()
+            )
+            for name, tensor in state_dict_dy.items():
+                np.testing.assert_array_equal(
+                    tensor.numpy(), np.array(state_dict_param[tensor.name])
                 )
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                exe.run(paddle.static.default_startup_program())
-                state_dict = paddle.load(path, keep_name_table=True)
-                paddle.pir.core.set_state_dict(
-                    program, state_dict, paddle.static.global_scope()
-                )
-                state_dict_param = program.state_dict(
-                    "param", paddle.static.global_scope()
-                )
-                for name, tensor in state_dict_dy.items():
-                    np.testing.assert_array_equal(
-                        tensor.numpy(), np.array(state_dict_param[tensor.name])
-                    )
 
     def test_save_load_complex_object_dygraph_save(self):
         paddle.disable_static()
@@ -672,8 +680,11 @@ class TestSaveLoadAny(unittest.TestCase):
             loss = paddle.mean(z)
             place = (
                 base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
+                if not (
+                    paddle.base.core.is_compiled_with_cuda()
+                    or is_custom_device()
+                )
+                else get_device_place()
             )
             prog = paddle.static.default_main_program()
             exe = paddle.static.Executor(place)
@@ -904,8 +915,8 @@ class TestSaveLoadAny(unittest.TestCase):
         load_tensor = paddle.load(path, return_numpy=False)
         origin_array = varbase.numpy()
         load_tensor_array = load_tensor.numpy()
-        if paddle.base.core.is_compiled_with_cuda():
-            base.core._cuda_synchronize(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            base.core._cuda_synchronize(get_device_place())
         np.testing.assert_array_equal(origin_array, load_array)
         np.testing.assert_array_equal(origin_array, load_tensor_array)
 

@@ -117,6 +117,7 @@ std::string CodeGenC::GetTypeName(Type type) {
   GET_SCALAR_TYPE(type.is_uint(32), "uint32_t");
   GET_SCALAR_TYPE(type.is_uint(64), "uint64_t");
 
+  GET_SCALAR_TYPE(type.is_float8e4m3(), "float8e4m3");
   GET_SCALAR_TYPE(type.is_bfloat16(), "bfloat16");
   GET_SCALAR_TYPE(type.is_float16(), "float16");
   GET_SCALAR_TYPE(type.is_float(32), "float")
@@ -869,8 +870,8 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
   std::vector<Expr> new_body;
 
   std::vector<Expr> create_temp_buffers = op->PrepareCreateTempBufferExprs();
-  std::vector<Expr> alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
-  std::vector<Expr> dealloca_temp_buffers = op->PrepareDeallocTempBufferExprs();
+  std::vector<Expr> alloc_temp_buffers = op->PrepareAllocTempBufferExprs();
+  std::vector<Expr> dealloc_temp_buffers = op->PrepareDeallocTempBufferExprs();
 #define APPEND_TO_NEW_BODY(field__) \
   new_body.insert(                  \
       std::end(new_body), std::begin(op->field__), std::end(op->field__));
@@ -880,13 +881,13 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
                   std::end(create_temp_buffers));
   APPEND_TO_NEW_BODY(alloc_output_buffer_exprs)
   new_body.insert(std::end(new_body),
-                  std::begin(alloca_temp_buffers),
-                  std::end(alloca_temp_buffers));
+                  std::begin(alloc_temp_buffers),
+                  std::end(alloc_temp_buffers));
   APPEND_TO_NEW_BODY(buffer_data_cast_exprs)
   new_body.push_back(op->body);
   new_body.insert(std::end(new_body),
-                  std::begin(dealloca_temp_buffers),
-                  std::end(dealloca_temp_buffers));
+                  std::begin(dealloc_temp_buffers),
+                  std::end(dealloc_temp_buffers));
   APPEND_TO_NEW_BODY(dealloc_output_buffer_exprs)
 
   Expr func_body = ir::Block::Make(new_body);
@@ -987,6 +988,8 @@ void CodeGenC::PrintRuntimeType(const cinn_type_t &type) {
     str_ += "cinn_uint64_t()";
   } else if (type == cinn_bfloat16_t()) {
     str_ += "cinn_bfloat16_t()";
+  } else if (type == cinn_float8e4m3_t()) {
+    str_ += "cinn_float8e4m3_t()";
   } else if (type == cinn_float16_t()) {
     str_ += "cinn_float16_t()";
   } else if (type == cinn_float32_t()) {

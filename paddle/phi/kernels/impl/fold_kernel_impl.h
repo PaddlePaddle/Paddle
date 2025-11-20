@@ -25,7 +25,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FoldKernel(const Context& ctx,
+void FoldKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int>& output_sizes,
                 const std::vector<int>& kernel_sizes,
@@ -33,8 +33,8 @@ void FoldKernel(const Context& ctx,
                 const std::vector<int>& paddings,
                 const std::vector<int>& dilations,
                 DenseTensor* out) {
-  const int batch_size = static_cast<int>(x.dims()[0]);
-  ctx.template Alloc<T>(out);
+  const int64_t batch_size = x.dims()[0];
+  dev_ctx.template Alloc<T>(out);
 
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
   const auto& x_dims = x.dims();
@@ -48,8 +48,8 @@ void FoldKernel(const Context& ctx,
                          strides[1] +
                      1;
 
-  int n_input_plane = x_dims[1];
-  int n_output_plane = n_input_plane / (kernel_sizes[0] * kernel_sizes[1]);
+  int64_t n_input_plane = x_dims[1];
+  int64_t n_output_plane = n_input_plane / (kernel_sizes[0] * kernel_sizes[1]);
 
   DDim output_shape =
       common::make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
@@ -58,15 +58,15 @@ void FoldKernel(const Context& ctx,
       {1, kernel_sizes[0], kernel_sizes[1], output_height, output_width});
 
   phi::funcs::SetConstant<Context, T> set_zero;
-  set_zero(ctx, out, static_cast<T>(0));
+  set_zero(dev_ctx, out, static_cast<T>(0));
 
-  for (int i = 0; i < batch_size; i++) {
+  for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor out_batch =
         out->Slice(i, i + 1).Resize(output_shape);  // im size=3
 
     DenseTensor in_batch =
         x.Slice(i, i + 1).Resize(input_matrix_shape);  // col size=5
-    col2im(ctx, in_batch, dilations, strides, paddings, &out_batch);
+    col2im(dev_ctx, in_batch, dilations, strides, paddings, &out_batch);
   }
 }
 

@@ -85,7 +85,6 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}

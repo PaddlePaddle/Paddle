@@ -445,6 +445,8 @@ CINN_REGISTER_HELPER(cinn_sycl_host_api) {
       .AddInputType<int>()     // block_x
       .AddInputType<int>()     // block_y
       .AddInputType<int>()     // block_z
+      .AddInputType<int>()     // shared_memory_bytes
+      .AddInputType<void *>()  // stream
       .End();
   using cinn::runtime::sycl::infer_shape_set_value;
 
@@ -465,6 +467,7 @@ CINN_REGISTER_HELPER(cinn_sycl_host_api) {
       .AddInputType<int>()     // num_args
       .AddInputType<int>()     // value
       .AddInputType<size_t>()  // count
+      .AddInputType<void *>()  // stream
       .End();
 
   using cinn::runtime::sycl::cinn_call_sycl_memcpy;
@@ -474,6 +477,7 @@ CINN_REGISTER_HELPER(cinn_sycl_host_api) {
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
       .AddInputType<size_t>()  // count
+      .AddInputType<void *>()  // stream
       .End();
 
 #ifdef CINN_WITH_CNNL

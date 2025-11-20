@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -61,7 +61,8 @@ def TopPProcess(probs, top_p):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA ",
 )
 class TestTopPAPI(unittest.TestCase):
     def setUp(self):
@@ -160,14 +161,14 @@ class TestTopPAPI(unittest.TestCase):
             )
 
     def test_dygraph(self):
-        if core.is_compiled_with_cuda():
-            places = [core.CUDAPlace(0)]
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places = [get_device_place()]
             for place in places:
                 self.run_dygraph(place)
 
     def test_static(self):
-        if core.is_compiled_with_cuda():
-            places = [core.CUDAPlace(0)]
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places = [get_device_place()]
             for place in places:
                 self.run_static(place)
 

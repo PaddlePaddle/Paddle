@@ -18,10 +18,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/prelu_funcs.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
-
 namespace phi {
 
 enum PRELU_MODE { Element, ChannelFirst, ChannelLast, PRELU_Scalar };
@@ -37,7 +37,7 @@ __global__ void PReluOpGradKernel(const T* x_ptr,
                                   size_t spatial_size,
                                   size_t numel,
                                   PRELU_MODE mode) {
-  CUDA_KERNEL_LOOP(index, numel) {
+  CUDA_KERNEL_LOOP_TYPE(index, numel, int64_t) {
     T scale;
     if (mode == Element) {
       size_t element_index = index % spatial_size;
@@ -117,7 +117,16 @@ void PReluGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad,
                      DenseTensor* alpha_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-
+  if (x_grad->numel() == 0) {
+    if (alpha_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(alpha_grad->dims())),
+          0,
+          alpha_grad);
+    }
+    return;
+  }
   const T* x_ptr = x.data<T>();
   const T* alpha_ptr = alpha.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();
@@ -127,7 +136,7 @@ void PReluGradKernel(const Context& dev_ctx,
 
   if (!x_grad && !alpha_grad) return;
 
-  int numel = x.numel();
+  int64_t numel = x.numel();
   auto dim = x.dims();
   auto x_rank = dim.size();
   auto stream = dev_ctx.stream();
@@ -188,6 +197,6 @@ PD_REGISTER_KERNEL(prelu_grad,
                    ALL_LAYOUT,
                    phi::PReluGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    double) {}

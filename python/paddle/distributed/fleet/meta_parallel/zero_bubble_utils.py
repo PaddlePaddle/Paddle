@@ -27,7 +27,6 @@ from paddle.autograd import PyLayer
 
 
 class WeightGradStore:
-
     enabled = False
     cache = []
     funcs_queue = queue.Queue()
@@ -52,6 +51,14 @@ class WeightGradStore:
     def clear(cls) -> None:
         cls.cache = []
         cls.funcs_queue = queue.Queue()
+
+
+class EventStore:
+    event = None
+
+    @classmethod
+    def set(cls, event) -> None:
+        cls.event = event
 
 
 def fold_init_dims(tensor):

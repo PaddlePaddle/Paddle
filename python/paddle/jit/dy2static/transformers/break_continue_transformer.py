@@ -31,9 +31,9 @@ class ForToWhileTransformer(BaseTransformer):
     """
 
     def __init__(self, parent_node, loop_node, condition_node):
-        assert isinstance(
-            loop_node, gast.For
-        ), "loop_node is not gast.For in ForToWhileTransformer"
+        assert isinstance(loop_node, gast.For), (
+            "loop_node is not gast.For in ForToWhileTransformer"
+        )
         self.parent_node = parent_node
         self.loop_node = loop_node
         self.condition_node = condition_node
@@ -60,9 +60,9 @@ class ForToWhileTransformer(BaseTransformer):
         )
 
     def get_for_stmt_nodes(self, node):
-        assert isinstance(
-            node, gast.For
-        ), "Input node is NOT gast.For in get_for_stmt_nodes"
+        assert isinstance(node, gast.For), (
+            "Input node is NOT gast.For in get_for_stmt_nodes"
+        )
 
         # 1. parse current gast.For node
         current_for_node_parser = ForNodeVisitor(node)

@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle.base import core
@@ -79,9 +85,9 @@ class TestSqueezeOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOpBF16OP(TestSqueezeOp):
     def init_dtype(self):
@@ -97,9 +103,9 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOp1BF16Op(TestSqueezeOp):
     def init_dtype(self):
@@ -158,9 +164,9 @@ class TestSqueezeOp2(TestSqueezeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOp2BF16Op(TestSqueezeOp):
     def init_dtype(self):
@@ -184,9 +190,9 @@ class TestSqueezeOp4(TestSqueezeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSqueezeOp3BF16Op(TestSqueezeOp):
     def init_dtype(self):
@@ -228,6 +234,132 @@ class TestSqueezeAPI(unittest.TestCase):
 class TestSqueezeInplaceAPI(TestSqueezeAPI):
     def executed_api(self):
         self.squeeze = paddle.squeeze_
+
+
+class TestSqueezeAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.squeeze = paddle.squeeze
+
+    def test_api(self):
+        paddle.disable_static()
+        input_data = np.random.random([3, 2, 1]).astype("float32")
+        x = paddle.to_tensor(input_data)
+        x.stop_gradient = False
+        # axis set to 0-size
+        out = self.squeeze(x, axis=paddle.to_tensor([], dtype=paddle.int32))
+        np.testing.assert_allclose(out.numpy(), x.numpy())
+
+        out.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+        paddle.enable_static()
+
+
+class TestSqueezeCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(get_device_place())
+        self.func = paddle.squeeze
+        self.init_data()
+        self.init_case()
+
+    def init_data(self):
+        self.shape = [5, 1, 6]
+        self.dtype = 'float32'
+        self.axis = 1
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_out = np.squeeze(self.np_input, axis=self.axis)
+
+    def init_case(self):
+        params = [['x', 'input'], ['axis', 'dim']]  # param1  # param2
+
+        # Generate all valid combinations
+        def generate_cases(param_groups, case_list):
+            from itertools import product
+
+            for combo in product(*[[None, *names] for names in param_groups]):
+                args = ['pos' if p is None else 'kw' for p in combo]
+                if args == sorted(args, key=lambda x: x != 'pos'):
+                    case_list.append(combo)
+
+        # paddle.squeeze()
+        self.test_cases = []
+        generate_cases(params, self.test_cases)
+        # x.squeeze()
+        self.tensor_test_cases = []
+        generate_cases(params[1:], self.tensor_test_cases)
+
+    def _build_args_kwargs(self, param_names, params):
+        args = []
+        kwargs = {}
+        for name, param in zip(param_names, params):
+            if name is None:
+                args.append(param)
+            else:
+                kwargs[name] = param
+        return args, kwargs
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                # paddle.
+                for param_names in self.test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (x, self.axis)
+                    )
+                    out = self.func(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+                # paddle.Tensor.
+                for param_names in self.tensor_test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (self.axis,)
+                    )
+                    out = x.squeeze(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    # paddle.
+                    for param_names in self.test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (x, self.axis)
+                        )
+                        out = self.func(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
+                    # paddle.Tensor.
+                    for param_names in self.tensor_test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (self.axis,)
+                        )
+
+                        out = x.squeeze(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
 
 
 if __name__ == "__main__":

@@ -61,8 +61,7 @@ class Converter:
     def _check_pre_strategy(self, pre_strategy):
         if not pre_strategy:
             raise ValueError(
-                "'pre_strategy' is None, "
-                "there are not tensors in pre process."
+                "'pre_strategy' is None, there are not tensors in pre process."
             )
         if not isinstance(pre_strategy, dict):
             raise TypeError(
@@ -74,8 +73,7 @@ class Converter:
     def _check_cur_strategy(self, cur_strategy):
         if not cur_strategy:
             warnings.warn(
-                "'cur_strategy' is None, "
-                "there are not tensors in cur process"
+                "'cur_strategy' is None, there are not tensors in cur process"
             )
         if not isinstance(cur_strategy, dict):
             raise TypeError(
