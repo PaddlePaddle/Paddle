@@ -84,7 +84,6 @@ void CUDAVirtualMemAllocator::InitOnce() {
         &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
     virtual_mem_alloced_offset_ = 0;
-    initialized_ = true;
   });
 }
 
