@@ -2154,8 +2154,9 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flashmask_attention_v2
-  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, float softmax_scale, bool is_causal)
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, float softmax_scale, bool is_causal)
   output : Tensor(out), Tensor(softmax_lse)
+  optional : block_mask
   infer_meta :
     func : FlashMaskV2InferMeta
     param : [q, k, v]
