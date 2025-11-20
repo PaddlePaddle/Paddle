@@ -428,8 +428,6 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV_safe);
   DenseTensor diag_real = phi::Real<T>(dev_ctx, VhgV);
 
-  // BatchDiagGPU<dtype::Real<T>, Context>(dev_ctx, diag_real, batch_count,
-  // &diag_res);
   auto cpu_place = phi::CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
@@ -475,9 +473,8 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = Vh.dims()[Vh.dims().size() - 1];
-  int k = rhs.dims()[rhs.dims().size() - 1];
-  auto* matrix_data = Vh.data<T>();
+  int m = static_cast<int> Vh.dims(-1) int k =
+      static_cast<int> rhs.dims(-1) auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 
   SolveLinearSystemGPU<T>(
