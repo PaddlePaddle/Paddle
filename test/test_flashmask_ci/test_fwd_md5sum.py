@@ -138,7 +138,7 @@ def run_flashmask_forward(
     return out
 
 
-# 形状组合
+# Shape Combination
 shape_cases = [
     (1, 8192, 32768 + 1024, 2, 1),
     (2840, 32, 32, 16, 4),
