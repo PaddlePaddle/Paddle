@@ -1629,13 +1629,14 @@ if '${WITH_STRIP}' == 'ON':
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
+
 def check_build_dependency():
     missing_modules = '''Missing build dependency: {dependency}
 Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
 '''.strip()
 
     with open('${PADDLE_SOURCE_DIR}' + '/python/requirements.txt') as f:
-        build_dependencies = (
+        all_dependencies = (
             f.read().splitlines()
         )  # Specify the dependencies to install
 
