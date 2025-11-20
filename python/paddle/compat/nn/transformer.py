@@ -70,7 +70,7 @@ class MultiheadAttention(nn.Layer):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle import nn
+            >>> from paddle.compat import nn
 
             >>> # Example with batch_first=True
             >>> embed_dim, num_heads = 128, 8
@@ -84,7 +84,7 @@ class MultiheadAttention(nn.Layer):
 
             >>> attn_output, attn_output_weights = multihead_attn(query, key, value)
             >>> print(attn_output.shape)
-            [32, 10, 128]
+            paddle.Size([32, 10, 128])
     """
 
     def __init__(
