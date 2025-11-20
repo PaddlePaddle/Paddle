@@ -106,8 +106,8 @@ bool TryAllocBatch(const phi::GPUPlace& place,
   return try_alloc_visitor.IsTryAllocSuccess();
 }
 
-void VmmCompact() {
-  memory::Compact(phi::GPUPlace(paddle::platform::GetCurrentDeviceId()));
+size_t VmmCompact() {
+  return memory::Compact(phi::GPUPlace(paddle::platform::GetCurrentDeviceId()));
 }
 
 std::vector<std::vector<std::pair<size_t, uintptr_t>>>

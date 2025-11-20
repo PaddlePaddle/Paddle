@@ -92,7 +92,7 @@ PADDLE_API extern bool TryAllocBatch(const phi::GPUPlace& place,
                                      const std::vector<size_t>& sizes);
 
 // Compact memory of free blocks held by the VmmAllocator.
-PADDLE_API extern void VmmCompact(void);
+PADDLE_API extern size_t VmmCompact(void);
 
 // Get VMM allocator free block info.
 PADDLE_API extern std::vector<std::vector<std::pair<size_t, uintptr_t>>>

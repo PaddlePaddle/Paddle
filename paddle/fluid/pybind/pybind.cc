@@ -3623,9 +3623,6 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
-  m.def("vmm_compact", [] { paddle::memory::VmmCompact(); });
-  m.def("vmm_free_block_info",
-        [] { return paddle::memory::FreeBlockInfoOfVmmAllocator(); });
   m.def(
       "get_device_properties",
       [](int id) -> const gpuDeviceProp & {
@@ -3678,6 +3675,9 @@ All parameter, weight, gradient are variables in Paddle.
     return memory::VmmMaxFreeSize(phi::GPUPlace(platform::GetCurrentDeviceId()),
                                   1);
   });
+  m.def("vmm_compact", [] { return paddle::memory::VmmCompact(); });
+  m.def("vmm_free_block_info",
+        [] { return paddle::memory::FreeBlockInfoOfVmmAllocator(); });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   m.def(
