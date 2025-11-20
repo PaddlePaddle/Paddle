@@ -1569,7 +1569,7 @@ def save(
 
     param_dict = _unpack_saved_dict(param_dict, protocol)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    # When value of dict is larger than 4GB, there is a bug on macOS Python 3
     if sys.platform == 'darwin' and sys.version_info.major == 3:
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path + ".pdparams", 'wb') as f:
@@ -1783,7 +1783,7 @@ def load(
             parameter_list, global_scope(), executor._default_executor
         )
     with open(parameter_file_name, 'rb') as f:
-        # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+        # When value of dict is larger than 4GB, there is a bug on macOS Python 3
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)
         else:
@@ -1791,7 +1791,7 @@ def load(
         load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
         assert v.name in load_dict, (
-            f"Can not find [{v.name}] in model file [{parameter_file_name}]"
+            f"Cannot find [{v.name}] in model file [{parameter_file_name}]"
         )
         set_var(v, load_dict[v.name])
 
@@ -2102,11 +2102,11 @@ def load_program_state(
             return res_dict
 
     assert os.path.exists(parameter_file_name), (
-        f"Parameter file [{parameter_file_name}] not exits"
+        f"Parameter file [{parameter_file_name}] does not exist"
     )
 
     with open(parameter_file_name, 'rb') as f:
-        # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+        # When value of dict is larger than 4GB, there is a bug on macOS Python 3
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             para_dict = _pickle_loads_mac(parameter_file_name, f)
         else:

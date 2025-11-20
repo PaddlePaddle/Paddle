@@ -96,6 +96,9 @@ PD_REGISTER_KERNEL(mean,
                    ALL_LAYOUT,
                    phi::MeanKernel,
                    float,
+                   bool,
+                   int,
+                   int64_t,
                    phi::float16,
                    phi::bfloat16) {}
 #endif

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 from functools import partial
 
@@ -37,48 +38,46 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
                 shape.append(dim3)
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [1, 4]:
-            for dim1 in [0, 3]:
-                for dim2 in [0, 16]:
-                    for dim3 in [0, 32]:
-                        for threshold in [5.0, 20.0]:
-                            self.dim1 = dim1
-                            self.dim2 = dim2
-                            self.dim3 = dim3
+        for batch, dim1, dim2, dim3, threshold in itertools.product(
+            [1, 4], [0, 3], [0, 16], [0, 32], [5.0, 20.0]
+        ):
+            self.dim1 = dim1
+            self.dim2 = dim2
+            self.dim3 = dim3
 
-                            if dim1 == 0 and dim2 != 0:
-                                continue
-                            if dim1 == 0 and dim2 == 0 and dim3 != 0:
-                                continue
+            if dim1 == 0 and dim2 != 0:
+                continue
+            if dim1 == 0 and dim2 == 0 and dim3 != 0:
+                continue
 
-                            ops_config = [
-                                {
-                                    "op_type": "mish",
-                                    "op_inputs": {"X": ["input_data"]},
-                                    "op_outputs": {"Out": ["mish_output_data"]},
-                                    "op_attrs": {"threshold": threshold},
-                                }
-                            ]
+            ops_config = [
+                {
+                    "op_type": "mish",
+                    "op_inputs": {"X": ["input_data"]},
+                    "op_outputs": {"Out": ["mish_output_data"]},
+                    "op_attrs": {"threshold": threshold},
+                }
+            ]
 
-                            ops = self.generate_op_config(ops_config)
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "input_data": TensorConfig(
-                                        data_gen=partial(
-                                            generate_input,
-                                            batch,
-                                            dim1,
-                                            dim2,
-                                            dim3,
-                                        )
-                                    )
-                                },
-                                outputs=["mish_output_data"],
-                            )
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(
+                            generate_input,
+                            batch,
+                            dim1,
+                            dim2,
+                            dim3,
+                        )
+                    )
+                },
+                outputs=["mish_output_data"],
+            )
 
-                            yield program_config
+            yield program_config
 
     def generate_dynamic_shape(self, attrs):
         if self.dim1 == 0:

@@ -1471,7 +1471,7 @@ class DynamicGraphAdapter:
 class Model:
     """
 
-    An Model object is network with training and inference features.
+    A Model object is a network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
     switched by `paddle.enable_static()`. The usage is as follows.
     But note, the switching between dynamic and static should be before

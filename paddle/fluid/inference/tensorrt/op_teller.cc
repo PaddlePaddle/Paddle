@@ -3475,9 +3475,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                               with_dynamic_shape,
                               forbid_dynamic_op_enter_into_trt,
                               use_explicit_quantization)) {
-    SetOpConverterType(
-        node->Op(),
-        OpConverterType::CustomPluginCreater);  // typos: disable-line
+    SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreator);
     return true;
   }
   auto& custom_generic_plugin_teller = GetCustomGenericPluginTeller();

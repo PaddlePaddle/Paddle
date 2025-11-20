@@ -32,7 +32,10 @@ __global__ void ExtractDiagonalKernel(T* out,
                                       int64_t size,
                                       const int64_t sumStride,
                                       const int64_t outStride) {
-  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < size;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       idx < size;
        idx += gridDim.x * blockDim.x) {
     const int64_t xOffset = start + sumStride * idx;
     out[outStride * idx] = x[xOffset];
@@ -47,7 +50,10 @@ __global__ void PasteDiagonalKernel(T* out,
                                     int64_t x_length,
                                     const int64_t sumStride,
                                     const int64_t xStride) {
-  for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x; idx < x_length;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       idx < x_length;
        idx += gridDim.x * blockDim.x) {
     const int64_t outOffset = start + sumStride * idx;
     out[outOffset] = x[xStride * idx];

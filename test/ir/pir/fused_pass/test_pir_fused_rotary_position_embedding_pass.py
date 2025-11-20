@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -90,103 +91,95 @@ slice slice                    \                   squeeze       unsqueeze      
         return x3
 
     def sample_program(self):
-        for q_shape in [[2, 8, 2, 16]]:
-            for k_shape in [[2, 8, 2, 16]]:
-                for cos_shape in [[1, 8, 1, 16]]:
-                    for sin_shape in [[1, 8, 1, 16]]:
-                        for position_ids_shape in [[2, 8]]:
-                            with paddle.pir_utils.IrGuard():
-                                start_prog = paddle.static.Program()
-                                main_prog = paddle.static.Program()
-                                with paddle.pir.core.program_guard(
-                                    main_prog, start_prog
-                                ):
-                                    q = paddle.static.data(
-                                        name="q",
-                                        shape=q_shape,
-                                        dtype='float32',
-                                    )
-                                    k = paddle.static.data(
-                                        name="k",
-                                        shape=k_shape,
-                                        dtype='float32',
-                                    )
-                                    cos = paddle.static.data(
-                                        name="cos",
-                                        shape=cos_shape,
-                                        dtype='float32',
-                                    )
-                                    sin = paddle.static.data(
-                                        name="sin",
-                                        shape=sin_shape,
-                                        dtype='float32',
-                                    )
-                                    position_ids = paddle.static.data(
-                                        name="position_ids",
-                                        shape=position_ids_shape,
-                                        dtype='int64',
-                                    )
+        for (
+            q_shape,
+            k_shape,
+            cos_shape,
+            sin_shape,
+            position_ids_shape,
+        ) in itertools.product(
+            [[2, 8, 2, 16]],
+            [[2, 8, 2, 16]],
+            [[1, 8, 1, 16]],
+            [[1, 8, 1, 16]],
+            [[2, 8]],
+        ):
+            with paddle.pir_utils.IrGuard():
+                start_prog = paddle.static.Program()
+                main_prog = paddle.static.Program()
+                with paddle.pir.core.program_guard(main_prog, start_prog):
+                    q = paddle.static.data(
+                        name="q",
+                        shape=q_shape,
+                        dtype='float32',
+                    )
+                    k = paddle.static.data(
+                        name="k",
+                        shape=k_shape,
+                        dtype='float32',
+                    )
+                    cos = paddle.static.data(
+                        name="cos",
+                        shape=cos_shape,
+                        dtype='float32',
+                    )
+                    sin = paddle.static.data(
+                        name="sin",
+                        shape=sin_shape,
+                        dtype='float32',
+                    )
+                    position_ids = paddle.static.data(
+                        name="position_ids",
+                        shape=position_ids_shape,
+                        dtype='int64',
+                    )
 
-                                    cos = cos.squeeze(axis=[0, 2])
-                                    sin = sin.squeeze(axis=[0, 2])
-                                    cos = cos[position_ids].unsqueeze(2)
-                                    sin = sin[position_ids].unsqueeze(2)
+                    cos = cos.squeeze(axis=[0, 2])
+                    sin = sin.squeeze(axis=[0, 2])
+                    cos = cos[position_ids].unsqueeze(2)
+                    sin = sin[position_ids].unsqueeze(2)
 
-                                    q_embed = (q * cos) + (
-                                        self.rotate_half(q) * sin
-                                    )
-                                    k_embed = (k * cos) + (
-                                        self.rotate_half(k) * sin
-                                    )
+                    q_embed = (q * cos) + (self.rotate_half(q) * sin)
+                    k_embed = (k * cos) + (self.rotate_half(k) * sin)
 
-                                    out1 = paddle.assign(q_embed)
-                                    out2 = paddle.assign(k_embed)
+                    out1 = paddle.assign(q_embed)
+                    out2 = paddle.assign(k_embed)
 
-                                    position_ids_values = np.array(
-                                        [
-                                            [7, 5, 4, 6, 3, 1, 2, 0],
-                                            [3, 1, 4, 0, 7, 6, 5, 2],
-                                        ],
-                                        dtype='int64',
-                                    )
+                    position_ids_values = np.array(
+                        [
+                            [7, 5, 4, 6, 3, 1, 2, 0],
+                            [3, 1, 4, 0, 7, 6, 5, 2],
+                        ],
+                        dtype='int64',
+                    )
 
-                                    self.pass_attr_list = [
-                                        {
-                                            'fused_rotary_position_embedding_pass': {}
-                                        }
-                                    ]
+                    self.pass_attr_list = [
+                        {'fused_rotary_position_embedding_pass': {}}
+                    ]
 
-                                    self.feeds = {
-                                        "q": np.random.random(q_shape).astype(
-                                            "float32"
-                                        ),
-                                        "k": np.random.random(k_shape).astype(
-                                            "float32"
-                                        ),
-                                        "cos": np.random.random(
-                                            cos_shape
-                                        ).astype("float32"),
-                                        "sin": np.random.random(
-                                            sin_shape
-                                        ).astype("float32"),
-                                        "position_ids": np.broadcast_to(
-                                            np.arange(8, dtype='int64'), (2, 8)
-                                        ),
-                                    }
-                                    self.fetch_list = [out1, out2]
-                                    self.valid_op_map = {
-                                        "pd_op.squeeze": 0,
-                                        "pd_op.unsqueeze": 0,
-                                        "pd_op.concat": 0,
-                                        "pd_op.multiply": 0,
-                                        "pd_op.add": 0,
-                                        "pd_op.slice": 0,
-                                        "pd_op.scale": 0,
-                                        "builtin.combine": 0,
-                                        "pd_op.gather_nd": 0,
-                                        "pd_op.fused_rotary_position_embedding": 1,
-                                    }
-                                    yield [main_prog, start_prog], False
+                    self.feeds = {
+                        "q": np.random.random(q_shape).astype("float32"),
+                        "k": np.random.random(k_shape).astype("float32"),
+                        "cos": np.random.random(cos_shape).astype("float32"),
+                        "sin": np.random.random(sin_shape).astype("float32"),
+                        "position_ids": np.broadcast_to(
+                            np.arange(8, dtype='int64'), (2, 8)
+                        ),
+                    }
+                    self.fetch_list = [out1, out2]
+                    self.valid_op_map = {
+                        "pd_op.squeeze": 0,
+                        "pd_op.unsqueeze": 0,
+                        "pd_op.concat": 0,
+                        "pd_op.multiply": 0,
+                        "pd_op.add": 0,
+                        "pd_op.slice": 0,
+                        "pd_op.scale": 0,
+                        "builtin.combine": 0,
+                        "pd_op.gather_nd": 0,
+                        "pd_op.fused_rotary_position_embedding": 1,
+                    }
+                    yield [main_prog, start_prog], False
 
     def setUp(self):
         if core.is_compiled_with_cuda():

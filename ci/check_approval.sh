@@ -99,6 +99,12 @@ if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] ||
     check_approval 1 tianshuo78520a swgu98
 fi
 
+HAS_MODIFIED_LINUX_NPU_YML=$(git diff --name-only upstream/$BRANCH | grep ".github/workflows/_Linux-NPU.yml" || true)
+if [ "${HAS_MODIFIED_LINUX_NPU_YML}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You must have one RD (yongqiangma, YqGe585) approval for .github/workflows/_Linux-NPU.yml changes, which manages the NPU CI workflow.\n"
+    check_approval 1 yongqiangma YqGe585
+fi
+
 DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/pir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
 echo "DEPS_PHI_IN_IR:${DEPS_PHI_IN_IR}"
 if [ "${DEPS_PHI_IN_IR}" ] && [ "${DEPS_PHI_IN_IR}" != "" ]; then
@@ -572,13 +578,13 @@ fi
 UNITYBUILD_RULE_CHANGED=$(git diff --name-only upstream/$BRANCH |
                           grep "unity_build_rule.cmake" || true)
 if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${PR_ID}" ]; then
-    echo_line="You must have one RD (Avin0323(Recommend) or zhwesky2010 or
+    echo_line="You must have one RD (Avin0323(Recommend) or
                wanghuancoder) approval for modifying
                unity_build_rule.cmake which the rules of Unity Build."
     echo_line=$(echo ${echo_line})
     # Avin0323(23427135) zhwesky2010(52485244)
     # wanghuancoder(26922892) luotao1(6836917)
-    check_approval 1 Avin0323 zhwesky2010 wanghuancoder
+    check_approval 1 Avin0323 wanghuancoder
 fi
 
 if [ -n "${echo_list}" ];then

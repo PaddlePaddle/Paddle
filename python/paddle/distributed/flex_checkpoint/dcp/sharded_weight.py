@@ -61,6 +61,8 @@ class ShardedWeight:
         self.key = key
         if local_tensor.is_dist():
             self.local_tensor = local_tensor._local_value()
+            # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the static_to_struct_mapping will be wrong.
+            self.local_tensor.name = local_tensor.name
             self.local_shape = local_tensor._local_shape
         else:
             self.local_tensor = local_tensor
