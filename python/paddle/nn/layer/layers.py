@@ -2603,6 +2603,7 @@ class Layer:
         self,
         aoa_config: dict[str : list[str]] | None = None,
         process_group: Group | None = None,
+        **kwargs,
     ):
         """
         Returns an iterator over the full, unsharded model parameters.
@@ -2626,7 +2627,9 @@ class Layer:
             full_param,
         )
 
-        return full_param(self, aoa_config, process_group)
+        return full_param(
+            self.sharded_state_dict(), aoa_config, process_group, **kwargs
+        )
 
     @framework.deprecate_stat_dict
     def set_state_dict(
