@@ -404,25 +404,26 @@ class MultiheadAttention(nn.Layer):
         batch_size, _, target_seq_len, _ = q.shape
 
         if can_use_sdpa:
-            sdpa_is_causal = is_causal if final_mask is None else False
-            if final_mask is not None and final_mask.dtype == paddle.bool:
-                final_mask = self._convert_bool_mask_to_float(
-                    final_mask, q.dtype
-                )
+            raise RuntimeError("Should not hit here, sdpa not enabled yet!")
+            # sdpa_is_causal = is_causal if final_mask is None else False
+            # if final_mask is not None and final_mask.dtype == paddle.bool:
+            #     final_mask = self._convert_bool_mask_to_float(
+            #         final_mask, q.dtype
+            #     )
 
-            attn_output = F.scaled_dot_product_attention(
-                q.transpose([0, 2, 1, 3]),
-                k.transpose([0, 2, 1, 3]),
-                v.transpose([0, 2, 1, 3]),
-                attn_mask=final_mask,
-                dropout_p=self.dropout if self.training else 0.0,
-                is_causal=sdpa_is_causal,
-                training=self.training,
-            )
-            attn_output = attn_output.reshape(
-                [batch_size, target_seq_len, self.embed_dim]
-            )
-            return attn_output, None
+            # attn_output = F.scaled_dot_product_attention(
+            #     q.transpose([0, 2, 1, 3]),
+            #     k.transpose([0, 2, 1, 3]),
+            #     v.transpose([0, 2, 1, 3]),
+            #     attn_mask=final_mask,
+            #     dropout_p=self.dropout if self.training else 0.0,
+            #     is_causal=sdpa_is_causal,
+            #     training=self.training,
+            # )
+            # attn_output = attn_output.reshape(
+            #     [batch_size, target_seq_len, self.embed_dim]
+            # )
+            # return attn_output, None
         else:
             scores = paddle.matmul(q, k, transpose_y=True)
             scores = scores / (self.head_dim**0.5)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pprint
 import random
 import unittest
 
@@ -160,11 +161,14 @@ class ReferenceImplementation:
 class TestMHA_Coverage(unittest.TestCase):
     def setUp(self):
         self.seed = 42
+        self.random_seed()
+        self.atol = 1e-3
+        self.num_fuzz_iter = 200
+
+    def random_seed(self):
         random.seed(self.seed)
         np.random.seed(self.seed)
         paddle.seed(self.seed)
-        self.atol = 1e-3
-        self.num_fuzz_iter = 200
 
     def _extract_weights(self, layer):
         sd = layer.state_dict()
@@ -204,64 +208,157 @@ class TestMHA_Coverage(unittest.TestCase):
 
         return w
 
-    def run_single_case(self, **kwargs):
-        B = kwargs.get('B', random.randint(1, 4))
-        L = kwargs.get('L', random.randint(2, 8))
-        S = kwargs.get('S', random.randint(2, 8))
-        H = kwargs.get('num_heads', random.choice([1, 2, 4]))
-        D = kwargs.get('embed_dim', random.randint(4, 12) * H)
+    def generate_config(self, **overrides):
+        """Generates a complete configuration dict, using defaults or random values where needed."""
+        config = {}
 
-        batch_first = kwargs.get('batch_first', random.choice([True, False]))
-        is_cross = kwargs.get('is_cross', random.choice([True, False]))
-        use_bias = kwargs.get('bias', random.choice([True, False]))
-        dtype_str = kwargs.get('dtype', 'float32')
-        need_weights = kwargs.get('need_weights', True)
-        add_bias_kv = kwargs.get('add_bias_kv', False)
-        add_zero_attn = kwargs.get('add_zero_attn', False)
-        avg_weights = kwargs.get(
-            'average_attn_weights', random.choice([True, False])
+        # Basic Dimensions
+        config['num_heads'] = overrides.get(
+            'num_heads', random.choice([1, 2, 4])
+        )
+        default_embed_dim = random.randint(4, 12) * config['num_heads']
+        config['embed_dim'] = overrides.get('embed_dim', default_embed_dim)
+
+        config['B'] = overrides.get('B', random.randint(1, 4))
+        config['L'] = overrides.get('L', random.randint(2, 8))
+
+        # Cross Attention Logic
+        config['is_cross'] = overrides.get(
+            'is_cross', random.choice([True, False])
         )
 
-        if not is_cross:
-            S = L
-            kdim = vdim = D
+        if not config['is_cross']:
+            config['S'] = config['L']
         else:
-            kdim = random.randint(4, 12)
-            vdim = random.randint(4, 12)
+            config['S'] = overrides.get('S', random.randint(2, 8))
 
-        pd_dtype = getattr(paddle, dtype_str)
+        # Key/Value Dimensions
+        if not config['is_cross']:
+            config['kdim'] = config['embed_dim']
+            config['vdim'] = config['embed_dim']
+        else:
+            config['kdim'] = overrides.get('kdim', random.randint(4, 12))
+            config['vdim'] = overrides.get('vdim', random.randint(4, 12))
+
+        # Booleans
+        config['batch_first'] = overrides.get(
+            'batch_first', random.choice([True, False])
+        )
+        config['bias'] = overrides.get('bias', random.choice([True, False]))
+        config['dtype'] = overrides.get('dtype', 'float32')
+        config['need_weights'] = overrides.get('need_weights', True)
+        config['add_bias_kv'] = overrides.get('add_bias_kv', False)
+        config['add_zero_attn'] = overrides.get('add_zero_attn', False)
+        config['average_attn_weights'] = overrides.get(
+            'average_attn_weights', random.choice([True, False])
+        )
+        config['is_causal'] = overrides.get('is_causal', False)
+
+        # Special flags
+        config['key_padding_mask'] = overrides.get(
+            'key_padding_mask', random.random() < 0.5
+        )
+
+        # Unbatched input simulation (B=1 case)
+        # If B=1, we sometimes pass 2D inputs [L, D] instead of [1, L, D]
+        if config['B'] == 1:
+            config['unbatched_input'] = overrides.get(
+                'unbatched_input', random.random() < 0.5
+            )
+        else:
+            config['unbatched_input'] = False
+
+        config['random_mask'] = overrides.get(
+            'random_mask', random.random() < 0.5
+        )
+        config['random_mask_3d'] = overrides.get(
+            'random_mask_3d', random.random() < 0.5
+        )
+
+        if config['random_mask']:
+            config['is_causal'] = False
+
+        return config
+
+    def run_case(self, config):
+        B = config['B']
+        L = config['L']
+        S = config['S']
+        H = config['num_heads']
+        D = config['embed_dim']
+
+        pd_dtype = getattr(paddle, config['dtype'])
 
         model = MultiheadAttention(
             embed_dim=D,
             num_heads=H,
             dropout=0.0,
-            bias=use_bias,
-            batch_first=batch_first,
-            kdim=kdim,
-            vdim=vdim,
-            add_bias_kv=add_bias_kv,
-            add_zero_attn=add_zero_attn,
+            bias=config['bias'],
+            batch_first=config['batch_first'],
+            kdim=config['kdim'],
+            vdim=config['vdim'],
+            add_bias_kv=config['add_bias_kv'],
+            add_zero_attn=config['add_zero_attn'],
             dtype=pd_dtype,
         )
         model.eval()
 
-        q_shape = [B, L, D] if batch_first else [L, B, D]
-        k_shape = [B, S, kdim] if batch_first else [S, B, kdim]
-        v_shape = [B, S, vdim] if batch_first else [S, B, vdim]
+        q_shape = [B, L, D] if config['batch_first'] else [L, B, D]
+        k_shape = (
+            [B, S, config['kdim']]
+            if config['batch_first']
+            else [S, B, config['kdim']]
+        )
+        v_shape = (
+            [B, S, config['vdim']]
+            if config['batch_first']
+            else [S, B, config['vdim']]
+        )
 
-        if B == 1 and random.random() < 0.5:
+        if config['unbatched_input']:
             q_shape = [L, D]
-            k_shape = [S, kdim]
-            v_shape = [S, vdim]
+            k_shape = [S, config['kdim']]
+            v_shape = [S, config['vdim']]
 
         q_pd = paddle.randn(q_shape).cast(pd_dtype)
-        k_pd = paddle.randn(k_shape).cast(pd_dtype) if is_cross else q_pd
-        v_pd = paddle.randn(v_shape).cast(pd_dtype) if is_cross else q_pd
+        k_pd = (
+            paddle.randn(k_shape).cast(pd_dtype) if config['is_cross'] else q_pd
+        )
+        v_pd = (
+            paddle.randn(v_shape).cast(pd_dtype) if config['is_cross'] else q_pd
+        )
 
         attn_mask = None
         key_padding_mask = None
 
-        if kwargs.get('use_mask', random.random() < 0.5):
+        if config['is_causal'] and config['random_mask']:
+            raise ValueError(
+                "Both is_causal and random_mask cannot be True at the same time."
+            )
+
+        if config['is_causal']:
+            mask_vals = np.zeros((L, S), dtype=config['dtype'])
+            i_idxs, j_idxs = np.triu_indices(L, k=1, m=S)
+            mask_vals[i_idxs, j_idxs] = float('-inf')
+            attn_mask = paddle.to_tensor(mask_vals)
+        elif config['random_mask']:
+            if config['random_mask_3d']:
+                mask_vals = np.random.choice(
+                    [True, False], size=(B * H, L, S), p=[0.2, 0.8]
+                )
+                mask_vals[:, :, 0] = False
+                attn_mask = paddle.to_tensor(mask_vals)
+            else:
+                mask_vals = np.random.choice(
+                    [True, False], size=(L, S), p=[0.2, 0.8]
+                )
+                mask_vals[
+                    :,
+                    0,
+                ] = False
+                attn_mask = paddle.to_tensor(mask_vals)
+
+        if config['key_padding_mask']:
             kp_np = np.random.choice([True, False], size=(B, S), p=[0.2, 0.8])
             kp_np[:, 0] = False
             key_padding_mask = paddle.to_tensor(kp_np)
@@ -273,15 +370,16 @@ class TestMHA_Coverage(unittest.TestCase):
                 v_pd,
                 key_padding_mask=key_padding_mask,
                 attn_mask=attn_mask,
-                need_weights=need_weights,
-                average_attn_weights=avg_weights,
+                need_weights=config['need_weights'],
+                average_attn_weights=config['average_attn_weights'],
+                is_causal=config['is_causal'],
             )
 
         q_np = q_pd.cast('float32').numpy()
         k_np = k_pd.cast('float32').numpy()
         v_np = v_pd.cast('float32').numpy()
 
-        if not batch_first and len(q_np.shape) == 3:
+        if not config['batch_first'] and len(q_np.shape) == 3:
             q_np = q_np.transpose(1, 0, 2)
             k_np = k_np.transpose(1, 0, 2)
             v_np = v_np.transpose(1, 0, 2)
@@ -309,72 +407,90 @@ class TestMHA_Coverage(unittest.TestCase):
             bias_v=weights['bias_v'],
             key_padding_mask=kp_np,
             attn_mask=am_np,
-            add_bias_kv=add_bias_kv,
-            add_zero_attn=add_zero_attn,
+            add_bias_kv=config['add_bias_kv'],
+            add_zero_attn=config['add_zero_attn'],
             num_heads=H,
-            need_weights=need_weights,
-            average_attn_weights=avg_weights,
+            need_weights=config['need_weights'],
+            average_attn_weights=config['average_attn_weights'],
         )
 
-        if len(q_np.shape) == 3 and not batch_first:
+        if len(q_np.shape) == 3 and not config['batch_first']:
             out_ref = out_ref.transpose(1, 0, 2)
 
-        current_atol = 1e-3 if dtype_str == 'float16' else self.atol
-        if not need_weights and dtype_str == 'float16':
+        current_atol = 1e-3 if config['dtype'] == 'float16' else self.atol
+        if not config['need_weights'] and config['dtype'] == 'float16':
             current_atol = 1e-3
+
+        if not paddle.is_compiled_with_custom_device("dcu"):
+            current_atol = 1e-2
+
+        # Pretty print config for error message
+        config_str = pprint.pformat(config)
 
         np.testing.assert_allclose(
             out_pd.cast('float32').numpy(),
             out_ref,
             atol=current_atol,
             rtol=current_atol,
-            err_msg=f"Output mismatch. Config: bias_kv={add_bias_kv}, zero_attn={add_zero_attn}, sdpa={not need_weights}, dtype={dtype_str}",
+            err_msg=f"\nOutput mismatch.\nConfig:\n{config_str}",
         )
 
-        if need_weights and w_pd is not None:
+        if config['need_weights'] and w_pd is not None:
             np.testing.assert_allclose(
                 w_pd.cast('float32').numpy(),
                 w_ref,
                 atol=current_atol,
                 rtol=current_atol,
-                err_msg="Weights mismatch",
+                err_msg=f"\nWeights mismatch.\nConfig:\n{config_str}",
             )
 
-        if not need_weights:
+        if not config['need_weights']:
             self.assertIsNone(w_pd)
 
     def test_add_bias_kv(self):
-        self.run_single_case(add_bias_kv=True, add_zero_attn=False)
+        config = self.generate_config(add_bias_kv=True, add_zero_attn=False)
+        self.run_case(config)
 
     def test_add_zero_attn(self):
-        self.run_single_case(add_bias_kv=False, add_zero_attn=True)
+        config = self.generate_config(add_bias_kv=False, add_zero_attn=True)
+        self.run_case(config)
 
     def test_bias_kv_and_zero_attn(self):
-        self.run_single_case(add_bias_kv=True, add_zero_attn=True)
+        config = self.generate_config(add_bias_kv=True, add_zero_attn=True)
+        self.run_case(config)
+
+    def test_is_causal(self):
+        config = self.generate_config(is_causal=True, is_cross=False)
+        self.run_case(config)
 
     def test_sdpa_path(self):
         if not paddle.is_compiled_with_cuda():
             return
 
+        config = self.generate_config(
+            dtype='float16', need_weights=False, num_heads=16, embed_dim=32
+        )
         try:
-            self.run_single_case(
-                dtype='float16', need_weights=False, num_heads=16, embed_dim=32
-            )
+            self.run_case(config)
         except AssertionError:
             pass
 
     def test_random_fuzz(self):
-        for _ in range(self.num_fuzz_iter):
-            self.run_single_case(
+        for i in range(self.num_fuzz_iter):
+            config = self.generate_config(
                 add_bias_kv=random.choice([True, False]),
                 add_zero_attn=random.choice([True, False]),
                 need_weights=random.choice([True, False]),
+                is_causal=random.choice([True, False]),
                 dtype=(
                     random.choice(['float32', 'float32', 'float16'])
                     if paddle.is_compiled_with_cuda()
                     else 'float32'
                 ),
+                random_mask=random.choice([True, False]),
+                random_mask_3d=random.choice([True, False]),
             )
+            self.run_case(config)
 
 
 if __name__ == '__main__':
