@@ -143,13 +143,13 @@ def normalize(
             'epsilon': epsilon,
         }
         helper = LayerHelper('p_norm', **locals())
-        ret = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='p_norm', inputs={'X': x}, outputs={'Out': ret}, attrs=attrs
+            type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
         )
-        eps = ret.block.create_var(dtype=ret.dtype)
-        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=ret.dtype)
-        ret = paddle.divide(x, paddle.maximum(ret, eps), name=name)
+        eps = out.block.create_var(dtype=out.dtype)
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
+        out = paddle.divide(x, paddle.maximum(out, eps), name=name)
 
     if out is not None:
         paddle.assign(ret, out)

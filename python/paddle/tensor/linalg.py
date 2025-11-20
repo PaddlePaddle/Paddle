@@ -4248,10 +4248,10 @@ def solve(
         helper = LayerHelper("solve", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'solve')
         check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'solve')
-        ret = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(
-            type="solve", inputs={"X": x, "Y": y}, outputs={"Out": ret}
+            type="solve", inputs={"X": x, "Y": y}, outputs={"Out": out}
         )
 
     if not left:
