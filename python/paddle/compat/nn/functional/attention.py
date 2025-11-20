@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 import paddle.nn.functional as F
 
 if TYPE_CHECKING:
@@ -75,7 +76,10 @@ def scaled_dot_product_attention(
                         or same type of query. The bool mask indicates the positions should take part
                         in attention. The non-bool mask will be added to attention score.
 
-        is_causal(bool, optional): Whether enable causal mode.
+        is_causal(bool, optional): Whether enable causal mode. If True, the attention masking is a lower
+                        triangular matrix when the mask is a square matrix. The attention masking has the
+                        form of the upper left causal bias when the mask is a non-square matrix.
+                        An error is thrown if both attn_mask and is_causal are set.
         scale(float, optional): The scaling factor used in the calculation of attention weights.
                         If None, scale = 1 / sqrt(head_dim).
         enable_gqa(bool, optional): Whether enable GQA mode.
@@ -96,6 +100,10 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+    if is_causal and attn_mask is not None:
+        raise RuntimeError(
+            "Explicit attn_mask should not be set when is_causal=True"
+        )
     if len(query.shape) == 3:
         query = query.unsqueeze(0)
     if len(key.shape) == 3:
@@ -118,29 +126,31 @@ def scaled_dot_product_attention(
         # repeat_interleave does not support float16 on GPU, so we manually expand the tensor
         if k_heads != q_heads:
             repeats = q_heads // k_heads
-            # 1. (..., H, S, D) -> (..., H, 1, S, D)
             key, value = key.unsqueeze(-3), value.unsqueeze(-3)
-            # 2. (..., H, 1, S, D) -> (..., H, r, S, D)
             key, value = (
                 key.expand([-1, -1, repeats, -1, -1]),
                 value.expand([-1, -1, repeats, -1, -1]),
             )
-            # 3. (..., H, r, S, D) -> (..., hr, S, D)
-            key, value = key.flatten(-4, -3), value.flatten(-4, -3)
+            key, value = (
+                key.flatten(-4, -3).contiguous(),
+                value.flatten(-4, -3).contiguous(),
+            )
 
     if attn_mask is not None:
-        if attn_mask.ndim == 3:
-            # (B, L, S) -> (B, 1, L, S)
-            attn_mask = attn_mask.unsqueeze(1)
-            attn_mask = attn_mask.broadcast_to(
-                [*query.shape[:-1], value.shape[-2]]
+        batch_size = query.shape[0]
+        seq_len_q = query.shape[2]
+        num_heads = query.shape[1]
+        seq_len_k = key.shape[2]
+
+        target_shape = [batch_size, num_heads, seq_len_q, seq_len_k]
+        attn_mask = attn_mask.expand(target_shape)
+        if attn_mask.dtype == paddle.bool:
+            neg_inf = float('-inf')
+            zeros = paddle.zeros_like(attn_mask, dtype=query.dtype)
+            masked_vals = paddle.full_like(
+                attn_mask, fill_value=neg_inf, dtype=query.dtype
             )
-        elif attn_mask.ndim == 2:
-            # (L, S) -> (1, 1, L, S)
-            attn_mask = attn_mask.unsqueeze(0).unsqueeze(0)
-            attn_mask = attn_mask.broadcast_to(
-                [*query.shape[:-1], value.shape[-2]]
-            )
+            attn_mask = paddle.where(attn_mask, zeros, masked_vals)
     query, key, value = (
         query.swapaxes(-3, -2),
         key.swapaxes(-3, -2),

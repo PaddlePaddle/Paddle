@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import math
 import unittest
 
@@ -28,8 +27,6 @@ from paddle.compat.nn.functional import (
 from paddle.nn.functional import (
     scaled_dot_product_attention as legacy_sdpa,
 )
-
-logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 
 is_sm8x = (
     (core.is_compiled_with_cuda() or is_custom_device())
