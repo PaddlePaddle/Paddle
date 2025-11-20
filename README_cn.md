@@ -22,7 +22,7 @@
 
 跟进 PaddlePaddle 最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
-### 安装最新稳定版本
+### 安装最新稳定版本或每日最新构建版本
 
 安装方法详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)。
 
