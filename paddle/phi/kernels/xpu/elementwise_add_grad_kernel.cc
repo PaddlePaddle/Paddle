@@ -135,7 +135,7 @@ void AddGradKernel(const Context& dev_ctx,
         std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
 
         auto casted_dz = phi::Cast<T>(dev_ctx, *dz, y.dtype());
-        auto casted_dz_data = casted_dz.data<YType>();
+        auto casted_dz_data = casted_dz.template data<YType>();
         int ret = xpu::reduce_sum<XPUYType>(
             dev_ctx.x_context(),
             reinterpret_cast<const XPUYType*>(casted_dz_data),
@@ -163,7 +163,7 @@ void AddGradKernel(const Context& dev_ctx,
         std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
 
         auto casted_dz = phi::Cast<T>(dev_ctx, *dz, y.dtype());
-        auto casted_dz_data = casted_dz.data<YType>();
+        auto casted_dz_data = casted_dz.template data<YType>();
         int ret = xpu::reduce_sum<XPUYType>(
             dev_ctx.x_context(),
             reinterpret_cast<const XPUYType*>(casted_dz_data),
