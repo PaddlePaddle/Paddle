@@ -473,8 +473,9 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = static_cast<int> Vh.dims(-1) int k =
-      static_cast<int> rhs.dims(-1) auto* matrix_data = Vh.data<T>();
+  int m = static_cast<int>(Vh.dims(-1));
+  int k = static_cast<int>(rhs.dims(-1));
+  auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 
   SolveLinearSystemGPU<T>(
