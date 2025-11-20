@@ -81,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/pybind/size.h"
 #include "paddle/fluid/pybind/torch_compat.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -3628,7 +3629,8 @@ All parameter, weight, gradient are variables in Paddle.
       [](int id) -> const gpuDeviceProp & {
         return platform::GetDeviceProperties(id);
       },
-      py::return_value_policy::copy);
+      py::return_value_policy::reference);
+
   py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const gpuDeviceProp &prop) { return prop.name; })
@@ -4237,6 +4239,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompiledProgram(m);
   BindPlace(m);
   BindTensor(m);
+  BindSize(&m);
 
   py::enum_<phi::DataType> data_type(m, "DataType");
   g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT

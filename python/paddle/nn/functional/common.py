@@ -1211,11 +1211,13 @@ def bilinear(
         return out
 
 
+@param_one_alias(["x", "input"])
 def dropout(
     x: Tensor,
     p: float = 0.5,
     axis: int | Sequence[int] | None = None,
     training: bool = True,
+    inplace: bool = False,
     mode: _DropoutMode = "upscale_in_train",
     name: str | None = None,
 ) -> Tensor:
@@ -1230,6 +1232,7 @@ def dropout(
         p (float|int, optional): Probability of setting units to zero. Default: 0.5.
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
+        inplace (bool, optional): If set to ``True``, will do this operation in-place. Default: ``False``
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
             1. upscale_in_train (default), upscale the output at training time
@@ -1389,7 +1392,17 @@ def dropout(
         if in_dynamic_or_pir_mode():
             if paddle.static.default_main_program().random_seed != 0:
                 seed = paddle.static.default_main_program().random_seed
-            out = _C_ops.dropout(
+            if inplace:
+                return _C_ops.dropout_(
+                    x,
+                    None,
+                    p,
+                    not training,
+                    mode,
+                    seed if seed is not None else 0,
+                    seed is not None,
+                )
+            return _C_ops.dropout(
                 x,
                 None,
                 p,
@@ -1398,8 +1411,6 @@ def dropout(
                 seed if seed is not None else 0,
                 seed is not None,
             )
-
-            return out
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
@@ -1417,7 +1428,7 @@ def dropout(
 
                 if isinstance(
                     dropout_prob, Variable
-                ) and not dropout_prob.shape != [1]:
+                ) and dropout_prob.shape != [1]:
                     raise TypeError(
                         f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
                     )
@@ -1440,6 +1451,10 @@ def dropout(
             )
             return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
+        if inplace:
+            raise NotImplementedError(
+                "inplace not supported for dropout_nd yet"
+            )
         if not in_dynamic_mode():
             check_variable_and_dtype(
                 x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'

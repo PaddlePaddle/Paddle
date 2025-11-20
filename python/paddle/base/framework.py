@@ -7824,7 +7824,10 @@ class EagerParamBase(core.eager.Tensor):
         self._init_op_creator = None
 
     def __init_by_tensor__(
-        self, data: paddle.Tensor | None = None, requires_grad: bool = True
+        self,
+        data: paddle.Tensor | None = None,
+        requires_grad: bool = True,
+        **kwargs,
     ):
         if data is None:
             data = paddle.to_tensor([])
@@ -7838,7 +7841,7 @@ class EagerParamBase(core.eager.Tensor):
                 )
 
         dtype = convert_to_proto_type(dtype)
-        name = unique_name.generate("_eager_param_base")
+        name = kwargs.get("name", unique_name.generate("_eager_param_base"))
 
         super().__init__(
             dtype,
@@ -7850,11 +7853,11 @@ class EagerParamBase(core.eager.Tensor):
         self.retain_grads()
         self._is_param = True
         self.stop_gradient = not requires_grad
-        self.optimize_attr = 1.0
-        self.regularizer = None
-        self.do_model_average = None
-        self.need_clip = True
-        self.is_distributed = False
+        self.optimize_attr = kwargs.get("optimize_attr", {"learning_rate": 1.0})
+        self.regularizer = kwargs.get("regularizer", None)
+        self.do_model_average = kwargs.get("do_model_average", None)
+        self.need_clip = kwargs.get("need_clip", True)
+        self.is_distributed = kwargs.get("is_distributed", False)
         # hook functions for lazy initialization
         self._init_func = None
         self._init_op_creator = None

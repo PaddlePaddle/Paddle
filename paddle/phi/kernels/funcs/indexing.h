@@ -80,6 +80,10 @@ std::vector<phi::DenseTensor*> ExpandTensors(
     if (index->dtype() == paddle::DataType::BOOL) {
       phi::DenseTensor bool_2_idx(phi::DataType::INT64);
       NonZeroKernel<bool, Context>(dev_ctx, *index, &bool_2_idx);
+      if (bool_2_idx.numel() == 0) {
+        std::vector<phi::DenseTensor*> empty_result;
+        return empty_result;
+      }
       for (int j = 0; j < index->dims().size(); j++) {
         SliceKernel<int64_t, Context>(
             dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {1}, index.get());
@@ -156,6 +160,7 @@ struct AdvancedIndex {
   int64_t dims_before;
   int64_t dims_after;
   bool bool_case;
+  bool empty_index = false;
 };
 
 inline static void RestrideSrc(const phi::DenseTensor& self,
@@ -206,6 +211,11 @@ inline AdvancedIndex<T, Context>::AdvancedIndex(
   }
 
   auto indices = ExpandTensors<T, Context>(dev_ctx, this->tmp_indices);
+  if (indices.empty()) {
+    empty_index = true;
+    return;
+  }
+
   indices = ExpandOutplace<T, Context>(dev_ctx, indices);
   while (indices.size() < static_cast<size_t>(self.dims().size())) {
     indices.emplace_back();

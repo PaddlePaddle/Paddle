@@ -90,6 +90,13 @@ std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
   return std::make_pair(free_memory_metrics_visitor.GetLargeSize(),
                         free_memory_metrics_visitor.GetSumSize());
 }
+
+bool TryAllocBatch(const phi::GPUPlace& place,
+                   const std::vector<size_t>& sizes) {
+  TryAllocVisitor try_alloc_visitor(sizes);
+  allocation::AllocatorFacade::Instance().Accept(place, &try_alloc_visitor);
+  return try_alloc_visitor.IsTryAllocSuccess();
+}
 #endif
 
 #ifdef PADDLE_WITH_XPU

@@ -898,6 +898,7 @@
   kernel :
     func : eig_grad
     data_type : out_v
+  optional : out_w_grad, out_v_grad
 
 - backward_op : eigh_grad
   forward : eigh (Tensor x, str UPLO) -> Tensor(out_w), Tensor(out_v)
@@ -1228,8 +1229,9 @@
     data_type: q
 
 - backward_op : flashmask_attention_v2_grad
-  forward : flashmask_attention_v2 (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, float softmax_scale, bool is_causal) -> Tensor(out), Tensor(softmax_lse)
-  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor startend_row_indices, Tensor out_grad, float softmax_scale, bool is_causal)
+  forward : flashmask_attention_v2 (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices,Tensor block_mask, float softmax_scale, bool is_causal) -> Tensor(out), Tensor(softmax_lse)
+  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor startend_row_indices, Tensor block_mask, Tensor out_grad, float softmax_scale, bool is_causal)
+  optional : block_mask
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
     func : FlashAttnGradInferMeta
@@ -1745,8 +1747,6 @@
   kernel :
     func : index_elementwise_put_grad
     data_type : out_grad
-  data_transform :
-    skip_transform : index
   no_need_buffer: x
 
 - backward_op : index_elementwise_put_with_tensor_grad
@@ -1758,8 +1758,6 @@
   kernel :
     func : index_elementwise_put_with_tensor_grad
     data_type : out_grad
-  data_transform :
-    skip_transform : index
   no_need_buffer: x, value
 
 - backward_op : index_put_double_grad

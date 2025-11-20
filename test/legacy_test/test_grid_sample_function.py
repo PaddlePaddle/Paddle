@@ -97,10 +97,41 @@ class GridSampleTestCase(unittest.TestCase):
             self._test_equivalence(place)
 
 
+class GridSampleTestCaseAlias(GridSampleTestCase):
+    def static_functional(self, place):
+        main = base.Program()
+        start = base.Program()
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            x = paddle.static.data("input", self.x_shape, dtype=self.dtype)
+            grid = paddle.static.data("grid", self.grid_shape, dtype=self.dtype)
+            y_var = F.grid_sample(
+                x,
+                grid,
+                mode=self.mode,
+                padding_mode=self.padding_mode,
+                align_corners=self.align_corners,
+            )
+        feed_dict = {"input": self.x, "grid": self.grid}
+        exe = base.Executor(place)
+        exe.run(start)
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        return y_np
+
+
 class GridSampleErrorTestCase(GridSampleTestCase):
     def runTest(self):
         place = base.CPUPlace()
         with self.assertRaises(ValueError):
+            self.static_functional(place)
+
+
+class GridSampleTypeErrorTestCase(GridSampleTestCase):
+    def runTest(self):
+        place = base.CPUPlace()
+        with self.assertRaises(TypeError):
             self.static_functional(place)
 
 
@@ -122,6 +153,22 @@ def add_cases(suite):
             align_corners=True,
         )
     )
+    suite.addTest(
+        GridSampleTestCaseAlias(
+            methodName='runTest',
+            mode='bilinear',
+            padding_mode='reflection',
+            align_corners=True,
+        )
+    )
+    suite.addTest(
+        GridSampleTestCaseAlias(
+            methodName='runTest',
+            mode='bilinear',
+            padding_mode='zeros',
+            align_corners=True,
+        )
+    )
 
 
 def add_error_cases(suite):
@@ -129,7 +176,7 @@ def add_error_cases(suite):
         GridSampleErrorTestCase(methodName='runTest', padding_mode="VALID")
     )
     suite.addTest(
-        GridSampleErrorTestCase(methodName='runTest', align_corners="VALID")
+        GridSampleTypeErrorTestCase(methodName='runTest', align_corners="VALID")
     )
     suite.addTest(GridSampleErrorTestCase(methodName='runTest', mode="VALID"))
 
