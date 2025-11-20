@@ -142,7 +142,7 @@ void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name) {
             << static_cast<double>(memory::DeviceMemoryStatPeakValue(
                    "Reserved", place.device)) /
                    1024 / 1024
-            << " MB, ";
+            << " MB";
   }
 }
 
