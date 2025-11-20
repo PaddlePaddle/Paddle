@@ -191,7 +191,7 @@ class TestWeightDecay(unittest.TestCase):
                         "Expect "
                         + str(loss[i])
                         + "\n"
-                        + "But Got"
+                        + "But Got "
                         + str(loss2[i])
                         + " in class "
                         + self.__class__.__name__,

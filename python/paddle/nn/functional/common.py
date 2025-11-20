@@ -426,7 +426,7 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.This only has an effect when 'linear', 'bilinear', 'bicubic' or 'trilinear'.
                                Default: False
-        antialias(bool) : flag to apply anti-aliasing. Default: False. Using anti-alias option together with align_corners=False,
+        antialias(bool) : Flag to apply anti-aliasing. Default: False. Using anti-alias option together with align_corners=False,
                           interpolation result would match Pillow result for downsampling operation.
                           Supported modes: 'bilinear', 'bicubic'.
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
@@ -488,10 +488,6 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
         for idx in range(min(len_args - 5, len(param_keys))):
             safe_set_param(param_keys[idx], args[idx + 5])
         args = args[:5]
-    if kwargs.get("antialias"):  # args[6] = antialias, and its value is True
-        raise ValueError(
-            "The argument 'antialias' cannot be set to true because this feature is not supported yet and will be added later."
-        )
 
     return _interpolate_wrapper(*args, **kwargs)
 
@@ -573,11 +569,19 @@ def _interpolate_wrapper(
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
 
+    if not isinstance(antialias, bool):
+        raise TypeError("Attr antialias should be a bool value")
+
     if align_mode != 0 and align_mode != 1:
         raise ValueError("align_mode can only be 0 or 1")
     if align_corners != 0 and resample == 'NEAREST':
         raise ValueError(
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
+        )
+
+    if antialias and resample not in ['BILINEAR', 'BICUBIC']:
+        raise ValueError(
+            "Anti-alias option is only supported for bilinear and bicubic modes"
         )
 
     if resample == 'AREA':
@@ -853,7 +857,22 @@ def _interpolate_wrapper(
             attr_list.append(v)
         dy_attr = tuple(attr_list)
 
-        if resample_type == "linear":
+        if antialias:
+            out = _C_ops.interp_antialias(
+                x,
+                inputs['OutSize'] if 'OutSize' in inputs else None,
+                inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
+                inputs['Scale'] if 'Scale' in inputs else None,
+                attrs['data_layout'],
+                attrs['out_d'],
+                attrs['out_h'],
+                attrs['out_w'],
+                attrs['scale'] if 'scale' in attrs else [],
+                attrs['interp_method'],
+                attrs['align_corners'],
+                attrs['align_mode'],
+            )
+        elif resample_type == "linear":
             out = _C_ops.linear_interp(
                 x,
                 inputs['OutSize'] if 'OutSize' in inputs else None,
@@ -930,6 +949,7 @@ def _interpolate_wrapper(
             )
         return out
 
+    # NOTE: The argument 'antialias' cannot be set to true because old static graph is not supported.
     dtype = helper.input_dtype(input_param_name='x')
 
     out = helper.create_variable_for_type_inference(dtype)
