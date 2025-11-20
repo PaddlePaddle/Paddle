@@ -113,6 +113,10 @@ paddle::Tensor conv2d_ad_func(
       egr::EagerUtils::nullable_autograd_meta(input);
   egr::AutogradMeta* filter_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(filter);
+  // Check LeafTensor if its GradNodeAccumulation TensorMeta is consistent with
+  // its TensorMeta
+  egr::CheckGradNodeAccumulation(input);
+  egr::CheckGradNodeAccumulation(filter);
   // Forward API Call
   std::string unique_api_name;
   if (VLOG_IS_ON(3) || FLAGS_enable_unique_name) {

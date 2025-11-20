@@ -62,9 +62,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
                           Node* scale,
                           Node* scale_out) {
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
-    // auto scale_bias = PADDLE_GET_CONST(float, scale->Op()->GetAttr("bias"));
-    // bool after_scale =
-    //    PADDLE_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
 
     // create multihead
     OpDesc multihead_op_desc(mul0->Op()->Block());

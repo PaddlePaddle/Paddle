@@ -1660,7 +1660,7 @@ void MultiClassNMSInferMeta(const MetaTensor& bboxes,
               "The 2nd dimension of Input(BBoxes) must be equal to "
               "last dimension of Input(Scores), which represents the "
               "predicted bboxes."
-              "But received box_dims[1](%s) != socre_dims[2](%s)",
+              "But received box_dims[1](%s) != score_dims[2](%s)",
               box_dims[1],
               score_dims[2]));
     } else {

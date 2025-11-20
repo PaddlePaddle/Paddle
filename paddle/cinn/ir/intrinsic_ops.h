@@ -136,7 +136,7 @@ struct BufferGetDataConstHandle : public IntrinsicOp {
 /**
  * The operation to represent the helper methods:
  * - cinn_pod_value_to_float
- * - cinn_pod_value_to_duoble
+ * - cinn_pod_value_to_double
  * - cinn_pod_value_to_int64
  * - cinn_pod_value_to_int32
  * - cinn_pod_value_to_void_p

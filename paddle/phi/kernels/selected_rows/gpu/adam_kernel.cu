@@ -238,7 +238,10 @@ void AdamDenseParamSparseGradKernel(
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     int threads = 512;
-    int ndim = param.numel();
+    int64_t ndim = param.numel();
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+
     int blocks = (ndim + threads - 1) / threads;
 
     SparseAdamCUDAKernelREG<T, MPDType>

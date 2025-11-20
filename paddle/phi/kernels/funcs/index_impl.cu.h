@@ -57,16 +57,16 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
   int64_t numel = out->numel();
   T *out_data = dev_ctx.template Alloc<T>(out);
   if (numel <= 0) return;
-  int vec_size = std::min(4, phi::GetVectorizedSize(out_data));
+  size_t vec_size = std::min(4, phi::GetVectorizedSize(out_data));
 #ifdef PADDLE_WITH_XPU_KP
-  int block = 64;
-  int grid = 8;
+  size_t block = 64;
+  size_t grid = 8;
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-  int grid = config.block_per_grid.x;
-  int block = config.thread_per_block.x;
+  size_t grid = config.block_per_grid.x;
+  size_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 #endif
   size_t main_offset =

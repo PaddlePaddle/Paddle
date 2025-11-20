@@ -268,8 +268,12 @@ __global__ void DequantKernel(T* output,
                               const int64_t n,  // hidden
                               const float* dequant_out_scale_data) {
   int64_t numel = m * n;
-  int64_t stride = blockDim.x * gridDim.x * VecSize;
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int64_t stride = static_cast<int64_t>(blockDim.x) *
+                   static_cast<int64_t>(gridDim.x) * VecSize;
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       static_cast<int64_t>(threadIdx.x)) *
+      VecSize;
   int64_t col_id = idx % n;
 
   phi::AlignedVector<int32_t, VecSize> in_vec;
@@ -811,8 +815,12 @@ void DispatchWithDtype(
   // VLOGMatrix(
   //     fmha_buf.data<T>(), fmha_buf.numel(), "fmha_buf", fmha_buf.numel());
   if (out_scale > 0) {
-    int m = fmha_out->dims()[0];
-    int n = fmha_out->dims()[1];
+    int m = static_cast<int>(fmha_out->dims()[0]);
+    // TODO(large-tensor): use static_cast<int> for some test
+
+    int n = static_cast<int>(fmha_out->dims()[1]);
+    // TODO(large-tensor): use static_cast<int> for some test
+
 #ifdef PADDLE_WITH_HIP
     dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
     dim3 block(64, 8);

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import in_dynamic_mode
-from paddle.utils.decorator_utils import param_one_alias
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 
 from .. import functional as F
 from .layers import Layer
@@ -710,7 +710,7 @@ class Bilinear(Layer):
 
     .. math::
 
-      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,outfeatures-1
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,out_features-1
 
       out = out + b
 
@@ -824,6 +824,7 @@ class Dropout(Layer):
 
     Parameters:
         p (float|int, optional): Probability of setting units to zero. Default: 0.5
+        inplace (bool, optional): If set to ``True``, will do this operation in-place. Default: ``False``
         axis (int|list|tuple|None, optional): The axis along which the dropout is performed. Default: None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
@@ -874,6 +875,7 @@ class Dropout(Layer):
     def __init__(
         self,
         p: float = 0.5,
+        inplace: bool = False,
         axis: int | Sequence[int] | None = None,
         mode: _DropoutMode = "upscale_in_train",
         name: str | None = None,
@@ -881,6 +883,7 @@ class Dropout(Layer):
         super().__init__()
 
         self.p = p
+        self.inplace = inplace
         self.axis = axis
         self.mode = mode
         self.name = name
@@ -891,6 +894,7 @@ class Dropout(Layer):
             p=self.p,
             axis=self.axis,
             training=self.training,
+            inplace=self.inplace,
             mode=self.mode,
             name=self.name,
         )
@@ -898,7 +902,7 @@ class Dropout(Layer):
 
     def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
-        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}'
+        return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}, inplace={self.inplace}'
 
 
 class Dropout2D(Layer):
@@ -2250,6 +2254,7 @@ class CosineSimilarity(Layer):
             [0.65079135, 0.98058069, 1.        ])
     """
 
+    @param_one_alias(["axis", "dim"])
     def __init__(self, axis: int = 1, eps: float = 1e-8) -> None:
         super().__init__()
         self._axis = axis
@@ -2260,6 +2265,14 @@ class CosineSimilarity(Layer):
 
     def extra_repr(self) -> str:
         return 'axis={_axis}, eps={_eps}'.format(**self.__dict__)
+
+    @property
+    def dim(self) -> int:
+        return self._axis
+
+    @dim.setter
+    def dim(self, value: int) -> None:
+        self._axis = value
 
 
 class Embedding(Layer):
@@ -2509,7 +2522,7 @@ class Unfold(Layer):
         kernel_sizes(int|list|tuple): The size of convolution kernel, should be [k_h, k_w]
             or an integer k treated as [k, k].
         strides(int|list|tuple, optional): The strides, should be [stride_h, stride_w]
-            or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
+            or an integer stride treated as [stride, stride]. For default, strides will be [1, 1].
         paddings(int|list|tuple, optional): The paddings of each dimension, should be
             [padding_top, padding_left, padding_bottom, padding_right] or [padding_h, padding_w]
             or an integer padding. If [padding_h, padding_w] was given, it will expanded to
@@ -2622,7 +2635,7 @@ class Fold(Layer):
 
     Returns:
         The tensor formed by combining a group of sliding local blocks
-        The output shape is [N, Cout, H, W] as decriabled above.
+        The output shape is [N, Cout, H, W] as described above.
 
     Examples:
 
@@ -2645,6 +2658,15 @@ class Fold(Layer):
     strides: Size2
     name: str | None
 
+    @ParamAliasDecorator(
+        {
+            "output_sizes": ["output_size"],
+            "kernel_sizes": ["kernel_size"],
+            "strides": ["stride"],
+            "paddings": ["padding"],
+            "dilations": ["dilation"],
+        }
+    )
     def __init__(
         self,
         output_sizes: Size2,
@@ -2678,10 +2700,50 @@ class Fold(Layer):
         name_str = f', name={self.name}' if self.name else ''
         return f'kernel_size={self.kernel_sizes}, dilation={self.dilations}, padding={self.paddings}, stride={self.strides}{name_str}'
 
+    @property
+    def output_size(self) -> Size2:
+        return self.output_sizes
+
+    @output_size.setter
+    def output_size(self, value: Size2) -> None:
+        self.output_sizes = value
+
+    @property
+    def kernel_size(self) -> Size2:
+        return self.kernel_sizes
+
+    @kernel_size.setter
+    def kernel_size(self, value: Size2) -> None:
+        self.kernel_sizes = value
+
+    @property
+    def stride(self) -> Size2:
+        return self.strides
+
+    @stride.setter
+    def stride(self, value: Size2) -> None:
+        self.strides = value
+
+    @property
+    def padding(self) -> Size2 | Size4:
+        return self.paddings
+
+    @padding.setter
+    def padding(self, value: Size2 | Size4) -> None:
+        self.paddings = value
+
+    @property
+    def dilation(self) -> Size2:
+        return self.dilations
+
+    @dilation.setter
+    def dilation(self, value: Size2) -> None:
+        self.dilations = value
+
 
 class Flatten(Layer):
     """
-    This interface is used to construct a callable object of the ``FLatten`` class.
+    This interface is used to construct a callable object of the ``Flatten`` class.
     For more details, refer to code examples.
     It implements flatten a contiguous range of dims into a tensor.
 

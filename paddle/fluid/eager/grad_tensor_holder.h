@@ -32,17 +32,28 @@ class GradTensorHolder {
                                  kSlotSmallVectorSize>& metas) {
     VLOG(7) << "Init GradTensorHolder with meta size: " << metas.size();
     buffer_.resize(metas.size());
+    input_dtypes_.resize(metas.size());
     for (size_t i = 0; i < buffer_.size(); i++) {
       VLOG(7) << "Init GradTensorHolder with meta rank: " << metas[i].size();
       buffer_[i].resize(metas[i].size());
+      input_dtypes_[i].resize(metas[i].size());
+
+      // Extract only dtype information from metas
+      for (size_t j = 0; j < metas[i].size(); j++) {
+        const auto& meta = metas[i][j];
+        if (meta.HasTensorMeta()) {
+          const auto& tensor_meta = meta.GetTensorMeta();
+          input_dtypes_[i][j] = tensor_meta.dtype;
+          VLOG(7) << "Init GradTensorHolder with dtype: "
+                  << phi::DataTypeToString(tensor_meta.dtype);
+        } else {
+          input_dtypes_[i][j] = phi::DataType::UNDEFINED;
+        }
+      }
     }
   }
 
   GradTensorHolder(const GradTensorHolder& other) = default;
-
-  explicit GradTensorHolder(paddle::small_vector<std::vector<paddle::Tensor>,
-                                                 kSlotSmallVectorSize>&& inputs)
-      : buffer_(std::move(inputs)) {}
 
   GradTensorHolder& operator=(const GradTensorHolder& other) = default;
 
@@ -51,6 +62,7 @@ class GradTensorHolder {
                       size_t rank,
                       const paddle::Tensor& t,
                       bool create_graph = false);
+
   PADDLE_API void CopyValueFromTensor(size_t slot_id,
                                       size_t rank,
                                       const paddle::Tensor& t,
@@ -67,9 +79,24 @@ class GradTensorHolder {
 
   PADDLE_API void SetBufferSlotRankZeros(size_t slot_id, size_t rank);
 
+  // Validate and convert gradient tensor to match target meta
+  PADDLE_API paddle::Tensor ValidateGradient(size_t slot_id,
+                                             size_t rank,
+                                             const paddle::Tensor& grad_tensor);
+
+  // Set shared buffer
+  PADDLE_API void SetBuffers(
+      paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>&&
+          new_buffer);
+
  private:
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       buffer_;
+  // Store input dtypes for gradient validation
+  // If GradSlotMeta is needed (e.g. place, layout, etc.), we can store
+  // input_metas_ instead
+  paddle::small_vector<std::vector<phi::DataType>, kSlotSmallVectorSize>
+      input_dtypes_;
 };
 
 }  // namespace egr

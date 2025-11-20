@@ -387,7 +387,7 @@ __device__ __forceinline__ void ThreadVecWriteVec(T* out,
     out += blockDim.x;
   }
 
-  const int last = dim_size % (VecSize * blockDim.x);
+  const IndexType last = dim_size % (VecSize * blockDim.x);
 
   T in_v[VecSize];
   VecT* in_value = reinterpret_cast<VecT*>(&in_v);
@@ -420,7 +420,7 @@ __device__ __forceinline__ void ThreadVecWrite(T* out,
                                                T* input,
                                                IndexType dim_size,
                                                Reduction<AccT, T> functor) {
-  const int last = dim_size % (VecSize * blockDim.x);
+  const IndexType last = dim_size % (VecSize * blockDim.x);
 
   for (IndexType offset = threadIdx.x; offset < dim_size - last;
        offset += blockDim.x * VecSize) {
@@ -446,7 +446,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax,
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
   using VecT = phi::AlignedVector<T, kVecSize>;
 
-  int bid = blockIdx.x;
+  uint64_t bid = blockIdx.x;
   T* batch_input = const_cast<T*>(src) + (uint64_t)bid * dim_size;
   T* batch_output = softmax + (uint64_t)bid * dim_size;
 
@@ -1213,7 +1213,7 @@ template <typename T, typename IndexType, bool LogMode>
 void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
                                         T* out,
                                         const T* input,
-                                        int N,
+                                        int64_t N,
                                         IndexType dim_size) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   constexpr int kVecSize =
@@ -1286,7 +1286,10 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   IndexType D = tensor_dims[2];
 
   if (D == 1) {
-    if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
+    if (!UseCudnnSoftmax<T>(dev_ctx, dim, true) ||
+        N > std::numeric_limits<int32_t>::max() ||
+        dim > std::numeric_limits<int32_t>::max() ||
+        D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
@@ -1381,7 +1384,9 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true) ||
-        dim > std::numeric_limits<int32_t>::max()) {
+        N > std::numeric_limits<int32_t>::max() ||
+        dim > std::numeric_limits<int32_t>::max() ||
+        D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = Log2Ceil(dim);
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;

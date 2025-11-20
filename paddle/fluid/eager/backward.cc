@@ -337,7 +337,7 @@ std::vector<paddle::Tensor> RunBackward(
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
       VLOG(4) << "RunBackward: Fill grad input tensor " << i
-              << "with give grad tensor";
+              << " with given grad tensor";
 
       bool use_shared_buffer = false;
       // Check if inputs and outputs are equal in size and share the same buffer
@@ -355,9 +355,8 @@ std::vector<paddle::Tensor> RunBackward(
         paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
             inputs_grad_tensors;
         inputs_grad_tensors.push_back({grad_tensors[i]});
-        auto grad_holder = GradTensorHolder(std::move(inputs_grad_tensors));
-        node_input_buffers_dict[grad_node] =
-            std::make_unique<GradTensorHolder>(grad_holder);
+        node_input_buffers_dict[grad_node]->SetBuffers(
+            std::move(inputs_grad_tensors));
       } else {
         // Deep copy
         node_input_buffers_dict[grad_node]->CopyValueFromTensor(
