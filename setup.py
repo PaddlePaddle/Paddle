@@ -2558,9 +2558,27 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
 '''.strip()
 
     with open(TOP_DIR + '/python/requirements.txt') as f:
-        build_dependencies = (
+        all_dependencies = (
             f.read().splitlines()
         )  # Specify the dependencies to install
+
+    build_dependencies = []
+
+    for dependency in all_dependencies:
+        if dependency.strip().startswith('#') or not dependency.strip():
+            continue
+
+        if '; platform_gpu' in dependency:
+            if '${WITH_GPU}' == 'ON':
+                build_dependencies.append(dependency.split(';')[0].strip())
+        elif '; platform_rocm' in dependency:
+            if '${WITH_ROCM}' == 'ON':
+                build_dependencies.append(dependency.split(';')[0].strip())
+        elif '; platform_xpu' in dependency:
+            if '${WITH_XPU}' == 'ON':
+                build_dependencies.append(dependency.split(';')[0].strip())
+        else:
+            build_dependencies.append(dependency)
 
     python_dependencies_module = []
     installed_packages = []
