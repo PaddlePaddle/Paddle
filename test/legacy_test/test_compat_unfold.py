@@ -14,7 +14,6 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.compat.nn.functional as F_compat
@@ -78,8 +77,6 @@ class TestCompatUnfold(unittest.TestCase):
 
         msg_gt_1 = "paddle.nn.Unfold() received unexpected keyword arguments 'dilation', 'stride'. \nDid you mean to use paddle.compat.nn.Unfold() instead?"
         msg_gt_2 = "paddle.compat.nn.Unfold() received unexpected keyword argument 'paddings'. \nDid you mean to use paddle.nn.Unfold() instead?"
-        msg_gt_3 = "The `padding` field of paddle.compat.nn.Unfold can only have size 1 or 2, now len=4. \nDid you mean to use paddle.nn.Unfold() instead?"
-        msg_gt_4 = "paddle.compat.nn.Unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
 
         with self.assertRaises(TypeError) as cm:
             unfold = paddle.nn.Unfold([3, 3], dilation=[2, 2], stride=[1, 1])
@@ -88,34 +85,6 @@ class TestCompatUnfold(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             unfold = paddle.compat.nn.Unfold([3, 3], paddings=[2, 1])
         self.assertEqual(str(cm.exception), msg_gt_2)
-
-        with self.assertRaises(ValueError) as cm:
-            unfold = paddle.compat.nn.Unfold([3, 3], padding=[2, 1, 2, 2])
-            res = unfold(paddle.ones([2, 2, 5, 5]))
-        self.assertEqual(str(cm.exception), msg_gt_3)
-
-        with self.assertRaises(TypeError) as cm:
-            paddle.enable_static()
-            input_data = np.random.randn(2, 4, 8, 8).astype(np.float32)
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(
-                    name='x', shape=[None, None, 8, 8], dtype='float32'
-                )
-                place = (
-                    get_device_place()
-                    if (paddle.is_compiled_with_cuda() or is_custom_device())
-                    else paddle.CPUPlace()
-                )
-                unfold_pass = paddle.compat.nn.Unfold(
-                    kernel_size=paddle.to_tensor([3, 3]),
-                    padding=paddle.to_tensor([1, 2]),
-                )
-                result = unfold_pass(x)
-                exe = paddle.static.Executor(place)
-                feed = {'x': input_data}
-                exe_res = exe.run(feed=feed)
-            paddle.disable_static()
-        self.assertEqual(str(cm.exception), msg_gt_4)
 
 
 class TestCompatFunctionalUnfold(unittest.TestCase):
@@ -200,36 +169,10 @@ class TestCompatFunctionalUnfold(unittest.TestCase):
         x = paddle.randn([3, 9, 5, 5])
 
         msg_gt_wrong_key = "paddle.compat.nn.functional.unfold() received unexpected keyword argument 'paddings'. \nDid you mean to use paddle.nn.functional.unfold() instead?"
-        msg_gt_padding_size = "The `padding` field of paddle.compat.nn.functional.unfold can only have size 1 or 2, now len=4. \nDid you mean to use paddle.nn.functional.unfold() instead?"
-        msg_gt_static_type = "paddle.compat.nn.functional.unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
 
         with self.assertRaises(TypeError) as cm:
             F_compat.unfold(x, [3, 3], paddings=[2, 1])
         self.assertEqual(str(cm.exception), msg_gt_wrong_key)
-
-        with self.assertRaises(ValueError) as cm:
-            F_compat.unfold(x, [3, 3], padding=[2, 1, 2, 2])
-        self.assertEqual(str(cm.exception), msg_gt_padding_size)
-
-        with self.assertRaises(TypeError) as cm:
-            paddle.enable_static()
-            input_data = np.random.randn(2, 4, 8, 8).astype(np.float32)
-            with paddle.static.program_guard(paddle.static.Program()):
-                x_static = paddle.static.data(
-                    name='x', shape=[None, None, 8, 8], dtype='float32'
-                )
-                place = get_device_place()
-
-                result = F_compat.unfold(
-                    x_static,
-                    kernel_size=paddle.to_tensor([3, 3]),
-                    padding=paddle.to_tensor([1, 2]),
-                )
-
-                exe = paddle.static.Executor(place)
-                feed = {'x': input_data}
-            paddle.disable_static()
-        self.assertEqual(str(cm.exception), msg_gt_static_type)
 
         paddle.disable_static()
 

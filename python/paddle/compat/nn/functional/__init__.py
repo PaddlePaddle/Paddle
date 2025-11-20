@@ -347,31 +347,15 @@ def unfold(
             >>> y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
-    def to_list_if_necessary(x, size_check=False):
-        res = x
-        # Check for Dynamic mode and Tensor types
-        if paddle.in_dynamic_mode() and isinstance(
-            x, (paddle.pir.Value, paddle.Tensor)
-        ):
-            res = x.tolist()
-        else:
-            # In static graph mode, inputs must be list, tuple or int
-            if not isinstance(x, (list, tuple, int)):
-                raise TypeError(
-                    "paddle.compat.nn.functional.unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
-                )
-
-        # Specific check for padding size restriction (Size4 not allowed here)
-        if size_check and isinstance(res, (list, tuple)) and len(res) > 2:
-            raise ValueError(
-                f"The `padding` field of paddle.compat.nn.functional.unfold can only have size 1 or 2, now len={len(res)}. \nDid you mean to use paddle.nn.functional.unfold() instead?"
-            )
-        return res
+    def to_list_if_necessary(x):
+        if isinstance(x, (paddle.pir.Value, paddle.Tensor)):
+            x = x.tolist()
+        return x
 
     return paddle.nn.functional.unfold(
         x=input,
         kernel_sizes=to_list_if_necessary(kernel_size),
         strides=to_list_if_necessary(stride),
-        paddings=to_list_if_necessary(padding, size_check=True),
+        paddings=to_list_if_necessary(padding),
         dilations=to_list_if_necessary(dilation),
     )
