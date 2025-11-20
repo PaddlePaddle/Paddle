@@ -27,7 +27,7 @@ from typing import (
 import paddle
 
 from ..aoa.aoa_engine import AOAEngine
-from .resharder import (
+from .load_state_dict import (
     ReadItem,
 )
 from .sharded_weight import (
@@ -64,10 +64,10 @@ class BaseAssembler(abc.ABC):
     Abstract base class for assembling full parameters from sharded states.
 
     This class encapsulates the common logic for:
-    1.  Analyzing source and destination tensor mappings (AOA).
-    2.  Creating a plan to read/communicate necessary tensor shards.
-    3.  Assembling final tensors once all their source shards are available.
-    4.  Managing memory by cleaning up consumed shards.
+        1.  Analyzing source and destination tensor mappings (AOA).
+        2.  Creating a plan to read/communicate necessary tensor shards.
+        3.  Assembling final tensors once all their source shards are available.
+        4.  Managing memory by cleaning up consumed shards.
 
     Subclasses must implement the `run` method, which defines the specific
     distributed communication strategy to fetch the tensor shards.
@@ -503,9 +503,9 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
                     ]
                     assign_sharded_slice(
                         src_desc=mapping.source_slice,
-                        source_sharded_tensor=source_tensor,
+                        src_shard=source_tensor,
                         dst_desc=mapping.target_slice,
-                        target_sharded_tensor=cur_sharded_tensor,
+                        dst_shard=cur_sharded_tensor,
                         postprocess_list=mapping.postprocess_list,
                     )
                 yield k, cur_sharded_tensor.local_tensor
@@ -549,9 +549,6 @@ class SingleCommGroupFullParamAssembler(BaseAssembler):
             )
 
 
-MEMORY_GROWTH_THRESHOLD = 8 * (2**30)  # 8GB
-
-
 class OperationType(Enum):
     GLOBAL_BROADCAST = 1
     BROADCAST_ALLGATHER = 2
@@ -573,6 +570,7 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
         aoa_config: dict[str, list[str]] | None = None,
         num_splits: int = 1,
         idx: int = 0,
+        memory_growth_threshold: int = 8 * (2**30),  # 8GB
     ):
         super().__init__(sharded_state_dict, aoa_config, num_splits, idx)
         self.h_group = horizontal_group
@@ -583,6 +581,7 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
         self.horizontal_index: dict[int, int] = {}
         self.vertical_index: dict[int, int] = {}
         self.cur_horizontal_index: int = -1
+        self.memory_growth_threshold = memory_growth_threshold
 
     def all_gather_fn(self, info, **kwargs):
         h_group = kwargs.get('h_group', self.h_group)
@@ -667,7 +666,7 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
                 memory_growth = (
                     element_size * math.prod(cur_shape) * len(vertical_ranks)
                 )
-                if memory_growth > MEMORY_GROWTH_THRESHOLD:
+                if memory_growth > self.memory_growth_threshold:
                     return (
                         bathch_read_items,
                         read_item_index,
@@ -813,15 +812,22 @@ def full_param(
     v_group = kwargs.pop("v_group", None)
     process_group = kwargs.pop("process_group", None)
     num_splits = kwargs.pop("num_splits", 1)
-    idx = kwargs.pop("idx", 0)
+    memory_growth_threshold = kwargs.pop("memory_growth_threshold", 8 * (2**32))
+    idx = kwargs.pop("shard_idx", 0)
     assert (h_group and v_group) or not (h_group or v_group), (
         "Both horizontal and vertical groups must be provided when using FullParamAssembler."
     )
     if h_group and v_group:
         return HVCommGroupFullParamAssembler(
-            sharded_state_dict, h_group, v_group, aoa_config, num_splits
+            sharded_state_dict,
+            h_group,
+            v_group,
+            aoa_config,
+            num_splits,
+            idx,
+            memory_growth_threshold,
         )
     else:
         return SingleCommGroupFullParamAssembler(
-            sharded_state_dict, aoa_config, process_group, idx
+            sharded_state_dict, aoa_config, process_group
         )
