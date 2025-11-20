@@ -44,6 +44,8 @@
 
 namespace flash_ep {
 
+constexpr int kCumsumBlocakSize = 32;
+constexpr int kCumsumInvalidTag = -1;
 struct Buffer {
   EP_STATIC_ASSERT(NUM_MAX_NVL_PEERS == 8,
                    "The number of maximum NVLink peers must be 8");
@@ -450,6 +452,48 @@ get_flash_ep_coalesce_rdma_layout_api(
     const int num_ranks,
     const int num_experts,
     const int num_loop_stage);
+
+std::tuple<paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           std::optional<paddle::Tensor>>
+local_dispatch_forward_api(
+    const std::vector<paddle::Tensor>& hidden_states,
+    const std::vector<paddle::Tensor>& topk_weights,
+    const std::vector<paddle::Tensor>& topk_idx,
+    const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
+    const std::optional<std::vector<paddle::Tensor>>& fp8_scales,
+    const int64_t local_expert_id,
+    const int64_t ori_out_len,
+    const int64_t padding_align);
+
+std::vector<paddle::Tensor> local_dispatch_backward_api(
+    const std::vector<paddle::Tensor>& hidden_states,
+    const std::vector<paddle::Tensor>& topk_idx,
+    const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
+    const int64_t local_expert_id,
+    const int64_t ori_out_len,
+    const int64_t padding_align);
+
+void local_combine_forward_api(
+    std::vector<paddle::Tensor>& combine_buffers,  // NOLINT
+    const paddle::Tensor& hidden_states,
+    const paddle::Tensor& recv_gbl_src_meta,
+    const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
+    const int64_t ori_len,
+    const std::vector<int>& is_buffer_active);
+
+void local_combine_backward_api(
+    std::vector<paddle::Tensor>& combine_buffers,  // NOLINT
+    std::vector<paddle::Tensor>& combine_probs,    // NOLINT
+    const paddle::Tensor& hidden_states,
+    const paddle::Tensor& topk_idx,
+    const paddle::Tensor& topk_weights,
+    const paddle::Tensor& recv_gbl_src_meta,
+    const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
+    const int64_t local_expert_id,
+    const int64_t ori_len,
+    const std::vector<int>& is_buffer_active);
 
 flash_ep::detail::Tensor ConvertPaddleTensorToDetailTensor(
     const paddle::Tensor& tensor);

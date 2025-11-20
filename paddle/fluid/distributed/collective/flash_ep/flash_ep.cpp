@@ -2379,6 +2379,435 @@ get_flash_ep_coalesce_rdma_layout_api(
           is_token_in_rank};
 }
 
+std::tuple<paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           std::optional<paddle::Tensor>>
+local_dispatch_forward_api(
+    const std::vector<paddle::Tensor>& hidden_states,
+    const std::vector<paddle::Tensor>& topk_weights,
+    const std::vector<paddle::Tensor>& topk_idx,
+    const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
+    const std::optional<std::vector<paddle::Tensor>>& fp8_scales,
+    const int64_t local_expert_id,
+    const int64_t ori_out_len,
+    const int64_t padding_align) {
+  EP_HOST_ASSERT(hidden_states[0].dtype() == paddle::DataType::FLOAT8_E4M3FN ||
+                 hidden_states[0].dtype() == paddle::DataType::BFLOAT16);
+  EP_HOST_ASSERT(hidden_states[0].shape().size() == 2);
+  EP_HOST_ASSERT(topk_weights[0].shape().size() == 2);
+  EP_HOST_ASSERT(topk_idx[0].shape().size() == 2);
+  EP_HOST_ASSERT(hidden_states.size() == topk_weights.size());
+  EP_HOST_ASSERT(topk_idx.size() == topk_weights.size());
+
+  int64_t hidden_size = hidden_states[0].shape()[1];
+  int64_t topk = topk_idx[0].shape()[1];
+  int64_t a2a_num = hidden_states.size();
+  bool use_fp8 = hidden_states[0].dtype() == phi::DataType::FLOAT8_E4M3FN;
+  int64_t scale_num = hidden_size / 128;
+
+  auto place = hidden_states[0].place();
+  auto stream = hidden_states[0].stream();
+
+  int token_out_len =
+      ((ori_out_len + padding_align - 1) / padding_align) * padding_align;
+
+  paddle::Tensor output_hidden_states = paddle::experimental::full(
+      {token_out_len, hidden_size}, 0, hidden_states[0].dtype(), place);
+  paddle::Tensor output_topk_probs = paddle::experimental::full(
+      {token_out_len}, 0, topk_weights[0].dtype(), place);
+  paddle::Tensor output_src_meta = paddle::experimental::full(
+      {token_out_len, 4}, 0, phi::DataType::INT32, place);
+  std::optional<paddle::Tensor> output_scale;
+  float* output_scale_ptr = nullptr;
+  if (use_fp8) {
+    EP_HOST_ASSERT(fp8_scales.has_value());
+    EP_HOST_ASSERT(fp8_scales.value().size() == hidden_states.size());
+    output_scale = paddle::experimental::full(
+        {token_out_len, scale_num}, 0, fp8_scales.value()[0].dtype(), place);
+    output_scale_ptr = output_scale.value().data<float>();
+  }
+
+  const void** d_hidden_states_ptr;
+  cudaMallocAsync(&d_hidden_states_ptr, a2a_num * sizeof(void*), stream);
+  std::vector<const void*> host_hidden_states_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_hidden_states_ptrs.push_back(hidden_states[i].data());
+  }
+  cudaMemcpyAsync(d_hidden_states_ptr,
+                  host_hidden_states_ptrs.data(),
+                  a2a_num * sizeof(void*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const float** d_topk_weights_ptr;
+  cudaMallocAsync(&d_topk_weights_ptr, a2a_num * sizeof(float*), stream);
+  std::vector<const float*> host_topk_weights_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_topk_weights_ptrs.push_back(topk_weights[i].data<float>());
+  }
+  cudaMemcpyAsync(d_topk_weights_ptr,
+                  host_topk_weights_ptrs.data(),
+                  a2a_num * sizeof(float*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int32_t** d_topk_idx_ptr;
+  cudaMallocAsync(&d_topk_idx_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_topk_idx_ptrs;
+  for (int32_t i = 0; i < a2a_num; ++i) {
+    host_topk_idx_ptrs.push_back(topk_idx[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_topk_idx_ptr,
+                  host_topk_idx_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int32_t** d_recv_src_meta_per_a2a_ptr;
+  cudaMallocAsync(
+      &d_recv_src_meta_per_a2a_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_recv_src_meta_per_a2a_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_recv_src_meta_per_a2a_ptrs.push_back(
+        recv_src_meta_per_a2a[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_recv_src_meta_per_a2a_ptr,
+                  host_recv_src_meta_per_a2a_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const float** d_fp8_scales_ptr = nullptr;
+  if (use_fp8) {
+    cudaMallocAsync(&d_fp8_scales_ptr, a2a_num * sizeof(float*), stream);
+    std::vector<const float*> host_fp8_scales_ptrs;
+    for (int64_t i = 0; i < a2a_num; ++i) {
+      host_fp8_scales_ptrs.push_back(fp8_scales.value()[i].data<float>());
+    }
+    cudaMemcpyAsync(d_fp8_scales_ptr,
+                    host_fp8_scales_ptrs.data(),
+                    a2a_num * sizeof(float*),
+                    cudaMemcpyHostToDevice,
+                    stream);
+  }
+
+  // a2a_prefix_sum
+  int64_t all_token_num = hidden_states[0].shape()[0];
+  paddle::Tensor a2a_prefix_sum_tensor =
+      paddle::experimental::empty({a2a_num}, phi::DataType::INT32, place);
+  std::vector<int32_t> h_a2a_prefix_sum(a2a_num);
+  h_a2a_prefix_sum[0] = 0;
+  for (int64_t i = 1; i < a2a_num; i++) {
+    h_a2a_prefix_sum[i] =
+        h_a2a_prefix_sum[i - 1] + hidden_states[i - 1].shape()[0];
+    all_token_num += hidden_states[i].shape()[0];
+  }
+  cudaMemcpyAsync(a2a_prefix_sum_tensor.data<int32_t>(),
+                  h_a2a_prefix_sum.data(),
+                  a2a_num * sizeof(int32_t),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int cumsum_blocknum =
+      (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
+
+  paddle::Tensor global_expertwise_block_cumsum = paddle::experimental::full(
+      {cumsum_blocknum + 1}, kCumsumInvalidTag, phi::DataType::INT32, place);
+
+  flash_ep::internode::local_dispatch(
+      d_hidden_states_ptr,
+      d_topk_weights_ptr,
+      d_topk_idx_ptr,
+      d_recv_src_meta_per_a2a_ptr,
+      d_fp8_scales_ptr,
+      a2a_prefix_sum_tensor.data<int32_t>(),
+      global_expertwise_block_cumsum.data<int32_t>(),
+      local_expert_id,
+      hidden_size,
+      topk,
+      a2a_num,
+      all_token_num,
+      ori_out_len,
+      scale_num,
+      output_hidden_states.data(),
+      nullptr,
+      output_topk_probs.data<float>(),
+      output_src_meta.data<int32_t>(),
+      output_scale_ptr,
+      stream,
+      use_fp8,
+      true);
+  return {
+      output_hidden_states, output_topk_probs, output_src_meta, output_scale};
+}
+
+std::vector<paddle::Tensor> local_dispatch_backward_api(
+    const std::vector<paddle::Tensor>& hidden_states,
+    const std::vector<paddle::Tensor>& topk_idx,
+    const std::vector<paddle::Tensor>& recv_src_meta_per_a2a,
+    const int64_t local_expert_id,
+    const int64_t ori_out_len,
+    const int64_t padding_align) {
+  EP_HOST_ASSERT(hidden_states[0].dtype() == paddle::DataType::BFLOAT16);
+  EP_HOST_ASSERT(hidden_states[0].shape().size() == 2);
+  EP_HOST_ASSERT(topk_idx[0].shape().size() == 2);
+  EP_HOST_ASSERT(hidden_states.size() == topk_idx.size());
+
+  int64_t hidden_size = hidden_states[0].shape()[1];
+  int64_t topk = topk_idx[0].shape()[1];
+  int64_t a2a_num = hidden_states.size();
+
+  auto place = hidden_states[0].place();
+  auto stream = hidden_states[0].stream();
+
+  int token_out_len =
+      ((ori_out_len + padding_align - 1) / padding_align) * padding_align;
+
+  paddle::Tensor output_hidden_states = paddle::experimental::full(
+      {token_out_len, hidden_size}, 0, hidden_states[0].dtype(), place);
+  paddle::Tensor output_topk_idx = paddle::experimental::full(
+      {token_out_len, topk}, -1, phi::DataType::INT32, place);
+  paddle::Tensor output_src_meta = paddle::experimental::full(
+      {token_out_len, 4}, 0, phi::DataType::INT32, place);
+
+  const void** d_hidden_states_ptr;
+  cudaMallocAsync(&d_hidden_states_ptr, a2a_num * sizeof(void*), stream);
+  std::vector<const void*> host_hidden_states_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_hidden_states_ptrs.push_back(hidden_states[i].data());
+  }
+  cudaMemcpyAsync(d_hidden_states_ptr,
+                  host_hidden_states_ptrs.data(),
+                  a2a_num * sizeof(void*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int32_t** d_topk_idx_ptr;
+  cudaMallocAsync(&d_topk_idx_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_topk_idx_ptrs;
+  for (int32_t i = 0; i < a2a_num; ++i) {
+    host_topk_idx_ptrs.push_back(topk_idx[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_topk_idx_ptr,
+                  host_topk_idx_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int32_t** d_recv_src_meta_per_a2a_ptr;
+  cudaMallocAsync(
+      &d_recv_src_meta_per_a2a_ptr, a2a_num * sizeof(int32_t*), stream);
+  std::vector<const int32_t*> host_recv_src_meta_per_a2a_ptrs;
+  for (int64_t i = 0; i < a2a_num; ++i) {
+    host_recv_src_meta_per_a2a_ptrs.push_back(
+        recv_src_meta_per_a2a[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_recv_src_meta_per_a2a_ptr,
+                  host_recv_src_meta_per_a2a_ptrs.data(),
+                  a2a_num * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  // a2a_prefix_sum
+  int64_t all_token_num = hidden_states[0].shape()[0];
+  paddle::Tensor a2a_prefix_sum_tensor =
+      paddle::experimental::empty({a2a_num}, phi::DataType::INT32, place);
+  std::vector<int32_t> h_a2a_prefix_sum(a2a_num);
+  h_a2a_prefix_sum[0] = 0;
+  for (int64_t i = 1; i < a2a_num; i++) {
+    h_a2a_prefix_sum[i] =
+        h_a2a_prefix_sum[i - 1] + hidden_states[i - 1].shape()[0];
+    all_token_num += hidden_states[i].shape()[0];
+  }
+  cudaMemcpyAsync(a2a_prefix_sum_tensor.data<int32_t>(),
+                  h_a2a_prefix_sum.data(),
+                  a2a_num * sizeof(int32_t),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  const int cumsum_blocknum =
+      (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
+
+  paddle::Tensor global_expertwise_block_cumsum = paddle::experimental::full(
+      {cumsum_blocknum + 1}, kCumsumInvalidTag, phi::DataType::INT32, place);
+
+  flash_ep::internode::local_dispatch(
+      d_hidden_states_ptr,
+      nullptr,
+      d_topk_idx_ptr,
+      d_recv_src_meta_per_a2a_ptr,
+      nullptr,
+      a2a_prefix_sum_tensor.data<int32_t>(),
+      global_expertwise_block_cumsum.data<int32_t>(),
+      local_expert_id,
+      hidden_size,
+      topk,
+      a2a_num,
+      all_token_num,
+      ori_out_len,
+      -1,
+      output_hidden_states.data(),
+      output_topk_idx.data<int32_t>(),
+      nullptr,
+      output_src_meta.data<int32_t>(),
+      nullptr,
+      stream,
+      false,
+      false);
+  return {output_hidden_states, output_topk_idx, output_src_meta};
+}
+
+void local_combine_forward_api(
+    std::vector<paddle::Tensor>& combine_buffers,  // NOLINT
+    const paddle::Tensor& hidden_states,
+    const paddle::Tensor& recv_gbl_src_meta,
+    const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
+    const int64_t ori_len,
+    const std::vector<int>& is_buffer_active) {
+  int hidden_size = hidden_states.shape()[1];
+  int token_num = ori_len;
+  int num_loop_stage = recv_gbl_channel_prefix_matrix_list.size();
+
+  EP_HOST_ASSERT(hidden_states.shape().size() == 2);
+  EP_HOST_ASSERT(hidden_states.dtype() == phi::DataType::BFLOAT16);
+  EP_HOST_ASSERT(is_buffer_active.size() == combine_buffers.size());
+  EP_HOST_ASSERT(is_buffer_active.size() == num_loop_stage);
+
+  auto stream = hidden_states.stream();
+
+  const int32_t** d_recv_gbl_channel_prefix_ptr;
+  cudaMallocAsync(&d_recv_gbl_channel_prefix_ptr,
+                  num_loop_stage * sizeof(int32_t*),
+                  stream);
+  std::vector<const int32_t*> host_recv_gbl_channel_prefix_ptrs;
+  for (int i = 0; i < num_loop_stage; ++i) {
+    host_recv_gbl_channel_prefix_ptrs.push_back(
+        recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_recv_gbl_channel_prefix_ptr,
+                  host_recv_gbl_channel_prefix_ptrs.data(),
+                  num_loop_stage * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  float** d_out_combine_ptr;
+  cudaMallocAsync(&d_out_combine_ptr, num_loop_stage * sizeof(float*), stream);
+  std::vector<float*> host_out_combine_ptrs;
+  for (int i = 0; i < num_loop_stage; ++i) {
+    if (is_buffer_active[i]) {
+      host_out_combine_ptrs.push_back(combine_buffers[i].data<float>());
+    } else {
+      host_out_combine_ptrs.push_back(nullptr);
+    }
+  }
+  cudaMemcpyAsync(d_out_combine_ptr,
+                  host_out_combine_ptrs.data(),
+                  num_loop_stage * sizeof(float*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  flash_ep::internode::local_combine_forward(
+      reinterpret_cast<const __nv_bfloat16*>(hidden_states.data()),
+      d_recv_gbl_channel_prefix_ptr,
+      recv_gbl_src_meta.data<int32_t>(),
+      hidden_size,
+      num_loop_stage,
+      token_num,
+      d_out_combine_ptr,
+      stream);
+}
+
+void local_combine_backward_api(
+    std::vector<paddle::Tensor>& combine_buffers,  // NOLINT
+    std::vector<paddle::Tensor>& combine_probs,    // NOLINT
+    const paddle::Tensor& hidden_states,
+    const paddle::Tensor& topk_idx,
+    const paddle::Tensor& topk_weights,
+    const paddle::Tensor& recv_gbl_src_meta,
+    const std::vector<paddle::Tensor>& recv_gbl_channel_prefix_matrix_list,
+    const int64_t local_expert_id,
+    const int64_t ori_len,
+    const std::vector<int>& is_buffer_active) {
+  EP_HOST_ASSERT(hidden_states.shape().size() == 2);
+  EP_HOST_ASSERT(hidden_states.dtype() == phi::DataType::BFLOAT16);
+  EP_HOST_ASSERT(topk_idx.shape().size() == 2);
+  EP_HOST_ASSERT(topk_idx.dtype() == phi::DataType::INT32);
+  EP_HOST_ASSERT(topk_weights.shape().size() == 1);
+  EP_HOST_ASSERT(topk_weights.dtype() == phi::DataType::FLOAT32);
+  EP_HOST_ASSERT(topk_weights.shape()[0] == hidden_states.shape()[0]);
+  EP_HOST_ASSERT(is_buffer_active.size() == combine_buffers.size());
+
+  int hidden_size = hidden_states.shape()[1];
+  int topk = topk_idx.shape()[1];
+  int num_loop_stage = recv_gbl_channel_prefix_matrix_list.size();
+
+  EP_HOST_ASSERT(is_buffer_active.size() == num_loop_stage);
+
+  auto stream = hidden_states.stream();
+
+  const int32_t** d_recv_gbl_channel_prefix_ptr;
+  cudaMallocAsync(&d_recv_gbl_channel_prefix_ptr,
+                  num_loop_stage * sizeof(int32_t*),
+                  stream);
+  std::vector<const int32_t*> host_recv_gbl_channel_prefix_ptrs;
+  for (int i = 0; i < num_loop_stage; ++i) {
+    host_recv_gbl_channel_prefix_ptrs.push_back(
+        recv_gbl_channel_prefix_matrix_list[i].data<int32_t>());
+  }
+  cudaMemcpyAsync(d_recv_gbl_channel_prefix_ptr,
+                  host_recv_gbl_channel_prefix_ptrs.data(),
+                  num_loop_stage * sizeof(int32_t*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  float** d_out_combine_ptr;
+  cudaMallocAsync(&d_out_combine_ptr, num_loop_stage * sizeof(float*), stream);
+  std::vector<float*> host_out_combine_ptrs;
+  for (int i = 0; i < num_loop_stage; ++i) {
+    if (is_buffer_active[i]) {
+      host_out_combine_ptrs.push_back(combine_buffers[i].data<float>());
+    } else {
+      host_out_combine_ptrs.push_back(nullptr);
+    }
+  }
+  cudaMemcpyAsync(d_out_combine_ptr,
+                  host_out_combine_ptrs.data(),
+                  num_loop_stage * sizeof(float*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  float** d_out_probs_ptr;
+  cudaMallocAsync(&d_out_probs_ptr, num_loop_stage * sizeof(float*), stream);
+  std::vector<float*> host_out_probs_ptrs;
+  for (int i = 0; i < num_loop_stage; ++i) {
+    if (is_buffer_active[i]) {
+      host_out_probs_ptrs.push_back(combine_probs[i].data<float>());
+    } else {
+      host_out_probs_ptrs.push_back(nullptr);
+    }
+  }
+  cudaMemcpyAsync(d_out_probs_ptr,
+                  host_out_probs_ptrs.data(),
+                  num_loop_stage * sizeof(float*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  flash_ep::internode::local_combine_backward(
+      reinterpret_cast<const __nv_bfloat16*>(hidden_states.data()),
+      topk_idx.data<int32_t>(),
+      topk_weights.data<float>(),
+      d_recv_gbl_channel_prefix_ptr,
+      recv_gbl_src_meta.data<int32_t>(),
+      hidden_size,
+      num_loop_stage,
+      ori_len,
+      topk,
+      local_expert_id,
+      d_out_combine_ptr,
+      d_out_probs_ptr,
+      stream);
+}
+
 flash_ep::detail::Tensor ConvertPaddleTensorToDetailTensor(
     const paddle::Tensor& tensor) {
   flash_ep::detail::Tensor res(tensor);

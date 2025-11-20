@@ -84,6 +84,52 @@ void get_flash_ep_coalesce_rdma_layout(const int64_t* topk_idx,
                                        int num_loop_stage,
                                        cudaStream_t stream);
 
+void local_dispatch(const void** dispatched_hidden_states,
+                    const float** dispatched_topk_weights,
+                    const int32_t** dispatched_topk_idx,
+                    const int32_t** recv_src_meta,
+                    const float** fp8_scales,
+                    const int32_t* a2a_prefix_sum,
+                    int32_t* global_expertwise_block_cumsum,
+                    const int32_t local_expert_id,
+                    const int32_t hidden_size,
+                    const int32_t topk,
+                    const int32_t a2a_num,
+                    const int64_t all_token_num,
+                    const int64_t output_token_num,
+                    const int64_t scale_num,
+                    void* output_hidden,
+                    int32_t* output_top_idx,
+                    float* output_top_probs,
+                    int32_t* output_src_meta,
+                    float* output_fp8_scale,
+                    cudaStream_t stream,
+                    bool use_fp8,
+                    bool forward);
+
+void local_combine_forward(const __nv_bfloat16* hidden_states,
+                           const int32_t** recv_gbl_channel_prefix,
+                           const int32_t* recv_src_meta,
+                           const int32_t hidden_size,
+                           const int32_t num_loop_stage,
+                           const int64_t token_num,
+                           float** output_hidden_states,
+                           cudaStream_t stream);
+
+void local_combine_backward(const __nv_bfloat16* hidden_states,
+                            const int32_t* topk_idx,
+                            const float* topk_weights,
+                            const int32_t** recv_gbl_channel_prefix,
+                            const int32_t* recv_src_meta,
+                            const int32_t hidden_size,
+                            const int32_t num_loop_stage,
+                            const int64_t token_num,
+                            const int32_t topk,
+                            const int32_t local_expert_id,
+                            float** output_hidden_states,
+                            float** output_topk_weights,
+                            cudaStream_t stream);
+
 int get_source_meta_bytes();
 int get_details_source_meta_bytes();
 

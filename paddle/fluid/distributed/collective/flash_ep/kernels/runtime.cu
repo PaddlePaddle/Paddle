@@ -531,6 +531,573 @@ void get_flash_ep_coalesce_rdma_schedule(const int64_t* topk_idx,
 #undef GET_SCHEDULE_LAUNCH_CASE
 }
 
+template <typename T, int64_t N>
+struct alignas(16) VectorType {
+  T data[N];
+};
+
+template <>
+struct alignas(16) VectorType<float, 4> {
+  float4 data;  // Built-in CUDA vector type
+};
+
+template <>
+struct alignas(16) VectorType<__nv_bfloat16, 8> {
+  __nv_bfloat16 data[8];
+};
+
+template <>
+struct alignas(16) VectorType<__nv_fp8_e4m3, 16> {
+  __nv_fp8_e4m3 data[16];
+};
+
+template <>
+struct alignas(16) VectorType<uint8_t, 16> {
+  uint8_t data[16];
+};
+
+template <>
+struct alignas(16) VectorType<int32_t, 4> {
+  int32_t data[4];
+};
+
+// Helper function to perform vectorized memory copy
+template <typename T>
+__device__ __forceinline__ void vectorized_memcpy(const T* src,
+                                                  T* dst,
+                                                  int64_t num_elements) {
+  constexpr int64_t vector_size_in_bytes = 16;
+  const int64_t elements_per_vector = vector_size_in_bytes / sizeof(T);
+
+  int64_t num_vectors = num_elements / elements_per_vector;
+  int64_t remaining_elements = num_elements % elements_per_vector;
+
+  using VecType = VectorType<T, elements_per_vector>;
+  const VecType* src_vec = reinterpret_cast<const VecType*>(src);
+  VecType* dst_vec = reinterpret_cast<VecType*>(dst);
+
+#pragma unroll
+  for (int idx = threadIdx.x; idx < num_vectors; idx += blockDim.x) {
+    dst_vec[idx] = src_vec[idx];
+  }
+
+  if (remaining_elements > 0) {
+    int offset = num_vectors * elements_per_vector;
+    for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
+      dst[offset + i] = src[offset + i];
+    }
+  }
+}
+
+template <>
+__device__ __forceinline__ void vectorized_memcpy<__nv_fp8_e4m3>(
+    const __nv_fp8_e4m3* src, __nv_fp8_e4m3* dst, int64_t num_elements) {
+  const int64_t elements_per_vector = 16;
+
+  int64_t num_vectors = num_elements / elements_per_vector;
+  int64_t remaining_elements = num_elements % elements_per_vector;
+
+  const uint4* src_vec = reinterpret_cast<const uint4*>(src);
+  uint4* dst_vec = reinterpret_cast<uint4*>(dst);
+
+#pragma unroll
+  for (int idx = threadIdx.x; idx < num_vectors; idx += blockDim.x) {
+    dst_vec[idx] = __ldg(src_vec + idx);
+  }
+
+  if (remaining_elements > 0) {
+    int offset = num_vectors * elements_per_vector;
+    for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
+      dst[offset + i] = src[offset + i];
+    }
+  }
+}
+
+constexpr int kCumsumInvalidTag = -1;
+
+struct __custom_bfloat164 {
+  __nv_bfloat16 x;
+  __nv_bfloat16 y;
+  __nv_bfloat16 z;
+  __nv_bfloat16 w;
+};
+
+template <typename T>
+__device__ __forceinline__ void vectorized_add(const T* src,
+                                               float* dst,
+                                               int64_t num_elements);
+
+template <>
+__device__ __forceinline__ void vectorized_add<float>(const float* src,
+                                                      float* dst,
+                                                      int64_t num_elements) {
+  const float4* src_vec = reinterpret_cast<const float4*>(src);
+  float4* dst_vec = reinterpret_cast<float4*>(dst);
+
+  int64_t num_vectors = num_elements / 4;
+  int64_t remaining_elements = num_elements % 4;
+
+  for (int i = threadIdx.x; i < num_vectors; i += blockDim.x) {
+    float4 s_vec_num = __ldg(src_vec + i);
+    float4 d_vec_num = *(dst_vec + i);
+    d_vec_num.x = __fadd_rn(s_vec_num.x, d_vec_num.x);
+    d_vec_num.y = __fadd_rn(s_vec_num.y, d_vec_num.y);
+    d_vec_num.z = __fadd_rn(s_vec_num.z, d_vec_num.z);
+    d_vec_num.w = __fadd_rn(s_vec_num.w, d_vec_num.w);
+    *(dst_vec + i) = d_vec_num;
+  }
+
+  if (remaining_elements > 0) {
+    int offset = num_vectors * 4;
+    for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
+      dst[offset + i] += src[offset + i];
+    }
+  }
+}
+
+template <>
+__device__ __forceinline__ void vectorized_add<__nv_bfloat16>(
+    const __nv_bfloat16* src, float* dst, int64_t num_elements) {
+  const uint64_t* src_vec = reinterpret_cast<const uint64_t*>(src);
+  float4* dst_vec = reinterpret_cast<float4*>(dst);
+
+  int64_t num_vectors = num_elements / 4;
+  int64_t remaining_elements = num_elements % 4;
+
+  for (int i = threadIdx.x; i < num_vectors; i += blockDim.x) {
+    uint64_t s_vec_num_raw = __ldg(src_vec + i);
+    __custom_bfloat164 s_vec_num =
+        *reinterpret_cast<__custom_bfloat164*>(&s_vec_num_raw);
+    float4 d_vec_num = *(dst_vec + i);
+    d_vec_num.x = __fadd_rn(__bfloat162float(s_vec_num.x), d_vec_num.x);
+    d_vec_num.y = __fadd_rn(__bfloat162float(s_vec_num.y), d_vec_num.y);
+    d_vec_num.z = __fadd_rn(__bfloat162float(s_vec_num.z), d_vec_num.z);
+    d_vec_num.w = __fadd_rn(__bfloat162float(s_vec_num.w), d_vec_num.w);
+    *(dst_vec + i) = d_vec_num;
+  }
+
+  if (remaining_elements > 0) {
+    int offset = num_vectors * 4;
+    for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
+      dst[offset + i] += __bfloat162float(src[offset + i]);
+    }
+  }
+}
+
+struct token_infos {
+  int token_row_idx;
+  float token_probs;
+
+  __device__ __host__ token_infos() : token_row_idx(-1), token_probs(0.f) {}
+  __device__ __host__ token_infos(int idx, float prob)
+      : token_row_idx(idx), token_probs(prob) {}
+
+  __device__ __host__ token_infos& operator=(const token_infos& other) {
+    token_row_idx = other.token_row_idx;
+    token_probs = other.token_probs;
+    return *this;
+  }
+};
+
+// prefix_sum[i] ≤ t < prefix_sum[i+1]
+__device__ __forceinline__ int findPtrIndex(const int* prefix_sum,
+                                            int M,
+                                            int t) {
+  int low = 0, high = M;
+  while (low < high) {
+    int mid = (low + high) / 2;
+    if (prefix_sum[mid] <= t) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low - 1;
+}
+
+template <bool kIsForward, bool kMixedPrecision, int kCumsumBlockSize>
+__global__ void dispatch_moe_kernel(const void** dispatched_hidden_states,
+                                    const float** dispatched_topk_weights,
+                                    const int32_t** dispatched_topk_idx,
+                                    const int32_t** recv_src_meta,
+                                    const float** fp8_scales,
+                                    const int32_t* a2a_prefix_sum,
+                                    int32_t* global_expertwise_block_cumsum,
+                                    const int32_t local_expert_id,
+                                    const int32_t hidden_size,
+                                    const int32_t topk,
+                                    const int32_t a2a_num,
+                                    const int64_t all_token_num,
+                                    const int64_t output_token_num,
+                                    const int64_t scale_num,
+                                    void* output_hidden,
+                                    int32_t* output_top_idx,
+                                    float* output_top_probs,
+                                    int32_t* output_src_meta,
+                                    float* output_fp8_scale) {
+  int local_cumsum = 0;
+  const int block_row_base = blockIdx.x * kCumsumBlockSize;
+  int cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
+
+  __shared__ token_infos shared_token_infos[kCumsumBlockSize];
+  __shared__ int shared_cumsum;
+  __shared__ int32_t last_warp_valid_count;
+  if (threadIdx.x == 0) {
+    shared_cumsum = 0;
+    last_warp_valid_count = 0;
+  }
+
+#pragma unroll
+  for (int i = threadIdx.x; i < kCumsumBlockSize; i += blockDim.x) {
+    shared_token_infos[i].token_row_idx = -1;
+  }
+  __syncthreads();
+
+  // one warp 32 thread == one block for 32 tokens
+  token_infos local_token_infos[kCumsumBlockSize];
+  for (int row = block_row_base + threadIdx.x;
+       row < block_row_base + kCumsumBlockSize;
+       row += blockDim.x) {
+    if (row >= all_token_num) break;
+    if (block_row_base + 32 > all_token_num) {
+      const int internal_row = row - block_row_base;
+#pragma unroll
+      for (int k = 0; k < topk; k++) {
+        int a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
+        int a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
+        token_infos proposed;
+        if (kIsForward) {
+          proposed = {
+              dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
+              dispatched_topk_weights[a2a_idx][a2a_token_idx * topk + k]};
+        } else {
+          proposed = {dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
+                      0};
+        }
+        bool found = proposed.token_row_idx == local_expert_id;
+        if (found) {
+          int warp_position = atomicAdd(&last_warp_valid_count, 1);
+          int local_cumsum = warp_position + shared_cumsum;
+          shared_token_infos[internal_row] = {local_cumsum,
+                                              proposed.token_probs};
+        }
+      }
+    } else {
+      const int internal_row = row - block_row_base;
+#pragma unroll
+      for (int k = 0; k < topk; k++) {
+        int a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
+        int a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
+        token_infos proposed;
+        if (kIsForward) {
+          proposed = {
+              dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
+              dispatched_topk_weights[a2a_idx][a2a_token_idx * topk + k]};
+        } else {
+          proposed = {dispatched_topk_idx[a2a_idx][a2a_token_idx * topk + k],
+                      0};
+        }
+        bool found = proposed.token_row_idx == local_expert_id;
+        unsigned mask = __ballot_sync(0xFFFFFFFF, found);
+        int valid_count = __popc(mask);
+        unsigned lane_mask = (1u << threadIdx.x) - 1;
+        int warp_position = __popc(mask & lane_mask);
+        if (found) {
+          int local_cumsum = warp_position + shared_cumsum;
+          shared_token_infos[internal_row] = {local_cumsum,
+                                              proposed.token_probs};
+        }
+        if (threadIdx.x == 0) shared_cumsum += valid_count;
+      }
+    }
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    // Inter-block communication
+    const int anticipate_signal_idx = blockIdx.x;
+    const int push_signal_idx = (blockIdx.x + 1);
+    if (blockIdx.x != 0) {
+      // signal receive from previous block, using light-weight atomicAdd(check)
+      // this will not change any data, only do fetch in low-cost
+      while ((cumsum_offset = atomicAdd(
+                  &global_expertwise_block_cumsum[anticipate_signal_idx], 0)) ==
+             kCumsumInvalidTag) {
+      }
+    }
+    // signal send for next block, with current cumsum
+    const int proposed_offset = cumsum_offset + shared_cumsum;
+    global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+    // Intra-block communication;
+
+#pragma unroll
+    for (int i = 0; i < kCumsumBlockSize; i++) {
+      shared_token_infos[i].token_row_idx =
+          (shared_token_infos[i].token_row_idx == -1)
+              ? -1
+              : shared_token_infos[i].token_row_idx + cumsum_offset;
+    }
+  }
+
+  __syncthreads();
+
+  for (int row = block_row_base; row < block_row_base + kCumsumBlockSize;
+       row++) {
+    // OOB check
+    if (row >= all_token_num) return;
+    int a2a_idx = findPtrIndex(a2a_prefix_sum, a2a_num, row);
+    int a2a_token_idx = row - a2a_prefix_sum[a2a_idx];
+    const int internal_row = row - block_row_base;
+    const token_infos this_expert_token_info = shared_token_infos[internal_row];
+    const int proposed_row_idx = this_expert_token_info.token_row_idx;
+    if (proposed_row_idx == -1) continue;  // no memcpy
+    if (threadIdx.x == 0) {
+      if (kIsForward) {
+        output_top_probs[proposed_row_idx] = this_expert_token_info.token_probs;
+      }
+      if (!kIsForward) {
+        for (int i = 0; i < topk; i++) {
+          output_top_idx[proposed_row_idx * topk + i] =
+              dispatched_topk_idx[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
+                                               static_cast<int64_t>(topk) +
+                                           i];
+        }
+      }
+      using VecType = VectorType<int32_t, 4>;
+      const VecType* src_vec = reinterpret_cast<const VecType*>(
+          &(recv_src_meta[a2a_idx][static_cast<int64_t>(a2a_token_idx) * 4]));
+      VecType* dst_vec = reinterpret_cast<VecType*>(
+          &(output_src_meta[static_cast<int64_t>(proposed_row_idx) * 4]));
+      dst_vec[0] = src_vec[0];
+    }
+    if (kMixedPrecision) {
+      auto dispatched_hidden_states_ptr =
+          reinterpret_cast<const __nv_fp8_e4m3**>(dispatched_hidden_states);
+      auto output_hidden_ptr = reinterpret_cast<__nv_fp8_e4m3*>(output_hidden);
+      vectorized_memcpy<__nv_fp8_e4m3>(
+          &dispatched_hidden_states_ptr[a2a_idx]
+                                       [static_cast<int64_t>(a2a_token_idx) *
+                                        static_cast<int64_t>(hidden_size)],
+          &output_hidden_ptr[static_cast<int64_t>(proposed_row_idx) *
+                             static_cast<int64_t>(hidden_size)],
+          hidden_size);
+      vectorized_memcpy(
+          &fp8_scales[a2a_idx][static_cast<int64_t>(a2a_token_idx) *
+                               static_cast<int64_t>(scale_num)],
+          &output_fp8_scale[static_cast<int64_t>(proposed_row_idx) *
+                            static_cast<int64_t>(scale_num)],
+          scale_num);
+    } else {
+      auto dispatched_hidden_states_ptr =
+          reinterpret_cast<const __nv_bfloat16**>(dispatched_hidden_states);
+      auto output_hidden_ptr = reinterpret_cast<__nv_bfloat16*>(output_hidden);
+      vectorized_memcpy<__nv_bfloat16>(
+          &dispatched_hidden_states_ptr[a2a_idx]
+                                       [static_cast<int64_t>(a2a_token_idx) *
+                                        static_cast<int64_t>(hidden_size)],
+          &output_hidden_ptr[static_cast<int64_t>(proposed_row_idx) *
+                             static_cast<int64_t>(hidden_size)],
+          hidden_size);
+    }
+  }
+}
+
+template <int kSMNum>
+__global__ void combine_moe_kernel_forward(
+    const __nv_bfloat16* hidden_states,
+    const int32_t** recv_gbl_channel_prefix,
+    const int32_t* recv_src_meta,
+    const int32_t hidden_size,
+    const int32_t num_loop_stage,
+    const int64_t token_num,
+    float** output_hidden_states) {
+  EP_DEVICE_ASSERT(blockDim.x % 32 == 0);
+
+  const int block_row_base = blockIdx.x * kSMNum;
+  for (int row = block_row_base; row < block_row_base + kSMNum; row++) {
+    if (row >= token_num) return;
+    const int4* vec_token_meta = reinterpret_cast<const int4*>(recv_src_meta);
+    const int4 meta_vec = __ldg(vec_token_meta + row);
+    const int32_t channel_id = meta_vec.x;
+    const int32_t nvl_head = meta_vec.y;
+    const int32_t src_rank = meta_vec.z;
+    const int32_t stage_idx_to_combine = meta_vec.w;
+
+    const int64_t channel_offset =
+        recv_gbl_channel_prefix[stage_idx_to_combine]
+                               [src_rank * 10 + channel_id];
+    const int64_t offset = channel_offset + nvl_head;
+    float* token_out_ptr =
+        output_hidden_states[stage_idx_to_combine] + offset * hidden_size;
+    const __nv_bfloat16* token_load_ptr = hidden_states + row * hidden_size;
+    vectorized_add(token_load_ptr, token_out_ptr, hidden_size);
+  }
+}
+
+template <int kSMNum>
+__global__ void combine_moe_kernel_backward(
+    const __nv_bfloat16* hidden_states,
+    const int32_t* topk_idx,
+    const float* topk_weights,
+    const int32_t** recv_gbl_channel_prefix,
+    const int32_t* recv_src_meta,
+    const int32_t hidden_size,
+    const int32_t num_loop_stage,
+    const int64_t token_num,
+    const int32_t topk,
+    const int32_t local_expert_id,
+    float** output_hidden_states,
+    float** output_topk_weights) {
+  EP_DEVICE_ASSERT(blockDim.x % 32 == 0);
+  const int block_row_base = blockIdx.x * kSMNum;
+  for (int row = block_row_base; row < block_row_base + kSMNum; row++) {
+    if (row >= token_num) return;
+    const int4* vec_token_meta = reinterpret_cast<const int4*>(recv_src_meta);
+    const int4 meta_vec = __ldg(vec_token_meta + row);
+    const int32_t channel_id = meta_vec.x;
+    const int32_t nvl_head = meta_vec.y;
+    const int32_t src_rank = meta_vec.z;
+    const int32_t stage_idx_to_combine = meta_vec.w;
+
+    const int64_t channel_offset =
+        recv_gbl_channel_prefix[stage_idx_to_combine]
+                               [src_rank * 10 + channel_id];
+    const int64_t offset = channel_offset + nvl_head;
+
+    if (threadIdx.x < topk) {
+      if (topk_idx[row * topk + threadIdx.x] == local_expert_id) {
+        output_topk_weights[stage_idx_to_combine][offset * topk + threadIdx.x] =
+            topk_weights[row];
+      }
+    }
+
+    float* token_out_ptr =
+        output_hidden_states[stage_idx_to_combine] + offset * hidden_size;
+    const __nv_bfloat16* token_load_ptr = hidden_states + row * hidden_size;
+    vectorized_add(token_load_ptr, token_out_ptr, hidden_size);
+  }
+}
+
+void local_dispatch(const void** dispatched_hidden_states,
+                    const float** dispatched_topk_weights,
+                    const int32_t** dispatched_topk_idx,
+                    const int32_t** recv_src_meta,
+                    const float** fp8_scales,
+                    const int32_t* a2a_prefix_sum,
+                    int32_t* global_expertwise_block_cumsum,
+                    const int32_t local_expert_id,
+                    const int32_t hidden_size,
+                    const int32_t topk,
+                    const int32_t a2a_num,
+                    const int64_t all_token_num,
+                    const int64_t output_token_num,
+                    const int64_t scale_num,
+                    void* output_hidden,
+                    int32_t* output_top_idx,
+                    float* output_top_probs,
+                    int32_t* output_src_meta,
+                    float* output_fp8_scale,
+                    cudaStream_t stream,
+                    bool use_fp8,
+                    bool forward) {
+  constexpr int kNumThreads = 1024;
+  constexpr int kCumsumBlockSize = 32;
+
+  int num_sms = (all_token_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
+  EP_HOST_ASSERT(!(use_fp8 && !forward));
+
+#define LAUNCH_LOCAL_DISPATCH_KERNEL(T, FORWARD, USE_FP8)                     \
+  do {                                                                        \
+    dispatch_moe_kernel<FORWARD, USE_FP8, kCumsumBlockSize>                   \
+        <<<num_sms, kNumThreads, 0, stream>>>(dispatched_hidden_states,       \
+                                              dispatched_topk_weights,        \
+                                              dispatched_topk_idx,            \
+                                              recv_src_meta,                  \
+                                              fp8_scales,                     \
+                                              a2a_prefix_sum,                 \
+                                              global_expertwise_block_cumsum, \
+                                              local_expert_id,                \
+                                              hidden_size,                    \
+                                              topk,                           \
+                                              a2a_num,                        \
+                                              all_token_num,                  \
+                                              output_token_num,               \
+                                              scale_num,                      \
+                                              output_hidden,                  \
+                                              output_top_idx,                 \
+                                              output_top_probs,               \
+                                              output_src_meta,                \
+                                              output_fp8_scale);              \
+  } while (0)
+
+  if (use_fp8 && forward) {
+    LAUNCH_LOCAL_DISPATCH_KERNEL(__nv_fp8_e4m3, true, true);
+  } else if (!use_fp8 && forward) {
+    LAUNCH_LOCAL_DISPATCH_KERNEL(__nv_bfloat16, true, false);
+  } else {
+    LAUNCH_LOCAL_DISPATCH_KERNEL(__nv_bfloat16, false, false);
+  }
+#undef LAUNCH_LOCAL_DISPATCH_KERNEL
+}
+
+static int LimitGridDim(int64_t n) {
+  return static_cast<int>(std::min<int64_t>(n, 1024 * 1024));
+}
+
+void local_combine_forward(const __nv_bfloat16* hidden_states,
+                           const int32_t** recv_gbl_channel_prefix,
+                           const int32_t* recv_src_meta,
+                           const int32_t hidden_size,
+                           const int32_t num_loop_stage,
+                           const int64_t token_num,
+                           float** output_hidden_states,
+                           cudaStream_t stream) {
+  constexpr int kNumThreads = 1024;
+  constexpr int kSMNum = 4;
+  int num_sms = LimitGridDim((token_num + kSMNum - 1) / kSMNum);
+
+  combine_moe_kernel_forward<kSMNum>
+      <<<num_sms, kNumThreads, 0, stream>>>(hidden_states,
+                                            recv_gbl_channel_prefix,
+                                            recv_src_meta,
+                                            hidden_size,
+                                            num_loop_stage,
+                                            token_num,
+                                            output_hidden_states);
+}
+
+void local_combine_backward(const __nv_bfloat16* hidden_states,
+                            const int32_t* topk_idx,
+                            const float* topk_weights,
+                            const int32_t** recv_gbl_channel_prefix,
+                            const int32_t* recv_src_meta,
+                            const int32_t hidden_size,
+                            const int32_t num_loop_stage,
+                            const int64_t token_num,
+                            const int32_t topk,
+                            const int32_t local_expert_id,
+                            float** output_hidden_states,
+                            float** output_topk_weights,
+                            cudaStream_t stream) {
+  constexpr int kNumThreads = 1024;
+  constexpr int kSMNum = 4;
+  int num_sms = LimitGridDim((token_num + kSMNum - 1) / kSMNum);
+
+  combine_moe_kernel_backward<kSMNum>
+      <<<num_sms, kNumThreads, 0, stream>>>(hidden_states,
+                                            topk_idx,
+                                            topk_weights,
+                                            recv_gbl_channel_prefix,
+                                            recv_src_meta,
+                                            hidden_size,
+                                            num_loop_stage,
+                                            token_num,
+                                            topk,
+                                            local_expert_id,
+                                            output_hidden_states,
+                                            output_topk_weights);
+}
+
 #ifdef PADDLE_WITH_NVSHMEM
 nvshmem_team_t cpu_rdma_team = NVSHMEM_TEAM_INVALID;
 nvshmem_team_config_t cpu_rdma_team_config;
