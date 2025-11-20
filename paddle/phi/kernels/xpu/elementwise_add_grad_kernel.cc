@@ -134,10 +134,11 @@ void AddGradKernel(const Context& dev_ctx,
             funcs::GetReduceDim(dy->dims(), dz_dims, axis);
         std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
 
-        auto casted_dout = phi::Cast<T>(dev_ctx, dout, y.dtype());
+        auto casted_dz = phi::Cast<T>(dev_ctx, *dz, y.dtype());
+        auto casted_dz_data = casted_dz.data<YType>();
         int ret = xpu::reduce_sum<XPUYType>(
             dev_ctx.x_context(),
-            reinterpret_cast<const XPUYType*>(casted_dout.data<YType>()),
+            reinterpret_cast<const XPUYType*>(casted_dz_data),
             reinterpret_cast<XPUYType*>(dy_data),
             dz_vector,
             std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
@@ -161,10 +162,11 @@ void AddGradKernel(const Context& dev_ctx,
             funcs::GetReduceDim(dy->dims(), dz_dims, axis);
         std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
 
-        auto casted_dout = phi::Cast<T>(dev_ctx, dout, y.dtype());
+        auto casted_dz = phi::Cast<T>(dev_ctx, *dz, y.dtype());
+        auto casted_dz_data = casted_dz.data<YType>();
         int ret = xpu::reduce_sum<XPUYType>(
             dev_ctx.x_context(),
-            reinterpret_cast<const XPUYType*>(casted_dout.data<YType>()),
+            reinterpret_cast<const XPUYType*>(casted_dz_data),
             reinterpret_cast<XPUYType*>(dy_data),
             dz_vector,
             std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
