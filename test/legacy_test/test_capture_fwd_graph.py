@@ -32,7 +32,6 @@ class TestCaptureFwdGraph(unittest.TestCase):
             z = out1 - out2
             w = out0 * out2
             out3 = paddle.concat([y, z, w], axis=1)
-        file_path = file_path + "_" + str(os.getpid())
 
         if os.path.exists(file_path + ".svg"):
             file_size = os.path.getsize(file_path + ".svg")

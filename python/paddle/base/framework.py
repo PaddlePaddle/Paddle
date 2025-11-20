@@ -8630,7 +8630,6 @@ def capture_backward_subgraph_guard(
 ) -> Generator[None, None, None]:
     assert dump_dir_path is not None, "The dump_dir_path should not be None"
     # for multi process
-    dump_dir_path = dump_dir_path + "_" + str(os.getpid())
     check_and_create_dir(dump_dir_path)
     paddle.base.core.eager._init_backward_subgraph_recorder(
         dump_dir_path, need_dump_grad_tensors

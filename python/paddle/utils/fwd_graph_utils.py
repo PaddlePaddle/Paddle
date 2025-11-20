@@ -272,4 +272,4 @@ def capture_fwd_graph_guard(file_path: str):
         matches = pattern.findall(log)
         # Build the forward graph
         builder.build_graph(matches)
-        builder.save_graph(file_path + "_" + str(os.getpid()))
+        builder.save_graph(file_path)
