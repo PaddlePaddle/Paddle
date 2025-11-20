@@ -29,7 +29,7 @@ UNCONDITIONAL_JUMP = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
 if sys.version_info >= (3, 11):
     UNCONDITIONAL_JUMP.add("JUMP_BACKWARD")
 RETURN = {"RETURN_VALUE"}
-if sys.version_info >= (3, 12):
+if (3, 12) <= sys.version_info < (3, 14):
     RETURN.add("RETURN_CONST")
 
 

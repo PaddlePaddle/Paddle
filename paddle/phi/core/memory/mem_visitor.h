@@ -26,6 +26,7 @@ class RetryAllocator;
 class StatAllocator;
 class StreamSafeCUDAAllocator;
 class VirtualMemoryAutoGrowthBestFitAllocator;
+class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 }  // namespace allocation
 
 using allocation::Allocator;
@@ -33,6 +34,7 @@ using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
 using allocation::VirtualMemoryAutoGrowthBestFitAllocator;
+using allocation::VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 
 /**
  * @brief AllocatorVisitorReqImpl serves as the Abstract Visitor interface in
@@ -52,6 +54,8 @@ class AllocatorVisitorReqImpl {
 #ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator) = 0;
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) = 0;
+  virtual void Visit(
+      VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) = 0;
 #endif
 };
 
@@ -73,6 +77,8 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
 #ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator);
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator);
+  virtual void Visit(
+      VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator);
 #endif
 };
 
@@ -123,6 +129,50 @@ class FreeMemoryMetricsVisitor : public AllocatorVisitor {
   int32_t nums_blocks_ = 1;
   size_t large_size_ = 0;
   size_t sum_size_ = 0;
+};
+
+/**
+ * @brief Visitor class to attempt memory allocation.
+ *
+ * To execute a series of memory allocation attempts (based on the
+ * sizes_ list provided in the constructor) on a specific memory allocator
+ * (typically VirtualMemoryAutoGrowthBestFitAllocator) and record if all
+ * attempts were successful.
+ */
+class TryAllocVisitor : public AllocatorVisitor {
+ public:
+  /**
+   * @brief Constructor.
+   *
+   * @param sizes A constant reference to a vector containing the sizes
+   * of the memory blocks to be attempted for allocation. Defaults to an empty
+   * list.
+   */
+  explicit TryAllocVisitor(const std::vector<size_t>& sizes = {})
+      : sizes_(sizes) {}
+  /**
+   * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
+   *
+   * This is the core implementation of the Visitor Pattern for this specific
+   * allocator. It iterates through the sizes_ list and attempts to call the
+   * allocator's TryAllocate() method for each size. The flag
+   * is_try_alloc_success_ is only set to true if ALL TryAllocate calls succeed.
+   *
+   * @param allocator Pointer to the memory allocator object to be visited and
+   * tested.
+   */
+  void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+  /**
+   * @brief Queries the result of the allocation attempt.
+   *
+   * @return Returns true if all TryAllocate attempts were successful;
+   * otherwise, returns false.
+   */
+  bool IsTryAllocSuccess() const { return is_try_alloc_success_; }
+
+ private:
+  const std::vector<size_t>& sizes_;
+  bool is_try_alloc_success_ = false;
 };
 #endif
 
