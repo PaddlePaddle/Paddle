@@ -93,6 +93,7 @@ prim_white_list = [
     "acos_double_grad",
     "put_along_axis_double_grad",
     "masked_fill_double_grad",
+    "index_elementwise_put_with_tensor_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.

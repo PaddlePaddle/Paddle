@@ -1022,6 +1022,66 @@ class TestSetitemInStatic(unittest.TestCase):
         tensor_np[mask_np] = value_np
         np.testing.assert_allclose(res, tensor_np)
 
+    def test_index_elementwise_put_with_tensor(self):
+        x = paddle.randn(10, 4, requires_grad=True)
+        xx = x + 0
+
+        index = paddle.to_tensor(
+            [
+                [0, 1],
+                [2, 3],
+                [9, 4],
+                [7, 6],
+            ],
+            dtype=paddle.int64,
+        )
+        value = paddle.randn_like(xx[index], requires_grad=True)
+
+        xx[index] = value
+        y = xx
+
+        dy = paddle.randn_like(y, requires_grad=True)
+
+        dx, dv = paddle.autograd.grad(y, [x, value], dy, create_graph=True)
+
+        ddx = paddle.randn_like(dx)
+        ddv = paddle.randn_like(dv)
+
+        # ddx && ddv
+        (ddy1,) = paddle.autograd.grad(
+            [dx, dv], dy, [ddx, ddv], retain_graph=True
+        )
+        ddy1_manual = ddx.clone()
+        ddy1_manual[index] = ddv
+        np.testing.assert_allclose(
+            ddy1.detach().cpu().numpy(),
+            ddy1_manual.detach().cpu().numpy(),
+            1e-6,
+            1e-6,
+        )
+
+        # ddx && !ddv
+        (ddy2,) = paddle.autograd.grad([dx], dy, [ddx], retain_graph=True)
+        ddy2_manual = ddx.clone()
+        ddy2_manual[index] = 0.0
+        np.testing.assert_allclose(
+            ddy2.detach().cpu().numpy(),
+            ddy2_manual.detach().cpu().numpy(),
+            1e-6,
+            1e-6,
+        )
+
+        # !ddx && ddv
+        (ddy3,) = paddle.autograd.grad([dv], dy, [ddv])
+        ddy3_manual = paddle.zeros_like(ddx)
+        ddy3_manual[index] = ddv
+        np.testing.assert_allclose(
+            ddy3.detach().cpu().numpy(),
+            ddy3_manual.detach().cpu().numpy(),
+            1e-6,
+            1e-6,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
