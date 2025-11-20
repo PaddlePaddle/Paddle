@@ -24,14 +24,7 @@
 
 ### 安装最新稳定版本
 
-``` sh
-# CPU
-pip install paddlepaddle
-# GPU
-pip install paddlepaddle-gpu
-```
-
-更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)。
+安装方法详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)。
 
 ## 飞桨新一代框架 3.2
 

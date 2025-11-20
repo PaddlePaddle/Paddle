@@ -25,14 +25,7 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 
 ### Install Latest Stable Release
 
-``` sh
-# CPU
-pip install paddlepaddle
-# GPU
-pip install paddlepaddle-gpu
-```
-
-For more information about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
+For detailed information about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
 ## **PaddlePaddle New Generation Framework 3.2**
 

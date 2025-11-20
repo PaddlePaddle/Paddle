@@ -26,13 +26,6 @@ PaddlePaddle の最新機能を追跡するために、私たちの[リリース
 
 ### 最新の安定版リリースのインストール
 
-``` sh
-# CPU
-pip install paddlepaddle
-# GPU
-pip install paddlepaddle-gpu
-```
-
 インストール方法については、[クイックインストール](https://www.paddlepaddle.org.cn/install/quick)をご覧ください
 
 この度、開発者の皆様が Tesla V100 のオンライン計算資源を無償で取得できるようになりました。AI Studio でプログラムを作成した場合、1日あたり8時間のオンライン学習が可能です。[スタートはこちら](https://aistudio.baidu.com/aistudio/index)。
