@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/mp_all_reduce_sum_kernel.h"
 #include "paddle/phi/kernels/all_reduce_kernel.h"
+#include "paddle/phi/kernels/mp_all_reduce_sum_kernel.h"
 
 namespace phi {
 template <typename T, typename Context>
