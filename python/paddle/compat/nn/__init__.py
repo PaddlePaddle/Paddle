@@ -96,7 +96,7 @@ class Unfold(nn.Unfold):
             input,
             kernel_sizes=to_list_if_necessary(self.kernel_sizes),
             strides=to_list_if_necessary(self.strides),
-            paddings=to_list_if_necessary(self.paddings, size_check=True),
+            paddings=to_list_if_necessary(self.paddings),
             dilations=to_list_if_necessary(self.dilations),
             name=self.name,
         )
