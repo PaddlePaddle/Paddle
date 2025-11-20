@@ -266,8 +266,7 @@ void MagmaEig(const Context& dev_ctx,
 
   int batch_count = BatchCount(input_copy_cpu);
   int matrix_stride = MatrixStride(input_copy_cpu);
-  int values_stride =
-      static_cast<int> values->dims()[values->dims().size() - 1];
+  int values_stride = static_cast<int>(values->dims(-1));
 
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
@@ -489,8 +488,8 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
   // Vh: matrix with shape [m,m]
   // rhs: rhs with shape [m,k]
   // x_grad: out
-  int m = static_cast<int> Vh.dims(-1);
-  int k = static_cast<int> rhs.dims(-1);
+  int m = static_cast<int>(Vh.dims(-1));
+  int k = static_cast<int>(rhs.dims(-1));
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
 
