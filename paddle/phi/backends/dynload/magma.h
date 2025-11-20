@@ -92,8 +92,8 @@ extern "C" magma_int_t magma_cgeev(magma_vec_t jobvl,
                                    float *rwork,
                                    magma_int_t *info);
 
-extern "C" void magma_init();
-extern "C" void magma_finalize();
+extern "C" magma_int_t magma_init();
+extern "C" magma_int_t magma_finalize();
 
 namespace phi {
 namespace dynload {
