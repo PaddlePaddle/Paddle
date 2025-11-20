@@ -1634,8 +1634,10 @@ def check_build_dependency():
 Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
 '''.strip()
 
-    with open(TOP_DIR + '/python/requirements.txt') as f:
-        all_dependencies = f.read().splitlines() # Specify the dependencies to install
+    with open('${PADDLE_SOURCE_DIR}' + '/python/requirements.txt') as f:
+        build_dependencies = (
+            f.read().splitlines()
+        )  # Specify the dependencies to install
 
     build_dependencies = []
 
