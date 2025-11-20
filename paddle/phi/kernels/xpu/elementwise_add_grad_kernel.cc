@@ -46,11 +46,31 @@ void AddGradKernel(const Context& dev_ctx,
       }
     }
     if (dy) {
-      if (dy->numel() == 0) {
-        dev_ctx.template Alloc<T>(dy);
+      // special case for "float32 + bfloat16", or "float32 + float16"
+      if (x.dtype() == DataType::FLOAT32 && y.dtype() == DataType::BFLOAT16) {
+        using YType = DataTypeToCppType<DataType::BFLOAT16>::type;
+        if (dy->numel() == 0) {
+          dev_ctx.template Alloc<YType>(dy);
+        } else {
+          phi::Full<YType, Context>(
+              dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        }
+      } else if (x.dtype() == DataType::FLOAT32 &&
+                 y.dtype() == DataType::FLOAT16) {
+        using YType = DataTypeToCppType<DataType::FLOAT16>::type;
+        if (dy->numel() == 0) {
+          dev_ctx.template Alloc<YType>(dy);
+        } else {
+          phi::Full<YType, Context>(
+              dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        }
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        if (dy->numel() == 0) {
+          dev_ctx.template Alloc<T>(dy);
+        } else {
+          phi::Full<T, Context>(
+              dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        }
       }
     }
     return;
@@ -95,29 +115,86 @@ void AddGradKernel(const Context& dev_ctx,
   }
 
   if (dy != nullptr) {
-    T* dy_data = dev_ctx.template Alloc<T>(dy);
-    if (dy->dims() == dz_dims) {
-      if (dy_data != dz_data) {
-        int ret = xpu::copy(dev_ctx.x_context(),
-                            reinterpret_cast<const XPUType*>(dz_data),
-                            reinterpret_cast<XPUType*>(dy->data<T>()),
-                            dy->numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+    // special case for "float32 + bfloat16", or "float32 + float16"
+    if (x.dtype() == DataType::FLOAT32 && y.dtype() == DataType::BFLOAT16) {
+      using YType = DataTypeToCppType<DataType::BFLOAT16>::type;
+      using XPUYType = typename XPUTypeTrait<YType>::Type;
+      YType* dy_data = dev_ctx.template Alloc<YType>(dy);
+
+      if (dy->dims() == dz_dims) {
+        int ret = xpu::cast<XPUType, XPUYType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(dz_data),
+            reinterpret_cast<XPUYType*>(dy_data),
+            dy->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+      } else {
+        std::vector<int> reduce_dims =
+            funcs::GetReduceDim(dy->dims(), dz_dims, axis);
+        std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+
+        auto casted_dout = phi::Cast<T>(dev_ctx, dout, y.dtype());
+        int ret = xpu::reduce_sum<XPUYType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUYType*>(casted_dout.data<YType>()),
+            reinterpret_cast<XPUYType*>(dy_data),
+            dz_vector,
+            std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
+      }
+    } else if (x.dtype() == DataType::FLOAT16 &&
+               y.dtype() == DataType::FLOAT16) {  // FLOAT16
+      using YType = DataTypeToCppType<DataType::FLOAT16>::type;
+      using XPUYType = typename XPUTypeTrait<YType>::Type;
+      YType* dy_data = dev_ctx.template Alloc<YType>(dy);
+
+      if (dy->dims() == dz_dims) {
+        int ret = xpu::cast<XPUType, XPUYType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(dz_data),
+            reinterpret_cast<XPUYType*>(dy_data),
+            dy->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+      } else {
+        std::vector<int> reduce_dims =
+            funcs::GetReduceDim(dy->dims(), dz_dims, axis);
+        std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+
+        auto casted_dout = phi::Cast<T>(dev_ctx, dout, y.dtype());
+        int ret = xpu::reduce_sum<XPUYType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUYType*>(casted_dout.data<YType>()),
+            reinterpret_cast<XPUYType*>(dy_data),
+            dz_vector,
+            std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
       }
     } else {
-      std::vector<int> reduce_dims =
-          funcs::GetReduceDim(dy->dims(), dz_dims, axis);
-      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
-      int ret = xpu::reduce_sum<XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(dz_data),
-          reinterpret_cast<XPUType*>(dy_data),
-          dz_vector,
-          std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
+      T* dy_data = dev_ctx.template Alloc<T>(dy);
+      if (dy->dims() == dz_dims) {
+        if (dy_data != dz_data) {
+          int ret = xpu::copy(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(dz_data),
+                              reinterpret_cast<XPUType*>(dy_data),
+                              dy->numel());
+          PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+        }
+      } else {
+        std::vector<int> reduce_dims =
+            funcs::GetReduceDim(dy->dims(), dz_dims, axis);
+        std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+        int ret = xpu::reduce_sum<XPUType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(dz_data),
+            reinterpret_cast<XPUType*>(dy_data),
+            dz_vector,
+            std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
+      }
     }
   }
 }
+
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
 void AddGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
