@@ -23,16 +23,27 @@ class TestCompatSeed(unittest.TestCase):
     def test_seed(self):
         paddle.seed(42)
         seed_cpu_random = core.default_cpu_generator().random()
-        seed_gpu_random = core.default_cuda_generator(0).random()
+        if paddle.is_compiled_with_cuda():
+            seed_gpu_random = core.default_cuda_generator(0).random()
+        if paddle.is_compiled_with_xpu():
+            seed_xpu_random = core.default_xpu_generator(0).random()
         paddle.seed(42)
         compat_seed()
         compat_seed_cpu_random = core.default_cpu_generator().random()
-        compat_seed_gpu_random = core.default_cuda_generator(0).random()
+
+        if paddle.is_compiled_with_cuda():
+            compat_seed_gpu_random = core.default_cuda_generator(0).random()
+            assert seed_gpu_random != compat_seed_gpu_random, (
+                "GPU Random Seed Not Change!"
+            )
+        if paddle.is_compiled_with_xpu():
+            compat_seed_xpu_random = core.default_xpu_generator(0).random()
+            assert seed_xpu_random != compat_seed_xpu_random, (
+                "XPU Random Seed Not Change!"
+            )
+
         assert seed_cpu_random != compat_seed_cpu_random, (
             "CPU Random Seed Not Change!"
-        )
-        assert seed_gpu_random != compat_seed_gpu_random, (
-            "GPU Random Seed Not Change!"
         )
 
 
